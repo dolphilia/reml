@@ -4,6 +4,28 @@ use crate::prelude::iter::{EffectLabels, EffectSet};
 
 thread_local! {
     static IO_EFFECTS: Cell<EffectSet> = Cell::new(EffectSet::PURE);
+    static WATCH_METRICS: Cell<WatchMetricsSnapshot> = Cell::new(WatchMetricsSnapshot::EMPTY);
+}
+
+/// ウォッチャーイベントのキュー指標。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WatchMetricsSnapshot {
+    pub queue_size: u32,
+    pub delay_ns: u64,
+}
+
+impl WatchMetricsSnapshot {
+    pub const EMPTY: Self = Self {
+        queue_size: 0,
+        delay_ns: 0,
+    };
+
+    pub fn new(queue_size: usize, delay_ns: u64) -> Self {
+        Self {
+            queue_size: queue_size.min(u32::MAX as usize) as u32,
+            delay_ns,
+        }
+    }
 }
 
 /// IO 操作が発生したことを記録する。
@@ -75,6 +97,22 @@ pub(crate) fn take_recorded_effects() -> EffectSet {
 /// IO API が記録した効果ラベルを取得し、内部状態をリセットする。
 pub fn take_io_effects_snapshot() -> EffectLabels {
     take_recorded_effects().to_labels()
+}
+
+/// ウォッチャーのキュー統計を記録する。
+pub(crate) fn record_watch_metrics(queue_size: usize, delay_ns: u64) {
+    WATCH_METRICS.with(|slot| {
+        slot.set(WatchMetricsSnapshot::new(queue_size, delay_ns));
+    });
+}
+
+/// 記録済みのウォッチャー統計を取得しリセットする。
+pub fn take_watch_metrics_snapshot() -> WatchMetricsSnapshot {
+    WATCH_METRICS.with(|slot| {
+        let snapshot = slot.get();
+        slot.set(WatchMetricsSnapshot::EMPTY);
+        snapshot
+    })
 }
 
 pub(crate) fn blocking_io_effect_labels() -> EffectLabels {

@@ -16,11 +16,12 @@ mod permissions;
 mod scope;
 mod reader;
 mod text_stream;
+mod watcher;
 mod writer;
 
 pub use adapters::{FsAdapter, WatcherAdapter};
 pub use buffered::{buffered, read_line, BufferedReader};
-pub use context::{BufferStats, IoContext};
+pub use context::{BufferStats, IoContext, WatchStats};
 pub use effects::take_io_effects_snapshot;
 pub use env::{time_env_snapshot, TimeEnvSnapshot};
 pub use error::{IoError, IoErrorKind, IoResult};
@@ -33,6 +34,9 @@ pub use scope::{
     with_file, with_temp_dir,
 };
 pub use reader::Reader;
+pub use watcher::{
+    close_watcher, watch, watch_with_limits, WatchEvent, WatchLimits, Watcher,
+};
 pub use text_stream::{
     decode_stream, encode_stream, BomHandling, InvalidSequenceStrategy, TextDecodeOptions,
     TextEncodeOptions,

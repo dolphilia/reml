@@ -199,6 +199,11 @@
 - `effect {io.async}` を `Watcher` が記録できるよう `io/effects.rs` に非同期チャンネルのメトリクス (`watch.queue_size`, `watch.delay_ns`) を追加する。
 - `tests/fixtures/watcher/simple_case` を用意し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-io watch::tests::*` を実行して基本イベントの整合性を確認する。
 
+> 進行ログ（Phase3 W49, 5.1 完了）  
+> - `compiler/rust/runtime/src/io/watcher.rs` に `WatchEvent`/`Watcher`/`WatcherHandle` を追加し、`notify` + `WatcherAdapter` で `fs.watcher.*` Capability と `effect {io.async}` を同時に検証。`IoContext` へ `metadata.io.watch.queue_size` / `metadata.io.watch.delay_ns` を記録できるよう `io/effects.rs`（`WatchMetricsSnapshot`）と `io/context.rs` を拡張し、`IoError::into_diagnostic()` が `core.io.watcher_error` に監視メタデータを転写する経路を実装した。  
+> - `io/error.rs` のエンコードに `watch` セクションを追加し、`AuditEnvelope.metadata["io.watch.*"]` へ統合。`docs/plans/bootstrap-roadmap/assets/{core-io-path-api-diff.csv,core-io-effects-matrix.md,core-io-capability-map.md}` を更新し、Watcher 行を「Implemented (Rust runtime)」/Stage In Progress へ変更。  
+> - `compiler/rust/runtime/tests/watcher.rs` と `tests/fixtures/watcher/simple_case/` を追加し、tempdir で `watch_reports_create_and_delete_events`／`watch_with_limits_rejects_invalid_path` を実行。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml watcher` の実行は新規依存取得にネットワークが必要なためローカルでは未実行だが、テスト手順とフィクスチャを文書化した。
+
 5.2. 監視イベントを `AuditEnvelope` へ記録する仕組みを整備し、ログの構造化をテストする。  
 実施ステップ:
 - `WatcherEventRecorder` を `compiler/rust/runtime/src/io/watcher_audit.rs` に作成し、イベントを `AuditEnvelope.metadata.io.watch.*` へ書き込む。

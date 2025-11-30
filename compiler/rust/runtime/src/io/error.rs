@@ -6,7 +6,7 @@ use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic
 use crate::prelude::iter::EffectLabels;
 use serde_json::{Map, Number, Value};
 
-use super::{BufferStats, IoContext};
+use super::{BufferStats, IoContext, WatchStats};
 
 /// IO 操作共通の結果型。
 pub type IoResult<T> = Result<T, IoError>;
@@ -203,6 +203,10 @@ impl IntoDiagnostic for IoError {
                 let buffer_map = encode_buffer_stats(buffer);
                 io_extensions.insert("buffer".into(), Value::Object(buffer_map));
             }
+            if let Some(watch) = ctx.watch_stats() {
+                let watch_map = encode_watch_stats(watch);
+                io_extensions.insert("watch".into(), Value::Object(watch_map));
+            }
             if let Ok(timestamp_value) = serde_json::to_value(ctx.timestamp()) {
                 io_extensions.insert("timestamp".into(), timestamp_value);
             }
@@ -248,6 +252,12 @@ impl IntoDiagnostic for IoError {
                 let buffer_map = encode_buffer_stats(buffer);
                 for (key, value) in buffer_map {
                     audit_metadata.insert(format!("io.buffer.{key}"), value);
+                }
+            }
+            if let Some(watch) = ctx.watch_stats() {
+                let watch_map = encode_watch_stats(watch);
+                for (key, value) in watch_map {
+                    audit_metadata.insert(format!("io.watch.{key}"), value);
                 }
             }
             let effects_map = encode_effect_labels(ctx.effects());
@@ -377,6 +387,19 @@ fn encode_buffer_stats(stats: &BufferStats) -> Map<String, Value> {
         buffer.insert("last_fill_timestamp".into(), timestamp_value);
     }
     buffer
+}
+
+fn encode_watch_stats(stats: &WatchStats) -> Map<String, Value> {
+    let mut watch = Map::new();
+    watch.insert(
+        "queue_size".into(),
+        Value::Number(Number::from(stats.queue_size() as u64)),
+    );
+    watch.insert(
+        "delay_ns".into(),
+        Value::Number(Number::from(stats.delay_ns())),
+    );
+    watch
 }
 
 fn path_to_string(path: &PathBuf) -> String {

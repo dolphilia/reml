@@ -5,6 +5,7 @@ use crate::prelude::iter::EffectLabels;
 use crate::time::{self, Timestamp};
 #[cfg(not(any(feature = "core_time", feature = "metrics")))]
 use std::time::SystemTime as Timestamp;
+use super::effects::WatchMetricsSnapshot;
 
 /// IO 操作の文脈情報。
 #[derive(Debug, Clone)]
@@ -16,6 +17,7 @@ pub struct IoContext {
     timestamp: Timestamp,
     effects: EffectLabels,
     buffer: Option<BufferStats>,
+    watch: Option<WatchStats>,
 }
 
 impl IoContext {
@@ -28,6 +30,7 @@ impl IoContext {
             timestamp: current_timestamp(),
             effects: empty_effect_labels(),
             buffer: None,
+            watch: None,
         }
     }
 
@@ -96,6 +99,10 @@ impl IoContext {
         self.buffer.as_ref()
     }
 
+    pub fn watch_stats(&self) -> Option<&WatchStats> {
+        self.watch.as_ref()
+    }
+
     pub fn with_buffer_stats(mut self, stats: BufferStats) -> Self {
         self.buffer = Some(stats);
         self
@@ -110,6 +117,19 @@ impl IoContext {
             .buffer
             .get_or_insert_with(|| BufferStats::new(capacity));
         stats.update(capacity, fill);
+    }
+
+    pub fn with_watch_stats_from_metrics(mut self, metrics: WatchMetricsSnapshot) -> Self {
+        self.watch = Some(WatchStats::from(metrics));
+        self
+    }
+
+    pub fn set_watch_stats_from_metrics(&mut self, metrics: WatchMetricsSnapshot) {
+        self.watch = Some(WatchStats::from(metrics));
+    }
+
+    pub fn set_watch_stats(&mut self, stats: WatchStats) {
+        self.watch = Some(stats);
     }
 }
 
@@ -184,5 +204,34 @@ fn current_timestamp() -> Timestamp {
     #[cfg(not(any(feature = "core_time", feature = "metrics")))]
     {
         Timestamp::now()
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct WatchStats {
+    queue_size: u32,
+    delay_ns: u64,
+}
+
+impl WatchStats {
+    pub fn new(queue_size: u32, delay_ns: u64) -> Self {
+        Self { queue_size, delay_ns }
+    }
+
+    pub fn queue_size(&self) -> u32 {
+        self.queue_size
+    }
+
+    pub fn delay_ns(&self) -> u64 {
+        self.delay_ns
+    }
+}
+
+impl From<WatchMetricsSnapshot> for WatchStats {
+    fn from(value: WatchMetricsSnapshot) -> Self {
+        WatchStats {
+            queue_size: value.queue_size,
+            delay_ns: value.delay_ns,
+        }
     }
 }

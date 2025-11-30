@@ -1,0 +1,1 @@
+Watcher simple case fixture payload.
