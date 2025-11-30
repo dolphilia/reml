@@ -9,8 +9,8 @@ use super::{
     },
     effects::{blocking_io_effect_labels, record_io_operation},
     metadata::FileMetadata,
-    options::{FileOptions, FileOptionsSnapshot},
-    IoContext, IoError, IoErrorKind, IoResult,
+    options::FileOptions,
+    IoContext, IoError, IoResult,
 };
 
 /// Core.IO 仕様に準拠したファイルハンドル。

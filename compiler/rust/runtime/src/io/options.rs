@@ -69,58 +69,10 @@ impl FileOptions {
             .create(self.create)
             .create_new(self.create_new);
     }
-
-    pub(crate) fn snapshot(&self) -> FileOptionsSnapshot {
-        FileOptionsSnapshot {
-            read: self.read,
-            write: self.write,
-            append: self.append,
-            truncate: self.truncate,
-            create: self.create,
-            create_new: self.create_new,
-        }
-    }
 }
 
 impl Default for FileOptions {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-/// 実際に利用したオプションを保持するスナップショット。
-#[derive(Debug, Clone)]
-pub struct FileOptionsSnapshot {
-    pub(crate) read: bool,
-    pub(crate) write: bool,
-    pub(crate) append: bool,
-    pub(crate) truncate: bool,
-    pub(crate) create: bool,
-    pub(crate) create_new: bool,
-}
-
-impl FileOptionsSnapshot {
-    pub fn read(&self) -> bool {
-        self.read
-    }
-
-    pub fn write(&self) -> bool {
-        self.write
-    }
-
-    pub fn append(&self) -> bool {
-        self.append
-    }
-
-    pub fn truncate(&self) -> bool {
-        self.truncate
-    }
-
-    pub fn create(&self) -> bool {
-        self.create
-    }
-
-    pub fn create_new(&self) -> bool {
-        self.create_new
     }
 }
