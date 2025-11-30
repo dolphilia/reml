@@ -185,6 +185,11 @@
 - `docs/spec/3-3-core-text-unicode.md` の `TextNormalizer` と互換にするため、`Core.Text` サイドの API 参照 (`docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md`) を更新し、双方向リンクを README に追記する。
 - `tests/data/core_path/unicode_cases.json` を作成し、`rg --glob "*unicode*.json" docs/spec` で引いたサンプルを再利用しつつ、正規化差異を `reports/spec-audit/ch3/path_unicode-*.md` に記録する。
 
+> 進行ログ（Phase3 W49, 4.3 実装完了）  
+> - `compiler/rust/runtime/src/path/mod.rs` に `PathStyle` を追加し、`compiler/rust/runtime/src/path/string_utils.rs` で `normalize_path_str` / `join_paths_str` / `is_absolute_str` / `relative_to` を実装。`PathErrorKind::UnsupportedPlatform` を拡張して `Core.Text` の `Str` と効果記録 (`record_text_mem_copy`) を通じた純粋なパス文字列 API を整備した。  
+> - `tests/data/core_path/unicode_cases.json` と `compiler/rust/runtime/tests/path_string_utils.rs` を追加し、POSIX/Windows/UNC ケースにおける正規化・結合・相対計算をゴールデン化。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml path_string_utils` の結果を `reports/spec-audit/ch3/path_unicode-20251130.md` に記録した。  
+> - `docs/plans/bootstrap-roadmap/assets/core-io-path-api-diff.csv` の Core.Path.Strings 行（PathStyle/normalize_path/join_paths/is_absolute_str）を `Implemented (Rust runtime)` へ更新し、`docs/plans/bootstrap-roadmap/assets/core-io-effects-matrix.md` と `docs/notes/core-io-path-gap-log.md` に文字列ユーティリティ行・エントリを追記した。`docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md` / `docs/plans/bootstrap-roadmap/README.md` にも Text ↔ Path の相互参照を追加済み。
+
 ### 5. Watcher / 拡張機能（49週目）
 **担当領域**: オプション機能
 

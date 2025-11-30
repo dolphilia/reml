@@ -123,6 +123,11 @@
 - KPI 収集ルート（`collect-iterator-audit-metrics.py --section text --scenario bytes_clone`）をローカルで実行し、`reports/text-mem-metrics.json` / `reports/spec-audit/ch1/core_text_mem-20270329.md` に `text.mem.zero_copy_ratio = 0.82`、`text.mem.copy_penalty_bytes = 512B/KB`、`UnicodeErrorKind::OutOfMemory` ケース 1 件を記録した。  
 - 今後は `EffectSet` を Text API 自体へ組み込む実装タスク（`Bytes::from_slice` 等）と、`CollectError::OutOfMemory` へ伝搬する `try_reserve` エラーの PoC を 2.3 (TextBuilder/Collector) で並走する。
 
+#### 2.1.6 Core.Path 文字列ユーティリティ連携（2025-11-30）
+- `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §4.3 の実装に合わせ、`compiler/rust/runtime/src/path/string_utils.rs` で `PathStyle` ベースの `normalize_path_str` / `join_paths_str` / `relative_to` / `is_absolute_str` が `Core.Text::Str` を返すようになった。Text 側では `record_text_mem_copy` を呼び出しており、Unicode サイドの効果計測と重複しないことを確認した。  
+- `tests/path_string_utils.rs` と `tests/data/core_path/unicode_cases.json` を Core.Text 計画の参照ケースとして登録し、`reports/spec-audit/ch3/path_unicode-20251130.md` に `cargo test --manifest-path compiler/rust/runtime/Cargo.toml path_string_utils` の実行ログを保存した。`PathStyle::Native` がプラットフォームに応じて POSIX/Windows を選択することも同テストで検証済み。  
+- README の Phase3 ハイライトへ Text ↔ Path 連携を追記し、Text 側の TODO として `UnicodeError` 伝播（今後 `PathErrorKind::InvalidEncoding` ←→ `UnicodeErrorKind::InvalidUtf8` マッピング）を `docs/notes/core-io-path-gap-log.md` に記録した。
+
 2.2. `Grapheme`/`GraphemeSeq` を実装し、`segment_graphemes` の性能と正確性を検証する。  
 実施ステップ:  
 - `unicode-segmentation` など参照ライブラリのアルゴリズムを調査し、採用案を `docs/notes/text-unicode-segmentation-comparison.md` に記録してから実装を着手する。  

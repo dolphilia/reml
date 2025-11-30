@@ -11,11 +11,13 @@ use std::path::{Component, Path as StdPath, PathBuf as StdPathBuf};
 use crate::text::Str;
 
 mod security;
+mod string_utils;
 
 pub use security::{
     is_safe_symlink, sandbox_path, validate_path, PathSecurityError, PathSecurityErrorKind,
     PathSecurityResult, SecurityPolicy,
 };
+pub use string_utils::{is_absolute_str, join_paths_str, normalize_path_str, relative_to};
 
 /// Path 関連 API の結果型。
 pub type PathResult<T> = Result<T, PathError>;
@@ -46,6 +48,15 @@ pub enum PathErrorKind {
     Empty,
     NullByte,
     InvalidEncoding,
+    UnsupportedPlatform,
+}
+
+/// 文字列レベルでのパススタイル。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PathStyle {
+    Native,
+    Posix,
+    Windows,
 }
 
 impl PathBuf {
@@ -229,7 +240,7 @@ pub fn components(path: &PathBuf) -> Vec<String> {
     path.components_as_strings()
 }
 
-fn validate_input(value: &str) -> PathResult<()> {
+pub(super) fn validate_input(value: &str) -> PathResult<()> {
     if value.is_empty() {
         return Err(PathError::new(
             PathErrorKind::Empty,
