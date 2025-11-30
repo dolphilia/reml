@@ -3,7 +3,7 @@ use std::fmt;
 use std::fs;
 use std::path::{Component, Path as StdPath, PathBuf as StdPathBuf};
 
-use serde_json::{Map, Number, Value};
+use serde_json::{Map, Value};
 
 use crate::io::FsAdapter;
 use crate::prelude::{
@@ -11,7 +11,7 @@ use crate::prelude::{
     iter::{EffectLabels, EffectSet},
 };
 
-use super::{normalize_components, PathBuf};
+use super::{encode_effect_labels, normalize_components, PathBuf};
 
 const CAPABILITY_SECURITY_POLICY: &str = "security.fs.policy";
 const CAPABILITY_SYMLINK_QUERY: &str = "fs.symlink.query";
@@ -524,58 +524,6 @@ fn path_within_root(target: &PathBuf, root: &PathBuf) -> bool {
 fn has_parent_components(path: &StdPath) -> bool {
     path.components()
         .any(|component| matches!(component, Component::ParentDir))
-}
-
-fn encode_effect_labels(labels: EffectLabels) -> Map<String, Value> {
-    let mut effects = Map::new();
-    effects.insert("mem".into(), Value::Bool(labels.mem));
-    effects.insert("mutating".into(), Value::Bool(labels.mutating));
-    effects.insert("debug".into(), Value::Bool(labels.debug));
-    effects.insert("async_pending".into(), Value::Bool(labels.async_pending));
-    effects.insert("audit".into(), Value::Bool(labels.audit));
-    effects.insert("cell".into(), Value::Bool(labels.cell));
-    effects.insert("rc".into(), Value::Bool(labels.rc));
-    effects.insert("unicode".into(), Value::Bool(labels.unicode));
-    effects.insert("io".into(), Value::Bool(labels.io));
-    effects.insert("io_blocking".into(), Value::Bool(labels.io_blocking));
-    effects.insert("io_async".into(), Value::Bool(labels.io_async));
-    effects.insert("security".into(), Value::Bool(labels.security));
-    effects.insert("transfer".into(), Value::Bool(labels.transfer));
-    effects.insert("fs_sync".into(), Value::Bool(labels.fs_sync));
-    effects.insert(
-        "mem_bytes".into(),
-        Value::Number(Number::from(labels.mem_bytes as u64)),
-    );
-    effects.insert(
-        "predicate_calls".into(),
-        Value::Number(Number::from(labels.predicate_calls as u64)),
-    );
-    effects.insert(
-        "rc_ops".into(),
-        Value::Number(Number::from(labels.rc_ops as u64)),
-    );
-    effects.insert("time".into(), Value::Bool(labels.time));
-    effects.insert(
-        "time_calls".into(),
-        Value::Number(Number::from(labels.time_calls as u64)),
-    );
-    effects.insert(
-        "io_blocking_calls".into(),
-        Value::Number(Number::from(labels.io_blocking_calls as u64)),
-    );
-    effects.insert(
-        "io_async_calls".into(),
-        Value::Number(Number::from(labels.io_async_calls as u64)),
-    );
-    effects.insert(
-        "fs_sync_calls".into(),
-        Value::Number(Number::from(labels.fs_sync_calls as u64)),
-    );
-    effects.insert(
-        "security_events".into(),
-        Value::Number(Number::from(labels.security_events as u64)),
-    );
-    effects
 }
 
 fn security_effect_labels() -> EffectLabels {

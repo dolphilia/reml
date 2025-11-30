@@ -8,7 +8,12 @@ use std::error::Error;
 use std::fmt;
 use std::path::{Component, Path as StdPath, PathBuf as StdPathBuf};
 
+use crate::prelude::{
+    ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic},
+    iter::EffectLabels,
+};
 use crate::text::Str;
+use serde_json::{Map, Number, Value};
 
 mod glob;
 mod security;
@@ -42,6 +47,8 @@ pub struct PathError {
     kind: PathErrorKind,
     message: String,
     invalid_input: Option<String>,
+    origin: PathErrorOrigin,
+    effects: Option<EffectLabels>,
 }
 
 /// パスエラーの種類。
@@ -55,6 +62,27 @@ pub enum PathErrorKind {
     Io,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum PathErrorOrigin {
+    Generic,
+    Glob(GlobContext),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct GlobContext {
+    pattern: Option<String>,
+    offending_path: Option<String>,
+}
+
+impl GlobContext {
+    fn new(pattern: impl Into<String>) -> Self {
+        Self {
+            pattern: Some(pattern.into()),
+            offending_path: None,
+        }
+    }
+}
+
 /// 文字列レベルでのパススタイル。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PathStyle {
@@ -62,6 +90,12 @@ pub enum PathStyle {
     Posix,
     Windows,
 }
+
+const PATH_GLOB_INVALID_PATTERN_CODE: &str = "core.path.glob.invalid_pattern";
+const PATH_GLOB_IO_ERROR_CODE: &str = "core.path.glob.io_error";
+const PATH_GLOB_INVALID_INPUT_CODE: &str = "core.path.glob.invalid_input";
+const PATH_GLOB_UNSUPPORTED_PLATFORM_CODE: &str = "core.path.glob.unsupported_platform";
+const PATH_GENERIC_ERROR_CODE: &str = "core.path.error";
 
 impl PathBuf {
     /// 新しい空 PathBuf を生成する。
@@ -164,6 +198,8 @@ impl PathError {
             kind,
             message: message.into(),
             invalid_input: None,
+            origin: PathErrorOrigin::Generic,
+            effects: None,
         }
     }
 
@@ -174,6 +210,55 @@ impl PathError {
 
     pub fn kind(&self) -> PathErrorKind {
         self.kind
+    }
+
+    pub fn with_glob_pattern(mut self, pattern: impl Into<String>) -> Self {
+        let ctx = match self.origin {
+            PathErrorOrigin::Glob(ref mut existing) => {
+                existing.pattern = Some(pattern.into());
+                return self;
+            }
+            _ => GlobContext::new(pattern.into()),
+        };
+        self.origin = PathErrorOrigin::Glob(ctx);
+        self
+    }
+
+    pub fn with_glob_offending_path(mut self, path: impl Into<String>) -> Self {
+        match self.origin {
+            PathErrorOrigin::Glob(ref mut ctx) => {
+                ctx.offending_path = Some(path.into());
+            }
+            _ => {
+                let mut ctx = GlobContext::new(String::new());
+                ctx.offending_path = Some(path.into());
+                self.origin = PathErrorOrigin::Glob(ctx);
+            }
+        }
+        self
+    }
+
+    pub fn with_effects(mut self, effects: EffectLabels) -> Self {
+        self.effects = Some(effects);
+        self
+    }
+}
+
+impl IntoDiagnostic for PathError {
+    fn into_diagnostic(self) -> GuardDiagnostic {
+        let PathError {
+            kind,
+            message,
+            invalid_input,
+            origin,
+            effects,
+        } = self;
+        match origin {
+            PathErrorOrigin::Glob(context) => {
+                glob_diagnostic(kind, message, invalid_input, context, effects)
+            }
+            PathErrorOrigin::Generic => generic_path_diagnostic(kind, message),
+        }
     }
 }
 
@@ -285,4 +370,134 @@ pub(super) fn normalize_components(path: &StdPath) -> StdPathBuf {
     }
 
     normalized
+}
+
+fn glob_diagnostic(
+    kind: PathErrorKind,
+    message: String,
+    invalid_input: Option<String>,
+    context: GlobContext,
+    effects: Option<EffectLabels>,
+) -> GuardDiagnostic {
+    let mut glob_map = Map::new();
+    if let Some(pattern) = context.pattern {
+        glob_map.insert("pattern".into(), Value::String(pattern));
+    }
+    if let Some(offending) = context.offending_path {
+        glob_map.insert("offending_path".into(), Value::String(offending));
+    }
+    if let Some(input) = invalid_input {
+        glob_map.insert("input".into(), Value::String(input));
+    }
+
+    let mut extensions = Map::new();
+    if !glob_map.is_empty() {
+        let mut io_extensions = Map::new();
+        io_extensions.insert("glob".into(), Value::Object(glob_map.clone()));
+        extensions.insert("io".into(), Value::Object(io_extensions));
+    }
+
+    let mut effects_for_audit = None;
+    if let Some(labels) = effects {
+        let encoded = encode_effect_labels(labels);
+        effects_for_audit = Some(encoded.clone());
+        extensions.insert("effects".into(), Value::Object(encoded));
+    }
+    extensions.insert("message".into(), Value::String(message.clone()));
+
+    let mut audit_metadata = Map::new();
+    for (key, value) in glob_map {
+        audit_metadata.insert(format!("io.glob.{key}"), value);
+    }
+    if let Some(effects_map) = effects_for_audit {
+        for (key, value) in effects_map {
+            audit_metadata.insert(format!("io.effects.{key}"), value);
+        }
+    }
+
+    GuardDiagnostic {
+        code: glob_diagnostic_code(kind),
+        domain: "runtime",
+        severity: DiagnosticSeverity::Error,
+        message: format!("Core.Path glob failed: {message}"),
+        extensions,
+        audit_metadata,
+    }
+}
+
+fn generic_path_diagnostic(kind: PathErrorKind, message: String) -> GuardDiagnostic {
+    let formatted = format!("Core.Path {:?} error: {}", kind, message);
+    let mut extensions = Map::new();
+    extensions.insert("message".into(), Value::String(message));
+    GuardDiagnostic {
+        code: PATH_GENERIC_ERROR_CODE,
+        domain: "runtime",
+        severity: DiagnosticSeverity::Error,
+        message: formatted,
+        extensions,
+        audit_metadata: Map::new(),
+    }
+}
+
+fn glob_diagnostic_code(kind: PathErrorKind) -> &'static str {
+    match kind {
+        PathErrorKind::InvalidPattern => PATH_GLOB_INVALID_PATTERN_CODE,
+        PathErrorKind::UnsupportedPlatform => PATH_GLOB_UNSUPPORTED_PLATFORM_CODE,
+        PathErrorKind::Io => PATH_GLOB_IO_ERROR_CODE,
+        PathErrorKind::Empty | PathErrorKind::NullByte | PathErrorKind::InvalidEncoding => {
+            PATH_GLOB_INVALID_INPUT_CODE
+        }
+    }
+}
+
+pub(crate) fn encode_effect_labels(labels: EffectLabels) -> Map<String, Value> {
+    let mut effects = Map::new();
+    effects.insert("mem".into(), Value::Bool(labels.mem));
+    effects.insert("mutating".into(), Value::Bool(labels.mutating));
+    effects.insert("debug".into(), Value::Bool(labels.debug));
+    effects.insert("async_pending".into(), Value::Bool(labels.async_pending));
+    effects.insert("audit".into(), Value::Bool(labels.audit));
+    effects.insert("cell".into(), Value::Bool(labels.cell));
+    effects.insert("rc".into(), Value::Bool(labels.rc));
+    effects.insert("unicode".into(), Value::Bool(labels.unicode));
+    effects.insert("io".into(), Value::Bool(labels.io));
+    effects.insert("io_blocking".into(), Value::Bool(labels.io_blocking));
+    effects.insert("io_async".into(), Value::Bool(labels.io_async));
+    effects.insert("security".into(), Value::Bool(labels.security));
+    effects.insert("transfer".into(), Value::Bool(labels.transfer));
+    effects.insert("fs_sync".into(), Value::Bool(labels.fs_sync));
+    effects.insert(
+        "mem_bytes".into(),
+        Value::Number(Number::from(labels.mem_bytes as u64)),
+    );
+    effects.insert(
+        "predicate_calls".into(),
+        Value::Number(Number::from(labels.predicate_calls as u64)),
+    );
+    effects.insert(
+        "rc_ops".into(),
+        Value::Number(Number::from(labels.rc_ops as u64)),
+    );
+    effects.insert("time".into(), Value::Bool(labels.time));
+    effects.insert(
+        "time_calls".into(),
+        Value::Number(Number::from(labels.time_calls as u64)),
+    );
+    effects.insert(
+        "io_blocking_calls".into(),
+        Value::Number(Number::from(labels.io_blocking_calls as u64)),
+    );
+    effects.insert(
+        "io_async_calls".into(),
+        Value::Number(Number::from(labels.io_async_calls as u64)),
+    );
+    effects.insert(
+        "fs_sync_calls".into(),
+        Value::Number(Number::from(labels.fs_sync_calls as u64)),
+    );
+    effects.insert(
+        "security_events".into(),
+        Value::Number(Number::from(labels.security_events as u64)),
+    );
+    effects
 }

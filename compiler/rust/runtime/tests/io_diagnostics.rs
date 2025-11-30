@@ -5,7 +5,7 @@ use reml_runtime::{
     io::{IoContext, IoError, IoErrorKind, Reader as IoReader, Writer as IoWriter},
     prelude::{ensure::IntoDiagnostic, iter::EffectLabels},
 };
-use serde_json::Value;
+use serde_json::{json, Value};
 
 const EXPECTED_JSON: &str = include_str!("expected/io_error_open.json");
 const SAMPLE_PATH: &str = "/tmp/config.toml";
@@ -29,6 +29,36 @@ fn io_error_into_diagnostic_matches_expected_subset() {
         serde_json::from_str(EXPECTED_JSON).expect("expected diagnostic JSON should parse");
 
     assert_contains(&actual, &expected);
+}
+
+#[test]
+fn io_error_with_glob_context_includes_metadata() {
+    let mut context = IoContext::new("path.glob")
+        .with_capability("io.fs.read")
+        .with_glob_pattern("/tmp/**/*.reml");
+    context.set_glob_offending_path("/tmp/missing");
+    let diagnostic = IoError::new(IoErrorKind::NotFound, "glob failure")
+        .with_context(context)
+        .into_diagnostic()
+        .into_json();
+
+    let expected = json!({
+        "code": "core.path.glob.io_error",
+        "extensions": {
+            "io": {
+                "glob": {
+                    "pattern": "/tmp/**/*.reml",
+                    "offending_path": "/tmp/missing"
+                }
+            }
+        },
+        "audit": {
+            "io.glob.pattern": "/tmp/**/*.reml",
+            "io.glob.offending_path": "/tmp/missing"
+        }
+    });
+
+    assert_contains(&diagnostic, &expected);
 }
 
 #[test]

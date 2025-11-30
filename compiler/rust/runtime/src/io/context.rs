@@ -18,6 +18,7 @@ pub struct IoContext {
     effects: EffectLabels,
     buffer: Option<BufferStats>,
     watch: Option<WatchStats>,
+    glob: Option<GlobStats>,
 }
 
 impl IoContext {
@@ -31,6 +32,7 @@ impl IoContext {
             effects: empty_effect_labels(),
             buffer: None,
             watch: None,
+            glob: None,
         }
     }
 
@@ -131,6 +133,32 @@ impl IoContext {
     pub fn set_watch_stats(&mut self, stats: WatchStats) {
         self.watch = Some(stats);
     }
+
+    pub fn glob(&self) -> Option<&GlobStats> {
+        self.glob.as_ref()
+    }
+
+    pub fn with_glob_pattern(mut self, pattern: impl Into<String>) -> Self {
+        self.glob = Some(GlobStats::new(pattern));
+        self
+    }
+
+    pub fn set_glob_pattern(&mut self, pattern: impl Into<String>) {
+        match self.glob.as_mut() {
+            Some(glob) => glob.set_pattern(pattern),
+            None => self.glob = Some(GlobStats::new(pattern)),
+        }
+    }
+
+    pub fn set_glob_offending_path(&mut self, path: impl Into<String>) {
+        if let Some(glob) = self.glob.as_mut() {
+            glob.set_offending_path(path);
+        } else {
+            let mut stats = GlobStats::new(String::new());
+            stats.set_offending_path(path);
+            self.glob = Some(stats);
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -193,6 +221,37 @@ fn empty_effect_labels() -> EffectLabels {
         io_async_calls: 0,
         fs_sync_calls: 0,
         security_events: 0,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GlobStats {
+    pattern: String,
+    offending_path: Option<String>,
+}
+
+impl GlobStats {
+    pub fn new(pattern: impl Into<String>) -> Self {
+        Self {
+            pattern: pattern.into(),
+            offending_path: None,
+        }
+    }
+
+    pub fn pattern(&self) -> &str {
+        &self.pattern
+    }
+
+    pub fn offending_path(&self) -> Option<&str> {
+        self.offending_path.as_deref()
+    }
+
+    pub fn set_pattern(&mut self, pattern: impl Into<String>) {
+        self.pattern = pattern.into();
+    }
+
+    pub fn set_offending_path(&mut self, path: impl Into<String>) {
+        self.offending_path = Some(path.into());
     }
 }
 

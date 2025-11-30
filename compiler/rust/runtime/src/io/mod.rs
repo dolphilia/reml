@@ -27,6 +27,7 @@ pub use adapters::{FsAdapter, WatcherAdapter};
 pub use buffered::{buffered, read_line, BufferedReader};
 pub use context::{BufferStats, IoContext, WatchStats};
 pub use effects::take_io_effects_snapshot;
+pub(crate) use effects::record_io_operation;
 pub use env::{time_env_snapshot, TimeEnvSnapshot};
 pub use error::{IoError, IoErrorKind, IoResult};
 pub use file::File;

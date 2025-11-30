@@ -6,7 +6,7 @@ use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic
 use crate::prelude::iter::EffectLabels;
 use serde_json::{Map, Number, Value};
 
-use super::{BufferStats, IoContext, WatchStats};
+use super::{context::GlobStats, BufferStats, IoContext, WatchStats};
 
 /// IO 操作共通の結果型。
 pub type IoResult<T> = Result<T, IoError>;
@@ -220,6 +220,10 @@ impl IntoDiagnostic for IoError {
                 let watch_map = encode_watch_stats(watch);
                 io_extensions.insert("watch".into(), Value::Object(watch_map));
             }
+            if let Some(glob) = ctx.glob() {
+                let glob_map = encode_glob_stats(glob);
+                io_extensions.insert("glob".into(), Value::Object(glob_map));
+            }
             if let Ok(timestamp_value) = serde_json::to_value(ctx.timestamp()) {
                 io_extensions.insert("timestamp".into(), timestamp_value);
             }
@@ -270,6 +274,12 @@ impl IntoDiagnostic for IoError {
                     audit_metadata.insert(format!("io.watch.{key}"), value);
                 }
             }
+            if let Some(glob) = ctx.glob() {
+                let glob_map = encode_glob_stats(glob);
+                for (key, value) in glob_map {
+                    audit_metadata.insert(format!("io.glob.{key}"), value);
+                }
+            }
             let effects_map = encode_effect_labels(ctx.effects());
             for (key, value) in effects_map {
                 audit_metadata.insert(format!("io.effects.{key}"), value);
@@ -299,6 +309,7 @@ const READ_ERROR_CODE: &str = "core.io.read_error";
 const WRITE_ERROR_CODE: &str = "core.io.write_error";
 const BUFFERED_READ_ERROR_CODE: &str = "core.io.read_error.buffered";
 const WATCHER_ERROR_CODE: &str = "core.io.watcher_error";
+const PATH_GLOB_ERROR_CODE: &str = "core.path.glob.io_error";
 
 fn derive_diagnostic_code(kind: IoErrorKind, context: Option<&IoContext>) -> &'static str {
     if let Some(ctx) = context {
@@ -310,6 +321,9 @@ fn derive_diagnostic_code(kind: IoErrorKind, context: Option<&IoContext>) -> &'s
 }
 
 fn operation_diagnostic_code(operation: &str) -> Option<&'static str> {
+    if operation == "path.glob" {
+        return Some(PATH_GLOB_ERROR_CODE);
+    }
     if operation.contains("watch") {
         return Some(WATCHER_ERROR_CODE);
     }
@@ -403,6 +417,20 @@ fn encode_buffer_stats(stats: &BufferStats) -> Map<String, Value> {
         buffer.insert("last_fill_timestamp".into(), timestamp_value);
     }
     buffer
+}
+
+fn encode_glob_stats(stats: &GlobStats) -> Map<String, Value> {
+    let mut glob = Map::new();
+    if !stats.pattern().is_empty() {
+        glob.insert("pattern".into(), Value::String(stats.pattern().to_string()));
+    }
+    if let Some(offending) = stats.offending_path() {
+        glob.insert(
+            "offending_path".into(),
+            Value::String(offending.to_string()),
+        );
+    }
+    glob
 }
 
 fn encode_watch_stats(stats: &WatchStats) -> Map<String, Value> {

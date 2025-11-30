@@ -1,8 +1,9 @@
 use std::fs;
 use std::path::{Path, PathBuf as StdPathBuf};
 
-use reml_runtime::{path, text::Str};
+use reml_runtime::{path, prelude::ensure::IntoDiagnostic, text::Str};
 use serde::Deserialize;
+use serde_json::{json, Value};
 
 #[cfg(target_family = "unix")]
 const CASES_FILE: &str = "tests/data/core_path/glob_posix.json";
@@ -39,6 +40,28 @@ fn glob_matches_expected_paths() {
     }
 }
 
+#[test]
+fn glob_invalid_pattern_reports_diagnostic_metadata() {
+    let invalid_pattern = repo_root().join("[").to_string_lossy().into_owned();
+    let error = path::glob(Str::from(invalid_pattern.as_str()))
+        .expect_err("invalid patterns should produce an error");
+    let diagnostic = error.into_diagnostic().into_json();
+    let expected = json!({
+        "code": "core.path.glob.invalid_pattern",
+        "extensions": {
+            "io": {
+                "glob": {
+                    "pattern": invalid_pattern
+                }
+            }
+        },
+        "audit_metadata": {
+            "io.glob.pattern": invalid_pattern
+        }
+    });
+    assert_contains(&diagnostic, &expected);
+}
+
 fn load_cases() -> Vec<GlobCase> {
     let path = repo_root().join(CASES_FILE);
     let raw = fs::read_to_string(&path)
@@ -69,4 +92,31 @@ fn repo_root() -> StdPathBuf {
         .nth(3)
         .map(Path::to_path_buf)
         .expect("CARGO_MANIFEST_DIR should have at least 3 ancestors")
+}
+
+fn assert_contains(actual: &Value, expected: &Value) {
+    match expected {
+        Value::Object(map) => {
+            let actual_map = actual.as_object().expect("actual JSON should be an object");
+            for (key, expected_value) in map {
+                let actual_value = actual_map
+                    .get(key)
+                    .unwrap_or_else(|| panic!("missing key `{key}` in diagnostic JSON"));
+                assert_contains(actual_value, expected_value);
+            }
+        }
+        Value::Array(expected_array) => {
+            let actual_array = actual.as_array().expect("actual JSON must be an array");
+            for (index, expected_value) in expected_array.iter().enumerate() {
+                let actual_value = actual_array
+                    .get(index)
+                    .unwrap_or_else(|| panic!("missing index {index} in diagnostic JSON array"));
+                assert_contains(actual_value, expected_value);
+            }
+        }
+        _ => assert_eq!(
+            actual, expected,
+            "diagnostic value mismatch (expected {expected:?}, got {actual:?})"
+        ),
+    }
 }
