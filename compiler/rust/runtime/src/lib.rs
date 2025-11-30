@@ -7,6 +7,7 @@ pub mod config;
 #[cfg(feature = "metrics")]
 pub mod diagnostics;
 pub mod io;
+pub mod path;
 #[cfg(feature = "core_numeric")]
 pub mod numeric;
 pub mod prelude;

@@ -163,6 +163,11 @@
 - `normalize`, `join`, `split`, `is_absolute`, `components` 等の API を `3-5-core-io-path.md` の例と一致するよう設計し、POSIX/Windows 表現を `cfg` 切り替えで検証する。
 - `tests/data/core_path/normalize_{posix,windows}.json` を追加し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-path path::tests::*` と `scripts/validate-diagnostic-json.sh --pattern core.path.normalize` を実行する。
 
+> 進行ログ（Phase3 W49, 4.1 完了条件の一次達成）  
+> - `compiler/rust/runtime/src/path/mod.rs` を新設し、`PathBuf`/`Path`/`PathError` と `path()/join()/normalize()/parent()/is_absolute()/components()` API を実装。空文字・NUL の検証と `Str` からの変換を提供し、`normalize_components` で `.`/`..`/UNC/ドライブを共通処理化した。  
+> - `tests/data/core_path/normalize_{posix,windows}.json` と `compiler/rust/runtime/tests/path_normalize.rs` を追加し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml normalize_and_join_follow_golden_cases` で POSIX/Windows の代表ケース（`/var/log`, `C:\data\logs`, UNC 共有、`..` を含む相対パス）をゴールデン化。  
+> - `docs/plans/bootstrap-roadmap/assets/core-io-path-api-diff.csv` と `docs/notes/core-io-path-gap-log.md` に Path API 実装状況を反映し、セキュリティヘルパ・文字列ユーティリティ・glob が未実装である旨と §4.2 以降へのフォローアップを明記した。
+
 4.2. セキュリティヘルパ (`validate_path`, `sandbox_path`, `is_safe_symlink`) を実装し、`effect {security}` の検証を行う。  
 実施ステップ:
 - `compiler/rust/runtime/src/path/security.rs` に `validate_path`/`sandbox_path`/`is_safe_symlink` を実装し、`Core.Diagnostics` と連携する `PathSecurityError` を定義する。

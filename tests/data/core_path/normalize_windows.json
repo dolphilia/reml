@@ -1,0 +1,35 @@
+[
+  {
+    "input": "C:\\tmp\\..\\data\\.\\logs",
+    "normalized": "C:\\data\\logs",
+    "is_absolute": true,
+    "parent": "C:\\data",
+    "components": ["C:", "\\", "data", "logs"],
+    "join": {
+      "segment": "archive\\2025",
+      "result": "C:\\data\\logs\\archive\\2025"
+    }
+  },
+  {
+    "input": "\\\\server\\share\\folder\\..\\config",
+    "normalized": "\\\\server\\share\\config",
+    "is_absolute": true,
+    "parent": "\\\\server\\share",
+    "components": ["\\\\server\\share", "\\", "config"],
+    "join": {
+      "segment": "secrets",
+      "result": "\\\\server\\share\\config\\secrets"
+    }
+  },
+  {
+    "input": "..\\nested\\.\\file",
+    "normalized": "..\\nested\\file",
+    "is_absolute": false,
+    "parent": "..\\nested",
+    "components": ["..", "nested", "file"],
+    "join": {
+      "segment": ".\\tmp",
+      "result": "..\\nested\\file\\tmp"
+    }
+  }
+]
