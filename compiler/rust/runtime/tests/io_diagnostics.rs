@@ -33,6 +33,57 @@ fn io_error_into_diagnostic_matches_expected_subset() {
     assert_contains(&actual, &expected);
 }
 
+#[test]
+fn unsupported_platform_error_includes_platform_metadata() {
+    let context = IoContext::new("watch").with_capability("watcher.fschange");
+    let diagnostic = IoError::new(
+        IoErrorKind::UnsupportedPlatform,
+        "watcher feature disabled",
+    )
+    .with_context(context)
+    .with_platform("test-os")
+    .with_feature("watcher.fschange")
+    .into_diagnostic()
+    .into_json();
+
+    let io_extensions = diagnostic
+        .get("extensions")
+        .and_then(|value| value.get("io"))
+        .expect("diagnostic should have io extensions");
+    assert_eq!(
+        io_extensions
+            .get("platform")
+            .and_then(Value::as_str)
+            .expect("platform key missing"),
+        "test-os"
+    );
+    assert_eq!(
+        io_extensions
+            .get("feature")
+            .and_then(Value::as_str)
+            .expect("feature key missing"),
+        "watcher.fschange"
+    );
+
+    let audit_metadata = diagnostic
+        .get("audit")
+        .expect("diagnostic should contain audit metadata");
+    assert_eq!(
+        audit_metadata
+            .get("io.platform")
+            .and_then(Value::as_str)
+            .expect("audit io.platform missing"),
+        "test-os"
+    );
+    assert_eq!(
+        audit_metadata
+            .get("io.feature")
+            .and_then(Value::as_str)
+            .expect("audit io.feature missing"),
+        "watcher.fschange"
+    );
+}
+
 fn sample_effects() -> EffectLabels {
     EffectLabels {
         mem: false,

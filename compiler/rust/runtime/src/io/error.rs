@@ -18,6 +18,8 @@ pub struct IoError {
     message: String,
     path: Option<PathBuf>,
     context: Option<IoContext>,
+    platform: Option<&'static str>,
+    feature: Option<String>,
 }
 
 impl IoError {
@@ -27,6 +29,8 @@ impl IoError {
             message: message.into(),
             path: None,
             context: None,
+            platform: None,
+            feature: None,
         }
     }
 
@@ -46,6 +50,16 @@ impl IoError {
             }
         }
         self.context = Some(context);
+        self
+    }
+
+    pub fn with_platform(mut self, platform: &'static str) -> Self {
+        self.platform = Some(platform);
+        self
+    }
+
+    pub fn with_feature(mut self, feature: impl Into<String>) -> Self {
+        self.feature = Some(feature.into());
         self
     }
 
@@ -170,6 +184,8 @@ impl IntoDiagnostic for IoError {
             message,
             path,
             context,
+            platform,
+            feature,
         } = self;
 
         let context_ref = context.as_ref();
@@ -210,6 +226,18 @@ impl IntoDiagnostic for IoError {
             if let Ok(timestamp_value) = serde_json::to_value(ctx.timestamp()) {
                 io_extensions.insert("timestamp".into(), timestamp_value);
             }
+        }
+        if let Some(platform_value) = platform {
+            io_extensions.insert(
+                "platform".into(),
+                Value::String(platform_value.into()),
+            );
+        }
+        if let Some(feature_value) = feature.as_ref() {
+            io_extensions.insert(
+                "feature".into(),
+                Value::String(feature_value.clone()),
+            );
         }
 
         let mut extensions = Map::new();
@@ -264,6 +292,15 @@ impl IntoDiagnostic for IoError {
             for (key, value) in effects_map {
                 audit_metadata.insert(format!("io.effects.{key}"), value);
             }
+        }
+        if let Some(platform_value) = platform {
+            audit_metadata.insert(
+                "io.platform".into(),
+                Value::String(platform_value.into()),
+            );
+        }
+        if let Some(feature_value) = feature {
+            audit_metadata.insert("io.feature".into(), Value::String(feature_value));
         }
 
         let diag_message = format_diagnostic_message(kind, context_ref, &message);

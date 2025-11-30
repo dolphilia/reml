@@ -44,3 +44,19 @@ Core.Runtime の Capability で Stage 要件や監査メタデータの扱いに
   - Watcher 実装後は `RuntimeBridgeRegistry` の `describe_bridge("native.fs.watch")` 出力を `docs/notes/runtime-bridges-roadmap.md` に添付し、Stage mismtach が出た場合は本ログにも Run ID を追記する。
 - ✅ 2025-12-19: `compiler/rust/runtime/src/path/security.rs` で `SecurityPolicy` / `PathSecurityError` を導入し、`validate_path` / `sandbox_path` / `is_safe_symlink` が `FsAdapter::ensure_security_policy()`・`ensure_symlink_query()` を呼び出すように更新。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml path_security` と `tests/data/core_path/security/*.json` で `core.path.security.invalid`/`violation`/`symlink` 診断に `metadata.security.reason`, `effect.security`, `effect.stage.required = "stable"` が含まれることを確認した。`core-io-capability-map` と `core-io-effects-matrix` にも Rust 実装の検証ポイントを追記済み。
 - 関連ドキュメント: `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md`, `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §1.3, `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md`（Runbook 追記）、`docs/guides/runtime-bridges.md`
+
+## 2025-12-21 Core.IO Watcher クロスプラットフォーム Capability
+- 対象 Capability: `watcher.fschange`, `watcher.recursive`, `watcher.resource_limits`（`fs.watcher.*` に対する OS サポート層）
+- Stage 要件:
+  - `watcher.fschange`: `StageRequirement::AtLeast(StageId::Beta)`。Linux/macOS/Windows のみ対応。Registry 上は `fs.watcher.native` と同値だが、非対応 OS は `UnsupportedPlatform`.
+  - `watcher.recursive`: `StageRequirement::Exact(StageId::Stable)`（Linux/Windows）。macOS は `StageId::Beta` 扱い。その他 OS は `UnsupportedPlatform`.
+  - `watcher.resource_limits`: `StageRequirement::AtLeast(StageId::Beta)`（`WatcherAdapter::ensure_resource_limit_capability`）。`WatchLimits` が有効な OS のみサポート。
+- 診断・監査メタデータ:
+  - `IoErrorKind::UnsupportedPlatform` に `IoError::with_platform` / `with_feature` を追加し、`extensions["io"].platform`, `extensions["io"].feature` および `AuditEnvelope.metadata["io.platform"]`, `["io.feature"]` を必須化。
+  - `watch_with_limits` では `WatchLimits::uses_resource_limits()` を検知して Capability チェック後に OS 判定 (`ensure_watcher_feature`) を行い、失敗時は `core.io.unsupported_platform` 診断に `metadata.io.capability = "watcher.resource_limits"` を含める。
+  - `watcher.rs` が `ensure_watcher_feature` で `std::env::consts::OS` を測定し、`watcher_audit` 出力 (`reports/spec-audit/ch3/io_watcher-simple_case.jsonl`) に `io.watch.*` と同時に `io.platform`/`io.feature` を記録。
+- 観測方法:
+  - `python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario watcher_audit --check recursive` で `watcher.recursive` の pass/fail を確認。
+  - `scripts/validate-diagnostic-json.sh --pattern core.io.watcher --pattern core.io.unsupported_platform` で `metadata.io.platform` / `metadata.io.feature` / `audit["io.capability"]` が欠落しないことを検証。
+  - 非対応 OS（CI の cross target など）では `watch` コマンドが即座に `IoErrorKind::UnsupportedPlatform` を返し、Run ID ごとのログを `reports/spec-audit/ch3/io_watcher-unsupported_platform.md` に追加する運用とする。
+- 関連ドキュメント: `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md`（Watcher 新行）、`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §5.3 進捗ログ、`docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` §5.5（Runbook 追記）

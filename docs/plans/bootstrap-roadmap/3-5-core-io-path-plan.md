@@ -220,6 +220,11 @@
 - `compiler/rust/runtime/src/io/error.rs` の `IoErrorKind::UnsupportedPlatform` に `platform`/`feature` メタデータを加え、`Capability` 判定前後のログを `AuditEnvelope` に保存する。
 - `docs/notes/runtime-capability-stage-log.md` に watcher 系 Capability のステータスを残し、`3-8-core-runtime-capability-plan.md` のフェーズ依存タスクと連動させる。
 
+> 進行ログ（Phase3 W49, 5.3）  
+> - `core-io-capability-map.md` に `watcher.fschange`/`watcher.recursive`/`watcher.resource_limits` 行を追加し、Linux/macOS/Windows のみサポートされること、Registry 上は `fs.watcher.*` へ委譲されること、`core.io.unsupported_platform` 診断で `metadata.io.platform/io.feature` を必須化することを明示した。  
+> - `IoError` に `with_platform`/`with_feature` を追加して `IoErrorKind::UnsupportedPlatform` が `extensions["io"]` と `AuditEnvelope.metadata["io.*"]` へプラットフォーム差分を残せるよう拡張し、`watcher.rs` では `ensure_watcher_feature` で OS 判定→`UnsupportedPlatform` を発火する処理と `WatcherAdapter::ensure_resource_limit_capability()` を実装。  
+> - `docs/notes/runtime-capability-stage-log.md` と `3-8-core-runtime-capability-plan.md` に上記 Capability と Runbook 追記を行い、`watcher_audit` シナリオで `metadata.io.platform`/`metadata.io.feature` を検証する手順を共有した。
+
 ### 6. ドキュメント・サンプル更新（49-50週目）
 **担当領域**: 情報整備
 

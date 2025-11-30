@@ -21,6 +21,7 @@ pub(crate) const CAP_FS_SYMLINK_MODIFY: &str = "fs.symlink.modify";
 pub(crate) const CAP_FS_WATCH_NATIVE: &str = "fs.watcher.native";
 pub(crate) const CAP_FS_WATCH_RECURSIVE: &str = "fs.watcher.recursive";
 pub(crate) const CAP_SECURITY_FS_POLICY: &str = "security.fs.policy";
+pub(crate) const CAP_WATCH_RESOURCE_LIMITS: &str = "watcher.resource_limits";
 
 /// ファイルシステム操作向け Capability を検証するアダプタ。
 pub struct FsAdapter {
@@ -156,6 +157,15 @@ impl WatcherAdapter {
         )
     }
 
+    /// `watcher.resource_limits` Capability を検証する。
+    pub fn ensure_resource_limit_capability(&self) -> IoResult<()> {
+        self.ensure_stage(
+            &WATCH_RESOURCE_LIMITS_STAGE,
+            CAP_WATCH_RESOURCE_LIMITS,
+            StageRequirement::AtLeast(StageId::Beta),
+        )
+    }
+
     fn ensure_stage(
         &self,
         cache: &OnceCell<Result<StageId, CapabilityError>>,
@@ -197,6 +207,7 @@ static FS_SYMLINK_MODIFY_STAGE: OnceCell<Result<StageId, CapabilityError>> = Onc
 static FS_POLICY_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
 static FS_WATCH_NATIVE_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
 static FS_WATCH_RECURSIVE_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
+static WATCH_RESOURCE_LIMITS_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
 
 #[cfg(test)]
 mod tests {

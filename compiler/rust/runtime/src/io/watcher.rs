@@ -13,7 +13,9 @@ use notify::event::{CreateKind, EventKind, ModifyKind, RemoveKind};
 use notify::{Config as NotifyConfig, Event, RecommendedWatcher, RecursiveMode, Watcher as _};
 
 use super::{
-    adapters::{WatcherAdapter, CAP_FS_WATCH_NATIVE, CAP_FS_WATCH_RECURSIVE},
+    adapters::{
+        WatcherAdapter, CAP_FS_WATCH_NATIVE, CAP_FS_WATCH_RECURSIVE, CAP_WATCH_RESOURCE_LIMITS,
+    },
     effects::{
         record_async_io_operation, record_watch_metrics, take_io_effects_snapshot,
         take_watch_metrics_snapshot, WatchMetricsSnapshot,
@@ -120,6 +122,12 @@ impl WatchLimits {
     pub fn without_limits() -> Self {
         Self::default()
     }
+
+    pub fn uses_resource_limits(&self) -> bool {
+        self.max_events_per_second.is_some()
+            || self.max_depth.is_some()
+            || !self.exclude_patterns.is_empty()
+    }
 }
 
 /// `watch` API のエントリポイント。
@@ -149,12 +157,22 @@ where
     adapter
         .ensure_native_capability()
         .map_err(|err| err.with_context(capability_ctx.clone()))?;
+    ensure_watcher_feature(WatchFeature::FsChange, &capability_ctx)?;
 
     if requires_recursive(&limits) {
         capability_ctx = capability_ctx.with_capability(CAP_FS_WATCH_RECURSIVE);
         adapter
             .ensure_recursive_capability()
             .map_err(|err| err.with_context(capability_ctx.clone()))?;
+        ensure_watcher_feature(WatchFeature::Recursive, &capability_ctx)?;
+    }
+
+    if limits.uses_resource_limits() {
+        let resource_ctx = watch_context("watch.limits", None, CAP_WATCH_RESOURCE_LIMITS);
+        adapter
+            .ensure_resource_limit_capability()
+            .map_err(|err| err.with_context(resource_ctx.clone()))?;
+        ensure_watcher_feature(WatchFeature::ResourceLimits, &resource_ctx)?;
     }
 
     record_async_io_operation();
@@ -520,4 +538,47 @@ fn duration_since(instant: Instant, now: Instant) -> u64 {
     now.checked_duration_since(instant)
         .map(|duration| duration.as_nanos() as u64)
         .unwrap_or_default()
+}
+
+#[derive(Clone, Copy, Debug)]
+enum WatchFeature {
+    FsChange,
+    Recursive,
+    ResourceLimits,
+}
+
+impl WatchFeature {
+    fn id(&self) -> &'static str {
+        match self {
+            WatchFeature::FsChange => "watcher.fschange",
+            WatchFeature::Recursive => "watcher.recursive",
+            WatchFeature::ResourceLimits => "watcher.resource_limits",
+        }
+    }
+
+    fn is_supported(&self) -> bool {
+        cfg!(any(target_os = "linux", target_os = "macos", target_os = "windows"))
+    }
+}
+
+fn ensure_watcher_feature(feature: WatchFeature, context: &IoContext) -> IoResult<()> {
+    if feature.is_supported() {
+        Ok(())
+    } else {
+        Err(unsupported_platform_error(feature, context.clone()))
+    }
+}
+
+fn unsupported_platform_error(feature: WatchFeature, context: IoContext) -> IoError {
+    let platform = std::env::consts::OS;
+    IoError::new(
+        IoErrorKind::UnsupportedPlatform,
+        format!(
+            "watcher feature `{}` is not available on platform `{platform}`",
+            feature.id()
+        ),
+    )
+    .with_context(context)
+    .with_platform(platform)
+    .with_feature(feature.id())
 }
