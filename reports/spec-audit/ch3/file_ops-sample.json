@@ -1,0 +1,22 @@
+{
+  "scenario": "core_io.file_ops",
+  "platform": "posix",
+  "cases": [
+    {
+      "name": "create_write_metadata_remove",
+      "path_kind": "temp",
+      "size": 11,
+      "readonly": false,
+      "effects": {
+        "io": true,
+        "io_blocking": true
+      },
+      "capabilities": [
+        "io.fs.read",
+        "io.fs.write",
+        "fs.permissions.modify",
+        "fs.permissions.read"
+      ]
+    }
+  ]
+}

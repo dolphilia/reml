@@ -1,30 +1,36 @@
 //! Core.IO の土台実装。
 //! Reader/Writer の薄いラッパと、Text ストリーミング API を公開する。
 
-use std::{fs::File, path::Path};
+use std::{fs::File as StdFile, path::Path};
 
 mod adapters;
+mod buffered;
 mod context;
 mod effects;
 mod env;
 mod error;
-mod buffered;
+mod file;
+mod metadata;
+mod options;
 mod reader;
 mod text_stream;
 mod writer;
 
 pub use adapters::{FsAdapter, WatcherAdapter};
+pub use buffered::{buffered, read_line, BufferedReader};
 pub use context::{BufferStats, IoContext};
 pub use effects::take_io_effects_snapshot;
 pub use env::{time_env_snapshot, TimeEnvSnapshot};
 pub use error::{IoError, IoErrorKind, IoResult};
+pub use file::File;
+pub use metadata::FileMetadata;
+pub use options::FileOptions;
 pub use reader::Reader;
 pub use text_stream::{
     decode_stream, encode_stream, BomHandling, InvalidSequenceStrategy, TextDecodeOptions,
     TextEncodeOptions,
 };
 pub use writer::Writer;
-pub use buffered::{buffered, read_line, BufferedReader};
 
 const IO_COPY_BUFFER_SIZE: usize = 64 * 1024;
 
@@ -63,7 +69,7 @@ where
         .map_err(|err| err.with_context(with_reader_context(path)))?;
     effects::record_io_operation(1);
     let mut file =
-        File::open(path).map_err(|err| IoError::from_std(err, with_reader_context(path)))?;
+        StdFile::open(path).map_err(|err| IoError::from_std(err, with_reader_context(path)))?;
     let reader: &mut dyn Reader = &mut file;
     f(reader)
 }

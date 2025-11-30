@@ -14,13 +14,13 @@ use super::{IoError, IoErrorKind, IoResult};
 
 pub(crate) const CAP_IO_FS_READ: &str = "io.fs.read";
 pub(crate) const CAP_IO_FS_WRITE: &str = "io.fs.write";
-const CAP_FS_PERMISSIONS_READ: &str = "fs.permissions.read";
-const CAP_FS_PERMISSIONS_MODIFY: &str = "fs.permissions.modify";
-const CAP_FS_SYMLINK_QUERY: &str = "fs.symlink.query";
-const CAP_FS_SYMLINK_MODIFY: &str = "fs.symlink.modify";
-const CAP_FS_WATCH_NATIVE: &str = "fs.watcher.native";
-const CAP_FS_WATCH_RECURSIVE: &str = "fs.watcher.recursive";
-const CAP_SECURITY_FS_POLICY: &str = "security.fs.policy";
+pub(crate) const CAP_FS_PERMISSIONS_READ: &str = "fs.permissions.read";
+pub(crate) const CAP_FS_PERMISSIONS_MODIFY: &str = "fs.permissions.modify";
+pub(crate) const CAP_FS_SYMLINK_QUERY: &str = "fs.symlink.query";
+pub(crate) const CAP_FS_SYMLINK_MODIFY: &str = "fs.symlink.modify";
+pub(crate) const CAP_FS_WATCH_NATIVE: &str = "fs.watcher.native";
+pub(crate) const CAP_FS_WATCH_RECURSIVE: &str = "fs.watcher.recursive";
+pub(crate) const CAP_SECURITY_FS_POLICY: &str = "security.fs.policy";
 
 /// ファイルシステム操作向け Capability を検証するアダプタ。
 pub struct FsAdapter {
