@@ -1,0 +1,12 @@
+{
+  "size": 11,
+  "is_dir": false,
+  "readonly": false,
+  "permissions": {
+    "has_unix_mode": true,
+    "has_windows_attributes": false
+  },
+  "timestamps": {
+    "modified_at_present": true
+  }
+}

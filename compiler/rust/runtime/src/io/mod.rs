@@ -12,6 +12,7 @@ mod error;
 mod file;
 mod metadata;
 mod options;
+mod permissions;
 mod reader;
 mod text_stream;
 mod writer;
@@ -25,6 +26,7 @@ pub use error::{IoError, IoErrorKind, IoResult};
 pub use file::File;
 pub use metadata::FileMetadata;
 pub use options::FileOptions;
+pub use permissions::FilePermissions;
 pub use reader::Reader;
 pub use text_stream::{
     decode_stream, encode_stream, BomHandling, InvalidSequenceStrategy, TextDecodeOptions,

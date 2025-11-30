@@ -4,8 +4,7 @@ use std::path::{Path, PathBuf};
 
 use super::{
     adapters::{
-        FsAdapter, CAP_FS_PERMISSIONS_MODIFY, CAP_FS_PERMISSIONS_READ, CAP_IO_FS_READ,
-        CAP_IO_FS_WRITE,
+        FsAdapter, CAP_FS_PERMISSIONS_READ, CAP_IO_FS_READ, CAP_IO_FS_WRITE,
     },
     effects::{blocking_io_effect_labels, record_io_operation},
     metadata::FileMetadata,

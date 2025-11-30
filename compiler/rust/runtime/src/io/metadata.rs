@@ -1,6 +1,8 @@
 use std::fs::Metadata as StdMetadata;
 use std::time::SystemTime;
 
+use super::permissions::FilePermissions;
+
 #[cfg(any(feature = "core_time", feature = "metrics"))]
 use crate::time::{self, Timestamp};
 #[cfg(not(any(feature = "core_time", feature = "metrics")))]
@@ -12,6 +14,7 @@ pub struct FileMetadata {
     size: u64,
     readonly: bool,
     is_dir: bool,
+    permissions: FilePermissions,
     created_at: Option<Timestamp>,
     modified_at: Option<Timestamp>,
     accessed_at: Option<Timestamp>,
@@ -26,6 +29,7 @@ impl FileMetadata {
             size,
             readonly,
             is_dir,
+            permissions: FilePermissions::from_metadata(&metadata),
             created_at: convert_time(metadata.created()),
             modified_at: convert_time(metadata.modified()),
             accessed_at: convert_time(metadata.accessed()),
@@ -42,6 +46,10 @@ impl FileMetadata {
 
     pub fn is_dir(&self) -> bool {
         self.is_dir
+    }
+
+    pub fn permissions(&self) -> FilePermissions {
+        self.permissions
     }
 
     pub fn created_at(&self) -> Option<Timestamp> {

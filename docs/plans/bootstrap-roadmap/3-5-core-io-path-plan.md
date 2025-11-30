@@ -136,7 +136,12 @@
 実施ステップ:
 - `FileOptions` を `compiler/rust/runtime/src/io/options.rs` に作成し、`read`, `write`, `append`, `truncate`, `create`、`permissions` をビルダー形式で設定できるようにする。
 - `FileMetadata` を `compiler/rust/runtime/src/io/metadata.rs` に定義し、`size`, `permissions`, `created_at`, `modified_at` を `Core.Time::Timestamp` で表現する。`3-4-core-numeric-time-plan.md` 側の `Timestamp → IO` バックログと依存関係を明記する。
-- `tests/expected/file_metadata.json` にメタデータ出力を保存し、`scripts/validate-diagnostic-json.sh --pattern core.io.metadata` で `Timestamp` のフォーマットと効果タグ (`effect {time}`) を検証する。
+- `compiler/rust/runtime/tests/golden/core_io/file_ops/metadata_basic_{unix,windows}.json` にメタデータ出力を保存し、`scripts/validate-diagnostic-json.sh --pattern core.io.metadata` で `Timestamp` のフォーマットと効果タグ (`effect {time}`) を検証する。
+
+> 進行ログ（Phase3 W48, 3.2）  
+> - `compiler/rust/runtime/src/io/permissions.rs` を新設し、`FilePermissions` で `UnixMode`/`WindowsAttributes` の両方を保持できるようにした。`FileOptions`（`options.rs`）に `permissions()` ビルダーと `permissions_snapshot()` を追加し、`OpenOptions` へモード/属性を適用する処理を組み込んだ。  
+> - `FileMetadata`（`metadata.rs`）へ `permissions` フィールドとアクセサを追加し、`Timestamp` との連携を維持したまま `fs::Metadata` からパーミッション情報を抽出するよう更新した。  
+> - `compiler/rust/runtime/tests/file_ops.rs` にメタデータ JSON 検証と `FileOptions::permissions` のユニットテストを追加し、プラットフォーム別ゴールデン（`tests/golden/core_io/file_ops/metadata_basic_{unix,windows}.json`）で `permissions`/`timestamps` の必須キーを固定。`cargo test file_create_write_metadata_remove` を実行し、Core.IO ファイル API の基本ケースが通過することを確認した。
 
 3.3. `sync`/`defer` 処理の統合を確認し、リソースリーク検出テストを追加する。  
 実施ステップ:

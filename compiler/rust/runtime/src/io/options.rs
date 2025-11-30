@@ -1,5 +1,7 @@
 use std::fs::OpenOptions;
 
+use super::permissions::FilePermissions;
+
 /// `File::create` などで使用するオープンオプション。
 #[derive(Debug, Clone)]
 pub struct FileOptions {
@@ -9,6 +11,7 @@ pub struct FileOptions {
     truncate: bool,
     create: bool,
     create_new: bool,
+    permissions: Option<FilePermissions>,
 }
 
 impl FileOptions {
@@ -20,6 +23,7 @@ impl FileOptions {
             truncate: false,
             create: false,
             create_new: false,
+            permissions: None,
         }
     }
 
@@ -53,12 +57,21 @@ impl FileOptions {
         self
     }
 
+    pub fn permissions(mut self, permissions: FilePermissions) -> Self {
+        self.permissions = Some(permissions);
+        self
+    }
+
     pub fn read_enabled(&self) -> bool {
         self.read
     }
 
     pub fn write_enabled(&self) -> bool {
         self.write || self.append || self.truncate || self.create || self.create_new
+    }
+
+    pub fn permissions_snapshot(&self) -> Option<FilePermissions> {
+        self.permissions
     }
 
     pub(crate) fn apply_to(&self, opts: &mut OpenOptions) {
@@ -68,6 +81,9 @@ impl FileOptions {
             .truncate(self.truncate)
             .create(self.create)
             .create_new(self.create_new);
+        if let Some(permissions) = self.permissions {
+            permissions.apply_to_open_options(opts);
+        }
     }
 }
 
