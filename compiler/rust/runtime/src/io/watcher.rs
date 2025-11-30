@@ -8,7 +8,7 @@ use std::sync::{
 use std::thread;
 use std::time::{Duration, Instant};
 
-use globset::{Glob, GlobSet, GlobSetBuilder};
+use glob::Pattern;
 use notify::event::{CreateKind, EventKind, ModifyKind, RemoveKind};
 use notify::{Config as NotifyConfig, Event, RecommendedWatcher, RecursiveMode, Watcher as _};
 
@@ -129,7 +129,7 @@ where
     P: AsRef<Path>,
     F: Fn(WatchEvent) + Send + Sync + 'static,
 {
-    let mut resolved_paths: Vec<PathBuf> = paths.into_iter().map(|p| p.as_ref().to_path_buf()).collect();
+    let resolved_paths: Vec<PathBuf> = paths.into_iter().map(|p| p.as_ref().to_path_buf()).collect();
     if resolved_paths.is_empty() {
         return Err(invalid_input_error("watch requires at least one path", None));
     }
@@ -209,7 +209,7 @@ pub fn close_watcher(watcher: Watcher) -> IoResult<()> {
     watcher.close()
 }
 
-fn run_watcher(mut runtime: WatchRuntime, _watcher: RecommendedWatcher) {
+fn run_watcher(runtime: WatchRuntime, _watcher: RecommendedWatcher) {
     let mut rate_limiter = RateLimiter::new(runtime.config.limits.max_events_per_second);
     loop {
         if runtime.should_stop() {
@@ -296,13 +296,16 @@ impl WatchEvent {
             EventKind::Create(CreateKind::File)
             | EventKind::Create(CreateKind::Any)
             | EventKind::Create(CreateKind::Folder) => Some(WatchEvent::Created(path)),
+            EventKind::Create(_) => Some(WatchEvent::Created(path)),
             EventKind::Modify(ModifyKind::Name(_))
             | EventKind::Modify(ModifyKind::Any)
             | EventKind::Modify(ModifyKind::Data(_))
             | EventKind::Modify(ModifyKind::Metadata(_)) => Some(WatchEvent::Modified(path)),
+            EventKind::Modify(_) => Some(WatchEvent::Modified(path)),
             EventKind::Remove(RemoveKind::File)
             | EventKind::Remove(RemoveKind::Any)
             | EventKind::Remove(RemoveKind::Folder) => Some(WatchEvent::Deleted(path)),
+            EventKind::Remove(_) => Some(WatchEvent::Deleted(path)),
             EventKind::Access(_) => None,
             EventKind::Other => None,
             EventKind::Any => Some(WatchEvent::Modified(path)),
@@ -358,7 +361,7 @@ impl WatcherState {
 struct WatchRuntimeConfig {
     base_paths: Vec<PathBuf>,
     limits: WatchLimits,
-    exclude: Option<GlobSet>,
+    exclude: Option<Vec<Pattern>>,
 }
 
 impl WatchRuntimeConfig {
@@ -384,7 +387,7 @@ impl WatchRuntimeConfig {
     fn matches_exclude(&self, path: &Path) -> bool {
         self.exclude
             .as_ref()
-            .map(|set| set.is_match(path))
+            .map(|patterns| patterns.iter().any(|pattern| pattern.matches_path(path)))
             .unwrap_or(false)
     }
 }
@@ -440,24 +443,22 @@ fn recursive_mode(limits: &WatchLimits) -> RecursiveMode {
     }
 }
 
-fn build_exclude_set(limits: &WatchLimits) -> IoResult<Option<GlobSet>> {
+fn build_exclude_set(limits: &WatchLimits) -> IoResult<Option<Vec<Pattern>>> {
     if limits.exclude_patterns.is_empty() {
         return Ok(None);
     }
-    let mut builder = GlobSetBuilder::new();
+    let mut patterns = Vec::with_capacity(limits.exclude_patterns.len());
     for pattern in &limits.exclude_patterns {
-        let glob = Glob::new(pattern).map_err(|err| {
+        let compiled =
+            Pattern::new(pattern).map_err(|err| {
             invalid_input_error(
                 format!("invalid watch exclude pattern `{pattern}`: {err}"),
                 None,
             )
         })?;
-        builder.add(glob);
+        patterns.push(compiled);
     }
-    builder
-        .build()
-        .map(Some)
-        .map_err(|err| invalid_input_error(format!("failed to build watch exclude set: {err}"), None))
+    Ok(Some(patterns))
 }
 
 fn watch_context(operation: &'static str, path: Option<PathBuf>, capability: &'static str) -> IoContext {

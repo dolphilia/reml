@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -13,9 +13,13 @@ fn watch_reports_create_and_delete_events() {
     let watch_path = temp_dir.path().to_path_buf();
     let file_path = watch_path.join("sample.txt");
 
-    let (tx, rx) = mpsc::channel();
+    let (tx_raw, rx) = mpsc::channel();
+    let tx = Arc::new(Mutex::new(tx_raw));
+    let callback_tx = Arc::clone(&tx);
     let watcher = watch(vec![watch_path.clone()], move |event| {
-        tx.send(event).ok();
+        if let Ok(sender) = callback_tx.lock() {
+            sender.send(event).ok();
+        }
     })
     .expect("watch should initialize");
 
