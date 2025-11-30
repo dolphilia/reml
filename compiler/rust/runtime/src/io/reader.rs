@@ -4,7 +4,11 @@ use crate::text::{Bytes, UnicodeError};
 
 use super::{
     adapters::CAP_IO_FS_READ,
-    effects::{blocking_io_effect_labels, record_io_operation},
+    effects::{
+        blocking_io_effect_labels,
+        record_io_operation,
+        take_io_effects_snapshot,
+    },
     FsAdapter, IoContext, IoError, IoErrorKind, IoResult, Writer,
 };
 
@@ -67,10 +71,21 @@ where
         FsAdapter::global()
             .ensure_read_capability()
             .map_err(|err| err.with_context(read_context("read")))?;
-        record_io_operation(1);
+        record_io_operation(buf.len());
         match Read::read(self, buf) {
-            Ok(bytes) => Ok(bytes),
-            Err(err) => Err(IoError::from_std(err, read_context("read"))),
+            Ok(bytes) => {
+                take_io_effects_snapshot();
+                Ok(bytes)
+            }
+            Err(err) => {
+                let effects = take_io_effects_snapshot();
+                Err(IoError::from_std(
+                    err,
+                    read_context("read")
+                        .with_bytes_processed(buf.len() as u64)
+                        .with_effects(effects),
+                ))
+            }
         }
     }
 }

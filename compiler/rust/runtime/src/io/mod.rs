@@ -77,12 +77,24 @@ where
     F: FnOnce(&mut dyn Reader) -> IoResult<T>,
 {
     let path = path.as_ref();
+    let context = with_reader_context(path);
     FsAdapter::global()
         .ensure_read_capability()
-        .map_err(|err| err.with_context(with_reader_context(path)))?;
-    effects::record_io_operation(1);
-    let mut file =
-        StdFile::open(path).map_err(|err| IoError::from_std(err, with_reader_context(path)))?;
+        .map_err(|err| err.with_context(context.clone()))?;
+    effects::record_io_operation(0);
+    let mut file = match StdFile::open(path) {
+        Ok(file) => {
+            effects::take_io_effects_snapshot();
+            file
+        }
+        Err(err) => {
+            let effects = effects::take_io_effects_snapshot();
+            return Err(IoError::from_std(
+                err,
+                context.with_effects(effects),
+            ));
+        }
+    };
     let reader: &mut dyn Reader = &mut file;
     f(reader)
 }

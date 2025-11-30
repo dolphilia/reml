@@ -4,7 +4,11 @@ use crate::text::Bytes;
 
 use super::{
     adapters::CAP_IO_FS_WRITE,
-    effects::{blocking_io_effect_labels, record_io_operation},
+    effects::{
+        blocking_io_effect_labels,
+        record_io_operation,
+        take_io_effects_snapshot,
+    },
     FsAdapter, IoContext, IoError, IoErrorKind, IoResult,
 };
 
@@ -14,28 +18,37 @@ pub trait Writer {
     fn flush(&mut self) -> IoResult<()>;
 
     fn write_all(&mut self, mut buf: &[u8]) -> IoResult<()> {
+        let mut total_written: u64 = 0;
         while !buf.is_empty() {
             match self.write(buf) {
                 Ok(0) => {
                     return Err(IoError::new(
                         IoErrorKind::WriteZero,
                         "writer wrote zero bytes",
+                    )
+                    .with_context(
+                        write_context("write_all").with_bytes_processed(total_written),
                     ))
                 }
-                Ok(written) => buf = &buf[written..],
-                Err(err) => return Err(err),
+                Ok(written) => {
+                    total_written = total_written.saturating_add(written as u64);
+                    buf = &buf[written..];
+                }
+                Err(err) => {
+                    return Err(err.map_context(|ctx| ctx.with_bytes_processed(total_written)))
+                }
             }
         }
         Ok(())
     }
 
     /// `Bytes` をそのまま書き込む。
-    fn write_bytes(&mut self, bytes: &Bytes) -> IoResult<usize> {
+    fn write_bytes(&mut self, bytes: Bytes) -> IoResult<usize> {
         self.write(bytes.as_slice())
     }
 
     /// `Bytes` をすべて書き込む。
-    fn write_all_bytes(&mut self, bytes: &Bytes) -> IoResult<()> {
+    fn write_all_bytes(&mut self, bytes: Bytes) -> IoResult<()> {
         self.write_all(bytes.as_slice())
     }
 }
@@ -48,15 +61,39 @@ where
         FsAdapter::global()
             .ensure_write_capability()
             .map_err(|err| err.with_context(write_context("write")))?;
-        record_io_operation(1);
+        record_io_operation(buf.len());
         match Write::write(self, buf) {
-            Ok(bytes) => Ok(bytes),
-            Err(err) => Err(IoError::from_std(err, write_context("write"))),
+            Ok(bytes) => {
+                take_io_effects_snapshot();
+                Ok(bytes)
+            }
+            Err(err) => {
+                let effects = take_io_effects_snapshot();
+                Err(IoError::from_std(
+                    err,
+                    write_context("write")
+                        .with_bytes_processed(buf.len() as u64)
+                        .with_effects(effects),
+                ))
+            }
         }
     }
 
     fn flush(&mut self) -> IoResult<()> {
-        Write::flush(self).map_err(|err| IoError::from_std(err, write_context("flush")))
+        record_io_operation(0);
+        match Write::flush(self) {
+            Ok(()) => {
+                take_io_effects_snapshot();
+                Ok(())
+            }
+            Err(err) => {
+                let effects = take_io_effects_snapshot();
+                Err(IoError::from_std(
+                    err,
+                    write_context("flush").with_effects(effects),
+                ))
+            }
+        }
     }
 }
 

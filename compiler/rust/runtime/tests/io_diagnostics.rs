@@ -1,7 +1,20 @@
 use std::time::UNIX_EPOCH;
+use std::{
+    io::{
+        self,
+        Read as StdRead,
+        Write as StdWrite,
+    },
+};
 
 use reml_runtime::{
-    io::{IoContext, IoError, IoErrorKind},
+    io::{
+        IoContext,
+        IoError,
+        IoErrorKind,
+        Reader as IoReader,
+        Writer as IoWriter,
+    },
     prelude::{
         ensure::IntoDiagnostic,
         iter::EffectLabels,
@@ -84,6 +97,39 @@ fn unsupported_platform_error_includes_platform_metadata() {
     );
 }
 
+#[test]
+fn reader_error_carries_bytes_processed_in_context() {
+    let mut reader = ForcedReadFailure;
+    let mut buffer = [0_u8; 16];
+    let error = <ForcedReadFailure as IoReader>::read(&mut reader, &mut buffer)
+        .expect_err("reader failure should propagate");
+    let context = error
+        .context()
+        .expect("IoContext must be attached to read failure");
+    assert_eq!(
+        context.bytes_processed(),
+        Some(buffer.len() as u64),
+        "bytes_processed should match requested buffer length"
+    );
+}
+
+#[test]
+fn writer_write_all_reports_bytes_processed_on_failure() {
+    let mut writer = PartialWriteFailure::new(5);
+    let payload = [0_u8; 10];
+    let error =
+        <PartialWriteFailure as IoWriter>::write_all(&mut writer, &payload)
+            .expect_err("write_all should fail after partial progress");
+    let context = error
+        .context()
+        .expect("IoContext must be attached to write failure");
+    assert_eq!(
+        context.bytes_processed(),
+        Some(5),
+        "bytes_processed should capture the committed bytes"
+    );
+}
+
 fn sample_effects() -> EffectLabels {
     EffectLabels {
         mem: false,
@@ -140,5 +186,48 @@ fn assert_contains(actual: &Value, expected: &Value) {
             actual, expected,
             "diagnostic value mismatch (expected {expected:?}, got {actual:?})"
         ),
+    }
+}
+
+struct ForcedReadFailure;
+
+impl StdRead for ForcedReadFailure {
+    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+        Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "forced read failure",
+        ))
+    }
+}
+
+struct PartialWriteFailure {
+    chunk: usize,
+    wrote_once: bool,
+}
+
+impl PartialWriteFailure {
+    fn new(chunk: usize) -> Self {
+        Self {
+            chunk,
+            wrote_once: false,
+        }
+    }
+}
+
+impl StdWrite for PartialWriteFailure {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if !self.wrote_once {
+            self.wrote_once = true;
+            Ok(self.chunk.min(buf.len()))
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "forced write failure",
+            ))
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
     }
 }
