@@ -4,11 +4,7 @@ use crate::text::Bytes;
 
 use super::{
     adapters::CAP_IO_FS_WRITE,
-    effects::{
-        blocking_io_effect_labels,
-        record_io_operation,
-        take_io_effects_snapshot,
-    },
+    effects::{blocking_io_effect_labels, record_io_operation, take_io_effects_snapshot},
     FsAdapter, IoContext, IoError, IoErrorKind, IoResult,
 };
 
@@ -22,13 +18,12 @@ pub trait Writer {
         while !buf.is_empty() {
             match self.write(buf) {
                 Ok(0) => {
-                    return Err(IoError::new(
-                        IoErrorKind::WriteZero,
-                        "writer wrote zero bytes",
+                    return Err(
+                        IoError::new(IoErrorKind::WriteZero, "writer wrote zero bytes")
+                            .with_context(
+                                write_context("write_all").with_bytes_processed(total_written),
+                            ),
                     )
-                    .with_context(
-                        write_context("write_all").with_bytes_processed(total_written),
-                    ))
                 }
                 Ok(written) => {
                     total_written = total_written.saturating_add(written as u64);

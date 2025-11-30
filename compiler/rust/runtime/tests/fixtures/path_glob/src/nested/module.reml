@@ -1,0 +1,5 @@
+# Nested Reml module fixture
+
+module nested.module {
+  use core.io
+}

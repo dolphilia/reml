@@ -54,21 +54,15 @@ struct UnicodeCase {
 #[test]
 fn unicode_string_cases_follow_golden() {
     let cases_path = repo_root().join("tests/data/core_path/unicode_cases.json");
-    let raw = fs::read_to_string(&cases_path).unwrap_or_else(|err| {
-        panic!(
-            "failed to read {}: {err}",
-            cases_path.display()
-        )
-    });
-    let cases: Vec<UnicodeCase> =
-        serde_json::from_str(&raw).unwrap_or_else(|err| panic!("failed to parse unicode cases: {err}"));
+    let raw = fs::read_to_string(&cases_path)
+        .unwrap_or_else(|err| panic!("failed to read {}: {err}", cases_path.display()));
+    let cases: Vec<UnicodeCase> = serde_json::from_str(&raw)
+        .unwrap_or_else(|err| panic!("failed to parse unicode cases: {err}"));
 
     for case in cases {
         let style = PathStyle::from(case.style);
-        let normalized =
-            normalize_path_str(Str::from(case.input.as_str()), style).unwrap_or_else(|err| {
-                panic!("normalize failed for {}: {err}", case.description)
-            });
+        let normalized = normalize_path_str(Str::from(case.input.as_str()), style)
+            .unwrap_or_else(|err| panic!("normalize failed for {}: {err}", case.description));
         assert_eq!(
             normalized.as_str(),
             case.normalized,

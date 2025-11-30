@@ -1,0 +1,27 @@
+[
+  {
+    "pattern": "compiler\\\\rust\\\\runtime\\\\tests\\\\fixtures\\\\path_glob\\\\src\\\\**\\\\*.reml",
+    "expected": [
+      "compiler\\\\rust\\\\runtime\\\\tests\\\\fixtures\\\\path_glob\\\\src\\\\lib.reml",
+      "compiler\\\\rust\\\\runtime\\\\tests\\\\fixtures\\\\path_glob\\\\src\\\\nested\\\\module.reml"
+    ]
+  },
+  {
+    "pattern": "compiler\\\\rust\\\\runtime\\\\tests\\\\fixtures\\\\path_glob\\\\config\\\\**\\\\*.json",
+    "expected": [
+      "compiler\\\\rust\\\\runtime\\\\tests\\\\fixtures\\\\path_glob\\\\config\\\\app.json"
+    ]
+  },
+  {
+    "pattern": "compiler\\\\rust\\\\runtime\\\\tests\\\\fixtures\\\\path_glob\\\\**\\\\*.yaml",
+    "expected": [
+      "compiler\\\\rust\\\\runtime\\\\tests\\\\fixtures\\\\path_glob\\\\config\\\\nested\\\\local.yaml"
+    ]
+  },
+  {
+    "pattern": "compiler\\\\rust\\\\runtime\\\\tests\\\\fixtures\\\\path_glob\\\\*.env*",
+    "expected": [
+      "compiler\\\\rust\\\\runtime\\\\tests\\\\fixtures\\\\path_glob\\\\.env.local"
+    ]
+  }
+]

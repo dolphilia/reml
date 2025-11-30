@@ -3,11 +3,7 @@ use std::path::{Path, PathBuf as StdPathBuf};
 
 use reml_runtime::{
     path::{
-        is_safe_symlink,
-        sandbox_path,
-        validate_path,
-        PathBuf,
-        PathSecurityErrorKind,
+        is_safe_symlink, sandbox_path, validate_path, PathBuf, PathSecurityErrorKind,
         SecurityPolicy,
     },
     prelude::ensure::IntoDiagnostic,
@@ -59,12 +55,8 @@ fn is_safe_symlink_rejects_absolute_target() {
 
 fn load_expected(relative: &str) -> Value {
     let path = repo_root().join(relative);
-    let raw = fs::read_to_string(&path).unwrap_or_else(|err| {
-        panic!(
-            "failed to read {}: {err}",
-            path.display()
-        )
-    });
+    let raw = fs::read_to_string(&path)
+        .unwrap_or_else(|err| panic!("failed to read {}: {err}", path.display()));
     serde_json::from_str(&raw)
         .unwrap_or_else(|err| panic!("invalid JSON in {}: {err}", path.display()))
 }
@@ -72,9 +64,7 @@ fn load_expected(relative: &str) -> Value {
 fn assert_contains(actual: &Value, expected: &Value) {
     match expected {
         Value::Object(map) => {
-            let actual_map = actual
-                .as_object()
-                .expect("actual JSON should be an object");
+            let actual_map = actual.as_object().expect("actual JSON should be an object");
             for (key, expected_value) in map {
                 let actual_value = actual_map
                     .get(key)

@@ -4,11 +4,7 @@ use crate::text::{Bytes, UnicodeError};
 
 use super::{
     adapters::CAP_IO_FS_READ,
-    effects::{
-        blocking_io_effect_labels,
-        record_io_operation,
-        take_io_effects_snapshot,
-    },
+    effects::{blocking_io_effect_labels, record_io_operation, take_io_effects_snapshot},
     FsAdapter, IoContext, IoError, IoErrorKind, IoResult, Writer,
 };
 

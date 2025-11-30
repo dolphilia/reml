@@ -3,9 +3,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 use super::{
-    adapters::{
-        FsAdapter, CAP_FS_PERMISSIONS_READ, CAP_IO_FS_READ, CAP_IO_FS_WRITE,
-    },
+    adapters::{FsAdapter, CAP_FS_PERMISSIONS_READ, CAP_IO_FS_READ, CAP_IO_FS_WRITE},
     effects::{
         blocking_io_effect_labels, fs_sync_effect_labels, record_fs_sync_operation,
         record_io_operation,
@@ -34,8 +32,8 @@ impl File {
             .map_err(|err| err.with_context(context.clone()))?;
 
         record_io_operation(1);
-        let handle = std::fs::File::open(path_ref)
-            .map_err(|err| IoError::from_std(err, context.clone()))?;
+        let handle =
+            std::fs::File::open(path_ref).map_err(|err| IoError::from_std(err, context.clone()))?;
         Ok(Self {
             handle,
             path: path_ref.to_path_buf(),
@@ -66,10 +64,9 @@ impl File {
         record_io_operation(1);
         let mut open_opts = OpenOptions::new();
         options.apply_to(&mut open_opts);
-        let handle =
-            open_opts
-                .open(path_ref)
-                .map_err(|err| IoError::from_std(err, write_context.clone()))?;
+        let handle = open_opts
+            .open(path_ref)
+            .map_err(|err| IoError::from_std(err, write_context.clone()))?;
         Ok(Self {
             handle,
             path: path_ref.to_path_buf(),
@@ -110,7 +107,10 @@ impl File {
     pub fn sync_all(&mut self) -> IoResult<()> {
         record_fs_sync_operation();
         self.handle.sync_all().map_err(|err| {
-            IoError::from_std(err, self.sync_operation_context("file.sync_all", CAP_IO_FS_WRITE))
+            IoError::from_std(
+                err,
+                self.sync_operation_context("file.sync_all", CAP_IO_FS_WRITE),
+            )
         })
     }
 
@@ -118,7 +118,10 @@ impl File {
     pub fn sync_data(&mut self) -> IoResult<()> {
         record_fs_sync_operation();
         self.handle.sync_data().map_err(|err| {
-            IoError::from_std(err, self.sync_operation_context("file.sync_data", CAP_IO_FS_WRITE))
+            IoError::from_std(
+                err,
+                self.sync_operation_context("file.sync_data", CAP_IO_FS_WRITE),
+            )
         })
     }
 

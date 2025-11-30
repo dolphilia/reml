@@ -210,10 +210,7 @@ impl IntoDiagnostic for IoError {
                 io_extensions.insert("capability".into(), Value::String(capability.into()));
             }
             if let Some(bytes) = ctx.bytes_processed() {
-                io_extensions.insert(
-                    "bytes_processed".into(),
-                    Value::Number(Number::from(bytes)),
-                );
+                io_extensions.insert("bytes_processed".into(), Value::Number(Number::from(bytes)));
             }
             if let Some(buffer) = ctx.buffer() {
                 let buffer_map = encode_buffer_stats(buffer);
@@ -228,16 +225,10 @@ impl IntoDiagnostic for IoError {
             }
         }
         if let Some(platform_value) = platform {
-            io_extensions.insert(
-                "platform".into(),
-                Value::String(platform_value.into()),
-            );
+            io_extensions.insert("platform".into(), Value::String(platform_value.into()));
         }
         if let Some(feature_value) = feature.as_ref() {
-            io_extensions.insert(
-                "feature".into(),
-                Value::String(feature_value.clone()),
-            );
+            io_extensions.insert("feature".into(), Value::String(feature_value.clone()));
         }
 
         let mut extensions = Map::new();
@@ -249,23 +240,14 @@ impl IntoDiagnostic for IoError {
         extensions.insert("message".into(), Value::String(message.clone()));
 
         let mut audit_metadata = Map::new();
-        audit_metadata.insert(
-            "io.error.kind".into(),
-            Value::String(kind.as_str().into()),
-        );
+        audit_metadata.insert("io.error.kind".into(), Value::String(kind.as_str().into()));
         if let Some(path_value) = resolved_path {
             audit_metadata.insert("io.path".into(), Value::String(path_value));
         }
         if let Some(ctx) = context_ref {
-            audit_metadata.insert(
-                "io.operation".into(),
-                Value::String(ctx.operation().into()),
-            );
+            audit_metadata.insert("io.operation".into(), Value::String(ctx.operation().into()));
             if let Some(capability) = ctx.capability() {
-                audit_metadata.insert(
-                    "io.capability".into(),
-                    Value::String(capability.into()),
-                );
+                audit_metadata.insert("io.capability".into(), Value::String(capability.into()));
             }
             if let Some(bytes) = ctx.bytes_processed() {
                 audit_metadata.insert(
@@ -294,10 +276,7 @@ impl IntoDiagnostic for IoError {
             }
         }
         if let Some(platform_value) = platform {
-            audit_metadata.insert(
-                "io.platform".into(),
-                Value::String(platform_value.into()),
-            );
+            audit_metadata.insert("io.platform".into(), Value::String(platform_value.into()));
         }
         if let Some(feature_value) = feature {
             audit_metadata.insert("io.feature".into(), Value::String(feature_value));

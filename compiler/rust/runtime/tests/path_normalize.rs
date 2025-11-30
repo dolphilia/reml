@@ -29,20 +29,14 @@ struct PathCase {
 #[test]
 fn normalize_and_join_follow_golden_cases() {
     let data_path = repo_root().join(NORMALIZE_CASES);
-    let raw = fs::read_to_string(&data_path).unwrap_or_else(|err| {
-        panic!(
-            "failed to read {}: {err}",
-            data_path.display()
-        )
-    });
+    let raw = fs::read_to_string(&data_path)
+        .unwrap_or_else(|err| panic!("failed to read {}: {err}", data_path.display()));
     let cases: Vec<PathCase> = serde_json::from_str(&raw)
         .unwrap_or_else(|err| panic!("failed to parse {NORMALIZE_CASES}: {err}"));
 
     for case in cases {
-        let parsed =
-            PathBuf::try_from(case.input.as_str()).unwrap_or_else(|err| {
-                panic!("failed to parse `{}`: {err}", case.input)
-            });
+        let parsed = PathBuf::try_from(case.input.as_str())
+            .unwrap_or_else(|err| panic!("failed to parse `{}`: {err}", case.input));
         let normalized = parsed.normalize();
         assert_eq!(
             normalized.to_string_lossy(),

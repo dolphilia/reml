@@ -267,10 +267,7 @@ impl IntoDiagnostic for PathSecurityError {
                 Value::String(PathSecurityError::path_string(root)),
             );
         }
-        security_meta.insert(
-            "reason".into(),
-            Value::String(reason.as_str().to_string()),
-        );
+        security_meta.insert("reason".into(), Value::String(reason.as_str().to_string()));
         if let Some(name) = policy_name.as_ref() {
             security_meta.insert("policy".into(), Value::String(name.clone()));
         }
@@ -284,7 +281,10 @@ impl IntoDiagnostic for PathSecurityError {
         let mut extensions = Map::new();
         extensions.insert("security".into(), Value::Object(security_meta.clone()));
         extensions.insert("message".into(), Value::String(message.clone()));
-        extensions.insert("effects".into(), Value::Object(encode_effect_labels(effects)));
+        extensions.insert(
+            "effects".into(),
+            Value::Object(encode_effect_labels(effects)),
+        );
 
         let mut audit_metadata = Map::new();
         if let Some(path) = offending_path.as_ref() {
@@ -355,16 +355,14 @@ pub fn validate_path(path: &PathBuf, policy: &SecurityPolicy) -> PathSecurityRes
     }
 
     if !policy.allows_relative() && !normalized.is_absolute() {
-        return Err(
-            PathSecurityError::new(
-                PathSecurityErrorKind::InvalidInput,
-                SecurityViolationReason::RelativePathDenied,
-                "relative paths are not permitted by the active security policy",
-            )
-            .with_path(path.clone())
-            .with_normalized(normalized)
-            .with_policy(policy),
-        );
+        return Err(PathSecurityError::new(
+            PathSecurityErrorKind::InvalidInput,
+            SecurityViolationReason::RelativePathDenied,
+            "relative paths are not permitted by the active security policy",
+        )
+        .with_path(path.clone())
+        .with_normalized(normalized)
+        .with_policy(policy));
     }
 
     if !policy.allowed_roots().is_empty() && normalized.is_absolute() {
@@ -373,28 +371,24 @@ pub fn validate_path(path: &PathBuf, policy: &SecurityPolicy) -> PathSecurityRes
             .iter()
             .any(|root| path_within_root(&normalized, root));
         if !found {
-            return Err(
-                PathSecurityError::new(
-                    PathSecurityErrorKind::SandboxViolation,
-                    SecurityViolationReason::OutsideAllowedRoot,
-                    "path is outside of the allowed roots",
-                )
-                .with_path(path.clone())
-                .with_normalized(normalized)
-                .with_policy(policy),
-            );
-        }
-    } else if !policy.allowed_roots().is_empty() && !normalized.is_absolute() {
-        return Err(
-            PathSecurityError::new(
+            return Err(PathSecurityError::new(
                 PathSecurityErrorKind::SandboxViolation,
-                SecurityViolationReason::RelativePathDenied,
-                "policy enforces absolute paths within allowed roots",
+                SecurityViolationReason::OutsideAllowedRoot,
+                "path is outside of the allowed roots",
             )
             .with_path(path.clone())
             .with_normalized(normalized)
-            .with_policy(policy),
-        );
+            .with_policy(policy));
+        }
+    } else if !policy.allowed_roots().is_empty() && !normalized.is_absolute() {
+        return Err(PathSecurityError::new(
+            PathSecurityErrorKind::SandboxViolation,
+            SecurityViolationReason::RelativePathDenied,
+            "policy enforces absolute paths within allowed roots",
+        )
+        .with_path(path.clone())
+        .with_normalized(normalized)
+        .with_policy(policy));
     }
 
     Ok(normalized)
@@ -405,28 +399,24 @@ pub fn sandbox_path(path: &PathBuf, root: &PathBuf) -> PathSecurityResult<PathBu
     ensure_security_capability(None)?;
     let normalized_root = root.normalize();
     if !normalized_root.is_absolute() {
-        return Err(
-            PathSecurityError::new(
-                PathSecurityErrorKind::InvalidInput,
-                SecurityViolationReason::TraversalDetected,
-                "sandbox root must be an absolute path",
-            )
-            .with_root(normalized_root),
-        );
+        return Err(PathSecurityError::new(
+            PathSecurityErrorKind::InvalidInput,
+            SecurityViolationReason::TraversalDetected,
+            "sandbox root must be an absolute path",
+        )
+        .with_root(normalized_root));
     }
 
     let normalized_path = path.normalize();
     if has_parent_components(normalized_path.as_std_path()) {
-        return Err(
-            PathSecurityError::new(
-                PathSecurityErrorKind::SandboxViolation,
-                SecurityViolationReason::TraversalDetected,
-                "path attempts to traverse outside sandbox",
-            )
-            .with_path(path.clone())
-            .with_normalized(normalized_path)
-            .with_root(normalized_root),
-        );
+        return Err(PathSecurityError::new(
+            PathSecurityErrorKind::SandboxViolation,
+            SecurityViolationReason::TraversalDetected,
+            "path attempts to traverse outside sandbox",
+        )
+        .with_path(path.clone())
+        .with_normalized(normalized_path)
+        .with_root(normalized_root));
     }
 
     let resolved = if normalized_path.is_absolute() {
@@ -446,16 +436,14 @@ pub fn sandbox_path(path: &PathBuf, root: &PathBuf) -> PathSecurityResult<PathBu
     };
 
     if !path_within_root(&resolved, &normalized_root) {
-        return Err(
-            PathSecurityError::new(
-                PathSecurityErrorKind::SandboxViolation,
-                SecurityViolationReason::OutsideAllowedRoot,
-                "resolved path escapes sandbox root",
-            )
-            .with_path(path.clone())
-            .with_normalized(resolved)
-            .with_root(normalized_root),
-        );
+        return Err(PathSecurityError::new(
+            PathSecurityErrorKind::SandboxViolation,
+            SecurityViolationReason::OutsideAllowedRoot,
+            "resolved path escapes sandbox root",
+        )
+        .with_path(path.clone())
+        .with_normalized(resolved)
+        .with_root(normalized_root));
     }
 
     Ok(resolved)
@@ -464,13 +452,13 @@ pub fn sandbox_path(path: &PathBuf, root: &PathBuf) -> PathSecurityResult<PathBu
 /// `is_safe_symlink` の実装。
 pub fn is_safe_symlink(path: &PathBuf) -> PathSecurityResult<bool> {
     ensure_security_capability(None)?;
-    FsAdapter::global()
-        .ensure_symlink_query()
-        .map_err(|err| PathSecurityError::capability_denied(
+    FsAdapter::global().ensure_symlink_query().map_err(|err| {
+        PathSecurityError::capability_denied(
             CAPABILITY_SYMLINK_QUERY,
             err.message().to_string(),
             None,
-        ))?;
+        )
+    })?;
 
     let std_path = path.as_std_path();
     let metadata = fs::symlink_metadata(std_path).map_err(|io_err| {
@@ -496,51 +484,46 @@ pub fn is_safe_symlink(path: &PathBuf) -> PathSecurityResult<bool> {
     })?;
 
     if target.is_absolute() {
-        return Err(
-            PathSecurityError::new(
-                PathSecurityErrorKind::SymlinkViolation,
-                SecurityViolationReason::SymlinkAbsoluteTarget,
-                "symlink target is absolute",
-            )
-            .with_path(path.clone())
-            .with_normalized(PathBuf::from_std(target)),
-        );
+        return Err(PathSecurityError::new(
+            PathSecurityErrorKind::SymlinkViolation,
+            SecurityViolationReason::SymlinkAbsoluteTarget,
+            "symlink target is absolute",
+        )
+        .with_path(path.clone())
+        .with_normalized(PathBuf::from_std(target)));
     }
 
     let normalized_target = PathBuf::from_std(normalize_components(&target));
     if has_parent_components(normalized_target.as_std_path()) {
-        return Err(
-            PathSecurityError::new(
-                PathSecurityErrorKind::SymlinkViolation,
-                SecurityViolationReason::SymlinkTraversal,
-                "symlink target traverses outside its parent",
-            )
-            .with_path(path.clone())
-            .with_normalized(normalized_target),
-        );
+        return Err(PathSecurityError::new(
+            PathSecurityErrorKind::SymlinkViolation,
+            SecurityViolationReason::SymlinkTraversal,
+            "symlink target traverses outside its parent",
+        )
+        .with_path(path.clone())
+        .with_normalized(normalized_target));
     }
 
     Ok(true)
 }
 
 fn ensure_security_capability(policy: Option<&SecurityPolicy>) -> PathSecurityResult<()> {
-    FsAdapter::global()
-        .ensure_security_policy()
-        .map_err(|err| PathSecurityError::capability_denied(
+    FsAdapter::global().ensure_security_policy().map_err(|err| {
+        PathSecurityError::capability_denied(
             CAPABILITY_SECURITY_POLICY,
             format!("security capability unavailable: {}", err),
             policy,
-        ))
+        )
+    })
 }
 
 fn path_within_root(target: &PathBuf, root: &PathBuf) -> bool {
-    target
-        .as_std_path()
-        .starts_with(root.as_std_path())
+    target.as_std_path().starts_with(root.as_std_path())
 }
 
 fn has_parent_components(path: &StdPath) -> bool {
-    path.components().any(|component| matches!(component, Component::ParentDir))
+    path.components()
+        .any(|component| matches!(component, Component::ParentDir))
 }
 
 fn encode_effect_labels(labels: EffectLabels) -> Map<String, Value> {

@@ -1,8 +1,8 @@
 use std::{io::Write, path::Path};
 
 use reml_runtime::io::{
-    leak_tracker_snapshot, reset_leak_tracker, with_file, with_temp_dir, FileOptions,
-    IoContext, IoError, ScopedFileMode,
+    leak_tracker_snapshot, reset_leak_tracker, with_file, with_temp_dir, FileOptions, IoContext,
+    IoError, ScopedFileMode,
 };
 use serde::Deserialize;
 
@@ -27,10 +27,7 @@ fn scoped_resources_cleanup_matches_expected_snapshot() {
 
     let temp_dir_path = with_temp_dir("leak-check", |guard| {
         let file_path = guard.path().join("scoped.txt");
-        let options = FileOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true);
+        let options = FileOptions::new().write(true).truncate(true).create(true);
         with_file(&file_path, ScopedFileMode::create(options), |file| {
             file.write_all(b"scoped cleanup")
                 .map_err(|err| map_std_io_error(&file_path, err))?;

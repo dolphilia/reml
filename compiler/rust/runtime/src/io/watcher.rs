@@ -85,9 +85,9 @@ pub enum WatchEvent {
 impl WatchEvent {
     pub fn path(&self) -> &Path {
         match self {
-            WatchEvent::Created(path)
-            | WatchEvent::Modified(path)
-            | WatchEvent::Deleted(path) => path.as_path(),
+            WatchEvent::Created(path) | WatchEvent::Modified(path) | WatchEvent::Deleted(path) => {
+                path.as_path()
+            }
         }
     }
 
@@ -147,9 +147,15 @@ where
     P: AsRef<Path>,
     F: Fn(WatchEvent) + Send + Sync + 'static,
 {
-    let resolved_paths: Vec<PathBuf> = paths.into_iter().map(|p| p.as_ref().to_path_buf()).collect();
+    let resolved_paths: Vec<PathBuf> = paths
+        .into_iter()
+        .map(|p| p.as_ref().to_path_buf())
+        .collect();
     if resolved_paths.is_empty() {
-        return Err(invalid_input_error("watch requires at least one path", None));
+        return Err(invalid_input_error(
+            "watch requires at least one path",
+            None,
+        ));
     }
 
     let adapter = WatcherAdapter::global();
@@ -180,7 +186,8 @@ where
     base_context.set_effects(take_io_effects_snapshot());
     base_context.set_watch_stats_from_metrics(take_watch_metrics_snapshot());
 
-    let exclude = build_exclude_set(&limits).map_err(|err| err.with_context(base_context.clone()))?;
+    let exclude =
+        build_exclude_set(&limits).map_err(|err| err.with_context(base_context.clone()))?;
 
     let config = WatchRuntimeConfig {
         base_paths: resolved_paths.clone(),
@@ -202,13 +209,20 @@ where
         },
         NotifyConfig::default(),
     )
-    .map_err(|err| notify_to_io_error(err, None, base_context.clone(), WatchMetricsSnapshot::EMPTY))?;
+    .map_err(|err| {
+        notify_to_io_error(err, None, base_context.clone(), WatchMetricsSnapshot::EMPTY)
+    })?;
 
     let recursive_mode = recursive_mode(&limits);
     for path in &resolved_paths {
-        watcher
-            .watch(path, recursive_mode)
-            .map_err(|err| notify_to_io_error(err, Some(path), base_context.clone(), WatchMetricsSnapshot::EMPTY))?;
+        watcher.watch(path, recursive_mode).map_err(|err| {
+            notify_to_io_error(
+                err,
+                Some(path),
+                base_context.clone(),
+                WatchMetricsSnapshot::EMPTY,
+            )
+        })?;
     }
 
     let audit_recorder = WatcherEventRecorder::new(resolved_paths.clone());
@@ -228,7 +242,12 @@ where
     let join_handle = thread::Builder::new()
         .name("core-io-watcher".into())
         .spawn(move || run_watcher(runtime, watcher))
-        .map_err(|err| IoError::new(IoErrorKind::OutOfMemory, format!("failed to spawn watcher thread: {err}")))?;
+        .map_err(|err| {
+            IoError::new(
+                IoErrorKind::OutOfMemory,
+                format!("failed to spawn watcher thread: {err}"),
+            )
+        })?;
 
     state.join_handle.lock().unwrap().replace(join_handle);
     Ok(Watcher::new(state))
@@ -256,12 +275,8 @@ fn run_watcher(runtime: WatchRuntime, _watcher: RecommendedWatcher) {
                             runtime.queue_depth.load(Ordering::SeqCst),
                             delay_ns,
                         );
-                        let io_error = notify_to_io_error(
-                            err,
-                            None,
-                            runtime.base_context.clone(),
-                            metrics,
-                        );
+                        let io_error =
+                            notify_to_io_error(err, None, runtime.base_context.clone(), metrics);
                         runtime.set_error(io_error);
                         break;
                     }
@@ -322,7 +337,10 @@ impl WatchRuntime {
     }
 
     fn set_error(&self, error: IoError) {
-        let mut guard = self.error_state.lock().expect("watcher error mutex poisoned");
+        let mut guard = self
+            .error_state
+            .lock()
+            .expect("watcher error mutex poisoned");
         guard.replace(error);
     }
 }
@@ -390,7 +408,12 @@ impl WatcherState {
                 .join()
                 .map_err(|_| IoError::new(IoErrorKind::UnexpectedEof, "watcher thread panicked"))?;
         }
-        if let Some(err) = self.error.lock().expect("watcher error mutex poisoned").take() {
+        if let Some(err) = self
+            .error
+            .lock()
+            .expect("watcher error mutex poisoned")
+            .take()
+        {
             return Err(err);
         }
         Ok(())
@@ -492,8 +515,7 @@ fn build_exclude_set(limits: &WatchLimits) -> IoResult<Option<Vec<Pattern>>> {
     }
     let mut patterns = Vec::with_capacity(limits.exclude_patterns.len());
     for pattern in &limits.exclude_patterns {
-        let compiled =
-            Pattern::new(pattern).map_err(|err| {
+        let compiled = Pattern::new(pattern).map_err(|err| {
             invalid_input_error(
                 format!("invalid watch exclude pattern `{pattern}`: {err}"),
                 None,
@@ -504,7 +526,11 @@ fn build_exclude_set(limits: &WatchLimits) -> IoResult<Option<Vec<Pattern>>> {
     Ok(Some(patterns))
 }
 
-fn watch_context(operation: &'static str, path: Option<PathBuf>, capability: &'static str) -> IoContext {
+fn watch_context(
+    operation: &'static str,
+    path: Option<PathBuf>,
+    capability: &'static str,
+) -> IoContext {
     let mut context = IoContext::new(operation).with_capability(capability);
     if let Some(path_buf) = path {
         context = context.with_path(path_buf);
@@ -557,7 +583,11 @@ impl WatchFeature {
     }
 
     fn is_supported(&self) -> bool {
-        cfg!(any(target_os = "linux", target_os = "macos", target_os = "windows"))
+        cfg!(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "windows"
+        ))
     }
 }
 

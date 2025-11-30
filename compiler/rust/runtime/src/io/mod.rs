@@ -4,6 +4,7 @@
 use std::{fs::File as StdFile, path::Path};
 
 mod adapters;
+mod buffer;
 mod buffered;
 mod context;
 mod effects;
@@ -13,12 +14,14 @@ mod file;
 mod metadata;
 mod options;
 mod permissions;
-mod scope;
 mod reader;
+mod scope;
 mod text_stream;
 mod watcher;
 mod watcher_audit;
 mod writer;
+
+use buffer::IoCopyBuffer;
 
 pub use adapters::{FsAdapter, WatcherAdapter};
 pub use buffered::{buffered, read_line, BufferedReader};
@@ -30,19 +33,17 @@ pub use file::File;
 pub use metadata::FileMetadata;
 pub use options::FileOptions;
 pub use permissions::FilePermissions;
-pub use scope::{
-    leak_tracker_snapshot, reset_leak_tracker, ScopedFileMode, ScopeGuard, TempDirGuard,
-    with_file, with_temp_dir,
-};
 pub use reader::Reader;
-pub use watcher::{
-    close_watcher, watch, watch_with_limits, WatchEvent, WatchLimits, Watcher,
+pub use scope::{
+    leak_tracker_snapshot, reset_leak_tracker, with_file, with_temp_dir, ScopeGuard,
+    ScopedFileMode, TempDirGuard,
 };
-pub use watcher_audit::{WatcherAuditEvent, WatcherAuditSnapshot};
 pub use text_stream::{
     decode_stream, encode_stream, BomHandling, InvalidSequenceStrategy, TextDecodeOptions,
     TextEncodeOptions,
 };
+pub use watcher::{close_watcher, watch, watch_with_limits, WatchEvent, WatchLimits, Watcher};
+pub use watcher_audit::{WatcherAuditEvent, WatcherAuditSnapshot};
 pub use writer::Writer;
 
 const IO_COPY_BUFFER_SIZE: usize = 64 * 1024;
@@ -54,14 +55,16 @@ where
     W: Writer + ?Sized,
 {
     let mut total: u64 = 0;
-    let mut buffer = [0_u8; IO_COPY_BUFFER_SIZE];
+    effects::record_buffer_allocation(IO_COPY_BUFFER_SIZE);
+    let mut buffer = IoCopyBuffer::lease(IO_COPY_BUFFER_SIZE);
     loop {
         let read = reader
-            .read(&mut buffer)
+            .read(&mut buffer[..])
             .map_err(|err| err.map_context(|ctx| ctx.with_bytes_processed(total)))?;
         if read == 0 {
             break;
         }
+        effects::record_buffer_usage(read);
         writer
             .write_all(&buffer[..read])
             .map_err(|err| err.map_context(|ctx| ctx.with_bytes_processed(total)))?;
@@ -89,10 +92,7 @@ where
         }
         Err(err) => {
             let effects = effects::take_io_effects_snapshot();
-            return Err(IoError::from_std(
-                err,
-                context.with_effects(effects),
-            ));
+            return Err(IoError::from_std(err, context.with_effects(effects)));
         }
     };
     let reader: &mut dyn Reader = &mut file;

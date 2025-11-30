@@ -5,11 +5,9 @@ use tempfile::tempdir;
 use reml_runtime::io::{File, FileOptions, IoErrorKind};
 
 #[cfg(target_family = "unix")]
-const METADATA_GOLDEN: &str =
-    include_str!("golden/core_io/file_ops/metadata_basic_unix.json");
+const METADATA_GOLDEN: &str = include_str!("golden/core_io/file_ops/metadata_basic_unix.json");
 #[cfg(target_family = "windows")]
-const METADATA_GOLDEN: &str =
-    include_str!("golden/core_io/file_ops/metadata_basic_windows.json");
+const METADATA_GOLDEN: &str = include_str!("golden/core_io/file_ops/metadata_basic_windows.json");
 
 #[test]
 fn file_create_write_metadata_remove() {
@@ -42,8 +40,8 @@ fn file_create_write_metadata_remove() {
             "modified_at_present": metadata.modified_at().is_some(),
         }
     });
-    let expected: serde_json::Value = serde_json::from_str(METADATA_GOLDEN)
-        .expect("metadata golden JSON");
+    let expected: serde_json::Value =
+        serde_json::from_str(METADATA_GOLDEN).expect("metadata golden JSON");
     assert_eq!(actual, expected);
 
     let mut reopen = File::open(&path).expect("open after create");
@@ -86,8 +84,7 @@ fn file_options_permissions_can_be_captured_unix() {
 fn file_options_permissions_can_be_captured_windows() {
     use reml_runtime::io::FilePermissions;
 
-    let options =
-        FileOptions::new().permissions(FilePermissions::windows_attributes(0x20));
+    let options = FileOptions::new().permissions(FilePermissions::windows_attributes(0x20));
     let snapshot = options
         .permissions_snapshot()
         .expect("permissions should be set");

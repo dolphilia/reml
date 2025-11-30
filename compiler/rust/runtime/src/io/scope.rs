@@ -1,6 +1,5 @@
 use std::{
-    env,
-    fs,
+    env, fs,
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, AtomicUsize, Ordering},
 };
@@ -55,9 +54,7 @@ where
     F: FnOnce(T),
 {
     fn drop(&mut self) {
-        if let (Some(value), Some(on_drop)) =
-            (self.value.take(), self.on_drop.take())
-        {
+        if let (Some(value), Some(on_drop)) = (self.value.take(), self.on_drop.take()) {
             on_drop(value);
         }
     }
@@ -97,10 +94,7 @@ where
 }
 
 /// 一時ディレクトリを作成し、スコープ終了時に削除する。
-pub fn with_temp_dir<F, T>(
-    prefix: impl AsRef<str>,
-    f: F,
-) -> IoResult<T>
+pub fn with_temp_dir<F, T>(prefix: impl AsRef<str>, f: F) -> IoResult<T>
 where
     F: FnOnce(&TempDirGuard) -> IoResult<T>,
 {

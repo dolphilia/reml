@@ -10,9 +10,11 @@ use std::path::{Component, Path as StdPath, PathBuf as StdPathBuf};
 
 use crate::text::Str;
 
+mod glob;
 mod security;
 mod string_utils;
 
+pub use self::glob::glob;
 pub use security::{
     is_safe_symlink, sandbox_path, validate_path, PathSecurityError, PathSecurityErrorKind,
     PathSecurityResult, SecurityPolicy,
@@ -49,6 +51,8 @@ pub enum PathErrorKind {
     NullByte,
     InvalidEncoding,
     UnsupportedPlatform,
+    InvalidPattern,
+    Io,
 }
 
 /// 文字列レベルでのパススタイル。
@@ -249,8 +253,7 @@ pub(super) fn validate_input(value: &str) -> PathResult<()> {
     }
     if value.as_bytes().iter().any(|b| *b == 0) {
         return Err(
-            PathError::new(PathErrorKind::NullByte, "path contains null byte")
-                .with_input(value),
+            PathError::new(PathErrorKind::NullByte, "path contains null byte").with_input(value),
         );
     }
     Ok(())

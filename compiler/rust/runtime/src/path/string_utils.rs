@@ -243,10 +243,11 @@ fn normalize_windows(value: &str) -> PathResult<NormalizedPath> {
         let (server, rest) = take_component(after);
         let (share, rest_after_share) = take_component(rest);
         if server.is_empty() || share.is_empty() {
-            return Err(
-                PathError::new(PathErrorKind::InvalidEncoding, "UNC path is missing server/share")
-                    .with_input(value),
-            );
+            return Err(PathError::new(
+                PathErrorKind::InvalidEncoding,
+                "UNC path is missing server/share",
+            )
+            .with_input(value));
         }
         root = PathRoot::WindowsUnc {
             server: server.to_string(),

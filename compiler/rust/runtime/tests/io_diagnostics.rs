@@ -1,24 +1,9 @@
+use std::io::{self, Read as StdRead, Write as StdWrite};
 use std::time::UNIX_EPOCH;
-use std::{
-    io::{
-        self,
-        Read as StdRead,
-        Write as StdWrite,
-    },
-};
 
 use reml_runtime::{
-    io::{
-        IoContext,
-        IoError,
-        IoErrorKind,
-        Reader as IoReader,
-        Writer as IoWriter,
-    },
-    prelude::{
-        ensure::IntoDiagnostic,
-        iter::EffectLabels,
-    },
+    io::{IoContext, IoError, IoErrorKind, Reader as IoReader, Writer as IoWriter},
+    prelude::{ensure::IntoDiagnostic, iter::EffectLabels},
 };
 use serde_json::Value;
 
@@ -49,15 +34,12 @@ fn io_error_into_diagnostic_matches_expected_subset() {
 #[test]
 fn unsupported_platform_error_includes_platform_metadata() {
     let context = IoContext::new("watch").with_capability("watcher.fschange");
-    let diagnostic = IoError::new(
-        IoErrorKind::UnsupportedPlatform,
-        "watcher feature disabled",
-    )
-    .with_context(context)
-    .with_platform("test-os")
-    .with_feature("watcher.fschange")
-    .into_diagnostic()
-    .into_json();
+    let diagnostic = IoError::new(IoErrorKind::UnsupportedPlatform, "watcher feature disabled")
+        .with_context(context)
+        .with_platform("test-os")
+        .with_feature("watcher.fschange")
+        .into_diagnostic()
+        .into_json();
 
     let io_extensions = diagnostic
         .get("extensions")
@@ -117,9 +99,8 @@ fn reader_error_carries_bytes_processed_in_context() {
 fn writer_write_all_reports_bytes_processed_on_failure() {
     let mut writer = PartialWriteFailure::new(5);
     let payload = [0_u8; 10];
-    let error =
-        <PartialWriteFailure as IoWriter>::write_all(&mut writer, &payload)
-            .expect_err("write_all should fail after partial progress");
+    let error = <PartialWriteFailure as IoWriter>::write_all(&mut writer, &payload)
+        .expect_err("write_all should fail after partial progress");
     let context = error
         .context()
         .expect("IoContext must be attached to write failure");
@@ -176,9 +157,9 @@ fn assert_contains(actual: &Value, expected: &Value) {
                 .as_array()
                 .expect("actual JSON should contain an array");
             for (index, expected_value) in expected_array.iter().enumerate() {
-                let actual_value = actual_array.get(index).unwrap_or_else(|| {
-                    panic!("missing index {index} in diagnostic JSON array")
-                });
+                let actual_value = actual_array
+                    .get(index)
+                    .unwrap_or_else(|| panic!("missing index {index} in diagnostic JSON array"));
                 assert_contains(actual_value, expected_value);
             }
         }
@@ -220,10 +201,7 @@ impl StdWrite for PartialWriteFailure {
             self.wrote_once = true;
             Ok(self.chunk.min(buf.len()))
         } else {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                "forced write failure",
-            ))
+            Err(io::Error::new(io::ErrorKind::Other, "forced write failure"))
         }
     }
 

@@ -32,11 +32,9 @@ impl WatcherEventRecorder {
             .lock()
             .expect("watcher audit state mutex poisoned");
         state.total_events = state.total_events.saturating_add(1);
-        state.events.push_back(WatcherAuditEvent::new(
-            event.clone(),
-            queue_size,
-            delay_ns,
-        ));
+        state
+            .events
+            .push_back(WatcherAuditEvent::new(event.clone(), queue_size, delay_ns));
         while state.events.len() > self.inner.capacity {
             state.events.pop_front();
         }
@@ -128,10 +126,7 @@ impl WatcherAuditEvent {
 
     fn into_value(self) -> Value {
         let mut map = JsonMap::new();
-        map.insert(
-            "kind".into(),
-            Value::String(self.event.kind().to_string()),
-        );
+        map.insert("kind".into(), Value::String(self.event.kind().to_string()));
         map.insert(
             "path".into(),
             Value::String(path_to_string(self.event.path())),

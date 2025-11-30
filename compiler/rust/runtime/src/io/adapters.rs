@@ -21,6 +21,7 @@ pub(crate) const CAP_FS_SYMLINK_MODIFY: &str = "fs.symlink.modify";
 pub(crate) const CAP_FS_WATCH_NATIVE: &str = "fs.watcher.native";
 pub(crate) const CAP_FS_WATCH_RECURSIVE: &str = "fs.watcher.recursive";
 pub(crate) const CAP_SECURITY_FS_POLICY: &str = "security.fs.policy";
+pub(crate) const CAP_MEMORY_BUFFERED_IO: &str = "memory.buffered_io";
 pub(crate) const CAP_WATCH_RESOURCE_LIMITS: &str = "watcher.resource_limits";
 
 /// ファイルシステム操作向け Capability を検証するアダプタ。
@@ -97,6 +98,15 @@ impl FsAdapter {
             &FS_POLICY_STAGE,
             CAP_SECURITY_FS_POLICY,
             StageRequirement::Exact(StageId::Stable),
+        )
+    }
+
+    /// `memory.buffered_io` Capability を検証する。
+    pub fn ensure_buffered_io_capability(&self) -> IoResult<()> {
+        self.ensure_stage(
+            &MEMORY_BUFFERED_IO_STAGE,
+            CAP_MEMORY_BUFFERED_IO,
+            StageRequirement::AtLeast(StageId::Beta),
         )
     }
 
@@ -205,6 +215,7 @@ static FS_PERMISSIONS_MODIFY_STAGE: OnceCell<Result<StageId, CapabilityError>> =
 static FS_SYMLINK_QUERY_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
 static FS_SYMLINK_MODIFY_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
 static FS_POLICY_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
+static MEMORY_BUFFERED_IO_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
 static FS_WATCH_NATIVE_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
 static FS_WATCH_RECURSIVE_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
 static WATCH_RESOURCE_LIMITS_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
@@ -223,6 +234,7 @@ mod tests {
         adapter.ensure_symlink_query().unwrap();
         adapter.ensure_symlink_modify().unwrap();
         adapter.ensure_security_policy().unwrap();
+        adapter.ensure_buffered_io_capability().unwrap();
     }
 
     #[test]

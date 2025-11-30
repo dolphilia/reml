@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
+use super::effects::WatchMetricsSnapshot;
 use crate::prelude::iter::EffectLabels;
 #[cfg(any(feature = "core_time", feature = "metrics"))]
 use crate::time::{self, Timestamp};
 #[cfg(not(any(feature = "core_time", feature = "metrics")))]
 use std::time::SystemTime as Timestamp;
-use super::effects::WatchMetricsSnapshot;
 
 /// IO 操作の文脈情報。
 #[derive(Debug, Clone)]
@@ -215,7 +215,10 @@ pub struct WatchStats {
 
 impl WatchStats {
     pub fn new(queue_size: u32, delay_ns: u64) -> Self {
-        Self { queue_size, delay_ns }
+        Self {
+            queue_size,
+            delay_ns,
+        }
     }
 
     pub fn queue_size(&self) -> u32 {

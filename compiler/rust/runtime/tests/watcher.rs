@@ -75,7 +75,8 @@ fn watch_with_limits_rejects_invalid_path() {
     let invalid_path = PathBuf::from("/non-existent/watch/path");
     let limits = WatchLimits::default();
 
-    let error = watch_with_limits(vec![invalid_path.clone()], limits, |_| {}).expect_err("watch should fail");
+    let error = watch_with_limits(vec![invalid_path.clone()], limits, |_| {})
+        .expect_err("watch should fail");
     assert_eq!(error.kind(), IoErrorKind::InvalidInput);
 }
 

@@ -3,10 +3,10 @@ use std::cmp;
 use crate::text::Str;
 
 use super::{
-    effects::{
-        record_buffer_allocation, record_buffer_usage,
-    },
-    take_io_effects_snapshot, IoContext, IoError, IoErrorKind, IoResult, Reader,
+    adapters,
+    buffer::IoCopyBuffer,
+    effects::{record_buffer_allocation, record_buffer_usage},
+    take_io_effects_snapshot, FsAdapter, IoContext, IoError, IoErrorKind, IoResult, Reader,
 };
 
 const MIN_BUFFER_CAPACITY: usize = 4 * 1024;
@@ -16,7 +16,7 @@ const MAX_BUFFER_CAPACITY: usize = 1024 * 1024;
 #[derive(Debug)]
 pub struct BufferedReader<R> {
     inner: R,
-    buffer: Vec<u8>,
+    buffer: IoCopyBuffer,
     start: usize,
     end: usize,
     context: IoContext,
@@ -44,13 +44,16 @@ where
 {
     pub fn new(reader: R, capacity: usize) -> IoResult<Self> {
         let normalized = normalize_capacity(capacity)?;
+        let mut context = buffered_reader_context();
+        FsAdapter::global()
+            .ensure_buffered_io_capability()
+            .map_err(|err| err.with_context(context.clone()))?;
         record_buffer_allocation(normalized);
-        let mut context = IoContext::new("buffered_reader");
         context.set_effects(take_io_effects_snapshot());
         context.update_buffer_usage(normalized, 0);
         Ok(Self {
             inner: reader,
-            buffer: vec![0_u8; normalized],
+            buffer: IoCopyBuffer::lease(normalized),
             start: 0,
             end: 0,
             context,
@@ -84,7 +87,7 @@ where
     fn refill(&mut self) -> IoResult<usize> {
         self.start = 0;
         self.end = 0;
-        let bytes = self.inner.read(&mut self.buffer)?;
+        let bytes = self.inner.read(&mut self.buffer[..])?;
         self.end = bytes;
         self.context
             .update_buffer_usage(self.buffer.len(), self.available());
@@ -162,16 +165,18 @@ where
 
 fn normalize_capacity(requested: usize) -> IoResult<usize> {
     if requested > MAX_BUFFER_CAPACITY {
-        return Err(
-            IoError::new(
-                IoErrorKind::InvalidInput,
-                "buffer capacity exceeds supported maximum (1 MiB)",
-            )
-            .with_context(IoContext::new("buffered_reader")),
-        );
+        return Err(IoError::new(
+            IoErrorKind::InvalidInput,
+            "buffer capacity exceeds supported maximum (1 MiB)",
+        )
+        .with_context(buffered_reader_context()));
     }
     let normalized = cmp::max(requested, MIN_BUFFER_CAPACITY);
     Ok(normalized)
+}
+
+fn buffered_reader_context() -> IoContext {
+    IoContext::new("buffered_reader").with_capability(adapters::CAP_MEMORY_BUFFERED_IO)
 }
 
 #[cfg(test)]
@@ -187,6 +192,15 @@ mod tests {
         assert!(effects_snapshot.mem);
         assert!(effects_snapshot.mem_bytes >= MIN_BUFFER_CAPACITY);
         assert_eq!(reader.capacity(), MIN_BUFFER_CAPACITY);
+        assert_eq!(
+            reader.context().capability(),
+            Some(adapters::CAP_MEMORY_BUFFERED_IO)
+        );
+        let buffer_stats = reader
+            .context()
+            .buffer()
+            .expect("buffer stats should be recorded");
+        assert_eq!(buffer_stats.capacity() as usize, MIN_BUFFER_CAPACITY);
     }
 
     #[test]

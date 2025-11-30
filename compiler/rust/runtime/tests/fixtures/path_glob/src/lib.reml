@@ -1,0 +1,5 @@
+# Reml library entry point fixture
+
+effect config {
+  path = "src/lib.reml"
+}
