@@ -106,3 +106,72 @@ fn with_reader_context(path: &Path) -> IoContext {
         .with_capability(adapters::CAP_IO_FS_READ)
         .with_effects(effects::blocking_io_effect_labels())
 }
+
+#[cfg(all(test, feature = "core-io"))]
+mod tests {
+    use super::*;
+    use std::io::{self, Read};
+    use tempfile::tempdir;
+
+    struct FailingReader;
+
+    impl Read for FailingReader {
+        fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "forced read failure for tests",
+            ))
+        }
+    }
+
+    #[test]
+    fn reader_failure_carries_effects_and_bytes_processed() {
+        let mut reader = FailingReader;
+        let mut buffer = [0_u8; 32];
+        let error = <FailingReader as Reader>::read(&mut reader, &mut buffer)
+            .expect_err("read should surface IoError");
+        let context = error
+            .context()
+            .expect("IoContext should be attached to read failure");
+        let effects = context.effects();
+        assert!(effects.io, "io effect flag should be set");
+        assert!(
+            effects.io_blocking,
+            "io_blocking effect flag should be set"
+        );
+        assert_eq!(
+            context.bytes_processed(),
+            Some(buffer.len() as u64),
+            "bytes_processed should match requested buffer length"
+        );
+        assert_eq!(
+            context.capability(),
+            Some(adapters::CAP_IO_FS_READ),
+            "read capability metadata should be recorded"
+        );
+    }
+
+    #[test]
+    fn with_reader_error_reports_path_and_capability() {
+        let tmp = tempdir().expect("temp dir");
+        let missing = tmp.path().join("missing.txt");
+        let error = with_reader(&missing, |_reader| Ok(()))
+            .expect_err("opening a missing file should fail");
+        let context = error
+            .context()
+            .expect("IoContext should be attached to with_reader failure");
+        assert_eq!(
+            context.capability(),
+            Some(adapters::CAP_IO_FS_READ),
+            "with_reader must capture the read capability id"
+        );
+        assert_eq!(
+            context.path().map(|path| path.as_path()),
+            Some(missing.as_path()),
+            "missing path should be propagated"
+        );
+        let effects = context.effects();
+        assert!(effects.io, "io effect flag must be set");
+        assert!(effects.io_blocking, "blocking flag must remain set");
+    }
+}

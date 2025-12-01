@@ -18,6 +18,10 @@ core_numeric = ["decimal", "bigint", "ratio", "metrics"]
 "core-numeric" = ["core_numeric"]
 core_time = ["metrics"]
 "core-time" = ["core_time"]
+core_io = []
+"core-io" = ["core_io"]
+core_path = []
+"core-path" = ["core_path"]
 
 [[bin]]
 name = "text_stream_decode"

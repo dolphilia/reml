@@ -501,3 +501,51 @@ pub(crate) fn encode_effect_labels(labels: EffectLabels) -> Map<String, Value> {
     );
     effects
 }
+
+#[cfg(all(test, feature = "core-path"))]
+mod tests {
+    use super::{glob, validate_path, PathBuf, SecurityPolicy};
+    use crate::prelude::ensure::{GuardDiagnostic, IntoDiagnostic};
+    use crate::text::Str;
+    use serde_json::Value;
+    use std::path::PathBuf as StdPathBuf;
+
+    fn boolean_extension(diag: &GuardDiagnostic, key: &str) -> Option<bool> {
+        diag.extensions
+            .get("effects")
+            .and_then(Value::as_object)
+            .and_then(|effects| effects.get(key))
+            .and_then(Value::as_bool)
+    }
+
+    #[test]
+    fn glob_invalid_pattern_records_io_effects() {
+        let error = glob(Str::from("["))
+            .expect_err("invalid pattern should produce a PathError");
+        let diagnostic = error.into_diagnostic();
+        assert_eq!(
+            boolean_extension(&diagnostic, "io"),
+            Some(true),
+            "glob errors must mark io effect"
+        );
+        assert_eq!(
+            boolean_extension(&diagnostic, "io_blocking"),
+            Some(true),
+            "glob errors must mark io_blocking effect"
+        );
+    }
+
+    #[test]
+    fn validate_path_violation_marks_security_effect() {
+        let path = PathBuf::from_std(StdPathBuf::from("../etc/passwd"));
+        let policy = SecurityPolicy::new();
+        let error = validate_path(&path, &policy)
+            .expect_err("relative path should violate the default policy");
+        let diagnostic = error.into_diagnostic();
+        assert_eq!(
+            boolean_extension(&diagnostic, "security"),
+            Some(true),
+            "security policy diagnostics must set the security effect flag"
+        );
+    }
+}

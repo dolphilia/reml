@@ -33,6 +33,10 @@ Usage: scripts/validate-diagnostic-json.sh [PATH...]
 --suite numeric_time を指定した場合は以下を検証します:
   - tests/expected/time_{now,sleep}.json
   - compiler/rust/runtime/tests/golden/numeric_time 配下の JSON/JSONL
+--suite core_io を指定した場合は以下を検証します:
+  - compiler/rust/runtime/tests/data/core_io
+  - compiler/rust/runtime/tests/golden/core_io
+  - tests/data/core_path
 --section config を指定した場合は `schema_diff.*` キーの存在をチェックします。
 
 PATH には JSON ファイルまたはディレクトリを指定できます。
@@ -93,7 +97,7 @@ while [[ "$#" -gt 0 ]]; do
   esac
 done
 
-if [[ "$SUITE" != "numeric_time" ]]; then
+if [[ "$SUITE" != "numeric_time" && "$SUITE" != "core_io" ]]; then
   if ! command -v node >/dev/null 2>&1; then
     echo "[validate-diagnostic-json] error: Node.js が見つかりません" >&2
     exit 1
@@ -106,7 +110,7 @@ if [[ "$SUITE" != "numeric_time" ]]; then
   fi
 fi
 
-if [[ "$SUITE" == "numeric_time" ]]; then
+if [[ "$SUITE" == "numeric_time" || "$SUITE" == "core_io" ]] ; then
   GENERIC_JSON_SUITE=1
 fi
 
@@ -126,6 +130,11 @@ if [[ "${#TARGET_ARGS[@]}" -eq 0 ]]; then
     TARGETS+=("$ROOT_DIR/tests/expected/time_now.json")
     TARGETS+=("$ROOT_DIR/tests/expected/time_sleep.json")
     TARGETS+=("$ROOT_DIR/compiler/rust/runtime/tests/golden/numeric_time")
+  elif [[ "$SUITE" == "core_io" ]]; then
+    GENERIC_JSON_SUITE=1
+    TARGETS+=("$ROOT_DIR/compiler/rust/runtime/tests/data/core_io")
+    TARGETS+=("$ROOT_DIR/compiler/rust/runtime/tests/golden/core_io")
+    TARGETS+=("$ROOT_DIR/tests/data/core_path")
   else
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/diagnostics")
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/audit")
