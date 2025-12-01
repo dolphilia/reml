@@ -14,6 +14,9 @@ pub struct FormatterContext<'a> {
     pub program_name: &'a str,
     pub raw_args: &'a [String],
     pub input_path: &'a Path,
+    pub run_id: Uuid,
+    pub phase: &'a str,
+    pub command: &'a str,
 }
 
 impl<'a> FormatterContext<'a> {
@@ -26,6 +29,7 @@ impl<'a> FormatterContext<'a> {
                 "args": self.raw_args,
                 "workspace": default_workspace_root(),
             },
+            "run_id": self.run_id.to_string(),
             "items": [
                 {
                     "kind": "cli-command",
@@ -85,6 +89,10 @@ pub fn complete_audit_metadata(
         "audit.timestamp".to_string(),
         json!(normalized_timestamp.clone()),
     );
+    metadata.insert("cli.run_id".to_string(), json!(context.run_id.to_string()));
+    metadata.insert("cli.phase".to_string(), json!(context.phase));
+    metadata.insert("cli.command".to_string(), json!(context.command));
+    metadata.insert("cli.program".to_string(), json!(context.program_name));
     let change_set = context.change_set();
     metadata.insert("cli.change_set".to_string(), change_set.clone());
     propagate_collections_diff_metadata(metadata, &change_set);

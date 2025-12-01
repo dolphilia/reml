@@ -4,6 +4,7 @@ use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::io::{self, Write};
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -12,9 +13,7 @@ use reml_adapter::target::{self, TargetInference};
 use reml_frontend::diagnostic::{
     effects,
     formatter::{self, FormatterContext},
-    json as diag_json,
-    unicode,
-    DiagnosticDomain, FrontendDiagnostic, StageAuditPayload,
+    json as diag_json, unicode, DiagnosticDomain, FrontendDiagnostic, StageAuditPayload,
 };
 use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::{lex_source_with_options, IdentifierProfile, LexerOptions};
@@ -36,6 +35,7 @@ use reml_frontend::typeck::{
 };
 use reml_runtime::text::LocaleId;
 use serde::Serialize;
+use uuid::Uuid;
 
 const PARSER_NAMESPACE: &str = "rust.frontend";
 const PARSER_NAME: &str = "compilation_unit";
@@ -43,8 +43,145 @@ const PARSER_ORIGIN: &str = "reml_frontend";
 const PARSER_FINGERPRINT: &str = "rust-frontend-0001";
 const SCHEMA_VERSION: &str = "3.0.0-alpha";
 
+#[derive(Clone, Copy, Debug)]
+enum OutputFormat {
+    Human,
+    Json,
+    Lsp,
+}
+
+impl OutputFormat {
+    fn parse(value: &str) -> Result<Self, String> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "human" => Ok(Self::Human),
+            "json" => Ok(Self::Json),
+            "lsp" => Ok(Self::Lsp),
+            other => Err(format!(
+                "--output に指定した値 `{other}` は human/json/lsp のいずれかである必要があります"
+            )),
+        }
+    }
+}
+
+impl Default for OutputFormat {
+    fn default() -> Self {
+        Self::Json
+    }
+}
+
+#[derive(Clone, Copy)]
+enum CliCommandKind {
+    Check,
+}
+
+impl CliCommandKind {
+    fn as_str(&self) -> &'static str {
+        match self {
+            CliCommandKind::Check => "Check",
+        }
+    }
+}
+
+impl Default for CliCommandKind {
+    fn default() -> Self {
+        Self::Check
+    }
+}
+
+#[derive(Clone, Copy)]
+enum CliPhaseKind {
+    Reporting,
+}
+
+impl CliPhaseKind {
+    fn as_str(&self) -> &'static str {
+        match self {
+            CliPhaseKind::Reporting => "Reporting",
+        }
+    }
+}
+
+impl Default for CliPhaseKind {
+    fn default() -> Self {
+        Self::Reporting
+    }
+}
+
+#[derive(Serialize)]
+struct CliDiagnosticEnvelope {
+    command: String,
+    phase: String,
+    run_id: String,
+    diagnostics: Vec<Value>,
+    summary: CliSummary,
+    exit_code: CliExitCode,
+}
+
+impl CliDiagnosticEnvelope {
+    fn new(
+        command: &CliCommandKind,
+        phase: &CliPhaseKind,
+        run_id: Uuid,
+        diagnostics: Vec<Value>,
+        summary: CliSummary,
+        exit_code: CliExitCode,
+    ) -> Self {
+        Self {
+            command: command.as_str().to_string(),
+            phase: phase.as_str().to_string(),
+            run_id: run_id.to_string(),
+            diagnostics,
+            summary,
+            exit_code,
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct CliSummary {
+    inputs: Vec<String>,
+    started_at: String,
+    finished_at: String,
+    artifact: Option<String>,
+    stats: Map<String, Value>,
+}
+
+#[derive(Clone, Serialize)]
+struct CliExitCode {
+    label: &'static str,
+    value: i32,
+}
+
+impl CliExitCode {
+    fn success() -> Self {
+        Self {
+            label: "success",
+            value: 0,
+        }
+    }
+
+    fn warning() -> Self {
+        Self {
+            label: "warning",
+            value: 2,
+        }
+    }
+
+    fn failure() -> Self {
+        Self {
+            label: "failure",
+            value: 1,
+        }
+    }
+
+    fn value(&self) -> i32 {
+        self.value
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args()?;
+    let started_at = formatter::current_timestamp();
     install_typecheck_config(&args.typecheck_config)?;
     let input_path = args.input.clone();
     let source = fs::read_to_string(&input_path)?;
@@ -170,17 +307,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     diagnostics_entries.append(&mut type_diagnostics);
     let diagnostics_json = Value::Array(diagnostics_entries.clone());
-    let diag_document = json!({
-        "input": input_path,
-        "diagnostics": diagnostics_json.clone(),
-        "run_config": runconfig_top_level.clone(),
-        "parse_result": parse_result.clone(),
-        "stream_meta": stream_meta.clone(),
-    });
-
-    println!("{}", serde_json::to_string_pretty(&diag_document)?);
-
-    if let Some(path) = args.parse_debug_output {
+    if let Some(path) = args.parse_debug_output.as_ref() {
         let parse_debug = json!({
             "parser_run_config": runconfig_top_level.clone(),
             "input": input_path,
@@ -226,13 +353,265 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         write_dualwrite_parse_payload(&guards, &result, &runconfig_top_level)?;
     }
 
-    Ok(())
+    let finished_at = formatter::current_timestamp();
+    let summary = build_cli_summary(
+        &args,
+        &input_path,
+        &started_at,
+        &finished_at,
+        &runconfig_top_level,
+        &parse_result,
+        &stream_meta,
+        diagnostics_json
+            .as_array()
+            .map(|arr| arr.len())
+            .unwrap_or(0),
+    );
+    let exit_code = determine_exit_code(&diagnostics_entries);
+    let envelope = CliDiagnosticEnvelope::new(
+        &args.command,
+        &args.phase,
+        args.run_id,
+        diagnostics_entries,
+        summary,
+        exit_code.clone(),
+    );
+    emit_cli_output(&args, &envelope, &input_path)?;
+    std::process::exit(exit_code.value());
 }
 
 fn install_typecheck_config(config: &TypecheckConfig) -> Result<(), InstallConfigError> {
     match typeck::install_config(config.clone()) {
         Ok(()) => Ok(()),
         Err(InstallConfigError::AlreadyInstalled) => Ok(()),
+    }
+}
+
+fn build_cli_summary(
+    args: &CliArgs,
+    input_path: &Path,
+    started_at: &str,
+    finished_at: &str,
+    runconfig_top_level: &Value,
+    parse_result: &Value,
+    stream_meta: &Value,
+    diagnostic_count: usize,
+) -> CliSummary {
+    let mut stats = Map::new();
+    stats.insert("diagnostic_count".to_string(), json!(diagnostic_count));
+    stats.insert("run_config".to_string(), runconfig_top_level.clone());
+    stats.insert("parse_result".to_string(), parse_result.clone());
+    stats.insert("stream_meta".to_string(), stream_meta.clone());
+    stats.insert("cli_command".to_string(), json!(args.cli_command()));
+    CliSummary {
+        inputs: vec![input_path.display().to_string()],
+        started_at: started_at.to_string(),
+        finished_at: finished_at.to_string(),
+        artifact: None,
+        stats,
+    }
+}
+
+fn determine_exit_code(diagnostics: &[Value]) -> CliExitCode {
+    let mut rank = 0;
+    for diag in diagnostics {
+        if let Some(severity) = diag.get("severity").and_then(|value| value.as_str()) {
+            match severity {
+                "error" => rank = rank.max(3),
+                "warning" => rank = rank.max(2),
+                "info" => rank = rank.max(1),
+                _ => {}
+            }
+        }
+    }
+    match rank {
+        3 => CliExitCode::failure(),
+        2 => CliExitCode::warning(),
+        _ => CliExitCode::success(),
+    }
+}
+
+fn emit_cli_output(
+    args: &CliArgs,
+    envelope: &CliDiagnosticEnvelope,
+    input_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match args.output_format {
+        OutputFormat::Json => {
+            let line = serde_json::to_string(envelope)?;
+            println!("{line}");
+        }
+        OutputFormat::Human => render_human_output(envelope)?,
+        OutputFormat::Lsp => emit_lsp_output(envelope, input_path)?,
+    }
+    Ok(())
+}
+
+fn render_human_output(envelope: &CliDiagnosticEnvelope) -> io::Result<()> {
+    let mut stderr = io::stderr();
+    for diag in &envelope.diagnostics {
+        let severity = diag
+            .get("severity")
+            .and_then(|value| value.as_str())
+            .unwrap_or("unknown");
+        let message = diag
+            .get("message")
+            .and_then(|value| value.as_str())
+            .unwrap_or("");
+        writeln!(stderr, "{severity}: {message}")?;
+        let location = diagnostic_location_label(diag);
+        if !location.is_empty() {
+            writeln!(stderr, "  --> {location}")?;
+        }
+        if let Some(code) = diag.get("code").and_then(|value| value.as_str()) {
+            if !code.trim().is_empty() {
+                writeln!(stderr, "  code: {code}")?;
+            }
+        }
+        writeln!(stderr)?;
+    }
+    writeln!(
+        stderr,
+        "[{}] diagnostics={}, exit={}",
+        envelope.command,
+        envelope.diagnostics.len(),
+        envelope.exit_code.label
+    )?;
+    Ok(())
+}
+
+fn emit_lsp_output(
+    envelope: &CliDiagnosticEnvelope,
+    input_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let uri = path_to_uri(input_path);
+    let diagnostics = envelope
+        .diagnostics
+        .iter()
+        .map(convert_to_lsp_diagnostic)
+        .collect::<Vec<_>>();
+    let publish = json!({
+        "jsonrpc": "2.0",
+        "method": "textDocument/publishDiagnostics",
+        "params": {
+            "uri": uri,
+            "diagnostics": diagnostics,
+            "version": 1,
+        }
+    });
+    println!("{}", serde_json::to_string(&publish)?);
+    let log_message = json!({
+        "jsonrpc": "2.0",
+        "method": "window/logMessage",
+        "params": {
+            "type": 4,
+            "message": format!(
+                "[{}] diagnostics={}, exit={}",
+                envelope.command,
+                envelope.diagnostics.len(),
+                envelope.exit_code.label
+            ),
+        }
+    });
+    println!("{}", serde_json::to_string(&log_message)?);
+    Ok(())
+}
+
+fn convert_to_lsp_diagnostic(diag: &Value) -> Value {
+    let severity = diag
+        .get("severity")
+        .and_then(|value| value.as_str())
+        .unwrap_or("error");
+    let severity_value = match severity {
+        "warning" => 2,
+        "info" => 3,
+        "hint" => 4,
+        _ => 1,
+    };
+    let message = diag
+        .get("message")
+        .and_then(|value| value.as_str())
+        .unwrap_or("")
+        .to_string();
+    let code = diag.get("code").cloned().unwrap_or(Value::Null);
+    let range = lsp_range_from_primary(diag.get("primary"));
+    let data = diag.clone();
+    let structured_hints = diag
+        .get("structured_hints")
+        .cloned()
+        .unwrap_or_else(|| Value::Array(Vec::new()));
+    json!({
+        "range": range,
+        "severity": severity_value,
+        "code": code,
+        "source": "reml_frontend",
+        "message": message,
+        "data": {
+            "diagnostic": data,
+            "structured_hints": structured_hints,
+        }
+    })
+}
+
+fn lsp_range_from_primary(primary: Option<&Value>) -> Value {
+    if let Some(Value::Object(map)) = primary {
+        let start_line = map
+            .get("start_line")
+            .and_then(|value| value.as_i64())
+            .unwrap_or(1)
+            .saturating_sub(1);
+        let start_col = map
+            .get("start_col")
+            .and_then(|value| value.as_i64())
+            .unwrap_or(1)
+            .saturating_sub(1);
+        let end_line = map
+            .get("end_line")
+            .and_then(|value| value.as_i64())
+            .unwrap_or(start_line + 1)
+            .saturating_sub(1);
+        let end_col = map
+            .get("end_col")
+            .and_then(|value| value.as_i64())
+            .unwrap_or(start_col + 1)
+            .saturating_sub(1);
+        return json!({
+            "start": { "line": start_line, "character": start_col },
+            "end": { "line": end_line, "character": end_col },
+        });
+    }
+    json!({
+        "start": { "line": 0, "character": 0 },
+        "end": { "line": 0, "character": 0 },
+    })
+}
+
+fn diagnostic_location_label(diag: &Value) -> String {
+    if let Some(primary) = diag.get("primary").and_then(|value| value.as_object()) {
+        let file = primary
+            .get("file")
+            .and_then(|value| value.as_str())
+            .unwrap_or("<unknown>");
+        let line = primary
+            .get("start_line")
+            .and_then(|value| value.as_i64())
+            .unwrap_or(0);
+        let column = primary
+            .get("start_col")
+            .and_then(|value| value.as_i64())
+            .unwrap_or(0);
+        return format!("{file}:{line}:{column}");
+    }
+    String::new()
+}
+
+fn path_to_uri(path: &Path) -> String {
+    if path.is_absolute() {
+        format!("file://{}", path.display())
+    } else if let Ok(absolute) = path.canonicalize() {
+        format!("file://{}", absolute.display())
+    } else {
+        format!("file://{}", path.display())
     }
 }
 
@@ -251,6 +630,10 @@ struct CliArgs {
     raw_args: Vec<String>,
     input: PathBuf,
     parse_debug_output: Option<PathBuf>,
+    output_format: OutputFormat,
+    command: CliCommandKind,
+    phase: CliPhaseKind,
+    run_id: Uuid,
     typecheck_config: TypecheckConfig,
     dualwrite: Option<DualwriteCliOpts>,
     emit_typed_ast: Option<PathBuf>,
@@ -396,6 +779,14 @@ impl CliArgs {
             .chain(self.raw_args.iter().cloned())
             .collect::<Vec<_>>()
             .join(" ")
+    }
+
+    fn command_label(&self) -> &'static str {
+        self.command.as_str()
+    }
+
+    fn phase_label(&self) -> &'static str {
+        self.phase.as_str()
     }
 }
 
@@ -640,6 +1031,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut emit_audit = false;
     let mut show_stage_context = false;
     let mut diagnostics_stream = false;
+    let mut output_format = OutputFormat::default();
     let mut run_config = RunSettings::default();
     let mut stream_config = StreamSettings::default();
     let mut runtime_capabilities: Vec<RuntimeCapability> = Vec::new();
@@ -763,6 +1155,12 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .next()
                     .ok_or_else(|| "--emit-impl-registry は出力パスを伴う必要があります")?;
                 emit_impl_registry = Some(PathBuf::from(path));
+            }
+            "--output" | "--format" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--output は human|json|lsp のいずれかを指定してください")?;
+                output_format = OutputFormat::parse(&value)?;
             }
             "--emit-tokens" => {
                 let path = args
@@ -945,6 +1343,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         case_label: dualwrite_case_label.expect("validated together"),
         root: dualwrite_root,
     });
+    let run_id = Uuid::new_v4();
 
     let (target_inference, target_errors) = match target::infer_target_from_env() {
         Ok(inference) => (inference, 0),
@@ -986,6 +1385,10 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         raw_args: raw_cli_args,
         input,
         parse_debug_output: parse_debug,
+        output_format,
+        command: CliCommandKind::default(),
+        phase: CliPhaseKind::default(),
+        run_id,
         typecheck_config: builder.build(),
         dualwrite,
         emit_ast,
@@ -1437,6 +1840,9 @@ fn build_parser_diagnostics(
                 program_name: &args.program_name,
                 raw_args: &args.raw_args,
                 input_path,
+                run_id: args.run_id,
+                phase: args.phase_label(),
+                command: args.command_label(),
             };
             let audit_envelope = formatter::finalize_audit_metadata(
                 &mut metadata,
@@ -1561,6 +1967,9 @@ fn build_type_diagnostics(
                 program_name: &args.program_name,
                 raw_args: &args.raw_args,
                 input_path,
+                run_id: args.run_id,
+                phase: args.phase_label(),
+                command: args.command_label(),
             };
             let audit_envelope = formatter::complete_audit_metadata(
                 &mut metadata,

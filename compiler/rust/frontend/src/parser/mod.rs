@@ -636,9 +636,7 @@ pub fn unicode_error_to_parse_error(
     error
         .context
         .push(format!("unicode.{:?}", unicode_error.kind()).to_lowercase());
-    error.unicode = Some(
-        UnicodeDetail::from_error(unicode_error).with_phase(phase.to_string()),
-    );
+    error.unicode = Some(UnicodeDetail::from_error(unicode_error).with_phase(phase.to_string()));
     error
 }
 

@@ -11,6 +11,21 @@
 4. 差分が発生した場合、`tooling/lsp/tests/client_compat/fixtures/` および `compiler/ocaml/tests/golden/diagnostics/` を比較し、意図した変更か確認する。
 5. RunConfig 切替シナリオを記録する場合は `tmp/diagnostics-output/runconfig/` を作成し、`remlc --require-eof examples/cli/add.reml --format json --emit-ast --packrat --left-recursion=auto` など CLI フラグを組み合わせて出力を保存する。`scripts/validate-diagnostic-json.sh tmp/diagnostics-output/runconfig` を実行し、`extensions.config.*` に CLI の設定値が反映されていることを確認する。
 
+<a id="cli-output-note"></a>
+### 1.1 CLI 出力モード差分（2029-07-05 更新）
+- Run ID `20290705-cli-output` で `reml_frontend --output {human|json|lsp}` を実装済み。`json` は `CliDiagnosticEnvelope` を NDJSON 形式で 1 行出力し、`human` は標準エラーへ整形した診断 + サマリ、`lsp` は `textDocument/publishDiagnostics` / `window/logMessage` を 2 行連続で出力する。
+- サンプル取得コマンド:
+  ```
+  reml_frontend \
+    --output json \
+    --emit-parse-debug tmp/cli-output.json \
+    --streaming \
+    examples/spec/ch1/effect_handler.reml \
+    > reports/dual-write/front-end/samples/20290705-cli-output.jsonl
+  ```
+  `--output human` / `--output lsp` も同じ入力で実行し、`tmp/cli-output.{human,lsp}.log` を `reports/dual-write/front-end/samples/` に保存する。Run ID とファイルパスを `reports/spec-audit/ch0/links.md#cli-output` へ追記しておくとレビュー時に参照しやすい。
+- `scripts/validate-diagnostic-json.sh` で JSON スキーマを検証した後、Human/LSP については `diff -u tmp/cli-output.expected tmp/cli-output.{human,lsp}.log` で目視確認を行う。`npm run ci --prefix tooling/lsp/tests/client_compat` は LSP 出力ログを `tooling/lsp/tests/client_compat/fixtures/` へ反映する前に必ず通す。
+
 ## 2. 差分レポートのまとめ方
 - 変更前後の JSON を `jq --sort-keys` で整形し、`diff -u` で比較する。
 - `effects.*` や `bridge.*` など拡張キーの追加は、対応する仕様書 (`docs/spec/3-6-core-diagnostics-audit.md` 等) を参照して説明を添える。とくに `effect.required_capabilities` / `effect.actual_capabilities` / `effect.stage.required_capabilities` / `effect.stage.actual_capabilities` の配列化は Phase 2-5 EFFECT-003 の成果物として扱い、レビュー時に配列内容と `capabilities_detail` の同期を確認する。

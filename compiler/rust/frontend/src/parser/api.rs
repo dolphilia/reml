@@ -7,11 +7,11 @@
 use super::ParserTraceEvent;
 use crate::diagnostic::{ExpectedToken, FrontendDiagnostic};
 use crate::span::Span;
-use crate::unicode::UnicodeDetail;
 use crate::streaming::{
     PackratCacheEntry, PackratSnapshot, PackratStats, StreamFlowState, StreamMetrics, TraceFrame,
 };
 use crate::token::Token;
+use crate::unicode::UnicodeDetail;
 use indexmap::IndexMap;
 use serde_json::Value;
 use std::str::FromStr;

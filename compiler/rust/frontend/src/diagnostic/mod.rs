@@ -13,8 +13,8 @@ pub mod json;
 pub mod recover;
 pub mod unicode;
 
-pub use recover::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 pub use effects::StageAuditPayload;
+pub use recover::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 
 pub(crate) const EXPECTED_PLACEHOLDER_TOKEN: &str = "解析継続トークン";
 pub(crate) const EXPECTED_EMPTY_HUMANIZED: &str = "ここで解釈可能な構文が見つかりません";
@@ -156,6 +156,11 @@ impl DiagnosticSpanLabel {
 pub struct DiagnosticHint {
     pub message: Option<String>,
     pub actions: Vec<DiagnosticFixIt>,
+    pub id: Option<String>,
+    pub title: Option<String>,
+    pub kind: Option<String>,
+    pub span: Option<Span>,
+    pub payload: Option<Value>,
 }
 
 impl DiagnosticHint {
@@ -163,6 +168,11 @@ impl DiagnosticHint {
         Self {
             message: Some(message.into()),
             actions: Vec::new(),
+            id: None,
+            title: None,
+            kind: None,
+            span: None,
+            payload: None,
         }
     }
 
@@ -173,6 +183,30 @@ impl DiagnosticHint {
 
     pub fn push_action(&mut self, action: DiagnosticFixIt) {
         self.actions.push(action);
+    }
+
+    pub fn with_id(mut self, id: impl Into<String>) -> Self {
+        self.id = Some(id.into());
+        self
+    }
+
+    pub fn with_title(mut self, title: impl Into<String>) -> Self {
+        self.title = Some(title.into());
+        self
+    }
+
+    pub fn with_kind(mut self, kind: impl Into<String>) -> Self {
+        self.kind = Some(kind.into());
+        self
+    }
+
+    pub fn with_span(mut self, span: Span) -> Self {
+        self.span = Some(span);
+        self
+    }
+
+    pub fn set_payload(&mut self, payload: Value) {
+        self.payload = Some(payload);
     }
 }
 
@@ -664,9 +698,7 @@ impl DiagnosticBuilder {
     fn parse_expected_key(diagnostic: &FrontendDiagnostic) -> Option<(u32, u32)> {
         match diagnostic.expected_message_key.as_deref()? {
             key if key == PARSE_EXPECTED_KEY || key == PARSE_EXPECTED_EMPTY_KEY => {
-                diagnostic
-                    .primary_span()
-                    .map(|span| (span.start, span.end))
+                diagnostic.primary_span().map(|span| (span.start, span.end))
             }
             _ => None,
         }

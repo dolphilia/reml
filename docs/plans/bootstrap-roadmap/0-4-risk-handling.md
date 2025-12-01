@@ -126,6 +126,18 @@
 - 関連フェーズ: Phase 2 (2-7, 2-8)
 - 参照: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §5、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md#0-3-7c-診断ドメイン可視化メトリクス運用2026-12-21-更新`、`reports/audit/dashboard/diagnostics.md`, `reports/audit/phase2-7/diagnostics-domain-20261221.json`
 - 担当: Phase 2-8 Diagnostics/Plugin チーム
+- <a id="diagnostic-lsp-fixture-drift"></a>
+- 登録日: 2029-07-05
+- タイトル: LSP フィクスチャのスキーマドリフト
+- カテゴリ: 互換性
+- 詳細: `tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-*.json` が Phase 2-4 時点の `schema_version = "2.0.0-draft"`・`severity = 1` など旧表現のまま凍結されており、Rust Frontend が出力する `schema_version = "3.0.0-alpha"`（`compiler/rust/frontend/src/bin/reml_frontend.rs:150-229` + `compiler/rust/frontend/src/diagnostic/json.rs:5-190`）や `severity = "error"` との整合を検証できない。`jq '.[].schema_version' tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-sample.json` → `"2.0.0-draft"`、`jq '.[0] | has("span_trace")' tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-stream.json` → `false` の通り、`span_trace`／`effect.stage.*` が欠落し LSP CI で Stage/Trace 回帰を検知できないリスクが顕在化している。
+- 進捗: Run ID `20290705-cli-output` で `reml_frontend --output lsp` を実装し、CLI から LSP 互換メッセージを生成できるようになった。引き続きフィクスチャを Rust 版出力で再生成し、`schema_version = "3.0.0-alpha"` と `structured_hints` の反映を完了させる必要がある。
+- 対応案: フィクスチャと `tooling/lsp/tests/client_compat` のスキーマを `schema_version = "3.0.0-alpha"` へ更新し、`severity` を文字列 Enum に揃えた上で `span_trace`・`effect.stage.*`・`structured_hints` を Rust 出力からダンプするリジェネレーターを追加する。更新後は `npm run ci --prefix tooling/lsp/tests/client_compat` と `scripts/validate-diagnostic-json.sh --suite lsp --effect-tag diagnostic` をゲートに設定し、`reports/diagnostic-format-regression.md` の CLI/LSP 差分節（§1.1）へ Run ID を追記する。
+- 期限: 2029-08-15
+- 状態: Open
+- 関連フェーズ: Phase 3 (3-6)
+- 参照: `docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md#1-3`, `reports/diagnostic-format-regression.md#cli-output-note`, `tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-sample.json`, `tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-stream.json`
+- 担当: Phase 3 Diagnostics/LSP チーム
 - 登録日: 2027-03-30
 - タイトル: Unicode Data Drift（R-041）
 - カテゴリ: 互換性

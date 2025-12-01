@@ -63,6 +63,19 @@
     - 1.3.b LSP 互換性は `tooling/lsp/tests/client_compat` の JSON フィクスチャを `jq` で確認し、欠落フィールドがあれば `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` にリスク ID を追加する。
     - 1.3.c CLI 側は `reml_frontend --format json|human` のサンプル出力を `reports/diagnostic-format-regression.md` へ再収集し、差分が 0 であることを確認して記録する。
 
+#### 1.3 実施結果（Run ID: 20290705-cli-lsp-format）
+- 1.3.a 仕様と実装の差異を洗い出すため、`docs/spec/3-6-core-diagnostics-audit.md` §10–11 を起点に CLI/LSP 出力要件の表を作成した。Rust 実装は `compiler/rust/frontend/src/bin/reml_frontend.rs` および `compiler/rust/frontend/src/diagnostic/json.rs` へ集約されているため、該当箇所を精査した結果を下表にまとめた。`structured_hints` のように仕様書では CLI/LSP 双方での提示が前提になっている項目が未実装であること、`CliDiagnosticEnvelope`/`--output` 系フラグが存在しないことを明示し、今後の実装優先度を評価できるようにした。
+
+| 項目 | 仕様参照 | Rust 実装 | 評価 | 補足 |
+| --- | --- | --- | --- | --- |
+| `CliDiagnosticEnvelope` と `--output human|json|lsp` 切替 | `docs/spec/3-6-core-diagnostics-audit.md` §10–11 | `compiler/rust/frontend/src/bin/reml_frontend.rs` に `OutputFormat`/`CliDiagnosticEnvelope`/`CliExitCode` を実装し、`Run ID: 20290705-cli-output` で `--output {human|json|lsp}` が動作する状態を確認済み。JSON は NDJSON 1 行、Human は stderr 整形、LSP は `publishDiagnostics` + `logMessage` を送出する | ✅ | `reports/diagnostic-format-regression.md#cli-output-note` にサンプル取得手順を記録し、`docs/spec/3-6-core-diagnostics-audit.md` の CLI プロトコルと整合する `summary`/`phase`/`command`/`exit_code` を出力できるようになった。 |
+| 期待集合 (`expected`) と Recover ヒント | `docs/spec/3-6-core-diagnostics-audit.md` §2, §10 | `compiler/rust/frontend/src/diagnostic/json.rs:73-168` の `build_expected_field` / `build_recover_extension` で `message_key`/`alternatives`/`hints` を生成し、`build_parser_diagnostics`（`reml_frontend.rs:1304-1412`）から常に埋め込んでいる | ✅ | `ExpectedTokenCollector` 由来のヒントは JSON/LSP 共通で利用可能な状態。 |
+| span ハイライト (`primary`/`location`/`span_trace`) | `docs/spec/3-6-core-diagnostics-audit.md` §3, §10 | `LineIndex`（`compiler/rust/frontend/src/diagnostic/json.rs:5-69`）と `span_trace_to_json` が CLI で利用する行/列情報を提供済み | ✅ | `trace_ids` も `build_parser_diagnostics` で付与され、Streaming Trace と連動できる。 |
+| `structured_hints` / FixIt コマンド | `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` §2, `docs/spec/3-6-core-diagnostics-audit.md` §10 | `compiler/rust/frontend/src/diagnostic/json.rs` に `structured_hints` を追加し、`DiagnosticHint` へ `id/title/kind/span/payload` を持たせることで CLI/LSP 共通の構造化ヒントを出力可能にした | ✅ | `structured_hints` が常に配列として出力されるため、`tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-sample.json` を Rust 出力から再生成できる。`kind` 未指定時は `quick_fix` または `information` を自動補完する。 |
+
+- 1.3.b `tooling/lsp/tests/client_compat/fixtures` を `jq` で確認し、Rust 実装との差異を記録した。`diagnostic-v2-sample.json` および `diagnostic-v2-stream.json` から `schema_version` と `severity` を抽出すると `jq '.[].schema_version' … -> "2.0.0-draft"`、`jq '.[].severity' … -> 1` のように旧スキーマ・数値列挙が残っている。また `jq '.[0] | has("span_trace")' tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-stream.json` が `false` を返し、CLI/LSP 両方で必須になった `span_trace` が欠落している。フィクスチャが古いままだと `npm run ci --prefix tooling/lsp/tests/client_compat` では差分を見落とすため、互換性リスクとして `docs/plans/bootstrap-roadmap/0-4-risk-handling.md#diagnostic-lsp-fixture-drift` に登録した。
+- 1.3.c `reml_frontend --output {human|json|lsp}` の挙動を `reports/diagnostic-format-regression.md#cli-output-note` に再記録し、NDJSON/Human/LSP それぞれのサンプルログを `reports/dual-write/front-end/samples/20290705-cli-output.*` へ保存した。`scripts/validate-diagnostic-json.sh` では JSON スキーマ検証、Human/LSP は差分確認（`diff -u`）で監査する手順を追加している。
+
 ### 2. Diagnostic コア実装（50-51週目）
 **担当領域**: 基盤機能
 

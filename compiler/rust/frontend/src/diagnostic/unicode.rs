@@ -1,9 +1,7 @@
 use crate::diagnostic::FrontendDiagnostic;
 use crate::span::Span;
 use crate::unicode::UnicodeDetail;
-use reml_runtime::text::{
-    insert_grapheme_stats_metadata, log_grapheme_stats, Str as UnicodeStr,
-};
+use reml_runtime::text::{insert_grapheme_stats_metadata, log_grapheme_stats, Str as UnicodeStr};
 use serde_json::{json, Map, Value};
 use unicode_width::UnicodeWidthStr;
 
@@ -51,8 +49,7 @@ impl UnicodeSpanMetrics {
                 .as_deref()
                 .map(|value| UnicodeWidthStr::width(value) as u32);
             let prefix = &source[..highlight_start];
-            let prefix_graphemes =
-                UnicodeStr::from(prefix).iter_graphemes().count() as u32;
+            let prefix_graphemes = UnicodeStr::from(prefix).iter_graphemes().count() as u32;
             let highlight_graphemes = snippet
                 .as_deref()
                 .map(|value| UnicodeStr::from(value).iter_graphemes().count() as u32)
@@ -127,7 +124,7 @@ pub fn integrate_unicode_metadata(
     let detail = match diag.unicode.clone() {
         Some(detail) => detail,
         None => return,
-        };
+    };
     let metrics = UnicodeSpanMetrics::new(&detail, diag.primary_span(), source);
     if let Some(span) = metrics.refined_span {
         diag.set_span(span);
@@ -191,14 +188,8 @@ fn apply_unicode_metadata(
     metrics: &UnicodeSpanMetrics,
     metadata: &mut Map<String, Value>,
 ) {
-    metadata.insert(
-        "unicode.error.kind".to_string(),
-        json!(detail.kind_label()),
-    );
-    metadata.insert(
-        "unicode.error.phase".to_string(),
-        json!(detail.phase()),
-    );
+    metadata.insert("unicode.error.kind".to_string(), json!(detail.kind_label()));
+    metadata.insert("unicode.error.phase".to_string(), json!(detail.phase()));
     if let Some(offset) = metrics.absolute_offset {
         metadata.insert("unicode.error.offset".to_string(), json!(offset));
     }
@@ -214,13 +205,10 @@ fn apply_unicode_metadata(
             "unicode.span.original_start".to_string(),
             json!(original.start),
         );
-        metadata.insert(
-            "unicode.span.original_end".to_string(),
-            json!(original.end),
-        );
+        metadata.insert("unicode.span.original_end".to_string(), json!(original.end));
     }
     if let Some((start, end)) = metrics.grapheme_span() {
-    metadata.insert("unicode.grapheme.start".to_string(), json!(start));
+        metadata.insert("unicode.grapheme.start".to_string(), json!(start));
         metadata.insert("unicode.grapheme.end".to_string(), json!(end));
     }
     if let Some(width) = metrics.display_width {
@@ -233,16 +221,10 @@ fn apply_unicode_metadata(
         metadata.insert("unicode.identifier.raw".to_string(), json!(raw));
     }
     if let Some(locale) = detail.locale() {
-        metadata.insert(
-            "unicode.locale.requested".to_string(),
-            json!(locale),
-        );
+        metadata.insert("unicode.locale.requested".to_string(), json!(locale));
     }
     if let Some(profile) = detail.profile() {
-        metadata.insert(
-            "unicode.identifier.profile".to_string(),
-            json!(profile),
-        );
+        metadata.insert("unicode.identifier.profile".to_string(), json!(profile));
     }
 }
 
@@ -271,13 +253,13 @@ mod tests {
             .with_phase("lex.identifier".to_string())
             .with_raw("café".to_string())
             .with_offset(Some(3));
-        let mut diag = FrontendDiagnostic::new("unicode").with_span(span).with_unicode_detail(detail);
+        let mut diag = FrontendDiagnostic::new("unicode")
+            .with_span(span)
+            .with_unicode_detail(detail);
         let mut extensions = Map::new();
         let mut metadata = Map::new();
         integrate_unicode_metadata(&mut diag, source, &mut extensions, &mut metadata);
-        let refined = diag
-            .primary_span()
-            .expect("span exists");
+        let refined = diag.primary_span().expect("span exists");
         assert_eq!(refined.start, 7);
         assert_eq!(refined.end, 9);
         let unicode_ext = extensions

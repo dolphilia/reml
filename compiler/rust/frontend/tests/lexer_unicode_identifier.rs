@@ -203,14 +203,13 @@ fn unicode_identifier_error_matrix() {
                 message
             );
         }
-        let unknown = find_token(&output, TokenKind::Unknown, case.expected_unknown).unwrap_or_else(
-            || {
+        let unknown = find_token(&output, TokenKind::Unknown, case.expected_unknown)
+            .unwrap_or_else(|| {
                 panic!(
                     "ケース `{}` で Unknown トークン `{}` が検出されませんでした。tokens={:?}",
                     case.name, case.expected_unknown, output.tokens
                 )
-            },
-        );
+            });
         assert_eq!(
             unknown.span, span,
             "ケース `{}` の Unknown トークンと診断のスパンが一致しません（token={:?}, diag={:?}）",

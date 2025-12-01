@@ -63,8 +63,7 @@ pub fn build_frontend_diagnostic(payload: FrontendDiagnosticPayload<'_>) -> Valu
     let severity_hint = payload.diag.severity_hint.map(|hint| hint.as_str());
     let codes = effective_codes(payload.diag);
     let primary_span = payload.diag.primary_span();
-    let location =
-        span_to_location_opt(primary_span, payload.line_index, payload.input_path);
+    let location = span_to_location_opt(primary_span, payload.line_index, payload.input_path);
     let primary = span_to_primary_value(primary_span, payload.line_index, payload.input_path);
     let notes = payload
         .diag
@@ -84,45 +83,47 @@ pub fn build_frontend_diagnostic(payload: FrontendDiagnosticPayload<'_>) -> Valu
         .iter()
         .map(|hint| diagnostic_hint_to_json(hint, payload.line_index, payload.input_path))
         .collect::<Vec<_>>();
+    let structured_hints =
+        structured_hints_to_json(payload.diag, payload.line_index, payload.input_path);
     let fixits = payload
         .diag
         .fixits
         .iter()
         .map(|fixit| diagnostic_fixit_to_json(fixit, payload.line_index, payload.input_path))
         .collect::<Vec<_>>();
-    let span_trace_value =
-        span_trace_to_json(&payload.diag.span_trace, payload.line_index, payload.input_path);
+    let span_trace_value = span_trace_to_json(
+        &payload.diag.span_trace,
+        payload.line_index,
+        payload.input_path,
+    );
 
     json!({
-        "schema_version": payload.schema_version,
-        "timestamp": payload.timestamp,
-        "id": payload.diag.id.map(|id| id.to_string()),
-        "message": payload.diag.message,
-        "severity": payload.diag.severity.as_str(),
-        "severity_hint": severity_hint,
-        "domain": payload.domain_label,
-        "primary": primary,
-        "location": location,
-        "span_trace": span_trace_value,
-        "extensions": Value::Object(payload.extensions),
-        "audit_metadata": Value::Object(payload.audit_metadata),
-        "audit": payload.audit,
-        "notes": notes,
-        "secondary": secondary,
-        "hints": hints,
-        "fixits": fixits,
-        "recoverability": payload.recoverability,
-        "code": payload.diag.code.clone(),
-        "codes": codes,
-        "expected": payload.expected,
-        })
+    "schema_version": payload.schema_version,
+    "timestamp": payload.timestamp,
+    "id": payload.diag.id.map(|id| id.to_string()),
+    "message": payload.diag.message,
+    "severity": payload.diag.severity.as_str(),
+    "severity_hint": severity_hint,
+    "domain": payload.domain_label,
+    "primary": primary,
+    "location": location,
+    "span_trace": span_trace_value,
+    "extensions": Value::Object(payload.extensions),
+    "audit_metadata": Value::Object(payload.audit_metadata),
+    "audit": payload.audit,
+    "notes": notes,
+    "secondary": secondary,
+    "hints": hints,
+    "structured_hints": structured_hints,
+    "fixits": fixits,
+    "recoverability": payload.recoverability,
+    "code": payload.diag.code.clone(),
+    "codes": codes,
+    "expected": payload.expected,
+    })
 }
 
-fn span_trace_to_json(
-    frames: &[TraceFrame],
-    line_index: &LineIndex,
-    input_path: &Path,
-) -> Value {
+fn span_trace_to_json(frames: &[TraceFrame], line_index: &LineIndex, input_path: &Path) -> Value {
     let entries = frames
         .iter()
         .map(|frame| {
@@ -349,6 +350,65 @@ fn diagnostic_hint_to_json(hint: &DiagnosticHint, index: &LineIndex, input_path:
         "message": hint.message.clone(),
         "actions": actions,
     })
+}
+
+fn structured_hints_to_json(
+    diag: &FrontendDiagnostic,
+    index: &LineIndex,
+    input_path: &Path,
+) -> Value {
+    let entries = diag
+        .hints
+        .iter()
+        .enumerate()
+        .map(|(idx, hint)| structured_hint_to_json(idx, hint, index, input_path))
+        .collect::<Vec<_>>();
+    Value::Array(entries)
+}
+
+fn structured_hint_to_json(
+    index: usize,
+    hint: &DiagnosticHint,
+    line_index: &LineIndex,
+    input_path: &Path,
+) -> Value {
+    let id = hint.id.clone().unwrap_or_else(|| format!("hint-{index}"));
+    let title = hint
+        .title
+        .clone()
+        .or_else(|| hint.message.clone())
+        .unwrap_or_else(|| format!("Hint {}", index + 1));
+    let kind = hint
+        .kind
+        .clone()
+        .unwrap_or_else(|| default_structured_hint_kind(hint).to_string());
+    let span_value = hint
+        .span
+        .or_else(|| hint.actions.first().map(|action| action.span()))
+        .map(|span| span_to_location(span, line_index, input_path))
+        .unwrap_or(Value::Null);
+    let payload = hint.payload.clone().unwrap_or(Value::Null);
+    let actions = hint
+        .actions
+        .iter()
+        .map(|action| diagnostic_fixit_to_json(action, line_index, input_path))
+        .collect::<Vec<_>>();
+    json!({
+        "id": id,
+        "title": title,
+        "kind": kind,
+        "span": span_value,
+        "payload": payload,
+        "actions": actions,
+    })
+}
+
+fn default_structured_hint_kind(hint: &DiagnosticHint) -> &'static str {
+    if hint.actions.is_empty() {
+        "information"
+    } else {
+        "quick_fix"
+    }
 }
 
 fn diagnostic_fixit_to_json(
