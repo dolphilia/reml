@@ -44,11 +44,28 @@
 - `CapabilityRegistry::verify_capability_stage` は型付きバリアント (`Gc`/`Io`/`Async` など) を返す設計になったため、FFI 境界では `match handle { CapabilityHandle::Gc(cap) => ... }` あるいは `handle.as_gc()` のようなヘルパを使って目的の API にアクセスしてください。型ごとに `descriptor()` で `stage`/`effect_scope` も利用でき、`docs/spec/3-8-core-runtime-capability.md` の契約と整合する監査ログを出しやすくなります。
 - `SecurityCapability` には `SecurityPolicy` を適用する `enforce` メソッドがあり、`AuditEnvelope` に `stage_requirement`/`effect_scope` 情報を追加したい場合は `SecurityCapability` を経由して `audit.log` へ送ってください。具体的な `CapabilityHandle` の分解例とライフサイクルは `docs/guides/reml-ffi-handbook.md#11-3-capability-handle` を参照し、DSL や Bridge 側での型安全な分岐を検証してください。
 
+### 1.4 Core.IO コンテキストと監査
+
+- Core.IO 経由でファイル/パス操作を行う Runtime Bridge は、`IoContext` に `operation`・`path`・`capability`・`helper`（例: `"bridge.copy"`, `"path.glob"`）を必ず設定し、`metadata.io.*` と `extensions.effects.*` が `core_io.reader_writer_effects_pass_rate`・`core_io.path_glob_pass_rate` の CI ゲートに合致するようにする。Reader/Writer ヘルパは `take_io_effects_snapshot()` を呼び出した直後に `IoContext` を更新し、`copy` や `with_reader` をラップする Bridge 側でも追加の `helper` 名を付与する。
+- Watcher や glob のように `IoContext` が `buffer`/`watch`/`glob` メタデータを保持する API では、Bridge 側でも `WatcherAuditSnapshot` や `PathSecurityError` に `metadata.io.watch.queue_size`・`metadata.io.glob.offending_path` を転写する。`collect-iterator-audit-metrics.py --section core_io --scenario watcher_audit/path_glob` がこれらのキーを検証するため、欠落時は CI で即検出される。
+- Capability 検証は `FsAdapter::ensure_{read,write}` や `WatcherAdapter::ensure_watcher_feature()` を Bridge 層で必ず通し、Stage 不一致は `effects.contract.stage_mismatch` と `IoErrorKind::SecurityViolation` のどちらにも記録する。`core-io-effects-matrix.md` に定義された `io.fs.*`/`security.fs.*`/`memory.buffered_io` の ID をそのまま利用する。
+- 典型的な Bridge 実装例:
+
+```reml
+fn load_release_note(path: Path, audit: AuditSink) -> Result<Bytes, IoError> =
+  with_reader(path, |reader| {
+    reader.copy_to(bytes_writer(helper = "bridge.release_note"))
+  })
+  |> log_io("bridge.release_note", Some(path), elapsed_since_start(), audit)
+```
+
+- 上記の `bytes_writer` は `IoContext.helper = "bridge.release_note"` をセットし、`log_io` の `audit_metadata["io.helper"]` と `metadata.io.helper` を一致させる。glob/Watcher Bridge でも同様に `helper` 名と `metadata.io.glob.*` / `metadata.io.watch.*` をそろえることで、Runtime Bridge の診断ログと CI 指標（`core_io.path_glob_pass_rate`, `core_io.buffered_reader_buffer_stats_pass_rate` など）を一元的に追跡できる。
+
 ### 1.5 `core.collections.audit` と監査シナリオ
 - `core.collections.audit` は `CapabilityRegistry` に Stage=Stable/EffectScope=`["audit","mem"]` で登録し、`CollectorAuditTrail` が `collector.capability`/`collector.effect.audit` を `AuditEnvelope.metadata`/`Diagnostic.extensions` へ転送する。`CapabilityRegistry::verify_capability_stage("core.collections.audit", StageRequirement::Exact(StageId::Stable), ["audit","mem"])` を `Collector` 終端（`ListCollector::finish` など）で呼び出し、失敗したら `CollectError::CapabilityDenied` を返す経路を `scripts/poc_dualwrite_compare.sh --target audit_bridge` でも検証する。
 - `REML_COLLECTIONS_CHANGE_SET_PATH` から読み込んだ `ChangeSet` JSON (`collections.diff.*`) を `FormatterContext::change_set` が `AuditEnvelope.change_set` に注入するルートを確保し、`collect-iterator-audit-metrics.py --section collectors --scenario audit_cap` で `collector.capability`, `collector.effect.audit`, `collections.change_set.total` を必須チェックとすることで `collectors` の `effect {audit}` パスを CI gate へ昇格させる。`reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の `case=audit_cap` entry、`reports/iterator-collector-summary.md` の `audit_cap` KPI、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` Phase3 Capability 行を相互に参照して結果を追跡してください。
 
-### 1.4 `Ref` ハンドルと CapabilityRegistry の橋渡し
+### 1.6 `Ref` ハンドルと CapabilityRegistry の橋渡し
 - `Ref` システムは `core.collections.ref` capability（Stage=Stable、effect_scope=`["mut","rc","mem"]`）として `CapabilityRegistry` に登録され、FFI 経路ではこのエントリを取得できないと `effects.contract.stage_mismatch` が発火します。`RefHandle` は `compiler/rust/runtime/ffi` が `register_ref_capability()` を動かすことでこの登録を自動化し、`Ref` の Clone/Drop で `EffectSet::mark_rc()`/`release_rc()` を呼び出すことによって `collector.effect.rc` 情報と `effect {rc}` タグが `AuditEnvelope` に添付されます（`docs/spec/3-9-core-async-ffi-unsafe.md` §4 の参照制約にも整合）。
 - FFI から `RefHandle` を渡すときは `core.collections.ref` capability を明示的に要求し、`register_ref_capability()` で Stage/Effect の検証とメタデータ生成を済ませた状態にしておくと `RuntimeBridge` の `collector.effect.rc`/`collector.effect.mut` ログと `poc_dualwrite_compare.sh --section ref_count` の監査出力が一致します（計画の詳細は `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` の 3.2 セクションおよび `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` のステージ連携節を参照）。
 

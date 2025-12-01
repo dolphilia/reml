@@ -61,10 +61,22 @@ pub enum IoErrorKind = {
 
 pub type IoContext = {
   operation: Str,
+  path: Option<Path>,
+  capability: Option<CapabilityId>,
   bytes_processed: Option<u64>,
   timestamp: Timestamp,
+  effects: EffectLabels,
+  buffer: Option<BufferStats>,
+  watch: Option<WatchStats>,
+  glob: Option<GlobStats>,
 }
 ```
+
+- `path` は操作対象の `Path`/`PathBuf` を保持し、`capability` は `CapabilityRegistry::verify_capability_stage` の結果（例: `io.fs.read`, `memory.buffered_io`, `security.fs.policy`）を格納する。
+- `effects` は `effect {io}` / `{io.blocking}` / `{mem}` / `{security}` などの真偽値と `io_blocking_calls` / `mem_bytes` 等のカウンタを含み、`buffer`・`watch`・`glob` は `BufferedReader`, `Watcher`, `glob` API が収集した補助メタデータ（容量/残量、キューサイズ/遅延、glob パターン/拒否パス）を保持する。
+
+- Rust Runtime では `Reader`/`Writer` 呼び出しの直前に `take_io_effects_snapshot()` を実行し、`IoContext.operation`（例: `"reader.read"`, `"io.copy"`）と `metadata.io.helper`（`copy`/`with_reader` 等のヘルパ名）を常に記録する。`metadata.io.bytes_processed` は `buf.len()` または実際に転送したバイト数で更新され、`core_io.reader_writer_effects_pass_rate` の検証対象となる。
+- `IoError::into_diagnostic()` は `metadata.io.*` / `extensions.io.*` に `operation`, `path`, `capability`, `bytes_processed`, `buffer.capacity/fill`, `watch.queue_size/delay_ns`, `glob.pattern/offending_path` を転記し、`extensions.effects.*` に `EffectLabels` を展開する。`audit_metadata["io.*"]` にも同じキーが保存され、監査シナリオ（[3-6](3-6-core-diagnostics-audit.md)）から参照できる。
 - Windows 固有 API や POSIX 拡張に依存する操作は、対象プラットフォームで提供されない場合に `IoErrorKind::UnsupportedPlatform` を返す。診断 `target.config.unsupported_value`（[2-5](2-5-error.md#b-9-条件付きコンパイル関連診断)）と連動し、`notes` に要求した機能と検出済みプラットフォームを記録する。
 - `with_reader` はファイルを開きクロージャへ渡した後、`defer` 相当で自動的に閉じる。
 
@@ -115,6 +127,7 @@ fn glob(pattern: Str) -> Result<List<Path>, PathError>           // `effect {io,
 
 - `PathError` はプラットフォーム依存文字列や無効な UTF-8 バイト列を報告する。
 - `normalize` は `.` や `..` を処理し、危険なエスケープを取り除く。
+- `glob` は `FsAdapter` / `CapabilityRegistry` を介して `CapabilityId = "io.fs.read"` を検証し、`metadata.io.glob.pattern`・`metadata.io.glob.offending_path`・`metadata.io.helper = "path.glob"` を診断へ記録する。失敗時は `PathErrorKind::InvalidPattern` または `IoErrorKind::UnsupportedPlatform` を `core.path.glob.*` 診断コードへ変換する。
 - パストラバーサル攻撃、シンボリックリンク攻撃などのセキュリティ脆弱性を緩和する。
 
 ### 4.2 セキュリティヘルパ
