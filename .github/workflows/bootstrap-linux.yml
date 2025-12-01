@@ -143,10 +143,31 @@ jobs:
           set -euo pipefail
           cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features "core-io core-path" io::tests::
           cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features "core-io core-path" path::tests::
+          cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features "core-io core-path" --test watcher
           cargo test --manifest-path compiler/rust/runtime/Cargo.toml --test core_io_capabilities
 
       - name: Validate Core.IO diagnostics
         run: bash scripts/validate-diagnostic-json.sh --suite core_io
+
+      - name: Collect Core.IO diagnostics summary
+        run: |
+          set -euo pipefail
+          python3 tooling/ci/collect-iterator-audit-metrics.py \
+            --section core_io \
+            --scenario diagnostics_summary \
+            --source compiler/rust/runtime/tests/expected/io_error_open.json \
+            --output reports/spec-audit/ch3/core_io_summary.json \
+            --require-success
+
+      - name: Collect watcher audit metrics
+        run: |
+          set -euo pipefail
+          python3 tooling/ci/collect-iterator-audit-metrics.py \
+            --section core_io \
+            --scenario watcher_audit \
+            --source reports/spec-audit/ch3/io_watcher-simple_case.jsonl \
+            --output reports/spec-audit/ch3/watcher-audit.json \
+            --require-success
 
   build:
     name: Build

@@ -516,6 +516,196 @@ def _value_present(value: Optional[object]) -> bool:
     return True
 
 
+def _iter_core_io_diagnostics_entries(data: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
+    """Yield diagnostics from data, tolerating single-diagnostic JSON payloads."""
+    try:
+        yield from iter_diagnostics(data)
+    except ValueError:
+        if isinstance(data, dict):
+            code = primary_code_of(data)
+            if isinstance(code, str):
+                yield data
+
+
+def _normalize_severity_label(value: Optional[object]) -> Optional[str]:
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        return lowered or None
+    if isinstance(value, (int, float)):
+        return str(value)
+    return None
+
+
+IO_ERROR_RATE_THRESHOLD = 1.0
+
+
+def collect_core_io_diagnostics_summary(
+    paths: Sequence[Path],
+) -> Optional[Dict[str, Any]]:
+    total = 0
+    passed = 0
+    error_count = 0
+    severity_counts: Dict[str, int] = defaultdict(int)
+    code_counts: Dict[str, int] = defaultdict(int)
+
+    for path in paths:
+        try:
+            data = load_json(path)
+        except ValueError as exc:
+            sys.stderr.write(f"[diagnostics_summary] JSON 読み込みに失敗しました: {path}: {exc}\n")
+            continue
+        found = False
+        for diag in _iter_core_io_diagnostics_entries(data):
+            code = primary_code_of(diag)
+            if not isinstance(code, str) or not code.startswith("core.io."):
+                continue
+            found = True
+            total += 1
+            severity_label = _normalize_severity_label(diag.get("severity")) or "unknown"
+            severity_counts[severity_label] += 1
+            if severity_label == "error":
+                error_count += 1
+            else:
+                passed += 1
+            code_counts[code] += 1
+        if not found:
+            sys.stderr.write(
+                f"[diagnostics_summary] core.io.* 診断が見つかりません: {path}\n"
+            )
+
+    if total == 0:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    error_rate = error_count / total if total > 0 else None
+    status = "success"
+    if error_rate is not None and error_rate > IO_ERROR_RATE_THRESHOLD:
+        status = "failed"
+
+    return {
+        "metric": "io.error_rate",
+        "scenario": "diagnostics_summary",
+        "total": total,
+        "passed": passed,
+        "failed": error_count,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "error_rate": error_rate,
+        "severity_counts": dict(severity_counts),
+        "code_counts": dict(code_counts),
+        "sources": [str(path) for path in paths],
+        "status": status,
+    }
+
+
+def _validate_watch_event_entry(event: Dict[str, Any], index: int) -> List[str]:
+    prefix = f"metadata.io.watch.events[{index}]"
+    if not isinstance(event, dict):
+        return [prefix]
+    missing: List[str] = []
+    if not _normalize_nonempty_string(event.get("kind")):
+        missing.append(f"{prefix}.kind")
+    if not _normalize_nonempty_string(event.get("path")):
+        missing.append(f"{prefix}.path")
+    queue_size = _coerce_int_value(event.get("queue_size"))
+    if queue_size is None or queue_size < 0:
+        missing.append(f"{prefix}.queue_size")
+    delay_ns = _coerce_int_value(event.get("delay_ns"))
+    if delay_ns is None or delay_ns < 0:
+        missing.append(f"{prefix}.delay_ns")
+    timestamp = _as_dict(event.get("timestamp"))
+    if not timestamp:
+        missing.append(f"{prefix}.timestamp")
+    else:
+        if _coerce_int_value(timestamp.get("seconds")) is None:
+            missing.append(f"{prefix}.timestamp.seconds")
+        if _coerce_int_value(timestamp.get("nanos")) is None:
+            missing.append(f"{prefix}.timestamp.nanos")
+    return missing
+
+
+def _validate_watcher_metadata(metadata: Dict[str, Any]) -> List[str]:
+    missing: List[str] = []
+    paths_value = metadata.get("io.watch.paths")
+    if not (
+        isinstance(paths_value, list)
+        and paths_value
+        and all(
+            isinstance(item, str) and item.strip() for item in paths_value
+        )
+    ):
+        missing.append("metadata.io.watch.paths")
+    events_total = _coerce_int_value(metadata.get("io.watch.events_total"))
+    if events_total is None or events_total < 0:
+        missing.append("metadata.io.watch.events_total")
+    events = metadata.get("io.watch.events")
+    if not isinstance(events, list) or not events:
+        missing.append("metadata.io.watch.events")
+        return missing
+
+    for index, event in enumerate(events):
+        missing.extend(_validate_watch_event_entry(event, index))
+    if events_total is not None and events_total < len(events):
+        missing.append("metadata.io.watch.events_total (< events)")
+    return missing
+
+
+def collect_watcher_audit_metrics(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+
+    for path in paths:
+        try:
+            entries = load_audit_entries(path)
+        except ValueError as exc:
+            sys.stderr.write(f"[watcher_audit] JSON 読み込みに失敗しました: {path}: {exc}\n")
+            continue
+        if not entries:
+            continue
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                continue
+            metadata = entry.get("metadata")
+            total += 1
+            case_name = entry.get("case") if isinstance(entry.get("case"), str) else None
+            issues = (
+                ["metadata"]
+                if not isinstance(metadata, dict)
+                else _validate_watcher_metadata(metadata)
+            )
+            if issues:
+                failure = {
+                    "file": str(path),
+                    "index": index,
+                    "missing": sorted(set(issues)),
+                }
+                if case_name:
+                    failure["case"] = case_name
+                failures.append(failure)
+            else:
+                passed += 1
+
+    if total == 0:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    status = "success" if pass_rate == 1.0 else "failed"
+
+    return {
+        "metric": "watcher.audit.pass_rate",
+        "scenario": "watcher_audit",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "sources": [str(path) for path in paths],
+        "failures": failures,
+        "status": status,
+    }
+
+
 def _diagnostic_has_code(diag: Dict[str, Any], target: str) -> bool:
     primary = primary_code_of(diag)
     if primary == target:
@@ -6173,6 +6363,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "text",
             "review",
             "numeric_time",
+            "core_io",
         ],
         default="all",
         help="Collect metrics for a specific section (default: all).",
@@ -6269,6 +6460,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "clock_accuracy",
             "timezone_lookup",
             "emit_metric",
+            "diagnostics_summary",
+            "watcher_audit",
         ],
         help="Scenario-specific validation (repeatable).",
     )
@@ -6696,6 +6889,34 @@ def main(argv: Optional[List[str]] = None) -> int:
         scenario_metric = copy.deepcopy(normalization_metric)
         scenario_metric["scenario"] = "normalization_conformance"
         append_metrics.append(scenario_metric)
+
+    if "diagnostics_summary" in scenario_filters:
+        if not sources:
+            sys.stderr.write(
+                "diagnostics_summary シナリオには --source で Core.IO 診断 JSON を指定してください。\n"
+            )
+            return 2
+        diag_summary_metric = collect_core_io_diagnostics_summary(sources)
+        if diag_summary_metric is None:
+            sys.stderr.write(
+                "diagnostics_summary: core.io.* 診断が検出できませんでした。ソースを確認してください。\n"
+            )
+            return 2
+        append_metrics.append(diag_summary_metric)
+
+    if "watcher_audit" in scenario_filters:
+        if not sources:
+            sys.stderr.write(
+                "watcher_audit シナリオには --source で Watcher 監査 JSONL を指定してください。\n"
+            )
+            return 2
+        watcher_metric = collect_watcher_audit_metrics(sources)
+        if watcher_metric is None:
+            sys.stderr.write(
+                "watcher_audit: 監査エントリが検出できませんでした。watcher テストを実行してください。\n"
+            )
+            return 2
+        append_metrics.append(watcher_metric)
 
     numeric_time_metric: Optional[Dict[str, Any]] = None
     numeric_time_scenarios = {"clock_accuracy", "timezone_lookup", "emit_metric"}
