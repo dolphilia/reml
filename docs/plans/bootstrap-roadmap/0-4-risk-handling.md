@@ -45,6 +45,42 @@
 本章は計画期間中に常に更新される生きたリスク台帳として扱う。未解決のリスクが存在する限り、次フェーズへ進む前に状態をレビューし、必要なタスクを各フェーズ文書（`1-x`〜`4-x` 系列）へ反映させる。
 
 ## 0.4.6 現在のリスク登録
+<a id="core-io-watcher-risk"></a>
+- 登録日: 2025-12-01
+- タイトル: 大量ファイル監視による Watcher バッファ飽和と監査欠落
+- カテゴリ: セキュリティ/安全性
+- 詳細: `Core.IO.Watcher` は `notify` バックエンド（inotify/FSEvents/ReadDirectoryChangesW）を `effect {io.async}` 経由で監査しているが、数千ファイルを同時監視する Phase3 Self-host シナリオで `watch.queue_size` が枯渇し、`core.io.watch.*` 診断から `metadata.io.async_queue` と Capability 情報が欠落するケースが観測された。`watcher.audit.pass_rate` 指標を導入したものの、ベースライン未確立のまま Phase3 W50 へ進むと `reports/spec-audit/ch3/watch_event-metrics.json` と CLI ゴールデンに差分が生じるリスクがある。
+- 対応案: `python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario watcher_audit --require-success` を Nightly CI へ組み込み、`watch.queue_size` が 80% を超えた場合は自動で `watch.delay_ns` を記録する。必要に応じて `compiler/rust/runtime/src/io/watcher.rs` にバックプレッシャ制御 (`WatcherLimits`) を追加し、`reports/spec-audit/ch3/core_io_summary-20251201.md` に週次ログを追記する。`watcher.audit.pass_rate < 0.95` を検出した際は Watcher API を `beta` Stage に格下げし、Phase4 までに恒久対応を計画する。
+- 期限: 2026-01-31
+- 状態: Open
+- 関連フェーズ: Phase 3 (3-5)
+- 参照: `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §5.1, `docs/spec/3-5-core-io-path.md` §5, `reports/spec-audit/ch3/core_io_summary-20251201.md`, `docs/plans/bootstrap-roadmap/assets/core-io-effects-matrix.md`
+- 担当: Phase3 Core.IO Runtime チーム（Watcher）
+
+<a id="core-io-permission-risk"></a>
+- 登録日: 2025-12-01
+- タイトル: Capability Stage 誤判定によるファイル権限不足エラー多発
+- カテゴリ: セキュリティ/安全性
+- 詳細: `File::open/create/remove` 実装は `fs.permissions.*` Capability を `CapabilityRegistry::verify_capability_stage` で検証するが、Stage テーブルの更新遅延により POSIX/macOS CI で `effect.stage.required = "stable"` に達していないケースが発生し `core.io.file.permission_denied` が連続発火した。`core_io.file_ops_pass_rate` は 1.0 を維持しているものの、`io.error_rate` 指標が 0.04 まで上昇した場合に Root Cause を追跡する仕組みが不足している。
+- 対応案: `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` を週次で再生成し、`reports/spec-audit/ch3/file_ops-metrics.json` + `reports/spec-audit/ch3/core_io_summary-20251201.md` で Stage ミスマッチ数と `io.error_rate` をクロスチェックする。必要に応じて `compiler/rust/runtime/src/io/file.rs` の Capability 測定を二重化（`verify_capability_stage` + `IoContext.stage_override`）し、閾値（`io.error_rate > 0.02`）を超えた場合は `FsAdapter` レイヤに一時的なリトライポリシーを導入する。
+- 期限: 2026-02-15
+- 状態: Open
+- 関連フェーズ: Phase 3 (3-5)
+- 参照: `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §3.1, `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md`, `reports/spec-audit/ch3/core_io_summary-20251201.md`, `docs/spec/3-8-core-runtime-capability.md`
+- 担当: Phase3 Core.IO Runtime チーム（File/Capability）
+
+<a id="core-path-symlink-risk"></a>
+- 登録日: 2025-12-01
+- タイトル: シンボリックリンク攻撃・サンドボックス逸脱の検知遅延
+- カテゴリ: セキュリティ/安全性
+- 詳細: `Path::sandbox_path` と `security::validate_path` は `metadata.security.reason` を出力するが、Windows UNC や macOS のボリュームマウントを跨ぐケースで `core.path.security.*` 診断が `warning` 止まりになり、`path.security.incident_count` の閾値を超えても自動でブロックできない。Self-host CI の設定ディレクトリに対して攻撃ベクトルが残るため、Phase3 での CLI リリースには監査ログの即応性が求められる。
+- 対応案: `scripts/validate-diagnostic-json.sh --pattern core.path.security` を PR ごとに実行し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario path_security --require-success` の結果を `reports/spec-audit/ch3/path_security-metrics.json` と `reports/spec-audit/ch3/core_io_summary-20251201.md` に転記する。`path.security.incident_count >= 3` を検出した場合は `docs/plans/bootstrap-roadmap/3-5-core-io-path-remediation.md` §4.2 の `symlink_escape_guard` タスクを再開し、`SecurityPolicy` の既定を `deny-relative` に切り替える提案を Phase3 会議で行う。
+- 期限: 2026-01-15
+- 状態: Open
+- 関連フェーズ: Phase 3 (3-5)
+- 参照: `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §4.2, `docs/spec/3-5-core-io-path.md` §4, `docs/spec/3-6-core-diagnostics-audit.md`, `reports/spec-audit/ch3/core_io_summary-20251201.md`
+- 担当: Phase3 Core.IO Runtime チーム（Path/Security）
+
 - 登録日: 2026-03-31
 - タイトル: Unicode XID 識別子実装未完了（SYNTAX-001 / LEXER-001）
 - カテゴリ: 技術的負債
