@@ -20,6 +20,21 @@
     - 1.1.a `docs/spec/3-6-core-diagnostics-audit.md` と `docs/spec/2-5-error.md` のフィールド定義を表形式に起こし、`compiler/rust/diagnostics/` 直下の `*.rs` を `rg "pub struct"` で走査してマッピング表を更新する。
     - 1.1.b `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` のチェックリストをコピーし、`reports/dual-write/front-end/.../diagnostics-diff.md` を参照しながら不足フィールドへ ❌ ラベルを付ける。
     - 1.1.c 差分表を `docs/plans/bootstrap-roadmap/assets/diagnostics-field-gap.csv` に保存し、更新後に `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の「診断フィールドカバレッジ」指標へ Run ID を追記する。
+
+#### 1.1 実施結果（Run ID: 20290601-diag-field-gap）
+- `docs/plans/bootstrap-roadmap/assets/diagnostics-field-gap.csv` に `Diagnostic`/`AuditEnvelope`/`Telemetry` の 13 フィールドを整理。`FrontendDiagnostic` へ未実装の `id`・`span_trace`・`extensions` や、`AuditEnvelope.audit_id` が `Uuid` でない点、`TraitResolutionTelemetry` ファイル未作成といった差分をコメント付きで記録した。
+- `reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/diagnostic_diff.md` と W4 以降の Run を照合し、`timestamp` 未設定・Stage/Audit キー欠落・`expected_tokens` 不整合といった実際の失敗ログを紐付けた。Rust 側で `schema.version=3.0.0-alpha` へ移行する際の修正箇所として、CSV から直接参照できる状態にした。
+- `docs/plans/rust-migration/1-2-diagnostic-compatibility.md#1.2.6` のチェックリストを以下のとおり複製し、欠落した必須フィールドを ❌ で明示した。
+
+| チェック項目 | 参照 | Rust 実装状況 | ラベル | 証跡 |
+| --- | --- | --- | --- | --- |
+| `expected_tokens` (recover 拡張) | 1-2 §1.2.6 / 2-5 §A | recover ケースで `expected_tokens.diff.json` が解消できず、`parser.expected_summary_presence` が 1.0 未満。 | ❌ | `reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/cli_packrat_switch/summary.json` |
+| `effects.stage.*` | 1-2 §1.2.6 / 3-6 §2 | Rust 診断に `effect.stage.required/actual` が無く、Stage 監査が `bridge_stage.audit_presence < 1.0` で停止。 | ❌ | `reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/recover_missing_semicolon/effects-metrics.rust.err.log` |
+| `parser.stream.*` | 1-2 §1.2.6 / guides/core-parse-streaming.md | Streaming RunConfig 拡張を `parser.stream.*` に転写できず、`parser.stream_extension_field_coverage=0.0`。 | ❌ | `reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/stream_pending_resume/parser-metrics.rust.json` |
+| `type_row.*` / `typeclass.dictionary.*` | 1-2 §1.2.6 / 1-3-effects-safety.md | JSON には `type_row_mode` のみで、`effect.type_row.*` や `typeclass.dictionary` ブロックが欠落。 | ❌ | `reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_residual_leak/diagnostics.rust.json` |
+| `extensions["recover"]` | 1-2 §1.2.6 / reports/diagnostic-format-regression.md | Recover 代表ケースが `diagnostics=[]` で拡張を組み立てられず、ハンドラ情報がゼロ。 | ❌ | `reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/recover_else_without_if/diagnostics.rust.json` |
+
+上記ギャップは `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の DIAG-RUST-05/06/07 とリンク済みであり、次スプリントは `ExpectedTokenCollector` の強制適用、`StageAuditPayload` の共通化、`RunConfigBuilder` による stream/config 拡張を優先実装として扱う。
 1.2. 効果タグ (`effect {diagnostic}`, `{audit}`, `{debug}`, `{trace}`, `{privacy}`) の付与基準を整理し、テスト戦略を決定する。
     - 1.2.a `docs/spec/1-3-effects-safety.md` と `docs/spec/3-8-core-runtime-capability.md` の Stage/Capability ルールを参照し、タグ別のトリガー条件をスプレッドシート化する。
     - 1.2.b `compiler/rust/frontend/src/effects/` を `rg "effect::"` で走査し、既存タグを洗い出して `StageRequirement::{Exact,AtLeast}` と突合する。
