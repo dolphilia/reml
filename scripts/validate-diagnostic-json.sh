@@ -40,6 +40,9 @@ Usage: scripts/validate-diagnostic-json.sh [PATH...]
 --section config を指定した場合は `schema_diff.*` キーの存在をチェックします。
 
 PATH には JSON ファイルまたはディレクトリを指定できます。
+--pattern, --effect-tag は複数指定できます。`--effect-tag trace` のように指定すると
+`effects.*` に `trace` を含む診断のみを Python 検証対象とし、該当診断が無かったファイルは
+info ログ付きでスキップします。
 EOF
 }
 
@@ -48,6 +51,7 @@ GENERIC_JSON_SUITE=0
 SECTION=""
 declare -a PATTERNS=()
 declare -a TARGET_ARGS=()
+declare -a EFFECT_TAGS=()
 
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
@@ -76,6 +80,15 @@ while [[ "$#" -gt 0 ]]; do
         exit 1
       fi
       PATTERNS+=("$1")
+      shift
+      ;;
+    --effect-tag)
+      shift
+      if [[ "$#" -eq 0 ]]; then
+        echo "[validate-diagnostic-json] error: --effect-tag オプションには値が必要です" >&2
+        exit 1
+      fi
+      EFFECT_TAGS+=("$1")
       shift
       ;;
     --help|-h)
@@ -339,14 +352,40 @@ if [[ "${#AUDIT_FILES[@]}" -gt 0 ]]; then
 fi
 
 if [[ "${#DIAG_FILES[@]}" -gt 0 ]]; then
-  python3 - "${DIAG_FILES[@]}" <<'PY' || {
+  declare -a PY_EFFECT_ARGS=()
+  if [[ "${#EFFECT_TAGS[@]}" -gt 0 ]]; then
+    for tag in "${EFFECT_TAGS[@]}"; do
+      PY_EFFECT_ARGS+=("--effect-tag")
+      PY_EFFECT_ARGS+=("$tag")
+    done
+  fi
+  PY_EFFECT_ARGS+=("--")
+  PY_EFFECT_ARGS+=("${DIAG_FILES[@]}")
+  python3 - "${PY_EFFECT_ARGS[@]}" <<'PY' || {
 import json
 import pathlib
 import sys
 from typing import List, Optional, Sequence
 
-files = sys.argv[1:]
+raw_args = sys.argv[1:]
+effect_tags: list[str] = []
+files: list[str] = []
+arg_iter = iter(raw_args)
+for token in arg_iter:
+    if token == "--effect-tag":
+        try:
+            effect_tags.append(next(arg_iter).strip().lower())
+        except StopIteration as exc:  # noqa: PERF203
+            raise RuntimeError("--effect-tag needs an argument") from exc
+    elif token == "--":
+        files.extend(list(arg_iter))
+        break
+    else:
+        files.append(token)
+
 error = False
+effect_tags = [tag for tag in effect_tags if tag]
+effect_tag_set = set(effect_tags)
 
 
 def parse_entries(content: str, file_name: str):
@@ -372,6 +411,59 @@ def parse_entries(content: str, file_name: str):
 
 class MissingRecovered(Exception):
     pass
+
+
+def value_contains_tag(value, tag_set: set[str]) -> bool:
+    if not tag_set:
+        return True
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if not lowered:
+            return False
+        if lowered in tag_set:
+            return True
+        if "." in lowered:
+            suffix = lowered.split(".")[-1]
+            if suffix in tag_set:
+                return True
+        return False
+    if isinstance(value, list):
+        return any(value_contains_tag(item, tag_set) for item in value)
+    if isinstance(value, dict):
+        return any(value_contains_tag(item, tag_set) for item in value.values())
+    return False
+
+
+def diag_has_effect_tag(diag: dict, tag_set: set[str]) -> bool:
+    if not tag_set:
+        return True
+
+    def fetch_related(source: Optional[dict]):
+        if not isinstance(source, dict):
+            return []
+        related = []
+        for key, value in source.items():
+            if not isinstance(key, str):
+                continue
+            lowered = key.strip().lower()
+            if lowered.startswith("effect") or lowered.startswith("effects"):
+                related.append(value)
+        return related
+
+    candidates: list[object] = []
+    extensions = diag.get("extensions")
+    if isinstance(extensions, dict):
+        effects_entry = extensions.get("effects")
+        if isinstance(effects_entry, dict):
+            candidates.append(effects_entry)
+        candidates.extend(fetch_related(extensions))
+    audit_metadata = diag.get("audit_metadata")
+    candidates.extend(fetch_related(audit_metadata))
+    audit_block = diag.get("audit")
+    if isinstance(audit_block, dict):
+        metadata = audit_block.get("metadata")
+        candidates.extend(fetch_related(metadata))
+    return any(value_contains_tag(candidate, tag_set) for candidate in candidates)
 
 
 def walk(node, location="root"):
@@ -616,6 +708,7 @@ for path_str in files:
         error = True
         continue
 
+    file_contains_relevant_diag = False
     for entry_index, entry in enumerate(entries):
         try:
             walk(entry, f"entry[{entry_index}]")
@@ -632,6 +725,9 @@ for path_str in files:
                 for diag_index, diag in enumerate(diagnostics):
                     if not isinstance(diag, dict):
                         continue
+                    if effect_tag_set and not diag_has_effect_tag(diag, effect_tag_set):
+                        continue
+                    file_contains_relevant_diag = True
                     if is_parser_diagnostic(diag):
                         expected = diag.get("expected")
                         if not isinstance(expected, dict):
@@ -763,19 +859,52 @@ for path_str in files:
                     )
                     error = True
 
+    if effect_tag_set and not file_contains_relevant_diag:
+        print(
+            "[validate-diagnostic-json] info: no diagnostics with requested effect tags "
+            f"{sorted(effect_tag_set)} in {path}",
+            file=sys.stderr,
+        )
+
 if error:
     sys.exit(1)
 PY
     EXIT_CODE=1
   }
   if [[ "$SUITE" == "streaming" ]]; then
-    python3 - "${DIAG_FILES[@]}" <<'PY' || {
+    declare -a PY_STREAM_ARGS=()
+    if [[ "${#EFFECT_TAGS[@]}" -gt 0 ]]; then
+      for tag in "${EFFECT_TAGS[@]}"; do
+        PY_STREAM_ARGS+=("--effect-tag")
+        PY_STREAM_ARGS+=("$tag")
+      done
+    fi
+    PY_STREAM_ARGS+=("--")
+    PY_STREAM_ARGS+=("${DIAG_FILES[@]}")
+    python3 - "${PY_STREAM_ARGS[@]}" <<'PY' || {
 import json
 import pathlib
 import sys
 
-files = sys.argv[1:]
+raw_args = sys.argv[1:]
+effect_tags: list[str] = []
+files: list[str] = []
+arg_iter = iter(raw_args)
+for token in arg_iter:
+    if token == "--effect-tag":
+        try:
+            effect_tags.append(next(arg_iter).strip().lower())
+        except StopIteration as exc:  # noqa: PERF203
+            raise RuntimeError("--effect-tag needs an argument") from exc
+    elif token == "--":
+        files.extend(list(arg_iter))
+        break
+    else:
+        files.append(token)
+
 error = False
+effect_tags = [tag for tag in effect_tags if tag]
+effect_tag_set = set(effect_tags)
 
 required_pending_keys = [
     "parser.stream.pending.resume_hint",
@@ -823,6 +952,30 @@ def ensure_resume_hint(meta: dict, key: str, path: str) -> bool:
     return True
 
 
+def diag_matches_tags(entry: dict) -> bool:
+    if not effect_tag_set:
+        return True
+    diag = entry.get("diagnostics")
+    if isinstance(diag, list):
+        for item in diag:
+            if isinstance(item, dict):
+                extensions = item.get("extensions")
+                if isinstance(extensions, dict):
+                    effects = extensions.get("effects")
+                    if isinstance(effects, dict):
+                        for field in ("before", "handled", "residual"):
+                            values = effects.get(field)
+                            if isinstance(values, list):
+                                for candidate in values:
+                                    if isinstance(candidate, str):
+                                        lowered = candidate.strip().lower()
+                                        if lowered in effect_tag_set:
+                                            return True
+                                        if "." in lowered and lowered.split(".")[-1] in effect_tag_set:
+                                            return True
+    return False
+
+
 for raw_path in files:
     path = str(raw_path)
     if "stream" not in path.lower():
@@ -837,7 +990,11 @@ for raw_path in files:
         error = True
         continue
     entries = data if isinstance(data, list) else [data]
+    matched_effect_diag = False
     for entry in entries:
+        if effect_tag_set and not diag_matches_tags(entry):
+            continue
+        matched_effect_diag = True
         events = entry.get("audit_events")
         if not isinstance(events, list):
             print(f"[validate-diagnostic-json] {path}: audit_events が配列ではありません", file=sys.stderr)
@@ -900,6 +1057,12 @@ for raw_path in files:
         if not isinstance(diagnostic_meta, dict):
             print(f"[validate-diagnostic-json] {path}: metadata.parser.stream.error.diagnostic はオブジェクトである必要があります", file=sys.stderr)
             error = True
+    if effect_tag_set and not matched_effect_diag:
+        print(
+            f"[validate-diagnostic-json] info: streaming filter skipped {path} "
+            f"(no diagnostics with effect tags {sorted(effect_tag_set)})",
+            file=sys.stderr,
+        )
 
 if error:
     sys.exit(1)
