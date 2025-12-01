@@ -51,6 +51,12 @@ use ::Core.Platform.Posix.Notify
 - `AuditEnvelope.metadata` にプラグイン固有の設定（通知エンドポイント等）を記録し、`Core.Diagnostics` の保持方針に従う。
 - Phase 2-5 ERR-001 で `Diagnostic.expected` に `ExpectationSummary` が常時含まれるようになったため、プラグイン側でも CLI/LSP と同じ期待集合を利用できる。`Core.Diagnostics.humanize_expected` を呼び出して候補一覧を提示し、DSL 独自の補完や自動修復に活用する。
 
+### 2.3 Core.IO / Core.Path の活用
+
+- ファイル／パスを扱うプラグインは `Core.IO` の `with_reader` / `with_writer` / `copy` と `Core.Path` の `validate_path` / `sandbox_path` を標準化された順番で呼び出し、`IoContext.operation`・`metadata.io.helper` を必ず設定する。サンプルは [examples/core_io/file_copy.reml](../../examples/core_io/file_copy.reml) と [examples/core_path/security_check.reml](../../examples/core_path/security_check.reml) を参照。
+- Capability 検証（`io.fs.*`, `security.fs.policy`, `memory.buffered_io` など）は `FsAdapter::ensure_*` や `SecurityPolicy::enforce` を経由し、ステージ不一致時は `effects.contract.stage_mismatch` を発火させる。`tooling/examples/run_examples.sh --suite core_io` を CI で呼び出すと `core_io.example_suite_pass_rate` が 0.0 になり、欠落した監査キーを早期に検出できる。
+- `IoContext` の内容 (`path`, `capability`, `buffer`, `glob`, `watch`) は `IoError::into_diagnostic()` が自動で診断へ転写するため、プラグイン固有の監査情報は `context.helper = "plugin.<name>"` のように付与すると追跡が容易になる。Runtime Bridge と同じ構造に揃えると `docs/notes/runtime-bridges-roadmap.md` で管理する CI KPI と突合しやすい。
+
 ## 3. 配布と署名
 
 1. `reml plugin package` でアーカイブを生成。

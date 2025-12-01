@@ -60,6 +60,7 @@ fn load_release_note(path: Path, audit: AuditSink) -> Result<Bytes, IoError> =
 ```
 
 - 上記の `bytes_writer` は `IoContext.helper = "bridge.release_note"` をセットし、`log_io` の `audit_metadata["io.helper"]` と `metadata.io.helper` を一致させる。glob/Watcher Bridge でも同様に `helper` 名と `metadata.io.glob.*` / `metadata.io.watch.*` をそろえることで、Runtime Bridge の診断ログと CI 指標（`core_io.path_glob_pass_rate`, `core_io.buffered_reader_buffer_stats_pass_rate` など）を一元的に追跡できる。
+- Bridge 実装のベースラインとして [examples/core_io/file_copy.reml](../../examples/core_io/file_copy.reml)・[examples/core_path/security_check.reml](../../examples/core_path/security_check.reml) を `tooling/examples/run_examples.sh --suite core_io|core_path` から自動実行できる。`docs/notes/runtime-bridges-roadmap.md` にサンプルの Run ID と `core_io.example_suite_pass_rate` の計測手順を記録しているため、Bridge 連携を追加する際は同ノートを更新すること。
 
 ### 1.5 `core.collections.audit` と監査シナリオ
 - `core.collections.audit` は `CapabilityRegistry` に Stage=Stable/EffectScope=`["audit","mem"]` で登録し、`CollectorAuditTrail` が `collector.capability`/`collector.effect.audit` を `AuditEnvelope.metadata`/`Diagnostic.extensions` へ転送する。`CapabilityRegistry::verify_capability_stage("core.collections.audit", StageRequirement::Exact(StageId::Stable), ["audit","mem"])` を `Collector` 終端（`ListCollector::finish` など）で呼び出し、失敗したら `CollectError::CapabilityDenied` を返す経路を `scripts/poc_dualwrite_compare.sh --target audit_bridge` でも検証する。
