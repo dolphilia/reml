@@ -106,11 +106,15 @@ fn normalize_timestamp(value: &str) -> String {
 }
 
 fn ensure_audit_id(metadata: &mut Map<String, Value>, timestamp: &str, prefix: &str) -> Uuid {
-    if let Some(Value::String(existing)) = metadata.get("cli.audit_id") {
+    if let Some(existing) = metadata
+        .get("cli.audit_id")
+        .and_then(|value| value.as_str())
+        .map(|value| value.to_string())
+    {
         if !existing.trim().is_empty() {
-            let uuid = parse_or_hash_audit_id(existing);
+            let uuid = parse_or_hash_audit_id(&existing);
             metadata.insert("audit.id.uuid".to_string(), json!(uuid.to_string()));
-            metadata.insert("audit.id.label".to_string(), json!(existing.clone()));
+            metadata.insert("audit.id.label".to_string(), json!(existing));
             return uuid;
         }
     }

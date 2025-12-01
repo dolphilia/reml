@@ -26,8 +26,7 @@ use reml_frontend::parser::{
 use reml_frontend::semantics::typed;
 use reml_frontend::span::Span;
 use reml_frontend::streaming::{
-    RuntimeBridgeSignal, StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig,
-    TraceFrame,
+    StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig, TraceFrame,
 };
 use reml_frontend::typeck::{
     self, Constraint, DualWriteGuards, InstallConfigError, IteratorStageViolationInfo,

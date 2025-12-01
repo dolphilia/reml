@@ -1,4 +1,4 @@
-use crate::streaming::{RuntimeBridgeSignal, RuntimeBridgeSignalKind};
+use crate::streaming::RuntimeBridgeSignal;
 use crate::typeck::{RuntimeCapability, StageContext, StageTraceStep};
 use serde_json::{json, Map, Value};
 
@@ -411,6 +411,7 @@ fn bridge_signal_payload(signal: &RuntimeBridgeSignal) -> Map<String, Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::streaming::RuntimeBridgeSignalKind;
     use crate::typeck::StageTraceStep;
 
     fn sample_stage_trace_step() -> StageTraceStep {
