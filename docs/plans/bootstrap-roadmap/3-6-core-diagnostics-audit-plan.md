@@ -17,57 +17,129 @@
 **担当領域**: 設計調整
 
 1.1. `Diagnostic`/`AuditEnvelope`/`Telemetry` のフィールド一覧を抽出し、既存実装との差分と未実装項目を洗い出す。
+    - 1.1.a `docs/spec/3-6-core-diagnostics-audit.md` と `docs/spec/2-5-error.md` のフィールド定義を表形式に起こし、`compiler/rust/diagnostics/` 直下の `*.rs` を `rg "pub struct"` で走査してマッピング表を更新する。
+    - 1.1.b `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` のチェックリストをコピーし、`reports/dual-write/front-end/.../diagnostics-diff.md` を参照しながら不足フィールドへ ❌ ラベルを付ける。
+    - 1.1.c 差分表を `docs/plans/bootstrap-roadmap/assets/diagnostics-field-gap.csv` に保存し、更新後に `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の「診断フィールドカバレッジ」指標へ Run ID を追記する。
 1.2. 効果タグ (`effect {diagnostic}`, `{audit}`, `{debug}`, `{trace}`, `{privacy}`) の付与基準を整理し、テスト戦略を決定する。
+    - 1.2.a `docs/spec/1-3-effects-safety.md` と `docs/spec/3-8-core-runtime-capability.md` の Stage/Capability ルールを参照し、タグ別のトリガー条件をスプレッドシート化する。
+    - 1.2.b `compiler/rust/frontend/src/effects/` を `rg "effect::"` で走査し、既存タグを洗い出して `StageRequirement::{Exact,AtLeast}` と突合する。
+    - 1.2.c `scripts/validate-diagnostic-json.sh` にタグ別フィルタを追加するタスクを Issue 化し、テストケース（`examples/core_effects/*.reml`）を指定して再現手順を計画書へリンクする。
 1.3. LSP/CLI 出力フォーマットの要求 (期待値・ヒント・span ハイライト) を仕様を基に再確認する。
+    - 1.3.a `docs/spec/3-6-core-diagnostics-audit.md#lsp-cli` の期待出力例を抽出し、`compiler/rust/frontend/src/cli/diagnostic_printer.rs` のテンプレートと比較するレビュー表を作成する。
+    - 1.3.b LSP 互換性は `tooling/lsp/tests/client_compat` の JSON フィクスチャを `jq` で確認し、欠落フィールドがあれば `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` にリスク ID を追加する。
+    - 1.3.c CLI 側は `reml_frontend --format json|human` のサンプル出力を `reports/diagnostic-format-regression.md` へ再収集し、差分が 0 であることを確認して記録する。
 
 ### 2. Diagnostic コア実装（50-51週目）
 **担当領域**: 基盤機能
 
 2.1. `Diagnostic` 構造体と補助型 (`SpanLabel`, `Hint`, `ExpectationSummary`) を実装し、`Core.Text` を利用したハイライト生成を統合テストする。
+    - 2.1.a `compiler/rust/frontend/src/diagnostics/model.rs` に構造体定義を追加し、`serde` / `schemars` 互換を `#[cfg_attr]` で確保する。
+    - 2.1.b `Core.Text` の `grapheme_clusters` API を `packages/core_text/src/span_highlight.rs` に取り込み、`expect_span_highlight` 単体テストを `cargo test span_highlight` で作成する。
+    - 2.1.c `reports/dual-write/front-end/.../span-highlight.md` にテストログを保存し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `diagnostic.span_highlight_pass_rate` を更新する。
 2.2. `DiagnosticBuilder` 相当の生成ユーティリティを実装し、`severity/domain/code` セットが欠落しないようバリデーションを追加する。
+    - 2.2.a `DiagnosticBuilder::new()` に `ensure_fields()` を実装し、`debug_assert!` + `Result` 併用で必須項目の欠落を早期検知する。
+    - 2.2.b `compiler/rust/frontend/tests/diagnostic_builder.rs` を新設し、`#[test_case]` で Severity/Domain/Code 未設定時の panic/Err を検証する。
+    - 2.2.c `docs/spec/3-6-core-diagnostics-audit.md` の §2 表を引用したコメントを Builder に付与し、仕様が更新された際に差分チェックを行う TODO をコメント化する。
 2.3. CLI/LSP 出力フォーマットを整備し、`message` テンプレートとローカライズキーの整合を確認する。
+    - 2.3.a `compiler/rust/frontend/src/output/cli.rs` と `tooling/lsp/src/handlers/diagnostics.rs` へ `LocalizationKey` を受け取るパスを追加する。
+    - 2.3.b `docs/guides/ai-integration.md` へ LSP 診断のキー表を追記し、`README.md` から参照できるようリンクを更新する。
+    - 2.3.c `reports/diagnostic-format-regression.md` のローカライズ節に新規ケースを登録し、CI 差分チェック対象に加える。
 
 ### 3. AuditEnvelope / AuditEvent 実装（51週目）
 **担当領域**: 監査基盤
 
 3.1. `AuditEnvelope` と `AuditEvent` を実装し、必須メタデータが埋まっているか検証するユーティリティを追加する。
+    - 3.1.a `compiler/rust/runtime/src/audit/mod.rs` に Envelope/Event 定義を作成し、`serde_json::Value` で拡張フィールドを許可する。
+    - 3.1.b `AuditEnvelope::validate()` を実装し、`effect.stage.required` / `bridge.reload` など必須キーをチェックして `anyhow::Result` を返す。
+    - 3.1.c `compiler/rust/runtime/tests/audit_validation.rs` で JSON フィクスチャを読み込み、欠落時には明確なエラーになることをスナップショットテストで確認する。
 3.2. `PipelineStarted` 等の既定イベントを発火させる API を実装し、監査ログへ記録するテストを整備する。
+    - 3.2.a `AuditEventKind` を列挙体として作成し、`PipelineStarted`/`PipelineCompleted`/`StageMismatch` 等を追加する。
+    - 3.2.b `compiler/rust/frontend/src/pipeline/mod.rs` で `AuditEmitter` を注入し、CLI/LSP 経由で `--emit-audit-log` が指定された際のみログを書き出す。
+    - 3.2.c `examples/core_diagnostics/pipeline_*.reml` を追加し、`tooling/examples/run_examples.sh --suite core_diagnostics --with-audit` を CI に登録する。
 3.3. `log_grapheme_stats` や IO/Runtime からのイベント連携を確認し、`AuditCapability` との接続をテストする。
+    - 3.3.a `runtime/logging/grapheme.rs` の `log_grapheme_stats` 呼び出しから `AuditEnvelope` へ `text.utf8.range` メタデータを転送する。
+    - 3.3.b `compiler/rust/runtime/src/io/bridge.rs` のイベントフックに `AuditCapability` を注入し、`bridge.stage.*` 診断と一致するかゴールデンを比較する。
+    - 3.3.c `collect-iterator-audit-metrics.py --section runtime --require-success` を新シナリオで実行し、結果を `reports/audit/dashboard/core_runtime-YYYYMMDD.md` へ記録する。
 
 ### 4. Effect/Capability 診断と Telemetry（51-52週目）
 **担当領域**: 高度診断
 
 4.1. `EffectDiagnostic`, `CapabilityMismatch` 等の診断 API を実装し、`Stage`/`Capability` 情報が付与されることを検証する。
+    - 4.1.a `compiler/rust/frontend/src/effects/diagnostics.rs` に `EffectDiagnostic` を実装し、`effect.stage.required` / `effect.stage.actual` をフィールドに保持する。
+    - 4.1.b `scripts/poc_dualwrite_compare.sh effect_handler --trace` を Rust 実装専用モードで実行し、差分レポートを `reports/spec-audit/ch1/effect_handler-YYYYMMDD-telemetry.md` へ保存して Stage 情報を確認する。
+    - 4.1.c Stage/Capability の不一致を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` の既存リスク ID (DIAG-RUST-05 等) に紐付け、緊急度を更新する。
 4.2. `TraitResolutionTelemetry` など型制約可視化用構造体を実装し、TypeChecker (3-2) から出力を受け取れるようにする。
+    - 4.2.a `compiler/rust/typeck/src/telemetry.rs` を新設し、`TraitResolutionTelemetry`/`ResolutionState`/`ConstraintGraphSummary` 構造体を `serde` でシリアライズ可能にする。
+    - 4.2.b TypeChecker の制約生成ルートに `TelemetrySink` を差し込み、`--emit-telemetry constraint_graph` フラグで JSON を `tmp/telemetry/` に書き出す。
+    - 4.2.c 生成した JSON を `scripts/telemetry/render_graphviz.py` で dot → svg に変換し、`docs/spec/3-6-core-diagnostics-audit.md` の図版を差し替える。
 4.3. `ResolutionState`, `ConstraintGraphSummary` 等のデータを Graphviz 等にエクスポートするヘルパを追加する。
+    - 4.3.a `tooling/telemetry/export_graphviz.rs` を作成し、JSON から dot を生成する CLI を提供する。
+    - 4.3.b `examples/core_diagnostics/constraint_graph/*.reml` を追加し、生成 dot/svg を `examples/core_diagnostics/output/` に格納する。
+    - 4.3.c `docs/guides/runtime-bridges.md` へ Graphviz エクスポート手順を追記し、TypeChecker 以外のチームも再利用できるよう説明する。
 
 ### 5. ポリシー設定とフィルタリング（52週目）
 **担当領域**: 運用制御
 
 5.1. 診断抑制ポリシー (`--ack-experimental-diagnostics` 等) を実装し、ステージ別で Severity が切り替わることをテストする。
+    - 5.1.a `compiler/rust/frontend/src/config/runconfig.rs` に `AckExperimentalDiagnostics` フラグとステージ紐付けロジックを追加する。
+    - 5.1.b `compiler/rust/frontend/tests/diagnostic_filtering.rs` で Stage ごとの Severity 再分類をテーブル駆動テスト化する。
+    - 5.1.c `docs/guides/ai-integration.md` の診断抑制フラグ一覧を更新し、AI 支援シナリオでの使用例を追記する。
 5.2. `DiagnosticFilter`/`AuditPolicy` を実装し、CLI/LSP で指定できるようにする。
+    - 5.2.a CLI 引数 `--diagnostic-filter` `--audit-policy` を `structopt` / `clap` に登録し、Config へ伝搬する。
+    - 5.2.b LSP 側は `workspace/configuration` からフィルタ値を受け取る JSON スキーマを定義し、`tooling/lsp/tests` で検証する。
+    - 5.2.c フィルタ設定を `reports/diagnostic-format-regression.md` の差分収集スクリプトへ追加し、メトリクスが同時に取得できるようにする。
 5.3. `0-3-audit-and-metrics.md` と連動するメトリクス収集 (エラー件数、監査イベント件数) を整備する。
+    - 5.3.a `collect-iterator-audit-metrics.py --section diagnostics` に `diagnostic.total_count` と `audit.event_total` を出力する拡張を加える。
+    - 5.3.b メトリクス CSV (`docs/plans/bootstrap-roadmap/assets/metrics/diagnostics_ci.csv`) を更新し、CI から日付ごとに append する Git フレンドリーな形式を採用する。
+    - 5.3.c `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表に新メトリクス ID を追記し、更新トリガー（CI 成功時）を脚注で明記する。
 
 ### 6. ドキュメント・サンプル更新（52-53週目）
 **担当領域**: 情報整備
 
 6.1. 仕様書内の図表・サンプルを実装に合わせて更新し、`examples/` に診断/監査のゴールデン出力を追加する。
+    - 6.1.a `docs/spec/3-6-core-diagnostics-audit.md` のコードサンプルを Rust 実装の最新構造体に合わせ、`reml` コードブロックと JSON 例を再生成する。
+    - 6.1.b `examples/core_diagnostics/` に `*.expected.diagnostic.json` と `*.expected.audit.jsonl` を追加し、`tooling/examples/run_examples.sh --update-golden` の手順を README に記載する。
+    - 6.1.c `docs/spec/1-0-language-core-overview.md` と `docs/spec/3-0-core-library-overview.md` に診断基盤の概要更新を反映させる。
 6.2. `README.md`/`3-0-phase3-self-host.md` に Diagnostics 実装ステータスと活用ガイドを追記する。
+    - 6.2.a `README.md` の章一覧に「3.6 Core Diagnostics & Audit」を追加し、ステータスバッジを図示する。
+    - 6.2.b `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` の Phase 3 条件テーブルへ診断実装の完了チェックを追加し、CI 連動条件を記述する。
+    - 6.2.c `docs/plans/rust-migration/overview.md` の P3 ドキュメント一覧に診断実装ガイドが存在する旨を脚注でリンクする。
 6.3. `docs/guides/ai-integration.md`/`docs/guides/runtime-bridges.md` の診断・監査セクションを更新する。
+    - 6.3.a AI ガイドでは診断 JSON の解釈手順と `effect.stage.*` の注意点を解説する段落を追加する。
+    - 6.3.b Runtime Bridges ガイドでは `AuditEnvelope` の `bridge.stage.*` 例を載せ、プラグイン開発者が参照できるようにする。
+    - 6.3.c 更新後に `docs/notes/dsl-plugin-roadmap.md` へ交差参照を追記し、プラグイン昇格審査と診断監査が同じ証跡を共有することを明記する。
 
 ### 7. テスト・CI 統合（53週目）
 **担当領域**: 品質保証
 
 7.1. 単体・統合テストを追加し、診断構造のシリアライズ/デシリアライズが安定していることを確認する。
+    - 7.1.a `compiler/rust/frontend/tests/json_roundtrip.rs` に `serde_json` を用いた round-trip テストを追加し、互換性を保証する。
+    - 7.1.b `tests/cli/test_diagnostics.rs` を作成し、CLI 出力（human/json）両方の snapshot を `insta` で管理する。
+    - 7.1.c `tooling/lsp/tests/client_compat/diagnostics_roundtrip.json` を更新し、LSP 側でも同じ round-trip が成立することを確認する。
 7.2. 監査ログ出力のスナップショットテストと GDPR/Privacy フラグの検証を行う。
+    - 7.2.a `compiler/rust/runtime/tests/audit_snapshot.rs` を追加し、`AuditEnvelope` の `privacy.redacted` の有無で差分が出るかチェックする。
+    - 7.2.b `reports/audit/privacy/` に GDPR テストケースのログを保存し、`0-4-risk-handling.md` の法務項目とリンクする。
+    - 7.2.c `scripts/validate-diagnostic-json.sh --suite audit --require-privacy` を CI に追加し、`privacy` フラグ欠落時は即座に失敗させる。
 7.3. CI に診断差分検出タスクを追加し、回帰時に `0-4-risk-handling.md` へ自動記録する仕組みを構築する。
+    - 7.3.a `.github/workflows/rust-frontend.yml` に `diagnostic_diff` ジョブを追加し、`reports/dual-write/*` をアーティファクト化する。
+    - 7.3.b 差分検出スクリプトを `tooling/ci/diagnostic_diff.py` として実装し、失敗時に `reports/audit/dashboard/ci-regressions.md` を生成する。
+    - 7.3.c CI 失敗時に `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` を自動更新できるよう `scripts/ci/risk_append_entry.sh` を用意し、エントリフォーマットを固定する。
 
 ### 8. Core Collections effect 連携（39週目）
 **担当領域**: `collector.effect.cell` / `collector.effect.rc` / `collector.effect.mem` / `collector.effect.audit`
 
 8.1. `compiler/rust/runtime/src/collections/mutable/{cell,ref,table,vec}.rs` で追加された Effectful コンテナを `reports/spec-audit/ch1/core_iter_collectors.json` へ流し込み、`collector.effect.cell` / `collector.effect.rc` / `collector.effect.mem` / `collector.effect.audit` の必須フィールドを `scripts/validate-diagnostic-json.sh --suite collectors --pattern collector.effect.cell --pattern collector.effect.rc` で検証する。
+    - 8.1.a `collector.effect.*` で生成された JSON キー一覧を `scripts/tools/list_collector_keys.py` で収集し、`docs/plans/bootstrap-roadmap/assets/collector-effect-keys.md` に保存する。
+    - 8.1.b `reports/spec-audit/ch1/core_iter_collectors.json` を生成する際、`--with-stage` フラグで Stage 情報を含め、`effect.stage.*` が欠けていないか自動チェックを追加する。
+    - 8.1.c バリデーション結果を `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` の進捗テーブルに反映し、実験項目は Stage=experiment を明示する。
 8.2. `collect-iterator-audit-metrics.py --suite collectors --scenario ref_internal_mutation` / `--scenario table_csv_import` を CI に組み込み、`--require-success --require-cell` を指定して `cell_mutations_total`・`ref_borrow_conflict_rate`・`table_insert_throughput`・`csv_load_latency` の KPI を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` / `reports/iterator-collector-summary.md` と `docs/plans/bootstrap-roadmap/assets/metrics/core_collections_persistent.csv`（`RefInternalMutation` 行）に同期させる。
+    - 8.2.a KPI の閾値を `docs/plans/bootstrap-roadmap/assets/metrics/core_collections_thresholds.json` として定義し、CI で逸脱した場合にコメントを残すスクリプトを追加する。
+    - 8.2.b `reports/iterator-collector-summary.md` の最新 Run ID を列挙し、`collect-iterator-audit-metrics.py --emit-run-id` の出力を自動追記する。
+    - 8.2.c `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に collectors KPI のアラート条件を追記し、Phase 3 ハンドオーバー時の必須証跡とする。
 8.3. `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` の `Cell<T>`/`Ref<T>` 内部可変性セクションと `docs-migrations.log` に記録された `Cell/Ref effect trace` を相互にリンクし、`collect-iterator-audit-metrics.py --require-cell` と `scripts/validate-diagnostic-json.sh --suite collectors` を監査 CI の gate とすることで Effectful コンテナ導入タイミングを明示する。
+    - 8.3.a `docs-migrations.log` に `Cell/Ref effect trace` 更新日時と Run ID を追記し、参照元を `reports/spec-audit/ch1/` にリンクする。
+    - 8.3.b `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md#cell-ref-内部可変性` に監査 CI gate の手順を追加し、Diagnostics 計画との依存関係を明文化する。
+    - 8.3.c `collect-iterator-audit-metrics.py` と `scripts/validate-diagnostic-json.sh` の実行結果をまとめた `reports/audit/dashboard/collectors-YYYYMMDD.md` を作成し、Phase 3 ドキュメントから参照できるようにする。
 
 ## 成果物と検証
 - `Diagnostic`/`AuditEnvelope` API が仕様通りに実装され、効果タグ・ステージ情報が正しく扱われること。
