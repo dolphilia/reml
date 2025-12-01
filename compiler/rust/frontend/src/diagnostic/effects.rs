@@ -122,6 +122,72 @@ impl EffectAuditContext {
     }
 }
 
+/// Stage/Capability メタデータを診断・監査経路へ展開するための共通コンテナ。
+#[derive(Debug, Clone)]
+pub struct StageAuditPayload {
+    required_stage: Option<String>,
+    actual_stage: Option<String>,
+    runtime_capabilities: Vec<RuntimeCapability>,
+    stage_trace: Vec<StageTraceStep>,
+    bridge_signal: Option<RuntimeBridgeSignal>,
+}
+
+impl StageAuditPayload {
+    pub fn new(
+        context: &StageContext,
+        capabilities: &[RuntimeCapability],
+        bridge_signal: Option<RuntimeBridgeSignal>,
+    ) -> Self {
+        let mut trace = context.stage_trace.clone();
+        if let Some(signal) = &bridge_signal {
+            trace.extend(signal.stage_trace.clone());
+        }
+        Self {
+            required_stage: Some(context.capability.label()),
+            actual_stage: Some(context.runtime.label()),
+            runtime_capabilities: capabilities.to_vec(),
+            stage_trace: trace,
+            bridge_signal,
+        }
+    }
+
+    pub fn effect_context(&self) -> EffectAuditContext {
+        EffectAuditContext::new(
+            self.required_stage.clone(),
+            self.actual_stage.clone(),
+            self.runtime_capabilities.clone(),
+            self.stage_trace.clone(),
+            self.bridge_signal.clone(),
+        )
+    }
+
+    pub fn apply_extensions(&self, extensions: &mut Map<String, Value>) {
+        crate::diagnostic::effects::apply_extensions(&self.effect_context(), extensions);
+    }
+
+    pub fn apply_audit_metadata(&self, metadata: &mut Map<String, Value>) {
+        crate::diagnostic::effects::apply_audit_metadata(&self.effect_context(), metadata);
+    }
+
+    pub fn primary_capability(&self) -> Option<&str> {
+        self.runtime_capabilities
+            .first()
+            .map(|cap| cap.id().as_str())
+    }
+
+    pub fn bridge_signal(&self) -> Option<&RuntimeBridgeSignal> {
+        self.bridge_signal.as_ref()
+    }
+
+    pub fn stage_trace(&self) -> &[StageTraceStep] {
+        &self.stage_trace
+    }
+
+    pub fn extend_stage_trace(&mut self, extra: &[StageTraceStep]) {
+        self.stage_trace.extend(extra.iter().cloned());
+    }
+}
+
 pub fn apply_extensions(context: &EffectAuditContext, extensions: &mut Map<String, Value>) {
     apply_effects_extension(context, extensions);
     apply_bridge_extension(context, extensions);

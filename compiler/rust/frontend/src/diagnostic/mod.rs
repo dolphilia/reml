@@ -14,6 +14,7 @@ pub mod recover;
 pub mod unicode;
 
 pub use recover::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
+pub use effects::StageAuditPayload;
 
 pub(crate) const EXPECTED_PLACEHOLDER_TOKEN: &str = "解析継続トークン";
 pub(crate) const EXPECTED_EMPTY_HUMANIZED: &str = "ここで解釈可能な構文が見つかりません";

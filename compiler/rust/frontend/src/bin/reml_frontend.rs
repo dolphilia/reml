@@ -14,7 +14,7 @@ use reml_frontend::diagnostic::{
     formatter::{self, FormatterContext},
     json as diag_json,
     unicode,
-    DiagnosticDomain, FrontendDiagnostic,
+    DiagnosticDomain, FrontendDiagnostic, StageAuditPayload,
 };
 use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::{lex_source_with_options, IdentifierProfile, LexerOptions};
@@ -1329,67 +1329,6 @@ fn merge_stream_extension(
 }
 
 const STREAMING_PLACEHOLDER_TOKEN: &str = "解析継続トークン";
-
-#[derive(Clone, Debug)]
-struct StageAuditPayload {
-    required_stage: Option<String>,
-    actual_stage: Option<String>,
-    runtime_capabilities: Vec<RuntimeCapability>,
-    stage_trace: Vec<StageTraceStep>,
-    bridge_signal: Option<RuntimeBridgeSignal>,
-}
-
-impl StageAuditPayload {
-    fn new(
-        context: &StageContext,
-        capabilities: &[RuntimeCapability],
-        bridge_signal: Option<RuntimeBridgeSignal>,
-    ) -> Self {
-        let mut trace = context.stage_trace.clone();
-        if let Some(signal) = &bridge_signal {
-            trace.extend(signal.stage_trace.clone());
-        }
-        Self {
-            required_stage: Some(stage_requirement_label(&context.capability)),
-            actual_stage: Some(stage_requirement_label(&context.runtime)),
-            runtime_capabilities: capabilities.to_vec(),
-            stage_trace: trace,
-            bridge_signal,
-        }
-    }
-
-    fn primary_capability(&self) -> Option<&str> {
-        self.runtime_capabilities
-            .first()
-            .map(|cap| cap.id().as_str())
-    }
-
-    fn effect_context(&self) -> effects::EffectAuditContext {
-        effects::EffectAuditContext::new(
-            self.required_stage.clone(),
-            self.actual_stage.clone(),
-            self.runtime_capabilities.clone(),
-            self.stage_trace.clone(),
-            self.bridge_signal.clone(),
-        )
-    }
-
-    fn stage_trace(&self) -> &[StageTraceStep] {
-        &self.stage_trace
-    }
-
-    fn apply_extensions(&self, extensions: &mut serde_json::Map<String, Value>) {
-        effects::apply_extensions(&self.effect_context(), extensions);
-    }
-
-    fn apply_audit_metadata(&self, metadata: &mut serde_json::Map<String, Value>) {
-        effects::apply_audit_metadata(&self.effect_context(), metadata);
-    }
-}
-
-fn stage_requirement_label(requirement: &StageRequirement) -> String {
-    requirement.label()
-}
 
 fn build_parser_diagnostics(
     diagnostics: &[FrontendDiagnostic],

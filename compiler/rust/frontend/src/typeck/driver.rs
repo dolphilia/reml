@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use once_cell::sync::Lazy;
 use serde::Serialize;
 
 use super::capability::{CapabilityDescriptor, EffectUsage};
@@ -8,7 +9,7 @@ use super::env::{StageRequirement, TypeEnv, TypecheckConfig};
 use super::metrics::TypecheckMetrics;
 use super::scheme::Scheme;
 use super::types::{BuiltinType, Type, TypeVarGen};
-use crate::diagnostic::{ExpectedTokenCollector, ExpectedTokensSummary};
+use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 use crate::parser::ast::{Expr, ExprKind, Function, Ident, Literal, LiteralKind, Module};
 use crate::semantics::typed;
 use crate::span::Span;
@@ -185,6 +186,29 @@ pub struct TypecheckReport {
     pub used_impls: Vec<String>,
 }
 
+static TOP_LEVEL_DECLARATION_SUMMARY: Lazy<ExpectedTokensSummary> = Lazy::new(|| {
+    let mut collector = ExpectedTokenCollector::new();
+    collector.extend([
+        ExpectedToken::keyword("effect"),
+        ExpectedToken::keyword("extern"),
+        ExpectedToken::keyword("fn"),
+        ExpectedToken::keyword("handler"),
+        ExpectedToken::keyword("impl"),
+        ExpectedToken::keyword("let"),
+        ExpectedToken::keyword("pub"),
+        ExpectedToken::keyword("trait"),
+        ExpectedToken::keyword("type"),
+        ExpectedToken::keyword("var"),
+    ]);
+    collector.push_token("@");
+    collector.push(ExpectedToken::eof());
+    collector.summarize()
+});
+
+fn top_level_declaration_summary() -> ExpectedTokensSummary {
+    TOP_LEVEL_DECLARATION_SUMMARY.clone()
+}
+
 #[derive(Debug, Serialize, Clone)]
 pub struct TypedFunctionSummary {
     pub name: String,
@@ -314,6 +338,7 @@ impl TypecheckViolation {
             expected: None,
             iterator_stage: None,
         }
+        .with_expected_summary(top_level_declaration_summary())
     }
 
     fn iterator_stage_mismatch(
@@ -354,6 +379,7 @@ impl TypecheckViolation {
                 source: snapshot.source,
             }),
         }
+        .with_expected_summary(top_level_declaration_summary())
     }
 
     fn ast_unavailable() -> Self {
