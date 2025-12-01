@@ -62,8 +62,10 @@ pub struct FrontendDiagnosticPayload<'a> {
 pub fn build_frontend_diagnostic(payload: FrontendDiagnosticPayload<'_>) -> Value {
     let severity_hint = payload.diag.severity_hint.map(|hint| hint.as_str());
     let codes = effective_codes(payload.diag);
-    let location = span_to_location_opt(payload.diag.span, payload.line_index, payload.input_path);
-    let primary = span_to_primary_value(payload.diag.span, payload.line_index, payload.input_path);
+    let primary_span = payload.diag.primary_span();
+    let location =
+        span_to_location_opt(primary_span, payload.line_index, payload.input_path);
+    let primary = span_to_primary_value(primary_span, payload.line_index, payload.input_path);
     let notes = payload
         .diag
         .notes

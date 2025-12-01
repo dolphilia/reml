@@ -506,7 +506,7 @@ fn parse_result_from_module(
 
     let farthest_error_offset = diagnostics
         .iter()
-        .filter_map(|diag| diag.span.map(|span| span.end))
+        .filter_map(|diag| diag.primary_span().map(|span| span.end))
         .max();
 
     ParseResult::new(

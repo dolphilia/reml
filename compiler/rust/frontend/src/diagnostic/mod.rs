@@ -235,11 +235,12 @@ pub struct FrontendDiagnostic {
     pub code: Option<String>,
     pub codes: Vec<String>,
     pub message: String,
-    pub timestamp: Option<String>,
+    pub timestamp: String,
     pub severity: DiagnosticSeverity,
     pub severity_hint: Option<SeverityHint>,
     pub domain: Option<DiagnosticDomain>,
-    pub span: Option<Span>,
+    span: Span,
+    has_primary_span: bool,
     pub span_trace: Vec<TraceFrame>,
     pub secondary_spans: Vec<DiagnosticSpanLabel>,
     pub recoverability: Recoverability,
@@ -268,7 +269,8 @@ impl FrontendDiagnostic {
             severity: DiagnosticSeverity::Error,
             severity_hint: None,
             domain: None,
-            span: None,
+            span: Span::default(),
+            has_primary_span: false,
             span_trace: Vec::new(),
             secondary_spans: Vec::new(),
             recoverability: Recoverability::Fatal,
@@ -281,7 +283,7 @@ impl FrontendDiagnostic {
             expected_message_key: None,
             expected_alternatives: Vec::new(),
             expected_summary: None,
-            timestamp: None,
+            timestamp: String::new(),
             audit_metadata: Map::new(),
             audit: AuditEnvelope::new(),
             unicode: None,
@@ -309,8 +311,30 @@ impl FrontendDiagnostic {
     }
 
     pub fn with_span(mut self, span: Span) -> Self {
-        self.span = Some(span);
+        self.set_span(span);
         self
+    }
+
+    pub fn set_span(&mut self, span: Span) {
+        self.span = span;
+        self.has_primary_span = true;
+    }
+
+    pub fn clear_primary_span(&mut self) {
+        self.span = Span::default();
+        self.has_primary_span = false;
+    }
+
+    pub fn has_primary_span(&self) -> bool {
+        self.has_primary_span
+    }
+
+    pub fn primary_span(&self) -> Option<Span> {
+        if self.has_primary_span {
+            Some(self.span)
+        } else {
+            None
+        }
     }
 
     pub fn with_code(mut self, code: impl Into<String>) -> Self {
@@ -402,6 +426,10 @@ impl FrontendDiagnostic {
         for (key, value) in other {
             self.extensions.insert(key.clone(), value.clone());
         }
+    }
+
+    pub fn set_timestamp(&mut self, timestamp: impl Into<String>) {
+        self.timestamp = timestamp.into();
     }
 
     pub fn set_expected_tokens(mut self, tokens: Vec<String>, humanized: Option<String>) -> Self {
@@ -636,7 +664,9 @@ impl DiagnosticBuilder {
     fn parse_expected_key(diagnostic: &FrontendDiagnostic) -> Option<(u32, u32)> {
         match diagnostic.expected_message_key.as_deref()? {
             key if key == PARSE_EXPECTED_KEY || key == PARSE_EXPECTED_EMPTY_KEY => {
-                diagnostic.span.map(|span| (span.start, span.end))
+                diagnostic
+                    .primary_span()
+                    .map(|span| (span.start, span.end))
             }
             _ => None,
         }

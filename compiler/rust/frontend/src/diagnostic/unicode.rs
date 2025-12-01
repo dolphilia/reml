@@ -128,9 +128,9 @@ pub fn integrate_unicode_metadata(
         Some(detail) => detail,
         None => return,
         };
-    let metrics = UnicodeSpanMetrics::new(&detail, diag.span, source);
+    let metrics = UnicodeSpanMetrics::new(&detail, diag.primary_span(), source);
     if let Some(span) = metrics.refined_span {
-        diag.span = Some(span);
+        diag.set_span(span);
     }
     extensions.insert(
         "unicode".to_string(),
@@ -275,7 +275,9 @@ mod tests {
         let mut extensions = Map::new();
         let mut metadata = Map::new();
         integrate_unicode_metadata(&mut diag, source, &mut extensions, &mut metadata);
-        let refined = diag.span.expect("span exists");
+        let refined = diag
+            .primary_span()
+            .expect("span exists");
         assert_eq!(refined.start, 7);
         assert_eq!(refined.end, 9);
         let unicode_ext = extensions

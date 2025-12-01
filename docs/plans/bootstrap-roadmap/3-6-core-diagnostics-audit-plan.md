@@ -46,6 +46,10 @@
 - `StageAuditPayload` を `compiler/rust/frontend/src/diagnostic/effects.rs` へ移設し、`Diagnostic` モジュールから再利用できる API として公開した。これにより CLI／TypeChecker／`--emit-effects-metrics` で同一の Stage/Capability 情報を共有し、`collect-iterator-audit-metrics` が参照する `bridge.stage.*`/`effect.stage.*` キーが常に揃う（`effects-metrics.rust.err.log` の `bridge_stage.audit_presence` 警告が解消）。
 - `TypecheckViolation::stage_mismatch`／`iterator_stage_mismatch` に `ExpectedTokenCollector` ベースのトップレベル宣言セット（`effect`/`extern`/`fn`/`handler`/`impl`/`let`/`pub`/`trait`/`type`/`var`/`@`/`EOF`）を付与し、OCaml 版が出力する Recover 拡張と同じ配列を JSON へ埋め込むようにした（`compiler/rust/frontend/src/typeck/driver.rs`）。`reports/dual-write/front-end/.../expected_tokens.diff.json` で `ffi_stage_messagebox` などに残っていた差分はこの共通サマリで吸収できる。
 - 変更結果を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に追記し、`StageAuditPayload` 共有化と `ExpectedTokenCollector` 適用を Phase3 KPI の更新トリガー（Run ID `20290620-stage-expected`）として登録した。
+
+#### 1.1 追記（Run ID: 20290622-span-timestamp）
+- Parser 診断の `timestamp` を必須化し、`FrontendDiagnostic::set_timestamp` を `build_parser_diagnostics` から必ず呼び出すことで CLI/LSP/Audit すべての JSON に同一の ISO8601 値を出力するよう統合した（`compiler/rust/frontend/src/bin/reml_frontend.rs`）。
+- `Span` も必須フィールドに変更し、`set_span`/`primary_span` を介して管理。欠落時は `span_trace` 先頭の `TraceFrame`（なければ `[0,0)`）を自動採用するため、`primary`/`location` が欠落しなくなり `diagnostics-field-gap.csv` の `primary span` 行を `整合` とした。
 1.2. 効果タグ (`effect {diagnostic}`, `{audit}`, `{debug}`, `{trace}`, `{privacy}`) の付与基準を整理し、テスト戦略を決定する。
     - 1.2.a `docs/spec/1-3-effects-safety.md` と `docs/spec/3-8-core-runtime-capability.md` の Stage/Capability ルールを参照し、タグ別のトリガー条件をスプレッドシート化する。
     - 1.2.b `compiler/rust/frontend/src/effects/` を `rg "effect::"` で走査し、既存タグを洗い出して `StageRequirement::{Exact,AtLeast}` と突合する。

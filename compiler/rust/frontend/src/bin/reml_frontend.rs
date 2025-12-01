@@ -1375,7 +1375,14 @@ fn build_parser_diagnostics(
             if diag.span_trace.is_empty() && !span_trace.is_empty() {
                 diag.span_trace = span_trace.to_vec();
             }
-            diag.timestamp = Some(timestamp.clone());
+            diag.set_timestamp(timestamp.clone());
+            if !diag.has_primary_span() {
+                if let Some(frame) = diag.span_trace.first() {
+                    diag.set_span(frame.span);
+                } else {
+                    diag.set_span(Span::new(0, 0));
+                }
+            }
             let recover_extension = diag_json::build_recover_extension(&diag);
             let trace_ids = trace_ids_for_diagnostic(&diag, trace_events);
             let mut extensions = diag.extensions.clone();
@@ -1481,7 +1488,7 @@ fn trace_ids_for_diagnostic(
     diagnostic: &FrontendDiagnostic,
     trace_events: &[ParserTraceEvent],
 ) -> Vec<String> {
-    let span = match diagnostic.span {
+    let span = match diagnostic.primary_span() {
         Some(span) => span,
         None => return Vec::new(),
     };
