@@ -266,6 +266,11 @@
 - `reports/benchmarks/core-io-path/phase3-baseline-YYYYMMDD.json` を作成し、`docs/plans/rust-migration/3-2-benchmark-baseline.md` に測定項目 (`io.copy_throughput_mb_s`, `path.normalize_ops_s`) を追記する。
 - OCaml 実装との差分を `docs/notes/core-io-path-gap-log.md` に記録し、±15% 以上の回帰が発生した場合は `0-4-risk-handling.md` にリスク登録する。
 
+> 進行ログ（Phase3 W50, 7.2）  
+> - `compiler/rust/runtime/benches/bench_core_io.rs` を新設し、`reader_copy`, `buffered_read_line`, `core_path_normalize`, `watch_event_batch`（Watcher の監査イベントを模した合成バッチ）を Criterion ベンチとして追加。Watcher 実装はサンドボックス内で OS イベントを取得できないため、`WatchEvent` ベースのベンチを用意し監査パイプラインのオーバーヘッドを測定する設計にした。  
+> - `cargo bench --manifest-path compiler/rust/runtime/Cargo.toml --features "core-io core-path" --bench bench_core_io -- --noplot` を実行し、`reports/benchmarks/core-io-path/phase3-baseline-2025-12-24.json` に初回ベースラインを保存。`reader_copy_64k`/`reader_copy_2m`/`buffered_read_line`/`path_normalize`/`watch_event_batch` の 8 シナリオを記録し、±15% のしきい値を `docs/plans/rust-migration/3-2-benchmark-baseline.md` へ登録した。  
+> - ベンチ結果を `docs/plans/rust-migration/3-2-benchmark-baseline.md`（指標・スイート表）、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（`core_io.benchmark.copy_throughput_mb_s` KPI）、`docs/notes/core-io-path-gap-log.md`（回帰ログ）と同期し、Phase 2 OCaml 測定値と比較するフローを明文化した。
+
 7.3. テスト結果とリスクを `0-3-audit-and-metrics.md`/`0-4-risk-handling.md` に記録し、追加調整が必要な項目を整理する。  
 実施ステップ:
 - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Phase3 指標に `io.error_rate`, `path.security.incident_count`, `watcher.audit.pass_rate` を追加し、CI から収集した数値を毎スプリント反映する。

@@ -54,5 +54,9 @@ name = "bench_numeric_statistics"
 harness = false
 
 [[bench]]
+name = "bench_core_io"
+harness = false
+
+[[bench]]
 name = "time_clock"
 harness = false
