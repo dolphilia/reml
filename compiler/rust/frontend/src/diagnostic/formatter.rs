@@ -4,6 +4,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{env, fs};
+use uuid::Uuid;
 
 pub const AUDIT_POLICY_VERSION: &str = "rust.poc.audit.v1";
 
@@ -104,10 +105,13 @@ fn normalize_timestamp(value: &str) -> String {
     }
 }
 
-fn ensure_audit_id(metadata: &mut Map<String, Value>, timestamp: &str, prefix: &str) -> String {
+fn ensure_audit_id(metadata: &mut Map<String, Value>, timestamp: &str, prefix: &str) -> Uuid {
     if let Some(Value::String(existing)) = metadata.get("cli.audit_id") {
         if !existing.trim().is_empty() {
-            return existing.clone();
+            let uuid = parse_or_hash_audit_id(existing);
+            metadata.insert("audit.id.uuid".to_string(), json!(uuid.to_string()));
+            metadata.insert("audit.id.label".to_string(), json!(existing.clone()));
+            return uuid;
         }
     }
     let channel = channel_from_prefix(prefix, metadata);
@@ -126,9 +130,16 @@ fn ensure_audit_id(metadata: &mut Map<String, Value>, timestamp: &str, prefix: &
         commit.as_deref(),
         Some(workspace.as_str()),
     );
-    let audit_id = format!("{channel}/{build_id}#{sequence}");
-    metadata.insert("cli.audit_id".to_string(), json!(audit_id.clone()));
-    audit_id
+    let audit_label = format!("{channel}/{build_id}#{sequence}");
+    let uuid = Uuid::new_v5(&Uuid::NAMESPACE_URL, audit_label.as_bytes());
+    metadata.insert("cli.audit_id".to_string(), json!(audit_label.clone()));
+    metadata.insert("audit.id.uuid".to_string(), json!(uuid.to_string()));
+    metadata.insert("audit.id.label".to_string(), json!(audit_label));
+    uuid
+}
+
+fn parse_or_hash_audit_id(label: &str) -> Uuid {
+    Uuid::parse_str(label).unwrap_or_else(|_| Uuid::new_v5(&Uuid::NAMESPACE_URL, label.as_bytes()))
 }
 
 fn channel_from_prefix(prefix: &str, metadata: &Map<String, Value>) -> String {

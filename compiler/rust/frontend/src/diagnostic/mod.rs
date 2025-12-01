@@ -2,10 +2,12 @@
 
 use crate::error::Recoverability;
 use crate::span::Span;
+use crate::streaming::TraceFrame;
 use crate::unicode::UnicodeDetail;
 use serde_json::{Map, Value};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use uuid::Uuid;
 
 pub mod json;
 pub mod recover;
@@ -21,7 +23,7 @@ pub(crate) const PARSE_EXPECTED_EMPTY_KEY: &str = "parse.expected.empty";
 #[derive(Debug, Clone)]
 pub struct AuditEnvelope {
     pub metadata: Map<String, Value>,
-    pub audit_id: Option<String>,
+    pub audit_id: Option<Uuid>,
     pub change_set: Option<Value>,
     pub capability: Option<String>,
 }
@@ -38,7 +40,7 @@ impl AuditEnvelope {
 
     pub fn from_parts(
         metadata: Map<String, Value>,
-        audit_id: Option<String>,
+        audit_id: Option<Uuid>,
         change_set: Option<Value>,
         capability: Option<String>,
     ) -> Self {
@@ -228,6 +230,7 @@ impl DiagnosticFixIt {
 /// W4 の診断互換試験に向け、`serde` スキーマと合わせて拡張する。
 #[derive(Debug, Clone)]
 pub struct FrontendDiagnostic {
+    pub id: Option<Uuid>,
     pub code: Option<String>,
     pub codes: Vec<String>,
     pub message: String,
@@ -236,6 +239,7 @@ pub struct FrontendDiagnostic {
     pub severity_hint: Option<SeverityHint>,
     pub domain: Option<DiagnosticDomain>,
     pub span: Option<Span>,
+    pub span_trace: Vec<TraceFrame>,
     pub secondary_spans: Vec<DiagnosticSpanLabel>,
     pub recoverability: Recoverability,
     pub notes: Vec<DiagnosticNote>,
@@ -250,11 +254,13 @@ pub struct FrontendDiagnostic {
     pub audit_metadata: Map<String, Value>,
     pub audit: AuditEnvelope,
     pub unicode: Option<UnicodeDetail>,
+    pub extensions: Map<String, Value>,
 }
 
 impl FrontendDiagnostic {
     pub fn new(message: impl Into<String>) -> Self {
         Self {
+            id: None,
             code: None,
             codes: Vec::new(),
             message: message.into(),
@@ -262,6 +268,7 @@ impl FrontendDiagnostic {
             severity_hint: None,
             domain: None,
             span: None,
+            span_trace: Vec::new(),
             secondary_spans: Vec::new(),
             recoverability: Recoverability::Fatal,
             notes: Vec::new(),
@@ -277,6 +284,26 @@ impl FrontendDiagnostic {
             audit_metadata: Map::new(),
             audit: AuditEnvelope::new(),
             unicode: None,
+            extensions: Map::new(),
+        }
+    }
+
+    pub fn with_id(mut self, id: Uuid) -> Self {
+        self.id = Some(id);
+        self
+    }
+
+    pub fn set_id(&mut self, id: Uuid) {
+        self.id = Some(id);
+    }
+
+    pub fn ensure_id(&mut self) -> Uuid {
+        if let Some(id) = self.id {
+            id
+        } else {
+            let generated = Uuid::new_v4();
+            self.id = Some(generated);
+            generated
         }
     }
 
@@ -327,6 +354,15 @@ impl FrontendDiagnostic {
         self.notes.push(note);
     }
 
+    pub fn with_span_trace(mut self, trace: Vec<TraceFrame>) -> Self {
+        self.span_trace = trace;
+        self
+    }
+
+    pub fn set_span_trace(&mut self, trace: Vec<TraceFrame>) {
+        self.span_trace = trace;
+    }
+
     pub fn add_secondary_span(&mut self, span_label: DiagnosticSpanLabel) {
         self.secondary_spans.push(span_label);
     }
@@ -351,6 +387,20 @@ impl FrontendDiagnostic {
     pub fn with_unicode_detail(mut self, detail: UnicodeDetail) -> Self {
         self.set_unicode_detail(detail);
         self
+    }
+
+    pub fn extensions_mut(&mut self) -> &mut Map<String, Value> {
+        &mut self.extensions
+    }
+
+    pub fn set_extensions(&mut self, extensions: Map<String, Value>) {
+        self.extensions = extensions;
+    }
+
+    pub fn merge_extensions(&mut self, other: &Map<String, Value>) {
+        for (key, value) in other {
+            self.extensions.insert(key.clone(), value.clone());
+        }
     }
 
     pub fn set_expected_tokens(mut self, tokens: Vec<String>, humanized: Option<String>) -> Self {
@@ -530,6 +580,8 @@ impl DiagnosticBuilder {
         diagnostic: FrontendDiagnostic,
         wants_index: bool,
     ) -> Option<usize> {
+        let mut diagnostic = diagnostic;
+        diagnostic.ensure_id();
         if self.merge_parse_expected {
             if let Some(key) = Self::parse_expected_key(&diagnostic) {
                 if let Some(&index) = self.parse_expected_index.get(&key) {

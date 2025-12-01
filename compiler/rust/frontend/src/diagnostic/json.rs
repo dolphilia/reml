@@ -6,6 +6,7 @@ use super::{
     ExpectedTokensSummary, FrontendDiagnostic,
 };
 use crate::span::Span;
+use crate::streaming::TraceFrame;
 
 /// ソースの行・列インデクスを保持する軽量型。
 #[derive(Debug, Clone)]
@@ -87,16 +88,20 @@ pub fn build_frontend_diagnostic(payload: FrontendDiagnosticPayload<'_>) -> Valu
         .iter()
         .map(|fixit| diagnostic_fixit_to_json(fixit, payload.line_index, payload.input_path))
         .collect::<Vec<_>>();
+    let span_trace_value =
+        span_trace_to_json(&payload.diag.span_trace, payload.line_index, payload.input_path);
 
     json!({
         "schema_version": payload.schema_version,
         "timestamp": payload.timestamp,
+        "id": payload.diag.id.map(|id| id.to_string()),
         "message": payload.diag.message,
         "severity": payload.diag.severity.as_str(),
         "severity_hint": severity_hint,
         "domain": payload.domain_label,
         "primary": primary,
         "location": location,
+        "span_trace": span_trace_value,
         "extensions": Value::Object(payload.extensions),
         "audit_metadata": Value::Object(payload.audit_metadata),
         "audit": payload.audit,
@@ -108,7 +113,24 @@ pub fn build_frontend_diagnostic(payload: FrontendDiagnosticPayload<'_>) -> Valu
         "code": payload.diag.code.clone(),
         "codes": codes,
         "expected": payload.expected,
-    })
+        })
+}
+
+fn span_trace_to_json(
+    frames: &[TraceFrame],
+    line_index: &LineIndex,
+    input_path: &Path,
+) -> Value {
+    let entries = frames
+        .iter()
+        .map(|frame| {
+            json!({
+                "label": frame.label.as_ref().map(|label| label.to_string()),
+                "span": span_to_primary_value(Some(frame.span), line_index, input_path),
+            })
+        })
+        .collect::<Vec<_>>();
+    Value::Array(entries)
 }
 
 pub fn build_recover_extension(diag: &FrontendDiagnostic) -> Option<Value> {

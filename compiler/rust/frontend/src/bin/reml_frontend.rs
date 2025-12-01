@@ -27,6 +27,7 @@ use reml_frontend::semantics::typed;
 use reml_frontend::span::Span;
 use reml_frontend::streaming::{
     RuntimeBridgeSignal, StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig,
+    TraceFrame,
 };
 use reml_frontend::typeck::{
     self, Constraint, DualWriteGuards, InstallConfigError, IteratorStageViolationInfo,
@@ -149,6 +150,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut diagnostics_entries = build_parser_diagnostics(
         &result.diagnostics,
         &result.trace_events,
+        &result.span_trace,
         &args,
         &input_path,
         &source,
@@ -1392,6 +1394,7 @@ fn stage_requirement_label(requirement: &StageRequirement) -> String {
 fn build_parser_diagnostics(
     diagnostics: &[FrontendDiagnostic],
     trace_events: &[ParserTraceEvent],
+    span_trace: &[TraceFrame],
     args: &CliArgs,
     input_path: &Path,
     source: &str,
@@ -1431,10 +1434,13 @@ fn build_parser_diagnostics(
             if diag.domain.is_none() {
                 diag.domain = Some(DiagnosticDomain::Parser);
             }
+            if diag.span_trace.is_empty() && !span_trace.is_empty() {
+                diag.span_trace = span_trace.to_vec();
+            }
             diag.timestamp = Some(timestamp.clone());
             let recover_extension = diag_json::build_recover_extension(&diag);
             let trace_ids = trace_ids_for_diagnostic(&diag, trace_events);
-            let mut extensions = serde_json::Map::new();
+            let mut extensions = diag.extensions.clone();
             extensions.insert(
                 "diagnostic.v2".to_string(),
                 json!({ "timestamp": timestamp }),
@@ -1505,7 +1511,7 @@ fn build_parser_diagnostics(
                 Value::Object(payload_metadata.clone()),
             );
             if let Some(audit_id) = audit_envelope.audit_id {
-                audit_object.insert("audit_id".to_string(), json!(audit_id));
+                audit_object.insert("audit_id".to_string(), json!(audit_id.to_string()));
             }
             if let Some(change_set) = audit_envelope.change_set {
                 audit_object.insert("change_set".to_string(), change_set);
@@ -1515,6 +1521,7 @@ fn build_parser_diagnostics(
             }
 
             let expected_value = diag_json::build_expected_field(&diag);
+            diag.extensions = extensions.clone();
             diag_json::build_frontend_diagnostic(diag_json::FrontendDiagnosticPayload {
                 diag: &diag,
                 timestamp: &timestamp,
@@ -1627,7 +1634,7 @@ fn build_type_diagnostics(
                 Value::Object(payload_metadata.clone()),
             );
             if let Some(audit_id) = audit_envelope.audit_id {
-                audit_object.insert("audit_id".to_string(), json!(audit_id));
+                audit_object.insert("audit_id".to_string(), json!(audit_id.to_string()));
             }
             if let Some(change_set) = audit_envelope.change_set {
                 audit_object.insert("change_set".to_string(), change_set);

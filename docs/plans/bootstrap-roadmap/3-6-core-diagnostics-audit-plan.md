@@ -35,6 +35,12 @@
 | `extensions["recover"]` | 1-2 §1.2.6 / reports/diagnostic-format-regression.md | Recover 代表ケースが `diagnostics=[]` で拡張を組み立てられず、ハンドラ情報がゼロ。 | ❌ | `reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/recover_else_without_if/diagnostics.rust.json` |
 
 上記ギャップは `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の DIAG-RUST-05/06/07 とリンク済みであり、次スプリントは `ExpectedTokenCollector` の強制適用、`StageAuditPayload` の共通化、`RunConfigBuilder` による stream/config 拡張を優先実装として扱う。
+
+#### 1.1 追記（Run ID: 20290615-diag-field-coverage）
+- `FrontendDiagnostic::ensure_id` を導入し、`DiagnosticBuilder::push_internal` で毎回呼び出すことで CLI/LSP/監査に載るすべての Parser 診断へ UUID を割り当てた（`compiler/rust/frontend/src/diagnostic/mod.rs`）。`span_trace` は `parse_with_options` 内で Streaming State からコピーされるため、`RunConfig.trace = true` のケースでも欠落がなくなった。
+- `AuditEnvelope.audit_id` を `Option<Uuid>` へ強化し、`ensure_audit_id` が `Uuid::new_v5` で生成した `audit.id.uuid` をメタデータに記録するよう更新した。既存の `cli.audit_id` 文字列ラベルも残しつつ、CLI 出力では UUID 文字列を JSON に書き出す。
+- `build_parser_diagnostics` が `FrontendDiagnostic.extensions` を維持したまま `diagnostic.v2` や `recover` 拡張を上書きし、型検査経路でも `AuditEnvelope` の UUID が JSON へ反映されるようにした。
+- 上記の差分を `docs/plans/bootstrap-roadmap/assets/diagnostics-field-gap.csv` に反映し、`id`／`span_trace`／`extensions map`／`audit_id` の 4 行を `整合` へ更新。`diagnostic.field_coverage` は 13 項目中 9 項目の完了扱いとなり、`0-3-audit-and-metrics.md` の KPI 更新履歴にも Run ID を追記した。
 1.2. 効果タグ (`effect {diagnostic}`, `{audit}`, `{debug}`, `{trace}`, `{privacy}`) の付与基準を整理し、テスト戦略を決定する。
     - 1.2.a `docs/spec/1-3-effects-safety.md` と `docs/spec/3-8-core-runtime-capability.md` の Stage/Capability ルールを参照し、タグ別のトリガー条件をスプレッドシート化する。
     - 1.2.b `compiler/rust/frontend/src/effects/` を `rg "effect::"` で走査し、既存タグを洗い出して `StageRequirement::{Exact,AtLeast}` と突合する。

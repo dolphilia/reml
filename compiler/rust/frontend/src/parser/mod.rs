@@ -346,7 +346,14 @@ impl ParserDriver {
         let packrat_snapshot = streaming_state.packrat_snapshot();
         let recovered = streaming_recover.recovered();
 
-        let diagnostics = diagnostics.into_vec();
+        let mut diagnostics = diagnostics.into_vec();
+        if !span_trace.is_empty() {
+            for diagnostic in &mut diagnostics {
+                if diagnostic.span_trace.is_empty() {
+                    diagnostic.set_span_trace(span_trace.clone());
+                }
+            }
+        }
 
         (
             ParsedModule {

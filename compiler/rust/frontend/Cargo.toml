@@ -31,6 +31,7 @@ thiserror = "1.0"
 unicode-ident = "1.0"
 unicode-normalization = "0.1"
 unicode-width = "0.1"
+uuid = { version = "1.8", features = ["serde", "v4", "v5"] }
 reml_adapter = { path = "../adapter" }
 reml_runtime = { path = "../runtime" }
 
