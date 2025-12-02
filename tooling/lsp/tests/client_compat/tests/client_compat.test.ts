@@ -9,6 +9,7 @@ import {
 import { convertToV1 } from "../client-v1.js";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { readWorkspaceConfiguration } from "../configuration.js";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(currentDir, "..", "fixtures");
@@ -127,5 +128,12 @@ describe("client compatibility scaffolding", () => {
     expect(severities).toStrictEqual([3, 4]);
     const labels = diagnostics.map((diag) => diag.codes?.[0]);
     expect(labels).toStrictEqual(["demo.info.sample", "demo.hint.sample"]);
+  });
+
+  it("validates workspace configuration fixtures", () => {
+    const configuration = readWorkspaceConfiguration(fixturesDir, "workspace-configuration.json");
+    expect(configuration.diagnostics?.filter?.severity).toBe("warning");
+    expect(configuration.audit?.policy?.level).toBe("info");
+    expect(configuration.audit?.policy?.anonymize_pii).toBe(true);
   });
 });

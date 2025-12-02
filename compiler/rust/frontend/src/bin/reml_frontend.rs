@@ -3,8 +3,8 @@
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 use std::env;
-use std::fs;
 use std::fmt;
+use std::fs;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -12,7 +12,10 @@ use std::str::FromStr;
 use reml_adapter::target::{self, TargetInference};
 use reml_frontend::diagnostic::{
     effects,
-    filter::{apply_experimental_stage_policy, should_downgrade_experimental},
+    filter::{
+        apply_experimental_stage_policy, should_downgrade_experimental, AuditPolicy,
+        DiagnosticFilter,
+    },
     formatter::{self, FormatterContext},
     json as diag_json, unicode, DiagnosticDomain, FrontendDiagnostic, StageAuditPayload,
 };
@@ -34,13 +37,13 @@ use reml_frontend::span::Span;
 use reml_frontend::streaming::{
     StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig, TraceFrame,
 };
+use reml_frontend::typeck::telemetry::TraitResolutionTelemetry;
 use reml_frontend::typeck::{
     self, Constraint, DualWriteGuards, InstallConfigError, IteratorStageViolationInfo,
     RecoverConfig, RuntimeCapability, StageContext, StageId, StageRequirement, StageTraceStep,
     TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics, TypecheckReport,
     TypecheckViolation, TypecheckViolationKind, TypedFunctionSummary,
 };
-use reml_frontend::typeck::telemetry::TraitResolutionTelemetry;
 use reml_runtime::text::LocaleId;
 use serde::Serialize;
 use uuid::Uuid;
@@ -56,6 +59,13 @@ struct CliRunResult {
     exit_code: CliExitCode,
     input_path: PathBuf,
     diagnostic_count: usize,
+}
+
+#[derive(Default)]
+struct FilterStats {
+    suppressed_by_filter: usize,
+    audit_dropped: usize,
+    audit_anonymized: usize,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -221,6 +231,29 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         &stage_payload,
     );
     diagnostics_entries.append(&mut type_diagnostics);
+    let mut filter_stats = FilterStats::default();
+    if let Some(filter) = args.diagnostic_filter() {
+        let mut retained = Vec::with_capacity(diagnostics_entries.len());
+        for entry in diagnostics_entries.into_iter() {
+            if filter.allows_value(&entry) {
+                retained.push(entry);
+            } else {
+                filter_stats.suppressed_by_filter += 1;
+            }
+        }
+        diagnostics_entries = retained;
+    }
+    if let Some(policy) = args.audit_policy() {
+        for entry in diagnostics_entries.iter_mut() {
+            let enforcement = policy.apply(entry);
+            if enforcement.dropped {
+                filter_stats.audit_dropped += 1;
+            }
+            if enforcement.anonymized {
+                filter_stats.audit_anonymized += 1;
+            }
+        }
+    }
     let diagnostics_json = Value::Array(diagnostics_entries.clone());
     if let Some(path) = args.parse_debug_output.as_ref() {
         let parse_debug = json!({
@@ -281,6 +314,7 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         &parse_result,
         &stream_meta,
         diagnostic_count,
+        &filter_stats,
     );
     let exit_code = determine_exit_code(&diagnostics_entries);
     let envelope = CliDiagnosticEnvelope::new(
@@ -315,9 +349,18 @@ fn build_cli_summary(
     parse_result: &Value,
     stream_meta: &Value,
     diagnostic_count: usize,
+    filter_stats: &FilterStats,
 ) -> CliSummary {
     let mut stats = Map::new();
     stats.insert("diagnostic_count".to_string(), json!(diagnostic_count));
+    stats.insert(
+        "filtering".to_string(),
+        json!({
+            "suppressed": filter_stats.suppressed_by_filter,
+            "audit_policy_dropped": filter_stats.audit_dropped,
+            "audit_policy_anonymized": filter_stats.audit_anonymized,
+        }),
+    );
     stats.insert("run_config".to_string(), runconfig_top_level.clone());
     stats.insert("parse_result".to_string(), parse_result.clone());
     stats.insert("stream_meta".to_string(), stream_meta.clone());
@@ -417,7 +460,9 @@ impl TelemetryRequest {
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
             .ok_or_else(|| {
-                TelemetryParseError("--emit-telemetry は <kind>[=<path>] 形式で指定してください".to_string())
+                TelemetryParseError(
+                    "--emit-telemetry は <kind>[=<path>] 形式で指定してください".to_string(),
+                )
             })?;
         let destination = parts
             .next()
@@ -478,6 +523,8 @@ struct RunSettings {
     experimental_effects: bool,
     lex_identifier_profile: IdentifierProfile,
     lex_identifier_locale: Option<LocaleId>,
+    diagnostic_filter: Option<DiagnosticFilter>,
+    audit_policy: Option<AuditPolicy>,
 }
 
 impl Default for RunSettings {
@@ -491,6 +538,8 @@ impl Default for RunSettings {
             experimental_effects: false,
             lex_identifier_profile: IdentifierProfile::Unicode,
             lex_identifier_locale: None,
+            diagnostic_filter: None,
+            audit_policy: None,
         }
     }
 }
@@ -513,6 +562,24 @@ impl RunSettings {
     fn to_run_config(&self) -> RunConfig {
         let mut config = self.config.clone();
         config = config.with_extension("lex", |existing| self.lex_extension(existing));
+        if let Some(filter) = &self.diagnostic_filter {
+            config = config.with_extension("diagnostics", |existing| {
+                let mut payload = existing
+                    .and_then(|value| value.as_object().cloned())
+                    .unwrap_or_default();
+                payload.insert("filter".to_string(), filter.to_value());
+                Value::Object(payload)
+            });
+        }
+        if let Some(policy) = &self.audit_policy {
+            config = config.with_extension("audit", |existing| {
+                let mut payload = existing
+                    .and_then(|value| value.as_object().cloned())
+                    .unwrap_or_default();
+                payload.insert("policy".to_string(), policy.to_value());
+                Value::Object(payload)
+            });
+        }
         if self.experimental_effects {
             config = config.with_extension("effects", |existing| {
                 let mut payload = existing
@@ -540,6 +607,14 @@ impl RunSettings {
             .entry("profile".to_string())
             .or_insert_with(|| json!("strict_json"));
         Value::Object(payload)
+    }
+
+    fn diagnostic_filter(&self) -> Option<&DiagnosticFilter> {
+        self.diagnostic_filter.as_ref()
+    }
+
+    fn audit_policy(&self) -> Option<&AuditPolicy> {
+        self.audit_policy.as_ref()
     }
 }
 
@@ -592,6 +667,14 @@ impl CliArgs {
     fn phase_label(&self) -> &'static str {
         self.phase.as_str()
     }
+
+    fn diagnostic_filter(&self) -> Option<&DiagnosticFilter> {
+        self.run_config.diagnostic_filter()
+    }
+
+    fn audit_policy(&self) -> Option<&AuditPolicy> {
+        self.run_config.audit_policy()
+    }
 }
 
 fn apply_workspace_config(
@@ -603,6 +686,8 @@ fn apply_workspace_config(
     emit_typeck_debug: &mut Option<PathBuf>,
     trace_overridden: bool,
     merge_overridden: bool,
+    diagnostic_filter_overridden: bool,
+    audit_policy_overridden: bool,
 ) -> Result<(), String> {
     let raw = std::fs::read_to_string(path)
         .map_err(|err| format!("{} の読み込みに失敗しました: {err}", path.display()))?;
@@ -692,6 +777,27 @@ fn apply_workspace_config(
                         ),
                     }
                 }
+            }
+        }
+    }
+
+    if !diagnostic_filter_overridden {
+        if let Some(filter) = value
+            .get("diagnostics")
+            .and_then(|section| section.get("filter"))
+        {
+            match DiagnosticFilter::from_json(filter) {
+                Ok(parsed) => run_config.diagnostic_filter = Some(parsed),
+                Err(err) => eprintln!("[CONFIG] diagnostics.filter の解析に失敗しました: {err}"),
+            }
+        }
+    }
+
+    if !audit_policy_overridden {
+        if let Some(policy) = value.get("audit").and_then(|section| section.get("policy")) {
+            match AuditPolicy::from_json(policy) {
+                Ok(parsed) => run_config.audit_policy = Some(parsed),
+                Err(err) => eprintln!("[CONFIG] audit.policy の解析に失敗しました: {err}"),
             }
         }
     }
@@ -848,6 +954,8 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut config_path: Option<PathBuf> = None;
     let mut trace_overridden = false;
     let mut merge_warnings_overridden = false;
+    let mut diagnostic_filter_overridden = false;
+    let mut audit_policy_overridden = false;
     let mut telemetry_requests: Vec<TelemetryRequest> = Vec::new();
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -980,9 +1088,9 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                 emit_tokens = Some(PathBuf::from(path));
             }
             "--emit-telemetry" => {
-                let value = args.next().ok_or_else(|| {
-                    "--emit-telemetry は <kind>[=<path>] を伴う必要があります"
-                })?;
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--emit-telemetry は <kind>[=<path>] を伴う必要があります")?;
                 let request = TelemetryRequest::parse(&value)?;
                 telemetry_requests.push(request);
             }
@@ -1021,6 +1129,24 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
             }
             "--no-ack-experimental-diagnostics" => {
                 run_config.ack_experimental_diagnostics = false;
+            }
+            "--diagnostic-filter" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--diagnostic-filter は key=value 形式で指定してください")?;
+                let existing = run_config.diagnostic_filter.take();
+                let parsed = DiagnosticFilter::parse_assignment(existing, &value)?;
+                run_config.diagnostic_filter = Some(parsed);
+                diagnostic_filter_overridden = true;
+            }
+            "--audit-policy" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--audit-policy は key=value 形式で指定してください")?;
+                let existing = run_config.audit_policy.take();
+                let parsed = AuditPolicy::parse_assignment(existing, &value)?;
+                run_config.audit_policy = Some(parsed);
+                audit_policy_overridden = true;
             }
             "--left-recursion" => {
                 let value = args
@@ -1157,6 +1283,8 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
             &mut emit_typeck_debug,
             trace_overridden,
             merge_warnings_overridden,
+            diagnostic_filter_overridden,
+            audit_policy_overridden,
         ) {
             eprintln!("[CONFIG] {}", error);
         }
@@ -1315,8 +1443,11 @@ fn emit_telemetry_outputs(
             TelemetryKind::ConstraintGraph => {
                 let path = request.resolved_path(input);
                 let dot_path = path.with_extension("dot").display().to_string();
-                let telemetry =
-                    TraitResolutionTelemetry::from_report(report, Some(input_label.as_str()), Some(dot_path));
+                let telemetry = TraitResolutionTelemetry::from_report(
+                    report,
+                    Some(input_label.as_str()),
+                    Some(dot_path),
+                );
                 write_json_file(&path, &telemetry)?;
                 eprintln!(
                     "[TELEMETRY] constraint_graph を {} へ書き出しました",
@@ -1410,6 +1541,15 @@ fn build_runconfig_summary(
         "config".to_string(),
         build_config_extension(run_config, args),
     );
+    if let Some(filter) = args.diagnostic_filter() {
+        extensions.insert(
+            "diagnostics".to_string(),
+            json!({ "filter": filter.to_value() }),
+        );
+    }
+    if let Some(policy) = args.audit_policy() {
+        extensions.insert("audit".to_string(), json!({ "policy": policy.to_value() }));
+    }
     if let Some(target_extension) = run_config.extension("target") {
         extensions.insert("target".to_string(), target_extension.clone());
     }
@@ -1508,6 +1648,12 @@ fn build_config_extension(run_config: &RunConfig, args: &CliArgs) -> Value {
         "experimental_effects".to_string(),
         json!(args.run_config.experimental_effects),
     );
+    if let Some(filter) = args.diagnostic_filter() {
+        config.insert("diagnostic_filter".to_string(), filter.to_value());
+    }
+    if let Some(policy) = args.audit_policy() {
+        config.insert("audit_policy".to_string(), policy.to_value());
+    }
     if let Some(path) = args.config_path.as_ref() {
         config.insert("path".to_string(), json!(path.display().to_string()));
     }

@@ -168,6 +168,11 @@
     - 5.2.a CLI 引数 `--diagnostic-filter` `--audit-policy` を `structopt` / `clap` に登録し、Config へ伝搬する。
     - 5.2.b LSP 側は `workspace/configuration` からフィルタ値を受け取る JSON スキーマを定義し、`tooling/lsp/tests` で検証する。
     - 5.2.c フィルタ設定を `reports/diagnostic-format-regression.md` の差分収集スクリプトへ追加し、メトリクスが同時に取得できるようにする。
+
+#### 5.2 実施結果（Run ID: 20290710-diagnostic-filter）
+- `reml_frontend` に `--diagnostic-filter` / `--audit-policy` を追加し、複数指定で `severity` / `include` / `exclude` / `level` / `anonymize_pii` / `retention_days` を段階的に設定できるようにした。`RunSettings::to_run_config()` では `RunConfig.extensions["diagnostics"].filter` と `RunConfig.extensions["audit"].policy` を自動生成し、`build_runconfig_summary` / `build_config_extension` / CLI サマリに同じ JSON を転写している。
+- `DiagnosticFilter`/`AuditPolicy` は `compiler/rust/frontend/src/diagnostic/filter.rs` に実装し、ワイルドカード（`*`/`?`）付きのコード一致・Severity しきい値・監査レベル判定をサポートする。CLI サマリ `stats.filtering` で抑制件数（`suppressed`）と監査ポリシー適用件数（`audit_policy_dropped`/`audit_policy_anonymized`）を公開し、`reports/diagnostic-format-regression.md#13-診断フィルタ／監査ポリシーの記録` に差分取得手順を追記した。
+- LSP 側では `tooling/lsp/tests/client_compat/configuration.ts` + `fixtures/workspace-configuration.json` を追加し、`npm run ci --prefix tooling/lsp/tests/client_compat` で `diagnostics.filter` / `audit.policy` の JSON スキーマを検証するテストを増設した。これにより `workspace/configuration` 由来の設定が CLI と同じ語彙で検証でき、AI/IDE 向けフィルタリングシナリオを共有できる。
 5.3. `0-3-audit-and-metrics.md` と連動するメトリクス収集 (エラー件数、監査イベント件数) を整備する。
     - 5.3.a `collect-iterator-audit-metrics.py --section diagnostics` に `diagnostic.total_count` と `audit.event_total` を出力する拡張を加える。
     - 5.3.b メトリクス CSV (`docs/plans/bootstrap-roadmap/assets/metrics/diagnostics_ci.csv`) を更新し、CI から日付ごとに append する Git フレンドリーな形式を採用する。

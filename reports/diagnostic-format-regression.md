@@ -32,6 +32,12 @@
 - `tooling/lsp/tests/client_compat/fixtures/*.json` は `data.localization.message_key` を必須フィールドとし、`npm run update-localization --prefix tooling/lsp/tests/client_compat`（今後追加予定）の前に `tooling/lsp/src/handlers/diagnostics.rs` で `inject_localization` を呼び出しているかチェックする。
 - CLI Human モードでは `localization: key=..., locale=..., args=[...]` の 1 行が追加される。ロケールの表示内容が差分として現れた場合は `docs/guides/ai-integration.md#51-lsp-診断ローカライズキー対応表` を参照し、キー分類が正しいかレビューする。
 
+### 1.3 診断フィルタ／監査ポリシーの記録（2029-07-10 追加）
+- `reml_frontend` は `--diagnostic-filter <key=value>` と `--audit-policy <key=value>` で CLI/LSP へ渡すフィルタリング条件を指定できる。例: `reml_frontend --diagnostic-filter severity=warning --diagnostic-filter include=effects.* --audit-policy level=info --audit-policy anonymize_pii=true examples/spec/ch1/effect_handler.reml`.
+- フィルタリング結果は CLI サマリの `stats.filtering` に `suppressed`（診断フィルタで抑制された件数）、`audit_policy_dropped`（監査ポリシーで `audit` ブロックを除外した件数）、`audit_policy_anonymized`（監査メタデータへ `privacy.anonymized=true` を付与した件数）として記録される。差分レビュー時はこのカウンタを `reports/dual-write/front-end/samples/*` と合わせて保存する。
+- `run_config.extensions.config.diagnostic_filter` および `run_config.extensions.audit.policy` へ CLI/LSP 設定がそのまま JSON 化されるため、`scripts/validate-diagnostic-json.sh tmp/diagnostics-output/ --effect-tag trace` のように特定タグを検証する際も、RunConfig のフィルタ設定を参照しながら差分の有無を説明できる。
+- LSP 互換テスト `npm run ci --prefix tooling/lsp/tests/client_compat` では `fixtures/workspace-configuration.json` を通じて `diagnostics.filter` / `audit.policy` の JSON スキーマを検証する。`reports/diagnostic-format-regression.md` で差分を採取する際は、同じ設定ファイルを `tooling/lsp/tests/client_compat/configuration.ts` で読み込み、CI で使用した値と一致しているか確認する。
+
 ## 2. 差分レポートのまとめ方
 - 変更前後の JSON を `jq --sort-keys` で整形し、`diff -u` で比較する。
 - `effects.*` や `bridge.*` など拡張キーの追加は、対応する仕様書 (`docs/spec/3-6-core-diagnostics-audit.md` 等) を参照して説明を添える。とくに `effect.required_capabilities` / `effect.actual_capabilities` / `effect.stage.required_capabilities` / `effect.stage.actual_capabilities` の配列化は Phase 2-5 EFFECT-003 の成果物として扱い、レビュー時に配列内容と `capabilities_detail` の同期を確認する。

@@ -1,0 +1,18 @@
+{
+  "diagnostics": {
+    "filter": {
+      "severity": "warning",
+      "include": ["parser.*", "effects.*"],
+      "exclude": "cli.*"
+    }
+  },
+  "audit": {
+    "policy": {
+      "level": "info",
+      "include_patterns": "effects.contract.*",
+      "exclude_patterns": ["parser.experimental.*"],
+      "retention_days": 7,
+      "anonymize_pii": true
+    }
+  }
+}
