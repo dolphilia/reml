@@ -12,6 +12,7 @@ use std::str::FromStr;
 use reml_adapter::target::{self, TargetInference};
 use reml_frontend::diagnostic::{
     effects,
+    filter::{apply_experimental_stage_policy, should_downgrade_experimental},
     formatter::{self, FormatterContext},
     json as diag_json, unicode, DiagnosticDomain, FrontendDiagnostic, StageAuditPayload,
 };
@@ -619,6 +620,12 @@ fn apply_workspace_config(
                 run_config.merge_warnings = merge;
             }
         }
+        if let Some(ack) = parser
+            .get("ack_experimental_diagnostics")
+            .and_then(|v| v.as_bool())
+        {
+            run_config.ack_experimental_diagnostics = ack;
+        }
         if let Some(packrat) = parser.get("packrat").and_then(|v| v.as_bool()) {
             run_config.packrat = packrat;
         }
@@ -1009,6 +1016,12 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
             "--no-legacy-result" => run_config.legacy_result = false,
             "--experimental-effects" => run_config.experimental_effects = true,
             "--no-experimental-effects" => run_config.experimental_effects = false,
+            "--ack-experimental-diagnostics" => {
+                run_config.ack_experimental_diagnostics = true;
+            }
+            "--no-ack-experimental-diagnostics" => {
+                run_config.ack_experimental_diagnostics = false;
+            }
             "--left-recursion" => {
                 let value = args
                     .next()
@@ -1248,6 +1261,7 @@ fn print_help(program_name: &str) {
   --packrat / --no-packrat       Packrat キャッシュを有効/無効化
   --streaming / --no-streaming   Streaming Runner の有無を切替
   --effect-stage <STAGE>         Stage 要件を指定
+  --ack-experimental-diagnostics 実験的 Stage の診断を Error として扱う
   --dualwrite-run-label <NAME>   dual-write ラベル設定（case も必須）
   --config <PATH>                追加設定ファイルを適用
 
@@ -1404,6 +1418,7 @@ fn build_runconfig_summary(
         "left_recursion": left_recursion_label(run_config.left_recursion),
         "trace": run_config.trace,
         "merge_warnings": run_config.merge_warnings,
+        "ack_experimental_diagnostics": run_config.ack_experimental_diagnostics,
         "require_eof": run_config.require_eof,
         "legacy_result": run_config.legacy_result,
         "experimental_effects": args.run_config.experimental_effects,
@@ -1447,6 +1462,7 @@ fn build_runconfig_top_level(
             "left_recursion": left_recursion_label(run_config.left_recursion),
             "trace": run_config.trace,
             "merge_warnings": run_config.merge_warnings,
+            "ack_experimental_diagnostics": run_config.ack_experimental_diagnostics,
             "require_eof": run_config.require_eof,
             "legacy_result": run_config.legacy_result,
             "experimental_effects": args.run_config.experimental_effects,
@@ -1481,6 +1497,10 @@ fn build_config_extension(run_config: &RunConfig, args: &CliArgs) -> Value {
     config.insert(
         "merge_warnings".to_string(),
         json!(run_config.merge_warnings),
+    );
+    config.insert(
+        "ack_experimental_diagnostics".to_string(),
+        json!(run_config.ack_experimental_diagnostics),
     );
     config.insert("require_eof".to_string(), json!(run_config.require_eof));
     config.insert("legacy_result".to_string(), json!(run_config.legacy_result));
@@ -1658,6 +1678,11 @@ fn build_parser_diagnostics(
                 }),
             );
             stage_payload.apply_extensions(&mut extensions);
+            apply_experimental_stage_policy(
+                &mut diag,
+                &extensions,
+                args.run_config.ack_experimental_diagnostics,
+            );
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
             extensions.insert("cfg".to_string(), args.target_cfg_extension.clone());
             if !trace_ids.is_empty() {
@@ -1802,6 +1827,14 @@ fn build_type_diagnostics(
             }
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
             extensions.insert("cfg".to_string(), args.target_cfg_extension.clone());
+            let severity_label = if should_downgrade_experimental(
+                args.run_config.ack_experimental_diagnostics,
+                &extensions,
+            ) {
+                "warning"
+            } else {
+                "error"
+            };
             let mut metadata = build_audit_metadata(
                 &timestamp,
                 args,
@@ -1867,7 +1900,7 @@ fn build_type_diagnostics(
                 "schema_version": SCHEMA_VERSION,
                 "timestamp": timestamp,
                 "message": violation.message,
-                "severity": "error",
+                "severity": severity_label,
                 "severity_hint": Value::Null,
                 "domain": violation.domain(),
                 "primary": primary,
@@ -1950,6 +1983,10 @@ fn build_audit_metadata(
     metadata.insert(
         "parser.runconfig.switches.merge_warnings".to_string(),
         json!(run_config.merge_warnings),
+    );
+    metadata.insert(
+        "parser.runconfig.switches.ack_experimental_diagnostics".to_string(),
+        json!(run_config.ack_experimental_diagnostics),
     );
     metadata.insert(
         "parser.runconfig.switches.require_eof".to_string(),

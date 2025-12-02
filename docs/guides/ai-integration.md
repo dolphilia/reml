@@ -36,6 +36,19 @@
 
 - 上表は `docs/spec/3-6-core-diagnostics-audit.md` §10–11 のキー一覧から派生しており、`reports/diagnostic-format-regression.md#cli-output-note` に保存されたサンプルログでも確認できる。追加キーを定義した場合は本ガイドと README の導線を更新し、`tooling/lsp/tests/client_compat/fixtures/*.json` に `data.localization` を含む期待値を用意する。
 
+### 5.2 実験的 Stage 診断の扱い
+- Rust Frontend は `Diagnostic.extensions["effects"].stage` に `experimental` が含まれる診断を自動的に `warning` へ降格させる。`--ack-experimental-diagnostics` を明示すると Severity を `error` として扱い、CI や AI サービスにブロッキング信号を伝播できる。
+- AI 連携ワークフローで「実験機能も強制レビュー対象」とする場合は、CLI/LSP 両チャネルから本フラグを渡し、`effects.stage.*`・`effect.capability` をリクエストペイロードへ同梱する。逆に PoC 段階の提案ではフラグを付けず、ヒント扱いの `warning` を優先して提示する。
+- 例:
+  ```bash
+  reml_frontend --format json \
+    --ack-experimental-diagnostics \
+    --emit-audit-log \
+    examples/core_effects/experimental_handler.reml \
+    > tmp/diagnostics.experimental.json
+  ```
+  生成された JSON/Audit には `severity = "error"` のまま `effects.stage.trace` が保持されるため、AI クライアントは Stage 差分を解析しつつリスクスコアへ反映できる。
+
 ## 6. Unicode 正規化ポリシー
 - AI への入力は **常に** `Unicode.normalize(str, NormalizationForm::NFC)` を通過させ、識別子候補は `Unicode.prepare_identifier` を併用する。`examples/core-text/text_unicode.reml` では Bytes→Str→String 正規化、`TextBuilder`、`log_grapheme_stats` をまとめており、`expected/text_unicode.tokens.golden` を差分比較に利用できる。  
 - 文字幅や Grapheme 統計を AI 提案に付与する際は `examples/core-text/expected/text_unicode.grapheme_stats.golden` 相当の JSON を埋め込み、`text.grapheme_stats.cache_hits` が 0 の場合は AI に渡す前段でキャッシュを温める。  
