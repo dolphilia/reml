@@ -1,3 +1,4 @@
+use reml_runtime::text::{span_highlight, SpanHighlight};
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
@@ -50,6 +51,7 @@ pub struct FrontendDiagnosticPayload<'a> {
     pub domain_label: &'a str,
     pub line_index: &'a LineIndex,
     pub input_path: &'a Path,
+    pub source: &'a str,
     pub extensions: Map<String, Value>,
     pub audit_metadata: Map<String, Value>,
     pub audit: Value,
@@ -64,7 +66,12 @@ pub fn build_frontend_diagnostic(payload: FrontendDiagnosticPayload<'_>) -> Valu
     let codes = effective_codes(payload.diag);
     let primary_span = payload.diag.primary_span();
     let location = span_to_location_opt(primary_span, payload.line_index, payload.input_path);
-    let primary = span_to_primary_value(primary_span, payload.line_index, payload.input_path);
+    let primary = span_to_primary_value(
+        primary_span,
+        payload.line_index,
+        payload.input_path,
+        payload.source,
+    );
     let notes = payload
         .diag
         .notes
@@ -95,6 +102,7 @@ pub fn build_frontend_diagnostic(payload: FrontendDiagnosticPayload<'_>) -> Valu
         &payload.diag.span_trace,
         payload.line_index,
         payload.input_path,
+        payload.source,
     );
 
     json!({
@@ -123,13 +131,18 @@ pub fn build_frontend_diagnostic(payload: FrontendDiagnosticPayload<'_>) -> Valu
     })
 }
 
-fn span_trace_to_json(frames: &[TraceFrame], line_index: &LineIndex, input_path: &Path) -> Value {
+fn span_trace_to_json(
+    frames: &[TraceFrame],
+    line_index: &LineIndex,
+    input_path: &Path,
+    source: &str,
+) -> Value {
     let entries = frames
         .iter()
         .map(|frame| {
             json!({
                 "label": frame.label.as_ref().map(|label| label.to_string()),
-                "span": span_to_primary_value(Some(frame.span), line_index, input_path),
+                "span": span_to_primary_value(Some(frame.span), line_index, input_path, source),
             })
         })
         .collect::<Vec<_>>();
@@ -266,9 +279,14 @@ fn summary_has_recover_payload(summary: &ExpectedTokensSummary) -> bool {
         || non_blank_string(summary.context_note.as_ref()).is_some()
 }
 
-pub fn span_to_primary_value(span: Option<Span>, index: &LineIndex, input_path: &Path) -> Value {
+pub fn span_to_primary_value(
+    span: Option<Span>,
+    index: &LineIndex,
+    input_path: &Path,
+    source: &str,
+) -> Value {
     let map = match span {
-        Some(span) => primary_map_from_span(span, index, input_path),
+        Some(span) => primary_map_from_span(span, index, input_path, source),
         None => default_primary(input_path),
     };
     Value::Object(map)
@@ -291,7 +309,12 @@ pub fn span_to_location(span: Span, index: &LineIndex, input_path: &Path) -> Val
     })
 }
 
-fn primary_map_from_span(span: Span, index: &LineIndex, input_path: &Path) -> Map<String, Value> {
+fn primary_map_from_span(
+    span: Span,
+    index: &LineIndex,
+    input_path: &Path,
+    source: &str,
+) -> Map<String, Value> {
     let (start_line, start_col) = index.line_col(span.start as usize);
     let (end_line, end_col) = index.line_col(span.end as usize);
     let mut map = Map::new();
@@ -300,6 +323,9 @@ fn primary_map_from_span(span: Span, index: &LineIndex, input_path: &Path) -> Ma
     map.insert("start_col".to_string(), json!(start_col));
     map.insert("end_line".to_string(), json!(end_line));
     map.insert("end_col".to_string(), json!(end_col));
+    if let Some(highlight) = span_highlight(source, span.start as usize, span.end as usize) {
+        map.insert("highlight".to_string(), highlight_to_value(&highlight));
+    }
     map
 }
 
@@ -311,6 +337,17 @@ fn default_primary(input_path: &Path) -> Map<String, Value> {
     map.insert("end_line".to_string(), json!(0));
     map.insert("end_col".to_string(), json!(0));
     map
+}
+
+fn highlight_to_value(highlight: &SpanHighlight) -> Value {
+    json!({
+        "line": highlight.line,
+        "column_start": highlight.column_start,
+        "column_end": highlight.column_end,
+        "line_text": highlight.line_text,
+        "highlight_text": highlight.highlight_text,
+        "indicator": highlight.indicator,
+    })
 }
 
 fn note_to_json(note: &DiagnosticNote, index: &LineIndex, input_path: &Path) -> Value {

@@ -1879,6 +1879,7 @@ fn build_parser_diagnostics(
                 domain_label: &domain_label,
                 line_index: &line_index,
                 input_path,
+                source: source.as_str(),
                 extensions,
                 audit_metadata: payload_metadata,
                 audit: Value::Object(audit_object),
@@ -2007,7 +2008,8 @@ fn build_type_diagnostics(
                     })
                 })
                 .collect::<Vec<_>>();
-            let primary = diag_json::span_to_primary_value(violation.span, &line_index, input_path);
+            let primary =
+                diag_json::span_to_primary_value(violation.span, &line_index, input_path, source);
             let location = diag_json::span_to_location_opt(violation.span, &line_index, input_path);
             json!({
                 "schema_version": SCHEMA_VERSION,

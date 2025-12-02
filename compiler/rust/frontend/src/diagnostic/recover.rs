@@ -3,12 +3,14 @@
 //! OCaml 版 `parser_expectation.ml` の `dedup_and_sort`／`humanize` をベースに、
 //! `Keyword` → `Token` → `Class` → `Rule` → その他の優先順位で直列化する。
 
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
 use super::{EXPECTED_EMPTY_HUMANIZED, PARSE_EXPECTED_EMPTY_KEY, PARSE_EXPECTED_KEY};
 
 /// Recover で提示する期待トークンの分類。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ExpectedToken {
     Keyword(String),
     Token(String),
@@ -230,7 +232,8 @@ impl ExpectedTokenCollector {
 }
 
 /// `Diagnostic.expectation` へ格納する直列化結果。
-#[derive(Debug, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExpectedTokensSummary {
     pub message_key: Option<String>,
     pub locale_args: Vec<String>,

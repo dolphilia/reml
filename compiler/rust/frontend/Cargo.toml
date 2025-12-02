@@ -16,6 +16,7 @@ path = "src/bin/reml_frontend.rs"
 
 [features]
 default = []
+schema = ["schemars"]
 # lexer-backend と parser-backend は候補クレートの評価完了後に定義する
 
 [dependencies]
@@ -34,6 +35,7 @@ unicode-width = "0.1"
 uuid = { version = "1.8", features = ["serde", "v4", "v5"] }
 reml_adapter = { path = "../adapter" }
 reml_runtime = { path = "../runtime" }
+schemars = { version = "0.8", optional = true }
 
 [dev-dependencies]
 insta = { version = "1.44", features = ["yaml"] }
