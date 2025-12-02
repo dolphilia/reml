@@ -10,7 +10,7 @@ use crate::{
     stage::{StageId, StageRequirement},
 };
 
-use super::{IoError, IoErrorKind, IoResult};
+use super::{record_bridge_stage_probe, IoError, IoErrorKind, IoResult};
 
 pub(crate) const CAP_IO_FS_READ: &str = "io.fs.read";
 pub(crate) const CAP_IO_FS_WRITE: &str = "io.fs.write";
@@ -116,7 +116,8 @@ impl FsAdapter {
         capability: &'static str,
         requirement: StageRequirement,
     ) -> IoResult<()> {
-        if cache.get().is_some() {
+        if let Some(stage) = cache.get() {
+            record_bridge_stage_probe(capability, requirement, *stage);
             return Ok(());
         }
         match self
@@ -125,6 +126,7 @@ impl FsAdapter {
         {
             Ok(stage) => {
                 let _ = cache.set(stage);
+                 record_bridge_stage_probe(capability, requirement, stage);
                 Ok(())
             }
             Err(err) => Err(capability_error_to_io(capability, err)),
@@ -179,7 +181,8 @@ impl WatcherAdapter {
         capability: &'static str,
         requirement: StageRequirement,
     ) -> IoResult<()> {
-        if cache.get().is_some() {
+        if let Some(stage) = cache.get() {
+            record_bridge_stage_probe(capability, requirement, *stage);
             return Ok(());
         }
         match self
@@ -188,6 +191,7 @@ impl WatcherAdapter {
         {
             Ok(stage) => {
                 let _ = cache.set(stage);
+                record_bridge_stage_probe(capability, requirement, stage);
                 Ok(())
             }
             Err(err) => Err(capability_error_to_io(capability, err)),

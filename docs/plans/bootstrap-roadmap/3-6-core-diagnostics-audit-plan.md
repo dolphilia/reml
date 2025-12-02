@@ -119,6 +119,11 @@
     - 3.3.b `compiler/rust/runtime/src/io/bridge.rs` のイベントフックに `AuditCapability` を注入し、`bridge.stage.*` 診断と一致するかゴールデンを比較する。
     - 3.3.c `collect-iterator-audit-metrics.py --section runtime --require-success` を新シナリオで実行し、結果を `reports/audit/dashboard/core_runtime-YYYYMMDD.md` へ記録する。
 
+#### 3.3 実施結果（Run ID: 20251202-runtime-stage-bridge）
+- `log_grapheme_stats` で `text.utf8.range`（`start`/`end`/`length`）を同時に書き出し、`text.grapheme_stats` とセットで `AuditEnvelope.metadata` へ転送できるようにした。【F:../../compiler/rust/runtime/src/text/diagnostics.rs†L1-L40】【F:../../compiler/rust/runtime/src/text/grapheme.rs†L662-L689】
+- IO Capability 検証のたびに Stage 情報を `io/bridge.rs` のスナップショットへ記録し、`IoError::into_diagnostic` が `bridge.id` / `bridge.capability` / `bridge.stage.required` / `bridge.stage.actual` を自動挿入するよう更新した。これにより `effect.stage.*` 診断と Audit ログの `bridge.stage.*` が一致して diff ハーネスでも検証可能になった。【F:../../compiler/rust/runtime/src/io/bridge.rs†L1-L86】【F:../../compiler/rust/runtime/src/io/error.rs†L1-L260】
+- `collect-iterator-audit-metrics.py` に `--section runtime` と `--runtime-source` を追加し、`reports/runtime-capabilities-validation.json` を対象に `pass_rate = 1.0` を確認する CI フローを確立した。実行結果は `reports/audit/dashboard/core_runtime-20251202.{json,md}` に保存し、候補 Stage（`default`/`x86_64-pc-windows-msvc`/`arm64-apple-darwin`）をダッシュボードで共有している。【F:../../tooling/ci/collect-iterator-audit-metrics.py†L200-L750】【F:../../reports/audit/dashboard/core_runtime-20251202.md†L1-L18】
+
 ### 4. Effect/Capability 診断と Telemetry（51-52週目）
 **担当領域**: 高度診断
 

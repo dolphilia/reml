@@ -4,6 +4,7 @@
 use std::{fs::File as StdFile, path::Path};
 
 mod adapters;
+mod bridge;
 mod buffer;
 mod buffered;
 mod context;
@@ -24,6 +25,7 @@ mod writer;
 use buffer::IoCopyBuffer;
 
 pub use adapters::{FsAdapter, WatcherAdapter};
+pub(crate) use bridge::{attach_bridge_stage_metadata, record_bridge_stage_probe};
 pub use buffered::{buffered, read_line, BufferedReader};
 pub use context::{BufferStats, IoContext, WatchStats};
 pub use effects::take_io_effects_snapshot;

@@ -647,6 +647,7 @@ pub fn clear_grapheme_cache_for_tests() {
 mod tests {
     use super::*;
     use crate::text::{effects, Str};
+    use serde_json::json;
 
     #[test]
     fn reports_script_mix_and_direction() {
@@ -686,5 +687,12 @@ mod tests {
             metadata.contains_key("text.grapheme_stats"),
             "metadata should contain text.grapheme_stats"
         );
+        let range = metadata
+            .get("text.utf8.range")
+            .and_then(|value| value.as_object())
+            .expect("text.utf8.range metadata should exist");
+        assert_eq!(range.get("start"), Some(&json!(0)));
+        assert_eq!(range.get("end"), Some(&json!(5)));
+        assert_eq!(range.get("length"), Some(&json!(5)));
     }
 }

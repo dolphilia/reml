@@ -1,0 +1,142 @@
+{
+  "metrics": [
+    {
+      "metric": "diagnostic.audit_presence_rate",
+      "total": 0,
+      "passed": 0,
+      "failed": 0,
+      "pass_rate": null,
+      "pass_fraction": null,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "sources": [],
+      "failures": []
+    },
+    {
+      "metric": "runtime.capability_validation",
+      "status": "success",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "runtime_candidates": [
+        {
+          "target": "default",
+          "stage": "stable"
+        },
+        {
+          "target": "x86_64-pc-windows-msvc",
+          "stage": "beta"
+        },
+        {
+          "target": "arm64-apple-darwin",
+          "stage": "beta"
+        }
+      ],
+      "runtime_candidate_total": 3,
+      "stage_trace_entries": 6,
+      "validation_statuses": [
+        "ok"
+      ],
+      "sources": [
+        "reports/runtime-capabilities-validation.json"
+      ],
+      "failures": [],
+      "required_audit_keys": [
+        "stage_summary.runtime_candidates[*].stage",
+        "validation.status"
+      ]
+    }
+  ],
+  "metric": "diagnostic.audit_presence_rate",
+  "total": 0,
+  "passed": 0,
+  "failed": 0,
+  "pass_rate": null,
+  "pass_fraction": null,
+  "required_audit_keys": [
+    "cli.audit_id",
+    "cli.change_set",
+    "schema.version",
+    "timestamp"
+  ],
+  "sources": [],
+  "failures": [],
+  "diagnostic_audit": {
+    "metric": "diagnostic.audit_presence_rate",
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "pass_rate": null,
+    "pass_fraction": null,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "timestamp"
+    ],
+    "sources": [],
+    "failures": []
+  },
+  "runtime": {
+    "metric": "runtime.capability_validation",
+    "status": "success",
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "runtime_candidates": [
+      {
+        "target": "default",
+        "stage": "stable"
+      },
+      {
+        "target": "x86_64-pc-windows-msvc",
+        "stage": "beta"
+      },
+      {
+        "target": "arm64-apple-darwin",
+        "stage": "beta"
+      }
+    ],
+    "runtime_candidate_total": 3,
+    "stage_trace_entries": 6,
+    "validation_statuses": [
+      "ok"
+    ],
+    "sources": [
+      "reports/runtime-capabilities-validation.json"
+    ],
+    "failures": [],
+    "required_audit_keys": [
+      "stage_summary.runtime_candidates[*].stage",
+      "validation.status"
+    ]
+  },
+  "schema_versions": [],
+  "diagnostics": {
+    "total": 0,
+    "error": 0,
+    "warning": 0,
+    "info": 0,
+    "hint": 0,
+    "other": 0,
+    "sources": [],
+    "info_fraction": 0.0,
+    "hint_fraction": 0.0,
+    "info_hint_ratio": 0.0,
+    "parser_total": 0,
+    "parser_expected": 0,
+    "parser_expected_ratio": 0.0,
+    "parser_expected_tokens_avg": 0.0
+  },
+  "enforcement": {
+    "require_success": true
+  }
+}

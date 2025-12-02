@@ -220,6 +220,7 @@ DEFAULT_RETENTION_POLICY: Dict[str, int] = {
 TEXT_DEFAULT_METRICS_PATH = Path("reports/spec-audit/ch1/core_text_grapheme_stats.json")
 TEXT_MEM_DEFAULT_METRICS_PATH = Path("reports/text-mem-metrics.json")
 TEXT_NORMALIZATION_DEFAULT_METRICS_PATH = Path("reports/text-normalization-metrics.json")
+RUNTIME_DEFAULT_VALIDATION_PATH = Path("reports/runtime-capabilities-validation.json")
 TEXT_CACHE_HIT_TARGET = 0.8
 TEXT_SCRIPT_MIX_CASE = "UC-02"
 TEXT_SCRIPT_MIX_MIN_RATIO = 0.55
@@ -6281,6 +6282,80 @@ def collect_typeclass_dictionary_metric(
     }
 
 
+def collect_runtime_validation_metric(paths: Sequence[Path]) -> Dict[str, Any]:
+    total = 0
+    passed = 0
+    runtime_candidate_total = 0
+    failures: List[Dict[str, Any]] = []
+    collected_candidates: List[Dict[str, Any]] = []
+    validation_statuses: List[str] = []
+    stage_trace_entries = 0
+
+    for path in paths:
+        data = load_json(path)
+        validation = _as_dict(data.get("validation")) or {}
+        status = _normalize_nonempty_string(validation.get("status"))
+        if status:
+            validation_statuses.append(status)
+        stage_summary = _as_dict(data.get("stage_summary")) or {}
+        runtime_candidates = stage_summary.get("runtime_candidates") or data.get(
+            "runtime_candidates"
+        )
+        if not isinstance(runtime_candidates, list):
+            runtime_candidates = []
+
+        missing_targets: List[str] = []
+        normalized_candidates: List[Dict[str, Any]] = []
+        for entry in runtime_candidates:
+            if not isinstance(entry, dict):
+                continue
+            target = _normalize_nonempty_string(entry.get("target")) or "default"
+            stage = _normalize_nonempty_string(entry.get("stage"))
+            normalized_candidates.append({"target": target, "stage": stage})
+            if not stage:
+                missing_targets.append(target)
+        collected_candidates.extend(normalized_candidates)
+        runtime_candidate_total += len(normalized_candidates)
+
+        issues: List[str] = []
+        if status not in ("ok", "success", "passed"):
+            issues.append(f"validation.status={status or 'missing'}")
+        if missing_targets:
+            issues.append("missing_stage:" + ",".join(sorted(set(missing_targets))))
+        stage_trace = data.get("stage_trace")
+        if isinstance(stage_trace, list):
+            stage_trace_entries += len(stage_trace)
+
+        total += 1
+        if issues:
+            failures.append({"file": str(path), "issues": issues})
+        else:
+            passed += 1
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    overall_status = "success" if not failures else "failed"
+
+    return {
+        "metric": "runtime.capability_validation",
+        "status": overall_status,
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "runtime_candidates": collected_candidates,
+        "runtime_candidate_total": runtime_candidate_total,
+        "stage_trace_entries": stage_trace_entries,
+        "validation_statuses": validation_statuses,
+        "sources": [str(path) for path in paths],
+        "failures": failures,
+        "required_audit_keys": [
+            "stage_summary.runtime_candidates[*].stage",
+            "validation.status",
+        ],
+    }
+
+
 def collect_typeclass_metrics(paths: List[Path], audit_paths: List[Path]) -> Dict:
     metadata_metric = _collect_typeclass_metadata_metric(paths, audit_paths)
     dictionary_metric = collect_typeclass_dictionary_metric(paths, audit_paths)
@@ -6336,6 +6411,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Path to Core.Text normalization metrics JSON (repeatable).省略時は reports/text-normalization-metrics.json を参照します。",
     )
     parser.add_argument(
+        "--runtime-source",
+        action="append",
+        dest="runtime_sources",
+        help="Path to runtime capability validation JSON (repeatable). 省略時は reports/runtime-capabilities-validation.json を参照します。",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         help="Destination for collected metrics (JSON).",
@@ -6361,6 +6442,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "ffi",
             "typeclass",
             "text",
+            "runtime",
             "review",
             "numeric_time",
             "core_io",
@@ -6532,6 +6614,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "typeclass",
         "ffi",
         "text",
+        "runtime",
         "review",
     ]
     if args.section == "all":
@@ -6651,6 +6734,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     text_normalization_source_paths: List[Path] = _ensure_path_list(
         getattr(args, "text_normalization_sources", None)
     )
+    runtime_source_paths: List[Path] = _ensure_path_list(
+        getattr(args, "runtime_sources", None)
+    )
     clock_source_paths: List[Path] = _ensure_path_list(getattr(args, "time_sources", None))
     tz_source_paths: List[Path] = _ensure_path_list(getattr(args, "tz_sources", None))
     metric_source_paths: List[Path] = _ensure_path_list(
@@ -6663,6 +6749,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         and TEXT_NORMALIZATION_DEFAULT_METRICS_PATH.is_file()
     ):
         text_normalization_source_paths = [TEXT_NORMALIZATION_DEFAULT_METRICS_PATH]
+    if (
+        not runtime_source_paths
+        and RUNTIME_DEFAULT_VALIDATION_PATH.is_file()
+    ):
+        runtime_source_paths = [RUNTIME_DEFAULT_VALIDATION_PATH]
 
     sources: List[Path] = []
     if needs_diagnostic_sources:
@@ -6713,6 +6804,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         if missing_audit:
             sys.stderr.write(
                 "Missing audit files: " + ", ".join(missing_audit) + "\n"
+            )
+            return 2
+
+    if "runtime" in sections:
+        if not runtime_source_paths:
+            sys.stderr.write(
+                "Runtime capability validation source not found. --runtime-source で JSON を指定するか "
+                f"{RUNTIME_DEFAULT_VALIDATION_PATH} を生成してください。\n"
+            )
+            return 2
+        missing_runtime_sources = [
+            str(path) for path in runtime_source_paths if not path.is_file()
+        ]
+        if missing_runtime_sources:
+            sys.stderr.write(
+                "Missing runtime validation files: "
+                + ", ".join(missing_runtime_sources)
+                + "\n"
             )
             return 2
 
@@ -6767,6 +6876,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     diagnostic_presence_metric: Optional[Dict[str, Any]] = None
     streaming_metric: Optional[Dict[str, Any]] = None
     diag_metric: Optional[Dict[str, Any]] = None
+    runtime_metric: Optional[Dict[str, Any]] = None
 
     if "parser" in sections:
         parser_metrics = collect_parser_metrics(sources)
@@ -6991,6 +7101,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "Text metrics file did not contain any cases. 再生成してください。\n"
             )
             return 2
+    if "runtime" in sections:
+        runtime_metric = collect_runtime_validation_metric(runtime_source_paths)
         if "grapheme_stats" in scenario_filters:
             scenario_metric = copy.deepcopy(text_metric)
             scenario_metric["scenario"] = "grapheme_stats"
@@ -7091,6 +7203,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         metrics_list.append(numeric_time_metric)
     if text_metric and "text" in sections:
         metrics_list.append(text_metric)
+    if runtime_metric and "runtime" in sections:
+        metrics_list.append(runtime_metric)
 
     if lexer_metrics and "parser" not in sections:
         metrics_list.extend(lexer_metrics)
@@ -7172,6 +7286,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["numeric_time"] = numeric_time_metric
     if text_metric and "text" in sections:
         combined["text"] = text_metric
+    if runtime_metric and "runtime" in sections:
+        combined["runtime"] = runtime_metric
 
     combined_audit_sources: List[str] = []
     for metrics in (iterator_metrics, typeclass_metrics, bridge_metrics):
@@ -7252,6 +7368,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             collector_effect_audit_metric, "collector.effect.audit_presence"
         )
         _enforce(diag_metric, "effects-contract")
+        _enforce(runtime_metric, "runtime.capability_validation")
         for metric in append_metrics:
             if not isinstance(metric, dict):
                 continue

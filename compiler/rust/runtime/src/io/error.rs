@@ -6,7 +6,7 @@ use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic
 use crate::prelude::iter::EffectLabels;
 use serde_json::{Map, Number, Value};
 
-use super::{context::GlobStats, BufferStats, IoContext, WatchStats};
+use super::{attach_bridge_stage_metadata, context::GlobStats, BufferStats, IoContext, WatchStats};
 
 /// IO 操作共通の結果型。
 pub type IoResult<T> = Result<T, IoError>;
@@ -252,6 +252,7 @@ impl IntoDiagnostic for IoError {
             audit_metadata.insert("io.operation".into(), Value::String(ctx.operation().into()));
             if let Some(capability) = ctx.capability() {
                 audit_metadata.insert("io.capability".into(), Value::String(capability.into()));
+                attach_bridge_stage_metadata(capability, &mut audit_metadata);
             }
             if let Some(bytes) = ctx.bytes_processed() {
                 audit_metadata.insert(
@@ -401,6 +402,37 @@ fn encode_effect_labels(labels: EffectLabels) -> Map<String, Value> {
         Value::Number(Number::from(labels.security_events as u64)),
     );
     effects
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::stage::{StageId, StageRequirement};
+
+    #[test]
+    fn audit_metadata_carries_bridge_stage_details() {
+        super::super::record_bridge_stage_probe(
+            "io.fs.read",
+            StageRequirement::Exact(StageId::Stable),
+            StageId::Stable,
+        );
+        let ctx = IoContext::new("with_reader").with_capability("io.fs.read");
+        let diag = IoError::new(IoErrorKind::PermissionDenied, "denied")
+            .with_context(ctx)
+            .into_diagnostic();
+        assert_eq!(
+            diag.audit_metadata
+                .get("bridge.stage.required")
+                .and_then(Value::as_str),
+            Some("stable")
+        );
+        assert_eq!(
+            diag.audit_metadata
+                .get("bridge.capability")
+                .and_then(Value::as_str),
+            Some("io.fs.read")
+        );
+    }
 }
 
 fn encode_buffer_stats(stats: &BufferStats) -> Map<String, Value> {

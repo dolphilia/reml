@@ -56,3 +56,17 @@ pub fn insert_grapheme_stats_metadata(
         Value::Object(grapheme_stats_metadata(stats)),
     );
 }
+
+/// UTF-8 範囲 (`text.utf8.range`) を `AuditEnvelope` 向けに記録する。
+pub fn insert_utf8_range_metadata(
+    metadata: &mut JsonMap<String, Value>,
+    start: usize,
+    end: usize,
+) {
+    let length = end.saturating_sub(start);
+    let mut range = JsonMap::new();
+    range.insert("start".into(), json!(start));
+    range.insert("end".into(), json!(end));
+    range.insert("length".into(), json!(length));
+    metadata.insert("text.utf8.range".into(), Value::Object(range));
+}

@@ -109,6 +109,7 @@ pub fn drain_audit_metadata_for_tests() {
 fn build_grapheme_stats_metadata(stats: &GraphemeStats) -> JsonMap<String, Value> {
     let mut metadata = JsonMap::new();
     diagnostics::insert_grapheme_stats_metadata(&mut metadata, stats);
+    diagnostics::insert_utf8_range_metadata(&mut metadata, 0, stats.total_bytes);
     metadata.insert("collector.effect.audit".into(), Value::Bool(true));
     metadata
 }
