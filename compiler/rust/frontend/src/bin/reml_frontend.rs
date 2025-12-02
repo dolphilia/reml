@@ -1879,7 +1879,7 @@ fn build_parser_diagnostics(
                 domain_label: &domain_label,
                 line_index: &line_index,
                 input_path,
-                source: source.as_str(),
+                source,
                 extensions,
                 audit_metadata: payload_metadata,
                 audit: Value::Object(audit_object),

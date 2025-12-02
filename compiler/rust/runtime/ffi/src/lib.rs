@@ -28,6 +28,11 @@ pub mod core_collections_metrics;
 pub mod core_prelude;
 #[cfg(feature = "core_prelude")]
 pub use core_prelude as prelude;
+#[path = "../../src/io/mod.rs"]
+pub mod io;
+pub mod stage {
+    pub use crate::capability_metadata::{StageId, StageRequirement};
+}
 #[cfg(feature = "core_prelude")]
 #[path = "../../src/text/mod.rs"]
 pub mod text;
@@ -562,7 +567,7 @@ where
             maybe_log_stage_mismatch(
                 &ctx,
                 metadata,
-                registry,
+                &registry,
                 capability_id,
                 options.stage_requirement,
                 &options.security_policy.required_effects,

@@ -4,7 +4,6 @@ use crate::error::Recoverability;
 use crate::span::Span;
 use crate::streaming::TraceFrame;
 use crate::unicode::UnicodeDetail;
-use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use thiserror::Error;
 use std::borrow::Cow;
@@ -19,7 +18,7 @@ pub(crate) const PARSE_EXPECTED_KEY: &str = "parse.expected";
 pub(crate) const PARSE_EXPECTED_EMPTY_KEY: &str = "parse.expected.empty";
 
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct AuditEnvelope {
     pub metadata: Map<String, Value>,
     pub audit_id: Option<Uuid>,
@@ -59,7 +58,7 @@ impl Default for AuditEnvelope {
 }
 
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiagnosticSeverity {
     Error,
     Warning,
@@ -79,7 +78,7 @@ impl DiagnosticSeverity {
 }
 
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SeverityHint {
     Rollback,
     Retry,
@@ -99,7 +98,7 @@ impl SeverityHint {
 }
 
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiagnosticDomain {
     Effect,
     Target,
@@ -139,7 +138,7 @@ impl DiagnosticDomain {
 }
 
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct DiagnosticSpanLabel {
     pub span: Option<Span>,
     pub message: Option<String>,
@@ -152,7 +151,7 @@ impl DiagnosticSpanLabel {
 }
 
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct DiagnosticHint {
     pub message: Option<String>,
     pub actions: Vec<DiagnosticFixIt>,
@@ -211,7 +210,7 @@ impl DiagnosticHint {
 }
 
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum DiagnosticFixIt {
     Insert { span: Span, text: String },
     Replace { span: Span, text: String },
@@ -265,7 +264,7 @@ impl DiagnosticFixIt {
 /// Rust フロントエンドが生成する診断レコードの最小構造。
 /// W4 の診断互換試験に向け、`serde` スキーマと合わせて拡張する。
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct FrontendDiagnostic {
     pub id: Option<Uuid>,
     pub code: Option<String>,
@@ -591,7 +590,7 @@ impl FrontendDiagnostic {
 
 /// 診断の補足情報。
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct DiagnosticNote {
     pub label: String,
     pub message: String,

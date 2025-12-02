@@ -358,6 +358,9 @@ mod tests {
             program_name: "reml_frontend",
             raw_args: args,
             input_path: input,
+            run_id: Uuid::nil(),
+            phase: "test",
+            command: "test",
         }
     }
 

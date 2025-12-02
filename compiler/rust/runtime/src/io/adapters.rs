@@ -112,26 +112,23 @@ impl FsAdapter {
 
     fn ensure_stage(
         &self,
-        cache: &OnceCell<Result<StageId, CapabilityError>>,
+        cache: &OnceCell<StageId>,
         capability: &'static str,
         requirement: StageRequirement,
     ) -> IoResult<()> {
-        match cache
-            .get_or_init(|| self.verify_capability_stage(capability, requirement))
-            .clone()
+        if cache.get().is_some() {
+            return Ok(());
+        }
+        match self
+            .registry
+            .verify_stage_for_io(capability, requirement)
         {
-            Ok(_) => Ok(()),
+            Ok(stage) => {
+                let _ = cache.set(stage);
+                Ok(())
+            }
             Err(err) => Err(capability_error_to_io(capability, err)),
         }
-    }
-
-    fn verify_capability_stage(
-        &self,
-        capability: &'static str,
-        requirement: StageRequirement,
-    ) -> Result<StageId, CapabilityError> {
-        self.registry
-            .verify_capability_stage(capability, requirement, &[])
     }
 }
 
@@ -178,26 +175,23 @@ impl WatcherAdapter {
 
     fn ensure_stage(
         &self,
-        cache: &OnceCell<Result<StageId, CapabilityError>>,
+        cache: &OnceCell<StageId>,
         capability: &'static str,
         requirement: StageRequirement,
     ) -> IoResult<()> {
-        match cache
-            .get_or_init(|| self.verify_capability_stage(capability, requirement))
-            .clone()
+        if cache.get().is_some() {
+            return Ok(());
+        }
+        match self
+            .registry
+            .verify_stage_for_io(capability, requirement)
         {
-            Ok(_) => Ok(()),
+            Ok(stage) => {
+                let _ = cache.set(stage);
+                Ok(())
+            }
             Err(err) => Err(capability_error_to_io(capability, err)),
         }
-    }
-
-    fn verify_capability_stage(
-        &self,
-        capability: &'static str,
-        requirement: StageRequirement,
-    ) -> Result<StageId, CapabilityError> {
-        self.registry
-            .verify_capability_stage(capability, requirement, &[])
     }
 }
 
@@ -208,17 +202,17 @@ fn capability_error_to_io(capability: &'static str, err: CapabilityError) -> IoE
     )
 }
 
-static IO_FS_READ_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
-static IO_FS_WRITE_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
-static FS_PERMISSIONS_READ_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
-static FS_PERMISSIONS_MODIFY_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
-static FS_SYMLINK_QUERY_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
-static FS_SYMLINK_MODIFY_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
-static FS_POLICY_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
-static MEMORY_BUFFERED_IO_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
-static FS_WATCH_NATIVE_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
-static FS_WATCH_RECURSIVE_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
-static WATCH_RESOURCE_LIMITS_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
+static IO_FS_READ_STAGE: OnceCell<StageId> = OnceCell::new();
+static IO_FS_WRITE_STAGE: OnceCell<StageId> = OnceCell::new();
+static FS_PERMISSIONS_READ_STAGE: OnceCell<StageId> = OnceCell::new();
+static FS_PERMISSIONS_MODIFY_STAGE: OnceCell<StageId> = OnceCell::new();
+static FS_SYMLINK_QUERY_STAGE: OnceCell<StageId> = OnceCell::new();
+static FS_SYMLINK_MODIFY_STAGE: OnceCell<StageId> = OnceCell::new();
+static FS_POLICY_STAGE: OnceCell<StageId> = OnceCell::new();
+static MEMORY_BUFFERED_IO_STAGE: OnceCell<StageId> = OnceCell::new();
+static FS_WATCH_NATIVE_STAGE: OnceCell<StageId> = OnceCell::new();
+static FS_WATCH_RECURSIVE_STAGE: OnceCell<StageId> = OnceCell::new();
+static WATCH_RESOURCE_LIMITS_STAGE: OnceCell<StageId> = OnceCell::new();
 
 #[cfg(test)]
 mod tests {

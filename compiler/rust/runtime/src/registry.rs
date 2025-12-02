@@ -28,6 +28,15 @@ impl CapabilityRegistry {
             .with_actual_stage(actual))
         }
     }
+
+    /// Core.IO アダプタ向けの Stage 検証ヘルパ。
+    pub fn verify_stage_for_io(
+        &self,
+        capability: &'static str,
+        requirement: StageRequirement,
+    ) -> Result<StageId, CapabilityError> {
+        self.verify_capability_stage(capability, requirement, &[])
+    }
 }
 
 /// Capability 検証に失敗した場合のエラー。

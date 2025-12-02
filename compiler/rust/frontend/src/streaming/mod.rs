@@ -13,7 +13,7 @@ pub use flow::{
 
 use crate::span::Span;
 use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use smallvec::SmallVec;
 use smol_str::SmolStr;
 use std::collections::VecDeque;
@@ -159,7 +159,7 @@ pub struct PackratCacheEntry {
 }
 
 /// span_trace の 1 フレーム。
-#[derive(Debug, Clone, Serialize, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TraceFrame {
     pub label: Option<SmolStr>,
     pub span: Span,

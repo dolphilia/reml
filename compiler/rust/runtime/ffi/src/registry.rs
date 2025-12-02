@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt,
-    sync::Mutex,
+    sync::{Arc, Mutex},
     time::SystemTime,
 };
 
@@ -108,17 +108,21 @@ impl RuntimeBridgeRegistry {
 }
 
 /// Registry 内の Capability を格納するシングルトン。
+#[derive(Clone)]
 pub struct CapabilityRegistry {
-    handles: Mutex<HashMap<CapabilityId, CapabilityHandle>>,
+    handles: Arc<Mutex<HashMap<CapabilityId, CapabilityHandle>>>,
 }
 
 impl CapabilityRegistry {
     /// グローバルインスタンスを取得する。
-    pub fn registry() -> &'static CapabilityRegistry {
-        static INSTANCE: OnceCell<CapabilityRegistry> = OnceCell::new();
-        INSTANCE.get_or_init(|| CapabilityRegistry {
-            handles: Mutex::new(HashMap::new()),
-        })
+    pub fn registry() -> CapabilityRegistry {
+        static INSTANCE: OnceCell<Arc<Mutex<HashMap<CapabilityId, CapabilityHandle>>>> =
+            OnceCell::new();
+        CapabilityRegistry {
+            handles: INSTANCE
+                .get_or_init(|| Arc::new(Mutex::new(HashMap::new())))
+                .clone(),
+        }
     }
 
     /// Descriptor を登録する。
@@ -197,6 +201,16 @@ impl CapabilityRegistry {
 
         handle.descriptor_mut().last_verified_at = Some(SystemTime::now());
         Ok(handle.clone())
+    }
+
+    /// Core.IO アダプタ向けに Stage 情報だけを返すヘルパ。
+    pub fn verify_stage_for_io(
+        &self,
+        capability: &'static str,
+        requirement: StageRequirement,
+    ) -> Result<StageId, CapabilityError> {
+        self.verify_capability_stage(capability, requirement, &[])
+            .map(|handle| handle.descriptor().stage)
     }
 
     /// Conductor/DSL から渡された契約集合を検査する。
