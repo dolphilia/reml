@@ -49,6 +49,11 @@
   ```
   生成された JSON/Audit には `severity = "error"` のまま `effects.stage.trace` が保持されるため、AI クライアントは Stage 差分を解析しつつリスクスコアへ反映できる。
 
+### 5.3 Core Diagnostics JSON の参照例
+- `examples/core_diagnostics/pipeline_branch.expected.diagnostic.json` は `CliDiagnosticEnvelope` を整形したゴールデンであり、AI 連携で取り扱う最小構成の JSON を示している。`tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` で再生成し、`summary.stats.run_config.effects.type_row_mode` や `stream_meta.packrat_enabled` のような補助指標も含めて取得する。
+- `effects.stage.*` / `capability.*` / `bridge.stage.*` は `diagnostics[].extensions` と `diagnostics[].audit_metadata` の双方に存在する。AI 推論時は `effects.stage.actual` と `effect.stage.required` の差分、および `audit_metadata["pipeline.node"]` を併せて解析し、どの DSL ノードで Stage 違反が発生したかを正確に説明する。
+- 監査ログは NDJSON（例: `examples/core_diagnostics/pipeline_success.expected.audit.jsonl`）で保存され、`pipeline_started` と `pipeline_completed` のメタデータが 1 行ずつ付与される。`cli.run_id` と `audit_id` をキーに `diagnostics` 側と突き合わせることで、AI 連携が複数エンドポイント（CLI/LSP/監査ダッシュボード）の整合を簡単に確認できる。
+
 ## 6. Unicode 正規化ポリシー
 - AI への入力は **常に** `Unicode.normalize(str, NormalizationForm::NFC)` を通過させ、識別子候補は `Unicode.prepare_identifier` を併用する。`examples/core-text/text_unicode.reml` では Bytes→Str→String 正規化、`TextBuilder`、`log_grapheme_stats` をまとめており、`expected/text_unicode.tokens.golden` を差分比較に利用できる。  
 - 文字幅や Grapheme 統計を AI 提案に付与する際は `examples/core-text/expected/text_unicode.grapheme_stats.golden` 相当の JSON を埋め込み、`text.grapheme_stats.cache_hits` が 0 の場合は AI に渡す前段でキャッシュを温める。  

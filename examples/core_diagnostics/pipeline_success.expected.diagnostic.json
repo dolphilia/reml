@@ -1,0 +1,41 @@
+{
+  "command": "Check",
+  "phase": "Reporting",
+  "run_id": "e42f7a4d-c933-4a97-ab6d-2820d1d676d7",
+  "diagnostics": [],
+  "summary": {
+    "inputs": [
+      "examples/core_diagnostics/pipeline_success.reml"
+    ],
+    "started_at": "2025-07-01T10:31:55Z",
+    "finished_at": "2025-07-01T10:31:55Z",
+    "artifact": null,
+    "stats": {
+      "cli_command": "target/debug/reml_frontend --output json --emit-audit-log examples/core_diagnostics/pipeline_success.reml",
+      "diagnostic_count": 0,
+      "parse_result": {
+        "recovered": false,
+        "farthest_error_offset": null
+      },
+      "run_config": {
+        "packrat": true,
+        "trace": false,
+        "effects": {
+          "type_row_mode": "ty-integrated"
+        },
+        "lex": {
+          "identifier_profile": "unicode",
+          "profile": "strict_json"
+        }
+      },
+      "stream_meta": {
+        "packrat_enabled": true,
+        "bridge": null
+      }
+    }
+  },
+  "exit_code": {
+    "label": "success",
+    "value": 0
+  }
+}

@@ -1124,28 +1124,74 @@ pub type BridgeDiagnostic = {
 
 ## 9. 使用例（CLI エラー報告）
 
+### 9.1 `pipeline_*` サンプルと CLI/監査ログ
+
+Chapter 3 で定義した `AuditEvent` と `CliDiagnosticEnvelope` の挙動を検証するために、`examples/core_diagnostics/pipeline_success.reml` / `pipeline_branch.reml` を `reml_frontend` で実行する。Rust 実装の CLI は `--output json` と `--emit-audit-log` を同時に指定することで診断（stdout）と監査（stderr, NDJSON）を1回の実行で収集できる。
 
 ```reml
+// examples/core_diagnostics/pipeline_branch.reml
 use Core;
-use Core.Diagnostics;
-use Core.Config;
 
-fn validate_config(cfg: AppConfig, audit: AuditSink) -> Result<(), Diagnostic> =
-  ensure(cfg.timeout < 5000, || Diagnostic::invalid_value(cfg.timeout))?
-    .tap_diag(|diag|
-      emit(
-        diag
-          |> Diagnostic::builder()
-          |> Diagnostic::attach_audit(from_change(cfg.change_set))
-          |> Diagnostic::finish(),
-        audit,
-      ).ok()
-    );
-  Ok(())
+fn choose(flag: Bool) -> Int =
+  if flag then 1 else -1
+
+fn pipeline_branch(flag: Bool) -> Int =
+  let base = 10;
+  base + choose(flag)
+
+fn main() -> Int = pipeline_branch(true)
 ```
 
-- `ensure` と `tap_diag` を組み合わせ、検証失敗時に監査ログへ自動送出。
-- `from_change` により `change_set` を `AuditEnvelope` へ変換し、監査と診断に共通語彙を適用する。
+- `tooling/examples/run_examples.sh --suite core_diagnostics --with-audit --update-golden` を実行すると、`examples/core_diagnostics/*.expected.diagnostic.json` と `*.expected.audit.jsonl` が再生成される。
+- CLI の標準出力は `CliDiagnosticEnvelope`（NDJSON 1 行）であり、`python -m json.tool` などで整形した内容をゴールデンとして保存する。Rust 実装では `summary.stats.parse_result` や `stream_meta` のような補助メトリクスも同じ JSON に含まれる。
+- 監査ログは `AuditEmitter::stderr(true)` が `pipeline_started` / `pipeline_completed` などのイベントを 1 行ずつ JSON で出力する。`*.expected.audit.jsonl` では JSON Lines 形式を維持し、テキスト比較で差分を確認する。
+
+#### 診断出力の例（`pipeline_branch.expected.diagnostic.json` 抜粋）
+
+```jsonc
+{
+  "command": "Check",
+  "phase": "Reporting",
+  "run_id": "2d3b5d70-a4c2-4a5e-93c2-fc1ec51f93bf",
+  "diagnostics": [],
+  "summary": {
+    "inputs": [
+      "examples/core_diagnostics/pipeline_branch.reml"
+    ],
+    "started_at": "2025-07-01T10:32:10Z",
+    "finished_at": "2025-07-01T10:32:10Z",
+    "artifact": null,
+    "stats": {
+      "cli_command": "target/debug/reml_frontend --output json --emit-audit-log examples/core_diagnostics/pipeline_branch.reml",
+      "diagnostic_count": 0,
+      "parse_result": {
+        "recovered": false,
+        "farthest_error_offset": null
+      },
+      "run_config": {
+        "packrat": true,
+        "streaming": false,
+        "effects": {
+          "type_row_mode": "ty-integrated"
+        }
+      }
+    }
+  },
+  "exit_code": {
+    "label": "success",
+    "value": 0
+  }
+}
+```
+
+#### 監査ログの例（`pipeline_success.expected.audit.jsonl` 抜粋）
+
+```jsonc
+{"timestamp":"2025-07-01T10:31:55Z","envelope":{"audit_id":"b36c299e-5938-4d72-90bd-6b7dc2fcf7e2","capability":"core.diagnostics","metadata":{"audit.channel":"cli","audit.policy.version":"rust.poc.audit.v1","cli.command":"Check","cli.command_line":"target/debug/reml_frontend --output json --emit-audit-log examples/core_diagnostics/pipeline_success.reml","cli.input":"examples/core_diagnostics/pipeline_success.reml","cli.phase":"Reporting","cli.program":"target/debug/reml_frontend","cli.run_id":"e42f7a4d-c933-4a97-ab6d-2820d1d676d7","event.kind":"pipeline_started","pipeline.dsl_id":"pipeline_success.reml","pipeline.id":"dsl://examples/core_diagnostics/pipeline_success.reml","pipeline.node":"pipeline_success","schema.version":"3.0.0-alpha"}}
+{"timestamp":"2025-07-01T10:31:55Z","envelope":{"audit_id":"b36c299e-5938-4d72-90bd-6b7dc2fcf7e2","capability":"core.diagnostics","metadata":{"audit.channel":"cli","audit.policy.version":"rust.poc.audit.v1","cli.command":"Check","cli.command_line":"target/debug/reml_frontend --output json --emit-audit-log examples/core_diagnostics/pipeline_success.reml","cli.input":"examples/core_diagnostics/pipeline_success.reml","cli.phase":"Reporting","cli.program":"target/debug/reml_frontend","cli.run_id":"e42f7a4d-c933-4a97-ab6d-2820d1d676d7","event.kind":"pipeline_completed","pipeline.dsl_id":"pipeline_success.reml","pipeline.id":"dsl://examples/core_diagnostics/pipeline_success.reml","pipeline.node":"pipeline_success","pipeline.outcome":"success","pipeline.count":1,"schema.version":"3.0.0-alpha"}}}
+```
+
+Pipeline 成功時は `diagnostics=[]` で CLI が正常終了し、`pipeline_completed` イベントが `pipeline.outcome=success` を記録する。`pipeline_branch` のように分岐を含むサンプルでも `AuditEnvelope.metadata.pipeline.node` が入力ファイル名に基づいて一意化され、CI で `pipeline.*` キーの欠落を検知できる。
 
 ## 10. CLI/LSP 連携の具体例
 

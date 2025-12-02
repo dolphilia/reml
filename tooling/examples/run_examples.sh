@@ -6,7 +6,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 usage() {
   cat <<'EOF'
-usage: tooling/examples/run_examples.sh --suite <name> [--with-audit]
+usage: tooling/examples/run_examples.sh --suite <name> [--with-audit] [--update-golden]
 
 利用可能なスイート:
   core_io          - examples/core_io/ 以下の Reader/Writer サンプル
@@ -17,6 +17,7 @@ EOF
 
 SUITE=""
 WITH_AUDIT=false
+UPDATE_GOLDEN=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -25,6 +26,11 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --with-audit)
+      WITH_AUDIT=true
+      shift
+      ;;
+    --update-golden)
+      UPDATE_GOLDEN=true
       WITH_AUDIT=true
       shift
       ;;
@@ -74,13 +80,63 @@ for example in "${FILES[@]}"; do
   fi
 
   echo "==> running ${example}"
-  (
-    cd "${FRONTEND_DIR}"
-    CMD=(cargo run --quiet --bin reml_frontend --)
-    if [[ "${WITH_AUDIT}" == true ]]; then
-      CMD+=(--emit-audit-log)
-    fi
-    CMD+=("${target}")
-    "${CMD[@]}"
-  )
+  if [[ "${UPDATE_GOLDEN}" == true ]]; then
+    diag_tmp="$(mktemp)"
+    audit_tmp="$(mktemp)"
+    (
+      cd "${FRONTEND_DIR}"
+      CMD=(cargo run --quiet --bin reml_frontend -- --output json)
+      if [[ "${WITH_AUDIT}" == true ]]; then
+        CMD+=(--emit-audit-log)
+      fi
+      CMD+=("${target}")
+      "${CMD[@]}" >"${diag_tmp}" 2>"${audit_tmp}"
+    )
+    diag_path="${target%.reml}.expected.diagnostic.json"
+    audit_path="${target%.reml}.expected.audit.jsonl"
+    python3 - <<'PY' "${diag_tmp}" "${diag_path}"
+import json
+import pathlib
+import sys
+
+src = pathlib.Path(sys.argv[1])
+dst = pathlib.Path(sys.argv[2])
+data = json.loads(src.read_text())
+dst.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+PY
+    python3 - <<'PY' "${audit_tmp}" "${audit_path}"
+import json
+import pathlib
+import sys
+
+src = pathlib.Path(sys.argv[1])
+dst = pathlib.Path(sys.argv[2])
+lines = []
+for raw in src.read_text().splitlines():
+    raw = raw.strip()
+    if not raw:
+        continue
+    try:
+        json.loads(raw)
+    except json.JSONDecodeError:
+        continue
+    lines.append(raw)
+dst.write_text("\n".join(lines) + ("\n" if lines else ""))
+if not lines:
+    raise SystemExit("監査ログの JSON 行が見つかりません")
+PY
+    rm -f "${diag_tmp}" "${audit_tmp}"
+    echo "    -> updated ${diag_path#${ROOT}/}"
+    echo "    -> updated ${audit_path#${ROOT}/}"
+  else
+    (
+      cd "${FRONTEND_DIR}"
+      CMD=(cargo run --quiet --bin reml_frontend --)
+      if [[ "${WITH_AUDIT}" == true ]]; then
+        CMD+=(--emit-audit-log)
+      fi
+      CMD+=("${target}")
+      "${CMD[@]}"
+    )
+  fi
 done

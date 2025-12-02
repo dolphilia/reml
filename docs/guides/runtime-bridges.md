@@ -38,6 +38,7 @@
 - `bridge.return` には返り値の取り扱いを明示します。Borrowed → `wrap_foreign_ptr`、Transferred → `wrap_foreign_ptr` + `dec_ref` といった処理を `status`・`wrap`・`release_handler`・`rc_adjustment` で追跡し、監査ゲートが参照できるようにします。
 - CLI で `remlc --emit-audit` を実行した結果は `compiler/ocaml/tests/golden/audit/cli-ffi-bridge-*.jsonl.golden` に固定し、プラットフォーム別（`linux`, `windows`, `macos-arm64`）の成功ログを最低 1 件ずつ保持します。
 - CI では `tooling/ci/collect-iterator-audit-metrics.py` → `tooling/ci/sync-iterator-audit.sh` の流れで `ffi_bridge.audit_pass_rate` を収集します。macOS（`macos-arm64`）の pass_rate が 1.0 未満、もしくはログが欠落している場合はジョブを失敗させ、再取得を促してください。
+- Core Diagnostics 章向けのパイプライン監査は `examples/core_diagnostics/pipeline_success.expected.audit.jsonl` / `pipeline_branch.expected.audit.jsonl` をゴールデンとして共有している。`tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` で Rust Frontend の CLI/Audit 経路を検証し、`pipeline.id`・`pipeline.node`・`pipeline.outcome` の必須キーが `docs/spec/3-6-core-diagnostics-audit.md` §9 の例と一致するかをレビューする。
 
 ### 1.3 型付き `CapabilityHandle` の取り扱い
 

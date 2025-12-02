@@ -194,6 +194,20 @@
     - 6.3.b Runtime Bridges ガイドでは `AuditEnvelope` の `bridge.stage.*` 例を載せ、プラグイン開発者が参照できるようにする。
     - 6.3.c 更新後に `docs/notes/dsl-plugin-roadmap.md` へ交差参照を追記し、プラグイン昇格審査と診断監査が同じ証跡を共有することを明記する。
 
+#### 6.1 実施結果（Run ID: 20290730-doc-golden）
+- `docs/spec/3-6-core-diagnostics-audit.md` §9 を再構成し、`examples/core_diagnostics/pipeline_branch.reml` のコード片と `CliDiagnosticEnvelope`／`AuditEvent` の JSON 抜粋を掲載した。`pipeline_branch.expected.diagnostic.json` と `pipeline_success.expected.audit.jsonl` を引用し、`pipeline.*` キーや `run_config` の必須項目を明文化した。
+- `examples/core_diagnostics/` に `pipeline_success`/`pipeline_branch` のゴールデン（`*.expected.diagnostic.json` / `*.expected.audit.jsonl`）と README を追加し、`tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` で再生成できるようにした。同スクリプトは `--update-golden` 時に stdout（診断）/stderr（監査）を整形して書き戻す。
+- `docs/spec/1-0-language-core-overview.md` と `docs/spec/3-0-core-library-overview.md` に Core Diagnostics の参照を追加し、Chapter 1/3 からゴールデンへの導線を確保した。
+
+#### 6.2 実施結果（Run ID: 20290730-readme-refresh）
+- `README.md` に「Core.Diagnostics 進捗」節を追加して仕様・サンプルの完了状況と再現手順を共有し、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#3.0.4a` へ core_diagnostics スイートを Phase 3 判定条件として追記した。
+- `docs/plans/rust-migration/overview.md` に CLI/Audit ゴールデンを Phase 3 の共通ベースラインとする旨を追記し、Rust 実装でも `tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` を利用するワークフローを明記した。
+
+#### 6.3 実施結果（Run ID: 20290730-guide-link）
+- `docs/guides/ai-integration.md` §5.3 を新設し、`effects.stage.*` や `pipeline.*` の読み方と `examples/core_diagnostics/*.expected.*` への参照を追加。AI 連携が Stage/Audit 情報をどのように解析すべきかを文章化した。
+- `docs/guides/runtime-bridges.md` に Core Diagnostics ゴールデンへの参照を追加し、Runtime Bridge 実装が `pipeline_started` / `pipeline_completed` を監査ログへ出力する際のベースラインを定義した。
+- `docs/notes/dsl-plugin-roadmap.md` に CLI/Audit ゴールデンの参照を追加し、プラグイン昇格審査で診断・監査ログの証跡として利用することを推奨した。
+
 ### 7. テスト・CI 統合（53週目）
 **担当領域**: 品質保証
 
