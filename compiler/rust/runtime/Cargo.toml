@@ -28,6 +28,7 @@ name = "text_stream_decode"
 path = "examples/io/text_stream_decode.rs"
 
 [dependencies]
+uuid = { version = "1.8", features = ["serde"] }
 unicode-segmentation = "1.11"
 unicode-width = "0.1"
 serde = { version = "1.0", features = ["derive"] }

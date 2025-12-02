@@ -1,0 +1,14 @@
+{
+  "audit_id": null,
+  "change_set": null,
+  "capability": null,
+  "metadata": {
+    "event.kind": "capability_mismatch",
+    "timestamp": "2025-07-12T10:05:00Z",
+    "capability.id": "core.collections.audit",
+    "capability.expected_stage": "stable",
+    "capability.actual_stage": "beta",
+    "dsl.node": "collector_ref",
+    "effect.stage.required": "stable"
+  }
+}

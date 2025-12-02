@@ -99,6 +99,11 @@
     - 3.1.a `compiler/rust/runtime/src/audit/mod.rs` に Envelope/Event 定義を作成し、`serde_json::Value` で拡張フィールドを許可する。
     - 3.1.b `AuditEnvelope::validate()` を実装し、`effect.stage.required` / `bridge.reload` など必須キーをチェックして `anyhow::Result` を返す。
     - 3.1.c `compiler/rust/runtime/tests/audit_validation.rs` で JSON フィクスチャを読み込み、欠落時には明確なエラーになることをスナップショットテストで確認する。
+
+#### 3.1 実施結果（Run ID: 20290712-audit-envelope）
+- `compiler/rust/runtime/src/audit/mod.rs` に `AuditEnvelope` / `AuditEvent` を実装し、`metadata["event.kind"]` に基づいてパイプライン／Capability／Bridge Reload 等の必須キーをテーブル駆動で検証する `validate()` を追加した。`effect.stage.*` と `bridge.stage.*` / `bridge.reload` は個別の必須セットとして扱い、欠落時は `"audit metadata validation failed: missing keys [...]"` 形式で特定キーを列挙する。
+- 依存解決にネットワークを必要としないよう、最小限の `anyhow::Result` 互換ラッパを `compiler/rust/runtime/src/anyhow.rs` に配置し、フォーマット済みメッセージを `anyhow(...)` で構築できるようにした（将来オンライン環境に戻り次第、公式クレートへ差し替える想定）。
+- `compiler/rust/runtime/tests/audit_validation.rs` と `tests/fixtures/audit/*.json` / `tests/expected/audit/*.txt` を追加し、`pipeline_started_valid.json` が成功し、`effect_stage_missing.json` と `bridge_reload_missing.json` が期待どおりのエラーメッセージを返すことを `cargo test -p reml_runtime audit_validation` で確認した。エラー文面はスナップショット (`*.txt`) と一致するため、CI で欠落キーを確実に検出できる。
 3.2. `PipelineStarted` 等の既定イベントを発火させる API を実装し、監査ログへ記録するテストを整備する。
     - 3.2.a `AuditEventKind` を列挙体として作成し、`PipelineStarted`/`PipelineCompleted`/`StageMismatch` 等を追加する。
     - 3.2.b `compiler/rust/frontend/src/pipeline/mod.rs` で `AuditEmitter` を注入し、CLI/LSP 経由で `--emit-audit-log` が指定された際のみログを書き出す。
