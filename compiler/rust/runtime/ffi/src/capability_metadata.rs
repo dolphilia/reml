@@ -51,6 +51,17 @@ pub enum StageId {
     Stable,
 }
 
+impl StageId {
+    /// 仕様で定義される文字列表現を返す。
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            StageId::Experimental => "experimental",
+            StageId::Beta => "beta",
+            StageId::Stable => "stable",
+        }
+    }
+}
+
 /// Stage の解析が失敗した場合のエラー。
 #[derive(Debug, Clone)]
 pub struct StageParseError {
