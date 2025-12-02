@@ -37,18 +37,23 @@ Usage: scripts/validate-diagnostic-json.sh [PATH...]
   - compiler/rust/runtime/tests/data/core_io
   - compiler/rust/runtime/tests/golden/core_io
   - tests/data/core_path
+--suite audit を指定した場合は以下を検証します:
+  - reports/audit/privacy 配下の JSON/JSONL
 --section config を指定した場合は `schema_diff.*` キーの存在をチェックします。
 
 PATH には JSON ファイルまたはディレクトリを指定できます。
 --pattern, --effect-tag は複数指定できます。`--effect-tag trace` のように指定すると
 `effects.*` に `trace` を含む診断のみを Python 検証対象とし、該当診断が無かったファイルは
 info ログ付きでスキップします。
+--require-privacy を指定すると、対象ファイルに `privacy.*` キーを含む監査/診断エントリが存在するか確認し、
+欠落時にはエラーとします。
 EOF
 }
 
 SUITE=""
 GENERIC_JSON_SUITE=0
 SECTION=""
+REQUIRE_PRIVACY=0
 declare -a PATTERNS=()
 declare -a TARGET_ARGS=()
 declare -a EFFECT_TAGS=()
@@ -89,6 +94,10 @@ while [[ "$#" -gt 0 ]]; do
         exit 1
       fi
       EFFECT_TAGS+=("$1")
+      shift
+      ;;
+    --require-privacy)
+      REQUIRE_PRIVACY=1
       shift
       ;;
     --help|-h)
@@ -148,6 +157,8 @@ if [[ "${#TARGET_ARGS[@]}" -eq 0 ]]; then
     TARGETS+=("$ROOT_DIR/compiler/rust/runtime/tests/data/core_io")
     TARGETS+=("$ROOT_DIR/compiler/rust/runtime/tests/golden/core_io")
     TARGETS+=("$ROOT_DIR/tests/data/core_path")
+  elif [[ "$SUITE" == "audit" ]]; then
+    TARGETS+=("$ROOT_DIR/reports/audit/privacy")
   else
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/diagnostics")
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/audit")
@@ -1069,6 +1080,132 @@ if error:
 PY
       EXIT_CODE=1
     }
+  fi
+fi
+
+if [[ "$REQUIRE_PRIVACY" -eq 1 ]]; then
+  declare -a PRIVACY_TARGETS=()
+  for file_path in "${DIAG_FILES[@]}"; do
+    PRIVACY_TARGETS+=("$file_path")
+  done
+  for file_path in "${AUDIT_FILES[@]}"; do
+    PRIVACY_TARGETS+=("$file_path")
+  done
+  if [[ "${#PRIVACY_TARGETS[@]}" -eq 0 ]]; then
+    echo "[validate-diagnostic-json] error: --require-privacy が指定されましたが検証対象ファイルがありません" >&2
+    EXIT_CODE=1
+  else
+    if ! python3 - "${PRIVACY_TARGETS[@]}" <<'PY'; then
+import json
+import pathlib
+import sys
+from typing import List
+
+paths: List[pathlib.Path] = [pathlib.Path(item) for item in sys.argv[1:] if item]
+
+def parse_entries(content: str, file_name: str) -> List[object]:
+    text = content.strip()
+    if not text:
+        return []
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        entries = []
+        for line_no, line in enumerate(content.splitlines(), start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                entries.append(json.loads(stripped))
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(f"{file_name}:{line_no}: JSON parse error: {exc}") from exc
+        return entries
+    else:
+        if isinstance(data, list):
+            return list(data)
+        return [data]
+
+
+def contains_privacy_flag(container) -> bool:
+    if not isinstance(container, dict):
+        return False
+    for key, value in container.items():
+        if not isinstance(key, str):
+            continue
+        if not key.startswith("privacy."):
+            continue
+        if isinstance(value, bool):
+            if value:
+                return True
+        elif isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {"1", "true", "yes", "required"}:
+                return True
+        else:
+            return True
+    return False
+
+
+def diag_has_privacy(diag: object) -> bool:
+    if not isinstance(diag, dict):
+        return False
+    if contains_privacy_flag(diag.get("audit_metadata")):
+        return True
+    audit_block = diag.get("audit")
+    if isinstance(audit_block, dict) and contains_privacy_flag(audit_block.get("metadata")):
+        return True
+    if contains_privacy_flag(diag.get("extensions")):
+        return True
+    return False
+
+
+def audit_event_has_privacy(event: object) -> bool:
+    if not isinstance(event, dict):
+        return False
+    envelope = event.get("envelope")
+    if isinstance(envelope, dict) and contains_privacy_flag(envelope.get("metadata")):
+        return True
+    if contains_privacy_flag(event.get("extensions")):
+        return True
+    return False
+
+
+def entry_has_privacy(entry: object) -> bool:
+    if isinstance(entry, dict) and "diagnostics" in entry:
+        diagnostics = entry.get("diagnostics")
+        if isinstance(diagnostics, list) and diagnostics:
+            return any(diag_has_privacy(item) for item in diagnostics if isinstance(item, dict))
+    if diag_has_privacy(entry):
+        return True
+    if audit_event_has_privacy(entry):
+        return True
+    return False
+
+
+missing: List[str] = []
+for path in paths:
+    if not path.exists():
+        continue
+    text = path.read_text(encoding="utf-8")
+    try:
+        entries = parse_entries(text, str(path))
+    except Exception as exc:  # noqa: BLE001
+        print(f"[validate-diagnostic-json] {exc}", file=sys.stderr)
+        missing.append(str(path))
+        continue
+    if not entries:
+        missing.append(str(path))
+        continue
+    if not any(entry_has_privacy(entry) for entry in entries):
+        missing.append(str(path))
+
+if missing:
+    for name in missing:
+        print(f"[validate-diagnostic-json] privacy metadata missing: {name}", file=sys.stderr)
+    sys.exit(1)
+PY
+      EXIT_CODE=1
+    fi
   fi
 fi
 

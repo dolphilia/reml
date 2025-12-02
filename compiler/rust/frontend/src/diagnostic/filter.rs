@@ -407,6 +407,18 @@ impl AuditPolicy {
                 {
                     meta.insert("privacy.anonymized".to_string(), Value::Bool(true));
                 }
+                if let Some(audit) = obj
+                    .entry("audit".to_string())
+                    .or_insert_with(|| Value::Object(Map::new()))
+                    .as_object_mut()
+                {
+                    let metadata_entry = audit
+                        .entry("metadata".to_string())
+                        .or_insert_with(|| Value::Object(Map::new()));
+                    if let Some(metadata) = metadata_entry.as_object_mut() {
+                        metadata.insert("privacy.redacted".to_string(), Value::Bool(true));
+                    }
+                }
             }
         }
         enforcement

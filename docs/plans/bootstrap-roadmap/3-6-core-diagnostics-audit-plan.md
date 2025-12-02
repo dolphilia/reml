@@ -219,6 +219,11 @@
     - 7.2.a `compiler/rust/runtime/tests/audit_snapshot.rs` を追加し、`AuditEnvelope` の `privacy.redacted` の有無で差分が出るかチェックする。
     - 7.2.b `reports/audit/privacy/` に GDPR テストケースのログを保存し、`0-4-risk-handling.md` の法務項目とリンクする。
     - 7.2.c `scripts/validate-diagnostic-json.sh --suite audit --require-privacy` を CI に追加し、`privacy` フラグ欠落時は即座に失敗させる。
+
+#### 7.2 実施結果（Run ID: 20290705-privacy-redaction）
+- `compiler/rust/runtime/tests/audit_snapshot.rs` を追加し、`AuditEnvelope` から生成した `AuditEvent` を `tests/expected/audit/privacy_{plain,redacted}.json` と比較するスナップショットテストを実装した。`cargo test -p reml_runtime audit_snapshot` で privacy フラグの有無を自動検証できる。
+- `reports/audit/privacy/README.md` と `reports/audit/privacy/20290705-privacy-redaction.jsonl` を作成し、GDPR 監査ログと実行コマンド (`scripts/validate-diagnostic-json.sh --suite audit --require-privacy reports/audit/privacy/20290705-privacy-redaction.jsonl`) を保存した。`docs/plans/bootstrap-roadmap/0-4-risk-handling.md#0.4.6-現在のリスク登録` から参照できるよう README にリンクを記載している。
+- `scripts/validate-diagnostic-json.sh` に `--suite audit` と `--require-privacy` オプションを追加し、プライバシーメタデータ (`privacy.anonymized`/`privacy.redacted`) が存在しないファイルをエラー扱いにした。監査ポリシーの匿名化が有効になると `AuditPolicy` が `audit.metadata["privacy.redacted"]=true` を付与し、CLI/CI の双方で欠落を即検知できる。
 7.3. CI に診断差分検出タスクを追加し、回帰時に `0-4-risk-handling.md` へ自動記録する仕組みを構築する。
     - 7.3.a `.github/workflows/rust-frontend.yml` に `diagnostic_diff` ジョブを追加し、`reports/dual-write/*` をアーティファクト化する。
     - 7.3.b 差分検出スクリプトを `tooling/ci/diagnostic_diff.py` として実装し、失敗時に `reports/audit/dashboard/ci-regressions.md` を生成する。
