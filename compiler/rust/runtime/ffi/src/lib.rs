@@ -28,6 +28,9 @@ pub mod core_collections_metrics;
 pub mod core_prelude;
 #[cfg(feature = "core_prelude")]
 pub use core_prelude as prelude;
+#[cfg(feature = "core_prelude")]
+#[path = "../../src/text/mod.rs"]
+pub mod text;
 mod env;
 mod ffi_contract;
 #[cfg(feature = "core_prelude")]

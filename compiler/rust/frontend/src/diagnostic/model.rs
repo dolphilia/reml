@@ -11,7 +11,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
-use super::recover::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
+use super::recover::{self, ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 
 pub(crate) const EXPECTED_PLACEHOLDER_TOKEN: &str = "解析継続トークン";
 pub(crate) const EXPECTED_EMPTY_HUMANIZED: &str = "ここで解釈可能な構文が見つかりません";
