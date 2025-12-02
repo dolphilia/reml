@@ -1658,6 +1658,125 @@ def summarize_diagnostics(paths: Sequence[Path]) -> Dict[str, Any]:
     return summary
 
 
+def build_diagnostic_total_metric(summary: Dict[str, Any]) -> Dict[str, Any]:
+    metric = dict(summary)
+    total = metric.get("total", 0) or 0
+    if total > 0:
+        status = "success"
+        pass_rate = 1.0
+    else:
+        status = "warning"
+        pass_rate = 0.0
+    metric.update(
+        {
+            "metric": "diagnostic.total_count",
+            "status": status,
+            "pass_rate": pass_rate,
+            "pass_fraction": pass_rate,
+        }
+    )
+    return metric
+
+
+def collect_audit_event_total_metric(paths: Sequence[Path]) -> Dict[str, Any]:
+    if not paths:
+        return {
+            "metric": "audit.event_total",
+            "total": 0,
+            "pass_rate": None,
+            "pass_fraction": None,
+            "status": "missing",
+            "sources": [],
+            "empty_sources": [],
+            "failures": [{"reason": "audit_sources_missing"}],
+            "event_kind_counts": {},
+            "event_domain_counts": {},
+            "category_counts": {},
+        }
+
+    total = 0
+    sources: List[str] = []
+    empty_sources: List[str] = []
+    failures: List[Dict[str, Any]] = []
+    kind_counts: Dict[str, int] = defaultdict(int)
+    domain_counts: Dict[str, int] = defaultdict(int)
+    category_counts: Dict[str, int] = defaultdict(int)
+    missing_annotations = 0
+
+    for raw_path in paths:
+        path = Path(raw_path)
+        try:
+            entries = load_audit_entries(path)
+        except ValueError as exc:  # pragma: no cover - defensive
+            failures.append({"file": str(path), "reason": f"parse_error: {exc}"})
+            continue
+        if not entries:
+            empty_sources.append(str(path))
+            continue
+        sources.append(str(path))
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "reason": "entry_not_object",
+                    }
+                )
+                continue
+            total += 1
+            category = entry.get("category")
+            if isinstance(category, str) and category.strip():
+                category_counts[category.strip()] += 1
+            event = entry.get("event") if isinstance(entry.get("event"), dict) else None
+            metadata = _as_dict(entry.get("metadata"))
+            kind_value = None
+            domain_value = None
+            if isinstance(event, dict):
+                kind_value = _normalize_nonempty_string(event.get("kind"))
+                domain_value = _normalize_nonempty_string(event.get("domain"))
+            if kind_value is None and metadata:
+                kind_value = _normalize_nonempty_string(
+                    _lookup_metadata_value(metadata, "event.kind")
+                )
+            if domain_value is None and metadata:
+                domain_value = _normalize_nonempty_string(
+                    _lookup_metadata_value(metadata, "event.domain")
+                )
+            if kind_value:
+                kind_counts[kind_value] += 1
+            if domain_value:
+                domain_counts[domain_value] += 1
+            if not kind_value and not domain_value:
+                missing_annotations += 1
+
+    if total > 0 and not sources and not failures:
+        status = "warning"
+    elif total > 0 and not failures:
+        status = "success"
+    elif total > 0:
+        status = "warning"
+    else:
+        status = "empty"
+
+    metric: Dict[str, Any] = {
+        "metric": "audit.event_total",
+        "total": total,
+        "pass_rate": 1.0 if total > 0 else 0.0,
+        "pass_fraction": 1.0 if total > 0 else 0.0,
+        "status": status,
+        "sources": sources,
+        "empty_sources": empty_sources,
+        "failures": failures,
+        "event_kind_counts": dict(kind_counts),
+        "event_domain_counts": dict(domain_counts),
+        "category_counts": dict(category_counts),
+    }
+    if missing_annotations:
+        metric["missing_event_annotations"] = missing_annotations
+    return metric
+
+
 def collect_diagnostic_audit_presence_metric(paths: List[Path]) -> Dict[str, Any]:
     total = 0
     passed = 0
@@ -6438,6 +6557,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "collectors",
             "effects",
             "diag",
+            "diagnostics",
             "type_inference",
             "ffi",
             "typeclass",
@@ -6620,7 +6740,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.section == "all":
         sections = section_order
     else:
-        sections = [args.section]
+        section_aliases = {"diagnostics": "diag"}
+        sections = [section_aliases.get(args.section, args.section)]
 
     diagnostic_sections = {
         "parser",
@@ -6630,6 +6751,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "collectors",
         "effects",
         "diag",
+        "diagnostics",
         "type_inference",
         "ffi",
         "typeclass",
@@ -7168,7 +7290,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     else:
         diagnostics_summary = summarize_diagnostics(sources)
 
+    diagnostic_totals_metric: Optional[Dict[str, Any]] = None
+    audit_event_metric: Optional[Dict[str, Any]] = None
+    if "diag" in sections:
+        diag_summary = diagnostics_summary
+        if diag_summary is None:
+            diag_summary = summarize_diagnostics(sources)
+            diagnostics_summary = diag_summary
+        diagnostic_totals_metric = build_diagnostic_total_metric(diag_summary)
+        audit_event_metric = collect_audit_event_total_metric(audit_paths)
+
     metrics_list: List[Dict[str, Any]] = []
+    if diagnostic_totals_metric:
+        metrics_list.append(diagnostic_totals_metric)
+    if audit_event_metric:
+        metrics_list.append(audit_event_metric)
     if diagnostic_presence_metric:
         metrics_list.append(diagnostic_presence_metric)
     if parser_metrics:
@@ -7256,10 +7392,14 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if diagnostic_presence_metric:
         combined["diagnostic_audit"] = diagnostic_presence_metric
+    if diagnostic_totals_metric:
+        combined["diagnostic_totals"] = diagnostic_totals_metric
     if parser_metrics:
         combined["parser"] = parser_metrics
     if diag_metric:
         combined["diagnostics"] = diag_metric
+    if audit_event_metric:
+        combined["audit_events"] = audit_event_metric
     if lexer_metrics:
         combined["lexer"] = {"metrics": lexer_metrics}
     if iterator_metrics:
@@ -7293,6 +7433,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     for metrics in (iterator_metrics, typeclass_metrics, bridge_metrics):
         if metrics:
             combined_audit_sources.extend(metrics.get("audit_sources") or [])
+    if audit_event_metric:
+        combined_audit_sources.extend(audit_event_metric.get("sources") or [])
     if append_sources:
         combined_audit_sources.extend(append_sources)
     if combined_audit_sources:
