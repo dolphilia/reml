@@ -10,6 +10,7 @@ pub mod env;
 mod metrics;
 mod scheme;
 pub mod types;
+pub mod telemetry;
 
 pub use capability::RuntimeCapability;
 pub use constraint::iterator::{

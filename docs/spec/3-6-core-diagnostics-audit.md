@@ -206,6 +206,19 @@ pub enum DiagnosticDomain = {
 
 > **運用メモ**: Phase 2-5 DIAG-003 Step5 で仕様書・脚注・ガイド類を横断更新し、`Effect` / `Target` / `Plugin` / `Lsp` / `Other(Str)` などの新語彙に対応した監査メタデータ（`extensions["plugin"]`, `extensions["lsp"]`, `extensions["capability"]` 等）を OCaml 実装へ反映した[^diag003-phase25-domain]。
 
+#### 1.4.1 制約グラフテレメトリ
+
+Rust Frontend では `reml_frontend --emit-telemetry constraint_graph input.reml` を実行すると、型制約解決の様子を `TraitResolutionTelemetry` として JSON に記録する。既定の保存先は `tmp/telemetry/<入力ファイル名>-constraint_graph.json` で、`graph.nodes`／`graph.edges`／`graph.export_dot`（推奨 DOT 出力先）が含まれる。`graph.export_dot` は Graphviz へ変換した成果物をドキュメントへ添付する際の標準パスとして扱い、CI で DOT ファイルの所在を追跡できるようにする。
+
+JSON から DOT / SVG を生成する場合は `scripts/telemetry/render_graphviz.py` を利用する。
+
+```bash
+python3 scripts/telemetry/render_graphviz.py tmp/telemetry/example-constraint_graph.json \
+  --svg-out docs/spec/assets/typeclass-constraint.svg
+```
+
+`dot` コマンド（Graphviz）が利用可能な環境では SVG まで自動生成でき、`graph.export_dot` に示されたファイル名は DOT のデフォルト出力先としても再利用できる。CI や `docs/spec/3-6-core-diagnostics-audit.md` の図版更新作業では、同スクリプトの出力を用いて差分確認や可視化を行う。
+
 ## 2. 診断生成ヘルパ
 
 ```reml

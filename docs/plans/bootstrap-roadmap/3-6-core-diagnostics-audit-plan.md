@@ -141,6 +141,12 @@
     - 4.2.a `compiler/rust/typeck/src/telemetry.rs` を新設し、`TraitResolutionTelemetry`/`ResolutionState`/`ConstraintGraphSummary` 構造体を `serde` でシリアライズ可能にする。
     - 4.2.b TypeChecker の制約生成ルートに `TelemetrySink` を差し込み、`--emit-telemetry constraint_graph` フラグで JSON を `tmp/telemetry/` に書き出す。
     - 4.2.c 生成した JSON を `scripts/telemetry/render_graphviz.py` で dot → svg に変換し、`docs/spec/3-6-core-diagnostics-audit.md` の図版を差し替える。
+
+#### 4.2 実施結果（Run ID: 20290730-trait-telemetry）
+- `compiler/rust/frontend/src/typeck/telemetry.rs` を追加し、`TraitResolutionTelemetry` が `TypecheckReport` から制約ノード/エッジを生成できるようにした。`graph.nodes`/`graph.edges`/`graph.export_dot` を含む `ConstraintGraphSummary` を出力し、`TypecheckViolation` 由来の Stage/Capability 差分を `ResolutionState::stage_mismatch` として `TraitResolutionRecord` に転写している。
+- CLI に `--emit-telemetry constraint_graph[=PATH]` を実装し（`compiler/rust/frontend/src/bin/reml_frontend.rs`）、実行時に `tmp/telemetry/<input>-constraint_graph.json` へ JSON を保存、`graph.export_dot` へ推奨 DOT パス（`.dot` 拡張子）を埋め込むようにした。dual-write との競合を避けるため、テレメトリ出力は通常の診断/監査出力後に実行され、標準エラーへ出力先を通知する。
+- `scripts/telemetry/render_graphviz.py` を新設し、`python3 scripts/telemetry/render_graphviz.py <JSON> --svg-out <PATH>` で DOT/SVG を生成できるようにした。Graphviz (`dot`) が存在しない場合は明示的にエラーを返すため、CI への組み込みやローカル図版更新時のトラブルシュートが容易になった。
+- `docs/spec/3-6-core-diagnostics-audit.md#1.4.1` にテレメトリ出力手順とスクリプト使用例を追記し、`graph.export_dot` の意義と `tmp/telemetry/` 既定パスをドキュメントへ反映した。これにより Chapter 3 の図版差し替え時に必要な手順が一本化され、Phase 3 での観測要件に合致する。
 4.3. `ResolutionState`, `ConstraintGraphSummary` 等のデータを Graphviz 等にエクスポートするヘルパを追加する。
     - 4.3.a `tooling/telemetry/export_graphviz.rs` を作成し、JSON から dot を生成する CLI を提供する。
     - 4.3.b `examples/core_diagnostics/constraint_graph/*.reml` を追加し、生成 dot/svg を `examples/core_diagnostics/output/` に格納する。

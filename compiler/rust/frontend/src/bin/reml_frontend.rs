@@ -4,6 +4,7 @@ use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::fmt;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -38,6 +39,7 @@ use reml_frontend::typeck::{
     TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics, TypecheckReport,
     TypecheckViolation, TypecheckViolationKind, TypedFunctionSummary,
 };
+use reml_frontend::typeck::telemetry::TraitResolutionTelemetry;
 use reml_runtime::text::LocaleId;
 use serde::Serialize;
 use uuid::Uuid;
@@ -254,6 +256,8 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         write_json_file(path, &payload)?;
     }
 
+    emit_telemetry_outputs(&args.telemetry_requests, &typeck_report, &input_path)?;
+
     if let Some(guards) = dualwrite {
         write_dualwrite_typeck_payload(
             &guards,
@@ -388,6 +392,7 @@ struct CliArgs {
     stream_config: StreamSettings,
     runtime_capabilities: Vec<RuntimeCapability>,
     config_path: Option<PathBuf>,
+    telemetry_requests: Vec<TelemetryRequest>,
 }
 
 #[derive(Clone)]
@@ -396,6 +401,75 @@ struct DualwriteCliOpts {
     case_label: String,
     root: Option<PathBuf>,
 }
+
+#[derive(Clone)]
+struct TelemetryRequest {
+    kind: TelemetryKind,
+    destination: Option<PathBuf>,
+}
+
+impl TelemetryRequest {
+    fn parse(value: &str) -> Result<Self, TelemetryParseError> {
+        let mut parts = value.splitn(2, '=');
+        let kind_raw = parts
+            .next()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| {
+                TelemetryParseError("--emit-telemetry は <kind>[=<path>] 形式で指定してください".to_string())
+            })?;
+        let destination = parts
+            .next()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(PathBuf::from);
+        let kind = TelemetryKind::parse(kind_raw)?;
+        Ok(Self { kind, destination })
+    }
+
+    fn label(&self) -> &'static str {
+        self.kind.label()
+    }
+
+    fn resolved_path(&self, input: &Path) -> PathBuf {
+        self.destination
+            .clone()
+            .unwrap_or_else(|| default_telemetry_path(self.label(), input))
+    }
+}
+
+#[derive(Clone)]
+enum TelemetryKind {
+    ConstraintGraph,
+}
+
+impl TelemetryKind {
+    fn parse(raw: &str) -> Result<Self, TelemetryParseError> {
+        match raw {
+            "constraint_graph" => Ok(Self::ConstraintGraph),
+            other => Err(TelemetryParseError(format!(
+                "--emit-telemetry で未知の種別 `{other}` が指定されました"
+            ))),
+        }
+    }
+
+    fn label(&self) -> &'static str {
+        match self {
+            TelemetryKind::ConstraintGraph => "constraint_graph",
+        }
+    }
+}
+
+#[derive(Debug)]
+struct TelemetryParseError(String);
+
+impl fmt::Display for TelemetryParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::error::Error for TelemetryParseError {}
 
 #[derive(Clone)]
 struct RunSettings {
@@ -767,6 +841,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut config_path: Option<PathBuf> = None;
     let mut trace_overridden = false;
     let mut merge_warnings_overridden = false;
+    let mut telemetry_requests: Vec<TelemetryRequest> = Vec::new();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--emit-parse-debug" => {
@@ -896,6 +971,13 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .next()
                     .ok_or_else(|| "--emit-tokens は出力パスを伴う必要があります")?;
                 emit_tokens = Some(PathBuf::from(path));
+            }
+            "--emit-telemetry" => {
+                let value = args.next().ok_or_else(|| {
+                    "--emit-telemetry は <kind>[=<path>] を伴う必要があります"
+                })?;
+                let request = TelemetryRequest::parse(&value)?;
+                telemetry_requests.push(request);
             }
             "--trace-output" => {
                 let path = args
@@ -1138,6 +1220,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         stream_config,
         runtime_capabilities,
         config_path,
+        telemetry_requests,
     })
 }
 
@@ -1157,6 +1240,7 @@ fn print_help(program_name: &str) {
   --emit-effects-metrics <PATH>  効果メトリクスを JSON で保存
   --emit-diagnostics             標準出力へ診断 JSON を出力
   --emit-audit-log               Audit メタデータを出力（--emit-audit も利用可能）
+  --emit-telemetry <KIND>[=PATH] 制約グラフ等のテレメトリを JSON で保存
   --emit-tokens <PATH>           字句解析結果を JSON で保存
   --trace-output <PATH>          Parser TraceEvent を Markdown で保存
   --lex-profile ascii|unicode    識別子プロファイルの切替
@@ -1203,6 +1287,33 @@ fn write_dualwrite_typeck_payload(
     Ok(())
 }
 
+fn emit_telemetry_outputs(
+    requests: &[TelemetryRequest],
+    report: &TypecheckReport,
+    input: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if requests.is_empty() {
+        return Ok(());
+    }
+    let input_label = input.display().to_string();
+    for request in requests {
+        match request.kind {
+            TelemetryKind::ConstraintGraph => {
+                let path = request.resolved_path(input);
+                let dot_path = path.with_extension("dot").display().to_string();
+                let telemetry =
+                    TraitResolutionTelemetry::from_report(report, Some(input_label.as_str()), Some(dot_path));
+                write_json_file(&path, &telemetry)?;
+                eprintln!(
+                    "[TELEMETRY] constraint_graph を {} へ書き出しました",
+                    path.display()
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
 fn write_dualwrite_parse_payload(
     guards: &DualWriteGuards,
     result: &ParseResult<Module>,
@@ -1245,6 +1356,15 @@ fn write_parser_trace_file(
     }
     fs::write(path, buffer)?;
     Ok(())
+}
+
+fn default_telemetry_path(kind: &str, input: &Path) -> PathBuf {
+    let stem = input
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .unwrap_or("input");
+    let dir = PathBuf::from("tmp/telemetry");
+    dir.join(format!("{stem}-{kind}.json"))
 }
 
 fn left_recursion_label(mode: LeftRecursionMode) -> &'static str {
