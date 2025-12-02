@@ -130,6 +130,12 @@ describe("client compatibility scaffolding", () => {
     expect(labels).toStrictEqual(["demo.info.sample", "demo.hint.sample"]);
   });
 
+  it("roundtrips diagnostics JSON through stringify/parse", () => {
+    const diagnostics = readDiagnostics(fixturesDir, "diagnostics_roundtrip.json");
+    const cloned = JSON.parse(JSON.stringify(diagnostics));
+    expect(cloned).toStrictEqual(diagnostics);
+  });
+
   it("validates workspace configuration fixtures", () => {
     const configuration = readWorkspaceConfiguration(fixturesDir, "workspace-configuration.json");
     expect(configuration.diagnostics?.filter?.severity).toBe("warning");

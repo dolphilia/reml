@@ -1,0 +1,11 @@
+---
+source: tests/cli/test_diagnostics.rs
+assertion_line: 63
+expression: human
+---
+error: 文の末尾にセミコロンが必要です
+  --> tests/fixtures/sample.reml:1:1
+  code: parser.syntax.expected_tokens
+  localization: key=parse.expected, args=[;, }]
+
+[Check] diagnostics=1, exit=warning

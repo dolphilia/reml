@@ -5,6 +5,13 @@
     "severity": 1,
     "domain": "runtime",
     "codes": ["effects.contract.stage_mismatch"],
+    "primary": {
+      "file": "metrics://emit",
+      "start_line": 1,
+      "start_col": 1,
+      "end_line": 1,
+      "end_col": 1
+    },
     "extensions": {
       "effects.contract.capability": "metrics.emit",
       "effects.contract.stage.required": "beta",
@@ -31,6 +38,16 @@
       "effect.actual_capabilities": ["metrics.emit"],
       "effect.required_effects": ["audit"],
       "effects.contract.detail": "required StageRequirement::Exact(Beta) but runtime is StageId::Stable"
+    },
+    "audit": {
+      "metadata": {
+        "event.kind": "runtime.diagnostic",
+        "effect.stage.required": "beta",
+        "effect.stage.actual": "stable"
+      },
+      "audit_id": "00000000-0000-0000-0000-000000000002",
+      "change_set": null,
+      "capability": "metrics.emit"
     },
     "timestamp": "2025-12-11T09:30:00Z",
     "structured_hints": [

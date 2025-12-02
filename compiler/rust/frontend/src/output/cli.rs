@@ -1,5 +1,5 @@
 use super::localization::LocalizationKey;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::io::{self, Write};
 use std::path::Path;
@@ -69,7 +69,7 @@ impl Default for CliPhaseKind {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CliDiagnosticEnvelope {
     command: String,
     phase: String,
@@ -99,7 +99,7 @@ impl CliDiagnosticEnvelope {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CliSummary {
     pub inputs: Vec<String>,
     pub started_at: String,
@@ -108,30 +108,30 @@ pub struct CliSummary {
     pub stats: Map<String, Value>,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CliExitCode {
-    label: &'static str,
+    label: String,
     value: i32,
 }
 
 impl CliExitCode {
     pub fn success() -> Self {
         Self {
-            label: "success",
+            label: "success".to_string(),
             value: 0,
         }
     }
 
     pub fn warning() -> Self {
         Self {
-            label: "warning",
+            label: "warning".to_string(),
             value: 2,
         }
     }
 
     pub fn failure() -> Self {
         Self {
-            label: "failure",
+            label: "failure".to_string(),
             value: 1,
         }
     }
@@ -140,8 +140,8 @@ impl CliExitCode {
         self.value
     }
 
-    pub fn label(&self) -> &'static str {
-        self.label
+    pub fn label(&self) -> &str {
+        self.label.as_str()
     }
 }
 
@@ -155,14 +155,19 @@ pub fn emit_cli_output(
             let line = serde_json::to_string(envelope)?;
             println!("{line}");
         }
-        OutputFormat::Human => render_human_output(envelope)?,
+        OutputFormat::Human => {
+            let mut stderr = io::stderr();
+            render_human_output(&mut stderr, envelope)?;
+        }
         OutputFormat::Lsp => emit_lsp_output(envelope, input_path)?,
     }
     Ok(())
 }
 
-fn render_human_output(envelope: &CliDiagnosticEnvelope) -> io::Result<()> {
-    let mut stderr = io::stderr();
+fn render_human_output<W: Write>(
+    writer: &mut W,
+    envelope: &CliDiagnosticEnvelope,
+) -> io::Result<()> {
     for diag in &envelope.diagnostics {
         let severity = diag
             .get("severity")
@@ -172,29 +177,38 @@ fn render_human_output(envelope: &CliDiagnosticEnvelope) -> io::Result<()> {
             .get("message")
             .and_then(|value| value.as_str())
             .unwrap_or("");
-        writeln!(stderr, "{severity}: {message}")?;
+        writeln!(writer, "{severity}: {message}")?;
         let location = diagnostic_location_label(diag);
         if !location.is_empty() {
-            writeln!(stderr, "  --> {location}")?;
+            writeln!(writer, "  --> {location}")?;
         }
         if let Some(code) = diag.get("code").and_then(|value| value.as_str()) {
             if !code.trim().is_empty() {
-                writeln!(stderr, "  code: {code}")?;
+                writeln!(writer, "  code: {code}")?;
             }
         }
         if let Some(label) = LocalizationKey::from_diagnostic(diag).display_label() {
-            writeln!(stderr, "  localization: {label}")?;
+            writeln!(writer, "  localization: {label}")?;
         }
-        writeln!(stderr)?;
+        writeln!(writer)?;
     }
     writeln!(
-        stderr,
+        writer,
         "[{}] diagnostics={}, exit={}",
         envelope.command,
         envelope.diagnostics.len(),
         envelope.exit_code.label()
     )?;
     Ok(())
+}
+
+/// テストやスナップショット取得向けに、Human 出力を文字列として取得する。
+pub fn render_human_output_to_string(
+    envelope: &CliDiagnosticEnvelope,
+) -> io::Result<String> {
+    let mut buffer = Vec::new();
+    render_human_output(&mut buffer, envelope)?;
+    Ok(String::from_utf8(buffer).expect("human output must be utf8"))
 }
 
 fn emit_lsp_output(
