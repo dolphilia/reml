@@ -5,6 +5,7 @@
 
 pub mod diagnostic;
 pub mod error;
+pub mod output;
 pub mod lexer;
 pub mod parser;
 pub mod semantics;

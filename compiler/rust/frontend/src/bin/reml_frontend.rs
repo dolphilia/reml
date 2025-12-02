@@ -4,7 +4,6 @@ use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::io::{self, Write};
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -21,6 +20,10 @@ use reml_frontend::parser::ast::Module;
 use reml_frontend::parser::{
     LeftRecursionMode, ParseResult, ParserDriver, ParserOptions, ParserTraceEvent, RunConfig,
     StreamOutcome, StreamingRunner,
+};
+use reml_frontend::output::cli::{
+    emit_cli_output, CliCommandKind, CliDiagnosticEnvelope, CliExitCode, CliPhaseKind, CliSummary,
+    OutputFormat,
 };
 use reml_frontend::semantics::typed;
 use reml_frontend::span::Span;
@@ -43,141 +46,6 @@ const PARSER_ORIGIN: &str = "reml_frontend";
 const PARSER_FINGERPRINT: &str = "rust-frontend-0001";
 const SCHEMA_VERSION: &str = "3.0.0-alpha";
 
-#[derive(Clone, Copy, Debug)]
-enum OutputFormat {
-    Human,
-    Json,
-    Lsp,
-}
-
-impl OutputFormat {
-    fn parse(value: &str) -> Result<Self, String> {
-        match value.trim().to_ascii_lowercase().as_str() {
-            "human" => Ok(Self::Human),
-            "json" => Ok(Self::Json),
-            "lsp" => Ok(Self::Lsp),
-            other => Err(format!(
-                "--output に指定した値 `{other}` は human/json/lsp のいずれかである必要があります"
-            )),
-        }
-    }
-}
-
-impl Default for OutputFormat {
-    fn default() -> Self {
-        Self::Json
-    }
-}
-
-#[derive(Clone, Copy)]
-enum CliCommandKind {
-    Check,
-}
-
-impl CliCommandKind {
-    fn as_str(&self) -> &'static str {
-        match self {
-            CliCommandKind::Check => "Check",
-        }
-    }
-}
-
-impl Default for CliCommandKind {
-    fn default() -> Self {
-        Self::Check
-    }
-}
-
-#[derive(Clone, Copy)]
-enum CliPhaseKind {
-    Reporting,
-}
-
-impl CliPhaseKind {
-    fn as_str(&self) -> &'static str {
-        match self {
-            CliPhaseKind::Reporting => "Reporting",
-        }
-    }
-}
-
-impl Default for CliPhaseKind {
-    fn default() -> Self {
-        Self::Reporting
-    }
-}
-
-#[derive(Serialize)]
-struct CliDiagnosticEnvelope {
-    command: String,
-    phase: String,
-    run_id: String,
-    diagnostics: Vec<Value>,
-    summary: CliSummary,
-    exit_code: CliExitCode,
-}
-
-impl CliDiagnosticEnvelope {
-    fn new(
-        command: &CliCommandKind,
-        phase: &CliPhaseKind,
-        run_id: Uuid,
-        diagnostics: Vec<Value>,
-        summary: CliSummary,
-        exit_code: CliExitCode,
-    ) -> Self {
-        Self {
-            command: command.as_str().to_string(),
-            phase: phase.as_str().to_string(),
-            run_id: run_id.to_string(),
-            diagnostics,
-            summary,
-            exit_code,
-        }
-    }
-}
-
-#[derive(Serialize)]
-struct CliSummary {
-    inputs: Vec<String>,
-    started_at: String,
-    finished_at: String,
-    artifact: Option<String>,
-    stats: Map<String, Value>,
-}
-
-#[derive(Clone, Serialize)]
-struct CliExitCode {
-    label: &'static str,
-    value: i32,
-}
-
-impl CliExitCode {
-    fn success() -> Self {
-        Self {
-            label: "success",
-            value: 0,
-        }
-    }
-
-    fn warning() -> Self {
-        Self {
-            label: "warning",
-            value: 2,
-        }
-    }
-
-    fn failure() -> Self {
-        Self {
-            label: "failure",
-            value: 1,
-        }
-    }
-
-    fn value(&self) -> i32 {
-        self.value
-    }
-}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args()?;
@@ -376,7 +244,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         summary,
         exit_code.clone(),
     );
-    emit_cli_output(&args, &envelope, &input_path)?;
+    emit_cli_output(args.output_format, &envelope, &input_path)?;
     std::process::exit(exit_code.value());
 }
 
@@ -431,189 +299,6 @@ fn determine_exit_code(diagnostics: &[Value]) -> CliExitCode {
     }
 }
 
-fn emit_cli_output(
-    args: &CliArgs,
-    envelope: &CliDiagnosticEnvelope,
-    input_path: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
-    match args.output_format {
-        OutputFormat::Json => {
-            let line = serde_json::to_string(envelope)?;
-            println!("{line}");
-        }
-        OutputFormat::Human => render_human_output(envelope)?,
-        OutputFormat::Lsp => emit_lsp_output(envelope, input_path)?,
-    }
-    Ok(())
-}
-
-fn render_human_output(envelope: &CliDiagnosticEnvelope) -> io::Result<()> {
-    let mut stderr = io::stderr();
-    for diag in &envelope.diagnostics {
-        let severity = diag
-            .get("severity")
-            .and_then(|value| value.as_str())
-            .unwrap_or("unknown");
-        let message = diag
-            .get("message")
-            .and_then(|value| value.as_str())
-            .unwrap_or("");
-        writeln!(stderr, "{severity}: {message}")?;
-        let location = diagnostic_location_label(diag);
-        if !location.is_empty() {
-            writeln!(stderr, "  --> {location}")?;
-        }
-        if let Some(code) = diag.get("code").and_then(|value| value.as_str()) {
-            if !code.trim().is_empty() {
-                writeln!(stderr, "  code: {code}")?;
-            }
-        }
-        writeln!(stderr)?;
-    }
-    writeln!(
-        stderr,
-        "[{}] diagnostics={}, exit={}",
-        envelope.command,
-        envelope.diagnostics.len(),
-        envelope.exit_code.label
-    )?;
-    Ok(())
-}
-
-fn emit_lsp_output(
-    envelope: &CliDiagnosticEnvelope,
-    input_path: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let uri = path_to_uri(input_path);
-    let diagnostics = envelope
-        .diagnostics
-        .iter()
-        .map(convert_to_lsp_diagnostic)
-        .collect::<Vec<_>>();
-    let publish = json!({
-        "jsonrpc": "2.0",
-        "method": "textDocument/publishDiagnostics",
-        "params": {
-            "uri": uri,
-            "diagnostics": diagnostics,
-            "version": 1,
-        }
-    });
-    println!("{}", serde_json::to_string(&publish)?);
-    let log_message = json!({
-        "jsonrpc": "2.0",
-        "method": "window/logMessage",
-        "params": {
-            "type": 4,
-            "message": format!(
-                "[{}] diagnostics={}, exit={}",
-                envelope.command,
-                envelope.diagnostics.len(),
-                envelope.exit_code.label
-            ),
-        }
-    });
-    println!("{}", serde_json::to_string(&log_message)?);
-    Ok(())
-}
-
-fn convert_to_lsp_diagnostic(diag: &Value) -> Value {
-    let severity = diag
-        .get("severity")
-        .and_then(|value| value.as_str())
-        .unwrap_or("error");
-    let severity_value = match severity {
-        "warning" => 2,
-        "info" => 3,
-        "hint" => 4,
-        _ => 1,
-    };
-    let message = diag
-        .get("message")
-        .and_then(|value| value.as_str())
-        .unwrap_or("")
-        .to_string();
-    let code = diag.get("code").cloned().unwrap_or(Value::Null);
-    let range = lsp_range_from_primary(diag.get("primary"));
-    let data = diag.clone();
-    let structured_hints = diag
-        .get("structured_hints")
-        .cloned()
-        .unwrap_or_else(|| Value::Array(Vec::new()));
-    json!({
-        "range": range,
-        "severity": severity_value,
-        "code": code,
-        "source": "reml_frontend",
-        "message": message,
-        "data": {
-            "diagnostic": data,
-            "structured_hints": structured_hints,
-        }
-    })
-}
-
-fn lsp_range_from_primary(primary: Option<&Value>) -> Value {
-    if let Some(Value::Object(map)) = primary {
-        let start_line = map
-            .get("start_line")
-            .and_then(|value| value.as_i64())
-            .unwrap_or(1)
-            .saturating_sub(1);
-        let start_col = map
-            .get("start_col")
-            .and_then(|value| value.as_i64())
-            .unwrap_or(1)
-            .saturating_sub(1);
-        let end_line = map
-            .get("end_line")
-            .and_then(|value| value.as_i64())
-            .unwrap_or(start_line + 1)
-            .saturating_sub(1);
-        let end_col = map
-            .get("end_col")
-            .and_then(|value| value.as_i64())
-            .unwrap_or(start_col + 1)
-            .saturating_sub(1);
-        return json!({
-            "start": { "line": start_line, "character": start_col },
-            "end": { "line": end_line, "character": end_col },
-        });
-    }
-    json!({
-        "start": { "line": 0, "character": 0 },
-        "end": { "line": 0, "character": 0 },
-    })
-}
-
-fn diagnostic_location_label(diag: &Value) -> String {
-    if let Some(primary) = diag.get("primary").and_then(|value| value.as_object()) {
-        let file = primary
-            .get("file")
-            .and_then(|value| value.as_str())
-            .unwrap_or("<unknown>");
-        let line = primary
-            .get("start_line")
-            .and_then(|value| value.as_i64())
-            .unwrap_or(0);
-        let column = primary
-            .get("start_col")
-            .and_then(|value| value.as_i64())
-            .unwrap_or(0);
-        return format!("{file}:{line}:{column}");
-    }
-    String::new()
-}
-
-fn path_to_uri(path: &Path) -> String {
-    if path.is_absolute() {
-        format!("file://{}", path.display())
-    } else if let Ok(absolute) = path.canonicalize() {
-        format!("file://{}", absolute.display())
-    } else {
-        format!("file://{}", path.display())
-    }
-}
 
 fn resolve_completed_stream_outcome(outcome: StreamOutcome) -> ParseResult<Module> {
     match outcome {

@@ -26,6 +26,12 @@
   `--output human` / `--output lsp` も同じ入力で実行し、`tmp/cli-output.{human,lsp}.log` を `reports/dual-write/front-end/samples/` に保存する。Run ID とファイルパスを `reports/spec-audit/ch0/links.md#cli-output` へ追記しておくとレビュー時に参照しやすい。
 - `scripts/validate-diagnostic-json.sh` で JSON スキーマを検証した後、Human/LSP については `diff -u tmp/cli-output.expected tmp/cli-output.{human,lsp}.log` で目視確認を行う。`npm run ci --prefix tooling/lsp/tests/client_compat` は LSP 出力ログを `tooling/lsp/tests/client_compat/fixtures/` へ反映する前に必ず通す。
 
+### 1.2 LocalizationKey 検証（2029-07-18 追加）
+- CLI/LSP の JSON には `data.localization = { "message_key": ..., "locale": ..., "locale_args": [...] }` が追加されている。`reml_frontend --output lsp --format json` の結果を `jq '.params.diagnostics[].data.localization'` で抽出し、`message_key=parse.expected` や `effects.contract.stage_mismatch` が期待どおり埋め込まれているか確認する。
+- Runbook: `reml_frontend --output lsp --emit-parse-debug tmp/l10n.json examples/spec/ch1/effect_handler.reml > tmp/lsp-l10n.log` → `jq '.params.diagnostics[].data.localization' tmp/lsp-l10n.log`. `null` が返った場合は `FrontendDiagnostic::expected_message_key` などのフィールド連携を確認する。
+- `tooling/lsp/tests/client_compat/fixtures/*.json` は `data.localization.message_key` を必須フィールドとし、`npm run update-localization --prefix tooling/lsp/tests/client_compat`（今後追加予定）の前に `tooling/lsp/src/handlers/diagnostics.rs` で `inject_localization` を呼び出しているかチェックする。
+- CLI Human モードでは `localization: key=..., locale=..., args=[...]` の 1 行が追加される。ロケールの表示内容が差分として現れた場合は `docs/guides/ai-integration.md#51-lsp-診断ローカライズキー対応表` を参照し、キー分類が正しいかレビューする。
+
 ## 2. 差分レポートのまとめ方
 - 変更前後の JSON を `jq --sort-keys` で整形し、`diff -u` で比較する。
 - `effects.*` や `bridge.*` など拡張キーの追加は、対応する仕様書 (`docs/spec/3-6-core-diagnostics-audit.md` 等) を参照して説明を添える。とくに `effect.required_capabilities` / `effect.actual_capabilities` / `effect.stage.required_capabilities` / `effect.stage.actual_capabilities` の配列化は Phase 2-5 EFFECT-003 の成果物として扱い、レビュー時に配列内容と `capabilities_detail` の同期を確認する。
