@@ -70,6 +70,11 @@ fn load_release_note(path: Path, audit: AuditSink) -> Result<Bytes, IoError> =
 - `Ref` システムは `core.collections.ref` capability（Stage=Stable、effect_scope=`["mut","rc","mem"]`）として `CapabilityRegistry` に登録され、FFI 経路ではこのエントリを取得できないと `effects.contract.stage_mismatch` が発火します。`RefHandle` は `compiler/rust/runtime/ffi` が `register_ref_capability()` を動かすことでこの登録を自動化し、`Ref` の Clone/Drop で `EffectSet::mark_rc()`/`release_rc()` を呼び出すことによって `collector.effect.rc` 情報と `effect {rc}` タグが `AuditEnvelope` に添付されます（`docs/spec/3-9-core-async-ffi-unsafe.md` §4 の参照制約にも整合）。
 - FFI から `RefHandle` を渡すときは `core.collections.ref` capability を明示的に要求し、`register_ref_capability()` で Stage/Effect の検証とメタデータ生成を済ませた状態にしておくと `RuntimeBridge` の `collector.effect.rc`/`collector.effect.mut` ログと `poc_dualwrite_compare.sh --section ref_count` の監査出力が一致します（計画の詳細は `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` の 3.2 セクションおよび `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` のステージ連携節を参照）。
 
+### 1.7 TypeChecker テレメトリと Graphviz 連携
+- `TraitResolutionTelemetry` のグラフ構造を共有する際は `--emit-telemetry constraint_graph=<path>` で JSON を取得し、`tooling/telemetry/export_graphviz.rs` を `cargo run --manifest-path tooling/telemetry/Cargo.toml -- --dot-out <dot> --svg-out <svg> --graph-name <name> <json>` の形式で実行する。`tooling/telemetry/export_graphviz` は `serde_json` のルートに `graph` フィールドが存在しない場合でも自動で解釈するため、`docs/spec/3-6-core-diagnostics-audit.md` §1.4 の図版更新にそのまま利用できる。
+- 代表例として `examples/core_diagnostics/constraint_graph/simple_chain.reml` と `examples/core_diagnostics/output/simple_chain-{constraint_graph.json,dot,svg}` を保管している。Runtime Bridge/TypeChecker 雙方で再利用する場合は `README.md` に記載した手順で JSON → DOT/SVG を再生成し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Telemetry KPI に紐付ける。
+- Graphviz で生成した SVG は `docs/spec/3-6-core-diagnostics-audit.md` や `docs/guides/runtime-bridges.md` の図版差し替えに使用し、Stage/Audit の条件が変わった場合は Run ID と `examples/core_diagnostics/output/` のファイルを揃えてから `docs/notes/` に追記する。`dot` 実行時には `graph_name`（例: `SimpleChain`）を指定し、CI でも同じ名前空間が使われるよう統一する。
+
 ## 2. ホットリロード
 
 ```reml

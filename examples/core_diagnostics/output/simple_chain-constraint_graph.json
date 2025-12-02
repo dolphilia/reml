@@ -1,0 +1,70 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "generated_at": "-4657-10-26T13:27:49Z",
+  "input": "examples/core_diagnostics/constraint_graph/simple_chain.reml",
+  "functions": [
+    {
+      "name": "sum_pair",
+      "param_types": [
+        "'t1",
+        "'t1"
+      ],
+      "return_type": "Unknown",
+      "typed_exprs": 3,
+      "constraints": 1,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "triple_product",
+      "param_types": [
+        "'t2",
+        "'t3",
+        "'t4"
+      ],
+      "return_type": "Unknown",
+      "typed_exprs": 4,
+      "constraints": 1,
+      "unresolved_identifiers": 0
+    }
+  ],
+  "metrics": {
+    "typed_functions": 2,
+    "typed_exprs": 7,
+    "constraints_total": 2,
+    "constraint_breakdown": {
+      "binary.operands": 1,
+      "call.arity": 1
+    },
+    "unresolved_identifiers": 0,
+    "call_sites": 1,
+    "binary_expressions": 1,
+    "unify_calls": 1,
+    "ast_nodes": 7,
+    "token_count": 31
+  },
+  "graph": {
+    "nodes": [
+      {
+        "id": 0,
+        "label": "'t0",
+        "kind": "type"
+      },
+      {
+        "id": 1,
+        "label": "'t1",
+        "kind": "type"
+      }
+    ],
+    "edges": [
+      {
+        "from": 0,
+        "to": 1,
+        "kind": "equal"
+      }
+    ],
+    "export_dot": "examples/core_diagnostics/output/simple_chain-constraint_graph.dot",
+    "node_count": 2,
+    "edge_count": 1
+  },
+  "resolutions": []
+}

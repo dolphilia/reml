@@ -152,6 +152,11 @@
     - 4.3.b `examples/core_diagnostics/constraint_graph/*.reml` を追加し、生成 dot/svg を `examples/core_diagnostics/output/` に格納する。
     - 4.3.c `docs/guides/runtime-bridges.md` へ Graphviz エクスポート手順を追記し、TypeChecker 以外のチームも再利用できるよう説明する。
 
+#### 4.3 実施結果（Run ID: 20290712-graphviz-cli）
+- `tooling/telemetry/` に単独の Cargo プロジェクトを追加し、`export_graphviz.rs` を `cargo run --manifest-path tooling/telemetry/Cargo.toml -- --dot-out <DOT> --svg-out <SVG> --graph-name <NAME> <JSON>` 形式で実行できるようにした。内部依存は `serde` + `serde_json` のみとし、ネットワーク遮断環境でもビルド可能。DOT 出力は `rankdir=LR` / ノード種別ごとの `shape` / `capability`/`implementation` ラベルを備え、CI で自動生成した場合も仕様書の図にそのまま貼り付けられる。
+- サンプルプログラムとして `examples/core_diagnostics/constraint_graph/simple_chain.reml` を作成し、`compiler/rust/frontend` で `--emit-telemetry constraint_graph=examples/core_diagnostics/output/simple_chain-constraint_graph.json` を取得。続けて Graphviz CLI で DOT/SVG (`examples/core_diagnostics/output/simple_chain.{dot,svg}`) を生成し、`README.md` に再現手順と CLI コマンドを記録した。Runtime/TypeChecker/Docs いずれのチームも同 README に従えば同じグラフを再生成できる。
+- `docs/guides/runtime-bridges.md` §1.7 を新設し、`tooling/telemetry/export_graphviz` の実行手順・Graph 名の統一ルール・`examples/core_diagnostics/output/` へのサンプル保存を明文化。`docs/spec/3-6-core-diagnostics-audit.md` 等で図版を差し替える際は Run ID と JSON/DOT/SVG を揃え、`docs/notes/` に差分メモを残す方針を記載した。
+
 ### 5. ポリシー設定とフィルタリング（52週目）
 **担当領域**: 運用制御
 
