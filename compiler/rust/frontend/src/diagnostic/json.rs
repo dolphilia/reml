@@ -110,7 +110,7 @@ pub fn build_frontend_diagnostic(payload: FrontendDiagnosticPayload<'_>) -> Valu
     "timestamp": payload.timestamp,
     "id": payload.diag.id.map(|id| id.to_string()),
     "message": payload.diag.message,
-    "severity": payload.diag.severity.as_str(),
+    "severity": payload.diag.severity_or_default().as_str(),
     "severity_hint": severity_hint,
     "domain": payload.domain_label,
     "primary": primary,

@@ -6,6 +6,7 @@ use crate::streaming::TraceFrame;
 use crate::unicode::UnicodeDetail;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use thiserror::Error;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use uuid::Uuid;
@@ -271,7 +272,7 @@ pub struct FrontendDiagnostic {
     pub codes: Vec<String>,
     pub message: String,
     pub timestamp: String,
-    pub severity: DiagnosticSeverity,
+    pub severity: Option<DiagnosticSeverity>,
     pub severity_hint: Option<SeverityHint>,
     pub domain: Option<DiagnosticDomain>,
     span: Span,
@@ -301,7 +302,7 @@ impl FrontendDiagnostic {
             code: None,
             codes: Vec::new(),
             message: message.into(),
-            severity: DiagnosticSeverity::Error,
+            severity: None,
             severity_hint: None,
             domain: None,
             span: Span::default(),
@@ -391,13 +392,21 @@ impl FrontendDiagnostic {
     }
 
     pub fn with_severity(mut self, severity: DiagnosticSeverity) -> Self {
-        self.severity = severity;
+        self.severity = Some(severity);
         self
     }
 
     pub fn with_severity_hint(mut self, hint: SeverityHint) -> Self {
         self.severity_hint = Some(hint);
         self
+    }
+
+    pub fn set_severity(&mut self, severity: DiagnosticSeverity) {
+        self.severity = Some(severity);
+    }
+
+    pub fn severity_or_default(&self) -> DiagnosticSeverity {
+        self.severity.unwrap_or(DiagnosticSeverity::Error)
     }
 
     pub fn with_domain(mut self, domain: DiagnosticDomain) -> Self {
@@ -612,6 +621,18 @@ pub struct DiagnosticBuilder {
     merge_parse_expected: bool,
 }
 
+/// `docs/spec/3-6-core-diagnostics-audit.md` §1 の必須フィールド表に基づき、
+/// Severity/Domain/Code の欠落を検知するためのエラー種別。
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum DiagnosticBuilderError {
+    #[error("diagnostic.severity が未設定です（3-6-core-diagnostics-audit.md §1 参照）")]
+    MissingSeverity,
+    #[error("diagnostic.domain が未設定です（3-6-core-diagnostics-audit.md §1 参照）")]
+    MissingDomain,
+    #[error("diagnostic.code が未設定です（3-6-core-diagnostics-audit.md §1 参照）")]
+    MissingCode,
+}
+
 impl DiagnosticBuilder {
     pub fn new() -> Self {
         Self::with_merge_parse_expected(true)
@@ -631,60 +652,67 @@ impl DiagnosticBuilder {
         builder
     }
 
-    pub fn push(&mut self, diagnostic: FrontendDiagnostic) {
-        self.push_internal(diagnostic, false);
+    pub fn push(
+        &mut self,
+        diagnostic: FrontendDiagnostic,
+    ) -> Result<(), DiagnosticBuilderError> {
+        self.push_internal(diagnostic, false).map(|_| ())
     }
 
-    pub fn push_with_index(&mut self, diagnostic: FrontendDiagnostic) -> usize {
+    pub fn push_with_index(
+        &mut self,
+        diagnostic: FrontendDiagnostic,
+    ) -> Result<usize, DiagnosticBuilderError> {
         self.push_internal(diagnostic, true)
-            .expect("push_with_index must return an index")
+            .map(|index| index.expect("push_with_index must return an index"))
     }
 
     fn push_internal(
         &mut self,
         diagnostic: FrontendDiagnostic,
         wants_index: bool,
-    ) -> Option<usize> {
+    ) -> Result<Option<usize>, DiagnosticBuilderError> {
         let mut diagnostic = diagnostic;
+        Self::ensure_fields(&diagnostic)?;
         diagnostic.ensure_id();
         if self.merge_parse_expected {
             if let Some(key) = Self::parse_expected_key(&diagnostic) {
                 if let Some(&index) = self.parse_expected_index.get(&key) {
                     self.diagnostics[index] = diagnostic;
-                    return if wants_index { Some(index) } else { None };
+                    return Ok(if wants_index { Some(index) } else { None });
                 }
                 let index = self.diagnostics.len();
                 self.diagnostics.push(diagnostic);
                 self.parse_expected_index.insert(key, index);
-                return if wants_index { Some(index) } else { None };
+                return Ok(if wants_index { Some(index) } else { None });
             }
         }
         if let Some(key) = Self::parse_expected_key(&diagnostic) {
             if let Some(&index) = self.parse_expected_index.get(&key) {
                 self.diagnostics[index] = diagnostic;
-                return if wants_index { Some(index) } else { None };
+                return Ok(if wants_index { Some(index) } else { None });
             }
             let index = self.diagnostics.len();
             self.diagnostics.push(diagnostic);
             self.parse_expected_index.insert(key, index);
-            return if wants_index { Some(index) } else { None };
+            return Ok(if wants_index { Some(index) } else { None });
         }
         let index = self.diagnostics.len();
         self.diagnostics.push(diagnostic);
-        if wants_index {
-            Some(index)
-        } else {
-            None
-        }
+        Ok(if wants_index { Some(index) } else { None })
     }
 
-    pub fn extend<I>(&mut self, diagnostics: I)
+    pub fn extend<I>(
+        &mut self,
+        diagnostics: I,
+    ) -> Result<(), DiagnosticBuilderError>
     where
         I: IntoIterator<Item = FrontendDiagnostic>,
     {
         for diagnostic in diagnostics {
-            self.push(diagnostic);
+            self.push(diagnostic)?;
         }
+        Ok(())
     }
 
     pub fn into_vec(self) -> Vec<FrontendDiagnostic> {
@@ -705,26 +733,61 @@ impl DiagnosticBuilder {
             _ => None,
         }
     }
+
+    fn ensure_fields(diagnostic: &FrontendDiagnostic) -> Result<(), DiagnosticBuilderError> {
+        if diagnostic.severity.is_none() {
+            debug_assert!(
+                false,
+                "diagnostic.severity must be set before push (spec 3-6 §1)"
+            );
+            return Err(DiagnosticBuilderError::MissingSeverity);
+        }
+        if diagnostic.domain.is_none() {
+            debug_assert!(
+                false,
+                "diagnostic.domain must be set before push (spec 3-6 §1)"
+            );
+            return Err(DiagnosticBuilderError::MissingDomain);
+        }
+        if diagnostic.code.is_none() && diagnostic.codes.is_empty() {
+            debug_assert!(
+                false,
+                "diagnostic.code must be set before push (spec 3-6 §1)"
+            );
+            return Err(DiagnosticBuilderError::MissingCode);
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{DiagnosticBuilder, FrontendDiagnostic, PARSE_EXPECTED_KEY};
+    use super::{
+        DiagnosticBuilder, DiagnosticDomain, DiagnosticSeverity, FrontendDiagnostic,
+        PARSE_EXPECTED_KEY,
+    };
     use crate::span::Span;
+
+    fn parser_diag(label: &str) -> FrontendDiagnostic {
+        FrontendDiagnostic::new(label)
+            .with_severity(DiagnosticSeverity::Error)
+            .with_domain(DiagnosticDomain::Parser)
+            .with_code("parser.test")
+    }
 
     #[test]
     fn builder_merges_parse_expected_with_same_span() {
         let mut builder = DiagnosticBuilder::new();
 
-        let mut first = FrontendDiagnostic::new("first").with_span(Span::new(10, 20));
+        let mut first = parser_diag("first").with_span(Span::new(10, 20));
         first.expected_message_key = Some(PARSE_EXPECTED_KEY.to_string());
         first.expected_tokens = vec!["fn".to_string()];
-        builder.push(first);
+        builder.push(first).expect("first diagnostic");
 
-        let mut second = FrontendDiagnostic::new("second").with_span(Span::new(10, 20));
+        let mut second = parser_diag("second").with_span(Span::new(10, 20));
         second.expected_message_key = Some(PARSE_EXPECTED_KEY.to_string());
         second.expected_tokens = vec!["let".to_string()];
-        builder.push(second);
+        builder.push(second).expect("second diagnostic");
 
         let diags = builder.into_vec();
         assert_eq!(diags.len(), 1);
@@ -736,16 +799,15 @@ mod tests {
     fn builder_keeps_distinct_keys_or_spans() {
         let mut builder = DiagnosticBuilder::new();
 
-        let mut expected = FrontendDiagnostic::new("expected").with_span(Span::new(0, 5));
+        let mut expected = parser_diag("expected").with_span(Span::new(0, 5));
         expected.expected_message_key = Some(PARSE_EXPECTED_KEY.to_string());
-        builder.push(expected);
+        builder.push(expected).expect("expected diagnostic");
 
-        builder.push(FrontendDiagnostic::new("other"));
+        builder.push(parser_diag("other")).expect("other diagnostic");
 
-        let mut different_span =
-            FrontendDiagnostic::new("expected-other").with_span(Span::new(6, 10));
+        let mut different_span = parser_diag("expected-other").with_span(Span::new(6, 10));
         different_span.expected_message_key = Some(PARSE_EXPECTED_KEY.to_string());
-        builder.push(different_span);
+        builder.push(different_span).expect("different span");
 
         let diags = builder.into_vec();
         assert_eq!(diags.len(), 3);
@@ -753,7 +815,7 @@ mod tests {
 
     #[test]
     fn ensure_streaming_expected_populates_tokens() {
-        let diag = FrontendDiagnostic::new("streaming").ensure_streaming_expected();
+        let diag = parser_diag("streaming").ensure_streaming_expected();
         assert!(
             !diag.expected_tokens.is_empty(),
             "streaming_expected should supply non-empty tokens"

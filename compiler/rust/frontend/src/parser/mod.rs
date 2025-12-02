@@ -22,9 +22,15 @@ pub use self::streaming_runner::{
     Continuation, DemandHint, StreamMeta, StreamOutcome, StreamingRunner,
 };
 
+const CODE_UNKNOWN_TOKEN: &str = "parser.lexer.unknown_token";
+const CODE_MISSING_TOKEN: &str = "parser.syntax.missing_token";
+const CODE_UNEXPECTED_STRUCTURE: &str = "parser.syntax.unexpected_structure";
+const CODE_INTERNAL_STATE: &str = "parser.internal.state";
+const CODE_EXPECTED_TOKENS: &str = "parser.syntax.expected_tokens";
+
 use crate::diagnostic::{
-    recover::ExpectedTokensSummary, DiagnosticBuilder, DiagnosticNote, ExpectedToken,
-    ExpectedTokenCollector, FrontendDiagnostic,
+    recover::ExpectedTokensSummary, DiagnosticBuilder, DiagnosticDomain, DiagnosticNote,
+    DiagnosticSeverity, ExpectedToken, ExpectedTokenCollector, FrontendDiagnostic,
 };
 use crate::error::{FrontendError, Recoverability};
 use crate::lexer::{lex_source_with_options, IdentifierProfile, LexOutput, LexerOptions};
@@ -325,7 +331,9 @@ impl ParserDriver {
         } else {
             DiagnosticBuilder::with_merge_parse_expected(false)
         };
-        diagnostics.extend(errors.into_iter().map(Self::error_to_diagnostic));
+        diagnostics
+            .extend(errors.into_iter().map(Self::error_to_diagnostic))
+            .expect("lexer diagnostics must include severity/domain/code");
 
         let (ast, parse_errors, legacy_error, trace_events) =
             parse_tokens(&tokens, source, &streaming_state);
@@ -374,7 +382,9 @@ impl ParserDriver {
     }
 
     fn error_to_diagnostic(error: FrontendError) -> FrontendDiagnostic {
-        let mut diagnostic = FrontendDiagnostic::new(error.message());
+        let mut diagnostic = FrontendDiagnostic::new(error.message())
+            .with_severity(DiagnosticSeverity::Error)
+            .with_domain(DiagnosticDomain::Parser);
 
         match error.recoverability {
             Recoverability::Recoverable => {
@@ -390,9 +400,11 @@ impl ParserDriver {
                     DiagnosticNote::new("lexer", "未定義のトークンをスキップします")
                         .with_span(span),
                 );
+                diagnostic.push_code(CODE_UNKNOWN_TOKEN);
             }
             crate::error::FrontendErrorKind::MissingToken { span, .. } => {
                 diagnostic = diagnostic.with_span(span);
+                diagnostic.push_code(CODE_MISSING_TOKEN);
             }
             crate::error::FrontendErrorKind::UnexpectedStructure { span, unicode, .. } => {
                 if let Some(span) = span {
@@ -401,9 +413,13 @@ impl ParserDriver {
                 if let Some(detail) = unicode.clone() {
                     diagnostic = diagnostic.with_unicode_detail(detail.clone());
                     diagnostic.push_code(unicode_diagnostic_code(detail.kind()));
+                } else {
+                    diagnostic.push_code(CODE_UNEXPECTED_STRUCTURE);
                 }
             }
-            crate::error::FrontendErrorKind::InternalState { .. } => {}
+            crate::error::FrontendErrorKind::InternalState { .. } => {
+                diagnostic.push_code(CODE_INTERNAL_STATE);
+            }
         }
 
         diagnostic
@@ -579,7 +595,10 @@ fn build_diagnostic_from_error(
     error: FormattedSimpleError,
 ) -> FrontendDiagnostic {
     let FormattedSimpleError { message, summary } = error;
-    let mut diagnostic = FrontendDiagnostic::new(message);
+    let mut diagnostic = FrontendDiagnostic::new(message)
+        .with_severity(DiagnosticSeverity::Error)
+        .with_domain(DiagnosticDomain::Parser)
+        .with_code(CODE_EXPECTED_TOKENS);
     if let Some(span) = span {
         diagnostic = diagnostic.with_span(span);
     }
@@ -1895,7 +1914,9 @@ impl StreamingRecoverController {
         diagnostics: &mut DiagnosticBuilder,
     ) {
         if !self.enabled {
-            diagnostics.push(build_diagnostic_from_error(span, error));
+            diagnostics
+                .push(build_diagnostic_from_error(span, error))
+                .expect("parser diagnostics must include required fields");
             return;
         }
 
@@ -1916,13 +1937,17 @@ impl StreamingRecoverController {
             if let Some(limiter) = &mut self.limiter {
                 let summary = pending.error.summary.clone();
                 if limiter.can_emit() {
-                    let index = diagnostics.push_with_index(pending.into_diagnostic());
+                    let index = diagnostics
+                        .push_with_index(pending.into_diagnostic())
+                        .expect("streaming diagnostics must include required fields");
                     limiter.record_emission(index);
                 } else if let Some(index) = limiter.last_emitted_index() {
                     diagnostics.merge_expected_summary_at(index, &summary);
                 }
             } else {
-                diagnostics.push(pending.into_diagnostic());
+                diagnostics
+                    .push(pending.into_diagnostic())
+                    .expect("streaming diagnostics must include required fields");
             }
         }
     }
