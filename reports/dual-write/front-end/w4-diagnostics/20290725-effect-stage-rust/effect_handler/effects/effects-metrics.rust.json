@@ -1,0 +1,205 @@
+{
+  "metrics": {
+    "typed_functions": 0,
+    "typed_exprs": 0,
+    "constraints_total": 0,
+    "constraint_breakdown": {},
+    "unresolved_identifiers": 0,
+    "call_sites": 0,
+    "binary_expressions": 0,
+    "unify_calls": 0,
+    "ast_nodes": 0,
+    "token_count": 0
+  },
+  "typed_functions": [],
+  "extensions": {
+    "bridge": {
+      "stage": {
+        "actual": "beta",
+        "actual_capabilities": [],
+        "required": "beta",
+        "required_capabilities": [],
+        "trace": [
+          {
+            "note": "--effect-stage beta",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "note": "REMLC_EFFECT_STAGE not set",
+            "source": "env_var"
+          },
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      }
+    },
+    "capability": {
+      "detail": [],
+      "ids": [],
+      "required_capabilities": [],
+      "stage": {
+        "actual": "beta",
+        "required": "beta"
+      }
+    },
+    "effect.actual_capabilities": [],
+    "effect.capabilities": [],
+    "effect.required_capabilities": [],
+    "effect.stage.actual": "beta",
+    "effect.stage.actual_capabilities": [],
+    "effect.stage.required": "beta",
+    "effect.stage.required_capabilities": [],
+    "effects": {
+      "capabilities": [],
+      "stage": {
+        "actual": "beta",
+        "actual_capabilities": [],
+        "required": "beta",
+        "required_capabilities": [],
+        "trace": [
+          {
+            "note": "--effect-stage beta",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "note": "REMLC_EFFECT_STAGE not set",
+            "source": "env_var"
+          },
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      },
+      "stage_trace": [
+        {
+          "note": "--effect-stage beta",
+          "source": "cli_option",
+          "stage": "beta"
+        },
+        {
+          "note": "REMLC_EFFECT_STAGE not set",
+          "source": "env_var"
+        },
+        {
+          "note": "--effect-stage",
+          "source": "cli_option",
+          "stage": "beta"
+        },
+        {
+          "source": "runtime",
+          "stage": "beta"
+        }
+      ]
+    },
+    "effects.contract.stage.actual": "beta",
+    "effects.contract.stage.required": "beta",
+    "effects.contract.stage_trace": [
+      {
+        "note": "--effect-stage beta",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "note": "REMLC_EFFECT_STAGE not set",
+        "source": "env_var"
+      },
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "beta"
+      }
+    ]
+  },
+  "audit_metadata": {
+    "bridge.stage.actual_capabilities": [],
+    "bridge.stage.required_capabilities": [],
+    "capability.ids": [],
+    "effect.actual_capabilities": [],
+    "effect.required_capabilities": [],
+    "effect.stage.actual": "beta",
+    "effect.stage.actual_capabilities": [],
+    "effect.stage.required": "beta",
+    "effect.stage.required_capabilities": [],
+    "effect.stage.trace": [
+      {
+        "note": "--effect-stage beta",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "note": "REMLC_EFFECT_STAGE not set",
+        "source": "env_var"
+      },
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "beta"
+      }
+    ],
+    "effects.contract.stage.actual": "beta",
+    "effects.contract.stage.required": "beta",
+    "effects.contract.stage_trace": [
+      {
+        "note": "--effect-stage beta",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "note": "REMLC_EFFECT_STAGE not set",
+        "source": "env_var"
+      },
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "beta"
+      }
+    ],
+    "stage.trace": [
+      {
+        "note": "--effect-stage beta",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "note": "REMLC_EFFECT_STAGE not set",
+        "source": "env_var"
+      },
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "beta"
+      }
+    ]
+  }
+}

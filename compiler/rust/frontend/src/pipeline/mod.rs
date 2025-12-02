@@ -49,25 +49,16 @@ impl PipelineDescriptor {
 
     fn base_metadata(&self, timestamp: &str) -> Map<String, Value> {
         let mut metadata = Map::new();
-        metadata.insert(
-            "schema.version".to_string(),
-            json!(self.schema_version),
-        );
+        metadata.insert("schema.version".to_string(), json!(self.schema_version));
         metadata.insert("pipeline.id".to_string(), json!(self.pipeline_id()));
         metadata.insert("pipeline.dsl_id".to_string(), json!(self.pipeline_dsl_id()));
         metadata.insert("pipeline.node".to_string(), json!(self.pipeline_node()));
         metadata.insert("timestamp".to_string(), json!(timestamp));
         metadata.insert("cli.input".to_string(), json!(self.input_label.clone()));
-        metadata.insert(
-            "cli.run_id".to_string(),
-            json!(self.run_id.to_string()),
-        );
+        metadata.insert("cli.run_id".to_string(), json!(self.run_id.to_string()));
         metadata.insert("cli.command".to_string(), json!(self.command.clone()));
         metadata.insert("cli.phase".to_string(), json!(self.phase.clone()));
-        metadata.insert(
-            "cli.program".to_string(),
-            json!(self.program_name.clone()),
-        );
+        metadata.insert("cli.program".to_string(), json!(self.program_name.clone()));
         metadata.insert(
             "cli.command_line".to_string(),
             json!(self.cli_command.clone()),
@@ -102,7 +93,11 @@ pub struct PipelineOutcome {
 }
 
 impl PipelineOutcome {
-    pub fn success(processed_inputs: u64, diagnostic_count: usize, exit_status: impl Into<String>) -> Self {
+    pub fn success(
+        processed_inputs: u64,
+        diagnostic_count: usize,
+        exit_status: impl Into<String>,
+    ) -> Self {
         Self {
             processed_inputs,
             diagnostic_count,
@@ -120,7 +115,11 @@ pub struct PipelineFailure {
 }
 
 impl PipelineFailure {
-    pub fn new(code: impl Into<String>, message: impl Into<String>, severity: impl Into<String>) -> Self {
+    pub fn new(
+        code: impl Into<String>,
+        message: impl Into<String>,
+        severity: impl Into<String>,
+    ) -> Self {
         Self {
             code: code.into(),
             message: message.into(),
@@ -157,17 +156,10 @@ impl<W: Write> AuditEmitter<W> {
         }
     }
 
-    pub fn pipeline_started(
-        &mut self,
-        descriptor: &PipelineDescriptor,
-    ) -> io::Result<()> {
+    pub fn pipeline_started(&mut self, descriptor: &PipelineDescriptor) -> io::Result<()> {
         let timestamp = formatter::current_timestamp();
         let metadata = descriptor.base_metadata(&timestamp);
-        self.emit_event(
-            AuditEventKind::PipelineStarted,
-            metadata,
-            timestamp,
-        )
+        self.emit_event(AuditEventKind::PipelineStarted, metadata, timestamp)
     }
 
     pub fn pipeline_completed(
@@ -193,11 +185,7 @@ impl<W: Write> AuditEmitter<W> {
             "pipeline.exit_code".to_string(),
             json!(outcome.exit_status_label.clone()),
         );
-        self.emit_event(
-            AuditEventKind::PipelineCompleted,
-            metadata,
-            timestamp,
-        )
+        self.emit_event(AuditEventKind::PipelineCompleted, metadata, timestamp)
     }
 
     pub fn pipeline_failed(
@@ -209,19 +197,12 @@ impl<W: Write> AuditEmitter<W> {
         let mut metadata = descriptor.base_metadata(&timestamp);
         metadata.insert("pipeline.outcome".to_string(), json!("failure"));
         metadata.insert("error.code".to_string(), json!(failure.code.clone()));
-        metadata.insert(
-            "error.message".to_string(),
-            json!(failure.message.clone()),
-        );
+        metadata.insert("error.message".to_string(), json!(failure.message.clone()));
         metadata.insert(
             "error.severity".to_string(),
             json!(failure.severity.clone()),
         );
-        self.emit_event(
-            AuditEventKind::PipelineFailed,
-            metadata,
-            timestamp,
-        )
+        self.emit_event(AuditEventKind::PipelineFailed, metadata, timestamp)
     }
 
     pub fn into_inner(self) -> Option<W> {

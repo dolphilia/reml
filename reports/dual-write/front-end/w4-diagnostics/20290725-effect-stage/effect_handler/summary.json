@@ -1,0 +1,75 @@
+{
+  "case": "effect_handler",
+  "mode": "diag",
+  "source": "docs/spec/1-1-syntax/examples/effect_handler.reml",
+  "ocaml_diag_count": 1,
+  "rust_diag_count": 2,
+  "diag_match": false,
+  "gating": false,
+  "schema_ok": true,
+  "metrics_ok": false,
+  "diag": {
+    "parser": {
+      "ocaml": {
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 1.0
+      },
+      "rust": {
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 1.0
+      }
+    },
+    "effects": {
+      "ocaml": {
+        "regressions": 0
+      },
+      "rust": {
+        "regressions": 0
+      }
+    },
+    "streaming": {
+      "ocaml": {
+        "audit_pass_fraction": 1.0
+      },
+      "rust": {
+        "audit_pass_fraction": 1.0
+      }
+    }
+  },
+  "case_origin": "bootstrap-3-6-effect-diagnostic",
+  "metrics_case": "effect-handler-telemetry",
+  "metrics_case_label": "effect-handler-telemetry",
+  "tests": "docs/spec/1-1-syntax/examples/effect_handler.reml",
+  "type_effect_case": true,
+  "typeck_requirements": {
+    "required": true,
+    "frontends": {
+      "ocaml": {
+        "typeck_debug_path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage/effect_handler/typeck/typeck-debug.ocaml.json",
+        "typeck_debug_exists": true,
+        "effect_context_present": true,
+        "parser_metric_present": true,
+        "parser_metric_status": true,
+        "effects_metrics_present": true,
+        "effects_metrics_status": true,
+        "ok": true
+      },
+      "rust": {
+        "typeck_debug_path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage/effect_handler/typeck/typeck-debug.rust.json",
+        "typeck_debug_exists": true,
+        "effect_context_present": true,
+        "parser_metric_present": true,
+        "parser_metric_status": true,
+        "effects_metrics_present": true,
+        "effects_metrics_status": false,
+        "ok": false
+      }
+    },
+    "ok": false,
+    "failures": [
+      "rust: missing artifacts (typeck_debug=True, effect_context=True, parser_metric=True, effects_metrics=True)"
+    ]
+  }
+}

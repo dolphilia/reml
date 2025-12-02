@@ -20,9 +20,7 @@ impl LocalizationKey {
             .or_else(|| expected.and_then(|map| extract_string(map.get("message_key"))));
         let locale = extract_string(value.get("locale"));
         let args = extract_string_array(value.get("locale_args"))
-            .or_else(|| {
-                expected.and_then(|map| extract_string_array(map.get("locale_args")))
-            })
+            .or_else(|| expected.and_then(|map| extract_string_array(map.get("locale_args"))))
             .unwrap_or_default();
         Self { key, locale, args }
     }

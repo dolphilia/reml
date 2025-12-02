@@ -1,0 +1,27 @@
+{
+  "cwd": "/Users/dolphilia/github/kestrel/compiler/ocaml",
+  "argv": [
+    "dune",
+    "exec",
+    "remlc",
+    "--",
+    "--packrat",
+    "--format",
+    "json",
+    "--json-mode",
+    "compact",
+    "--emit-parse-debug",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/ocaml.parse-debug.json",
+    "--left-recursion",
+    "off",
+    "--emit-audit",
+    "--experimental-effects",
+    "--type-row-mode",
+    "dual-write",
+    "--effect-stage",
+    "beta",
+    "--emit-typeck-debug",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/typeck/typeck-debug.ocaml.json",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/input.reml"
+  ]
+}

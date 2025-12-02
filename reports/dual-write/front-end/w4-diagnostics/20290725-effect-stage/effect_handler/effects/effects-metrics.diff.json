@@ -1,0 +1,14 @@
+{
+  "match": false,
+  "ocaml_only": [
+    "case",
+    "enforcement",
+    "extra_metrics",
+    "schema_versions"
+  ],
+  "rust_only": [
+    "audit_metadata",
+    "extensions",
+    "typed_functions"
+  ]
+}

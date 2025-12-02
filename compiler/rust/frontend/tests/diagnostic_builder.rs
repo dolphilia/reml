@@ -33,7 +33,9 @@ fn builder_rejects_missing_fields(field: MissingField) {
     }
 
     let mut builder = DiagnosticBuilder::new();
-    let err = builder.push(diagnostic).expect_err("missing field must error");
+    let err = builder
+        .push(diagnostic)
+        .expect_err("missing field must error");
     match field {
         MissingField::Severity => assert!(matches!(err, DiagnosticBuilderError::MissingSeverity)),
         MissingField::Domain => assert!(matches!(err, DiagnosticBuilderError::MissingDomain)),

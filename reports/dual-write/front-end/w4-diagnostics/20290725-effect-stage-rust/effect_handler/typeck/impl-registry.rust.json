@@ -1,0 +1,8 @@
+{
+  "schema_version": "w3-typeck-impl-registry/0.1",
+  "frontend": "rust",
+  "run_label": "20290725-effect-stage-rust",
+  "case_label": "effect_handler",
+  "used_impls": [],
+  "entries": []
+}

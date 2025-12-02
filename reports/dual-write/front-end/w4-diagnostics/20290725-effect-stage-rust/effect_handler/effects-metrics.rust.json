@@ -1,0 +1,103 @@
+{
+  "metrics": [
+    {
+      "metric": "bridge_stage.audit_presence",
+      "total": 2,
+      "passed": 0,
+      "failed": 2,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.0,
+      "status": "error",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/diagnostics.rust.json"
+      ],
+      "failures": [
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/diagnostics.rust.json",
+          "index": 0,
+          "missing_fields": [
+            "actual_capabilities",
+            "capability",
+            "required_capabilities"
+          ]
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/diagnostics.rust.json",
+          "index": 1,
+          "missing_fields": [
+            "actual_capabilities",
+            "capability",
+            "required_capabilities"
+          ]
+        }
+      ],
+      "required_fields": [
+        "required_capabilities",
+        "actual_capabilities",
+        "required",
+        "actual",
+        "capability"
+      ]
+    },
+    {
+      "metric": "effect_row_guard_regressions",
+      "count": 0,
+      "status": "success"
+    }
+  ],
+  "extra_metrics": [
+    {
+      "metric": "bridge_stage.audit_presence",
+      "total": 2,
+      "passed": 0,
+      "failed": 2,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.0,
+      "status": "error",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/diagnostics.rust.json"
+      ],
+      "failures": [
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/diagnostics.rust.json",
+          "index": 0,
+          "missing_fields": [
+            "actual_capabilities",
+            "capability",
+            "required_capabilities"
+          ]
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/diagnostics.rust.json",
+          "index": 1,
+          "missing_fields": [
+            "actual_capabilities",
+            "capability",
+            "required_capabilities"
+          ]
+        }
+      ],
+      "required_fields": [
+        "required_capabilities",
+        "actual_capabilities",
+        "required",
+        "actual",
+        "capability"
+      ]
+    },
+    {
+      "metric": "effect_row_guard_regressions",
+      "count": 0,
+      "status": "success"
+    }
+  ],
+  "case": "effect-handler-telemetry",
+  "schema_versions": [],
+  "enforcement": {
+    "failures": [
+      "bridge_stage.audit_presence < 1.0",
+      "bridge_stage.audit_presence: status=error"
+    ],
+    "require_success": true
+  }
+}

@@ -1,0 +1,330 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage/effect_handler/input.reml",
+  "parser_run_config": {
+    "experimental_effects": false,
+    "legacy_result": true,
+    "merge_warnings": true,
+    "trace": false,
+    "left_recursion": "off",
+    "packrat": true,
+    "require_eof": false,
+    "extensions": {
+      "config": {
+        "experimental_effects": false,
+        "left_recursion": "off",
+        "legacy_result": true,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": false,
+        "source": "cli",
+        "trace": false
+      },
+      "effects": { "stage": "beta", "type_row_mode": "dual-write" },
+      "lex": { "profile": "strict_json" }
+    }
+  },
+  "diagnostics": [
+    {
+      "expected": null,
+      "audit": {
+        "metadata": {
+          "parser.runconfig": {
+            "packrat": true,
+            "left_recursion": "off",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": true,
+            "experimental_effects": false,
+            "extensions": {
+              "stream": {
+                "enabled": false,
+                "packrat_enabled": true,
+                "checkpoint": "unspecified",
+                "resume_hint": "unspecified",
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "chunk_size": 0,
+                "flow": {
+                  "policy": "auto",
+                  "checkpoints_closed": 0,
+                  "backpressure": { "max_lag_bytes": 0 }
+                }
+              },
+              "recover": { "sync_tokens": [], "notes": false },
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              }
+            }
+          },
+          "parser.runconfig.packrat": true,
+          "parser.runconfig.left_recursion": "off",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": true,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "enabled": false,
+            "packrat_enabled": true,
+            "checkpoint": "unspecified",
+            "resume_hint": "unspecified",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0,
+            "flow": {
+              "policy": "auto",
+              "checkpoints_closed": 0,
+              "backpressure": { "max_lag_bytes": 0 }
+            }
+          },
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.packrat_enabled": true,
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "effect.capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.required_capabilities": [],
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "20251202T083750Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [ { "kind": "input", "path": "input.reml" } ]
+          },
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "20251202T083750Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "cli.audit_id": "cli/20251202T083750Z#0",
+          "event.domain": "effect",
+          "event.kind": "effects.syntax.experimental_disabled",
+          "audit.timestamp": "2025-12-02T08:37:50Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/20251202T083750Z#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251202T083750Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        }
+      },
+      "audit_metadata": {
+        "event.kind": "effects.syntax.experimental_disabled",
+        "event.domain": "effect",
+        "cli.audit_id": "cli/20251202T083750Z#0",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "20251202T083750Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251202T083750Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        },
+        "schema.version": "1.1",
+        "audit.timestamp": "2025-12-02T08:37:50Z",
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.packrat_enabled": true,
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream": {
+          "enabled": false,
+          "packrat_enabled": true,
+          "checkpoint": "unspecified",
+          "resume_hint": "unspecified",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0,
+          "flow": {
+            "policy": "auto",
+            "checkpoints_closed": 0,
+            "backpressure": { "max_lag_bytes": 0 }
+          }
+        },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": true,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "off",
+        "parser.runconfig.packrat": true,
+        "parser.runconfig": {
+          "packrat": true,
+          "left_recursion": "off",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "packrat_enabled": true,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "checkpoints_closed": 0,
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        }
+      },
+      "extensions": {
+        "diagnostic.v2": {
+          "timestamp": "2025-12-02T08:37:50Z",
+          "codes": [ "effects.syntax.experimental_disabled" ]
+        },
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "runconfig": {
+          "packrat": true,
+          "left_recursion": "off",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "packrat_enabled": true,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "checkpoints_closed": 0,
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        }
+      },
+      "schema_version": "2.0.0-draft",
+      "fixits": [],
+      "hints": [],
+      "secondary": [
+        {
+          "message": "`-Zalgebraic-effects` を有効にして再実行してください"
+        }
+      ],
+      "codes": [ "effects.syntax.experimental_disabled" ],
+      "primary": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage/effect_handler/input.reml",
+        "start_line": 6,
+        "start_col": 13,
+        "end_line": 6,
+        "end_col": 36
+      },
+      "severity_level": 1,
+      "severity": "error",
+      "message": "効果構文は実験フラグ `-Zalgebraic-effects` が無効なため使用できません",
+      "domain": "effect",
+      "timestamp": "2025-12-02T08:37:50Z"
+    }
+  ],
+  "parse_result": {
+    "span_trace": null,
+    "packrat_stats": { "queries": 0, "hits": 0 },
+    "legacy_error": {
+      "span": {
+        "start": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage/effect_handler/input.reml",
+          "line": 7,
+          "column": 14,
+          "offset": 121
+        },
+        "end": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage/effect_handler/input.reml",
+          "line": 7,
+          "column": 37,
+          "offset": 144
+        }
+      },
+      "expected": [],
+      "committed": false,
+      "far_consumed": true
+    },
+    "farthest_error_offset": 121,
+    "span": null,
+    "committed": false,
+    "consumed": true,
+    "recovered": false,
+    "has_value": false
+  },
+  "stream_meta": null
+}

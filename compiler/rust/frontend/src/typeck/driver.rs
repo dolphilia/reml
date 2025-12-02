@@ -10,6 +10,7 @@ use super::metrics::TypecheckMetrics;
 use super::scheme::Scheme;
 use super::types::{BuiltinType, Type, TypeVarGen};
 use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
+use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{Expr, ExprKind, Function, Ident, Literal, LiteralKind, Module};
 use crate::semantics::typed;
 use crate::span::Span;
@@ -232,6 +233,8 @@ pub struct TypecheckViolation {
     expected: Option<ExpectedTokensSummary>,
     #[serde(skip_serializing)]
     pub iterator_stage: Option<IteratorStageViolationInfo>,
+    #[serde(skip_serializing)]
+    pub capability_mismatch: Option<CapabilityMismatch>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -290,6 +293,7 @@ impl TypecheckViolation {
             function,
             expected: None,
             iterator_stage: None,
+            capability_mismatch: None,
         }
     }
 
@@ -308,6 +312,7 @@ impl TypecheckViolation {
             function: None,
             expected: None,
             iterator_stage: None,
+            capability_mismatch: None,
         }
     }
 
@@ -327,16 +332,22 @@ impl TypecheckViolation {
             required.label(),
             actual.label()
         );
+        let capability_label = capability.clone();
         Self {
             kind: TypecheckViolationKind::StageMismatch,
             code: "effects.contract.stage_mismatch",
             message,
             span,
             notes: vec![ViolationNote::plain(note_message)],
-            capability: Some(capability),
+            capability: Some(capability_label.clone()),
             function: None,
             expected: None,
             iterator_stage: None,
+            capability_mismatch: Some(CapabilityMismatch::new(
+                capability_label,
+                required.clone(),
+                actual.clone(),
+            )),
         }
         .with_expected_summary(top_level_declaration_summary())
     }
@@ -378,6 +389,7 @@ impl TypecheckViolation {
                 kind: kind_label.clone(),
                 source: snapshot.source,
             }),
+            capability_mismatch: None,
         }
         .with_expected_summary(top_level_declaration_summary())
     }
@@ -395,6 +407,7 @@ impl TypecheckViolation {
             function: None,
             expected: None,
             iterator_stage: None,
+            capability_mismatch: None,
         }
     }
 

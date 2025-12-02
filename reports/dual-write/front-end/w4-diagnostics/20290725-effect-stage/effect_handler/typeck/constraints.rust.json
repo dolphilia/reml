@@ -1,0 +1,13 @@
+{
+  "function_summaries": [],
+  "stats": {
+    "unify_calls": 0,
+    "ast_nodes": 0,
+    "token_count": 0
+  },
+  "total_constraints": 0,
+  "breakdown": [],
+  "functions": [],
+  "constraints": [],
+  "used_impls": []
+}

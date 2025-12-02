@@ -97,7 +97,6 @@ impl CliDiagnosticEnvelope {
             exit_code,
         }
     }
-
 }
 
 #[derive(Serialize)]

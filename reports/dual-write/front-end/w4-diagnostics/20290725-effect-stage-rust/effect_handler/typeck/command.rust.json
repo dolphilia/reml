@@ -1,0 +1,31 @@
+{
+  "cwd": "/Users/dolphilia/github/kestrel/compiler/rust/frontend",
+  "argv": [
+    "cargo",
+    "run",
+    "--quiet",
+    "--bin",
+    "reml_frontend",
+    "--",
+    "--emit-parse-debug",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/rust.parse-debug.json",
+    "--dualwrite-root",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+    "--dualwrite-run-label",
+    "20290725-effect-stage-rust",
+    "--dualwrite-case-label",
+    "effect_handler",
+    "--trace",
+    "--emit-audit-log",
+    "--experimental-effects",
+    "--type-row-mode",
+    "dual-write",
+    "--effect-stage",
+    "beta",
+    "--emit-typeck-debug",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/typeck/typeck-debug.rust.json",
+    "--emit-effects-metrics",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/effects/effects-metrics.rust.json",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/input.reml"
+  ]
+}

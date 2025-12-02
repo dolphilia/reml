@@ -1,0 +1,10 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/input.reml",
+  "function_summaries": [],
+  "rendered": "=== Typed AST ===\n\n<empty>",
+  "module": {
+    "functions": [],
+    "dict_refs": [],
+    "schemes": []
+  }
+}

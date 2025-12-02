@@ -14,23 +14,24 @@ use reml_frontend::diagnostic::{
     formatter::{self, FormatterContext},
     json as diag_json, unicode, DiagnosticDomain, FrontendDiagnostic, StageAuditPayload,
 };
+use reml_frontend::effects::diagnostics::EffectDiagnostic;
 use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::{lex_source_with_options, IdentifierProfile, LexerOptions};
+use reml_frontend::output::cli::{
+    emit_cli_output, CliCommandKind, CliDiagnosticEnvelope, CliExitCode, CliPhaseKind, CliSummary,
+    OutputFormat,
+};
 use reml_frontend::parser::ast::Module;
 use reml_frontend::parser::{
     LeftRecursionMode, ParseResult, ParserDriver, ParserOptions, ParserTraceEvent, RunConfig,
     StreamOutcome, StreamingRunner,
 };
-use reml_frontend::output::cli::{
-    emit_cli_output, CliCommandKind, CliDiagnosticEnvelope, CliExitCode, CliPhaseKind, CliSummary,
-    OutputFormat,
-};
+use reml_frontend::pipeline::{AuditEmitter, PipelineDescriptor, PipelineFailure, PipelineOutcome};
 use reml_frontend::semantics::typed;
 use reml_frontend::span::Span;
 use reml_frontend::streaming::{
     StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig, TraceFrame,
 };
-use reml_frontend::pipeline::{AuditEmitter, PipelineDescriptor, PipelineFailure, PipelineOutcome};
 use reml_frontend::typeck::{
     self, Constraint, DualWriteGuards, InstallConfigError, IteratorStageViolationInfo,
     RecoverConfig, RuntimeCapability, StageContext, StageId, StageRequirement, StageTraceStep,
@@ -54,7 +55,6 @@ struct CliRunResult {
     diagnostic_count: usize,
 }
 
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args()?;
     let cli_command = args.cli_command();
@@ -74,11 +74,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match run_frontend(&args) {
         Ok(result) => {
-            let outcome = PipelineOutcome::success(
-                1,
-                result.diagnostic_count,
-                result.exit_code.label(),
-            );
+            let outcome =
+                PipelineOutcome::success(1, result.diagnostic_count, result.exit_code.label());
             if let Err(err) = audit_emitter.pipeline_completed(&descriptor, &outcome) {
                 eprintln!("[AUDIT] pipeline_completed の書き出しに失敗しました: {err}");
             }
@@ -86,11 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::process::exit(result.exit_code.value());
         }
         Err(err) => {
-            let failure = PipelineFailure::new(
-                "cli.pipeline.failure",
-                err.to_string(),
-                "error",
-            );
+            let failure = PipelineFailure::new("cli.pipeline.failure", err.to_string(), "error");
             if let Err(audit_err) = audit_emitter.pipeline_failed(&descriptor, &failure) {
                 eprintln!("[AUDIT] pipeline_failed の書き出しに失敗しました: {audit_err}");
             }
@@ -351,7 +344,6 @@ fn determine_exit_code(diagnostics: &[Value]) -> CliExitCode {
         _ => CliExitCode::success(),
     }
 }
-
 
 fn resolve_completed_stream_outcome(outcome: StreamOutcome) -> ParseResult<Module> {
     match outcome {
@@ -1700,6 +1692,9 @@ fn build_type_diagnostics(
             );
             if let Some(info) = violation.iterator_stage.as_ref() {
                 apply_iterator_stage_metadata(&mut extensions, &mut metadata, info);
+            }
+            if let Some(mismatch) = violation.capability_mismatch.as_ref() {
+                EffectDiagnostic::apply_stage_violation(mismatch, &mut extensions, &mut metadata);
             }
             let context = FormatterContext {
                 program_name: &args.program_name,

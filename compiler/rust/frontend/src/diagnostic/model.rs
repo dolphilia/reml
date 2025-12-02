@@ -5,9 +5,9 @@ use crate::span::Span;
 use crate::streaming::TraceFrame;
 use crate::unicode::UnicodeDetail;
 use serde_json::{Map, Value};
-use thiserror::Error;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use thiserror::Error;
 use uuid::Uuid;
 
 use super::recover::{self, ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
@@ -651,10 +651,7 @@ impl DiagnosticBuilder {
         builder
     }
 
-    pub fn push(
-        &mut self,
-        diagnostic: FrontendDiagnostic,
-    ) -> Result<(), DiagnosticBuilderError> {
+    pub fn push(&mut self, diagnostic: FrontendDiagnostic) -> Result<(), DiagnosticBuilderError> {
         self.push_internal(diagnostic, false).map(|_| ())
     }
 
@@ -701,10 +698,7 @@ impl DiagnosticBuilder {
         Ok(if wants_index { Some(index) } else { None })
     }
 
-    pub fn extend<I>(
-        &mut self,
-        diagnostics: I,
-    ) -> Result<(), DiagnosticBuilderError>
+    pub fn extend<I>(&mut self, diagnostics: I) -> Result<(), DiagnosticBuilderError>
     where
         I: IntoIterator<Item = FrontendDiagnostic>,
     {
@@ -802,7 +796,9 @@ mod tests {
         expected.expected_message_key = Some(PARSE_EXPECTED_KEY.to_string());
         builder.push(expected).expect("expected diagnostic");
 
-        builder.push(parser_diag("other")).expect("other diagnostic");
+        builder
+            .push(parser_diag("other"))
+            .expect("other diagnostic");
 
         let mut different_span = parser_diag("expected-other").with_span(Span::new(6, 10));
         different_span.expected_message_key = Some(PARSE_EXPECTED_KEY.to_string());

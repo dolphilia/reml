@@ -1,0 +1,66 @@
+{
+  "packrat_cache": [
+    {
+      "entry": {
+        "approx_bytes": 391,
+        "expectations": [
+          {
+            "description": "effect"
+          },
+          {
+            "description": "fn"
+          }
+        ],
+        "sample_tokens": [
+          {
+            "kind": "KeywordEffect",
+            "lexeme": "effect"
+          },
+          {
+            "kind": "UpperIdentifier",
+            "lexeme": "Console"
+          },
+          {
+            "kind": "Colon",
+            "lexeme": ""
+          },
+          {
+            "kind": "Identifier",
+            "lexeme": "io"
+          },
+          {
+            "kind": "LBrace",
+            "lexeme": ""
+          },
+          {
+            "kind": "KeywordOperation",
+            "lexeme": "operation"
+          }
+        ],
+        "summary": {
+          "alternatives": [
+            "effect",
+            "fn"
+          ],
+          "humanized": "ここで`effect` または `fn`のいずれかが必要です"
+        }
+      },
+      "parser_id": 1,
+      "range_end": 16,
+      "range_start": 15
+    }
+  ],
+  "packrat_snapshot": {
+    "approx_bytes": 391,
+    "entries": 1
+  },
+  "packrat_stats": {
+    "approx_bytes": 391,
+    "budget_drops": 0,
+    "entries": 1,
+    "evictions": 0,
+    "hits": 6,
+    "pruned": 0,
+    "queries": 7
+  }
+}

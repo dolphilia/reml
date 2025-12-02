@@ -1,0 +1,10 @@
+effect Console : io {
+  operation log : String -> Unit
+}
+
+@allows_effects(Console)
+fn handle_demo(msg: String) -> Unit {
+  handle perform Console.log(msg) with handler ConsoleHandler {
+    operation log(value) { }
+  }
+}

@@ -43,10 +43,7 @@ fn pipeline_audit_emits_expected_events() {
         completed["envelope"]["metadata"]["pipeline.outcome"],
         "success"
     );
-    assert_eq!(
-        completed["envelope"]["metadata"]["pipeline.count"],
-        1
-    );
+    assert_eq!(completed["envelope"]["metadata"]["pipeline.count"], 1);
 
     let failed: Value = serde_json::from_str(lines[2]).expect("json");
     assert_eq!(

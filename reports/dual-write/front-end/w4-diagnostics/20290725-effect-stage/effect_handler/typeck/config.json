@@ -1,0 +1,30 @@
+{
+  "effect_context": {
+    "runtime": {
+      "Exact": "beta"
+    },
+    "capability": {
+      "Exact": "beta"
+    },
+    "stage_trace": [
+      {
+        "source": "cli_option",
+        "stage": "beta",
+        "note": "--effect-stage beta"
+      },
+      {
+        "source": "env_var",
+        "note": "REMLC_EFFECT_STAGE not set"
+      }
+    ]
+  },
+  "type_row_mode": "DualWrite",
+  "recover": {
+    "emit_expected_tokens": true,
+    "emit_context": true,
+    "max_suggestions": 3
+  },
+  "experimental_effects": true,
+  "runtime_capabilities": [],
+  "trace_enabled": true
+}

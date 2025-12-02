@@ -1,0 +1,70 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "effect_context": {
+    "runtime": {
+      "Exact": "beta"
+    },
+    "capability": {
+      "Exact": "beta"
+    },
+    "stage_trace": [
+      {
+        "source": "cli_option",
+        "stage": "beta",
+        "note": "--effect-stage beta"
+      },
+      {
+        "source": "env_var",
+        "note": "REMLC_EFFECT_STAGE not set"
+      }
+    ]
+  },
+  "type_row_mode": "DualWrite",
+  "recover": {
+    "emit_expected_tokens": true,
+    "emit_context": true,
+    "max_suggestions": 3
+  },
+  "runtime_capabilities": [],
+  "trace_enabled": true,
+  "stage_trace": [
+    {
+      "source": "cli_option",
+      "stage": "beta",
+      "note": "--effect-stage beta"
+    },
+    {
+      "source": "env_var",
+      "note": "REMLC_EFFECT_STAGE not set"
+    }
+  ],
+  "used_impls": [],
+  "metrics": {
+    "typed_functions": 0,
+    "typed_exprs": 0,
+    "constraints_total": 0,
+    "constraint_breakdown": {},
+    "unresolved_identifiers": 0,
+    "call_sites": 0,
+    "binary_expressions": 0,
+    "unify_calls": 0,
+    "ast_nodes": 0,
+    "token_count": 0
+  },
+  "violations": [
+    {
+      "kind": "AstUnavailable",
+      "code": "typeck.aborted.ast_unavailable",
+      "message": "AST 生成に失敗したため型推論を実行できませんでした",
+      "span": null,
+      "notes": [
+        {
+          "label": null,
+          "message": "パーサ診断を確認し、構文エラーを解消したうえで再実行してください"
+        }
+      ],
+      "capability": null,
+      "function": null
+    }
+  ]
+}

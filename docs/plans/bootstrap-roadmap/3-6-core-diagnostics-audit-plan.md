@@ -131,6 +131,12 @@
     - 4.1.a `compiler/rust/frontend/src/effects/diagnostics.rs` に `EffectDiagnostic` を実装し、`effect.stage.required` / `effect.stage.actual` をフィールドに保持する。
     - 4.1.b `scripts/poc_dualwrite_compare.sh effect_handler --trace` を Rust 実装専用モードで実行し、差分レポートを `reports/spec-audit/ch1/effect_handler-YYYYMMDD-telemetry.md` へ保存して Stage 情報を確認する。
     - 4.1.c Stage/Capability の不一致を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` の既存リスク ID (DIAG-RUST-05 等) に紐付け、緊急度を更新する。
+
+#### 4.1 実施結果（Run ID: 20290725-effect-stage）
+- `compiler/rust/frontend/src/effects/diagnostics.rs` を新設し、`CapabilityMismatch` と `EffectDiagnostic::apply_stage_violation` で `extensions.effects.stage`／`effect.stage.*`／`capability.*` を一括更新する API を導入。`StageRequirement` を保持したまま `capability.mismatch` を JSON 化できるため、監査側で Stage 差分を直接参照できるようになった。
+- `TypecheckViolation` に `capability_mismatch` フィールドを追加（`compiler/rust/frontend/src/typeck/driver.rs`）し、`stage_mismatch` 生成時に `CapabilityMismatch` を構築する。CLI 側は `build_type_diagnostics` から `EffectDiagnostic::apply_stage_violation` を呼び出し、`diagnostics.rust.json` と `AuditEnvelope.metadata` の双方へ Capability ID／Stage 差分を転写するようになった（`compiler/rust/frontend/src/bin/reml_frontend.rs`）。
+- `scripts/poc_dualwrite_compare.sh --mode diag --run-id 20290725-effect-stage-rust --cases tmp/effect_handler_case.txt`（`effect_handler_demo.reml`）を実行し、`reports/dual-write/front-end/w4-diagnostics/20290725-effect-stage-rust/effect_handler/diagnostics.rust.json` を取得。Type/Effector Gate は既知ギャップで `Warning` 扱いだが、`extensions.effects.stage.trace` と `bridge.stage.*` が CLI/Env/Runtime の順に揃い、Stage Trace の欠落が解消されたことを確認した（記録: `reports/spec-audit/ch1/effect_handler-20290725-telemetry.md`）。
+- Stage 差分の実測として `fn main() = perform Console 1`（`tmp/stage_violation.reml`）を `cargo run -- --output json` で実行し、`effects.contract.stage_mismatch` が `capability.id = "console"`／`capability.mismatch = {"expected":"at_least:beta","actual":"at_least:stable"}` を出力することを `reports/spec-audit/ch1/stage_violation-20290725-diagnostics.json` へ保存。`EffectDiagnostic` 経由で `extensions` と `audit_metadata` が同じ Capability 差分を保持できることをテレメトリで検証した。
 4.2. `TraitResolutionTelemetry` など型制約可視化用構造体を実装し、TypeChecker (3-2) から出力を受け取れるようにする。
     - 4.2.a `compiler/rust/typeck/src/telemetry.rs` を新設し、`TraitResolutionTelemetry`/`ResolutionState`/`ConstraintGraphSummary` 構造体を `serde` でシリアライズ可能にする。
     - 4.2.b TypeChecker の制約生成ルートに `TelemetrySink` を差し込み、`--emit-telemetry constraint_graph` フラグで JSON を `tmp/telemetry/` に書き出す。

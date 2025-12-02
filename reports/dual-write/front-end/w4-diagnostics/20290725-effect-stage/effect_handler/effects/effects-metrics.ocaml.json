@@ -1,0 +1,21 @@
+{
+  "metrics": [
+    {
+      "metric": "effect_row_guard_regressions",
+      "count": 0,
+      "status": "success"
+    }
+  ],
+  "extra_metrics": [
+    {
+      "metric": "effect_row_guard_regressions",
+      "count": 0,
+      "status": "success"
+    }
+  ],
+  "case": "effect-handler-telemetry",
+  "schema_versions": [],
+  "enforcement": {
+    "require_success": true
+  }
+}

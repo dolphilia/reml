@@ -4,9 +4,10 @@
 //! 相当の機能を段階的に移植するための雛形を提供する。
 
 pub mod diagnostic;
+pub mod effects;
 pub mod error;
-pub mod output;
 pub mod lexer;
+pub mod output;
 pub mod parser;
 pub mod pipeline;
 pub mod semantics;
