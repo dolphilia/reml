@@ -6,20 +6,40 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 usage() {
   cat <<'EOF'
-usage: tooling/examples/run_examples.sh --suite <name>
+usage: tooling/examples/run_examples.sh --suite <name> [--with-audit]
 
 利用可能なスイート:
-  core_io     - examples/core_io/ 以下の Reader/Writer サンプル
-  core_path   - examples/core_path/ 以下のセキュリティサンプル
+  core_io          - examples/core_io/ 以下の Reader/Writer サンプル
+  core_path        - examples/core_path/ 以下のセキュリティサンプル
+  core_diagnostics - examples/core_diagnostics/ 以下の監査パイプラインサンプル
 EOF
 }
 
-if [[ $# -ne 2 || "$1" != "--suite" ]]; then
+SUITE=""
+WITH_AUDIT=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --suite)
+      SUITE="$2"
+      shift 2
+      ;;
+    --with-audit)
+      WITH_AUDIT=true
+      shift
+      ;;
+    *)
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "${SUITE}" ]]; then
   usage
   exit 1
 fi
 
-SUITE="$2"
 declare -a FILES=()
 
 case "$SUITE" in
@@ -28,6 +48,9 @@ case "$SUITE" in
     ;;
   core_path)
     FILES=("core_path/security_check.reml")
+    ;;
+  core_diagnostics)
+    FILES=("core_diagnostics/pipeline_success.reml" "core_diagnostics/pipeline_branch.reml")
     ;;
   *)
     echo "未対応のスイート: $SUITE" >&2
@@ -41,6 +64,8 @@ if ! command -v cargo >/dev/null 2>&1; then
   exit 1
 fi
 
+FRONTEND_DIR="${ROOT}/compiler/rust/frontend"
+
 for example in "${FILES[@]}"; do
   target="${ROOT}/examples/${example}"
   if [[ ! -f "${target}" ]]; then
@@ -50,7 +75,12 @@ for example in "${FILES[@]}"; do
 
   echo "==> running ${example}"
   (
-    cd "${ROOT}"
-    cargo run --quiet --bin reml -- "${target}"
+    cd "${FRONTEND_DIR}"
+    CMD=(cargo run --quiet --bin reml_frontend --)
+    if [[ "${WITH_AUDIT}" == true ]]; then
+      CMD+=(--emit-audit-log)
+    fi
+    CMD+=("${target}")
+    "${CMD[@]}"
   )
 done

@@ -8,6 +8,7 @@ pub mod error;
 pub mod output;
 pub mod lexer;
 pub mod parser;
+pub mod pipeline;
 pub mod semantics;
 pub mod span;
 pub mod streaming;

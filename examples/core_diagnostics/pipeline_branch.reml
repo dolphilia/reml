@@ -1,0 +1,13 @@
+// Core Diagnostics パイプラインの分岐経路を確認するサンプル。
+// 監査ログでは `pipeline.node` と入力ファイル名の対応を確認できる。
+
+use Core;
+
+fn choose(flag: Bool) -> Int =
+  if flag then 1 else -1
+
+fn pipeline_branch(flag: Bool) -> Int =
+  let base = 10;
+  base + choose(flag)
+
+fn main() -> Int = pipeline_branch(true)

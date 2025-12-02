@@ -3,6 +3,7 @@
 //! 仕様: `docs/spec/3-6-core-diagnostics-audit.md` §1.1.
 
 use crate::anyhow::{anyhow, Result};
+use std::borrow::Cow;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use uuid::Uuid;
@@ -58,6 +59,80 @@ const CONFIG_COMPAT_CHANGED_KEYS: &[&str] =
     &["config.source", "config.format", "config.profile", "config.compatibility"];
 const ENV_MUTATION_KEYS: &[&str] = &["env.operation", "env.key", "env.scope", "requested_by"];
 
+/// Core Diagnostics で利用する監査イベント種別。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AuditEventKind {
+    PipelineStarted,
+    PipelineCompleted,
+    PipelineFailed,
+    CapabilityMismatch,
+    AsyncSupervisorRestarted,
+    AsyncSupervisorExhausted,
+    ConfigCompatChanged,
+    EnvMutation,
+    BridgeReload,
+    BridgeRollback,
+    Custom(String),
+}
+
+impl AuditEventKind {
+    /// `snake_case` のラベルを返す。
+    pub fn as_str(&self) -> Cow<'_, str> {
+        match self {
+            AuditEventKind::PipelineStarted => Cow::Borrowed("pipeline_started"),
+            AuditEventKind::PipelineCompleted => Cow::Borrowed("pipeline_completed"),
+            AuditEventKind::PipelineFailed => Cow::Borrowed("pipeline_failed"),
+            AuditEventKind::CapabilityMismatch => Cow::Borrowed("capability_mismatch"),
+            AuditEventKind::AsyncSupervisorRestarted => {
+                Cow::Borrowed("async_supervisor_restarted")
+            }
+            AuditEventKind::AsyncSupervisorExhausted => {
+                Cow::Borrowed("async_supervisor_exhausted")
+            }
+            AuditEventKind::ConfigCompatChanged => Cow::Borrowed("config_compat_changed"),
+            AuditEventKind::EnvMutation => Cow::Borrowed("env_mutation"),
+            AuditEventKind::BridgeReload => Cow::Borrowed("bridge.reload"),
+            AuditEventKind::BridgeRollback => Cow::Borrowed("bridge.rollback"),
+            AuditEventKind::Custom(value) => Cow::Owned(value.clone()),
+        }
+    }
+
+    /// 文字列から種別を復元する。
+    pub fn from_str(value: &str) -> Self {
+        match value {
+            "pipeline_started" => AuditEventKind::PipelineStarted,
+            "pipeline_completed" => AuditEventKind::PipelineCompleted,
+            "pipeline_failed" => AuditEventKind::PipelineFailed,
+            "capability_mismatch" => AuditEventKind::CapabilityMismatch,
+            "async_supervisor_restarted" => AuditEventKind::AsyncSupervisorRestarted,
+            "async_supervisor_exhausted" => AuditEventKind::AsyncSupervisorExhausted,
+            "config_compat_changed" => AuditEventKind::ConfigCompatChanged,
+            "env_mutation" => AuditEventKind::EnvMutation,
+            "bridge.reload" => AuditEventKind::BridgeReload,
+            "bridge.rollback" => AuditEventKind::BridgeRollback,
+            other => AuditEventKind::Custom(other.to_string()),
+        }
+    }
+
+    /// 必須メタデータキーの一覧を返す。
+    pub fn required_metadata_keys(&self) -> Option<&'static [&'static str]> {
+        match self {
+            AuditEventKind::PipelineStarted => Some(PIPELINE_STARTED_KEYS),
+            AuditEventKind::PipelineCompleted => Some(PIPELINE_COMPLETED_KEYS),
+            AuditEventKind::PipelineFailed => Some(PIPELINE_FAILED_KEYS),
+            AuditEventKind::CapabilityMismatch => Some(CAPABILITY_MISMATCH_KEYS),
+            AuditEventKind::AsyncSupervisorRestarted => Some(ASYNC_SUPERVISOR_RESTARTED_KEYS),
+            AuditEventKind::AsyncSupervisorExhausted => Some(ASYNC_SUPERVISOR_EXHAUSTED_KEYS),
+            AuditEventKind::ConfigCompatChanged => Some(CONFIG_COMPAT_CHANGED_KEYS),
+            AuditEventKind::EnvMutation => Some(ENV_MUTATION_KEYS),
+            AuditEventKind::BridgeReload | AuditEventKind::BridgeRollback => {
+                Some(BRIDGE_RELOAD_KEYS)
+            }
+            AuditEventKind::Custom(_) => None,
+        }
+    }
+}
+
 /// `AuditEnvelope` は監査メタデータを保持するコンテナ。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditEnvelope {
@@ -75,6 +150,21 @@ impl AuditEnvelope {
     /// 空の Envelope を生成する。
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// フィールドを直接指定して Envelope を生成する。
+    pub fn from_parts(
+        metadata: Map<String, Value>,
+        audit_id: Option<Uuid>,
+        change_set: Option<Value>,
+        capability: Option<String>,
+    ) -> Self {
+        Self {
+            metadata,
+            audit_id,
+            change_set,
+            capability,
+        }
     }
 
     /// 監査イベント種別（`metadata["event.kind"]`）を返す。
@@ -180,19 +270,7 @@ impl AuditEvent {
 }
 
 fn required_fields_for_event(kind: &str) -> Option<&'static [&'static str]> {
-    match kind {
-        "pipeline_started" => Some(PIPELINE_STARTED_KEYS),
-        "pipeline_completed" => Some(PIPELINE_COMPLETED_KEYS),
-        "pipeline_failed" => Some(PIPELINE_FAILED_KEYS),
-        "capability_mismatch" => Some(CAPABILITY_MISMATCH_KEYS),
-        "async_supervisor_restarted" => Some(ASYNC_SUPERVISOR_RESTARTED_KEYS),
-        "async_supervisor_exhausted" => Some(ASYNC_SUPERVISOR_EXHAUSTED_KEYS),
-        "config_compat_changed" => Some(CONFIG_COMPAT_CHANGED_KEYS),
-        "env_mutation" => Some(ENV_MUTATION_KEYS),
-        "bridge.reload" => Some(BRIDGE_RELOAD_KEYS),
-        "bridge.rollback" => Some(BRIDGE_RELOAD_KEYS),
-        _ => None,
-    }
+    AuditEventKind::from_str(kind).required_metadata_keys()
 }
 
 fn missing_keys(metadata: &Map<String, Value>, required: &[&str]) -> Vec<String> {

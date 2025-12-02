@@ -30,6 +30,7 @@ use reml_frontend::span::Span;
 use reml_frontend::streaming::{
     StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig, TraceFrame,
 };
+use reml_frontend::pipeline::{AuditEmitter, PipelineDescriptor, PipelineFailure, PipelineOutcome};
 use reml_frontend::typeck::{
     self, Constraint, DualWriteGuards, InstallConfigError, IteratorStageViolationInfo,
     RecoverConfig, RuntimeCapability, StageContext, StageId, StageRequirement, StageTraceStep,
@@ -46,9 +47,59 @@ const PARSER_ORIGIN: &str = "reml_frontend";
 const PARSER_FINGERPRINT: &str = "rust-frontend-0001";
 const SCHEMA_VERSION: &str = "3.0.0-alpha";
 
+struct CliRunResult {
+    envelope: CliDiagnosticEnvelope,
+    exit_code: CliExitCode,
+    input_path: PathBuf,
+    diagnostic_count: usize,
+}
+
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args()?;
+    let cli_command = args.cli_command();
+    let mut audit_emitter = AuditEmitter::stderr(args.emit_audit);
+    let descriptor = PipelineDescriptor::new(
+        &args.input,
+        args.run_id,
+        args.command_label(),
+        args.phase_label(),
+        args.program_name.clone(),
+        cli_command,
+        SCHEMA_VERSION,
+    );
+    if let Err(err) = audit_emitter.pipeline_started(&descriptor) {
+        eprintln!("[AUDIT] pipeline_started の書き出しに失敗しました: {err}");
+    }
+
+    match run_frontend(&args) {
+        Ok(result) => {
+            let outcome = PipelineOutcome::success(
+                1,
+                result.diagnostic_count,
+                result.exit_code.label(),
+            );
+            if let Err(err) = audit_emitter.pipeline_completed(&descriptor, &outcome) {
+                eprintln!("[AUDIT] pipeline_completed の書き出しに失敗しました: {err}");
+            }
+            emit_cli_output(args.output_format, &result.envelope, &result.input_path)?;
+            std::process::exit(result.exit_code.value());
+        }
+        Err(err) => {
+            let failure = PipelineFailure::new(
+                "cli.pipeline.failure",
+                err.to_string(),
+                "error",
+            );
+            if let Err(audit_err) = audit_emitter.pipeline_failed(&descriptor, &failure) {
+                eprintln!("[AUDIT] pipeline_failed の書き出しに失敗しました: {audit_err}");
+            }
+            Err(err)
+        }
+    }
+}
+
+fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Error>> {
     let started_at = formatter::current_timestamp();
     install_typecheck_config(&args.typecheck_config)?;
     let input_path = args.input.clone();
@@ -71,7 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None
     };
 
-    trace_log(&args, "parsing", "start");
+    trace_log(args, "parsing", "start");
     let stream_flow_state =
         StreamFlowState::new(args.stream_config.to_flow_config(args.run_config.packrat));
     let mut run_config = args.run_config.to_run_config();
@@ -94,7 +145,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         ParserDriver::parse_with_options_and_run_config(&source, parser_options, run_config)
     };
-    trace_log(&args, "parsing", "finish");
+    trace_log(args, "parsing", "finish");
     let typeck_report =
         TypecheckDriver::infer_module(result.value.as_ref(), &args.typecheck_config);
     let flow_metrics = result
@@ -148,14 +199,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "packrat_enabled": result.run_config.packrat,
     });
 
-    let runconfig_summary = build_runconfig_summary(&result.run_config, &args, &stream_flow_state);
+    let runconfig_summary = build_runconfig_summary(&result.run_config, args, &stream_flow_state);
     let runconfig_top_level =
-        build_runconfig_top_level(&result.run_config, &args, &stream_flow_state);
+        build_runconfig_top_level(&result.run_config, args, &stream_flow_state);
     let mut diagnostics_entries = build_parser_diagnostics(
         &result.diagnostics,
         &result.trace_events,
         &result.span_trace,
-        &args,
+        args,
         &input_path,
         &source,
         &result.run_config,
@@ -165,7 +216,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     let mut type_diagnostics = build_type_diagnostics(
         &typeck_report,
-        &args,
+        args,
         &input_path,
         &source,
         &result.run_config,
@@ -222,18 +273,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let finished_at = formatter::current_timestamp();
+    let diagnostic_count = diagnostics_entries.len();
     let summary = build_cli_summary(
-        &args,
+        args,
         &input_path,
         &started_at,
         &finished_at,
         &runconfig_top_level,
         &parse_result,
         &stream_meta,
-        diagnostics_json
-            .as_array()
-            .map(|arr| arr.len())
-            .unwrap_or(0),
+        diagnostic_count,
     );
     let exit_code = determine_exit_code(&diagnostics_entries);
     let envelope = CliDiagnosticEnvelope::new(
@@ -244,8 +293,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         summary,
         exit_code.clone(),
     );
-    emit_cli_output(args.output_format, &envelope, &input_path)?;
-    std::process::exit(exit_code.value());
+    Ok(CliRunResult {
+        envelope,
+        exit_code,
+        input_path,
+        diagnostic_count,
+    })
 }
 
 fn install_typecheck_config(config: &TypecheckConfig) -> Result<(), InstallConfigError> {
@@ -333,7 +386,6 @@ struct CliArgs {
     emit_effects: bool,
     #[allow(dead_code)]
     emit_diagnostics: bool,
-    #[allow(dead_code)]
     emit_audit: bool,
     #[allow(dead_code)]
     show_stage_context: bool,
@@ -733,7 +785,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
             }
             "--emit-effects" => emit_effects = true,
             "--emit-diagnostics" => emit_diagnostics = true,
-            "--emit-audit" => emit_audit = true,
+            "--emit-audit" | "--emit-audit-log" => emit_audit = true,
             "--show-stage-context" => show_stage_context = true,
             "--diagnostics-stream" => diagnostics_stream = true,
             "--emit-ast" => {
@@ -1112,7 +1164,7 @@ fn print_help(program_name: &str) {
   --emit-typeck-debug <PATH>     型推論デバッグ情報を JSON で保存
   --emit-effects-metrics <PATH>  効果メトリクスを JSON で保存
   --emit-diagnostics             標準出力へ診断 JSON を出力
-  --emit-audit                   Audit メタデータを出力
+  --emit-audit-log               Audit メタデータを出力（--emit-audit も利用可能）
   --emit-tokens <PATH>           字句解析結果を JSON で保存
   --trace-output <PATH>          Parser TraceEvent を Markdown で保存
   --lex-profile ascii|unicode    識別子プロファイルの切替
