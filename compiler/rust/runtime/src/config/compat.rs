@@ -258,13 +258,25 @@ impl ConfigCompatibilitySource {
 }
 
 /// `resolve_compat` の入力。
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct ResolveCompatOptions {
     pub format: ConfigFormat,
     pub stage: StageId,
     pub cli: Option<CompatibilityLayer>,
     pub env: Option<CompatibilityLayer>,
     pub manifest: Option<CompatibilityLayer>,
+}
+
+impl Default for ResolveCompatOptions {
+    fn default() -> Self {
+        Self {
+            format: ConfigFormat::Toml,
+            stage: StageId::Stable,
+            cli: None,
+            env: None,
+            manifest: None,
+        }
+    }
 }
 
 /// 解決後の互換設定。

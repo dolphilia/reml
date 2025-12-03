@@ -77,6 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args()?;
     let cli_command = args.cli_command();
     let mut audit_emitter = AuditEmitter::stderr(args.emit_audit);
+    let resolved_cli_compat = args.run_config.resolved_config_compat();
     let descriptor = PipelineDescriptor::new(
         &args.input,
         args.run_id,
@@ -88,6 +89,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     if let Err(err) = audit_emitter.pipeline_started(&descriptor) {
         eprintln!("[AUDIT] pipeline_started の書き出しに失敗しました: {err}");
+    }
+    if let Err(err) =
+        audit_emitter.config_compat_changed(&descriptor, &resolved_cli_compat)
+    {
+        eprintln!(
+            "[AUDIT] config_compat_changed の書き出しに失敗しました: {err}"
+        );
     }
 
     match run_frontend(&args) {
@@ -650,6 +658,10 @@ impl RunSettings {
             env: self.config_compat_env.clone(),
             manifest: self.config_compat_manifest.clone(),
         })
+    }
+
+    fn resolved_config_compat(&self) -> ResolvedConfigCompatibility {
+        self.resolve_config_compat()
     }
 
     fn set_config_stage(&mut self, stage: RuntimeStageId) {

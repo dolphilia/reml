@@ -635,3 +635,51 @@ table_csv_import: {
     ]
   }
 }
+config_compat_event: {
+  "envelope": {
+    "audit_id": "00000000-0000-0000-0000-000000000000",
+    "capability": "core.diagnostics",
+    "metadata": {
+      "audit.channel": "cli",
+      "audit.policy.version": "rust.poc.audit.v1",
+      "cli.command": "parse",
+      "cli.command_line": "reml_frontend --config-compat json-relaxed sample.reml",
+      "cli.input": "tests/snapshots/config_compat/sample.reml",
+      "cli.phase": "cli",
+      "cli.program": "reml_frontend",
+      "cli.run_id": "00000000-0000-0000-0000-000000000000",
+      "config.compatibility": {
+        "duplicate_key": "last_write_wins",
+        "feature_guard": [],
+        "number": "allow_leading_plus",
+        "trailing_comma": "arrays_and_objects",
+        "trivia": {
+          "block": [
+            {
+              "end": "*/",
+              "nested": false,
+              "start": "/*"
+            }
+          ],
+          "doc_comment": null,
+          "hash_inline": false,
+          "line": [
+            "//"
+          ],
+          "shebang": true
+        },
+        "unquoted_key": "allow_alpha"
+      },
+      "config.format": "json",
+      "config.profile": "json-relaxed",
+      "config.source": "cli",
+      "event.kind": "config_compat_changed",
+      "pipeline.dsl_id": "sample",
+      "pipeline.id": "dsl://tests/snapshots/config_compat/sample.reml",
+      "pipeline.node": "sample.reml",
+      "schema.version": "3.0.0-alpha",
+      "timestamp": "2025-01-01T00:00:00Z"
+    }
+  },
+  "timestamp": "2025-01-01T00:00:00Z"
+}

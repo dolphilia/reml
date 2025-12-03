@@ -1,5 +1,8 @@
 use crate::diagnostic::formatter::{self, AUDIT_POLICY_VERSION};
-use reml_runtime::audit::{AuditEnvelope, AuditEvent, AuditEventKind};
+use reml_runtime::{
+    audit::{AuditEnvelope, AuditEvent, AuditEventKind},
+    config::{ConfigCompatibilitySource, ResolvedConfigCompatibility},
+};
 use serde_json::{json, Map, Value};
 use std::io::{self, ErrorKind, LineWriter, Write};
 use std::path::Path;
@@ -203,6 +206,35 @@ impl<W: Write> AuditEmitter<W> {
             json!(failure.severity.clone()),
         );
         self.emit_event(AuditEventKind::PipelineFailed, metadata, timestamp)
+    }
+
+    pub fn config_compat_changed(
+        &mut self,
+        descriptor: &PipelineDescriptor,
+        resolved: &ResolvedConfigCompatibility,
+    ) -> io::Result<()> {
+        if resolved.source == ConfigCompatibilitySource::Default {
+            return Ok(());
+        }
+        let timestamp = formatter::current_timestamp();
+        let mut metadata = descriptor.base_metadata(&timestamp);
+        metadata.insert(
+            "config.source".to_string(),
+            json!(resolved.source.as_str()),
+        );
+        metadata.insert(
+            "config.format".to_string(),
+            json!(resolved.format.as_str()),
+        );
+        let profile = resolved
+            .profile_label
+            .clone()
+            .unwrap_or_else(|| resolved.source.as_str().to_string());
+        metadata.insert("config.profile".to_string(), json!(profile));
+        let compat_json =
+            serde_json::to_value(&resolved.compatibility).unwrap_or_else(|_| json!({}));
+        metadata.insert("config.compatibility".to_string(), compat_json);
+        self.emit_event(AuditEventKind::ConfigCompatChanged, metadata, timestamp)
     }
 
     pub fn into_inner(self) -> Option<W> {

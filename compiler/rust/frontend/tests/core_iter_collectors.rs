@@ -1,8 +1,16 @@
 //! `ListCollector`/`VecCollector` の効果ログを固定するスナップショットテスト。
 
 use serde_json::{json, Value};
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::Path,
+};
+use uuid::Uuid;
 
+use reml_frontend::pipeline::{AuditEmitter, PipelineDescriptor};
+use reml_runtime::config::{
+    ConfigCompatibility, ConfigCompatibilitySource, ConfigFormat, ResolvedConfigCompatibility,
+};
 use reml_runtime_ffi::core_prelude::{
     collectors::{
         CollectErrorKind, CollectOutcome, CollectorAuditTrail, CollectorEffectMarkers,
@@ -136,6 +144,51 @@ fn collect_table_duplicate() -> String {
     let err = collector.push(("dup".to_string(), 2)).unwrap_err();
     let diag = err.into_diagnostic();
     serde_json::to_string_pretty(&render_error_snapshot(diag)).unwrap()
+}
+
+fn config_compat_audit_event() -> String {
+    let descriptor = PipelineDescriptor::new(
+        Path::new("tests/snapshots/config_compat/sample.reml"),
+        Uuid::nil(),
+        "parse",
+        "cli",
+        "reml_frontend",
+        "reml_frontend --config-compat json-relaxed sample.reml",
+        "3.0.0-alpha",
+    );
+    let resolved = ResolvedConfigCompatibility {
+        format: ConfigFormat::Json,
+        source: ConfigCompatibilitySource::Cli,
+        profile_label: Some("json-relaxed".to_string()),
+        compatibility: ConfigCompatibility::relaxed_json(),
+    };
+    let mut emitter = AuditEmitter::new(Vec::new(), true);
+    emitter
+        .config_compat_changed(&descriptor, &resolved)
+        .expect("emit audit event");
+    let buffer = emitter.into_inner().unwrap_or_default();
+    let payload = String::from_utf8(buffer).expect("utf-8 payload");
+    let event_line = payload.lines().next().unwrap_or_default();
+    let mut event: Value = serde_json::from_str(event_line).expect("audit json");
+    if let Some(obj) = event.as_object_mut() {
+        obj.insert(
+            "timestamp".to_string(),
+            json!("2025-01-01T00:00:00Z"),
+        );
+        if let Some(envelope) = obj.get_mut("envelope").and_then(Value::as_object_mut) {
+            envelope.insert(
+                "audit_id".to_string(),
+                json!("00000000-0000-0000-0000-000000000000"),
+            );
+            if let Some(metadata) = envelope.get_mut("metadata").and_then(Value::as_object_mut) {
+                metadata.insert(
+                    "timestamp".to_string(),
+                    json!("2025-01-01T00:00:00Z"),
+                );
+            }
+        }
+    }
+    serde_json::to_string_pretty(&event).unwrap()
 }
 
 fn custom_snapshot(
@@ -278,6 +331,7 @@ fn core_iter_collectors_snapshot() {
         ("collect_table_duplicate", collect_table_duplicate()),
         ("collect_cell_ref_effects", collect_cell_ref_effects()),
         ("table_csv_import", table_csv_import()),
+        ("config_compat_event", config_compat_audit_event()),
     ];
     let actual = cases
         .into_iter()

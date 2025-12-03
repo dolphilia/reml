@@ -19,6 +19,23 @@
       "failures": []
     },
     {
+      "metric": "config.compat.audit_event",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "event_kind": "config_compat_changed",
+      "sources": [
+        "compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap"
+      ],
+      "metadata_sample": {
+        "config.source": "cli",
+        "config.format": "json",
+        "config.profile": "json-relaxed"
+      }
+    },
+    {
       "metric": "collector.effect.audit_snapshot",
       "total": 9,
       "passed": 9,

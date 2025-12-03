@@ -47,6 +47,7 @@ impl fmt::Display for CapabilityProvider {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum StageId {
     Experimental,
+    Alpha,
     Beta,
     Stable,
 }
@@ -56,6 +57,7 @@ impl StageId {
     pub fn as_str(&self) -> &'static str {
         match self {
             StageId::Experimental => "experimental",
+            StageId::Alpha => "alpha",
             StageId::Beta => "beta",
             StageId::Stable => "stable",
         }
@@ -90,6 +92,7 @@ impl FromStr for StageId {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_ascii_lowercase().as_str() {
             "experimental" => Ok(StageId::Experimental),
+            "alpha" => Ok(StageId::Alpha),
             "beta" => Ok(StageId::Beta),
             "stable" => Ok(StageId::Stable),
             other => Err(StageParseError::new(format!("未知の StageId '{}'", other))),
@@ -101,6 +104,7 @@ impl fmt::Display for StageId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let label = match self {
             StageId::Experimental => "experimental",
+            StageId::Alpha => "alpha",
             StageId::Beta => "beta",
             StageId::Stable => "stable",
         };
