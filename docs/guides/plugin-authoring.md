@@ -57,6 +57,14 @@ use ::Core.Platform.Posix.Notify
 - Capability 検証（`io.fs.*`, `security.fs.policy`, `memory.buffered_io` など）は `FsAdapter::ensure_*` や `SecurityPolicy::enforce` を経由し、ステージ不一致時は `effects.contract.stage_mismatch` を発火させる。`tooling/examples/run_examples.sh --suite core_io` を CI で呼び出すと `core_io.example_suite_pass_rate` が 0.0 になり、欠落した監査キーを早期に検出できる。
 - `IoContext` の内容 (`path`, `capability`, `buffer`, `glob`, `watch`) は `IoError::into_diagnostic()` が自動で診断へ転写するため、プラグイン固有の監査情報は `context.helper = "plugin.<name>"` のように付与すると追跡が容易になる。Runtime Bridge と同じ構造に揃えると `docs/notes/runtime-bridges-roadmap.md` で管理する CI KPI と突合しやすい。
 
+### 2.4 Manifest と `@dsl_export` の同期
+
+- `@dsl_export` で宣言した `allows_effects`・`requires_capabilities`・`stage_bounds` は `update_dsl_signature` API を通じて `reml.toml` の `dsl.<name>.exports[*].signature` に書き戻す。Rust 実装では `compiler/rust/runtime/src/config/manifest.rs` が `signature.stage_bounds.current` を `expect_effects_stage` へ反映するため、Stage 情報は Manifest と DSL の両方で一貫して参照できる。
+- [examples/core_config/README.md](../../examples/core_config/README.md) のサンプルを実行すると `dsl.audit_bridge` の Capability/Stage/Effect の同期手順を確認できる。`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin remlc -- manifest dump --manifest examples/core_config/reml.toml` を実行し、`dsl.audit_bridge.exports[0].signature.stage_bounds` や `capabilities` が `dsl/audit_bridge.reml` の `@dsl_export` と一致することを確かめる。
+- Manifest API の単体テストは `cargo test manifest --test manifest --manifest-path compiler/rust/runtime/Cargo.toml` で実行できる（`toml v0.5.11` の checksum 問題が発生した場合は `compiler/rust/runtime/Cargo.lock` の再取得が必要）。`update_dsl_signature_records_stage_bounds` が Stage プロジェクションを保証しており、`DslExportSignature` が持つ `requires_capabilities`・`stage_bounds` の JSON を `serde_json` 経由で固定している。
+- `RuntimeBridgeAuditSpec` で要求される `bridge.stage.required`/`bridge.stage.actual` と Capability 情報は、現状 `collector.stage.*` として `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` に出力されている。`cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_collectors -- --nocapture` を実行すると同ファイルの最新ログを取得でき、Stage プロファイルが `docs/spec/3-8-core-runtime-capability.md` §10 の要件（`stage.mode`, `stage.kind`, `stage.capability` など）を満たしているか確認できる。Runtime Bridge 連携ではこの JSON キーが `bridge.stage.*` としてそのまま流用されるため、DSL/Manifest の Stage 情報が欠落していないかを本テストで継続的に検証する。
+- DSL プラグインを公開する際は Manifest が最新の `DslExportSignature` に追従しているか手動または CI で確認し、差分があった場合は `docs/spec/3-7-core-config-data.md#14` で定義される `manifest.dsl.effect_mismatch`/`manifest.dsl.stage_mismatch` 診断の発火条件を参照して修正する。
+
 ## 3. 配布と署名
 
 1. `reml plugin package` でアーカイブを生成。

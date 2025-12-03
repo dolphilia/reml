@@ -6,6 +6,7 @@ Reml 仕様で紹介されるサンプル実装を集約しています。元々
 - `algebraic-effects/`: 代数的効果の言語断片と検証用サンプル
 - `core-collections/`: `Core.Collections` による永続/可変コレクションの利用例
 - `core-text/`: `Core.Text`/`Core.Unicode` の三層モデルと Grapheme/Streaming decode の統合サンプル
+- `core_config/`: `Core.Config` マニフェストと `@dsl_export` 署名を同期するサンプル
 - `core_io/`: `Core.IO` と `Core.Path` の Reader/Writer・監査・セキュリティサンプル
 - `core_path/`: パス正規化と `SecurityPolicy`/`is_safe_symlink` の利用例
 - `core_diagnostics/`: `Core.Diagnostics` の監査ログ（PipelineStarted/PipelineCompleted）を再現する最小ケース

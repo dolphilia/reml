@@ -3,7 +3,8 @@ use std::path::PathBuf;
 
 use reml_runtime::config::{
     load_manifest, update_dsl_signature, validate_manifest, CapabilityId, DslEntry, DslExportRef,
-    DslExportSignature, Manifest, PackageName, ProjectSection, ProjectStage, SemanticVersion,
+    DslExportSignature, DslSignatureStageBounds, Manifest, PackageName, ProjectSection,
+    ProjectStage, SemanticVersion,
 };
 use serde_json::{Map, Value};
 use tempfile::tempdir;
@@ -113,4 +114,64 @@ fn update_dsl_signature_applies_capabilities() {
         .find(|export| export.name == "Demo")
         .expect("export");
     assert!(export.signature.is_some());
+}
+
+#[test]
+fn update_dsl_signature_records_stage_bounds() {
+    let mut manifest = manifest_with_project(ProjectStage::Stable);
+    let mut entry = DslEntry::default();
+    entry.entry = PathBuf::from("dsl/core_config.reml");
+    entry.exports = vec![DslExportRef {
+        name: "CoreConfigExport".into(),
+        signature: None,
+    }];
+    manifest.dsl.insert("core_config".into(), entry);
+
+    let stage_bounds = DslSignatureStageBounds {
+        minimum: Some(ProjectStage::Beta),
+        maximum: Some(ProjectStage::Stable),
+        current: Some(ProjectStage::Beta),
+    };
+    let signature = DslExportSignature {
+        name: "CoreConfigExport".into(),
+        category: Some("runtime_bridge".into()),
+        allows_effects: vec!["audit.emit".into()],
+        requires_capabilities: vec![CapabilityId("core.audit".into())],
+        stage_bounds: Some(stage_bounds),
+        extra: Map::<String, Value>::new(),
+    };
+
+    let updated =
+        update_dsl_signature(manifest, "core_config", signature).expect("signature update");
+    let entry = updated
+        .dsl
+        .get("core_config")
+        .expect("core_config entry present");
+    assert_eq!(
+        entry.expect_effects_stage,
+        Some(ProjectStage::Beta),
+        "stage projection should follow signature bounds"
+    );
+    let export = entry
+        .exports
+        .iter()
+        .find(|export| export.name == "CoreConfigExport")
+        .expect("core_config export present");
+    let signature_json = export.signature.as_ref().expect("signature stored");
+    let stage_bounds = signature_json
+        .get("stage_bounds")
+        .and_then(|value| value.as_object())
+        .expect("stage bounds serialized");
+    assert_eq!(
+        stage_bounds
+            .get("current")
+            .and_then(|value| value.as_str()),
+        Some("beta")
+    );
+    assert_eq!(
+        stage_bounds
+            .get("maximum")
+            .and_then(|value| value.as_str()),
+        Some("stable")
+    );
 }

@@ -800,6 +800,12 @@ pub fn update_dsl_signature(
         .to_value()
         .map_err(|err| manifest_signature_error(manifest_path, err))?;
 
+    if entry.expect_effects_stage.is_none() {
+        if let Some(stage) = signature_stage(&signature) {
+            entry.expect_effects_stage = Some(stage);
+        }
+    }
+
     let export = entry
         .exports
         .iter_mut()
@@ -957,6 +963,19 @@ fn dedup_capabilities(values: &[CapabilityId]) -> Vec<CapabilityId> {
     caps.sort();
     caps.dedup();
     caps
+}
+
+fn signature_stage(signature: &DslExportSignature) -> Option<ProjectStage> {
+    signature
+        .stage_bounds
+        .as_ref()
+        .and_then(|bounds| {
+            bounds
+                .current
+                .clone()
+                .or_else(|| bounds.minimum.clone())
+                .or_else(|| bounds.maximum.clone())
+        })
 }
 
 fn manifest_io_error(path: &Path, err: std::io::Error) -> GuardDiagnostic {
