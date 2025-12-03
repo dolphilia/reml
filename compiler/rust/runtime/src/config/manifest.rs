@@ -3,7 +3,7 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::path::PathBuf;
-use toml_edit::de;
+use toml::de;
 
 /// `reml.toml` のトップレベル構造。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -127,7 +127,7 @@ impl Default for ProjectSection {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DependencySpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub package: Option<String>,
@@ -151,6 +151,24 @@ pub struct DependencySpec {
     pub features: BTreeSet<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub registry: Option<String>,
+}
+
+impl Default for DependencySpec {
+    fn default() -> Self {
+        Self {
+            package: None,
+            version: None,
+            path: None,
+            git: None,
+            branch: None,
+            tag: None,
+            rev: None,
+            default_features: true,
+            optional: false,
+            features: BTreeSet::new(),
+            registry: None,
+        }
+    }
 }
 
 impl<'de> Deserialize<'de> for DependencySpec {
@@ -381,20 +399,20 @@ impl From<de::Error> for ManifestParseError {
     }
 }
 
-#[serde(transparent)]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(transparent)]
 pub struct PackageName(pub String);
 
-#[serde(transparent)]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(transparent)]
 pub struct SemanticVersion(pub String);
 
-#[serde(transparent)]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(transparent)]
 pub struct TargetTriple(pub String);
 
-#[serde(transparent)]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(transparent)]
 pub struct CapabilityId(pub String);
 
 /// DSL カテゴリ。
