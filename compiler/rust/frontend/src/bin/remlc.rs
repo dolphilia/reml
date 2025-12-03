@@ -1,4 +1,5 @@
-use reml_runtime::config::{Manifest, ManifestParseError};
+use reml_runtime::config::{load_manifest, validate_manifest, Manifest};
+use reml_runtime::prelude::ensure::GuardDiagnostic;
 use std::env;
 use std::fmt;
 use std::fs;
@@ -68,9 +69,9 @@ fn manifest_dump(args: Vec<String>) -> Result<(), CliError> {
 }
 
 fn read_manifest(path: &Path) -> Result<Manifest, CliError> {
-    let raw = fs::read_to_string(path)?;
-    let manifest = Manifest::parse_toml(&raw)?;
-    Ok(manifest.with_manifest_path(path))
+    let manifest = load_manifest(path)?;
+    validate_manifest(&manifest)?;
+    Ok(manifest)
 }
 
 #[derive(Debug)]
@@ -145,7 +146,7 @@ impl OutputFormat {
 enum CliError {
     Usage(String),
     Io(std::io::Error),
-    Manifest(ManifestParseError),
+    ManifestDiagnostic(GuardDiagnostic),
     Json(serde_json::Error),
 }
 
@@ -154,7 +155,17 @@ impl fmt::Display for CliError {
         match self {
             CliError::Usage(msg) => write!(f, "{msg}"),
             CliError::Io(err) => write!(f, "ファイル操作に失敗しました: {err}"),
-            CliError::Manifest(err) => write!(f, "マニフェストの解析に失敗しました: {err}"),
+            CliError::ManifestDiagnostic(diag) => {
+                if let Some(code) = Some(diag.code) {
+                    write!(
+                        f,
+                        "マニフェストの検証に失敗しました ({code}): {}",
+                        diag.message
+                    )
+                } else {
+                    write!(f, "マニフェストの検証に失敗しました: {}", diag.message)
+                }
+            }
             CliError::Json(err) => write!(f, "JSON 生成に失敗しました: {err}"),
         }
     }
@@ -168,15 +179,15 @@ impl From<std::io::Error> for CliError {
     }
 }
 
-impl From<ManifestParseError> for CliError {
-    fn from(value: ManifestParseError) -> Self {
-        CliError::Manifest(value)
-    }
-}
-
 impl From<serde_json::Error> for CliError {
     fn from(value: serde_json::Error) -> Self {
         CliError::Json(value)
+    }
+}
+
+impl From<GuardDiagnostic> for CliError {
+    fn from(value: GuardDiagnostic) -> Self {
+        CliError::ManifestDiagnostic(value)
     }
 }
 

@@ -7,9 +7,10 @@ pub mod manifest;
 
 pub use collection_diff::{ChangeKind, ConfigChange, SchemaDiff, SchemaDiffMetadata};
 pub use manifest::{
-    CapabilityId, Contact, DependencySpec, DslEntry, DslExportRef, Manifest, ManifestBuilder,
-    ManifestParseError, OptimizeLevel, PackageName, ProjectKind, ProjectSection, ProjectStage,
-    RegistrySection, TargetTriple,
+    declared_effects, load_manifest, update_dsl_signature, validate_manifest, CapabilityId,
+    Contact, DependencySpec, DslEntry, DslExportRef, DslExportSignature, DslSignatureStageBounds,
+    Manifest, ManifestBuilder, ManifestLoader, ManifestParseError, OptimizeLevel, PackageName,
+    ProjectKind, ProjectSection, ProjectStage, RegistrySection, TargetTriple,
 };
 
 use std::{

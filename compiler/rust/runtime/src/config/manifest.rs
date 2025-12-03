@@ -1,9 +1,27 @@
+use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
-use std::path::PathBuf;
+use serde_json::{self, Map, Value};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+    fs,
+    path::{Path, PathBuf},
+};
 use toml::de;
+
+const CONFIG_DOMAIN: &str = "config";
+const CONFIG_SOURCE_MANIFEST: &str = "manifest";
+const CONFIG_MISSING_FIELD_CODE: &str = "config.missing_field";
+const CONFIG_INVALID_STAGE_CODE: &str = "config.invalid_stage";
+const CONFIG_PROJECT_KIND_UNKNOWN_CODE: &str = "config.project.kind_unknown";
+const CONFIG_BUILD_OPTIMIZE_UNKNOWN_CODE: &str = "config.build.optimize_unknown";
+const CONFIG_MANIFEST_IO_ERROR_CODE: &str = "config.manifest.io_error";
+const CONFIG_MANIFEST_PARSE_ERROR_CODE: &str = "config.manifest.parse_error";
+const CONFIG_MANIFEST_ENTRY_MISSING_CODE: &str = "manifest.entry.missing";
+const CONFIG_DSL_NOT_FOUND_CODE: &str = "config.dsl.not_found";
+const CONFIG_DSL_EXPORT_NOT_FOUND_CODE: &str = "config.dsl.export_not_found";
+const CONFIG_DSL_UNKNOWN_KIND_CODE: &str = "config.dsl.unknown_kind";
+const CONFIG_SIGNATURE_SERIALIZATION_CODE: &str = "config.manifest.signature_serialization";
 
 /// `reml.toml` のトップレベル構造。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -316,6 +334,39 @@ pub struct DslExportRef {
     pub signature: Option<Value>,
 }
 
+/// DSL エクスポート署名のステージ境界。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DslSignatureStageBounds {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minimum: Option<ProjectStage>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub maximum: Option<ProjectStage>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current: Option<ProjectStage>,
+}
+
+/// `@dsl_export` から得られた署名情報。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DslExportSignature {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
+    #[serde(default)]
+    pub allows_effects: Vec<String>,
+    #[serde(default)]
+    pub requires_capabilities: Vec<CapabilityId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stage_bounds: Option<DslSignatureStageBounds>,
+    #[serde(default, flatten)]
+    pub extra: Map<String, Value>,
+}
+
+impl DslExportSignature {
+    fn to_value(&self) -> Result<Value, serde_json::Error> {
+        serde_json::to_value(self)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BuildSection {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -411,7 +462,7 @@ pub struct SemanticVersion(pub String);
 #[serde(transparent)]
 pub struct TargetTriple(pub String);
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(transparent)]
 pub struct CapabilityId(pub String);
 
@@ -664,4 +715,434 @@ impl Default for Contact {
     fn default() -> Self {
         Contact::Simple(String::new())
     }
+}
+
+/// `reml.toml` を読み込むローダ。
+#[derive(Debug, Default)]
+pub struct ManifestLoader;
+
+impl ManifestLoader {
+    /// 新しいローダを生成する。
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// 指定したパスからマニフェストを読み込む。
+    pub fn load(&self, path: impl AsRef<Path>) -> Result<Manifest, GuardDiagnostic> {
+        load_manifest(path)
+    }
+}
+
+/// `reml.toml` を読み込み、DSL エントリの存在を確認する。
+pub fn load_manifest(path: impl AsRef<Path>) -> Result<Manifest, GuardDiagnostic> {
+    let manifest_path = path.as_ref().to_path_buf();
+    let body = fs::read_to_string(&manifest_path)
+        .map_err(|err| manifest_io_error(manifest_path.as_path(), err))?;
+    let mut manifest = Manifest::parse_toml(&body)
+        .map_err(|err| manifest_parse_error(manifest_path.as_path(), err))?;
+    manifest = manifest.with_manifest_path(&manifest_path);
+    ensure_dsl_entries_have_paths(&manifest)?;
+    Ok(manifest)
+}
+
+/// マニフェストの単純な妥当性検証を行う。
+pub fn validate_manifest(manifest: &Manifest) -> Result<(), GuardDiagnostic> {
+    let manifest_path = manifest.manifest_path().map(|path| path.as_path());
+    validate_project_section(&manifest.project, manifest_path)?;
+    validate_build_section(&manifest.build, manifest_path)?;
+    validate_build_profiles(&manifest.build.profiles, manifest_path)?;
+    validate_dsl_sections(manifest, manifest_path)?;
+    Ok(())
+}
+
+/// DSL 名に対応する効果集合を返す。
+pub fn declared_effects(
+    manifest: &Manifest,
+    dsl: impl AsRef<str>,
+) -> Result<BTreeSet<String>, GuardDiagnostic> {
+    let key = dsl.as_ref();
+    let manifest_path = manifest.manifest_path().map(|path| path.as_path());
+    let entry = manifest
+        .dsl
+        .get(key)
+        .ok_or_else(|| dsl_not_found_diagnostic(manifest_path, key))?;
+    Ok(entry.expect_effects.clone())
+}
+
+/// DSL 署名をマニフェストへ書き戻す。
+pub fn update_dsl_signature(
+    mut manifest: Manifest,
+    dsl: impl AsRef<str>,
+    signature: DslExportSignature,
+) -> Result<Manifest, GuardDiagnostic> {
+    let manifest_path = manifest.manifest_path().map(|path| path.as_path());
+    let dsl_key = dsl.as_ref();
+    let entry = manifest
+        .dsl
+        .get_mut(dsl_key)
+        .ok_or_else(|| dsl_not_found_diagnostic(manifest_path, dsl_key))?;
+
+    let export_name = signature.name.trim();
+    if export_name.is_empty() {
+        return Err(dsl_export_not_found_diagnostic(
+            manifest_path,
+            dsl_key,
+            "<empty>",
+        ));
+    }
+
+    if let Some(bounds) = signature.stage_bounds.as_ref() {
+        validate_stage_bounds(bounds, manifest_path, dsl_key)?;
+    }
+
+    let requires_capabilities = signature.requires_capabilities.clone();
+    let signature_value = signature
+        .to_value()
+        .map_err(|err| manifest_signature_error(manifest_path, err))?;
+
+    let export = entry
+        .exports
+        .iter_mut()
+        .find(|export| export.name == export_name)
+        .ok_or_else(|| dsl_export_not_found_diagnostic(manifest_path, dsl_key, export_name))?;
+    export.signature = Some(signature_value);
+
+    if !requires_capabilities.is_empty() {
+        entry.capabilities = dedup_capabilities(&requires_capabilities);
+    }
+
+    Ok(manifest)
+}
+
+fn validate_project_section(
+    project: &ProjectSection,
+    manifest_path: Option<&Path>,
+) -> Result<(), GuardDiagnostic> {
+    if project.name.0.trim().is_empty() {
+        return Err(missing_field_diagnostic(manifest_path, &["project", "name"]));
+    }
+    if project.version.0.trim().is_empty() {
+        return Err(missing_field_diagnostic(
+            manifest_path,
+            &["project", "version"],
+        ));
+    }
+    if let ProjectKind::Unknown(value) = &project.kind {
+        return Err(project_kind_diagnostic(manifest_path, value));
+    }
+    ensure_stage_known(&project.stage, manifest_path, &["project", "stage"])
+}
+
+fn validate_build_section(
+    build: &BuildSection,
+    manifest_path: Option<&Path>,
+) -> Result<(), GuardDiagnostic> {
+    ensure_optimize_known(&build.optimize, manifest_path, &["build", "optimize"])
+}
+
+fn validate_build_profiles(
+    profiles: &BTreeMap<String, BuildProfile>,
+    manifest_path: Option<&Path>,
+) -> Result<(), GuardDiagnostic> {
+    for (name, profile) in profiles {
+        if let Some(optimize) = profile.optimize.as_ref() {
+            ensure_optimize_known(
+                optimize,
+                manifest_path,
+                &["build", "profiles", name, "optimize"],
+            )?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_dsl_sections(
+    manifest: &Manifest,
+    manifest_path: Option<&Path>,
+) -> Result<(), GuardDiagnostic> {
+    for (name, entry) in &manifest.dsl {
+        if entry.entry.as_os_str().is_empty() {
+            return Err(missing_field_diagnostic(
+                manifest_path,
+                &["dsl", name, "entry"],
+            ));
+        }
+        if let DslCategory::Unknown(value) = &entry.kind {
+            return Err(dsl_kind_diagnostic(manifest_path, name, value));
+        }
+        if let Some(stage) = entry.expect_effects_stage.as_ref() {
+            ensure_stage_known(stage, manifest_path, &["dsl", name, "expect_effects_stage"])?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_stage_bounds(
+    bounds: &DslSignatureStageBounds,
+    manifest_path: Option<&Path>,
+    dsl_key: &str,
+) -> Result<(), GuardDiagnostic> {
+    if let Some(stage) = bounds.minimum.as_ref() {
+        ensure_stage_known(stage, manifest_path, &["dsl", dsl_key, "stage_bounds", "minimum"])?;
+    }
+    if let Some(stage) = bounds.maximum.as_ref() {
+        ensure_stage_known(stage, manifest_path, &["dsl", dsl_key, "stage_bounds", "maximum"])?;
+    }
+    if let Some(stage) = bounds.current.as_ref() {
+        ensure_stage_known(stage, manifest_path, &["dsl", dsl_key, "stage_bounds", "current"])?;
+    }
+    Ok(())
+}
+
+fn ensure_stage_known(
+    stage: &ProjectStage,
+    manifest_path: Option<&Path>,
+    key_path: &[&str],
+) -> Result<(), GuardDiagnostic> {
+    if let ProjectStage::Unknown(value) = stage {
+        Err(invalid_stage_diagnostic(manifest_path, key_path, value))
+    } else {
+        Ok(())
+    }
+}
+
+fn ensure_optimize_known(
+    optimize: &OptimizeLevel,
+    manifest_path: Option<&Path>,
+    key_path: &[&str],
+) -> Result<(), GuardDiagnostic> {
+    if let OptimizeLevel::Unknown(value) = optimize {
+        Err(build_optimize_diagnostic(manifest_path, key_path, value))
+    } else {
+        Ok(())
+    }
+}
+
+fn ensure_dsl_entries_have_paths(manifest: &Manifest) -> Result<(), GuardDiagnostic> {
+    let manifest_path = manifest.manifest_path().map(|path| path.as_path());
+    for (dsl_name, entry) in &manifest.dsl {
+        if entry.entry.as_os_str().is_empty() {
+            return Err(missing_field_diagnostic(
+                manifest_path,
+                &["dsl", dsl_name, "entry"],
+            ));
+        }
+        if let Some(resolved) = resolve_entry_path(&entry.entry, manifest_path) {
+            if !resolved.exists() {
+                return Err(manifest_entry_missing(
+                    manifest_path,
+                    dsl_name,
+                    resolved.as_path(),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn resolve_entry_path(entry: &PathBuf, manifest_path: Option<&Path>) -> Option<PathBuf> {
+    if entry.as_os_str().is_empty() {
+        return None;
+    }
+    if entry.is_absolute() {
+        return Some(entry.clone());
+    }
+    manifest_path
+        .and_then(|path| path.parent())
+        .map(|parent| parent.join(entry))
+}
+
+fn dedup_capabilities(values: &[CapabilityId]) -> Vec<CapabilityId> {
+    let mut caps = values.to_vec();
+    caps.sort();
+    caps.dedup();
+    caps
+}
+
+fn manifest_io_error(path: &Path, err: std::io::Error) -> GuardDiagnostic {
+    manifest_diagnostic(
+        CONFIG_MANIFEST_IO_ERROR_CODE,
+        format!(
+            "マニフェスト `{}` の読み込みに失敗しました: {err}",
+            path.display()
+        ),
+        Some(path),
+        &["manifest"],
+    )
+}
+
+fn manifest_parse_error(path: &Path, err: ManifestParseError) -> GuardDiagnostic {
+    manifest_diagnostic(
+        CONFIG_MANIFEST_PARSE_ERROR_CODE,
+        format!(
+            "マニフェスト `{}` の解析に失敗しました: {err}",
+            path.display()
+        ),
+        Some(path),
+        &["manifest"],
+    )
+}
+
+fn manifest_entry_missing(
+    manifest_path: Option<&Path>,
+    dsl_name: &str,
+    resolved: &Path,
+) -> GuardDiagnostic {
+    manifest_diagnostic(
+        CONFIG_MANIFEST_ENTRY_MISSING_CODE,
+        format!(
+            "DSL `{dsl_name}` のエントリ `{}` が存在しません",
+            resolved.display()
+        ),
+        manifest_path,
+        &["dsl", dsl_name, "entry"],
+    )
+}
+
+fn missing_field_diagnostic(
+    manifest_path: Option<&Path>,
+    key_path: &[&str],
+) -> GuardDiagnostic {
+    let label = join_key_path(key_path);
+    manifest_diagnostic(
+        CONFIG_MISSING_FIELD_CODE,
+        format!("必須フィールド `{label}` が未設定です"),
+        manifest_path,
+        key_path,
+    )
+}
+
+fn invalid_stage_diagnostic(
+    manifest_path: Option<&Path>,
+    key_path: &[&str],
+    value: &str,
+) -> GuardDiagnostic {
+    let label = join_key_path(key_path);
+    manifest_diagnostic(
+        CONFIG_INVALID_STAGE_CODE,
+        format!("`{label}` に未対応の Stage `{value}` が指定されました"),
+        manifest_path,
+        key_path,
+    )
+}
+
+fn project_kind_diagnostic(manifest_path: Option<&Path>, value: &str) -> GuardDiagnostic {
+    manifest_diagnostic(
+        CONFIG_PROJECT_KIND_UNKNOWN_CODE,
+        format!("`project.kind` に未対応の値 `{value}` が指定されました"),
+        manifest_path,
+        &["project", "kind"],
+    )
+}
+
+fn build_optimize_diagnostic(
+    manifest_path: Option<&Path>,
+    key_path: &[&str],
+    value: &str,
+) -> GuardDiagnostic {
+    let label = join_key_path(key_path);
+    manifest_diagnostic(
+        CONFIG_BUILD_OPTIMIZE_UNKNOWN_CODE,
+        format!("`{label}` に未対応の optimize 値 `{value}` が指定されました"),
+        manifest_path,
+        key_path,
+    )
+}
+
+fn dsl_kind_diagnostic(
+    manifest_path: Option<&Path>,
+    dsl: &str,
+    value: &str,
+) -> GuardDiagnostic {
+    manifest_diagnostic(
+        CONFIG_DSL_UNKNOWN_KIND_CODE,
+        format!("DSL `{dsl}` の kind `{value}` は未対応です"),
+        manifest_path,
+        &["dsl", dsl, "kind"],
+    )
+}
+
+fn dsl_not_found_diagnostic(manifest_path: Option<&Path>, key: &str) -> GuardDiagnostic {
+    manifest_diagnostic(
+        CONFIG_DSL_NOT_FOUND_CODE,
+        format!("DSL `{key}` がマニフェストに存在しません"),
+        manifest_path,
+        &["dsl", key],
+    )
+}
+
+fn dsl_export_not_found_diagnostic(
+    manifest_path: Option<&Path>,
+    dsl: &str,
+    export: &str,
+) -> GuardDiagnostic {
+    manifest_diagnostic(
+        CONFIG_DSL_EXPORT_NOT_FOUND_CODE,
+        format!("DSL `{dsl}` にエクスポート `{export}` が存在しません"),
+        manifest_path,
+        &["dsl", dsl, "exports"],
+    )
+}
+
+fn manifest_signature_error(
+    manifest_path: Option<&Path>,
+    err: serde_json::Error,
+) -> GuardDiagnostic {
+    manifest_diagnostic(
+        CONFIG_SIGNATURE_SERIALIZATION_CODE,
+        format!("DSL 署名のシリアライズに失敗しました: {err}"),
+        manifest_path,
+        &["dsl"],
+    )
+}
+
+fn manifest_diagnostic(
+    code: &'static str,
+    message: String,
+    manifest_path: Option<&Path>,
+    key_path: &[&str],
+) -> GuardDiagnostic {
+    let mut config_info = Map::new();
+    config_info.insert(
+        "source".into(),
+        Value::String(CONFIG_SOURCE_MANIFEST.into()),
+    );
+    if let Some(path) = manifest_path {
+        config_info.insert("path".into(), Value::String(path.display().to_string()));
+    }
+    if !key_path.is_empty() {
+        let segments: Vec<Value> = key_path
+            .iter()
+            .map(|segment| Value::String(segment.to_string()))
+            .collect();
+        config_info.insert("key_path".into(), Value::Array(segments));
+    }
+
+    let mut extensions = Map::new();
+    extensions.insert("config".into(), Value::Object(config_info.clone()));
+
+    let mut audit = Map::new();
+    audit.insert(
+        "config.source".into(),
+        Value::String(CONFIG_SOURCE_MANIFEST.into()),
+    );
+    if let Some(path) = manifest_path {
+        audit.insert("config.path".into(), Value::String(path.display().to_string()));
+    }
+    if let Some(key_path_value) = config_info.get("key_path") {
+        audit.insert("config.key_path".into(), key_path_value.clone());
+    }
+
+    GuardDiagnostic {
+        code,
+        domain: CONFIG_DOMAIN,
+        severity: DiagnosticSeverity::Error,
+        message,
+        extensions,
+        audit_metadata: audit,
+    }
+}
+
+fn join_key_path(parts: &[&str]) -> String {
+    parts.join(".")
 }

@@ -60,6 +60,11 @@
     - Stage 情報は `RuntimeBridgeAuditSpec` のキー（`bridge.stage.required`, `bridge.stage.actual`）が埋まるかを確認し、不足時は `docs/spec/3-8-core-runtime-capability.md` との整合タスクを追加する。
     - `docs/guides/plugin-authoring.md` と `docs/guides/runtime-bridges.md` に `@dsl_export` × Manifest 連携例を掲載し、サンプル `examples/core_config/` を用意する。
 
+#### 2.2 実施結果（Run ID: 20250719-manifest-loader）
+- `compiler/rust/runtime/src/config/manifest.rs` へ `ManifestLoader`/`load_manifest`/`validate_manifest`/`declared_effects`/`update_dsl_signature` を追加し、`effect {io,config}` 相当のエラーをすべて `GuardDiagnostic` (`config.*` / `manifest.entry.missing`) で返すよう統合した。`config.path`/`config.key_path` メタデータを `Diagnostic.extensions["config"]` と監査メタデータに同時転写することで 3-6 §6.1.3 と整合。
+- `compiler/rust/frontend/src/bin/remlc.rs` の `manifest dump` が新ローダを経由して `validate_manifest` を呼び、CLI でも `config.missing_field`/`config.invalid_stage` などの診断が得られるようになった。Manifest の JSON ダンプは従来どおりだが、I/O/解析エラーは `GuardDiagnostic` を整形して出力する。
+- `compiler/rust/runtime/tests/manifest.rs` でロード失敗 (`manifest.entry.missing`)、Stage 検証 (`config.invalid_stage`)、署名書き戻し（Capability の重複排除）をカバー。`cargo test -p reml_runtime manifest` を想定したが、ローカル環境では `toml v0.5.11` のチェックサム検証で失敗したため、CI でのフェッチ設定を要確認。
+
 ### 3. Schema & ConfigCompatibility 実装（54週目）
 **担当領域**: データモデリング
 
