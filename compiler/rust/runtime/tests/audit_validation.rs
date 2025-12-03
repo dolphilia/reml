@@ -12,10 +12,7 @@ fn pipeline_started_fixture_is_valid() {
 fn reports_missing_effect_stage_metadata() {
     let envelope = load_envelope("effect_stage_missing.json");
     let error = envelope.validate().expect_err("validation must fail");
-    assert_eq!(
-        error.to_string(),
-        load_expected("effect_stage_missing.txt")
-    );
+    assert_eq!(error.to_string(), load_expected("effect_stage_missing.txt"));
 }
 
 #[test]

@@ -163,15 +163,11 @@ fn update_dsl_signature_records_stage_bounds() {
         .and_then(|value| value.as_object())
         .expect("stage bounds serialized");
     assert_eq!(
-        stage_bounds
-            .get("current")
-            .and_then(|value| value.as_str()),
+        stage_bounds.get("current").and_then(|value| value.as_str()),
         Some("beta")
     );
     assert_eq!(
-        stage_bounds
-            .get("maximum")
-            .and_then(|value| value.as_str()),
+        stage_bounds.get("maximum").and_then(|value| value.as_str()),
         Some("stable")
     );
 }

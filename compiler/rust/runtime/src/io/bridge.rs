@@ -21,7 +21,13 @@ pub(crate) fn record_bridge_stage_probe(
     actual: StageId,
 ) {
     if let Ok(mut cache) = BRIDGE_STAGE_CACHE.lock() {
-        cache.insert(capability, StageSnapshot { required: requirement, actual });
+        cache.insert(
+            capability,
+            StageSnapshot {
+                required: requirement,
+                actual,
+            },
+        );
     }
 }
 

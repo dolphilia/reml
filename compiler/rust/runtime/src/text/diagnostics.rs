@@ -58,11 +58,7 @@ pub fn insert_grapheme_stats_metadata(
 }
 
 /// UTF-8 範囲 (`text.utf8.range`) を `AuditEnvelope` 向けに記録する。
-pub fn insert_utf8_range_metadata(
-    metadata: &mut JsonMap<String, Value>,
-    start: usize,
-    end: usize,
-) {
+pub fn insert_utf8_range_metadata(metadata: &mut JsonMap<String, Value>, start: usize, end: usize) {
     let length = end.saturating_sub(start);
     let mut range = JsonMap::new();
     range.insert("start".into(), json!(start));

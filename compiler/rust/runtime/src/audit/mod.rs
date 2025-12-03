@@ -3,9 +3,9 @@
 //! 仕様: `docs/spec/3-6-core-diagnostics-audit.md` §1.1.
 
 use crate::anyhow::{anyhow, Result};
-use std::borrow::Cow;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use std::borrow::Cow;
 use uuid::Uuid;
 
 const EVENT_KIND_KEY: &str = "event.kind";
@@ -15,11 +15,19 @@ const EFFECT_STAGE_KEYS: &[&str] = &[
     "effect.capability",
 ];
 const BRIDGE_STAGE_KEYS: &[&str] = &["bridge.id", "bridge.stage.required", "bridge.stage.actual"];
-const BRIDGE_RELOAD_KEYS: &[&str] =
-    &["bridge.reload", "bridge.id", "bridge.stage.required", "bridge.stage.actual"];
+const BRIDGE_RELOAD_KEYS: &[&str] = &[
+    "bridge.reload",
+    "bridge.id",
+    "bridge.stage.required",
+    "bridge.stage.actual",
+];
 
-const PIPELINE_STARTED_KEYS: &[&str] =
-    &["pipeline.id", "pipeline.dsl_id", "pipeline.node", "timestamp"];
+const PIPELINE_STARTED_KEYS: &[&str] = &[
+    "pipeline.id",
+    "pipeline.dsl_id",
+    "pipeline.node",
+    "timestamp",
+];
 const PIPELINE_COMPLETED_KEYS: &[&str] = &[
     "pipeline.id",
     "pipeline.dsl_id",
@@ -55,8 +63,12 @@ const ASYNC_SUPERVISOR_EXHAUSTED_KEYS: &[&str] = &[
     "async.supervisor.budget",
     "async.supervisor.outcome",
 ];
-const CONFIG_COMPAT_CHANGED_KEYS: &[&str] =
-    &["config.source", "config.format", "config.profile", "config.compatibility"];
+const CONFIG_COMPAT_CHANGED_KEYS: &[&str] = &[
+    "config.source",
+    "config.format",
+    "config.profile",
+    "config.compatibility",
+];
 const ENV_MUTATION_KEYS: &[&str] = &["env.operation", "env.key", "env.scope", "requested_by"];
 
 /// Core Diagnostics で利用する監査イベント種別。
@@ -83,12 +95,8 @@ impl AuditEventKind {
             AuditEventKind::PipelineCompleted => Cow::Borrowed("pipeline_completed"),
             AuditEventKind::PipelineFailed => Cow::Borrowed("pipeline_failed"),
             AuditEventKind::CapabilityMismatch => Cow::Borrowed("capability_mismatch"),
-            AuditEventKind::AsyncSupervisorRestarted => {
-                Cow::Borrowed("async_supervisor_restarted")
-            }
-            AuditEventKind::AsyncSupervisorExhausted => {
-                Cow::Borrowed("async_supervisor_exhausted")
-            }
+            AuditEventKind::AsyncSupervisorRestarted => Cow::Borrowed("async_supervisor_restarted"),
+            AuditEventKind::AsyncSupervisorExhausted => Cow::Borrowed("async_supervisor_exhausted"),
             AuditEventKind::ConfigCompatChanged => Cow::Borrowed("config_compat_changed"),
             AuditEventKind::EnvMutation => Cow::Borrowed("env_mutation"),
             AuditEventKind::BridgeReload => Cow::Borrowed("bridge.reload"),

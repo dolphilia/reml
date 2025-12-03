@@ -3,8 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{self, Map, Value};
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fmt,
-    fs,
+    fmt, fs,
     path::{Path, PathBuf},
 };
 use toml::de;
@@ -75,11 +74,7 @@ impl ManifestBuilder {
         self
     }
 
-    pub fn dependency(
-        mut self,
-        name: impl Into<String>,
-        spec: DependencySpec,
-    ) -> Self {
+    pub fn dependency(mut self, name: impl Into<String>, spec: DependencySpec) -> Self {
         self.manifest.dependencies.insert(name.into(), spec);
         self
     }
@@ -825,7 +820,10 @@ fn validate_project_section(
     manifest_path: Option<&Path>,
 ) -> Result<(), GuardDiagnostic> {
     if project.name.0.trim().is_empty() {
-        return Err(missing_field_diagnostic(manifest_path, &["project", "name"]));
+        return Err(missing_field_diagnostic(
+            manifest_path,
+            &["project", "name"],
+        ));
     }
     if project.version.0.trim().is_empty() {
         return Err(missing_field_diagnostic(
@@ -889,13 +887,25 @@ fn validate_stage_bounds(
     dsl_key: &str,
 ) -> Result<(), GuardDiagnostic> {
     if let Some(stage) = bounds.minimum.as_ref() {
-        ensure_stage_known(stage, manifest_path, &["dsl", dsl_key, "stage_bounds", "minimum"])?;
+        ensure_stage_known(
+            stage,
+            manifest_path,
+            &["dsl", dsl_key, "stage_bounds", "minimum"],
+        )?;
     }
     if let Some(stage) = bounds.maximum.as_ref() {
-        ensure_stage_known(stage, manifest_path, &["dsl", dsl_key, "stage_bounds", "maximum"])?;
+        ensure_stage_known(
+            stage,
+            manifest_path,
+            &["dsl", dsl_key, "stage_bounds", "maximum"],
+        )?;
     }
     if let Some(stage) = bounds.current.as_ref() {
-        ensure_stage_known(stage, manifest_path, &["dsl", dsl_key, "stage_bounds", "current"])?;
+        ensure_stage_known(
+            stage,
+            manifest_path,
+            &["dsl", dsl_key, "stage_bounds", "current"],
+        )?;
     }
     Ok(())
 }
@@ -966,16 +976,13 @@ fn dedup_capabilities(values: &[CapabilityId]) -> Vec<CapabilityId> {
 }
 
 fn signature_stage(signature: &DslExportSignature) -> Option<ProjectStage> {
-    signature
-        .stage_bounds
-        .as_ref()
-        .and_then(|bounds| {
-            bounds
-                .current
-                .clone()
-                .or_else(|| bounds.minimum.clone())
-                .or_else(|| bounds.maximum.clone())
-        })
+    signature.stage_bounds.as_ref().and_then(|bounds| {
+        bounds
+            .current
+            .clone()
+            .or_else(|| bounds.minimum.clone())
+            .or_else(|| bounds.maximum.clone())
+    })
 }
 
 fn manifest_io_error(path: &Path, err: std::io::Error) -> GuardDiagnostic {
@@ -1018,10 +1025,7 @@ fn manifest_entry_missing(
     )
 }
 
-fn missing_field_diagnostic(
-    manifest_path: Option<&Path>,
-    key_path: &[&str],
-) -> GuardDiagnostic {
+fn missing_field_diagnostic(manifest_path: Option<&Path>, key_path: &[&str]) -> GuardDiagnostic {
     let label = join_key_path(key_path);
     manifest_diagnostic(
         CONFIG_MISSING_FIELD_CODE,
@@ -1068,11 +1072,7 @@ fn build_optimize_diagnostic(
     )
 }
 
-fn dsl_kind_diagnostic(
-    manifest_path: Option<&Path>,
-    dsl: &str,
-    value: &str,
-) -> GuardDiagnostic {
+fn dsl_kind_diagnostic(manifest_path: Option<&Path>, dsl: &str, value: &str) -> GuardDiagnostic {
     manifest_diagnostic(
         CONFIG_DSL_UNKNOWN_KIND_CODE,
         format!("DSL `{dsl}` の kind `{value}` は未対応です"),
@@ -1146,7 +1146,10 @@ fn manifest_diagnostic(
         Value::String(CONFIG_SOURCE_MANIFEST.into()),
     );
     if let Some(path) = manifest_path {
-        audit.insert("config.path".into(), Value::String(path.display().to_string()));
+        audit.insert(
+            "config.path".into(),
+            Value::String(path.display().to_string()),
+        );
     }
     if let Some(key_path_value) = config_info.get("key_path") {
         audit.insert("config.key_path".into(), key_path_value.clone());

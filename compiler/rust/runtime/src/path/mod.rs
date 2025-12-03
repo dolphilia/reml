@@ -520,8 +520,7 @@ mod tests {
 
     #[test]
     fn glob_invalid_pattern_records_io_effects() {
-        let error = glob(Str::from("["))
-            .expect_err("invalid pattern should produce a PathError");
+        let error = glob(Str::from("[")).expect_err("invalid pattern should produce a PathError");
         let diagnostic = error.into_diagnostic();
         assert_eq!(
             boolean_extension(&diagnostic, "io"),

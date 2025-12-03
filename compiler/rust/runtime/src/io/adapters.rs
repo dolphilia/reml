@@ -120,13 +120,10 @@ impl FsAdapter {
             record_bridge_stage_probe(capability, requirement, *stage);
             return Ok(());
         }
-        match self
-            .registry
-            .verify_stage_for_io(capability, requirement)
-        {
+        match self.registry.verify_stage_for_io(capability, requirement) {
             Ok(stage) => {
                 let _ = cache.set(stage);
-                 record_bridge_stage_probe(capability, requirement, stage);
+                record_bridge_stage_probe(capability, requirement, stage);
                 Ok(())
             }
             Err(err) => Err(capability_error_to_io(capability, err)),
@@ -185,10 +182,7 @@ impl WatcherAdapter {
             record_bridge_stage_probe(capability, requirement, *stage);
             return Ok(());
         }
-        match self
-            .registry
-            .verify_stage_for_io(capability, requirement)
-        {
+        match self.registry.verify_stage_for_io(capability, requirement) {
             Ok(stage) => {
                 let _ = cache.set(stage);
                 record_bridge_stage_probe(capability, requirement, stage);

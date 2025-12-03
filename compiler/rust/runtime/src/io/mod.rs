@@ -28,8 +28,8 @@ pub use adapters::{FsAdapter, WatcherAdapter};
 pub(crate) use bridge::{attach_bridge_stage_metadata, record_bridge_stage_probe};
 pub use buffered::{buffered, read_line, BufferedReader};
 pub use context::{BufferStats, IoContext, WatchStats};
-pub use effects::take_io_effects_snapshot;
 pub(crate) use effects::record_io_operation;
+pub use effects::take_io_effects_snapshot;
 pub use env::{time_env_snapshot, TimeEnvSnapshot};
 pub use error::{IoError, IoErrorKind, IoResult};
 pub use file::File;
@@ -137,10 +137,7 @@ mod tests {
             .expect("IoContext should be attached to read failure");
         let effects = context.effects();
         assert!(effects.io, "io effect flag should be set");
-        assert!(
-            effects.io_blocking,
-            "io_blocking effect flag should be set"
-        );
+        assert!(effects.io_blocking, "io_blocking effect flag should be set");
         assert_eq!(
             context.bytes_processed(),
             Some(buffer.len() as u64),

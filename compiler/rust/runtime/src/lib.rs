@@ -6,6 +6,7 @@ mod anyhow;
 pub mod audit;
 pub mod collections;
 pub mod config;
+pub mod data;
 #[cfg(feature = "metrics")]
 pub mod diagnostics;
 pub mod io;

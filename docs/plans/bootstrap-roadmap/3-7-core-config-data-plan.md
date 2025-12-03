@@ -81,6 +81,12 @@
     - `resolve_compat` は `Result<CompatibilitySet, Diagnostic>` を返すよう統一し、実験的フラグは環境変数 `REML_CONFIG_EXPERIMENTAL` で切り替え可能にする。
     - CLI (`reml config lint`) と LSP で互換性設定が反映されることを `docs/guides/ai-integration.md` §6 のシナリオで QA し、結果を `reports/spec-audit/ch3/config_compatibility-lsp.md` に記録する。
 
+#### 3.1 実施結果（Run ID: 20251203-schema-core-data）
+- `compiler/rust/runtime/src/data/{mod.rs,schema.rs}` に `Schema`/`Field`/`ValidationRule`/`SchemaDiff` を実装し、ビルダー API・差分検出・`FieldAttribute` を仕様 3-7 §2 の構造と整合させた。`SchemaDataType` は JSON/TOML 双方のエイリアスをサポートする列挙体として導入し、`FieldBuilder`/`ValidationRuleBuilder` で `effect {config}` 拡張の基礎を揃えた。
+- 差分の可視化用途として `compiler/rust/runtime/examples/schema_diff_demo.rs` を作成し、`SchemaDiff::between` を JSON 化するフローをサンプルコード化。生成物は `reports/spec-audit/ch3/schema_diff-20251203.md` に貼り付け、Cargo のチェックサム問題が解消され次第 `cargo run --manifest-path compiler/rust/runtime/Cargo.toml --example schema_diff_demo` を実行して更新する方針を記載した。
+- テスト検証は `cargo test --manifest-path compiler/rust/runtime/Cargo.toml` で試行したが、既知の `toml v0.5.11` チェックサム不一致により停止（`error: checksum for toml v0.5.11 changed between lock files`）。Phase 3 の他タスクでも同一ブロッカーが記録済みのため、本 Run ID でも未解決問題として共有する。
+- 今後は `tooling/scripts/generate-schema-diff.sh` の整備と `collect-iterator-audit-metrics.py --section config` への統合を行い、Schema 差分の再取得と監査 KPI への組み込みを行う。
+
 ### 4. 差分・監査・診断連携（54-55週目）
 **担当領域**: Quality & Audit
 

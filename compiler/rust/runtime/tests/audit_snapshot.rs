@@ -11,18 +11,15 @@ fn expected_path(name: &str) -> PathBuf {
 
 fn load_expected(name: &str) -> Value {
     let path = expected_path(name);
-    let text = fs::read_to_string(&path)
-        .unwrap_or_else(|err| panic!("failed to read {path:?}: {err}"));
+    let text =
+        fs::read_to_string(&path).unwrap_or_else(|err| panic!("failed to read {path:?}: {err}"));
     serde_json::from_str(&text)
         .unwrap_or_else(|err| panic!("failed to parse expected JSON {path:?}: {err}"))
 }
 
 fn snapshot_event(redacted: bool) -> Value {
     let mut metadata = Map::new();
-    metadata.insert(
-        "schema.version".into(),
-        Value::String("3.0.0-alpha".into()),
-    );
+    metadata.insert("schema.version".into(), Value::String("3.0.0-alpha".into()));
     metadata.insert(
         "event.kind".into(),
         Value::String("pipeline_completed".into()),
@@ -36,14 +33,8 @@ fn snapshot_event(redacted: bool) -> Value {
         Value::String("core.diagnostics".into()),
     );
     metadata.insert("pipeline.node".into(), Value::String("cli".into()));
-    metadata.insert(
-        "pipeline.outcome".into(),
-        Value::String("success".into()),
-    );
-    metadata.insert(
-        "pipeline.count".into(),
-        Value::Number(Number::from(1_i64)),
-    );
+    metadata.insert("pipeline.outcome".into(), Value::String("success".into()));
+    metadata.insert("pipeline.count".into(), Value::Number(Number::from(1_i64)));
     metadata.insert(
         "timestamp".into(),
         Value::String("2025-07-05T12:00:00Z".into()),
