@@ -228,6 +228,16 @@
 3. **テストと dual-write**: `compiler/rust/runtime/tests/core_collections_cell_ref.rs` で効果と Borrow 再現を検証し、`scripts/poc_dualwrite_compare.sh --section ref_count` で OCaml 版と比較。担当 = Testing (`@prelude-core`)、所要 1 日。【F:../../compiler/rust/runtime/tests/core_collections_cell_ref.rs†L1-L200】
 4. **監査・ドキュメント同期**: `reports/iterator-collector-summary.md` に KPI を追加し、`docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md`/`docs-migrations.log` に effect メタデータ導入を記録。担当 = Diagnostics (`@diag-core`)、所要 0.5 日。【F:../../reports/iterator-collector-summary.md†L1-L80】
 
+###### 3.2.4 監査キー進捗（Run ID: 20290718-collector-effect-keys）
+- `tooling/ci/render-collector-audit-fixtures.py` を拡張して `--with-stage` フラグを追加し、`collector.stage.*` から `effect.stage.*` を自動複製するよう更新した。Stage 欠落時はスクリプトが失敗するため、Effectful Collector の JSON 生成段階で Stage 情報をゲートできる。
+- `python3 tooling/ci/render-collector-audit-fixtures.py --snapshots compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap --output reports/spec-audit/ch1/core_iter_collectors.json --audit-output reports/spec-audit/ch1/core_iter_collectors.audit.jsonl --with-stage` を再実行し、`collector.effect.cell` / `collector.effect.rc` / `collector.effect.rc_ops` / `collector.effect.audit` を含む 17 ケースの JSON/Audit を再生成した。
+- `scripts/tools/list_collector_keys.py` を追加し、`python3 scripts/tools/list_collector_keys.py --output docs/plans/bootstrap-roadmap/assets/collector-effect-keys.md` で `collector.effect.*` キーの一覧と出現回数を Markdown 化した。`collector.effect.cell` / `collector.effect.rc` が常に出力されていることをレポート上で確認できる。
+- `scripts/validate-diagnostic-json.sh --suite collectors --pattern collector.effect.cell --pattern collector.effect.rc` も試行したが、collector フィクスチャは Diagnostic Schema (`primary`/`timestamp`/`audit_metadata`) が未整備のため警告扱いとなった。Schema 適合は Stage=experiment のまま `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` 側で追跡し、本節ではキー存在チェックを `collector-effect-keys.md` と `reports/spec-audit/ch1/core_iter_collectors{.json,.audit.jsonl}` の再生成で担保する。
+
+| ケース | Stage | Run ID | バリデーション | 備考 |
+| --- | --- | --- | --- | --- |
+| `collect_cell_ref_effects` (`collector.effect.cell`/`collector.effect.rc`) | experiment | 20290718-collector-effect-keys | `render-collector-audit-fixtures.py --with-stage` による JSON/Audit 再生成、`scripts/tools/list_collector_keys.py` でのキー一覧化 | Schema 準拠テストは `scripts/validate-diagnostic-json.sh --suite collectors` が未対応のため Stage=experiment でフォローアップ |
+
 ##### 実施ログ（2027-04-23）
 - `EffectSet` に `rc_ops` を追加して `EffectLabels` を拡張し、`CollectorAuditTrail` の `extension_payload`/`audit_metadata` から `collector.effect.rc_ops` を出力するように整備した。これで `collector.effect.cell`/`collector.effect.rc` も JSON/Audit に残るようになった。【F:../../compiler/rust/runtime/src/prelude/iter/mod.rs†L678-L847】【F:../../compiler/rust/runtime/src/prelude/collectors/mod.rs†L221-L380】
 - `EffectfulRef` に `with_effects` ヘルパーを導入し、clone/borrow/borrow_mut/drop の各経路で `EffectSet::mark_rc()`（必要に応じて `mark_mut()`）を打刻することで `collector.effect.rc_ops`/`collector.effect.rc` を `Ref` 操作が一貫して記録するようにした。【F:../../compiler/rust/runtime/src/collections/mutable/ref.rs†L156-L220】

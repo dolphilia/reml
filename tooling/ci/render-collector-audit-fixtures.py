@@ -14,6 +14,23 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 
+BOOL_EFFECT_KEYS = {
+    "mem",
+    "mut",
+    "debug",
+    "async_pending",
+    "audit",
+    "cell",
+    "rc",
+}
+INT_EFFECT_KEYS = {
+    "predicate_calls",
+    "mem_bytes",
+    "cell_mutations",
+    "rc_ops",
+}
+
+
 def _as_dict(value: Any) -> Optional[Dict[str, Any]]:
     return value if isinstance(value, dict) else None
 
@@ -101,25 +118,27 @@ def _normalize_effects(raw: Any) -> Dict[str, Any]:
         "debug": False,
         "async_pending": False,
         "audit": False,
+        "cell": False,
+        "cell_mutations": 0,
+        "rc": False,
+        "rc_ops": 0,
         "predicate_calls": 0,
         "mem_bytes": 0,
     }
     data = _as_dict(raw)
     if not data:
         return result
-    for key in ("mem", "mut", "mutating", "debug", "async_pending", "audit"):
-        if key not in data:
-            continue
-        value = data.get(key)
-        normalized = _as_bool(value)
+    for key, value in data.items():
+        normalized_key = key
         if key == "mutating":
-            result["mut"] = normalized
-        elif key in result:
-            result[key] = normalized
-    if "predicate_calls" in data:
-        result["predicate_calls"] = _as_int(data.get("predicate_calls"))
-    if "mem_bytes" in data:
-        result["mem_bytes"] = _as_int(data.get("mem_bytes"))
+            normalized_key = "mut"
+        if normalized_key in BOOL_EFFECT_KEYS:
+            result[normalized_key] = _as_bool(value)
+            continue
+        if normalized_key in INT_EFFECT_KEYS:
+            result[normalized_key] = _as_int(value)
+            continue
+        result[normalized_key] = value
     return result
 
 
@@ -133,7 +152,9 @@ def _normalize_markers(raw: Any) -> Dict[str, int]:
     return result
 
 
-def _build_metadata(prelude: Dict[str, Any]) -> Dict[str, Any]:
+def _build_metadata(
+    prelude: Dict[str, Any], include_effect_stage: bool, snapshot_id: Optional[str] = None
+) -> Dict[str, Any]:
     metadata: Dict[str, Any] = {}
 
     def _set(key: str, value: Any) -> None:
@@ -158,6 +179,27 @@ def _build_metadata(prelude: Dict[str, Any]) -> Dict[str, Any]:
     if markers:
         for key, value in markers.items():
             metadata[f"collector.effect.{key}"] = value
+
+    if include_effect_stage:
+        stage_required = prelude.get("stage_required")
+        stage_actual = prelude.get("stage_actual")
+        _set("effect.stage.required", stage_required)
+        _set("effect.stage.actual", stage_actual)
+        _set("effect.stage.mode", prelude.get("stage_mode"))
+        _set("effect.stage.capability", prelude.get("capability"))
+        _set("effect.stage.kind", prelude.get("kind"))
+        _set("effect.stage.source", prelude.get("source"))
+        missing: List[str] = []
+        if stage_required is None:
+            missing.append("effect.stage.required")
+        if stage_actual is None:
+            missing.append("effect.stage.actual")
+        if missing:
+            ident = prelude.get("snapshot_id") or snapshot_id or "(unknown)"
+            joined = ", ".join(missing)
+            raise ValueError(
+                f"Missing mandatory effect stage fields ({joined}) for snapshot {ident}"
+            )
 
     if "error_kind" in prelude:
         _set("collector.error.kind", prelude.get("error_kind"))
@@ -203,7 +245,9 @@ def build_prelude_payload(name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     return prelude
 
 
-def build_diagnostic(name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+def build_diagnostic(
+    name: str, payload: Dict[str, Any], include_effect_stage: bool
+) -> Dict[str, Any]:
     extensions = _as_dict(payload.get("extensions"))
     prelude_dict = (
         dict(_as_dict(extensions.get("prelude.collector")) or {})
@@ -233,13 +277,15 @@ def build_diagnostic(name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     diag["extensions"] = diag_extensions
     diag["schema_version"] = diag.get("schema_version") or "collector.snapshot.v1"
 
-    metadata = _build_metadata(prelude_dict)
+    metadata = _build_metadata(prelude_dict, include_effect_stage, name)
     diag["audit"] = _merge_audit_block(_as_dict(diag.get("audit")), metadata)
 
     return diag
 
 
-def build_audit_entries(diagnostics: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def build_audit_entries(
+    diagnostics: Iterable[Dict[str, Any]], include_effect_stage: bool
+) -> List[Dict[str, Any]]:
     entries: List[Dict[str, Any]] = []
     for diag in diagnostics:
         prelude = _as_dict(
@@ -247,7 +293,11 @@ def build_audit_entries(diagnostics: Iterable[Dict[str, Any]]) -> List[Dict[str,
         )
         if not prelude:
             continue
-        metadata = _build_metadata(prelude)
+        metadata = _build_metadata(
+            prelude,
+            include_effect_stage,
+            prelude.get("snapshot_id") or diag.get("snapshot_id"),
+        )
         entries.append(
             {
                 "case": prelude.get("snapshot_id") or diag.get("snapshot_id"),
@@ -278,10 +328,17 @@ def main() -> None:
         type=Path,
         help="監査ログ (JSON Lines) の出力先（オプション）",
     )
+    parser.add_argument(
+        "--with-stage",
+        action="store_true",
+        help="`effect.stage.*` メタデータを collector スナップショットへ付与して検証する",
+    )
     args = parser.parse_args()
 
     entries = parse_snapshot_entries(args.snapshots)
-    diagnostics = [build_diagnostic(name, payload) for name, payload in entries]
+    diagnostics = [
+        build_diagnostic(name, payload, args.with_stage) for name, payload in entries
+    ]
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as handle:
@@ -289,7 +346,7 @@ def main() -> None:
         handle.write("\n")
 
     if args.audit_output:
-        audit_entries = build_audit_entries(diagnostics)
+        audit_entries = build_audit_entries(diagnostics, args.with_stage)
         args.audit_output.parent.mkdir(parents=True, exist_ok=True)
         with args.audit_output.open("w", encoding="utf-8") as handle:
             for entry in audit_entries:
