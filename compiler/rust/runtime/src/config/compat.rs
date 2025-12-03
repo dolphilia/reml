@@ -99,6 +99,25 @@ impl ConfigCompatibility {
     }
 }
 
+/// Stage / Format 組み合わせから推奨互換プロファイルを構築する。
+pub fn compatibility_profile_for_stage(format: ConfigFormat, stage: StageId) -> ConfigCompatibility {
+    match stage {
+        StageId::Stable => ConfigCompatibility::stable(format),
+        StageId::Beta => match format {
+            ConfigFormat::Json => ConfigCompatibility::relaxed_json(),
+            ConfigFormat::Toml => ConfigCompatibility::relaxed_toml(),
+        },
+        StageId::Alpha => match format {
+            ConfigFormat::Json => ConfigCompatibility::relaxed_json(),
+            ConfigFormat::Toml => ConfigCompatibility::strict_toml(),
+        },
+        StageId::Experimental => match format {
+            ConfigFormat::Json => ConfigCompatibility::relaxed_json(),
+            ConfigFormat::Toml => ConfigCompatibility::relaxed_toml(),
+        },
+    }
+}
+
 /// `config.compatibility` セクションで想定するフォーマット。
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -200,6 +219,117 @@ impl std::error::Error for CompatibilityProfileError {}
 /// 代表プロファイル名を `ConfigCompatibility` へ変換する。
 pub fn compatibility_profile(name: &str) -> Result<ConfigCompatibility, CompatibilityProfileError> {
     CompatibilityProfile::from_str(name).map(CompatibilityProfile::into_compat)
+}
+
+/// 互換レイヤーの表現。CLI/Env/Manifest などソース別に保持する。
+#[derive(Debug, Clone)]
+pub struct CompatibilityLayer {
+    pub compatibility: ConfigCompatibility,
+    pub profile_label: Option<String>,
+}
+
+impl CompatibilityLayer {
+    pub fn new(compatibility: ConfigCompatibility, profile_label: Option<String>) -> Self {
+        Self {
+            compatibility,
+            profile_label,
+        }
+    }
+}
+
+/// 互換性解決に使用するソース。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConfigCompatibilitySource {
+    Cli,
+    Env,
+    Manifest,
+    Default,
+}
+
+impl ConfigCompatibilitySource {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ConfigCompatibilitySource::Cli => "cli",
+            ConfigCompatibilitySource::Env => "env",
+            ConfigCompatibilitySource::Manifest => "manifest",
+            ConfigCompatibilitySource::Default => "default",
+        }
+    }
+}
+
+/// `resolve_compat` の入力。
+#[derive(Debug, Clone, Default)]
+pub struct ResolveCompatOptions {
+    pub format: ConfigFormat,
+    pub stage: StageId,
+    pub cli: Option<CompatibilityLayer>,
+    pub env: Option<CompatibilityLayer>,
+    pub manifest: Option<CompatibilityLayer>,
+}
+
+/// 解決後の互換設定。
+#[derive(Debug, Clone)]
+pub struct ResolvedConfigCompatibility {
+    pub format: ConfigFormat,
+    pub source: ConfigCompatibilitySource,
+    pub profile_label: Option<String>,
+    pub compatibility: ConfigCompatibility,
+}
+
+impl ResolvedConfigCompatibility {
+    fn from_layer(
+        format: ConfigFormat,
+        source: ConfigCompatibilitySource,
+        layer: CompatibilityLayer,
+    ) -> Self {
+        Self {
+            format,
+            source,
+            profile_label: layer.profile_label,
+            compatibility: layer.compatibility,
+        }
+    }
+}
+
+/// CLI > Env > Manifest > Default の優先順位で互換設定を決定する。
+pub fn resolve_compat(options: ResolveCompatOptions) -> ResolvedConfigCompatibility {
+    if let Some(layer) = options.cli {
+        return ResolvedConfigCompatibility::from_layer(
+            options.format,
+            ConfigCompatibilitySource::Cli,
+            layer,
+        );
+    }
+    if let Some(layer) = options.env {
+        return ResolvedConfigCompatibility::from_layer(
+            options.format,
+            ConfigCompatibilitySource::Env,
+            layer,
+        );
+    }
+    if let Some(layer) = options.manifest {
+        return ResolvedConfigCompatibility::from_layer(
+            options.format,
+            ConfigCompatibilitySource::Manifest,
+            layer,
+        );
+    }
+    let compatibility = compatibility_profile_for_stage(options.format, options.stage);
+    ResolvedConfigCompatibility {
+        format: options.format,
+        source: ConfigCompatibilitySource::Default,
+        profile_label: Some(default_profile_label(options.format, options.stage)),
+        compatibility,
+    }
+}
+
+fn default_profile_label(format: ConfigFormat, stage: StageId) -> String {
+    match (format, stage) {
+        (ConfigFormat::Json, StageId::Stable) => "strict-json".to_string(),
+        (ConfigFormat::Json, _) => "json-relaxed".to_string(),
+        (ConfigFormat::Toml, StageId::Alpha) => "toml-strict".to_string(),
+        (ConfigFormat::Toml, _) => "toml-relaxed".to_string(),
+    }
 }
 
 /// コンフィグ設定の互換違反種別。

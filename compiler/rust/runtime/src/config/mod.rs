@@ -7,19 +7,21 @@ pub mod collection_diff;
 pub mod manifest;
 
 pub use compat::{
-    compatibility_profile, compatibility_violation_diagnostic, CommentPair,
-    CompatibilityDiagnosticBuilder, CompatibilityProfile, CompatibilityProfileError,
-    CompatibilityViolationKind, ConfigCompatibility, ConfigFormat, ConfigTriviaProfile,
-    DuplicateKeyPolicy, KeyPolicy, NumberCompatibility, TrailingCommaMode,
+    compatibility_profile, compatibility_profile_for_stage, compatibility_violation_diagnostic,
+    resolve_compat, CommentPair, CompatibilityDiagnosticBuilder, CompatibilityLayer,
+    CompatibilityProfile, CompatibilityProfileError, CompatibilityViolationKind, ConfigCompatibility,
+    ConfigCompatibilitySource, ConfigFormat, ConfigTriviaProfile, DuplicateKeyPolicy, KeyPolicy,
+    NumberCompatibility, ResolveCompatOptions, ResolvedConfigCompatibility, TrailingCommaMode,
     CONFIG_COMPAT_DUPLICATE_KEY_CODE, CONFIG_COMPAT_NUMBER_CODE,
     CONFIG_COMPAT_TRAILING_COMMA_CODE, CONFIG_COMPAT_UNQUOTED_KEY_CODE,
 };
 pub use collection_diff::{ChangeKind, ConfigChange, SchemaDiff, SchemaDiffMetadata};
 pub use manifest::{
     declared_effects, load_manifest, update_dsl_signature, validate_manifest, CapabilityId,
-    Contact, DependencySpec, DslEntry, DslExportRef, DslExportSignature, DslSignatureStageBounds,
-    Manifest, ManifestBuilder, ManifestLoader, ManifestParseError, OptimizeLevel, PackageName,
-    ProjectKind, ProjectSection, ProjectStage, RegistrySection, SemanticVersion, TargetTriple,
+    ConfigCompatibilityEntry, ConfigRoot, Contact, DependencySpec, DslEntry, DslExportRef,
+    DslExportSignature, DslSignatureStageBounds, Manifest, ManifestBuilder, ManifestLoader,
+    ManifestParseError, OptimizeLevel, PackageName, ProjectKind, ProjectSection, ProjectStage,
+    RegistrySection, SemanticVersion, TargetTriple,
 };
 
 use std::{

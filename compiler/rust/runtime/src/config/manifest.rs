@@ -1,4 +1,11 @@
-use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic};
+use super::compat::{
+    compatibility_profile_for_stage, CompatibilityLayer, ConfigCompatibility, ConfigFormat,
+    ConfigTriviaProfile, DuplicateKeyPolicy, KeyPolicy, NumberCompatibility, TrailingCommaMode,
+};
+use crate::{
+    prelude::ensure::{DiagnosticSeverity, GuardDiagnostic},
+    stage::StageId,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Map, Value};
 use std::{
@@ -35,6 +42,8 @@ pub struct Manifest {
     pub build: BuildSection,
     #[serde(default)]
     pub registry: RegistrySection,
+    #[serde(default)]
+    pub config: ConfigRoot,
     #[serde(skip)]
     manifest_path: Option<PathBuf>,
 }
@@ -53,12 +62,84 @@ impl Manifest {
         self
     }
 
+    pub fn config_section(mut self, config: ConfigRoot) -> Self {
+        self.config = config;
+        self
+    }
+
     pub fn parse_toml(input: &str) -> Result<Self, ManifestParseError> {
         let mut manifest: Manifest = de::from_str(input).map_err(ManifestParseError::from)?;
         for entry in manifest.dsl.values_mut() {
             entry.ensure_sane_defaults();
         }
         Ok(manifest)
+    }
+
+    /// マニフェストからフォーマット別互換レイヤーを取得する。
+    pub fn compatibility_layer(
+        &self,
+        format: ConfigFormat,
+        stage: StageId,
+    ) -> Option<CompatibilityLayer> {
+        let entry = self
+            .config
+            .compatibility
+            .get(format.as_str())
+            .or_else(|| self.config.compatibility.get(&format.as_str().to_string()))?;
+        let base = compatibility_profile_for_stage(format, stage);
+        Some(entry.to_layer(base))
+    }
+}
+
+/// `config` ルートセクション。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ConfigRoot {
+    #[serde(default)]
+    pub compatibility: BTreeMap<String, ConfigCompatibilityEntry>,
+}
+
+/// `config.compatibility.<format>` の項目。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ConfigCompatibilityEntry {
+    #[serde(default)]
+    pub profile: Option<String>,
+    #[serde(default)]
+    pub trailing_comma: Option<TrailingCommaMode>,
+    #[serde(default)]
+    pub unquoted_key: Option<KeyPolicy>,
+    #[serde(default)]
+    pub duplicate_key: Option<DuplicateKeyPolicy>,
+    #[serde(default)]
+    pub number: Option<NumberCompatibility>,
+    #[serde(default)]
+    pub trivia: Option<ConfigTriviaProfile>,
+    #[serde(default)]
+    pub feature_guard: Option<BTreeSet<String>>,
+}
+
+impl ConfigCompatibilityEntry {
+    fn to_layer(&self, base: ConfigCompatibility) -> CompatibilityLayer {
+        let mut compatibility = base;
+        if let Some(value) = self.trailing_comma {
+            compatibility.trailing_comma = value;
+        }
+        if let Some(value) = self.unquoted_key {
+            compatibility.unquoted_key = value;
+        }
+        if let Some(value) = self.duplicate_key {
+            compatibility.duplicate_key = value;
+        }
+        if let Some(value) = self.number {
+            compatibility.number = value;
+        }
+        if let Some(trivia) = &self.trivia {
+            compatibility.trivia = trivia.clone();
+        }
+        if let Some(feature_guard) = &self.feature_guard {
+            compatibility.feature_guard = feature_guard.clone();
+        }
+        let profile_label = self.profile.as_ref().map(|value| value.to_string());
+        CompatibilityLayer::new(compatibility, profile_label)
     }
 }
 

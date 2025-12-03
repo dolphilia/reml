@@ -44,6 +44,11 @@ use reml_frontend::typeck::{
     TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics, TypecheckReport,
     TypecheckViolation, TypecheckViolationKind, TypedFunctionSummary,
 };
+use reml_runtime::config::{
+    compatibility_profile, resolve_compat, CompatibilityLayer, CompatibilityProfileError,
+    ConfigFormat, ResolveCompatOptions, ResolvedConfigCompatibility,
+};
+use reml_runtime::stage::StageId as RuntimeStageId;
 use reml_runtime::text::LocaleId;
 use serde::Serialize;
 use uuid::Uuid;
@@ -525,6 +530,11 @@ struct RunSettings {
     lex_identifier_locale: Option<LocaleId>,
     diagnostic_filter: Option<DiagnosticFilter>,
     audit_policy: Option<AuditPolicy>,
+    config_compat_cli: Option<CompatibilityLayer>,
+    config_compat_env: Option<CompatibilityLayer>,
+    config_compat_manifest: Option<CompatibilityLayer>,
+    config_stage: RuntimeStageId,
+    config_format: ConfigFormat,
 }
 
 impl Default for RunSettings {
@@ -540,6 +550,11 @@ impl Default for RunSettings {
             lex_identifier_locale: None,
             diagnostic_filter: None,
             audit_policy: None,
+            config_compat_cli: None,
+            config_compat_env: None,
+            config_compat_manifest: None,
+            config_stage: RuntimeStageId::Stable,
+            config_format: ConfigFormat::Toml,
         }
     }
 }
@@ -589,6 +604,24 @@ impl RunSettings {
                 Value::Object(payload)
             });
         }
+        let resolved_compat = self.resolve_config_compat();
+        config.set_config_compat(resolved_compat.clone());
+        config = config.with_extension("config", |existing| {
+            let mut payload = existing
+                .and_then(|value| value.as_object().cloned())
+                .unwrap_or_default();
+            if let Ok(value) = serde_json::to_value(&resolved_compat.compatibility) {
+                payload.insert("compatibility".to_string(), value);
+            }
+            payload.insert(
+                "compatibility_source".to_string(),
+                json!(resolved_compat.source.as_str()),
+            );
+            if let Some(label) = &resolved_compat.profile_label {
+                payload.insert("compatibility_profile".to_string(), json!(label));
+            }
+            Value::Object(payload)
+        });
         config
     }
 
@@ -607,6 +640,32 @@ impl RunSettings {
             .entry("profile".to_string())
             .or_insert_with(|| json!("strict_json"));
         Value::Object(payload)
+    }
+
+    fn resolve_config_compat(&self) -> ResolvedConfigCompatibility {
+        resolve_compat(ResolveCompatOptions {
+            format: self.config_format,
+            stage: self.config_stage,
+            cli: self.config_compat_cli.clone(),
+            env: self.config_compat_env.clone(),
+            manifest: self.config_compat_manifest.clone(),
+        })
+    }
+
+    fn set_config_stage(&mut self, stage: RuntimeStageId) {
+        self.config_stage = stage;
+    }
+
+    fn apply_cli_config_profile(
+        &mut self,
+        label: &str,
+    ) -> Result<(), CompatibilityProfileError> {
+        let compatibility = compatibility_profile(label)?;
+        self.config_compat_cli = Some(CompatibilityLayer::new(
+            compatibility,
+            Some(label.to_string()),
+        ));
+        Ok(())
     }
 
     fn diagnostic_filter(&self) -> Option<&DiagnosticFilter> {
@@ -1243,6 +1302,12 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     }
                 }
             }
+            "--config-compat" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--config-compat はプロファイル名を伴う必要があります")?;
+                run_config.apply_cli_config_profile(&value)?;
+            }
             "--config" => {
                 let path = args
                     .next()
@@ -1317,6 +1382,12 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         &runtime_capabilities,
         target_inference.profile.triple.as_deref(),
     );
+    let compat_stage = cli_stage_override
+        .as_ref()
+        .or_else(|| runtime_stage.as_ref().map(|req| req.base_stage()))
+        .map(|stage| convert_stage_id(stage))
+        .unwrap_or(RuntimeStageId::Stable);
+    run_config.set_config_stage(compat_stage);
     let recover = RecoverConfig {
         emit_expected_tokens: recover_expected_tokens.unwrap_or(true),
         emit_context: recover_context.unwrap_or(true),
@@ -1378,6 +1449,7 @@ fn print_help(program_name: &str) {
   --emit-typed-ast <PATH>        型付き AST を JSON で保存
   --emit-constraints <PATH>      Typecheck 制約を JSON で保存
   --emit-typeck-debug <PATH>     型推論デバッグ情報を JSON で保存
+  --config-compat <PROFILE>      設定ファイル互換プロファイルを指定 (strict-json / json-relaxed 等)
   --emit-effects-metrics <PATH>  効果メトリクスを JSON で保存
   --emit-diagnostics             標準出力へ診断 JSON を出力
   --emit-audit-log               Audit メタデータを出力（--emit-audit も利用可能）
@@ -1406,6 +1478,15 @@ fn parse_on_off(value: &str) -> Result<bool, String> {
         "on" | "true" | "1" => Ok(true),
         "off" | "false" | "0" => Ok(false),
         other => Err(format!("値 `{other}` は on/off ではありません")),
+    }
+}
+
+fn convert_stage_id(stage: &StageId) -> RuntimeStageId {
+    match stage.as_str().to_ascii_lowercase().as_str() {
+        "stable" => RuntimeStageId::Stable,
+        "beta" => RuntimeStageId::Beta,
+        "alpha" => RuntimeStageId::Alpha,
+        _ => RuntimeStageId::Experimental,
     }
 }
 
@@ -1656,6 +1737,18 @@ fn build_config_extension(run_config: &RunConfig, args: &CliArgs) -> Value {
     }
     if let Some(path) = args.config_path.as_ref() {
         config.insert("path".to_string(), json!(path.display().to_string()));
+    }
+    if let Some(resolved) = run_config.config_compat() {
+        config.insert(
+            "compatibility_source".to_string(),
+            json!(resolved.source.as_str()),
+        );
+        if let Some(label) = &resolved.profile_label {
+            config.insert("compatibility_profile".to_string(), json!(label));
+        }
+        if let Ok(value) = serde_json::to_value(&resolved.compatibility) {
+            config.insert("compatibility".to_string(), value);
+        }
     }
     Value::Object(config)
 }

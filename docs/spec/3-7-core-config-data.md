@@ -157,6 +157,15 @@ fn with_compat(cfg: RunConfig, compat: ConfigCompatibility) -> RunConfig
 - `ConfigCompatibility::stable(format)` はフォーマットごとの列挙値（例: TOML は bare key を `AllowAlphaNumeric` まで許可）を Stage::Stable 基準で返す。`compatibility_profile(format, Stage::Stable)` の返り値と等価であり、CLI が厳格プロファイルを初期化する際の省略形として利用する。
 - 仕様変更で既定値を緩和する場合は `AuditEvent::ConfigCompatChanged`（3-6 §1.1.1）を必須とし、`AuditEnvelope.metadata` へ `config.source` / `config.format` / `config.profile` / `config.compatibility` を必ず記録する。マニフェストの `config.compatibility.<format>` には `compatibility=relaxed` などのタグを追加し、履歴を追跡可能にする。
 
+```toml
+[config.compatibility.json]
+profile = "json-relaxed"
+trailing_comma = "arrays"
+feature_guard = ["json5", "bare_keys"]
+```
+
+上記のように `config.compatibility.<format>` テーブルへ列挙体の文字列表現を記述すると、`Manifest::compatibility_layer` と CLI が Stage 情報に応じて `ConfigCompatibility` を再構築する。
+
 #### 1.5.2 解決順序と責務
 
 `resolve_compat` は以下の優先順位でプロファイルを決定する：
@@ -166,7 +175,7 @@ fn with_compat(cfg: RunConfig, compat: ConfigCompatibility) -> RunConfig
 3. `reml.toml` の `config.compatibility.<format>` を Stage と feature guard を検証した上でマージし、欠落フィールドは厳格プロファイル側を優先する。
 4. それ以外は `ConfigCompatibility::stable(format)`（=`compatibility_profile(format, Stage::Stable)`）へフォールバックする。
 
-互換モードを切り替えた際は `Core.Diagnostics` が `AuditEvent::ConfigCompatChanged` を記録し、`Diagnostic.severity` を `Warning` 以上に設定することで 0-1 §1.2 の安全性を維持する。CLI/LSP/ビルドは `resolve_compat` の結果を共通で使用し、環境差異による設定解析の不一致を防止する。また CLI/CI は優先順位が実装どおりであることを保証するための準拠テスト（CLI 指定 > 環境変数 > マニフェスト > 既定値）を `Core.TestKit::config_compat_order` で提供し、逆順の上書きが発生した場合はビルドを失敗させる。
+互換モードを切り替えた際は `Core.Diagnostics` が `AuditEvent::ConfigCompatChanged` を記録し、`Diagnostic.severity` を `Warning` 以上に設定することで 0-1 §1.2 の安全性を維持する。CLI/LSP/ビルドは `resolve_compat` の結果を共通で使用し、環境差異による設定解析の不一致を防止する。また CLI/CI は優先順位が実装どおりであることを保証するための準拠テスト（CLI 指定 > 環境変数 > マニフェスト > 既定値）を `Core.TestKit::config_compat_order` で提供し、逆順の上書きが発生した場合はビルドを失敗させる。Rust 実装の CLI (`reml_frontend --config-compat <profile>`) はこの優先順位の第 1 層を直接操作するエントリポイントとして実装されており、互換プロファイル名を解析できなかった場合は CLI で即座にエラーを返す。
 
 このワークフローにより、マニフェスト・言語仕様・CLI が同じ DSL メタデータと互換モードを共有できる。詳細な記述ガイドは `../guides/manifest-authoring.md` と `../guides/config-compatibility.md`（新規作成予定）で扱う。
 

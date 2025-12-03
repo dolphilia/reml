@@ -13,6 +13,7 @@ use crate::streaming::{
 use crate::token::Token;
 use crate::unicode::UnicodeDetail;
 use indexmap::IndexMap;
+use reml_runtime::config::ResolvedConfigCompatibility;
 use serde_json::Value;
 use std::str::FromStr;
 
@@ -55,6 +56,7 @@ pub struct RunConfig {
     pub legacy_result: bool,
     pub locale: Option<String>,
     pub extensions: IndexMap<String, Value>,
+    pub config_compat: Option<ResolvedConfigCompatibility>,
 }
 
 impl Default for RunConfig {
@@ -69,6 +71,7 @@ impl Default for RunConfig {
             legacy_result: false,
             locale: None,
             extensions: IndexMap::new(),
+            config_compat: None,
         }
     }
 }
@@ -98,6 +101,15 @@ impl RunConfig {
     /// 指定されたネームスペースを取得する。
     pub fn extension(&self, key: &str) -> Option<&Value> {
         self.extensions.get(key)
+    }
+
+    /// 解析時に使用した互換プロファイルを保持する。
+    pub fn set_config_compat(&mut self, resolved: ResolvedConfigCompatibility) {
+        self.config_compat = Some(resolved);
+    }
+
+    pub fn config_compat(&self) -> Option<&ResolvedConfigCompatibility> {
+        self.config_compat.as_ref()
     }
 }
 

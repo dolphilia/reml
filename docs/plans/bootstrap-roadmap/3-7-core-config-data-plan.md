@@ -81,6 +81,13 @@
     - `resolve_compat` は `Result<CompatibilitySet, Diagnostic>` を返すよう統一し、実験的フラグは環境変数 `REML_CONFIG_EXPERIMENTAL` で切り替え可能にする。
     - CLI (`reml config lint`) と LSP で互換性設定が反映されることを `docs/guides/ai-integration.md` §6 のシナリオで QA し、結果を `reports/spec-audit/ch3/config_compatibility-lsp.md` に記録する。
 
+#### 3.3 実施結果（Run ID: 20250214-config-resolve）
+- `compiler/rust/runtime/src/config/compat.rs` に Stage/Format 別の `compatibility_profile_for_stage`・優先順位付き `resolve_compat`・`CompatibilityLayer`/`ResolvedConfigCompatibility` を追加し、CLI / Env / Manifest / Default の 4 レイヤーから最終プロファイルを決定できるようにした。`resolve_compat` は `ConfigCompatibilitySource::{Cli,Env,Manifest,Default}` を記録し、診断・監査メタデータで `config.compatibility_source` を共有する。
+- `compiler/rust/runtime/src/config/manifest.rs` に `[config.compatibility.<format>]` セクションのシリアライザを実装。`Manifest::compatibility_layer` が `config.compatibility.json` などの値を `CompatibilityLayer` へ変換し、Stage に応じた `ConfigCompatibility` とプロファイルラベルを構築できる。TOML パース時は後方互換性を崩さないよう新フィールドへ `#[serde(default)]` を付与。
+- `compiler/rust/runtime/tests/config_compat.rs` へ解決順序/マニフェスト構文の単体テストを追加し、`ConfigCompatibilitySource` が CLI > Env > Manifest > Default で選ばれることと、manifest の `feature_guard` が `ConfigCompatibility` へ反映されることを検証した。
+- `compiler/rust/frontend/src/parser/api.rs` の `RunConfig` に `config_compat: Option<ResolvedConfigCompatibility>` を追加、`build_config_extension` で `compatibility` 情報を JSON 化し `parser.runconfig.extensions.config.compatibility_*` を埋めるようにした。CLI 側（`reml_frontend`）は `--config-compat <profile>` オプションを追加し、Stage（`--effect-stage`/`--effect-stage-runtime`）情報から `RuntimeStageId` に変換した上で `resolve_compat` を呼び出して `RunConfig` に保持する。ヘルパ `convert_stage_id` で Chapter1 Stage ID を Runtime Stage へマップしている。
+- `docs/spec/3-7-core-config-data.md` §1.5 に manifest テーブル例と Rust CLI の `--config-compat` 設定例を追記し、優先順位の第 1 層（CLI オプション）が実装済みであることを明記した。
+
 #### 3.1 実施結果（Run ID: 20251203-schema-core-data）
 - `compiler/rust/runtime/src/data/{mod.rs,schema.rs}` に `Schema`/`Field`/`ValidationRule`/`SchemaDiff` を実装し、ビルダー API・差分検出・`FieldAttribute` を仕様 3-7 §2 の構造と整合させた。`SchemaDataType` は JSON/TOML 双方のエイリアスをサポートする列挙体として導入し、`FieldBuilder`/`ValidationRuleBuilder` で `effect {config}` 拡張の基礎を揃えた。
 - 差分の可視化用途として `compiler/rust/runtime/examples/schema_diff_demo.rs` を作成し、`SchemaDiff::between` を JSON 化するフローをサンプルコード化。生成物は `reports/spec-audit/ch3/schema_diff-20251203.md` に貼り付け、Cargo のチェックサム問題が解消され次第 `cargo run --manifest-path compiler/rust/runtime/Cargo.toml --example schema_diff_demo` を実行して更新する方針を記載した。
