@@ -29,6 +29,21 @@
     - ロード→正規化→検証→差分出力の順序をシーケンシャルに書き出し、各フェーズで必要な型（`ManifestBuilder`, `SchemaValidator`, `ChangeSetEmitter` 等）を割り当てる。
     - TOML/JSON 変換で許容するコメント・未使用キーの挙動を `docs/spec/3-7-core-config-data.md` へフィードバックするため、発見事項は `docs/notes/core-library-outline.md` に暫定記録する。
 
+#### 1.1 実施結果（Run ID: 20251203-config-api-diff）
+- `reports/spec-audit/ch3/config_data_api_diff.md` に仕様 §1〜§5 で定義された API と `compiler/rust/runtime/src/config/{mod.rs,collection_diff.rs}` の `grep -R "pub "` 結果を整理した表を追加し、Manifest/Schema/Compatibility/Migration API が全て未実装であること、唯一存在する `ChangeSet` ラッパも Core.Collections 依存で Config/Data の効果タグを欠いていることを明示した。
+- Appendix の **API Matrix** を更新し、仕様で要求される 9 カテゴリの API を `ステータス`（未着手/一部/既存）と `主要差分` 付きで列挙した。Rust 実装が存在するのは `merge_maps_with_audit` と `SchemaDiff` ラッパのみであり、Manifest/Schema/ConfigCompatibility/Migration/CLI 群はすべて空であることが確認できる。
+- `compiler/ocaml/` 以下に `manifest`/`schema`/`config` 系ファイルが存在しない点をログに残し、Rust 実装が完全なグリーンフィールドになることを `docs/plans/rust-migration/appendix/glossary-alignment.md` へフィードバックする前提作業として記録した。
+
+#### 1.2 実施結果（Run ID: 20251203-config-effects-trace）
+- `reports/spec-audit/ch3/config_effects-trace.md` に `effect {config,audit,io,migration}` の責務と現状を整理。`compiler/rust/frontend/src/diagnostic` に `config` 系メッセージや `ConfigDiagnosticExtension` が存在しないこと、`AuditEnvelope.metadata["config.*"]` を埋める経路が無いことを `grep -R "config" compiler/rust/frontend/src/diagnostic` の結果とともに記録した。
+- `docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` で既に定義された `config.*` KPI（`config_diagnostics_pass_rate` 等）に合わせ、Config/API 実装で必要となるフロー（`load_manifest` で `effect {config}` 付与 → `resolve_compat` で `effect {io}` → `ChangeSet` 出力で `effect {audit}` → 将来の `MigrationPlan` で `effect {migration}`）を再確認。Plan 本文にも `Config` 診断テンプレート新設と Stage/Audit 連携をフォローアップタスクとして残した。
+- CLI で `RunConfig.extensions["config"]` に値を入れている箇所（`compiler/rust/frontend/src/bin/reml_frontend.rs:2243-2265`）は `parser.runconfig` メタデータ生成専用であり、Config/Data API とは未接続であることをログに記載。これにより `effect {config}` のみならず `config.path`/`config.source` などのキーを再利用できる下地が無い点を共有した。
+
+#### 1.3 実施結果（Run ID: 20251203-config-serialization）
+- `docs/notes/core-library-outline.md` に「Config/Data シリアライズ検討ログ（2025-12-03）」を追加し、ロード→正規化→検証→差分出力の順序と `effect` 境界、`toml_edit` 採用方針、`Diagnostic`/`AuditEnvelope` で共有する `config.*` メタデータの最小集合を記録。これを Appendix の Serialization Decision Log と同期する。
+- `examples/` 配下に `reml.toml` や `schema.reml` が存在しないこと、`Cargo.toml` に `toml` 関連依存が無いことを確認してログへ追記。Manifest/Schema CLI を実装する前提で `serde_json` の既存依存を活用し、`toml_edit` を優先候補に設定した。
+- Appendix の **Serialization Decision Log** にライブラリ候補・採用理由・影響範囲（CLI/LSP/Audit）を追記し、`docs/spec/3-7-core-config-data.md#1.5` へのフィードバック先・`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI との関係を整理した。
+
 ### 2. Manifest モジュール実装（53-54週目）
 **担当領域**: `reml.toml`
 
@@ -136,8 +151,35 @@
 - レジストリ連携で追加機能が必要になった場合、`docs/notes/dsl-plugin-roadmap.md` に記録し、エコシステム計画 (5-x) と調整する。
 
 ## Appendix（更新指針）
-- **API Matrix**: `docs/spec/3-7-core-config-data.md` と Rust/OCaml 実装の API 対応表をここで管理し、章番号・ファイルパスを列に持たせる。
-- **Serialization Decision Log**: TOML/JSON/独自表現に関する選定理由、採用ライブラリ、互換性リスクを時系列で記録する。
+
+### Appendix A. API Matrix（Run ID: 20251203-config-api-diff）
+`reports/spec-audit/ch3/config_data_api_diff.md` で抽出した一覧を計画書側にも掲載し、章横断で参照できるようにする。
+
+| 仕様 API/型 | 参照 | Rust 実装 | ステータス | 主要差分 |
+| --- | --- | --- | --- | --- |
+| Manifest/ProjectSection/BuildSection | 3-7 §1.1 | 実装なし | ❌ 未着手 | `compiler/rust/runtime/src/config/manifest.rs` が存在せず、TOML デシリアライズができない。 |
+| `load_manifest`/`validate_manifest`/`declared_effects`/`update_dsl_signature`/`iter_dsl` | 3-7 §1.2 | 実装なし | ❌ 未着手 | `effect {io,config}` を伴う入口が未定義。 |
+| DSL エクスポート同期 (`expect_effects`, `signature.stage_bounds`) | 3-7 §1.3-1.4 | 実装なし | ❌ 未着手 | `compiler/rust/frontend/src/dsl/` との橋渡しが皆無。 |
+| `ConfigCompatibility` / `compatibility_profile` / `resolve_compat` | 3-7 §1.5 | 実装なし | ❌ 未着手 | `Cargo.toml` に TOML パーサ依存が無く、互換モード API が無い。 |
+| Config 診断 (`ConfigDiagnosticExtension`, `config.*` コード) | 3-7 §1.5.3, 3-6 §6.1.3 | 実装なし | ❌ 未着手 | `compiler/rust/frontend/src/diagnostic/messages/` に `config` 用ファイルが無い。 |
+| `Schema<T>` / `SchemaBuilder` / `SchemaDiff<T>` / `diff` / `plan` / `validate` | 3-7 §2, §3 | 実装なし | ❌ 未着手 | Schema 操作用のファイルが無く、`ChangeSet` 連携も不可。 |
+| `SchemaDiff` / `ConfigChange` / `ChangeKind` | 3-7 §2.1, §4 | `compiler/rust/runtime/src/config/collection_diff.rs` | ⚠️ 一部 | JSON 変換と `ChangeSet` 往復のみ実装。Stage/Policy 初期値が固定。 |
+| `merge_maps_with_audit` / `write_change_set*` / `CollectionsChangeSetEnv` | 3-7 §4 | `compiler/rust/runtime/src/config/mod.rs` | ⚠️ 既存 | `PersistentMap` 前提の差分マージは存在。ただし Config/Data API と直接結合していない。 |
+| `MigrationPlan` / `MigrationStep` / `validate_migration` | 3-7 §5 | 実装なし | ❌ 未着手 | `effect {migration}` を生成するルート無し。 |
+| CLI (`reml config lint/diff`) / サンプル (`examples/core_config`) | 3-7 §0 | 実装なし | ❌ 未着手 | CLI コマンドとゴールデンファイル不在。 |
+
+### Appendix B. Serialization Decision Log（Run ID: 20251203-config-serialization）
+`docs/notes/core-library-outline.md#configdata-シリアライズ検討ログ2025-12-03` と同期する決定事項を抜粋する。
+
+| 項目 | 候補/決定 | 根拠 | 影響範囲 |
+| --- | --- | --- | --- |
+| TOML パーサ | `toml_edit` を最優先、`toml`（serde フレンドリ）をバックアップ | `reml.toml` でコメント保持・既存書式維持が必須のため。`Cargo.toml` に依存が無かったので追加前提。 | `compiler/rust/runtime` / `compiler/rust/frontend` / CLI (`reml config lint/diff`) |
+| JSON 変換 | 既存 `serde_json` を継続利用 | 仕様 3-7 §2/§4 が JSON 例を前提にしており、既に依存済み。 | SchemaDiff/ChangeSet/Audit ログ (`reports/spec-audit/ch3`), CLI/LSP |
+| シリアライズ順序 | **Load → 正規化 → 検証 → 差分出力** を固定 | 仕様 3-7 §1.5, §2 の指針を Rust でも忠実に再現。`effect` 境界を分離できる。 | Manifest Loader / Schema Validator / `collect-iterator-audit-metrics --section config` |
+| 診断/Audit メタデータ | `config.path`, `config.key_path`, `config.source`, `config.profile`, `config.compatibility`, `config.feature_guard`, `config.diff` を最小集合として統一 | `docs/spec/3-6-core-diagnostics-audit.md#6.1.3` の要求と `RunConfig.extensions["config"]` の再利用性を一致させるため | CLI/LSP/`AuditEvent::ConfigCompatChanged`、`tooling/scripts/validate-diagnostic-json.sh --suite config` |
+| TODO / 未決 | `Schema` サンプルと CLI ゴールデンの参照先（`examples/core_config/`）を新設 | `examples/` に `reml.toml`/`schema.reml` がないため。 | `tooling/examples/run_examples.sh --suite core_config`（新設予定） |
+
+> **メモ**: このログはフェーズ毎に追記し、ライブラリ追加・CLI 実装・RunConfig 連携の判断をここから逆引きできるよう維持する。
 
 ## 参考資料
 - [3-7-core-config-data.md](../../spec/3-7-core-config-data.md)

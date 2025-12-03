@@ -20,6 +20,11 @@
 | 4.9 | Core Runtime & Capability Registry | GC capability、メトリクス API、プラグイン／Capability の統合窓口 + 使用例 | ✍️ ドラフト執筆中 |
 | 4.10 | Core Async / FFI / Unsafe（将来拡張） | `Future`/`Task`、`ffi` 効果、`unsafe` 境界、互換性ポリシー（調査メモ） | 🧭 ドラフトメモ更新中 |
 
+### Config/Data シリアライズ検討ログ（2025-12-03）
+- 仕様 3-7 §1.5（ConfigCompatibility）・§2（Schema）・§4（ChangeSet/Audit）で要求される **ロード→正規化→検証→差分出力** の順序を Rust 版でもそのまま採用する。`load_manifest` は `effect {io,config}`、`validate_manifest` や `Schema::validate` は `@pure` + `Diagnostic` 構築、`ChangeSet` 出力時に `effect {audit}` を発火させる責務分割で整理する。
+- `compiler/rust/runtime/Cargo.toml` と `compiler/rust/frontend/Cargo.toml` を確認し、`toml`/`toml_edit` 依存が存在しないことを明記。コメント保持が必要な `reml.toml` 編集 CLI に備えて `toml_edit` + `serde::Deserialize` の組合せを優先候補として記録し、JSON 系は既存の `serde_json` 依存で賄う。
+- `Diagnostic`/`AuditEnvelope` へ投影する Config メタデータ（`config.path`, `config.key_path`, `config.profile`, `config.compatibility`, `config.feature_guard`, `config.diff`）は `serde_json::Value` で統一し、CLI/LSP/監査ログが同じ構造を共有するよう記述した。`resolve_compat` の結果を `RunConfig.extensions["config"]` に保存し、`AuditEvent::ConfigCompatChanged` が同じフィールドを再利用する計画。
+- TOML/JSON 変換時の許容コメント・未使用キー挙動は `docs/spec/3-7-core-config-data.md#15-互換モード` へフィードバック予定。優先順位と採用ライブラリは `docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md#appendix` の Serialization Decision Log から逆引きできるようにする。
 
 ## 3. 索引用ハイレベルリンク
 - Chapter 2（Core.Parse）から Chapter 4 への参照は、`use Core` 経由での導入例とパーサ以外のユーティリティを対比して整理する。【F:2-1-parser-type.md†L1-L9】
