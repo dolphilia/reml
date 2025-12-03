@@ -35,6 +35,15 @@ try:
 except ModuleNotFoundError:  # pragma: no cover
     tomllib = None
 
+COLLECTOR_DIAGNOSTICS_DEFAULT = Path(
+    "reports/spec-audit/ch1/core_iter_collectors.json"
+)
+COLLECTOR_AUDIT_DEFAULT = Path(
+    "reports/spec-audit/ch1/core_iter_collectors.audit.jsonl"
+)
+CORE_COLLECTIONS_THRESHOLD_PATH = Path(
+    "docs/plans/bootstrap-roadmap/assets/metrics/core_collections_thresholds.json"
+)
 
 # Required audit metadata keys (logical name, candidate paths, allow_empty, allow_null).
 class RequiredField(Tuple[str, Tuple[str, ...], bool, bool]):
@@ -418,6 +427,131 @@ def _coerce_float_value(value: Optional[object]) -> Optional[float]:
         except ValueError:
             return None
     return None
+
+
+def _lookup_metric_value(
+    metric: Optional[Dict[str, Any]], field: str
+) -> Optional[object]:
+    if not isinstance(metric, dict):
+        return None
+    exists, value = _lookup_in_container(metric, field)
+    if exists:
+        return value
+    return None
+
+
+def _find_metric_entry(
+    metrics: Sequence[Dict[str, Any]],
+    metric_name: str,
+    scenario: Optional[str],
+) -> Optional[Dict[str, Any]]:
+    for candidate in metrics:
+        if not isinstance(candidate, dict):
+            continue
+        if candidate.get("metric") != metric_name:
+            continue
+        if scenario and candidate.get("scenario") != scenario:
+            continue
+        return candidate
+    return None
+
+
+def load_threshold_entries(path: Path) -> List[Dict[str, Any]]:
+    data = load_json(path)
+    if isinstance(data, list):
+        entries = [entry for entry in data if isinstance(entry, dict)]
+    elif isinstance(data, dict):
+        raw_entries = data.get("thresholds")
+        if isinstance(raw_entries, list):
+            entries = [entry for entry in raw_entries if isinstance(entry, dict)]
+        else:
+            entries = []
+    else:
+        entries = []
+    return entries
+
+
+def evaluate_thresholds(
+    entries: Sequence[Dict[str, Any]],
+    metrics: Sequence[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], List[str]]:
+    results: List[Dict[str, Any]] = []
+    failures: List[str] = []
+
+    for entry in entries:
+        metric_name = entry.get("metric")
+        field = entry.get("field")
+        if not isinstance(metric_name, str) or not metric_name:
+            continue
+        if not isinstance(field, str) or not field:
+            continue
+        scenario = entry.get("scenario")
+        if scenario is not None and not isinstance(scenario, str):
+            scenario = None
+
+        candidate_metric = _find_metric_entry(metrics, metric_name, scenario)
+        result_entry: Dict[str, Any] = {
+            "metric": metric_name,
+            "scenario": scenario,
+            "field": field,
+        }
+
+        if candidate_metric is None:
+            result_entry["status"] = "metric_missing"
+            message = (
+                f"threshold metric missing: {metric_name}"
+                + (f" ({scenario})" if scenario else "")
+            )
+            if message not in failures:
+                failures.append(message)
+            results.append(result_entry)
+            continue
+
+        raw_value = _lookup_metric_value(candidate_metric, field)
+        numeric_value = _coerce_float_value(raw_value)
+        result_entry["value"] = raw_value
+
+        if numeric_value is None:
+            result_entry["status"] = "value_missing"
+            message = (
+                f"threshold field missing: {metric_name}.{field}"
+                + (f" ({scenario})" if scenario else "")
+            )
+            if message not in failures:
+                failures.append(message)
+            results.append(result_entry)
+            continue
+
+        min_value = entry.get("min")
+        max_value = entry.get("max")
+        if isinstance(min_value, (int, float)):
+            result_entry["min"] = min_value
+        else:
+            min_value = None
+        if isinstance(max_value, (int, float)):
+            result_entry["max"] = max_value
+        else:
+            max_value = None
+
+        violation: Optional[str] = None
+        if min_value is not None and numeric_value < float(min_value):
+            violation = f"< {min_value}"
+        if max_value is not None and numeric_value > float(max_value):
+            violation = f"> {max_value}"
+
+        if violation:
+            result_entry["status"] = "violation"
+            message = (
+                f"threshold {metric_name}.{field} {violation} (actual={numeric_value})"
+                + (f" ({scenario})" if scenario else "")
+            )
+            if message not in failures:
+                failures.append(message)
+        else:
+            result_entry["status"] = "ok"
+        results.append(result_entry)
+
+    return results, failures
 
 
 def _extract_stream_extension(
@@ -3794,6 +3928,228 @@ def collect_cell_ref_effect_metrics(paths: Sequence[Path]) -> Optional[Dict[str,
         "required_audit_keys": ["collector.effect.cell", "collector.effect.rc"],
     }
 
+
+def collect_table_csv_import_metrics(
+    paths: Sequence[Path],
+) -> Optional[Dict[str, Any]]:
+    scenario_ids = {"collect_table_csv", "table_csv_import"}
+    total = 0
+    passed = 0
+    throughput_values: List[float] = []
+    latency_values: List[float] = []
+    total_rows = 0
+    total_csv_rows = 0
+    failures: List[Dict[str, Any]] = []
+    cases: List[Dict[str, Any]] = []
+    schema_versions: Set[str] = set()
+
+    def _extract_numeric(
+        containers: Sequence[Optional[Dict[str, Any]]],
+        keys: Sequence[str],
+    ) -> Optional[float]:
+        for container in containers:
+            if not isinstance(container, dict):
+                continue
+            for key in keys:
+                exists, raw_value = _lookup_in_container(container, key)
+                if not exists:
+                    continue
+                numeric = _coerce_float_value(raw_value)
+                if numeric is not None:
+                    return numeric
+        return None
+
+    for path in paths:
+        data = load_json(path)
+        try:
+            diagnostics_iter = list(iter_diagnostics(data))
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
+            extensions = _as_dict(diag.get("extensions"))
+            prelude = (
+                _as_dict(extensions.get("prelude.collector"))
+                if extensions
+                else None
+            )
+            snapshot_id = (
+                prelude.get("snapshot_id") if prelude else diag.get("snapshot_id")
+            )
+            if snapshot_id not in scenario_ids:
+                continue
+
+            total += 1
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
+
+            audit_entry = _as_dict(diag.get("audit"))
+            metadata = _as_dict(audit_entry.get("metadata")) if audit_entry else None
+            prelude_metrics = _as_dict(prelude.get("metrics")) if prelude else None
+            metric_sources: List[Optional[Dict[str, Any]]] = [
+                metadata,
+                prelude_metrics,
+                prelude,
+            ]
+
+            throughput = _extract_numeric(
+                metric_sources,
+                (
+                    "collector.metrics.table.insert_per_sec",
+                    "collector.metrics.table.rows_per_sec",
+                    "metrics.table.insert_per_sec",
+                    "metrics.table.rows_per_sec",
+                    "metrics.table.insert_throughput",
+                ),
+            )
+            insert_total = _extract_numeric(
+                metric_sources,
+                (
+                    "collector.metrics.table.insert_total",
+                    "collector.metrics.table.rows",
+                    "metrics.table.rows",
+                    "metrics.table.insert_total",
+                ),
+            )
+            insert_duration_ms = _extract_numeric(
+                metric_sources,
+                (
+                    "collector.metrics.table.insert_duration_ms",
+                    "metrics.table.insert_duration_ms",
+                    "metrics.table.duration_ms",
+                ),
+            )
+            if throughput is None and insert_total and insert_duration_ms:
+                if insert_duration_ms > 0:
+                    throughput = (insert_total / insert_duration_ms) * 1000.0
+
+            latency_ms = _extract_numeric(
+                metric_sources,
+                (
+                    "collector.metrics.csv.load_latency_ms",
+                    "metrics.csv.load_latency_ms",
+                    "metrics.csv.duration_ms",
+                ),
+            )
+            csv_rows = _extract_numeric(
+                metric_sources,
+                (
+                    "collector.metrics.csv.rows",
+                    "metrics.csv.rows",
+                    "collector.metrics.csv.records",
+                ),
+            )
+
+            effects = _as_dict(prelude.get("effects")) if prelude else None
+            effect_mem = False
+            effect_mut = False
+            effect_audit = False
+            if metadata:
+                effect_mem = _coerce_bool(
+                    _lookup_in_container(metadata, "collector.effect.mem")[1]
+                ) or effect_mem
+                effect_mut = _coerce_bool(
+                    _lookup_in_container(metadata, "collector.effect.mut")[1]
+                ) or effect_mut
+                effect_audit = _coerce_bool(
+                    _lookup_in_container(metadata, "collector.effect.audit")[1]
+                ) or effect_audit
+            if effects:
+                effect_mem = effect_mem or _coerce_bool(effects.get("mem"))
+                effect_mut = effect_mut or _coerce_bool(effects.get("mut"))
+                effect_audit = effect_audit or _coerce_bool(effects.get("audit"))
+
+            case_id = snapshot_id or f"{path.name}#{index}"
+            case_entry: Dict[str, Any] = {
+                "case": case_id,
+                "table_insert_throughput": throughput,
+                "csv_load_latency_ms": latency_ms,
+                "table_rows": insert_total,
+                "csv_rows": csv_rows,
+                "effects": {
+                    "mem": effect_mem,
+                    "mut": effect_mut,
+                    "audit": effect_audit,
+                },
+            }
+
+            reasons: List[str] = []
+            if throughput is None or throughput <= 0:
+                reasons.append("metrics.table.insert_per_sec")
+            if latency_ms is None or latency_ms <= 0:
+                reasons.append("metrics.csv.load_latency_ms")
+            if not effect_mem:
+                reasons.append("collector.effect.mem")
+            if not effect_mut:
+                reasons.append("collector.effect.mut")
+            if not effect_audit:
+                reasons.append("collector.effect.audit")
+
+            if insert_total:
+                total_rows += int(insert_total)
+            if csv_rows:
+                total_csv_rows += int(csv_rows)
+            if throughput is not None:
+                throughput_values.append(throughput)
+            if latency_ms is not None:
+                latency_values.append(latency_ms)
+
+            if reasons:
+                failures.append(
+                    {
+                        "case": case_id,
+                        "file": str(path),
+                        "index": index,
+                        "reasons": sorted(set(reasons)),
+                    }
+                )
+            else:
+                passed += 1
+            case_entry["status"] = "passed" if not reasons else "failed"
+            if reasons:
+                case_entry["reasons"] = reasons
+            cases.append(case_entry)
+
+    if total == 0:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    status = "success" if passed == total else "warning"
+    throughput_avg = (
+        sum(throughput_values) / len(throughput_values) if throughput_values else None
+    )
+    latency_avg = (
+        sum(latency_values) / len(latency_values) if latency_values else None
+    )
+
+    return {
+        "metric": "collector.table.csv_import",
+        "scenario": "table_csv_import",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "table_insert_throughput": throughput_avg,
+        "table_insert_throughput_min": min(throughput_values)
+        if throughput_values
+        else None,
+        "csv_load_latency_ms": latency_avg,
+        "csv_load_latency_max": max(latency_values) if latency_values else None,
+        "table_rows_total": total_rows,
+        "csv_rows_total": total_csv_rows,
+        "failures": failures,
+        "cases": cases,
+        "schema_versions": sorted(schema_versions),
+        "sources": [str(path) for path in paths],
+        "required_audit_keys": [
+            "collector.effect.mem",
+            "collector.effect.mut",
+            "collector.effect.audit",
+        ],
+    }
+
 def _change_set_contains_collections(change_set: Dict[str, Any]) -> bool:
     def _match(value: Optional[object]) -> bool:
         return isinstance(value, str) and "collections.diff" in value
@@ -6547,6 +6903,13 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Path to audit JSON (repeatable).",
     )
     parser.add_argument(
+        "--suite",
+        choices=[
+            "collectors",
+        ],
+        help="Preset設定を適用します（例: --suite collectors で collectors セクションと既定ソースを選択）。",
+    )
+    parser.add_argument(
         "--section",
         choices=[
             "all",
@@ -6655,6 +7018,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "map_set_persistent",
             "vec_mem_exhaustion",
             "ref_internal_mutation",
+            "table_csv_import",
             "audit_cap",
             "grapheme_stats",
             "bytes_clone",
@@ -6686,6 +7050,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="追加のメトリクス JSON を結合して出力（繰り返し指定可）。",
     )
     parser.add_argument(
+        "--thresholds",
+        type=Path,
+        help="KPI 閾値を定義した JSON ファイル。省略時は --suite collectors で Core.Collections 用の既定パスを参照します。",
+    )
+    parser.add_argument(
         "--require-success",
         action="store_true",
         help="主要メトリクスが失敗した場合に非ゼロ終了コードを返す。",
@@ -6707,6 +7076,17 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
+    suite = getattr(args, "suite", None)
+    suite_sections: Optional[List[str]] = None
+    suite_default_sources: List[Path] = []
+    suite_default_audit_sources: List[Path] = []
+    suite_default_threshold: Optional[Path] = None
+    if suite == "collectors":
+        suite_sections = ["collectors"]
+        suite_default_sources = [COLLECTOR_DIAGNOSTICS_DEFAULT]
+        suite_default_audit_sources = [COLLECTOR_AUDIT_DEFAULT]
+        if CORE_COLLECTIONS_THRESHOLD_PATH.is_file():
+            suite_default_threshold = CORE_COLLECTIONS_THRESHOLD_PATH
     if args.prune and not args.summary:
         sys.stderr.write("--prune を使用する場合は --summary でインデックスを指定してください。\n")
         return 2
@@ -6737,7 +7117,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "runtime",
         "review",
     ]
-    if args.section == "all":
+    if suite_sections:
+        sections = suite_sections
+    elif args.section == "all":
         sections = section_order
     else:
         section_aliases = {"diagnostics": "diag"}
@@ -6760,6 +7142,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "map_set_persistent",
         "vec_mem_exhaustion",
         "ref_internal_mutation",
+        "table_csv_import",
         "audit_cap",
     }
     needs_diagnostic_sources = bool(
@@ -6882,21 +7265,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.sources:
             sources = [Path(src) for src in args.sources]
         else:
-            default_paths = [
-                Path(
-                    "compiler/ocaml/tests/golden/"
-                    "typeclass_iterator_stage_mismatch.json.golden"
-                ),
-                Path(
-                    "compiler/ocaml/tests/golden/diagnostics/ffi/"
-                    "unsupported-abi.json.golden"
-                ),
-                Path(
-                    "compiler/ocaml/tests/golden/diagnostics/effects/"
-                    "syntax-constructs.json.golden"
-                ),
-            ]
-            sources = [path for path in default_paths if path.is_file()]
+            if suite_default_sources:
+                sources = [Path(src) for src in suite_default_sources]
+            else:
+                default_paths = [
+                    Path(
+                        "compiler/ocaml/tests/golden/"
+                        "typeclass_iterator_stage_mismatch.json.golden"
+                    ),
+                    Path(
+                        "compiler/ocaml/tests/golden/diagnostics/ffi/"
+                        "unsupported-abi.json.golden"
+                    ),
+                    Path(
+                        "compiler/ocaml/tests/golden/diagnostics/effects/"
+                        "syntax-constructs.json.golden"
+                    ),
+                ]
+                sources = [path for path in default_paths if path.is_file()]
 
         missing_paths = [str(path) for path in sources if not path.is_file()]
         if missing_paths:
@@ -6922,12 +7308,23 @@ def main(argv: Optional[List[str]] = None) -> int:
     audit_paths: List[Path] = []
     if args.audit_sources:
         audit_paths = [Path(src) for src in args.audit_sources]
+    elif suite_default_audit_sources:
+        audit_paths = [Path(src) for src in suite_default_audit_sources]
         missing_audit = [str(path) for path in audit_paths if not path.is_file()]
         if missing_audit:
             sys.stderr.write(
                 "Missing audit files: " + ", ".join(missing_audit) + "\n"
             )
             return 2
+
+    threshold_path: Optional[Path] = None
+    if getattr(args, "thresholds", None):
+        threshold_path = Path(args.thresholds)
+        if not threshold_path.is_file():
+            sys.stderr.write(f"thresholds ファイルが見つかりません: {threshold_path}\n")
+            return 2
+    elif suite_default_threshold:
+        threshold_path = suite_default_threshold
 
     if "runtime" in sections:
         if not runtime_source_paths:
@@ -7055,6 +7452,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         cell_ref_metric = collect_cell_ref_effect_metrics(sources)
         if cell_ref_metric:
             append_metrics.append(cell_ref_metric)
+    if "table_csv_import" in scenario_filters:
+        metric = collect_table_csv_import_metrics(sources)
+        if metric:
+            append_metrics.append(metric)
     if "audit_cap" in scenario_filters:
         audit_cap_metric = collect_audit_capability_metric(sources)
         if audit_cap_metric:
@@ -7447,6 +7848,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     if diagnostics_summary:
         combined["diagnostics"] = diagnostics_summary
 
+    threshold_results: List[Dict[str, Any]] = []
+    threshold_failures: List[str] = []
+    if threshold_path:
+        threshold_entries = load_threshold_entries(threshold_path)
+        if threshold_entries:
+            threshold_results, threshold_failures = evaluate_thresholds(
+                threshold_entries, all_metrics
+            )
+        if threshold_results or threshold_path:
+            threshold_block: Dict[str, Any] = {"source": str(threshold_path)}
+            if threshold_results:
+                threshold_block["results"] = threshold_results
+            if threshold_failures:
+                threshold_block["failures"] = threshold_failures
+            combined["thresholds"] = threshold_block
+
     ci_info: Dict[str, Any] = {}
     duration_bucket: Dict[str, Any] = {}
     if getattr(args, "ci_duration_seconds", None) is not None:
@@ -7461,6 +7878,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["ci"] = ci_info
 
     failure_reasons: List[str] = []
+    if threshold_failures:
+        failure_reasons.extend(threshold_failures)
     if getattr(args, "require_success", False):
         def _enforce(metric: Optional[Dict[str, Any]], label: str) -> None:
             if not isinstance(metric, dict):

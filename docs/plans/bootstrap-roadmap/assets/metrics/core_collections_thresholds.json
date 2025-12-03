@@ -1,0 +1,28 @@
+{
+  "thresholds": [
+    {
+      "metric": "collector.effect.cell_rc",
+      "scenario": "ref_internal_mutation",
+      "field": "cell_mutations_total",
+      "min": 1
+    },
+    {
+      "metric": "collector.effect.cell_rc",
+      "scenario": "ref_internal_mutation",
+      "field": "ref_borrow_conflict_rate",
+      "max": 0.35
+    },
+    {
+      "metric": "collector.table.csv_import",
+      "scenario": "table_csv_import",
+      "field": "table_insert_throughput",
+      "min": 1000
+    },
+    {
+      "metric": "collector.table.csv_import",
+      "scenario": "table_csv_import",
+      "field": "csv_load_latency_ms",
+      "max": 250
+    }
+  ]
+}

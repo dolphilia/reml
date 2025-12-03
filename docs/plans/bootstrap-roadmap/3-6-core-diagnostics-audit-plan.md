@@ -246,6 +246,13 @@
     - 8.2.a KPI の閾値を `docs/plans/bootstrap-roadmap/assets/metrics/core_collections_thresholds.json` として定義し、CI で逸脱した場合にコメントを残すスクリプトを追加する。
     - 8.2.b `reports/iterator-collector-summary.md` の最新 Run ID を列挙し、`collect-iterator-audit-metrics.py --emit-run-id` の出力を自動追記する。
     - 8.2.c `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に collectors KPI のアラート条件を追記し、Phase 3 ハンドオーバー時の必須証跡とする。
+
+#### 8.2 実施結果（Run ID: 20290730-collectors-suite-gate）
+- `collect-iterator-audit-metrics.py` に `--suite collectors` プリセットを追加し、`reports/spec-audit/ch1/core_iter_collectors.{json,audit.jsonl}` を既定ソースとして解決するよう変更した。これにより `python3 tooling/ci/collect-iterator-audit-metrics.py --suite collectors --output reports/iterator-collector-metrics.json` を呼び出すだけで collectors セクションが再現できる。
+- `--scenario table_csv_import` を実装し、`prelude.collector.metrics.table.*` / `collector.metrics.csv.*` から `table_insert_throughput` と `csv_load_latency_ms` を収集するルートを追加した（将来的に `collect_table_csv` スナップショットが増えた際に自動で KPI を取り込める）。Stage/Effect が揃っていないケースは `failures[]` に理由を記録する。
+- `docs/plans/bootstrap-roadmap/assets/metrics/core_collections_thresholds.json` を新設し、`collector.effect.cell_rc`（`cell_mutations_total >= 1`、`ref_borrow_conflict_rate <= 0.35`）と `collector.table.csv_import`（`table_insert_throughput >= 1000`, `csv_load_latency_ms <= 250`）の閾値を表形式で定義した。`collect-iterator-audit-metrics.py --suite collectors` 実行時にこの JSON を読み込み、`combined.thresholds.*` ブロックに判定結果を出力するため、CI コメントや Slack 通知へ直接貼り付けられる。
+- `--require-success` が指定された場合は閾値違反も `enforcement.failures[]` に入るようになった。現状のスナップショットには `collect_cell_ref_effects` や `collect_table_csv` ケースが存在しないため `threshold metric missing` がログに残るが、これは Stage=experiment として `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` で追跡することを明示した。
+- `reports/iterator-collector-summary.md` / `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` / `docs/plans/bootstrap-roadmap/assets/metrics/core_collections_persistent.csv` を更新し、`--suite collectors --thresholds docs/plans/bootstrap-roadmap/assets/metrics/core_collections_thresholds.json --scenario ref_internal_mutation --require-success --require-cell` が最新の運用手順であること、並びに `table_csv_import` シナリオの runbook を追加した。
 8.3. `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` の `Cell<T>`/`Ref<T>` 内部可変性セクションと `docs-migrations.log` に記録された `Cell/Ref effect trace` を相互にリンクし、`collect-iterator-audit-metrics.py --require-cell` と `scripts/validate-diagnostic-json.sh --suite collectors` を監査 CI の gate とすることで Effectful コンテナ導入タイミングを明示する。
     - 8.3.a `docs-migrations.log` に `Cell/Ref effect trace` 更新日時と Run ID を追記し、参照元を `reports/spec-audit/ch1/` にリンクする。
     - 8.3.b `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md#cell-ref-内部可変性` に監査 CI gate の手順を追加し、Diagnostics 計画との依存関係を明文化する。
