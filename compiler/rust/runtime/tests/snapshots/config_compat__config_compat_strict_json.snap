@@ -1,0 +1,16 @@
+---
+source: tests/config_compat.rs
+assertion_line: 11
+expression: compat
+---
+trivia:
+  line: []
+  block: []
+  shebang: false
+  hash_inline: false
+  doc_comment: ~
+trailing_comma: forbid
+unquoted_key: forbid
+duplicate_key: error
+number: strict
+feature_guard: []

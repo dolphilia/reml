@@ -87,6 +87,11 @@
 - テスト検証は `cargo test --manifest-path compiler/rust/runtime/Cargo.toml` で試行したが、既知の `toml v0.5.11` チェックサム不一致により停止（`error: checksum for toml v0.5.11 changed between lock files`）。Phase 3 の他タスクでも同一ブロッカーが記録済みのため、本 Run ID でも未解決問題として共有する。
 - 今後は `tooling/scripts/generate-schema-diff.sh` の整備と `collect-iterator-audit-metrics.py --section config` への統合を行い、Schema 差分の再取得と監査 KPI への組み込みを行う。
 
+#### 3.2 実施結果（Run ID: 20250318-config-compat-profiles）
+- `compiler/rust/runtime/src/config/compat.rs` を新設し、`ConfigCompatibility`/`CompatibilityProfile`/`ConfigTriviaProfile`/`ConfigFormat` など仕様 3-7 §1.5 の型を Rust で定義。`strict_json`/`relaxed_json`/`relaxed_toml` などのビルダーを提供し、`compatibility_profile("strict")` 形式でプロファイルを取得できる API を実装した。互換違反ごとの `Diagnostic.code = "config.compat.*"` 定数と `compatibility_violation_diagnostic`/`CompatibilityDiagnosticBuilder` でメタデータ（`config.source`/`config.compatibility.violation` 等）を一括生成できるようにした。
+- `compiler/rust/runtime/tests/config_compat.rs` と `tests/snapshots/config_compat__*.snap` を追加し、`insta` で JSON/TOML 代表ケースの `ConfigCompatibility` をスナップショット固定。`Cargo.toml` へ `insta`（yaml フォーマット）を dev-dependency として登録した。
+- `docs/spec/3-6-core-diagnostics-audit.md#推奨診断コード` に `config.compat.trailing_comma`/`config.compat.unquoted_key`/`config.compat.duplicate_key`/`config.compat.number_format` を追記し、監査ログで `config.compatibility` メタデータを参照する根拠と CLI/LSP の対応方針を明文化した。
+
 ### 4. 差分・監査・診断連携（54-55週目）
 **担当領域**: Quality & Audit
 

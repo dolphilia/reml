@@ -1,10 +1,19 @@
 //! Config/Data 章で利用する差分マージユーティリティと
-//! `reml.toml` マニフェスト型を提供する。
+//! `reml.toml` マニフェスト・互換設定型を提供する。
 //! `PersistentMap::merge_with_change_set` を公開し、監査ログへ
 //! `ChangeSet` を取り込む手続きを補助する。
+pub mod compat;
 pub mod collection_diff;
 pub mod manifest;
 
+pub use compat::{
+    compatibility_profile, compatibility_violation_diagnostic, CommentPair,
+    CompatibilityDiagnosticBuilder, CompatibilityProfile, CompatibilityProfileError,
+    CompatibilityViolationKind, ConfigCompatibility, ConfigFormat, ConfigTriviaProfile,
+    DuplicateKeyPolicy, KeyPolicy, NumberCompatibility, TrailingCommaMode,
+    CONFIG_COMPAT_DUPLICATE_KEY_CODE, CONFIG_COMPAT_NUMBER_CODE,
+    CONFIG_COMPAT_TRAILING_COMMA_CODE, CONFIG_COMPAT_UNQUOTED_KEY_CODE,
+};
 pub use collection_diff::{ChangeKind, ConfigChange, SchemaDiff, SchemaDiffMetadata};
 pub use manifest::{
     declared_effects, load_manifest, update_dsl_signature, validate_manifest, CapabilityId,
