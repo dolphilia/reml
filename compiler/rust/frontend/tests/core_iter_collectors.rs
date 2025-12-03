@@ -1,14 +1,15 @@
 //! `ListCollector`/`VecCollector` の効果ログを固定するスナップショットテスト。
 
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
 use reml_runtime_ffi::core_prelude::{
     collectors::{
-        CollectErrorKind, CollectOutcome, ListCollector, MapCollector, SetCollector,
+        CollectErrorKind, CollectOutcome, CollectorAuditTrail, CollectorEffectMarkers,
+        CollectorKind, CollectorStageProfile, ListCollector, MapCollector, SetCollector,
         StringCollector, TableCollector, VecCollector,
     },
-    iter::Iter,
+    iter::{EffectLabels, Iter},
     Collector, GuardDiagnostic, IntoDiagnostic,
 };
 
@@ -38,6 +39,22 @@ fn render_snapshot<T>(
             "debug": audit.effects.debug,
             "async_pending": audit.effects.async_pending,
             "audit": audit.effects.audit,
+            "cell": audit.effects.cell,
+            "rc": audit.effects.rc,
+            "rc_ops": audit.effects.rc_ops,
+            "unicode": audit.effects.unicode,
+            "io": audit.effects.io,
+            "io_blocking": audit.effects.io_blocking,
+            "io_async": audit.effects.io_async,
+            "security": audit.effects.security,
+            "transfer": audit.effects.transfer,
+            "fs_sync": audit.effects.fs_sync,
+            "time": audit.effects.time,
+            "time_calls": audit.effects.time_calls,
+            "io_blocking_calls": audit.effects.io_blocking_calls,
+            "io_async_calls": audit.effects.io_async_calls,
+            "fs_sync_calls": audit.effects.fs_sync_calls,
+            "security_events": audit.effects.security_events,
             "predicate_calls": audit.effects.predicate_calls,
             "mem_bytes": audit.effects.mem_bytes,
         },
@@ -45,6 +62,11 @@ fn render_snapshot<T>(
             "mem_reservation": audit.markers.mem_reservation,
             "reserve": audit.markers.reserve,
             "finish": audit.markers.finish,
+            "cell_mutations": audit.markers.cell_mutations,
+            "time_calls": audit.effects.time_calls,
+            "io_blocking_ops": audit.markers.io_blocking_ops,
+            "io_async_ops": audit.markers.io_async_ops,
+            "security_checks": audit.markers.security_checks,
         },
         "value": value_renderer(value),
     })
@@ -116,6 +138,134 @@ fn collect_table_duplicate() -> String {
     serde_json::to_string_pretty(&render_error_snapshot(diag)).unwrap()
 }
 
+fn custom_snapshot(
+    kind: CollectorKind,
+    source: &'static str,
+    effects: EffectLabels,
+    mut markers: CollectorEffectMarkers,
+    value: Value,
+) -> Value {
+    markers.record_finish();
+    let stage = CollectorStageProfile::for_kind(kind);
+    debug_assert!(effects.cell || effects.rc || effects.audit || effects.mem || effects.mutating);
+    let audit = CollectorAuditTrail::new(kind, stage.snapshot(source), effects, markers);
+    debug_assert_eq!(effects.cell, audit.effects.cell, "cell effect mismatch");
+    debug_assert_eq!(effects.rc, audit.effects.rc, "rc effect mismatch");
+    debug_assert_eq!(effects.rc_ops, audit.effects.rc_ops, "rc ops mismatch");
+    debug_assert_eq!(
+        markers.cell_mutations, audit.markers.cell_mutations,
+        "cell mutation markers mismatch"
+    );
+    render_snapshot(CollectOutcome::new(value, audit), |val| val)
+}
+
+fn collect_cell_ref_effects() -> String {
+    let effects = EffectLabels {
+        mem: false,
+        mutating: true,
+        debug: false,
+        async_pending: false,
+        audit: false,
+        cell: true,
+        rc: true,
+        unicode: false,
+        io: false,
+        io_blocking: false,
+        io_async: false,
+        security: false,
+        transfer: false,
+        fs_sync: false,
+        mem_bytes: 0,
+        predicate_calls: 0,
+        rc_ops: 2,
+        time: false,
+        time_calls: 0,
+        io_blocking_calls: 0,
+        io_async_calls: 0,
+        fs_sync_calls: 0,
+        security_events: 0,
+    };
+    let mut markers = CollectorEffectMarkers::default();
+    markers.record_cell_op();
+    markers.record_cell_op();
+    let snapshot = custom_snapshot(
+        CollectorKind::Custom("cell_ref"),
+        "CellRefCollector::finish",
+        effects,
+        markers,
+        json!({
+            "cells": [
+                {"id": "config", "value": 1},
+                {"id": "tunable", "value": 2}
+            ],
+            "refs": [
+                {"id": "shared_config", "state": "borrowed_mut"},
+                {"id": "readonly_cache", "state": "borrowed"}
+            ]
+        }),
+    );
+    serde_json::to_string_pretty(&snapshot).unwrap()
+}
+
+fn table_csv_import() -> String {
+    let effects = EffectLabels {
+        mem: true,
+        mutating: true,
+        debug: false,
+        async_pending: false,
+        audit: true,
+        cell: false,
+        rc: false,
+        unicode: false,
+        io: true,
+        io_blocking: false,
+        io_async: false,
+        security: false,
+        transfer: false,
+        fs_sync: false,
+        mem_bytes: 128,
+        predicate_calls: 0,
+        rc_ops: 0,
+        time: false,
+        time_calls: 0,
+        io_blocking_calls: 0,
+        io_async_calls: 0,
+        fs_sync_calls: 0,
+        security_events: 0,
+    };
+    let markers = CollectorEffectMarkers::default();
+    let mut snapshot = custom_snapshot(
+        CollectorKind::Table,
+        "TableCollector::csv_import",
+        effects,
+        markers,
+        json!({
+            "rows": [
+                {"id": "alpha", "columns": ["alpha", 10]},
+                {"id": "beta", "columns": ["beta", 20]},
+                {"id": "gamma", "columns": ["gamma", 30]}
+            ]
+        }),
+    );
+    if let Some(obj) = snapshot.as_object_mut() {
+        obj.insert(
+            "metrics".into(),
+            json!({
+                "table": {
+                    "insert_per_sec": 2048.0,
+                    "insert_total": 2048,
+                    "insert_duration_ms": 1000.0
+                },
+                "csv": {
+                    "load_latency_ms": 120.0,
+                    "rows": 2048
+                }
+            }),
+        );
+    }
+    serde_json::to_string_pretty(&snapshot).unwrap()
+}
+
 #[test]
 fn core_iter_collectors_snapshot() {
     let cases = vec![
@@ -126,6 +276,8 @@ fn core_iter_collectors_snapshot() {
         ("collect_string_invalid", collect_string_invalid()),
         ("collect_table_baseline", collect_table_baseline()),
         ("collect_table_duplicate", collect_table_duplicate()),
+        ("collect_cell_ref_effects", collect_cell_ref_effects()),
+        ("table_csv_import", table_csv_import()),
     ];
     let actual = cases
         .into_iter()

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -29,6 +31,17 @@ INT_EFFECT_KEYS = {
     "cell_mutations",
     "rc_ops",
 }
+SNAPSHOT_BASE_TIMESTAMP = datetime(2025, 12, 3, tzinfo=timezone.utc)
+SNAPSHOT_PROGRAM_NAME = "collector.snapshot-fixture"
+SNAPSHOT_COMMAND = "render-collector-audit-fixtures"
+SNAPSHOT_PHASE = "spec-fixture"
+SNAPSHOT_AUDIT_CHANNEL = "collector.snapshots"
+SNAPSHOT_AUDIT_POLICY = "collector.spec.audit.v1"
+SNAPSHOT_CHANGE_SET_POLICY = "collector.snapshot.change_set.v1"
+SNAPSHOT_SCHEMA_VERSION = "collector.snapshot.v1"
+SNAPSHOT_RUN_ID = str(
+    uuid.uuid5(uuid.NAMESPACE_URL, "collector.snapshot.fixtures.run_id")
+)
 
 
 def _as_dict(value: Any) -> Optional[Dict[str, Any]]:
@@ -152,6 +165,78 @@ def _normalize_markers(raw: Any) -> Dict[str, int]:
     return result
 
 
+def _stable_snapshot_timestamp(sequence: int) -> str:
+    base = SNAPSHOT_BASE_TIMESTAMP + timedelta(seconds=sequence)
+    return base.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _build_snapshot_change_set(
+    snapshot_id: str, prelude: Dict[str, Any], timestamp: str, sequence: int
+) -> Dict[str, Any]:
+    return {
+        "policy": SNAPSHOT_CHANGE_SET_POLICY,
+        "origin": "spec-fixture",
+        "source": {
+            "command": SNAPSHOT_COMMAND,
+            "args": ["--snapshot", snapshot_id],
+            "workspace": ".",
+        },
+        "run_id": SNAPSHOT_RUN_ID,
+        "items": [
+            {
+                "kind": "collector.snapshot",
+                "snapshot_id": snapshot_id,
+                "capability": prelude.get("capability"),
+                "stage_actual": prelude.get("stage_actual"),
+                "stage_required": prelude.get("stage_required"),
+                "stage_mode": prelude.get("stage_mode"),
+                "collector_kind": prelude.get("kind"),
+                "sequence": sequence,
+                "timestamp": timestamp,
+            }
+        ],
+    }
+
+
+def _apply_snapshot_audit_metadata(
+    metadata: Dict[str, Any],
+    prelude: Dict[str, Any],
+    snapshot_id: str,
+    sequence: int,
+) -> Tuple[str, Dict[str, Any], str]:
+    timestamp = _stable_snapshot_timestamp(sequence)
+    metadata.setdefault("schema.version", SNAPSHOT_SCHEMA_VERSION)
+    metadata.setdefault("event.domain", "core.collectors")
+    metadata.setdefault("event.kind", "collector.snapshot")
+    metadata.setdefault("event.category", "diagnostic")
+    metadata.setdefault("audit.channel", SNAPSHOT_AUDIT_CHANNEL)
+    metadata.setdefault("audit.policy.version", SNAPSHOT_AUDIT_POLICY)
+    metadata["audit.timestamp"] = timestamp
+    metadata["audit.sequence"] = metadata.get("audit.sequence") or sequence
+    metadata.setdefault("cli.program", SNAPSHOT_PROGRAM_NAME)
+    metadata.setdefault("cli.command", SNAPSHOT_COMMAND)
+    metadata.setdefault("cli.phase", SNAPSHOT_PHASE)
+    metadata.setdefault("cli.args", ["--snapshot", snapshot_id])
+    metadata.setdefault("cli.run_id", SNAPSHOT_RUN_ID)
+
+    change_set = _build_snapshot_change_set(snapshot_id, prelude, timestamp, sequence)
+    stored_change_set = metadata.get("cli.change_set")
+    if not isinstance(stored_change_set, dict) or not stored_change_set:
+        metadata["cli.change_set"] = change_set
+        stored_change_set = change_set
+
+    audit_label = metadata.get("cli.audit_id")
+    if not isinstance(audit_label, str) or not audit_label.strip():
+        build_id = timestamp.replace("-", "").replace(":", "")
+        audit_label = f"{SNAPSHOT_AUDIT_CHANNEL}/{build_id}#{sequence}"
+        metadata["cli.audit_id"] = audit_label
+    audit_uuid = uuid.uuid5(uuid.NAMESPACE_URL, audit_label)
+    metadata["audit.id.uuid"] = str(audit_uuid)
+    metadata["audit.id.label"] = audit_label
+
+    return timestamp, stored_change_set, audit_label
+
+
 def _build_metadata(
     prelude: Dict[str, Any], include_effect_stage: bool, snapshot_id: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -242,11 +327,14 @@ def build_prelude_payload(name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         "markers": _normalize_markers(payload.get("markers")),
         "value": payload.get("value"),
     }
+    metrics = payload.get("metrics")
+    if metrics is not None:
+        prelude["metrics"] = metrics
     return prelude
 
 
 def build_diagnostic(
-    name: str, payload: Dict[str, Any], include_effect_stage: bool
+    sequence: int, name: str, payload: Dict[str, Any], include_effect_stage: bool
 ) -> Dict[str, Any]:
     extensions = _as_dict(payload.get("extensions"))
     prelude_dict = (
@@ -275,10 +363,17 @@ def build_diagnostic(
     diag_extensions = _as_dict(diag.get("extensions")) or {}
     diag_extensions["prelude.collector"] = prelude_dict
     diag["extensions"] = diag_extensions
-    diag["schema_version"] = diag.get("schema_version") or "collector.snapshot.v1"
+    diag["schema_version"] = diag.get("schema_version") or SNAPSHOT_SCHEMA_VERSION
 
     metadata = _build_metadata(prelude_dict, include_effect_stage, name)
+    timestamp, change_set, audit_label = _apply_snapshot_audit_metadata(
+        metadata, prelude_dict, name, sequence
+    )
+    diag.setdefault("timestamp", timestamp)
     diag["audit"] = _merge_audit_block(_as_dict(diag.get("audit")), metadata)
+    diag["audit"].setdefault("change_set", change_set)
+    diag["audit"].setdefault("cli.audit_id", audit_label)
+    diag["audit"].setdefault("audit_id", audit_label)
 
     return diag
 
@@ -337,7 +432,8 @@ def main() -> None:
 
     entries = parse_snapshot_entries(args.snapshots)
     diagnostics = [
-        build_diagnostic(name, payload, args.with_stage) for name, payload in entries
+        build_diagnostic(index, name, payload, args.with_stage)
+        for index, (name, payload) in enumerate(entries)
     ]
 
     args.output.parent.mkdir(parents=True, exist_ok=True)

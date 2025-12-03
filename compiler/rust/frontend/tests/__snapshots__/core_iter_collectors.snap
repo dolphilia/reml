@@ -2,17 +2,38 @@ collect_list_baseline: {
   "effects": {
     "async_pending": false,
     "audit": false,
+    "cell": false,
     "debug": false,
+    "fs_sync": false,
+    "fs_sync_calls": 0,
+    "io": false,
+    "io_async": false,
+    "io_async_calls": 0,
+    "io_blocking": false,
+    "io_blocking_calls": 0,
     "mem": true,
     "mem_bytes": 12,
     "mutating": false,
-    "predicate_calls": 0
+    "predicate_calls": 0,
+    "rc": false,
+    "rc_ops": 0,
+    "security": false,
+    "security_events": 0,
+    "time": false,
+    "time_calls": 0,
+    "transfer": false,
+    "unicode": false
   },
   "kind": "list",
   "markers": {
+    "cell_mutations": 0,
     "finish": 1,
+    "io_async_ops": 0,
+    "io_blocking_ops": 0,
     "mem_reservation": 12,
-    "reserve": 0
+    "reserve": 0,
+    "security_checks": 0,
+    "time_calls": 0
   },
   "stage": {
     "actual": "stable",
@@ -34,17 +55,38 @@ collect_vec_mem_reservation: {
   "effects": {
     "async_pending": false,
     "audit": false,
+    "cell": false,
     "debug": false,
+    "fs_sync": false,
+    "fs_sync_calls": 0,
+    "io": false,
+    "io_async": false,
+    "io_async_calls": 0,
+    "io_blocking": false,
+    "io_blocking_calls": 0,
     "mem": true,
     "mem_bytes": 36,
     "mutating": true,
-    "predicate_calls": 0
+    "predicate_calls": 0,
+    "rc": false,
+    "rc_ops": 0,
+    "security": false,
+    "security_events": 0,
+    "time": false,
+    "time_calls": 0,
+    "transfer": false,
+    "unicode": false
   },
   "kind": "vec",
   "markers": {
+    "cell_mutations": 0,
     "finish": 1,
+    "io_async_ops": 0,
+    "io_blocking_ops": 0,
     "mem_reservation": 4,
-    "reserve": 2
+    "reserve": 2,
+    "security_checks": 0,
+    "time_calls": 0
   },
   "stage": {
     "actual": "beta",
@@ -71,14 +113,27 @@ collect_map_duplicate: {
     "collector.effect.cell_mutations": 0,
     "collector.effect.debug": false,
     "collector.effect.finish": 0,
-    "collector.effect.mem": false,
-    "collector.effect.mem_bytes": 0,
+    "collector.effect.io": false,
+    "collector.effect.io_async": false,
+    "collector.effect.io_async_calls": 0,
+    "collector.effect.io_async_ops": 0,
+    "collector.effect.io_blocking": false,
+    "collector.effect.io_blocking_calls": 0,
+    "collector.effect.io_blocking_ops": 0,
+    "collector.effect.mem": true,
+    "collector.effect.mem_bytes": 28,
     "collector.effect.mem_reservation": 0,
-    "collector.effect.mut": false,
+    "collector.effect.mut": true,
     "collector.effect.predicate_calls": 0,
     "collector.effect.rc": false,
     "collector.effect.rc_ops": 0,
     "collector.effect.reserve": 0,
+    "collector.effect.security": false,
+    "collector.effect.security_checks": 0,
+    "collector.effect.security_events": 0,
+    "collector.effect.time": false,
+    "collector.effect.time_calls": 0,
+    "collector.effect.transfer": false,
     "collector.error.key": "\"dup\"",
     "collector.kind": "map",
     "collector.stage.actual": "beta",
@@ -97,20 +152,35 @@ collect_map_duplicate: {
         "audit": false,
         "cell": false,
         "debug": false,
-        "mem": false,
-        "mem_bytes": 0,
-        "mut": false,
+        "io": false,
+        "io_async": false,
+        "io_async_calls": 0,
+        "io_blocking": false,
+        "io_blocking_calls": 0,
+        "mem": true,
+        "mem_bytes": 28,
+        "mut": true,
         "predicate_calls": 0,
         "rc": false,
-        "rc_ops": 0
+        "rc_ops": 0,
+        "security": false,
+        "security_events": 0,
+        "time": false,
+        "time_calls": 0,
+        "transfer": false,
+        "unicode": false
       },
       "error_key": "\"dup\"",
       "error_kind": "duplicate_key",
       "kind": "map",
       "markers": {
         "finish": 0,
+        "io_async_ops": 0,
+        "io_blocking_ops": 0,
         "mem_reservation": 0,
-        "reserve": 0
+        "reserve": 0,
+        "security_checks": 0,
+        "time_calls": 0
       },
       "message": "duplicate key: \"dup\"",
       "source": "MapCollector::push",
@@ -127,17 +197,38 @@ collect_set_stage: {
   "effects": {
     "async_pending": false,
     "audit": true,
+    "cell": false,
     "debug": false,
-    "mem": false,
-    "mem_bytes": 3,
-    "mutating": false,
-    "predicate_calls": 0
+    "fs_sync": false,
+    "fs_sync_calls": 0,
+    "io": false,
+    "io_async": false,
+    "io_async_calls": 0,
+    "io_blocking": false,
+    "io_blocking_calls": 0,
+    "mem": true,
+    "mem_bytes": 15,
+    "mutating": true,
+    "predicate_calls": 0,
+    "rc": false,
+    "rc_ops": 0,
+    "security": false,
+    "security_events": 0,
+    "time": false,
+    "time_calls": 0,
+    "transfer": false,
+    "unicode": false
   },
   "kind": "set",
   "markers": {
+    "cell_mutations": 0,
     "finish": 1,
+    "io_async_ops": 0,
+    "io_blocking_ops": 0,
     "mem_reservation": 0,
-    "reserve": 0
+    "reserve": 0,
+    "security_checks": 0,
+    "time_calls": 0
   },
   "stage": {
     "actual": "stable",
@@ -164,6 +255,13 @@ collect_string_invalid: {
     "collector.effect.cell_mutations": 0,
     "collector.effect.debug": false,
     "collector.effect.finish": 0,
+    "collector.effect.io": false,
+    "collector.effect.io_async": false,
+    "collector.effect.io_async_calls": 0,
+    "collector.effect.io_async_ops": 0,
+    "collector.effect.io_blocking": false,
+    "collector.effect.io_blocking_calls": 0,
+    "collector.effect.io_blocking_ops": 0,
     "collector.effect.mem": true,
     "collector.effect.mem_bytes": 0,
     "collector.effect.mem_reservation": 0,
@@ -172,6 +270,12 @@ collect_string_invalid: {
     "collector.effect.rc": false,
     "collector.effect.rc_ops": 0,
     "collector.effect.reserve": 0,
+    "collector.effect.security": false,
+    "collector.effect.security_checks": 0,
+    "collector.effect.security_events": 0,
+    "collector.effect.time": false,
+    "collector.effect.time_calls": 0,
+    "collector.effect.transfer": false,
     "collector.kind": "string",
     "collector.stage.actual": "beta",
     "collector.stage.mismatch": false,
@@ -190,19 +294,34 @@ collect_string_invalid: {
         "audit": false,
         "cell": false,
         "debug": false,
+        "io": false,
+        "io_async": false,
+        "io_async_calls": 0,
+        "io_blocking": false,
+        "io_blocking_calls": 0,
         "mem": true,
         "mem_bytes": 0,
         "mut": true,
         "predicate_calls": 0,
         "rc": false,
-        "rc_ops": 0
+        "rc_ops": 0,
+        "security": false,
+        "security_events": 0,
+        "time": false,
+        "time_calls": 0,
+        "transfer": false,
+        "unicode": false
       },
       "error_kind": "invalid_encoding",
       "kind": "string",
       "markers": {
         "finish": 0,
+        "io_async_ops": 0,
+        "io_blocking_ops": 0,
         "mem_reservation": 0,
-        "reserve": 0
+        "reserve": 0,
+        "security_checks": 0,
+        "time_calls": 0
       },
       "message": "invalid UTF-8 byte 0x28 at offset 1 (expected continuation byte in 0x80..=0xBF)",
       "source": "StringCollector::push",
@@ -219,17 +338,38 @@ collect_table_baseline: {
   "effects": {
     "async_pending": false,
     "audit": false,
+    "cell": false,
     "debug": false,
+    "fs_sync": false,
+    "fs_sync_calls": 0,
+    "io": false,
+    "io_async": false,
+    "io_async_calls": 0,
+    "io_blocking": false,
+    "io_blocking_calls": 0,
     "mem": true,
     "mem_bytes": 56,
     "mutating": true,
-    "predicate_calls": 0
+    "predicate_calls": 0,
+    "rc": false,
+    "rc_ops": 0,
+    "security": false,
+    "security_events": 0,
+    "time": false,
+    "time_calls": 0,
+    "transfer": false,
+    "unicode": false
   },
   "kind": "table",
   "markers": {
+    "cell_mutations": 0,
     "finish": 1,
+    "io_async_ops": 0,
+    "io_blocking_ops": 0,
     "mem_reservation": 0,
-    "reserve": 0
+    "reserve": 0,
+    "security_checks": 0,
+    "time_calls": 0
   },
   "stage": {
     "actual": "beta",
@@ -261,6 +401,13 @@ collect_table_duplicate: {
     "collector.effect.cell_mutations": 0,
     "collector.effect.debug": false,
     "collector.effect.finish": 0,
+    "collector.effect.io": false,
+    "collector.effect.io_async": false,
+    "collector.effect.io_async_calls": 0,
+    "collector.effect.io_async_ops": 0,
+    "collector.effect.io_blocking": false,
+    "collector.effect.io_blocking_calls": 0,
+    "collector.effect.io_blocking_ops": 0,
     "collector.effect.mem": true,
     "collector.effect.mem_bytes": 28,
     "collector.effect.mem_reservation": 0,
@@ -269,6 +416,12 @@ collect_table_duplicate: {
     "collector.effect.rc": false,
     "collector.effect.rc_ops": 0,
     "collector.effect.reserve": 0,
+    "collector.effect.security": false,
+    "collector.effect.security_checks": 0,
+    "collector.effect.security_events": 0,
+    "collector.effect.time": false,
+    "collector.effect.time_calls": 0,
+    "collector.effect.transfer": false,
     "collector.error.key": "\"dup\"",
     "collector.kind": "table",
     "collector.stage.actual": "beta",
@@ -287,20 +440,35 @@ collect_table_duplicate: {
         "audit": false,
         "cell": false,
         "debug": false,
+        "io": false,
+        "io_async": false,
+        "io_async_calls": 0,
+        "io_blocking": false,
+        "io_blocking_calls": 0,
         "mem": true,
         "mem_bytes": 28,
         "mut": true,
         "predicate_calls": 0,
         "rc": false,
-        "rc_ops": 0
+        "rc_ops": 0,
+        "security": false,
+        "security_events": 0,
+        "time": false,
+        "time_calls": 0,
+        "transfer": false,
+        "unicode": false
       },
       "error_key": "\"dup\"",
       "error_kind": "duplicate_key",
       "kind": "table",
       "markers": {
         "finish": 0,
+        "io_async_ops": 0,
+        "io_blocking_ops": 0,
         "mem_reservation": 0,
-        "reserve": 0
+        "reserve": 0,
+        "security_checks": 0,
+        "time_calls": 0
       },
       "message": "duplicate key: \"dup\"",
       "source": "TableCollector::push",
@@ -312,4 +480,158 @@ collect_table_duplicate: {
   },
   "message": "TableCollector failed: duplicate key: \"dup\"",
   "severity": "error"
+}
+collect_cell_ref_effects: {
+  "effects": {
+    "async_pending": false,
+    "audit": false,
+    "cell": true,
+    "debug": false,
+    "fs_sync": false,
+    "fs_sync_calls": 0,
+    "io": false,
+    "io_async": false,
+    "io_async_calls": 0,
+    "io_blocking": false,
+    "io_blocking_calls": 0,
+    "mem": false,
+    "mem_bytes": 0,
+    "mutating": true,
+    "predicate_calls": 0,
+    "rc": true,
+    "rc_ops": 2,
+    "security": false,
+    "security_events": 0,
+    "time": false,
+    "time_calls": 0,
+    "transfer": false,
+    "unicode": false
+  },
+  "kind": "custom",
+  "markers": {
+    "cell_mutations": 2,
+    "finish": 1,
+    "io_async_ops": 0,
+    "io_blocking_ops": 0,
+    "mem_reservation": 0,
+    "reserve": 0,
+    "security_checks": 0,
+    "time_calls": 0
+  },
+  "stage": {
+    "actual": "unknown",
+    "capability": null,
+    "kind": "custom",
+    "required": {
+      "mode": "at_least",
+      "stage": "beta"
+    },
+    "source": "CellRefCollector::finish"
+  },
+  "value": {
+    "cells": [
+      {
+        "id": "config",
+        "value": 1
+      },
+      {
+        "id": "tunable",
+        "value": 2
+      }
+    ],
+    "refs": [
+      {
+        "id": "shared_config",
+        "state": "borrowed_mut"
+      },
+      {
+        "id": "readonly_cache",
+        "state": "borrowed"
+      }
+    ]
+  }
+}
+table_csv_import: {
+  "effects": {
+    "async_pending": false,
+    "audit": true,
+    "cell": false,
+    "debug": false,
+    "fs_sync": false,
+    "fs_sync_calls": 0,
+    "io": true,
+    "io_async": false,
+    "io_async_calls": 0,
+    "io_blocking": false,
+    "io_blocking_calls": 0,
+    "mem": true,
+    "mem_bytes": 128,
+    "mutating": true,
+    "predicate_calls": 0,
+    "rc": false,
+    "rc_ops": 0,
+    "security": false,
+    "security_events": 0,
+    "time": false,
+    "time_calls": 0,
+    "transfer": false,
+    "unicode": false
+  },
+  "kind": "table",
+  "markers": {
+    "cell_mutations": 0,
+    "finish": 1,
+    "io_async_ops": 0,
+    "io_blocking_ops": 0,
+    "mem_reservation": 0,
+    "reserve": 0,
+    "security_checks": 0,
+    "time_calls": 0
+  },
+  "metrics": {
+    "csv": {
+      "load_latency_ms": 120.0,
+      "rows": 2048
+    },
+    "table": {
+      "insert_duration_ms": 1000.0,
+      "insert_per_sec": 2048.0,
+      "insert_total": 2048
+    }
+  },
+  "stage": {
+    "actual": "beta",
+    "capability": "core.collector.table",
+    "kind": "table",
+    "required": {
+      "mode": "at_least",
+      "stage": "beta"
+    },
+    "source": "TableCollector::csv_import"
+  },
+  "value": {
+    "rows": [
+      {
+        "columns": [
+          "alpha",
+          10
+        ],
+        "id": "alpha"
+      },
+      {
+        "columns": [
+          "beta",
+          20
+        ],
+        "id": "beta"
+      },
+      {
+        "columns": [
+          "gamma",
+          30
+        ],
+        "id": "gamma"
+      }
+    ]
+  }
 }

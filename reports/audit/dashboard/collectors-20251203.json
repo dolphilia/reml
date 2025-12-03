@@ -2,11 +2,11 @@
   "metrics": [
     {
       "metric": "diagnostic.audit_presence_rate",
-      "total": 7,
-      "passed": 0,
-      "failed": 7,
-      "pass_rate": 0.0,
-      "pass_fraction": 0.0,
+      "total": 9,
+      "passed": 9,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
       "required_audit_keys": [
         "cli.audit_id",
         "cli.change_set",
@@ -16,105 +16,28 @@
       "sources": [
         "reports/spec-audit/ch1/core_iter_collectors.json"
       ],
-      "failures": [
-        {
-          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-          "index": 0,
-          "missing": [
-            "cli.audit_id",
-            "cli.change_set",
-            "schema.version",
-            "timestamp"
-          ],
-          "code": "core.prelude.collector_snapshot"
-        },
-        {
-          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-          "index": 1,
-          "missing": [
-            "cli.audit_id",
-            "cli.change_set",
-            "schema.version",
-            "timestamp"
-          ],
-          "code": "core.prelude.collector_snapshot"
-        },
-        {
-          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-          "index": 2,
-          "missing": [
-            "cli.audit_id",
-            "cli.change_set",
-            "schema.version",
-            "timestamp"
-          ],
-          "code": "core.prelude.collector_failed"
-        },
-        {
-          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-          "index": 3,
-          "missing": [
-            "cli.audit_id",
-            "cli.change_set",
-            "schema.version",
-            "timestamp"
-          ],
-          "code": "core.prelude.collector_snapshot"
-        },
-        {
-          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-          "index": 4,
-          "missing": [
-            "cli.audit_id",
-            "cli.change_set",
-            "schema.version",
-            "timestamp"
-          ],
-          "code": "core.prelude.collector_failed"
-        },
-        {
-          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-          "index": 5,
-          "missing": [
-            "cli.audit_id",
-            "cli.change_set",
-            "schema.version",
-            "timestamp"
-          ],
-          "code": "core.prelude.collector_snapshot"
-        },
-        {
-          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-          "index": 6,
-          "missing": [
-            "cli.audit_id",
-            "cli.change_set",
-            "schema.version",
-            "timestamp"
-          ],
-          "code": "core.prelude.collector_failed"
-        }
-      ]
+      "failures": []
     },
     {
       "metric": "collector.effect.audit_snapshot",
-      "total": 7,
-      "passed": 7,
+      "total": 9,
+      "passed": 9,
       "failed": 0,
       "pass_rate": 1.0,
       "pass_fraction": 1.0,
       "stage": {
         "actual_counts": {
           "stable": 2,
-          "beta": 5
+          "beta": 6,
+          "unknown": 1
         },
         "required_counts": {
           "stable": 2,
-          "beta": 5
+          "beta": 7
         },
         "mode_counts": {
           "exact": 2,
-          "at_least": 5
+          "at_least": 7
         },
         "source_counts": {
           "ListCollector::finish": 1,
@@ -123,7 +46,9 @@
           "SetCollector::finish": 1,
           "StringCollector::push": 1,
           "TableCollector::finish": 1,
-          "TableCollector::push": 1
+          "TableCollector::push": 1,
+          "CellRefCollector::finish": 1,
+          "TableCollector::csv_import": 1
         },
         "capability_counts": {
           "core.collector.list": 1,
@@ -131,7 +56,7 @@
           "core.collector.map": 1,
           "core.collector.set": 1,
           "core.collector.string": 1,
-          "core.collector.table": 2
+          "core.collector.table": 3
         },
         "kind_counts": {
           "list": 1,
@@ -139,7 +64,8 @@
           "map": 1,
           "set": 1,
           "string": 1,
-          "table": 2
+          "table": 3,
+          "custom": 1
         },
         "mismatch": 0,
         "mismatch_rate": 0.0,
@@ -147,39 +73,39 @@
       },
       "effects": {
         "counts": {
-          "mem": 5,
-          "mut": 4,
+          "mem": 8,
+          "mut": 8,
           "debug": 0,
           "async_pending": 0,
-          "audit": 1,
+          "audit": 2,
           "time": 0
         },
         "rates": {
-          "mem": 0.7142857142857143,
-          "mut": 0.5714285714285714,
+          "mem": 0.8888888888888888,
+          "mut": 0.8888888888888888,
           "debug": 0.0,
           "async_pending": 0.0,
-          "audit": 0.14285714285714285,
+          "audit": 0.2222222222222222,
           "time": 0.0
         },
         "markers": {
           "mem_reservation": 16,
           "reserve": 2,
-          "finish": 4,
-          "mem_bytes": 135,
+          "finish": 6,
+          "mem_bytes": 303,
           "time_calls": 0
         }
       },
       "errors": {
         "total": 3,
-        "rate_per_total": 0.42857142857142855,
+        "rate_per_total": 0.3333333333333333,
         "counts": {
           "duplicate_key": 2,
           "invalid_encoding": 1
         },
         "rate_per_total_by_kind": {
-          "duplicate_key": 0.2857142857142857,
-          "invalid_encoding": 0.14285714285714285
+          "duplicate_key": 0.2222222222222222,
+          "invalid_encoding": 0.1111111111111111
         },
         "rate_within_errors": {
           "duplicate_key": 0.6666666666666666,
@@ -261,8 +187,8 @@
           "stage_mode": "at_least",
           "stage_mismatch": false,
           "effects": {
-            "mem": false,
-            "mut": false,
+            "mem": true,
+            "mut": true,
             "debug": false,
             "async_pending": false,
             "audit": false,
@@ -272,7 +198,7 @@
             "mem_reservation": 0,
             "reserve": 0,
             "finish": 0,
-            "mem_bytes": 0,
+            "mem_bytes": 28,
             "time_calls": 0
           },
           "error_kind": "duplicate_key",
@@ -287,8 +213,8 @@
           "stage_mode": "exact",
           "stage_mismatch": false,
           "effects": {
-            "mem": false,
-            "mut": false,
+            "mem": true,
+            "mut": true,
             "debug": false,
             "async_pending": false,
             "audit": true,
@@ -298,7 +224,7 @@
             "mem_reservation": 0,
             "reserve": 0,
             "finish": 1,
-            "mem_bytes": 3,
+            "mem_bytes": 15,
             "time_calls": 0
           }
         },
@@ -376,6 +302,54 @@
           },
           "error_kind": "duplicate_key",
           "error_key": "\"dup\""
+        },
+        {
+          "id": "collect_cell_ref_effects",
+          "kind": "custom",
+          "capability": null,
+          "stage_actual": "unknown",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": false,
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "audit": false,
+            "time": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 1,
+            "mem_bytes": 0,
+            "time_calls": 0
+          }
+        },
+        {
+          "id": "table_csv_import",
+          "kind": "table",
+          "capability": "core.collector.table",
+          "stage_actual": "beta",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "audit": true,
+            "time": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 1,
+            "mem_bytes": 128,
+            "time_calls": 0
+          }
         }
       ],
       "schema_versions": [
@@ -385,17 +359,156 @@
         "reports/spec-audit/ch1/core_iter_collectors.json"
       ],
       "status": "success"
+    },
+    {
+      "metric": "collector.effect.cell_rc",
+      "scenario": "ref_internal_mutation",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "cell_mutations_total": 1,
+      "rc_ops_total": 2,
+      "borrow_conflicts": 0,
+      "ref_borrow_conflict_rate": 0.0,
+      "failures": [],
+      "sources": [
+        "reports/spec-audit/ch1/core_iter_collectors.json"
+      ],
+      "schema_versions": [
+        "collector.snapshot.v1"
+      ],
+      "required_audit_keys": [
+        "collector.effect.cell",
+        "collector.effect.rc"
+      ]
+    },
+    {
+      "metric": "collector.table.csv_import",
+      "scenario": "table_csv_import",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "table_insert_throughput": 2048.0,
+      "table_insert_throughput_min": 2048.0,
+      "csv_load_latency_ms": 120.0,
+      "csv_load_latency_max": 120.0,
+      "table_rows_total": 2048,
+      "csv_rows_total": 2048,
+      "failures": [],
+      "cases": [
+        {
+          "case": "table_csv_import",
+          "table_insert_throughput": 2048.0,
+          "csv_load_latency_ms": 120.0,
+          "table_rows": 2048.0,
+          "csv_rows": 2048.0,
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "audit": true
+          },
+          "status": "passed"
+        }
+      ],
+      "schema_versions": [
+        "collector.snapshot.v1"
+      ],
+      "sources": [
+        "reports/spec-audit/ch1/core_iter_collectors.json"
+      ],
+      "required_audit_keys": [
+        "collector.effect.mem",
+        "collector.effect.mut",
+        "collector.effect.audit"
+      ]
+    }
+  ],
+  "extra_metrics": [
+    {
+      "metric": "collector.effect.cell_rc",
+      "scenario": "ref_internal_mutation",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "cell_mutations_total": 1,
+      "rc_ops_total": 2,
+      "borrow_conflicts": 0,
+      "ref_borrow_conflict_rate": 0.0,
+      "failures": [],
+      "sources": [
+        "reports/spec-audit/ch1/core_iter_collectors.json"
+      ],
+      "schema_versions": [
+        "collector.snapshot.v1"
+      ],
+      "required_audit_keys": [
+        "collector.effect.cell",
+        "collector.effect.rc"
+      ]
+    },
+    {
+      "metric": "collector.table.csv_import",
+      "scenario": "table_csv_import",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "table_insert_throughput": 2048.0,
+      "table_insert_throughput_min": 2048.0,
+      "csv_load_latency_ms": 120.0,
+      "csv_load_latency_max": 120.0,
+      "table_rows_total": 2048,
+      "csv_rows_total": 2048,
+      "failures": [],
+      "cases": [
+        {
+          "case": "table_csv_import",
+          "table_insert_throughput": 2048.0,
+          "csv_load_latency_ms": 120.0,
+          "table_rows": 2048.0,
+          "csv_rows": 2048.0,
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "audit": true
+          },
+          "status": "passed"
+        }
+      ],
+      "schema_versions": [
+        "collector.snapshot.v1"
+      ],
+      "sources": [
+        "reports/spec-audit/ch1/core_iter_collectors.json"
+      ],
+      "required_audit_keys": [
+        "collector.effect.mem",
+        "collector.effect.mut",
+        "collector.effect.audit"
+      ]
     }
   ],
   "scenarios": [
-    "ref_internal_mutation"
+    "ref_internal_mutation",
+    "table_csv_import"
   ],
   "metric": "diagnostic.audit_presence_rate",
-  "total": 7,
-  "passed": 0,
-  "failed": 7,
-  "pass_rate": 0.0,
-  "pass_fraction": 0.0,
+  "total": 9,
+  "passed": 9,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "pass_fraction": 1.0,
   "required_audit_keys": [
     "cli.audit_id",
     "cli.change_set",
@@ -405,92 +518,14 @@
   "sources": [
     "reports/spec-audit/ch1/core_iter_collectors.json"
   ],
-  "failures": [
-    {
-      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-      "index": 0,
-      "missing": [
-        "cli.audit_id",
-        "cli.change_set",
-        "schema.version",
-        "timestamp"
-      ],
-      "code": "core.prelude.collector_snapshot"
-    },
-    {
-      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-      "index": 1,
-      "missing": [
-        "cli.audit_id",
-        "cli.change_set",
-        "schema.version",
-        "timestamp"
-      ],
-      "code": "core.prelude.collector_snapshot"
-    },
-    {
-      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-      "index": 2,
-      "missing": [
-        "cli.audit_id",
-        "cli.change_set",
-        "schema.version",
-        "timestamp"
-      ],
-      "code": "core.prelude.collector_failed"
-    },
-    {
-      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-      "index": 3,
-      "missing": [
-        "cli.audit_id",
-        "cli.change_set",
-        "schema.version",
-        "timestamp"
-      ],
-      "code": "core.prelude.collector_snapshot"
-    },
-    {
-      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-      "index": 4,
-      "missing": [
-        "cli.audit_id",
-        "cli.change_set",
-        "schema.version",
-        "timestamp"
-      ],
-      "code": "core.prelude.collector_failed"
-    },
-    {
-      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-      "index": 5,
-      "missing": [
-        "cli.audit_id",
-        "cli.change_set",
-        "schema.version",
-        "timestamp"
-      ],
-      "code": "core.prelude.collector_snapshot"
-    },
-    {
-      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-      "index": 6,
-      "missing": [
-        "cli.audit_id",
-        "cli.change_set",
-        "schema.version",
-        "timestamp"
-      ],
-      "code": "core.prelude.collector_failed"
-    }
-  ],
+  "failures": [],
   "diagnostic_audit": {
     "metric": "diagnostic.audit_presence_rate",
-    "total": 7,
-    "passed": 0,
-    "failed": 7,
-    "pass_rate": 0.0,
-    "pass_fraction": 0.0,
+    "total": 9,
+    "passed": 9,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
     "required_audit_keys": [
       "cli.audit_id",
       "cli.change_set",
@@ -500,105 +535,28 @@
     "sources": [
       "reports/spec-audit/ch1/core_iter_collectors.json"
     ],
-    "failures": [
-      {
-        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-        "index": 0,
-        "missing": [
-          "cli.audit_id",
-          "cli.change_set",
-          "schema.version",
-          "timestamp"
-        ],
-        "code": "core.prelude.collector_snapshot"
-      },
-      {
-        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-        "index": 1,
-        "missing": [
-          "cli.audit_id",
-          "cli.change_set",
-          "schema.version",
-          "timestamp"
-        ],
-        "code": "core.prelude.collector_snapshot"
-      },
-      {
-        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-        "index": 2,
-        "missing": [
-          "cli.audit_id",
-          "cli.change_set",
-          "schema.version",
-          "timestamp"
-        ],
-        "code": "core.prelude.collector_failed"
-      },
-      {
-        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-        "index": 3,
-        "missing": [
-          "cli.audit_id",
-          "cli.change_set",
-          "schema.version",
-          "timestamp"
-        ],
-        "code": "core.prelude.collector_snapshot"
-      },
-      {
-        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-        "index": 4,
-        "missing": [
-          "cli.audit_id",
-          "cli.change_set",
-          "schema.version",
-          "timestamp"
-        ],
-        "code": "core.prelude.collector_failed"
-      },
-      {
-        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-        "index": 5,
-        "missing": [
-          "cli.audit_id",
-          "cli.change_set",
-          "schema.version",
-          "timestamp"
-        ],
-        "code": "core.prelude.collector_snapshot"
-      },
-      {
-        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
-        "index": 6,
-        "missing": [
-          "cli.audit_id",
-          "cli.change_set",
-          "schema.version",
-          "timestamp"
-        ],
-        "code": "core.prelude.collector_failed"
-      }
-    ]
+    "failures": []
   },
   "collector": {
     "metric": "collector.effect.audit_snapshot",
-    "total": 7,
-    "passed": 7,
+    "total": 9,
+    "passed": 9,
     "failed": 0,
     "pass_rate": 1.0,
     "pass_fraction": 1.0,
     "stage": {
       "actual_counts": {
         "stable": 2,
-        "beta": 5
+        "beta": 6,
+        "unknown": 1
       },
       "required_counts": {
         "stable": 2,
-        "beta": 5
+        "beta": 7
       },
       "mode_counts": {
         "exact": 2,
-        "at_least": 5
+        "at_least": 7
       },
       "source_counts": {
         "ListCollector::finish": 1,
@@ -607,7 +565,9 @@
         "SetCollector::finish": 1,
         "StringCollector::push": 1,
         "TableCollector::finish": 1,
-        "TableCollector::push": 1
+        "TableCollector::push": 1,
+        "CellRefCollector::finish": 1,
+        "TableCollector::csv_import": 1
       },
       "capability_counts": {
         "core.collector.list": 1,
@@ -615,7 +575,7 @@
         "core.collector.map": 1,
         "core.collector.set": 1,
         "core.collector.string": 1,
-        "core.collector.table": 2
+        "core.collector.table": 3
       },
       "kind_counts": {
         "list": 1,
@@ -623,7 +583,8 @@
         "map": 1,
         "set": 1,
         "string": 1,
-        "table": 2
+        "table": 3,
+        "custom": 1
       },
       "mismatch": 0,
       "mismatch_rate": 0.0,
@@ -631,39 +592,39 @@
     },
     "effects": {
       "counts": {
-        "mem": 5,
-        "mut": 4,
+        "mem": 8,
+        "mut": 8,
         "debug": 0,
         "async_pending": 0,
-        "audit": 1,
+        "audit": 2,
         "time": 0
       },
       "rates": {
-        "mem": 0.7142857142857143,
-        "mut": 0.5714285714285714,
+        "mem": 0.8888888888888888,
+        "mut": 0.8888888888888888,
         "debug": 0.0,
         "async_pending": 0.0,
-        "audit": 0.14285714285714285,
+        "audit": 0.2222222222222222,
         "time": 0.0
       },
       "markers": {
         "mem_reservation": 16,
         "reserve": 2,
-        "finish": 4,
-        "mem_bytes": 135,
+        "finish": 6,
+        "mem_bytes": 303,
         "time_calls": 0
       }
     },
     "errors": {
       "total": 3,
-      "rate_per_total": 0.42857142857142855,
+      "rate_per_total": 0.3333333333333333,
       "counts": {
         "duplicate_key": 2,
         "invalid_encoding": 1
       },
       "rate_per_total_by_kind": {
-        "duplicate_key": 0.2857142857142857,
-        "invalid_encoding": 0.14285714285714285
+        "duplicate_key": 0.2222222222222222,
+        "invalid_encoding": 0.1111111111111111
       },
       "rate_within_errors": {
         "duplicate_key": 0.6666666666666666,
@@ -745,8 +706,8 @@
         "stage_mode": "at_least",
         "stage_mismatch": false,
         "effects": {
-          "mem": false,
-          "mut": false,
+          "mem": true,
+          "mut": true,
           "debug": false,
           "async_pending": false,
           "audit": false,
@@ -756,7 +717,7 @@
           "mem_reservation": 0,
           "reserve": 0,
           "finish": 0,
-          "mem_bytes": 0,
+          "mem_bytes": 28,
           "time_calls": 0
         },
         "error_kind": "duplicate_key",
@@ -771,8 +732,8 @@
         "stage_mode": "exact",
         "stage_mismatch": false,
         "effects": {
-          "mem": false,
-          "mut": false,
+          "mem": true,
+          "mut": true,
           "debug": false,
           "async_pending": false,
           "audit": true,
@@ -782,7 +743,7 @@
           "mem_reservation": 0,
           "reserve": 0,
           "finish": 1,
-          "mem_bytes": 3,
+          "mem_bytes": 15,
           "time_calls": 0
         }
       },
@@ -860,6 +821,54 @@
         },
         "error_kind": "duplicate_key",
         "error_key": "\"dup\""
+      },
+      {
+        "id": "collect_cell_ref_effects",
+        "kind": "custom",
+        "capability": null,
+        "stage_actual": "unknown",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": false,
+          "mut": true,
+          "debug": false,
+          "async_pending": false,
+          "audit": false,
+          "time": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 1,
+          "mem_bytes": 0,
+          "time_calls": 0
+        }
+      },
+      {
+        "id": "table_csv_import",
+        "kind": "table",
+        "capability": "core.collector.table",
+        "stage_actual": "beta",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": true,
+          "mut": true,
+          "debug": false,
+          "async_pending": false,
+          "audit": true,
+          "time": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 1,
+          "mem_bytes": 128,
+          "time_calls": 0
+        }
       }
     ],
     "schema_versions": [
@@ -874,18 +883,18 @@
     "collector.snapshot.v1"
   ],
   "diagnostics": {
-    "total": 7,
+    "total": 9,
     "error": 3,
     "warning": 0,
-    "info": 4,
+    "info": 6,
     "hint": 0,
     "other": 0,
     "sources": [
       "reports/spec-audit/ch1/core_iter_collectors.json"
     ],
-    "info_fraction": 0.5714285714285714,
+    "info_fraction": 0.6666666666666666,
     "hint_fraction": 0.0,
-    "info_hint_ratio": 0.5714285714285714,
+    "info_hint_ratio": 0.6666666666666666,
     "parser_total": 0,
     "parser_expected": 0,
     "parser_expected_ratio": 0.0,
@@ -898,38 +907,37 @@
         "metric": "collector.effect.cell_rc",
         "scenario": "ref_internal_mutation",
         "field": "cell_mutations_total",
-        "status": "metric_missing"
+        "value": 1,
+        "min": 1,
+        "status": "ok"
       },
       {
         "metric": "collector.effect.cell_rc",
         "scenario": "ref_internal_mutation",
         "field": "ref_borrow_conflict_rate",
-        "status": "metric_missing"
+        "value": 0.0,
+        "max": 0.35,
+        "status": "ok"
       },
       {
         "metric": "collector.table.csv_import",
         "scenario": "table_csv_import",
         "field": "table_insert_throughput",
-        "status": "metric_missing"
+        "value": 2048.0,
+        "min": 1000,
+        "status": "ok"
       },
       {
         "metric": "collector.table.csv_import",
         "scenario": "table_csv_import",
         "field": "csv_load_latency_ms",
-        "status": "metric_missing"
+        "value": 120.0,
+        "max": 250,
+        "status": "ok"
       }
-    ],
-    "failures": [
-      "threshold metric missing: collector.effect.cell_rc (ref_internal_mutation)",
-      "threshold metric missing: collector.table.csv_import (table_csv_import)"
     ]
   },
   "enforcement": {
-    "failures": [
-      "threshold metric missing: collector.effect.cell_rc (ref_internal_mutation)",
-      "threshold metric missing: collector.table.csv_import (table_csv_import)",
-      "diagnostic.audit_presence_rate < 1.0"
-    ],
     "require_success": true
   }
 }

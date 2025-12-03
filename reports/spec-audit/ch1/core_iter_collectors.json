@@ -26,7 +26,20 @@
             "rc": false,
             "rc_ops": 0,
             "predicate_calls": 0,
-            "mem_bytes": 12
+            "mem_bytes": 12,
+            "fs_sync": false,
+            "fs_sync_calls": 0,
+            "io": false,
+            "io_async": false,
+            "io_async_calls": 0,
+            "io_blocking": false,
+            "io_blocking_calls": 0,
+            "security": false,
+            "security_events": 0,
+            "time": false,
+            "time_calls": 0,
+            "transfer": false,
+            "unicode": false
           },
           "markers": {
             "finish": 1,
@@ -41,6 +54,7 @@
         }
       },
       "schema_version": "collector.snapshot.v1",
+      "timestamp": "2025-12-03T00:00:00Z",
       "audit": {
         "metadata": {
           "collector.kind": "list",
@@ -61,6 +75,19 @@
           "collector.effect.rc_ops": 0,
           "collector.effect.predicate_calls": 0,
           "collector.effect.mem_bytes": 12,
+          "collector.effect.fs_sync": false,
+          "collector.effect.fs_sync_calls": 0,
+          "collector.effect.io": false,
+          "collector.effect.io_async": false,
+          "collector.effect.io_async_calls": 0,
+          "collector.effect.io_blocking": false,
+          "collector.effect.io_blocking_calls": 0,
+          "collector.effect.security": false,
+          "collector.effect.security_events": 0,
+          "collector.effect.time": false,
+          "collector.effect.time_calls": 0,
+          "collector.effect.transfer": false,
+          "collector.effect.unicode": false,
           "collector.effect.finish": 1,
           "collector.effect.mem_reservation": 12,
           "collector.effect.reserve": 0,
@@ -69,8 +96,81 @@
           "effect.stage.mode": "exact",
           "effect.stage.capability": "core.collector.list",
           "effect.stage.kind": "list",
-          "effect.stage.source": "ListCollector::finish"
-        }
+          "effect.stage.source": "ListCollector::finish",
+          "schema.version": "collector.snapshot.v1",
+          "event.domain": "core.collectors",
+          "event.kind": "collector.snapshot",
+          "event.category": "diagnostic",
+          "audit.channel": "collector.snapshots",
+          "audit.policy.version": "collector.spec.audit.v1",
+          "audit.timestamp": "2025-12-03T00:00:00Z",
+          "audit.sequence": 0,
+          "cli.program": "collector.snapshot-fixture",
+          "cli.command": "render-collector-audit-fixtures",
+          "cli.phase": "spec-fixture",
+          "cli.args": [
+            "--snapshot",
+            "collect_list_baseline"
+          ],
+          "cli.run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "cli.change_set": {
+            "policy": "collector.snapshot.change_set.v1",
+            "origin": "spec-fixture",
+            "source": {
+              "command": "render-collector-audit-fixtures",
+              "args": [
+                "--snapshot",
+                "collect_list_baseline"
+              ],
+              "workspace": "."
+            },
+            "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+            "items": [
+              {
+                "kind": "collector.snapshot",
+                "snapshot_id": "collect_list_baseline",
+                "capability": "core.collector.list",
+                "stage_actual": "stable",
+                "stage_required": "stable",
+                "stage_mode": "exact",
+                "collector_kind": "list",
+                "sequence": 0,
+                "timestamp": "2025-12-03T00:00:00Z"
+              }
+            ]
+          },
+          "cli.audit_id": "collector.snapshots/20251203T000000Z#0",
+          "audit.id.uuid": "89d5a7c7-cf03-50f2-8eba-37dcf28e1643",
+          "audit.id.label": "collector.snapshots/20251203T000000Z#0"
+        },
+        "change_set": {
+          "policy": "collector.snapshot.change_set.v1",
+          "origin": "spec-fixture",
+          "source": {
+            "command": "render-collector-audit-fixtures",
+            "args": [
+              "--snapshot",
+              "collect_list_baseline"
+            ],
+            "workspace": "."
+          },
+          "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "items": [
+            {
+              "kind": "collector.snapshot",
+              "snapshot_id": "collect_list_baseline",
+              "capability": "core.collector.list",
+              "stage_actual": "stable",
+              "stage_required": "stable",
+              "stage_mode": "exact",
+              "collector_kind": "list",
+              "sequence": 0,
+              "timestamp": "2025-12-03T00:00:00Z"
+            }
+          ]
+        },
+        "cli.audit_id": "collector.snapshots/20251203T000000Z#0",
+        "audit_id": "collector.snapshots/20251203T000000Z#0"
       }
     },
     {
@@ -99,7 +199,20 @@
             "rc": false,
             "rc_ops": 0,
             "predicate_calls": 0,
-            "mem_bytes": 36
+            "mem_bytes": 36,
+            "fs_sync": false,
+            "fs_sync_calls": 0,
+            "io": false,
+            "io_async": false,
+            "io_async_calls": 0,
+            "io_blocking": false,
+            "io_blocking_calls": 0,
+            "security": false,
+            "security_events": 0,
+            "time": false,
+            "time_calls": 0,
+            "transfer": false,
+            "unicode": false
           },
           "markers": {
             "finish": 1,
@@ -114,6 +227,7 @@
         }
       },
       "schema_version": "collector.snapshot.v1",
+      "timestamp": "2025-12-03T00:00:01Z",
       "audit": {
         "metadata": {
           "collector.kind": "vec",
@@ -134,6 +248,19 @@
           "collector.effect.rc_ops": 0,
           "collector.effect.predicate_calls": 0,
           "collector.effect.mem_bytes": 36,
+          "collector.effect.fs_sync": false,
+          "collector.effect.fs_sync_calls": 0,
+          "collector.effect.io": false,
+          "collector.effect.io_async": false,
+          "collector.effect.io_async_calls": 0,
+          "collector.effect.io_blocking": false,
+          "collector.effect.io_blocking_calls": 0,
+          "collector.effect.security": false,
+          "collector.effect.security_events": 0,
+          "collector.effect.time": false,
+          "collector.effect.time_calls": 0,
+          "collector.effect.transfer": false,
+          "collector.effect.unicode": false,
           "collector.effect.finish": 1,
           "collector.effect.mem_reservation": 4,
           "collector.effect.reserve": 2,
@@ -142,8 +269,81 @@
           "effect.stage.mode": "at_least",
           "effect.stage.capability": "core.collector.vec",
           "effect.stage.kind": "vec",
-          "effect.stage.source": "VecCollector::finish"
-        }
+          "effect.stage.source": "VecCollector::finish",
+          "schema.version": "collector.snapshot.v1",
+          "event.domain": "core.collectors",
+          "event.kind": "collector.snapshot",
+          "event.category": "diagnostic",
+          "audit.channel": "collector.snapshots",
+          "audit.policy.version": "collector.spec.audit.v1",
+          "audit.timestamp": "2025-12-03T00:00:01Z",
+          "audit.sequence": 1,
+          "cli.program": "collector.snapshot-fixture",
+          "cli.command": "render-collector-audit-fixtures",
+          "cli.phase": "spec-fixture",
+          "cli.args": [
+            "--snapshot",
+            "collect_vec_mem_reservation"
+          ],
+          "cli.run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "cli.change_set": {
+            "policy": "collector.snapshot.change_set.v1",
+            "origin": "spec-fixture",
+            "source": {
+              "command": "render-collector-audit-fixtures",
+              "args": [
+                "--snapshot",
+                "collect_vec_mem_reservation"
+              ],
+              "workspace": "."
+            },
+            "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+            "items": [
+              {
+                "kind": "collector.snapshot",
+                "snapshot_id": "collect_vec_mem_reservation",
+                "capability": "core.collector.vec",
+                "stage_actual": "beta",
+                "stage_required": "beta",
+                "stage_mode": "at_least",
+                "collector_kind": "vec",
+                "sequence": 1,
+                "timestamp": "2025-12-03T00:00:01Z"
+              }
+            ]
+          },
+          "cli.audit_id": "collector.snapshots/20251203T000001Z#1",
+          "audit.id.uuid": "0c30dfcf-b3f3-5e90-a552-e8d949d4e647",
+          "audit.id.label": "collector.snapshots/20251203T000001Z#1"
+        },
+        "change_set": {
+          "policy": "collector.snapshot.change_set.v1",
+          "origin": "spec-fixture",
+          "source": {
+            "command": "render-collector-audit-fixtures",
+            "args": [
+              "--snapshot",
+              "collect_vec_mem_reservation"
+            ],
+            "workspace": "."
+          },
+          "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "items": [
+            {
+              "kind": "collector.snapshot",
+              "snapshot_id": "collect_vec_mem_reservation",
+              "capability": "core.collector.vec",
+              "stage_actual": "beta",
+              "stage_required": "beta",
+              "stage_mode": "at_least",
+              "collector_kind": "vec",
+              "sequence": 1,
+              "timestamp": "2025-12-03T00:00:01Z"
+            }
+          ]
+        },
+        "cli.audit_id": "collector.snapshots/20251203T000001Z#1",
+        "audit_id": "collector.snapshots/20251203T000001Z#1"
       }
     },
     {
@@ -155,14 +355,27 @@
         "collector.effect.cell_mutations": 0,
         "collector.effect.debug": false,
         "collector.effect.finish": 0,
-        "collector.effect.mem": false,
-        "collector.effect.mem_bytes": 0,
+        "collector.effect.io": false,
+        "collector.effect.io_async": false,
+        "collector.effect.io_async_calls": 0,
+        "collector.effect.io_async_ops": 0,
+        "collector.effect.io_blocking": false,
+        "collector.effect.io_blocking_calls": 0,
+        "collector.effect.io_blocking_ops": 0,
+        "collector.effect.mem": true,
+        "collector.effect.mem_bytes": 28,
         "collector.effect.mem_reservation": 0,
-        "collector.effect.mut": false,
+        "collector.effect.mut": true,
         "collector.effect.predicate_calls": 0,
         "collector.effect.rc": false,
         "collector.effect.rc_ops": 0,
         "collector.effect.reserve": 0,
+        "collector.effect.security": false,
+        "collector.effect.security_checks": 0,
+        "collector.effect.security_events": 0,
+        "collector.effect.time": false,
+        "collector.effect.time_calls": 0,
+        "collector.effect.transfer": false,
         "collector.error.key": "\"dup\"",
         "collector.kind": "map",
         "collector.stage.actual": "beta",
@@ -178,8 +391,8 @@
           "collector.stage.mode": "at_least",
           "collector.stage.source": "MapCollector::push",
           "collector.stage.mismatch": false,
-          "collector.effect.mem": false,
-          "collector.effect.mut": false,
+          "collector.effect.mem": true,
+          "collector.effect.mut": true,
           "collector.effect.debug": false,
           "collector.effect.async_pending": false,
           "collector.effect.audit": false,
@@ -188,7 +401,18 @@
           "collector.effect.rc": false,
           "collector.effect.rc_ops": 0,
           "collector.effect.predicate_calls": 0,
-          "collector.effect.mem_bytes": 0,
+          "collector.effect.mem_bytes": 28,
+          "collector.effect.io": false,
+          "collector.effect.io_async": false,
+          "collector.effect.io_async_calls": 0,
+          "collector.effect.io_blocking": false,
+          "collector.effect.io_blocking_calls": 0,
+          "collector.effect.security": false,
+          "collector.effect.security_events": 0,
+          "collector.effect.time": false,
+          "collector.effect.time_calls": 0,
+          "collector.effect.transfer": false,
+          "collector.effect.unicode": false,
           "collector.effect.finish": 0,
           "collector.effect.mem_reservation": 0,
           "collector.effect.reserve": 0,
@@ -199,8 +423,81 @@
           "effect.stage.kind": "map",
           "effect.stage.source": "MapCollector::push",
           "collector.error.kind": "duplicate_key",
-          "collector.error.key": "\"dup\""
-        }
+          "collector.error.key": "\"dup\"",
+          "schema.version": "collector.snapshot.v1",
+          "event.domain": "core.collectors",
+          "event.kind": "collector.snapshot",
+          "event.category": "diagnostic",
+          "audit.channel": "collector.snapshots",
+          "audit.policy.version": "collector.spec.audit.v1",
+          "audit.timestamp": "2025-12-03T00:00:02Z",
+          "audit.sequence": 2,
+          "cli.program": "collector.snapshot-fixture",
+          "cli.command": "render-collector-audit-fixtures",
+          "cli.phase": "spec-fixture",
+          "cli.args": [
+            "--snapshot",
+            "collect_map_duplicate"
+          ],
+          "cli.run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "cli.change_set": {
+            "policy": "collector.snapshot.change_set.v1",
+            "origin": "spec-fixture",
+            "source": {
+              "command": "render-collector-audit-fixtures",
+              "args": [
+                "--snapshot",
+                "collect_map_duplicate"
+              ],
+              "workspace": "."
+            },
+            "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+            "items": [
+              {
+                "kind": "collector.snapshot",
+                "snapshot_id": "collect_map_duplicate",
+                "capability": "core.collector.map",
+                "stage_actual": "beta",
+                "stage_required": "beta",
+                "stage_mode": "at_least",
+                "collector_kind": "map",
+                "sequence": 2,
+                "timestamp": "2025-12-03T00:00:02Z"
+              }
+            ]
+          },
+          "cli.audit_id": "collector.snapshots/20251203T000002Z#2",
+          "audit.id.uuid": "0bbc3036-e938-56b7-b50e-c2ee39b0a7d7",
+          "audit.id.label": "collector.snapshots/20251203T000002Z#2"
+        },
+        "change_set": {
+          "policy": "collector.snapshot.change_set.v1",
+          "origin": "spec-fixture",
+          "source": {
+            "command": "render-collector-audit-fixtures",
+            "args": [
+              "--snapshot",
+              "collect_map_duplicate"
+            ],
+            "workspace": "."
+          },
+          "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "items": [
+            {
+              "kind": "collector.snapshot",
+              "snapshot_id": "collect_map_duplicate",
+              "capability": "core.collector.map",
+              "stage_actual": "beta",
+              "stage_required": "beta",
+              "stage_mode": "at_least",
+              "collector_kind": "map",
+              "sequence": 2,
+              "timestamp": "2025-12-03T00:00:02Z"
+            }
+          ]
+        },
+        "cli.audit_id": "collector.snapshots/20251203T000002Z#2",
+        "audit_id": "collector.snapshots/20251203T000002Z#2"
       },
       "code": "core.prelude.collector_failed",
       "domain": "runtime",
@@ -208,8 +505,8 @@
         "prelude.collector": {
           "capability": "core.collector.map",
           "effects": {
-            "mem": false,
-            "mut": false,
+            "mem": true,
+            "mut": true,
             "debug": false,
             "async_pending": false,
             "audit": false,
@@ -218,7 +515,18 @@
             "rc": false,
             "rc_ops": 0,
             "predicate_calls": 0,
-            "mem_bytes": 0
+            "mem_bytes": 28,
+            "io": false,
+            "io_async": false,
+            "io_async_calls": 0,
+            "io_blocking": false,
+            "io_blocking_calls": 0,
+            "security": false,
+            "security_events": 0,
+            "time": false,
+            "time_calls": 0,
+            "transfer": false,
+            "unicode": false
           },
           "error_key": "\"dup\"",
           "error_kind": "duplicate_key",
@@ -240,7 +548,8 @@
       "message": "MapCollector failed: duplicate key: \"dup\"",
       "severity": "error",
       "snapshot_id": "collect_map_duplicate",
-      "schema_version": "collector.snapshot.v1"
+      "schema_version": "collector.snapshot.v1",
+      "timestamp": "2025-12-03T00:00:02Z"
     },
     {
       "snapshot_id": "collect_set_stage",
@@ -258,8 +567,8 @@
           "stage_mismatch": false,
           "source": "SetCollector::finish",
           "effects": {
-            "mem": false,
-            "mut": false,
+            "mem": true,
+            "mut": true,
             "debug": false,
             "async_pending": false,
             "audit": true,
@@ -268,7 +577,20 @@
             "rc": false,
             "rc_ops": 0,
             "predicate_calls": 0,
-            "mem_bytes": 3
+            "mem_bytes": 15,
+            "fs_sync": false,
+            "fs_sync_calls": 0,
+            "io": false,
+            "io_async": false,
+            "io_async_calls": 0,
+            "io_blocking": false,
+            "io_blocking_calls": 0,
+            "security": false,
+            "security_events": 0,
+            "time": false,
+            "time_calls": 0,
+            "transfer": false,
+            "unicode": false
           },
           "markers": {
             "finish": 1,
@@ -283,6 +605,7 @@
         }
       },
       "schema_version": "collector.snapshot.v1",
+      "timestamp": "2025-12-03T00:00:03Z",
       "audit": {
         "metadata": {
           "collector.kind": "set",
@@ -292,8 +615,8 @@
           "collector.stage.mode": "exact",
           "collector.stage.source": "SetCollector::finish",
           "collector.stage.mismatch": false,
-          "collector.effect.mem": false,
-          "collector.effect.mut": false,
+          "collector.effect.mem": true,
+          "collector.effect.mut": true,
           "collector.effect.debug": false,
           "collector.effect.async_pending": false,
           "collector.effect.audit": true,
@@ -302,7 +625,20 @@
           "collector.effect.rc": false,
           "collector.effect.rc_ops": 0,
           "collector.effect.predicate_calls": 0,
-          "collector.effect.mem_bytes": 3,
+          "collector.effect.mem_bytes": 15,
+          "collector.effect.fs_sync": false,
+          "collector.effect.fs_sync_calls": 0,
+          "collector.effect.io": false,
+          "collector.effect.io_async": false,
+          "collector.effect.io_async_calls": 0,
+          "collector.effect.io_blocking": false,
+          "collector.effect.io_blocking_calls": 0,
+          "collector.effect.security": false,
+          "collector.effect.security_events": 0,
+          "collector.effect.time": false,
+          "collector.effect.time_calls": 0,
+          "collector.effect.transfer": false,
+          "collector.effect.unicode": false,
           "collector.effect.finish": 1,
           "collector.effect.mem_reservation": 0,
           "collector.effect.reserve": 0,
@@ -311,8 +647,81 @@
           "effect.stage.mode": "exact",
           "effect.stage.capability": "core.collector.set",
           "effect.stage.kind": "set",
-          "effect.stage.source": "SetCollector::finish"
-        }
+          "effect.stage.source": "SetCollector::finish",
+          "schema.version": "collector.snapshot.v1",
+          "event.domain": "core.collectors",
+          "event.kind": "collector.snapshot",
+          "event.category": "diagnostic",
+          "audit.channel": "collector.snapshots",
+          "audit.policy.version": "collector.spec.audit.v1",
+          "audit.timestamp": "2025-12-03T00:00:03Z",
+          "audit.sequence": 3,
+          "cli.program": "collector.snapshot-fixture",
+          "cli.command": "render-collector-audit-fixtures",
+          "cli.phase": "spec-fixture",
+          "cli.args": [
+            "--snapshot",
+            "collect_set_stage"
+          ],
+          "cli.run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "cli.change_set": {
+            "policy": "collector.snapshot.change_set.v1",
+            "origin": "spec-fixture",
+            "source": {
+              "command": "render-collector-audit-fixtures",
+              "args": [
+                "--snapshot",
+                "collect_set_stage"
+              ],
+              "workspace": "."
+            },
+            "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+            "items": [
+              {
+                "kind": "collector.snapshot",
+                "snapshot_id": "collect_set_stage",
+                "capability": "core.collector.set",
+                "stage_actual": "stable",
+                "stage_required": "stable",
+                "stage_mode": "exact",
+                "collector_kind": "set",
+                "sequence": 3,
+                "timestamp": "2025-12-03T00:00:03Z"
+              }
+            ]
+          },
+          "cli.audit_id": "collector.snapshots/20251203T000003Z#3",
+          "audit.id.uuid": "c1376a14-5a77-5930-9864-be5f945596c7",
+          "audit.id.label": "collector.snapshots/20251203T000003Z#3"
+        },
+        "change_set": {
+          "policy": "collector.snapshot.change_set.v1",
+          "origin": "spec-fixture",
+          "source": {
+            "command": "render-collector-audit-fixtures",
+            "args": [
+              "--snapshot",
+              "collect_set_stage"
+            ],
+            "workspace": "."
+          },
+          "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "items": [
+            {
+              "kind": "collector.snapshot",
+              "snapshot_id": "collect_set_stage",
+              "capability": "core.collector.set",
+              "stage_actual": "stable",
+              "stage_required": "stable",
+              "stage_mode": "exact",
+              "collector_kind": "set",
+              "sequence": 3,
+              "timestamp": "2025-12-03T00:00:03Z"
+            }
+          ]
+        },
+        "cli.audit_id": "collector.snapshots/20251203T000003Z#3",
+        "audit_id": "collector.snapshots/20251203T000003Z#3"
       }
     },
     {
@@ -324,6 +733,13 @@
         "collector.effect.cell_mutations": 0,
         "collector.effect.debug": false,
         "collector.effect.finish": 0,
+        "collector.effect.io": false,
+        "collector.effect.io_async": false,
+        "collector.effect.io_async_calls": 0,
+        "collector.effect.io_async_ops": 0,
+        "collector.effect.io_blocking": false,
+        "collector.effect.io_blocking_calls": 0,
+        "collector.effect.io_blocking_ops": 0,
         "collector.effect.mem": true,
         "collector.effect.mem_bytes": 0,
         "collector.effect.mem_reservation": 0,
@@ -332,6 +748,12 @@
         "collector.effect.rc": false,
         "collector.effect.rc_ops": 0,
         "collector.effect.reserve": 0,
+        "collector.effect.security": false,
+        "collector.effect.security_checks": 0,
+        "collector.effect.security_events": 0,
+        "collector.effect.time": false,
+        "collector.effect.time_calls": 0,
+        "collector.effect.transfer": false,
         "collector.kind": "string",
         "collector.stage.actual": "beta",
         "collector.stage.mismatch": false,
@@ -357,6 +779,17 @@
           "collector.effect.rc_ops": 0,
           "collector.effect.predicate_calls": 0,
           "collector.effect.mem_bytes": 0,
+          "collector.effect.io": false,
+          "collector.effect.io_async": false,
+          "collector.effect.io_async_calls": 0,
+          "collector.effect.io_blocking": false,
+          "collector.effect.io_blocking_calls": 0,
+          "collector.effect.security": false,
+          "collector.effect.security_events": 0,
+          "collector.effect.time": false,
+          "collector.effect.time_calls": 0,
+          "collector.effect.transfer": false,
+          "collector.effect.unicode": false,
           "collector.effect.finish": 0,
           "collector.effect.mem_reservation": 0,
           "collector.effect.reserve": 0,
@@ -366,8 +799,81 @@
           "effect.stage.capability": "core.collector.string",
           "effect.stage.kind": "string",
           "effect.stage.source": "StringCollector::push",
-          "collector.error.kind": "invalid_encoding"
-        }
+          "collector.error.kind": "invalid_encoding",
+          "schema.version": "collector.snapshot.v1",
+          "event.domain": "core.collectors",
+          "event.kind": "collector.snapshot",
+          "event.category": "diagnostic",
+          "audit.channel": "collector.snapshots",
+          "audit.policy.version": "collector.spec.audit.v1",
+          "audit.timestamp": "2025-12-03T00:00:04Z",
+          "audit.sequence": 4,
+          "cli.program": "collector.snapshot-fixture",
+          "cli.command": "render-collector-audit-fixtures",
+          "cli.phase": "spec-fixture",
+          "cli.args": [
+            "--snapshot",
+            "collect_string_invalid"
+          ],
+          "cli.run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "cli.change_set": {
+            "policy": "collector.snapshot.change_set.v1",
+            "origin": "spec-fixture",
+            "source": {
+              "command": "render-collector-audit-fixtures",
+              "args": [
+                "--snapshot",
+                "collect_string_invalid"
+              ],
+              "workspace": "."
+            },
+            "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+            "items": [
+              {
+                "kind": "collector.snapshot",
+                "snapshot_id": "collect_string_invalid",
+                "capability": "core.collector.string",
+                "stage_actual": "beta",
+                "stage_required": "beta",
+                "stage_mode": "at_least",
+                "collector_kind": "string",
+                "sequence": 4,
+                "timestamp": "2025-12-03T00:00:04Z"
+              }
+            ]
+          },
+          "cli.audit_id": "collector.snapshots/20251203T000004Z#4",
+          "audit.id.uuid": "4c00f919-9771-5e19-abdc-ffd29bc1182e",
+          "audit.id.label": "collector.snapshots/20251203T000004Z#4"
+        },
+        "change_set": {
+          "policy": "collector.snapshot.change_set.v1",
+          "origin": "spec-fixture",
+          "source": {
+            "command": "render-collector-audit-fixtures",
+            "args": [
+              "--snapshot",
+              "collect_string_invalid"
+            ],
+            "workspace": "."
+          },
+          "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "items": [
+            {
+              "kind": "collector.snapshot",
+              "snapshot_id": "collect_string_invalid",
+              "capability": "core.collector.string",
+              "stage_actual": "beta",
+              "stage_required": "beta",
+              "stage_mode": "at_least",
+              "collector_kind": "string",
+              "sequence": 4,
+              "timestamp": "2025-12-03T00:00:04Z"
+            }
+          ]
+        },
+        "cli.audit_id": "collector.snapshots/20251203T000004Z#4",
+        "audit_id": "collector.snapshots/20251203T000004Z#4"
       },
       "code": "core.prelude.collector_failed",
       "domain": "runtime",
@@ -386,7 +892,18 @@
             "rc": false,
             "rc_ops": 0,
             "predicate_calls": 0,
-            "mem_bytes": 0
+            "mem_bytes": 0,
+            "io": false,
+            "io_async": false,
+            "io_async_calls": 0,
+            "io_blocking": false,
+            "io_blocking_calls": 0,
+            "security": false,
+            "security_events": 0,
+            "time": false,
+            "time_calls": 0,
+            "transfer": false,
+            "unicode": false
           },
           "error_kind": "invalid_encoding",
           "kind": "string",
@@ -407,7 +924,8 @@
       "message": "StringCollector failed: invalid UTF-8 byte 0x28 at offset 1 (expected continuation byte in 0x80..=0xBF)",
       "severity": "error",
       "snapshot_id": "collect_string_invalid",
-      "schema_version": "collector.snapshot.v1"
+      "schema_version": "collector.snapshot.v1",
+      "timestamp": "2025-12-03T00:00:04Z"
     },
     {
       "snapshot_id": "collect_table_baseline",
@@ -435,7 +953,20 @@
             "rc": false,
             "rc_ops": 0,
             "predicate_calls": 0,
-            "mem_bytes": 56
+            "mem_bytes": 56,
+            "fs_sync": false,
+            "fs_sync_calls": 0,
+            "io": false,
+            "io_async": false,
+            "io_async_calls": 0,
+            "io_blocking": false,
+            "io_blocking_calls": 0,
+            "security": false,
+            "security_events": 0,
+            "time": false,
+            "time_calls": 0,
+            "transfer": false,
+            "unicode": false
           },
           "markers": {
             "finish": 1,
@@ -455,6 +986,7 @@
         }
       },
       "schema_version": "collector.snapshot.v1",
+      "timestamp": "2025-12-03T00:00:05Z",
       "audit": {
         "metadata": {
           "collector.kind": "table",
@@ -475,6 +1007,19 @@
           "collector.effect.rc_ops": 0,
           "collector.effect.predicate_calls": 0,
           "collector.effect.mem_bytes": 56,
+          "collector.effect.fs_sync": false,
+          "collector.effect.fs_sync_calls": 0,
+          "collector.effect.io": false,
+          "collector.effect.io_async": false,
+          "collector.effect.io_async_calls": 0,
+          "collector.effect.io_blocking": false,
+          "collector.effect.io_blocking_calls": 0,
+          "collector.effect.security": false,
+          "collector.effect.security_events": 0,
+          "collector.effect.time": false,
+          "collector.effect.time_calls": 0,
+          "collector.effect.transfer": false,
+          "collector.effect.unicode": false,
           "collector.effect.finish": 1,
           "collector.effect.mem_reservation": 0,
           "collector.effect.reserve": 0,
@@ -483,8 +1028,81 @@
           "effect.stage.mode": "at_least",
           "effect.stage.capability": "core.collector.table",
           "effect.stage.kind": "table",
-          "effect.stage.source": "TableCollector::finish"
-        }
+          "effect.stage.source": "TableCollector::finish",
+          "schema.version": "collector.snapshot.v1",
+          "event.domain": "core.collectors",
+          "event.kind": "collector.snapshot",
+          "event.category": "diagnostic",
+          "audit.channel": "collector.snapshots",
+          "audit.policy.version": "collector.spec.audit.v1",
+          "audit.timestamp": "2025-12-03T00:00:05Z",
+          "audit.sequence": 5,
+          "cli.program": "collector.snapshot-fixture",
+          "cli.command": "render-collector-audit-fixtures",
+          "cli.phase": "spec-fixture",
+          "cli.args": [
+            "--snapshot",
+            "collect_table_baseline"
+          ],
+          "cli.run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "cli.change_set": {
+            "policy": "collector.snapshot.change_set.v1",
+            "origin": "spec-fixture",
+            "source": {
+              "command": "render-collector-audit-fixtures",
+              "args": [
+                "--snapshot",
+                "collect_table_baseline"
+              ],
+              "workspace": "."
+            },
+            "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+            "items": [
+              {
+                "kind": "collector.snapshot",
+                "snapshot_id": "collect_table_baseline",
+                "capability": "core.collector.table",
+                "stage_actual": "beta",
+                "stage_required": "beta",
+                "stage_mode": "at_least",
+                "collector_kind": "table",
+                "sequence": 5,
+                "timestamp": "2025-12-03T00:00:05Z"
+              }
+            ]
+          },
+          "cli.audit_id": "collector.snapshots/20251203T000005Z#5",
+          "audit.id.uuid": "649bd819-4cb9-598d-9af6-29c55f62b3d6",
+          "audit.id.label": "collector.snapshots/20251203T000005Z#5"
+        },
+        "change_set": {
+          "policy": "collector.snapshot.change_set.v1",
+          "origin": "spec-fixture",
+          "source": {
+            "command": "render-collector-audit-fixtures",
+            "args": [
+              "--snapshot",
+              "collect_table_baseline"
+            ],
+            "workspace": "."
+          },
+          "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "items": [
+            {
+              "kind": "collector.snapshot",
+              "snapshot_id": "collect_table_baseline",
+              "capability": "core.collector.table",
+              "stage_actual": "beta",
+              "stage_required": "beta",
+              "stage_mode": "at_least",
+              "collector_kind": "table",
+              "sequence": 5,
+              "timestamp": "2025-12-03T00:00:05Z"
+            }
+          ]
+        },
+        "cli.audit_id": "collector.snapshots/20251203T000005Z#5",
+        "audit_id": "collector.snapshots/20251203T000005Z#5"
       }
     },
     {
@@ -496,6 +1114,13 @@
         "collector.effect.cell_mutations": 0,
         "collector.effect.debug": false,
         "collector.effect.finish": 0,
+        "collector.effect.io": false,
+        "collector.effect.io_async": false,
+        "collector.effect.io_async_calls": 0,
+        "collector.effect.io_async_ops": 0,
+        "collector.effect.io_blocking": false,
+        "collector.effect.io_blocking_calls": 0,
+        "collector.effect.io_blocking_ops": 0,
         "collector.effect.mem": true,
         "collector.effect.mem_bytes": 28,
         "collector.effect.mem_reservation": 0,
@@ -504,6 +1129,12 @@
         "collector.effect.rc": false,
         "collector.effect.rc_ops": 0,
         "collector.effect.reserve": 0,
+        "collector.effect.security": false,
+        "collector.effect.security_checks": 0,
+        "collector.effect.security_events": 0,
+        "collector.effect.time": false,
+        "collector.effect.time_calls": 0,
+        "collector.effect.transfer": false,
         "collector.error.key": "\"dup\"",
         "collector.kind": "table",
         "collector.stage.actual": "beta",
@@ -530,6 +1161,17 @@
           "collector.effect.rc_ops": 0,
           "collector.effect.predicate_calls": 0,
           "collector.effect.mem_bytes": 28,
+          "collector.effect.io": false,
+          "collector.effect.io_async": false,
+          "collector.effect.io_async_calls": 0,
+          "collector.effect.io_blocking": false,
+          "collector.effect.io_blocking_calls": 0,
+          "collector.effect.security": false,
+          "collector.effect.security_events": 0,
+          "collector.effect.time": false,
+          "collector.effect.time_calls": 0,
+          "collector.effect.transfer": false,
+          "collector.effect.unicode": false,
           "collector.effect.finish": 0,
           "collector.effect.mem_reservation": 0,
           "collector.effect.reserve": 0,
@@ -540,8 +1182,81 @@
           "effect.stage.kind": "table",
           "effect.stage.source": "TableCollector::push",
           "collector.error.kind": "duplicate_key",
-          "collector.error.key": "\"dup\""
-        }
+          "collector.error.key": "\"dup\"",
+          "schema.version": "collector.snapshot.v1",
+          "event.domain": "core.collectors",
+          "event.kind": "collector.snapshot",
+          "event.category": "diagnostic",
+          "audit.channel": "collector.snapshots",
+          "audit.policy.version": "collector.spec.audit.v1",
+          "audit.timestamp": "2025-12-03T00:00:06Z",
+          "audit.sequence": 6,
+          "cli.program": "collector.snapshot-fixture",
+          "cli.command": "render-collector-audit-fixtures",
+          "cli.phase": "spec-fixture",
+          "cli.args": [
+            "--snapshot",
+            "collect_table_duplicate"
+          ],
+          "cli.run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "cli.change_set": {
+            "policy": "collector.snapshot.change_set.v1",
+            "origin": "spec-fixture",
+            "source": {
+              "command": "render-collector-audit-fixtures",
+              "args": [
+                "--snapshot",
+                "collect_table_duplicate"
+              ],
+              "workspace": "."
+            },
+            "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+            "items": [
+              {
+                "kind": "collector.snapshot",
+                "snapshot_id": "collect_table_duplicate",
+                "capability": "core.collector.table",
+                "stage_actual": "beta",
+                "stage_required": "beta",
+                "stage_mode": "at_least",
+                "collector_kind": "table",
+                "sequence": 6,
+                "timestamp": "2025-12-03T00:00:06Z"
+              }
+            ]
+          },
+          "cli.audit_id": "collector.snapshots/20251203T000006Z#6",
+          "audit.id.uuid": "64339fb6-3fe7-5f08-9d5a-43721b69cc84",
+          "audit.id.label": "collector.snapshots/20251203T000006Z#6"
+        },
+        "change_set": {
+          "policy": "collector.snapshot.change_set.v1",
+          "origin": "spec-fixture",
+          "source": {
+            "command": "render-collector-audit-fixtures",
+            "args": [
+              "--snapshot",
+              "collect_table_duplicate"
+            ],
+            "workspace": "."
+          },
+          "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "items": [
+            {
+              "kind": "collector.snapshot",
+              "snapshot_id": "collect_table_duplicate",
+              "capability": "core.collector.table",
+              "stage_actual": "beta",
+              "stage_required": "beta",
+              "stage_mode": "at_least",
+              "collector_kind": "table",
+              "sequence": 6,
+              "timestamp": "2025-12-03T00:00:06Z"
+            }
+          ]
+        },
+        "cli.audit_id": "collector.snapshots/20251203T000006Z#6",
+        "audit_id": "collector.snapshots/20251203T000006Z#6"
       },
       "code": "core.prelude.collector_failed",
       "domain": "runtime",
@@ -559,7 +1274,18 @@
             "rc": false,
             "rc_ops": 0,
             "predicate_calls": 0,
-            "mem_bytes": 28
+            "mem_bytes": 28,
+            "io": false,
+            "io_async": false,
+            "io_async_calls": 0,
+            "io_blocking": false,
+            "io_blocking_calls": 0,
+            "security": false,
+            "security_events": 0,
+            "time": false,
+            "time_calls": 0,
+            "transfer": false,
+            "unicode": false
           },
           "error_key": "\"dup\"",
           "error_kind": "duplicate_key",
@@ -581,7 +1307,400 @@
       "message": "TableCollector failed: duplicate key: \"dup\"",
       "severity": "error",
       "snapshot_id": "collect_table_duplicate",
-      "schema_version": "collector.snapshot.v1"
+      "schema_version": "collector.snapshot.v1",
+      "timestamp": "2025-12-03T00:00:06Z"
+    },
+    {
+      "snapshot_id": "collect_cell_ref_effects",
+      "code": "core.prelude.collector_snapshot",
+      "severity": "info",
+      "message": "Collector snapshot: collect_cell_ref_effects",
+      "extensions": {
+        "prelude.collector": {
+          "snapshot_id": "collect_cell_ref_effects",
+          "kind": "custom",
+          "capability": null,
+          "stage_actual": "unknown",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "source": "CellRefCollector::finish",
+          "effects": {
+            "mem": false,
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "audit": false,
+            "cell": true,
+            "cell_mutations": 0,
+            "rc": true,
+            "rc_ops": 2,
+            "predicate_calls": 0,
+            "mem_bytes": 0,
+            "fs_sync": false,
+            "fs_sync_calls": 0,
+            "io": false,
+            "io_async": false,
+            "io_async_calls": 0,
+            "io_blocking": false,
+            "io_blocking_calls": 0,
+            "security": false,
+            "security_events": 0,
+            "time": false,
+            "time_calls": 0,
+            "transfer": false,
+            "unicode": false
+          },
+          "markers": {
+            "finish": 1,
+            "mem_reservation": 0,
+            "reserve": 0
+          },
+          "value": {
+            "cells": [
+              {
+                "id": "config",
+                "value": 1
+              },
+              {
+                "id": "tunable",
+                "value": 2
+              }
+            ],
+            "refs": [
+              {
+                "id": "shared_config",
+                "state": "borrowed_mut"
+              },
+              {
+                "id": "readonly_cache",
+                "state": "borrowed"
+              }
+            ]
+          }
+        }
+      },
+      "schema_version": "collector.snapshot.v1",
+      "timestamp": "2025-12-03T00:00:07Z",
+      "audit": {
+        "metadata": {
+          "collector.kind": "custom",
+          "collector.stage.actual": "unknown",
+          "collector.stage.required": "beta",
+          "collector.stage.mode": "at_least",
+          "collector.stage.source": "CellRefCollector::finish",
+          "collector.stage.mismatch": false,
+          "collector.effect.mem": false,
+          "collector.effect.mut": true,
+          "collector.effect.debug": false,
+          "collector.effect.async_pending": false,
+          "collector.effect.audit": false,
+          "collector.effect.cell": true,
+          "collector.effect.cell_mutations": 0,
+          "collector.effect.rc": true,
+          "collector.effect.rc_ops": 2,
+          "collector.effect.predicate_calls": 0,
+          "collector.effect.mem_bytes": 0,
+          "collector.effect.fs_sync": false,
+          "collector.effect.fs_sync_calls": 0,
+          "collector.effect.io": false,
+          "collector.effect.io_async": false,
+          "collector.effect.io_async_calls": 0,
+          "collector.effect.io_blocking": false,
+          "collector.effect.io_blocking_calls": 0,
+          "collector.effect.security": false,
+          "collector.effect.security_events": 0,
+          "collector.effect.time": false,
+          "collector.effect.time_calls": 0,
+          "collector.effect.transfer": false,
+          "collector.effect.unicode": false,
+          "collector.effect.finish": 1,
+          "collector.effect.mem_reservation": 0,
+          "collector.effect.reserve": 0,
+          "effect.stage.required": "beta",
+          "effect.stage.actual": "unknown",
+          "effect.stage.mode": "at_least",
+          "effect.stage.kind": "custom",
+          "effect.stage.source": "CellRefCollector::finish",
+          "schema.version": "collector.snapshot.v1",
+          "event.domain": "core.collectors",
+          "event.kind": "collector.snapshot",
+          "event.category": "diagnostic",
+          "audit.channel": "collector.snapshots",
+          "audit.policy.version": "collector.spec.audit.v1",
+          "audit.timestamp": "2025-12-03T00:00:07Z",
+          "audit.sequence": 7,
+          "cli.program": "collector.snapshot-fixture",
+          "cli.command": "render-collector-audit-fixtures",
+          "cli.phase": "spec-fixture",
+          "cli.args": [
+            "--snapshot",
+            "collect_cell_ref_effects"
+          ],
+          "cli.run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "cli.change_set": {
+            "policy": "collector.snapshot.change_set.v1",
+            "origin": "spec-fixture",
+            "source": {
+              "command": "render-collector-audit-fixtures",
+              "args": [
+                "--snapshot",
+                "collect_cell_ref_effects"
+              ],
+              "workspace": "."
+            },
+            "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+            "items": [
+              {
+                "kind": "collector.snapshot",
+                "snapshot_id": "collect_cell_ref_effects",
+                "capability": null,
+                "stage_actual": "unknown",
+                "stage_required": "beta",
+                "stage_mode": "at_least",
+                "collector_kind": "custom",
+                "sequence": 7,
+                "timestamp": "2025-12-03T00:00:07Z"
+              }
+            ]
+          },
+          "cli.audit_id": "collector.snapshots/20251203T000007Z#7",
+          "audit.id.uuid": "d1a7bd45-1586-50dd-b571-6937149ab0aa",
+          "audit.id.label": "collector.snapshots/20251203T000007Z#7"
+        },
+        "change_set": {
+          "policy": "collector.snapshot.change_set.v1",
+          "origin": "spec-fixture",
+          "source": {
+            "command": "render-collector-audit-fixtures",
+            "args": [
+              "--snapshot",
+              "collect_cell_ref_effects"
+            ],
+            "workspace": "."
+          },
+          "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "items": [
+            {
+              "kind": "collector.snapshot",
+              "snapshot_id": "collect_cell_ref_effects",
+              "capability": null,
+              "stage_actual": "unknown",
+              "stage_required": "beta",
+              "stage_mode": "at_least",
+              "collector_kind": "custom",
+              "sequence": 7,
+              "timestamp": "2025-12-03T00:00:07Z"
+            }
+          ]
+        },
+        "cli.audit_id": "collector.snapshots/20251203T000007Z#7",
+        "audit_id": "collector.snapshots/20251203T000007Z#7"
+      }
+    },
+    {
+      "snapshot_id": "table_csv_import",
+      "code": "core.prelude.collector_snapshot",
+      "severity": "info",
+      "message": "Collector snapshot: table_csv_import",
+      "extensions": {
+        "prelude.collector": {
+          "snapshot_id": "table_csv_import",
+          "kind": "table",
+          "capability": "core.collector.table",
+          "stage_actual": "beta",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "source": "TableCollector::csv_import",
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "audit": true,
+            "cell": false,
+            "cell_mutations": 0,
+            "rc": false,
+            "rc_ops": 0,
+            "predicate_calls": 0,
+            "mem_bytes": 128,
+            "fs_sync": false,
+            "fs_sync_calls": 0,
+            "io": true,
+            "io_async": false,
+            "io_async_calls": 0,
+            "io_blocking": false,
+            "io_blocking_calls": 0,
+            "security": false,
+            "security_events": 0,
+            "time": false,
+            "time_calls": 0,
+            "transfer": false,
+            "unicode": false
+          },
+          "markers": {
+            "finish": 1,
+            "mem_reservation": 0,
+            "reserve": 0
+          },
+          "value": {
+            "rows": [
+              {
+                "columns": [
+                  "alpha",
+                  10
+                ],
+                "id": "alpha"
+              },
+              {
+                "columns": [
+                  "beta",
+                  20
+                ],
+                "id": "beta"
+              },
+              {
+                "columns": [
+                  "gamma",
+                  30
+                ],
+                "id": "gamma"
+              }
+            ]
+          },
+          "metrics": {
+            "csv": {
+              "load_latency_ms": 120.0,
+              "rows": 2048
+            },
+            "table": {
+              "insert_duration_ms": 1000.0,
+              "insert_per_sec": 2048.0,
+              "insert_total": 2048
+            }
+          }
+        }
+      },
+      "schema_version": "collector.snapshot.v1",
+      "timestamp": "2025-12-03T00:00:08Z",
+      "audit": {
+        "metadata": {
+          "collector.kind": "table",
+          "collector.capability": "core.collector.table",
+          "collector.stage.actual": "beta",
+          "collector.stage.required": "beta",
+          "collector.stage.mode": "at_least",
+          "collector.stage.source": "TableCollector::csv_import",
+          "collector.stage.mismatch": false,
+          "collector.effect.mem": true,
+          "collector.effect.mut": true,
+          "collector.effect.debug": false,
+          "collector.effect.async_pending": false,
+          "collector.effect.audit": true,
+          "collector.effect.cell": false,
+          "collector.effect.cell_mutations": 0,
+          "collector.effect.rc": false,
+          "collector.effect.rc_ops": 0,
+          "collector.effect.predicate_calls": 0,
+          "collector.effect.mem_bytes": 128,
+          "collector.effect.fs_sync": false,
+          "collector.effect.fs_sync_calls": 0,
+          "collector.effect.io": true,
+          "collector.effect.io_async": false,
+          "collector.effect.io_async_calls": 0,
+          "collector.effect.io_blocking": false,
+          "collector.effect.io_blocking_calls": 0,
+          "collector.effect.security": false,
+          "collector.effect.security_events": 0,
+          "collector.effect.time": false,
+          "collector.effect.time_calls": 0,
+          "collector.effect.transfer": false,
+          "collector.effect.unicode": false,
+          "collector.effect.finish": 1,
+          "collector.effect.mem_reservation": 0,
+          "collector.effect.reserve": 0,
+          "effect.stage.required": "beta",
+          "effect.stage.actual": "beta",
+          "effect.stage.mode": "at_least",
+          "effect.stage.capability": "core.collector.table",
+          "effect.stage.kind": "table",
+          "effect.stage.source": "TableCollector::csv_import",
+          "schema.version": "collector.snapshot.v1",
+          "event.domain": "core.collectors",
+          "event.kind": "collector.snapshot",
+          "event.category": "diagnostic",
+          "audit.channel": "collector.snapshots",
+          "audit.policy.version": "collector.spec.audit.v1",
+          "audit.timestamp": "2025-12-03T00:00:08Z",
+          "audit.sequence": 8,
+          "cli.program": "collector.snapshot-fixture",
+          "cli.command": "render-collector-audit-fixtures",
+          "cli.phase": "spec-fixture",
+          "cli.args": [
+            "--snapshot",
+            "table_csv_import"
+          ],
+          "cli.run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "cli.change_set": {
+            "policy": "collector.snapshot.change_set.v1",
+            "origin": "spec-fixture",
+            "source": {
+              "command": "render-collector-audit-fixtures",
+              "args": [
+                "--snapshot",
+                "table_csv_import"
+              ],
+              "workspace": "."
+            },
+            "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+            "items": [
+              {
+                "kind": "collector.snapshot",
+                "snapshot_id": "table_csv_import",
+                "capability": "core.collector.table",
+                "stage_actual": "beta",
+                "stage_required": "beta",
+                "stage_mode": "at_least",
+                "collector_kind": "table",
+                "sequence": 8,
+                "timestamp": "2025-12-03T00:00:08Z"
+              }
+            ]
+          },
+          "cli.audit_id": "collector.snapshots/20251203T000008Z#8",
+          "audit.id.uuid": "0e5213e8-5126-5331-9184-b371d0f0faee",
+          "audit.id.label": "collector.snapshots/20251203T000008Z#8"
+        },
+        "change_set": {
+          "policy": "collector.snapshot.change_set.v1",
+          "origin": "spec-fixture",
+          "source": {
+            "command": "render-collector-audit-fixtures",
+            "args": [
+              "--snapshot",
+              "table_csv_import"
+            ],
+            "workspace": "."
+          },
+          "run_id": "1e199e90-9fe1-59bb-9302-57301ee2ccdb",
+          "items": [
+            {
+              "kind": "collector.snapshot",
+              "snapshot_id": "table_csv_import",
+              "capability": "core.collector.table",
+              "stage_actual": "beta",
+              "stage_required": "beta",
+              "stage_mode": "at_least",
+              "collector_kind": "table",
+              "sequence": 8,
+              "timestamp": "2025-12-03T00:00:08Z"
+            }
+          ]
+        },
+        "cli.audit_id": "collector.snapshots/20251203T000008Z#8",
+        "audit_id": "collector.snapshots/20251203T000008Z#8"
+      }
     }
   ]
 }
