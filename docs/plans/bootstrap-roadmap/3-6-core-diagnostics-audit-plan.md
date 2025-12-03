@@ -258,6 +258,11 @@
     - 8.3.b `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md#cell-ref-内部可変性` に監査 CI gate の手順を追加し、Diagnostics 計画との依存関係を明文化する。
     - 8.3.c `collect-iterator-audit-metrics.py` と `scripts/validate-diagnostic-json.sh` の実行結果をまとめた `reports/audit/dashboard/collectors-YYYYMMDD.md` を作成し、Phase 3 ドキュメントから参照できるようにする。
 
+#### 8.3 実施結果（Run ID: 20251203-collectors-gate）
+- `python3 tooling/ci/collect-iterator-audit-metrics.py --suite collectors --scenario ref_internal_mutation --require-success --require-cell --output reports/audit/dashboard/collectors-20251203.json` を実行し、`collector.effect.cell_rc` メトリクスが `metric_missing`、`diagnostic.audit_presence_rate = 0.0` で失敗することを確認した。`core_iter_collectors.json` に `cli.audit_id`/`cli.change_set`/`schema.version`/`timestamp` が一切記録されておらず、`collect_cell_ref_effects`/`table_csv_import` スナップショットも未生成であるため gate が通らない。検証ログは `reports/audit/dashboard/collectors-20251203.{json,md}` に保存し、KPI の欠落理由をダッシュボードへ記載した。
+- `scripts/validate-diagnostic-json.sh --suite collectors` でも同じスナップショットを検証し、7 エントリ全てで `primary` と `audit_metadata`、`timestamp`、`effect.required_capabilities`/`effect.actual_capabilities` が欠落していること、さらに `core_iter_collectors.audit.jsonl` の検証に到達する前にスキーマ違反で停止することを確認した。`collector.effect.cell`/`collector.effect.rc` を監査ログへ伝搬させるまで CI gate は `fail` のまま運用する。
+- `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md#325-監査-ci-gate-実行ログrun-id-20251203-collectors-gate` と `docs-migrations.log (2025-12-03 Core Collections Cell/Ref gate)` へ同 Run ID を登録し、Core Collections 計画と Diagnostics 計画の両方から `collect-iterator-audit-metrics --require-cell` / `scripts/validate-diagnostic-json.sh --suite collectors` を参照できるようにした。次回は `core_iter_collectors.snap` に `collect_cell_ref_effects` と `table_csv_import` を追加し、`diagnostic.audit_presence_rate` と `threshold metric missing` が 0 になるまで測定を継続する。
+
 ## 成果物と検証
 - `Diagnostic`/`AuditEnvelope` API が仕様通りに実装され、効果タグ・ステージ情報が正しく扱われること。
 - TypeChecker/Runtime/IO からのイベントが統一された監査ログとして出力され、差分が記録されていること。
