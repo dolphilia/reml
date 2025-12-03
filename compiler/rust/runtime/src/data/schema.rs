@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value};
+#[cfg(test)]
+use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
 
 /// `Core.Data` のスキーマを表現する。
@@ -490,7 +492,14 @@ mod tests {
             .finish();
         assert_eq!(schema.name, "User");
         assert_eq!(schema.description, Some("ユーザプロファイル".into()));
-        assert_eq!(schema.version.unwrap().as_string(), "1.0.0");
+        assert_eq!(
+            schema
+                .version
+                .as_ref()
+                .map(|version| version.as_string())
+                .unwrap(),
+            "1.0.0"
+        );
         assert_eq!(schema.fields.len(), 2);
         assert!(schema.field("id").is_some());
     }

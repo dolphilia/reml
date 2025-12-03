@@ -770,7 +770,8 @@ pub fn update_dsl_signature(
     dsl: impl AsRef<str>,
     signature: DslExportSignature,
 ) -> Result<Manifest, GuardDiagnostic> {
-    let manifest_path = manifest.manifest_path().map(|path| path.as_path());
+    let manifest_path_buf = manifest.manifest_path().cloned();
+    let manifest_path = manifest_path_buf.as_deref();
     let dsl_key = dsl.as_ref();
     let entry = manifest
         .dsl
