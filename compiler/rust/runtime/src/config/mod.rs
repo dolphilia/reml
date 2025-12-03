@@ -1,9 +1,16 @@
-//! Config/Data 章で利用する差分マージユーティリティ。
+//! Config/Data 章で利用する差分マージユーティリティと
+//! `reml.toml` マニフェスト型を提供する。
 //! `PersistentMap::merge_with_change_set` を公開し、監査ログへ
 //! `ChangeSet` を取り込む手続きを補助する。
 pub mod collection_diff;
+pub mod manifest;
 
 pub use collection_diff::{ChangeKind, ConfigChange, SchemaDiff, SchemaDiffMetadata};
+pub use manifest::{
+    CapabilityId, Contact, DependencySpec, DslEntry, DslExportRef, Manifest, ManifestBuilder,
+    ManifestParseError, OptimizeLevel, PackageName, ProjectKind, ProjectSection, ProjectStage,
+    RegistrySection, TargetTriple,
+};
 
 use std::{
     fs, io, mem,

@@ -1,0 +1,41 @@
+[project]
+name = "sample-app"
+version = "0.1.0"
+authors = ["Reml Authors <spec@example.com>", { name = "Reml Bot", handle = "@reml_bot" }]
+license = "Apache-2.0"
+description = "Manifest dump smoke test"
+kind = "application"
+stage = "beta"
+capabilities = ["core.diagnostics"]
+
+[dsl.core]
+entry = "dsl/core.reml"
+exports = [
+  "CoreDsl",
+  { name = "CoreDslBootstrap", signature = { name = "CoreDslBootstrap", category = "language" } },
+]
+kind = "language"
+expect_effects = ["io.console", "io.fs"]
+expect_effects_stage = "experimental"
+allow_prerelease = true
+capabilities = ["core.io", "core.console"]
+summary = "Core DSL sample"
+
+[build]
+target = "x86_64-unknown-linux-gnu"
+features = ["packrat"]
+optimize = "release"
+warnings_as_errors = true
+
+[build.profiles.release]
+inherits = "default"
+optimize = "release"
+warnings_as_errors = true
+
+[registry]
+upstream = "https://packages.reml.dev"
+mirrors = ["https://mirror.example"]
+
+[dependencies]
+core-prelude = "0.2.0"
+core-collections = { version = "0.3.0", registry = "central", features = ["diagnostics"] }

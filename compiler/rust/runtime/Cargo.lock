@@ -1154,6 +1154,7 @@ version = "0.23.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6485ef6d0d9b5d0ec17244ff7eb05310113c3f316f2d14200d4de56b3cb98f8d"
 dependencies = [
+ "serde",
  "indexmap 2.12.1",
  "toml_datetime",
  "toml_parser",

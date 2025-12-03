@@ -14,6 +14,10 @@ path = "src/lib.rs"
 name = "reml_frontend"
 path = "src/bin/reml_frontend.rs"
 
+[[bin]]
+name = "remlc"
+path = "src/bin/remlc.rs"
+
 [features]
 default = []
 schema = ["schemars"]
