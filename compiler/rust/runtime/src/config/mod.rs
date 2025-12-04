@@ -19,11 +19,11 @@ pub use compat::{
     CONFIG_COMPAT_NUMBER_CODE, CONFIG_COMPAT_TRAILING_COMMA_CODE, CONFIG_COMPAT_UNQUOTED_KEY_CODE,
 };
 pub use manifest::{
-    declared_effects, load_manifest, update_dsl_signature, validate_manifest, CapabilityId,
-    ConfigCompatibilityEntry, ConfigRoot, Contact, DependencySpec, DslEntry, DslExportRef,
-    DslExportSignature, DslSignatureStageBounds, Manifest, ManifestBuilder, ManifestLoader,
-    ManifestParseError, OptimizeLevel, PackageName, ProjectKind, ProjectSection, ProjectStage,
-    RegistrySection, SemanticVersion, TargetTriple,
+    declared_effects, ensure_schema_version_compatibility, load_manifest, update_dsl_signature,
+    validate_manifest, CapabilityId, ConfigCompatibilityEntry, ConfigRoot, Contact, DependencySpec,
+    DslEntry, DslExportRef, DslExportSignature, DslSignatureStageBounds, Manifest, ManifestBuilder,
+    ManifestLoader, ManifestParseError, OptimizeLevel, PackageName, ProjectKind, ProjectSection,
+    ProjectStage, RegistrySection, SemanticVersion, TargetTriple,
 };
 #[cfg(feature = "experimental_migration")]
 pub use migration::{

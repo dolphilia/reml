@@ -956,6 +956,8 @@ pub type ChangedValue = {
 
 | `Diagnostic.code` | 既定 Severity | 発生条件 | 対応 |
 | --- | --- | --- | --- |
+| `config.project.version_invalid` | `Error` | `project.version` が SemVer として解析できない | `extensions["config"]` に `manifest_version`, `schema_name`, `version_mismatch="parse_error"` を付与し、`config.version_reason="parse_error"` とともに監査ログへ記録する。Manifest を修正しない限りビルドを停止する。 |
+| `config.schema.version_incompatible` | `Error` | Schema の `(major, minor, patch)` がマニフェストより新しい、または major が一致しない | `schema_version`, `schema_name`, `version_mismatch ∈ {"major","schema_ahead"}` と `config.version_reason` を付与し、`MIGRATION-BLOCKER-*` 登録の根拠とする。CI では互換性が解消されるまでマージを禁止する。 |
 | `config.feature.mismatch` | `Error`（`missing_in_target` 有り）、それ以外は `Warning` | `feature_guard`, `RunConfigTarget.features`, `RunConfigTarget.feature_requirements` のいずれかに差異がある | CLI/LSP は差集合を提示し、`--fix` で `feature_guard` 同期を提案。`missing_in_target` が発生した場合はビルド停止。 |
 | `config.compat.trailing_comma` | `Error` | `ConfigCompatibility.trailing_comma = Forbid` なのに JSON/TOML 入力の末尾に余分なカンマが存在する | `docs/spec/3-7-core-config-data.md` §1.5.2。CLI/LSP は `config.compatibility.violation = "trailing_comma"` を拡張メタとして提示し、`--compat relaxed` で上書きした場合は `AuditEvent::ConfigCompatChanged` を記録する。 |
 | `config.compat.unquoted_key` | `Error` | `KeyPolicy::Forbid` もしくは `AllowAlpha` より厳格な設定時に bare key が検出された | `ConfigCompatibility::unquoted_key` の閾値を表示し、`key_path` をハイライト。Manifest/Env 指定のどちらから緩和されたかを `config.source` で追跡する。 |

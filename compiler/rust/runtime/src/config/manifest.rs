@@ -3,6 +3,7 @@ use super::compat::{
     ConfigTriviaProfile, DuplicateKeyPolicy, KeyPolicy, NumberCompatibility, TrailingCommaMode,
 };
 use crate::{
+    data::schema::{Schema, SchemaVersion},
     prelude::ensure::{DiagnosticSeverity, GuardDiagnostic},
     stage::StageId,
 };
@@ -28,6 +29,8 @@ const CONFIG_DSL_NOT_FOUND_CODE: &str = "config.dsl.not_found";
 const CONFIG_DSL_EXPORT_NOT_FOUND_CODE: &str = "config.dsl.export_not_found";
 const CONFIG_DSL_UNKNOWN_KIND_CODE: &str = "config.dsl.unknown_kind";
 const CONFIG_SIGNATURE_SERIALIZATION_CODE: &str = "config.manifest.signature_serialization";
+const CONFIG_PROJECT_VERSION_PARSE_CODE: &str = "config.project.version_invalid";
+const CONFIG_SCHEMA_VERSION_INCOMPATIBLE_CODE: &str = "config.schema.version_incompatible";
 
 /// `reml.toml` のトップレベル構造。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -919,6 +922,41 @@ fn validate_project_section(
     ensure_stage_known(&project.stage, manifest_path, &["project", "stage"])
 }
 
+/// マニフェストの `project.version` とスキーマ `Schema.version` を比較し、
+/// 互換条件（major が一致し、マニフェスト側のバージョンがスキーマ以上）を満たすか検証する。
+pub fn ensure_schema_version_compatibility(
+    manifest: &Manifest,
+    schema: &Schema,
+) -> Result<(), GuardDiagnostic> {
+    let schema_version = match schema.version.as_ref() {
+        Some(value) => value,
+        None => return Ok(()),
+    };
+    let manifest_path = manifest.manifest_path().map(|path| path.as_path());
+    let manifest_version =
+        parse_manifest_semver(&manifest.project.version, manifest_path, schema.name.as_str())?;
+    let schema_parts = SemanticVersionParts::from_schema(schema_version);
+    if manifest_version.major != schema_parts.major {
+        return Err(schema_version_incompatible(
+            manifest_path,
+            &manifest.project.version.0,
+            schema.name.as_str(),
+            schema_parts,
+            SemanticVersionMismatch::Major,
+        ));
+    }
+    if manifest_version < schema_parts {
+        return Err(schema_version_incompatible(
+            manifest_path,
+            &manifest.project.version.0,
+            schema.name.as_str(),
+            schema_parts,
+            SemanticVersionMismatch::SchemaAhead,
+        ));
+    }
+    Ok(())
+}
+
 fn validate_build_section(
     build: &BuildSection,
     manifest_path: Option<&Path>,
@@ -1249,4 +1287,177 @@ fn manifest_diagnostic(
 
 fn join_key_path(parts: &[&str]) -> String {
     parts.join(".")
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct SemanticVersionParts {
+    major: u32,
+    minor: u32,
+    patch: u32,
+}
+
+impl SemanticVersionParts {
+    fn from_schema(schema_version: &SchemaVersion) -> Self {
+        Self {
+            major: schema_version.major,
+            minor: schema_version.minor,
+            patch: schema_version.patch,
+        }
+    }
+}
+
+fn parse_manifest_semver(
+    version: &SemanticVersion,
+    manifest_path: Option<&Path>,
+    schema_name: &str,
+) -> Result<SemanticVersionParts, GuardDiagnostic> {
+    let raw = version.0.trim();
+    if raw.is_empty() {
+        return Err(manifest_version_parse_error(
+            manifest_path,
+            raw,
+            schema_name,
+        ));
+    }
+    let core = raw
+        .split(|ch| ch == '-' || ch == '+')
+        .next()
+        .unwrap_or(raw);
+    let mut segments = core.split('.');
+    let major = segments.next();
+    let minor = segments.next();
+    let patch = segments.next();
+    let (major, minor, patch) = match (major, minor, patch) {
+        (Some(major), Some(minor), Some(patch)) => (major, minor, patch),
+        _ => {
+            return Err(manifest_version_parse_error(
+                manifest_path,
+                raw,
+                schema_name,
+            ))
+        }
+    };
+    let parse_component = |value: &str| -> Option<u32> {
+        if value.trim().is_empty() {
+            None
+        } else {
+            value.parse::<u32>().ok()
+        }
+    };
+    let major = parse_component(major)
+        .ok_or_else(|| manifest_version_parse_error(manifest_path, raw, schema_name))?;
+    let minor = parse_component(minor)
+        .ok_or_else(|| manifest_version_parse_error(manifest_path, raw, schema_name))?;
+    let patch = parse_component(patch)
+        .ok_or_else(|| manifest_version_parse_error(manifest_path, raw, schema_name))?;
+    Ok(SemanticVersionParts {
+        major,
+        minor,
+        patch,
+    })
+}
+
+fn manifest_version_parse_error(
+    manifest_path: Option<&Path>,
+    raw: &str,
+    schema_name: &str,
+) -> GuardDiagnostic {
+    let mut diagnostic = manifest_diagnostic(
+        CONFIG_PROJECT_VERSION_PARSE_CODE,
+        format!(
+            "マニフェスト `project.version` の値 `{raw}` を SemVer として解析できません（schema: `{schema_name}`）。"
+        ),
+        manifest_path,
+        &["project", "version"],
+    );
+    if let Some(Value::Object(config)) = diagnostic.extensions.get_mut("config") {
+        config.insert("version_mismatch".into(), Value::String("parse_error".into()));
+        config.insert(
+            "manifest_version".into(),
+            Value::String(raw.to_string()),
+        );
+        config.insert(
+            "schema_name".into(),
+            Value::String(schema_name.to_string()),
+        );
+    }
+    diagnostic
+        .audit_metadata
+        .insert("config.version_reason".into(), Value::String("parse_error".into()));
+    diagnostic
+        .audit_metadata
+        .insert("config.schema_name".into(), Value::String(schema_name.to_string()));
+    diagnostic
+}
+
+#[derive(Debug, Clone, Copy)]
+enum SemanticVersionMismatch {
+    Major,
+    SchemaAhead,
+}
+
+fn schema_version_incompatible(
+    manifest_path: Option<&Path>,
+    manifest_version: &str,
+    schema_name: &str,
+    schema_version: SemanticVersionParts,
+    reason: SemanticVersionMismatch,
+) -> GuardDiagnostic {
+    let schema_version_str = format!(
+        "{}.{}.{}",
+        schema_version.major, schema_version.minor, schema_version.patch
+    );
+    let message = match reason {
+        SemanticVersionMismatch::Major => format!(
+            "Schema `{schema_name}` のバージョン {schema_version_str} は `project.version` ({manifest_version}) と major が一致しません。"
+        ),
+        SemanticVersionMismatch::SchemaAhead => format!(
+            "Schema `{schema_name}` のバージョン {schema_version_str} は `project.version` ({manifest_version}) より新しく、互換条件を満たしません。"
+        ),
+    };
+    let mut diagnostic = manifest_diagnostic(
+        CONFIG_SCHEMA_VERSION_INCOMPATIBLE_CODE,
+        message,
+        manifest_path,
+        &["project", "version"],
+    );
+    if let Some(Value::Object(config)) = diagnostic.extensions.get_mut("config") {
+        config.insert(
+            "manifest_version".into(),
+            Value::String(manifest_version.to_string()),
+        );
+        config.insert(
+            "schema_version".into(),
+            Value::String(schema_version_str.clone()),
+        );
+        config.insert(
+            "schema_name".into(),
+            Value::String(schema_name.to_string()),
+        );
+        config.insert(
+            "version_mismatch".into(),
+            Value::String(match reason {
+                SemanticVersionMismatch::Major => "major",
+                SemanticVersionMismatch::SchemaAhead => "schema_ahead",
+            }
+            .into()),
+        );
+    }
+    diagnostic.audit_metadata.insert(
+        "config.schema_version".into(),
+        Value::String(schema_version_str),
+    );
+    diagnostic.audit_metadata.insert(
+        "config.schema_name".into(),
+        Value::String(schema_name.to_string()),
+    );
+    diagnostic.audit_metadata.insert(
+        "config.version_reason".into(),
+        Value::String(match reason {
+            SemanticVersionMismatch::Major => "major",
+            SemanticVersionMismatch::SchemaAhead => "schema_ahead",
+        }
+        .into()),
+    );
+    diagnostic
 }

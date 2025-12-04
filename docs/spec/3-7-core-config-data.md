@@ -244,6 +244,23 @@ fn config_extension_from_ctx(ctx: ConfigLintContext, issue: ConfigIssue) -> Conf
 - `missing_in_target` が非空の場合は Stage に関わらず `Severity::Error` を既定とし、0-1 §1.2 の安全性原則を満たすためにビルドを失敗させる。`extra_in_compat` のみが非空の場合は `Severity::Warning` を推奨し、CLI は自動修正 (`--fix`) で `feature_guard` をターゲット値へ同期できるようにする。`missing_in_compat` は Stage::Stable では `Severity::Error`、Stage::Experimental では `Severity::Warning` を推奨する。
 - CLI/LSP は `config.feature_guard` の差分を UI 上で強調表示し、`resolve_compat` 実行後に `RunConfig.extensions["config"].features = compat_declared` を再設定する。これにより `feature_guard` が同期した状態で `@cfg` 判定が行われ、実行時挙動の差異を抑止できる。
 
+### 1.6 Manifest と Schema のバージョン互換
+
+`project.version`（SemVer 文字列）と `Schema.version`（`SchemaVersion { major, minor, patch }`）は同じ互換境界で管理する。互換条件は以下の通り。
+
+1. `major` が一致していること。Schema の major が `project.version.major` と異なる場合、互換性なしとして CLI/CI を停止する。
+2. `(major, minor, patch)` のタプル比較で `project.version >= Schema.version` になること。Schema 側の minor または patch が先行している場合も互換不可とみなす。
+3. `Schema.version = None` の場合のみチェックをスキップし、移行プランで version を確定させる。
+
+Rust 実装では `ensure_schema_version_compatibility(manifest: &Manifest, schema: &Schema)` を提供し、CLI/RunConfig/CI から同じ判定を利用できる。診断コードと必須メタデータは以下。
+
+| コード | 条件 | メタデータ（extensions / audit） |
+| --- | --- | --- |
+| `config.project.version_invalid` | `project.version` を SemVer として解析できない | `manifest_version`, `schema_name`, `version_mismatch = "parse_error"` / `config.version_reason = "parse_error"` |
+| `config.schema.version_incompatible` | major 不一致 or Schema 側が新しい | `manifest_version`, `schema_version`, `schema_name`, `version_mismatch ∈ {"major","schema_ahead"}` / `config.version_reason` 同値 |
+
+監査ログでは `config.schema_name` / `config.schema_version` / `config.version_reason` を KPI として扱い、`MIGRATION-BLOCKER-*` を登録する際の根拠とする。
+
 ## 2. Config スキーマ API（再整理）
 
 `Core.Config.schema` を中心に、差分・監査・CLI 連携を明記する。

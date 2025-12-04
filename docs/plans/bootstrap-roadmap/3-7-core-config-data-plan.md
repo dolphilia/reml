@@ -144,6 +144,11 @@
     - `Manifest.version` と `Schema.version` を比較し、互換条件（`major` は一致、`minor` は `>=` など）を `docs/spec/3-7-core-config-data.md` に追記するための diff を準備する。
     - 互換性チェックの結果を `reports/dual-write/config_versioning/` に保存し、DSL プラグイン毎の移行ステップを `dsl-plugin-roadmap.md` に表形式で追記する。
     - 重大な非互換が検出された場合は `docs/notes/dsl-plugin-roadmap.md` の TODO セクションへ `MIGRATION-BLOCKER-*` 番号で登録し、Phase 4 のタスクインプットにする。
+
+#### 5.2 実施結果（Run ID: 20250310-config-version）
+- `compiler/rust/runtime/src/config/manifest.rs` に `ensure_schema_version_compatibility` を追加し、`project.version` の SemVer 解析エラー (`config.project.version_invalid`) とスキーマ側の先行 (`config.schema.version_incompatible`) を `config.version_reason` メタデータ付きで検出できるようにした。`config/mod.rs` から再エクスポートしたため、CLI/RunConfig API は同じ関数を呼び出せる。
+- `tests/manifest.rs` へ 5 つの `schema_version_check_*` テストを追加し、`cargo test schema_version_check` のログを `reports/dual-write/config_versioning/20250310-config-version-check.md` に保存した。互換成功・major mismatch・minor 超過・Schema.version 省略・SemVer 解析失敗の各ケースをカバー。
+- 仕様 `docs/spec/3-7-core-config-data.md` と `docs/spec/3-6-core-diagnostics-audit.md`（診断コード補足）へ互換条件と新コードを追記し、`docs/notes/dsl-plugin-roadmap.md` へ移行ステップ表と `MIGRATION-BLOCKER-001` を登録して Phase4 連携の導線を確保した。
 5.3. CLI 連携 (`reml config lint`, `reml config diff`) の出力仕様を整備し、サンプルを作成する。
     - `compiler/rust/cli/src/commands/config.rs` に `lint`/`diff` サブコマンドを追加し、`ChangeSet` との整合を `snap` テストで担保する。
     - `docs/guides/runtime-bridges.md` と `docs/guides/ai-integration.md` に CLI 出力例を掲載し、JSON/TTY 両方のサンプルを示す。

@@ -2,10 +2,11 @@ use std::fs;
 use std::path::PathBuf;
 
 use reml_runtime::config::{
-    load_manifest, update_dsl_signature, validate_manifest, CapabilityId, DslEntry, DslExportRef,
-    DslExportSignature, DslSignatureStageBounds, Manifest, PackageName, ProjectSection,
-    ProjectStage, SemanticVersion,
+    ensure_schema_version_compatibility, load_manifest, update_dsl_signature, validate_manifest,
+    CapabilityId, DslEntry, DslExportRef, DslExportSignature, DslSignatureStageBounds, Manifest,
+    PackageName, ProjectSection, ProjectStage, SemanticVersion,
 };
+use reml_runtime::data::{Schema, SchemaVersion};
 use serde_json::{Map, Value};
 use tempfile::tempdir;
 
@@ -170,4 +171,56 @@ fn update_dsl_signature_records_stage_bounds() {
         stage_bounds.get("maximum").and_then(|value| value.as_str()),
         Some("stable")
     );
+}
+
+fn schema_with_version(name: &str, version: (u32, u32, u32)) -> Schema {
+    Schema::builder(name)
+        .version(SchemaVersion::new(version.0, version.1, version.2))
+        .finish()
+}
+
+#[test]
+fn schema_version_check_passes_when_manifest_is_newer() {
+    let mut manifest = manifest_with_project(ProjectStage::Stable);
+    manifest.project.version = SemanticVersion("1.2.3".into());
+    let schema = schema_with_version("core.config", (1, 1, 0));
+    ensure_schema_version_compatibility(&manifest, &schema).expect("compatible versions");
+}
+
+#[test]
+fn schema_version_check_fails_on_major_mismatch() {
+    let mut manifest = manifest_with_project(ProjectStage::Stable);
+    manifest.project.version = SemanticVersion("1.0.0".into());
+    let schema = schema_with_version("core.config", (2, 0, 0));
+    let err =
+        ensure_schema_version_compatibility(&manifest, &schema).expect_err("should fail on major");
+    assert_eq!(err.code, "config.schema.version_incompatible");
+}
+
+#[test]
+fn schema_version_check_fails_when_schema_is_newer() {
+    let mut manifest = manifest_with_project(ProjectStage::Stable);
+    manifest.project.version = SemanticVersion("1.1.0".into());
+    let schema = schema_with_version("core.config", (1, 2, 0));
+    let err = ensure_schema_version_compatibility(&manifest, &schema)
+        .expect_err("schema minor is ahead");
+    assert_eq!(err.code, "config.schema.version_incompatible");
+}
+
+#[test]
+fn schema_version_check_skips_when_schema_version_absent() {
+    let mut manifest = manifest_with_project(ProjectStage::Stable);
+    manifest.project.version = SemanticVersion("1.0.0".into());
+    let schema = Schema::builder("core.config").finish();
+    ensure_schema_version_compatibility(&manifest, &schema).expect("no schema version");
+}
+
+#[test]
+fn schema_version_check_errors_on_invalid_manifest_version() {
+    let mut manifest = manifest_with_project(ProjectStage::Stable);
+    manifest.project.version = SemanticVersion("next".into());
+    let schema = schema_with_version("core.config", (1, 0, 0));
+    let err = ensure_schema_version_compatibility(&manifest, &schema)
+        .expect_err("manifest version parse error");
+    assert_eq!(err.code, "config.project.version_invalid");
 }
