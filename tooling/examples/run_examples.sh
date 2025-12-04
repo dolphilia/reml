@@ -12,6 +12,7 @@ usage: tooling/examples/run_examples.sh --suite <name> [--with-audit] [--update-
   core_io          - examples/core_io/ 以下の Reader/Writer サンプル
   core_path        - examples/core_path/ 以下のセキュリティサンプル
   core_diagnostics - examples/core_diagnostics/ 以下の監査パイプラインサンプル
+  core_config      - examples/core_config/cli の Config CLI サンプル
 EOF
 }
 
@@ -44,6 +45,64 @@ done
 if [[ -z "${SUITE}" ]]; then
   usage
   exit 1
+fi
+
+run_core_config_suite() {
+  local frontend_dir="${ROOT}/compiler/rust/frontend"
+  local manifest_path="../../examples/core_config/cli/reml.toml"
+  local schema_path="../../examples/core_config/cli/schema.json"
+  local base_path="../../examples/core_config/cli/config_old.json"
+  local target_path="../../examples/core_config/cli/config_new.json"
+  local lint_expected="${ROOT}/examples/core_config/cli/lint.expected.json"
+  local diff_expected="${ROOT}/examples/core_config/cli/diff.expected.json"
+
+  if [[ "${UPDATE_GOLDEN}" == true ]]; then
+    echo "==> updating remlc config lint golden"
+    (
+      cd "${frontend_dir}"
+      cargo run --quiet --bin remlc -- \
+        config lint \
+        --manifest "${manifest_path}" \
+        --schema "${schema_path}" \
+        --format json
+    ) >"${lint_expected}"
+
+    echo "==> updating remlc config diff golden"
+    (
+      cd "${frontend_dir}"
+      cargo run --quiet --bin remlc -- \
+        config diff \
+        "${base_path}" \
+        "${target_path}" \
+        --format json
+    ) >"${diff_expected}"
+    echo "    -> wrote ${lint_expected#${ROOT}/}"
+    echo "    -> wrote ${diff_expected#${ROOT}/}"
+  else
+    echo "==> remlc config lint (human)"
+    (
+      cd "${frontend_dir}"
+      cargo run --quiet --bin remlc -- \
+        config lint \
+        --manifest "${manifest_path}" \
+        --schema "${schema_path}" \
+        --format human
+    )
+    echo "==> remlc config diff (human)"
+    (
+      cd "${frontend_dir}"
+      cargo run --quiet --bin remlc -- \
+        config diff \
+        "${base_path}" \
+        "${target_path}" \
+        --format human
+    )
+  fi
+}
+
+if [[ "${SUITE}" == "core_config" ]]; then
+  run_core_config_suite
+  exit 0
 fi
 
 declare -a FILES=()

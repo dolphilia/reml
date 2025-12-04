@@ -1,0 +1,15 @@
+{
+  "service": {
+    "name": "audit-bridge",
+    "stage": "stable",
+    "replicas": 3,
+    "features": ["audit"]
+  },
+  "limits": {
+    "memory": "2Gi",
+    "cpu": "750m"
+  },
+  "telemetry": {
+    "enabled": true
+  }
+}

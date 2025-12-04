@@ -111,6 +111,49 @@ fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New
 reml-run reload runtime.state diff.json --audit   | jq '.result | {status, audit_id}'
 ```
 
+### 4.1 Config/Data CLI サンプル
+
+`Core.Config`/`Core.Data` の検証は `remlc config lint`・`remlc config diff` を介して
+取得した JSON をもとに行う。`tooling/examples/run_examples.sh --suite core_config` を
+実行すると `examples/core_config/cli/{lint,diff}.expected.json` が再生成され、監査ログと
+`ChangeSet` の整合性をレビューできる。
+
+```bash
+cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin remlc -- \
+  config lint \
+  --manifest ../../examples/core_config/cli/reml.toml \
+  --schema ../../examples/core_config/cli/schema.json \
+  --format json > examples/core_config/cli/lint.expected.json
+```
+
+```json
+{
+  "command": "config.lint",
+  "manifest": "../../examples/core_config/cli/reml.toml",
+  "schema": "../../examples/core_config/cli/schema.json",
+  "diagnostics": [],
+  "stats": {
+    "validated": true,
+    "manifest_loaded": true,
+    "schema_checked": true
+  },
+  "exit_code": 0
+}
+```
+
+```bash
+cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin remlc -- \
+  config diff \
+  ../../examples/core_config/cli/config_old.json \
+  ../../examples/core_config/cli/config_new.json \
+  --format json > examples/core_config/cli/diff.expected.json
+```
+
+`diff.expected.json` には `change_set.items[*].kind = collections.diff.*` と
+`schema_diff.changes[*]` の両方が記録される。Runtime Bridge でホットリロードする際は
+この JSON をレビュー対象に含め、Capability/Stage の差異が監査ログに残っているかを
+確認する。
+
 ## 5. 監査ログ出力
 
 - 構造化ログ例：`{"event":"reml.reload", "audit_id":..., "change_set":...}`。

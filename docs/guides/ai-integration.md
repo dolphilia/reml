@@ -36,7 +36,20 @@
 
 - 上表は `docs/spec/3-6-core-diagnostics-audit.md` §10–11 のキー一覧から派生しており、`reports/diagnostic-format-regression.md#cli-output-note` に保存されたサンプルログでも確認できる。追加キーを定義した場合は本ガイドと README の導線を更新し、`tooling/lsp/tests/client_compat/fixtures/*.json` に `data.localization` を含む期待値を用意する。
 
-### 5.2 実験的 Stage 診断の扱い
+### 5.2 Config/Data レポートの活用
+
+- Manifest/Schema の AI 処理は `remlc config lint` / `remlc config diff` から得た JSON をそのまま入力に用いる。`examples/core_config/cli/lint.expected.json` は一例であり、`stats.validated` と `diagnostics[]` をそのままフィードするだけで Stage/KPI 差分を説明できる。
+- 実行例:
+  ```bash
+  cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin remlc -- \
+    config lint \
+    --manifest ../../examples/core_config/cli/reml.toml \
+    --schema ../../examples/core_config/cli/schema.json \
+    --format json | jq '{command, manifest, diagnostics}'
+  ```
+- 差分レビュー時は `diff.expected.json` を参照し、`change_set.items[*]`（`collections.diff.*`）と `schema_diff.changes[*]` のセットを AI 提供データに含める。`ChangeSet` 側のメタデータ（`origin`, `policy`, `stage`）を必須フィールドとし、`tooling/examples/run_examples.sh --suite core_config --update-golden` でゴールデン更新した後に整合を確認する。
+
+### 5.3 実験的 Stage 診断の扱い
 - Rust Frontend は `Diagnostic.extensions["effects"].stage` に `experimental` が含まれる診断を自動的に `warning` へ降格させる。`--ack-experimental-diagnostics` を明示すると Severity を `error` として扱い、CI や AI サービスにブロッキング信号を伝播できる。
 - AI 連携ワークフローで「実験機能も強制レビュー対象」とする場合は、CLI/LSP 両チャネルから本フラグを渡し、`effects.stage.*`・`effect.capability` をリクエストペイロードへ同梱する。逆に PoC 段階の提案ではフラグを付けず、ヒント扱いの `warning` を優先して提示する。
 - 例:
@@ -49,7 +62,7 @@
   ```
   生成された JSON/Audit には `severity = "error"` のまま `effects.stage.trace` が保持されるため、AI クライアントは Stage 差分を解析しつつリスクスコアへ反映できる。
 
-### 5.3 Core Diagnostics JSON の参照例
+### 5.4 Core Diagnostics JSON の参照例
 - `examples/core_diagnostics/pipeline_branch.expected.diagnostic.json` は `CliDiagnosticEnvelope` を整形したゴールデンであり、AI 連携で取り扱う最小構成の JSON を示している。`tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` で再生成し、`summary.stats.run_config.effects.type_row_mode` や `stream_meta.packrat_enabled` のような補助指標も含めて取得する。
 - `effects.stage.*` / `capability.*` / `bridge.stage.*` は `diagnostics[].extensions` と `diagnostics[].audit_metadata` の双方に存在する。AI 推論時は `effects.stage.actual` と `effect.stage.required` の差分、および `audit_metadata["pipeline.node"]` を併せて解析し、どの DSL ノードで Stage 違反が発生したかを正確に説明する。
 - 監査ログは NDJSON（例: `examples/core_diagnostics/pipeline_success.expected.audit.jsonl`）で保存され、`pipeline_started` と `pipeline_completed` のメタデータが 1 行ずつ付与される。`cli.run_id` と `audit_id` をキーに `diagnostics` 側と突き合わせることで、AI 連携が複数エンドポイント（CLI/LSP/監査ダッシュボード）の整合を簡単に確認できる。

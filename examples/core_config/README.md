@@ -23,3 +23,10 @@
 | `reml.toml` | Manifest 本体。`dsl.audit_bridge` が Capability/Stage/Effect の同期例。 |
 | `dsl/audit_bridge.reml` | `@dsl_export` で Stage 境界と Capability を宣言する Bridge スケッチ。 |
 | `dsl/telemetry_bridge.reml` | 最小限の DSL エクスポート。`manifest dump` で未同期項目の差分を確認するために残しています。 |
+
+## CLI ゴールデン
+
+`examples/core_config/cli/` には `remlc config lint` / `remlc config diff` の JSON 出力例を
+保存しています。`tooling/examples/run_examples.sh --suite core_config --update-golden` を
+実行すると `lint.expected.json` / `diff.expected.json` が再生成され、Config/Data CLI
+のフォーマット変更をレビューできるようになっています。

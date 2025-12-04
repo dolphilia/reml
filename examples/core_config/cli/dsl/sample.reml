@@ -1,0 +1,7 @@
+effect ConfigCli : state {}
+
+@dsl_export(name = "ConfigCliBridge", category = "runtime_bridge")
+fn apply_config(cfg: Config) -> Result<Unit, Diagnostic> {
+  ensure(cfg.service.name != "", || diagnostic("config.service.empty"));
+  Ok(())
+}

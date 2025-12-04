@@ -154,6 +154,11 @@
     - `docs/guides/runtime-bridges.md` と `docs/guides/ai-integration.md` に CLI 出力例を掲載し、JSON/TTY 両方のサンプルを示す。
     - `examples/core_config/cli/` に最小構成の Manifest/Schema を配置し、`scripts/run_examples.sh --suite core_config` で検証できるようにする。
 
+#### 5.3 実施結果（Run ID: 20240305-config-cli-diff）
+- `compiler/rust/frontend/src/bin/remlc.rs` を拡張し、`config lint`/`config diff` サブコマンドを新設。`GuardDiagnostic` を `LintDiagnostic` へ整形する JSON レポートと TTY 出力を実装し、`ChangeSet` と `SchemaDiff` を同時出力するテスト（`diff_report_contains_expected_change_set` など）を追加した。Exit Code も `lint` で 0/2 を返し、CI へ直接組み込める形にした。
+- `examples/core_config/cli/` に Manifest/Schema/DSL と `config_old.json`/`config_new.json`、および `lint.expected.json`/`diff.expected.json` を追加。`tooling/examples/run_examples.sh --suite core_config` で `cargo run --bin remlc` を呼び出し、`--update-golden` 時にゴールデンを更新できるよう Bash スイートを拡張した。
+- `docs/guides/runtime-bridges.md` と `docs/guides/ai-integration.md` に CLI 操作例・JSON スニペットを追記し、AI 連携や Runtime Bridge ガイドから直接 `examples/core_config/cli` を参照できるようにした。
+
 ### 6. ドキュメント・サンプル更新（55-56週目）
 **担当領域**: 情報整備
 

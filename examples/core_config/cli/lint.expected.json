@@ -1,0 +1,12 @@
+{
+  "command": "config.lint",
+  "manifest": "../../examples/core_config/cli/reml.toml",
+  "schema": "../../examples/core_config/cli/schema.json",
+  "diagnostics": [],
+  "stats": {
+    "validated": true,
+    "manifest_loaded": true,
+    "schema_checked": true
+  },
+  "exit_code": 0
+}

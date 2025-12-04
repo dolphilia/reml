@@ -1,28 +1,44 @@
-use reml_runtime::config::{load_manifest, validate_manifest, Manifest};
-use reml_runtime::prelude::ensure::GuardDiagnostic;
+use reml_runtime::config::{
+    ensure_schema_version_compatibility, load_manifest, validate_manifest, Manifest,
+};
+use reml_runtime::collections::{
+    audit_bridge::{AuditBridgeError, ChangeSet},
+    persistent::btree::PersistentMap,
+};
+use reml_runtime::config::SchemaDiff as ConfigChangeSummary;
+use reml_runtime::config::{ChangeKind, ConfigChange};
+use reml_runtime::data::schema::Schema;
+use reml_runtime::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic};
+use serde::Serialize;
+use serde_json::{self, Map, Value};
 use std::env;
 use std::fmt;
 use std::fs;
+use std::{collections::BTreeMap, process};
 use std::path::{Path, PathBuf};
 
 fn main() {
-    if let Err(err) = try_main() {
-        eprintln!("remlc: {err}");
-        std::process::exit(1);
+    match try_main() {
+        Ok(code) => process::exit(code),
+        Err(err) => {
+            eprintln!("remlc: {err}");
+            process::exit(1);
+        }
     }
 }
 
-fn try_main() -> Result<(), CliError> {
+fn try_main() -> Result<i32, CliError> {
     let mut args: Vec<String> = env::args().skip(1).collect();
     if args.is_empty() {
         print_help();
-        return Ok(());
+        return Ok(0);
     }
     match args.remove(0).as_str() {
         "manifest" => handle_manifest(args),
+        "config" => handle_config(args),
         "--help" | "-h" => {
             print_help();
-            Ok(())
+            Ok(0)
         }
         other => Err(CliError::Usage(format!(
             "未知のサブコマンド `{other}` が指定されました"
@@ -30,16 +46,16 @@ fn try_main() -> Result<(), CliError> {
     }
 }
 
-fn handle_manifest(mut args: Vec<String>) -> Result<(), CliError> {
+fn handle_manifest(mut args: Vec<String>) -> Result<i32, CliError> {
     if args.is_empty() {
         print_manifest_help();
-        return Ok(());
+        return Ok(0);
     }
     match args.remove(0).as_str() {
         "dump" => manifest_dump(args),
         "--help" | "-h" => {
             print_manifest_help();
-            Ok(())
+            Ok(0)
         }
         other => Err(CliError::Usage(format!(
             "manifest コマンドに未知のサブコマンド `{other}` が指定されました"
@@ -47,7 +63,7 @@ fn handle_manifest(mut args: Vec<String>) -> Result<(), CliError> {
     }
 }
 
-fn manifest_dump(args: Vec<String>) -> Result<(), CliError> {
+fn manifest_dump(args: Vec<String>) -> Result<i32, CliError> {
     let opts = ManifestDumpOptions::parse(args)?;
     let manifest = read_manifest(&opts.manifest_path)?;
     match opts.format {
@@ -63,9 +79,75 @@ fn manifest_dump(args: Vec<String>) -> Result<(), CliError> {
             } else {
                 println!("{body}");
             }
-            Ok(())
+            Ok(0)
         }
     }
+}
+
+fn handle_config(mut args: Vec<String>) -> Result<i32, CliError> {
+    if args.is_empty() {
+        print_config_help();
+        return Ok(0);
+    }
+    match args.remove(0).as_str() {
+        "lint" => config_lint(args),
+        "diff" => config_diff(args),
+        "--help" | "-h" => {
+            print_config_help();
+            Ok(0)
+        }
+        other => Err(CliError::Usage(format!(
+            "config コマンドに未知のサブコマンド `{other}` が指定されました"
+        ))),
+    }
+}
+
+fn config_lint(args: Vec<String>) -> Result<i32, CliError> {
+    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
+        print_config_lint_help();
+        return Ok(0);
+    }
+    let opts = ConfigLintOptions::parse(args)?;
+    let mut diagnostics = Vec::new();
+    let manifest = match load_manifest(&opts.manifest_path) {
+        Ok(value) => {
+            if let Err(diag) = validate_manifest(&value) {
+                diagnostics.push(diag);
+            }
+            Some(value)
+        }
+        Err(diag) => {
+            diagnostics.push(diag);
+            None
+        }
+    };
+    if let (Some(manifest), Some(schema_path)) = (manifest.as_ref(), opts.schema_path.as_ref()) {
+        let schema = load_schema(schema_path)?;
+        if let Err(diag) = ensure_schema_version_compatibility(manifest, &schema) {
+            diagnostics.push(diag);
+        }
+    }
+    let report = ConfigLintReport::new(
+        &opts,
+        diagnostics.into_iter().map(guard_diag_to_report).collect(),
+        manifest.is_some(),
+        opts.schema_path.is_some(),
+    );
+    print_lint_report(&report, opts.output_format)?;
+    Ok(report.exit_code())
+}
+
+fn config_diff(args: Vec<String>) -> Result<i32, CliError> {
+    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
+        print_config_diff_help();
+        return Ok(0);
+    }
+    let opts = ConfigDiffOptions::parse(args)?;
+    let base = ConfigDocument::load(&opts.base_path)?;
+    let target = ConfigDocument::load(&opts.target_path)?;
+    let report = build_config_diff_report(&base, &target)?;
+    print_diff_report(&report, opts.output_format)?;
+    Ok(0)
 }
 
 fn read_manifest(path: &Path) -> Result<Manifest, CliError> {
@@ -126,6 +208,531 @@ impl ManifestDumpOptions {
     }
 }
 
+#[derive(Debug, Clone)]
+struct ConfigLintOptions {
+    manifest_path: PathBuf,
+    schema_path: Option<PathBuf>,
+    output_format: ReportFormat,
+}
+
+impl Default for ConfigLintOptions {
+    fn default() -> Self {
+        Self {
+            manifest_path: PathBuf::from("reml.toml"),
+            schema_path: None,
+            output_format: ReportFormat::Json,
+        }
+    }
+}
+
+impl ConfigLintOptions {
+    fn parse(args: Vec<String>) -> Result<Self, CliError> {
+        let mut opts = ConfigLintOptions::default();
+        let mut iter = args.into_iter();
+        while let Some(arg) = iter.next() {
+            match arg.as_str() {
+                "--manifest" => {
+                    let path = iter.next().ok_or_else(|| {
+                        CliError::Usage("--manifest にはパスを指定してください".to_string())
+                    })?;
+                    opts.manifest_path = PathBuf::from(path);
+                }
+                "--schema" => {
+                    let path = iter.next().ok_or_else(|| {
+                        CliError::Usage("--schema にはパスを指定してください".to_string())
+                    })?;
+                    opts.schema_path = Some(PathBuf::from(path));
+                }
+                "--format" => {
+                    let value = iter.next().ok_or_else(|| {
+                        CliError::Usage("--format には human もしくは json を指定してください".to_string())
+                    })?;
+                    opts.output_format = ReportFormat::parse(&value)?;
+                }
+                other => {
+                    return Err(CliError::Usage(format!(
+                        "config lint で未対応の引数 `{other}` が指定されました"
+                    )));
+                }
+            }
+        }
+        Ok(opts)
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ConfigDiffOptions {
+    base_path: PathBuf,
+    target_path: PathBuf,
+    output_format: ReportFormat,
+}
+
+impl ConfigDiffOptions {
+    fn parse(args: Vec<String>) -> Result<Self, CliError> {
+        let mut opts = ConfigDiffOptions {
+            base_path: PathBuf::new(),
+            target_path: PathBuf::new(),
+            output_format: ReportFormat::Json,
+        };
+        let mut positional = Vec::new();
+        let mut iter = args.into_iter();
+        while let Some(arg) = iter.next() {
+            match arg.as_str() {
+                "--format" => {
+                    let value = iter.next().ok_or_else(|| {
+                        CliError::Usage("--format には human もしくは json を指定してください".to_string())
+                    })?;
+                    opts.output_format = ReportFormat::parse(&value)?;
+                }
+                other if other.starts_with('-') => {
+                    return Err(CliError::Usage(format!(
+                        "config diff で未対応のオプション `{other}` が指定されました"
+                    )));
+                }
+                value => positional.push(value.to_string()),
+            }
+        }
+        if positional.len() != 2 {
+            return Err(CliError::Usage(
+                "config diff には <base.json> <target.json> の 2 つの引数が必要です".to_string(),
+            ));
+        }
+        opts.base_path = PathBuf::from(&positional[0]);
+        opts.target_path = PathBuf::from(&positional[1]);
+        Ok(opts)
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct ConfigLintReport {
+    command: &'static str,
+    manifest: String,
+    schema: Option<String>,
+    diagnostics: Vec<LintDiagnostic>,
+    stats: LintStats,
+    exit_code: i32,
+}
+
+impl ConfigLintReport {
+    fn new(
+        opts: &ConfigLintOptions,
+        diagnostics: Vec<LintDiagnostic>,
+        manifest_loaded: bool,
+        schema_checked: bool,
+    ) -> Self {
+        let validated = diagnostics.is_empty() && manifest_loaded;
+        let exit_code = if validated { 0 } else { 2 };
+        Self {
+            command: "config.lint",
+            manifest: opts.manifest_path.display().to_string(),
+            schema: opts.schema_path.as_ref().map(|path| path.display().to_string()),
+            diagnostics,
+            stats: LintStats {
+                validated,
+                manifest_loaded,
+                schema_checked,
+            },
+            exit_code,
+        }
+    }
+
+    fn exit_code(&self) -> i32 {
+        self.exit_code
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct LintStats {
+    validated: bool,
+    manifest_loaded: bool,
+    schema_checked: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct LintDiagnostic {
+    code: String,
+    domain: String,
+    severity: String,
+    message: String,
+    extensions: Value,
+    audit: Value,
+}
+
+#[derive(Debug, Serialize)]
+struct ConfigDiffReport {
+    command: &'static str,
+    base: ConfigDiffEndpoint,
+    target: ConfigDiffEndpoint,
+    summary: DiffSummary,
+    change_set: Value,
+    schema_diff: ConfigChangeSummary,
+}
+
+#[derive(Debug, Serialize)]
+struct ConfigDiffEndpoint {
+    path: String,
+    format: &'static str,
+    entries: usize,
+}
+
+impl ConfigDiffEndpoint {
+    fn from_document(doc: &ConfigDocument) -> Self {
+        Self {
+            path: doc.path.display().to_string(),
+            format: doc.format,
+            entries: doc.entries(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct DiffSummary {
+    added: usize,
+    removed: usize,
+    updated: usize,
+    total: usize,
+}
+
+impl DiffSummary {
+    fn from_change_set(change_set: &ChangeSet) -> Self {
+        let summary = change_set.summary();
+        Self {
+            added: summary.added,
+            removed: summary.removed,
+            updated: summary.updated,
+            total: summary.total(),
+        }
+    }
+}
+
+#[derive(Clone)]
+struct ConfigDocument {
+    path: PathBuf,
+    format: &'static str,
+    flattened: BTreeMap<String, Value>,
+}
+
+impl ConfigDocument {
+    fn load(path: &Path) -> Result<Self, CliError> {
+        let body = fs::read_to_string(path)?;
+        let value: Value =
+            serde_json::from_str(&body).map_err(|err| CliError::Json(err))?;
+        Ok(Self::from_value(path.to_path_buf(), value))
+    }
+
+    fn from_value(path: PathBuf, value: Value) -> Self {
+        let flattened = flatten_config_tree(&value);
+        Self {
+            path,
+            format: "json",
+            flattened,
+        }
+    }
+
+    fn entries(&self) -> usize {
+        self.flattened.len()
+    }
+}
+
+#[cfg(test)]
+impl ConfigDocument {
+    fn for_test(label: &str, value: Value) -> Self {
+        Self::from_value(PathBuf::from(label), value)
+    }
+}
+
+fn build_config_diff_report(
+    base: &ConfigDocument,
+    target: &ConfigDocument,
+) -> Result<ConfigDiffReport, CliError> {
+    let base_map = PersistentMap::from_map(base.flattened.clone());
+    let target_map = PersistentMap::from_map(target.flattened.clone());
+    let change_set = base_map
+        .diff_change_set(&target_map)
+        .map_err(CliError::ChangeSet)?;
+    let schema_diff = ConfigChangeSummary::from_change_set(&change_set, None);
+    Ok(ConfigDiffReport {
+        command: "config.diff",
+        base: ConfigDiffEndpoint::from_document(base),
+        target: ConfigDiffEndpoint::from_document(target),
+        summary: DiffSummary::from_change_set(&change_set),
+        change_set: change_set.to_value(),
+        schema_diff,
+    })
+}
+
+fn load_schema(path: &Path) -> Result<Schema, CliError> {
+    let body = fs::read_to_string(path)?;
+    let schema: Schema = serde_json::from_str(&body)?;
+    Ok(schema)
+}
+
+fn guard_diag_to_report(diag: GuardDiagnostic) -> LintDiagnostic {
+    LintDiagnostic {
+        code: diag.code.to_string(),
+        domain: diag.domain.to_string(),
+        severity: severity_label(diag.severity).to_string(),
+        message: diag.message,
+        extensions: Value::Object(diag.extensions),
+        audit: Value::Object(diag.audit_metadata),
+    }
+}
+
+fn severity_label(severity: DiagnosticSeverity) -> &'static str {
+    match severity {
+        DiagnosticSeverity::Error => "error",
+        DiagnosticSeverity::Warning => "warning",
+        DiagnosticSeverity::Info => "info",
+        DiagnosticSeverity::Hint => "hint",
+    }
+}
+
+fn flatten_config_tree(value: &Value) -> BTreeMap<String, Value> {
+    let mut map = BTreeMap::new();
+    flatten_config_value(value, "", &mut map);
+    map
+}
+
+fn flatten_config_value(value: &Value, path: &str, out: &mut BTreeMap<String, Value>) {
+    match value {
+        Value::Object(entries) => {
+            if entries.is_empty() {
+                let key = if path.is_empty() { "$" } else { path };
+                out.insert(key.to_string(), Value::Object(Map::new()));
+            }
+            for (key, child) in entries {
+                let next = if path.is_empty() {
+                    key.clone()
+                } else {
+                    format!("{path}.{key}")
+                };
+                flatten_config_value(child, &next, out);
+            }
+        }
+        Value::Array(items) => {
+            if items.is_empty() {
+                let key = if path.is_empty() { "$" } else { path };
+                out.insert(key.to_string(), Value::Array(vec![]));
+                return;
+            }
+            for (index, child) in items.iter().enumerate() {
+                let next = if path.is_empty() {
+                    format!("[{index}]")
+                } else {
+                    format!("{path}[{index}]")
+                };
+                flatten_config_value(child, &next, out);
+            }
+        }
+        _ => {
+            let key = if path.is_empty() { "$".to_string() } else { path.to_string() };
+            out.insert(key, value.clone());
+        }
+    }
+}
+
+fn print_lint_report(report: &ConfigLintReport, format: ReportFormat) -> Result<(), CliError> {
+    match format {
+        ReportFormat::Json => {
+            let body = serde_json::to_string_pretty(report)?;
+            println!("{body}");
+        }
+        ReportFormat::Human => {
+            if report.stats.validated {
+                println!(
+                    "[config.lint] {} OK",
+                    report.manifest
+                );
+            } else {
+                println!(
+                    "[config.lint] {} で {} 件の問題が見つかりました",
+                    report.manifest,
+                    report.diagnostics.len()
+                );
+                for diag in &report.diagnostics {
+                    println!(
+                        "  - [{}] {}: {}",
+                        diag.severity, diag.code, diag.message
+                    );
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn print_diff_report(report: &ConfigDiffReport, format: ReportFormat) -> Result<(), CliError> {
+    match format {
+        ReportFormat::Json => {
+            let body = serde_json::to_string_pretty(report)?;
+            println!("{body}");
+        }
+        ReportFormat::Human => {
+            println!(
+                "[config.diff] {} -> {}",
+                report.base.path, report.target.path
+            );
+            println!(
+                "  added: {} removed: {} updated: {} (total={})",
+                report.summary.added,
+                report.summary.removed,
+                report.summary.updated,
+                report.summary.total
+            );
+            for change in &report.schema_diff.changes {
+                print_diff_change(change);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn print_diff_change(change: &ConfigChange) {
+    let key = value_to_string(&change.key);
+    match change.kind {
+        ChangeKind::Added => {
+            if let Some(current) = &change.current {
+                println!("    + {key} = {}", value_to_string(current));
+            } else {
+                println!("    + {key}");
+            }
+        }
+        ChangeKind::Removed => {
+            if let Some(previous) = &change.previous {
+                println!("    - {key} = {}", value_to_string(previous));
+            } else {
+                println!("    - {key}");
+            }
+        }
+        ChangeKind::Updated => {
+            let before = change
+                .previous
+                .as_ref()
+                .map(value_to_string)
+                .unwrap_or_else(|| "null".into());
+            let after = change
+                .current
+                .as_ref()
+                .map(value_to_string)
+                .unwrap_or_else(|| "null".into());
+            println!("    ~ {key}: {before} -> {after}");
+        }
+    }
+}
+
+fn value_to_string(value: &Value) -> String {
+    serde_json::to_string(value).unwrap_or_else(|_| value.to_string())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ReportFormat {
+    Json,
+    Human,
+}
+
+impl ReportFormat {
+    fn parse(raw: &str) -> Result<Self, CliError> {
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "json" => Ok(ReportFormat::Json),
+            "human" | "tty" | "text" => Ok(ReportFormat::Human),
+            other => Err(CliError::Usage(format!(
+                "--format に指定した値 `{other}` は human / json のいずれかである必要があります"
+            ))),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn flatten_config_tree_creates_dotted_keys() {
+        let source = json!({
+            "service": {
+                "name": "alpha",
+                "replicas": 2,
+                "features": ["audit", "telemetry"]
+            },
+            "limits": {
+                "memory": "1Gi"
+            },
+            "empty": {},
+            "list": []
+        });
+        let flattened = flatten_config_tree(&source);
+        assert!(flattened.contains_key("service.name"));
+        assert!(flattened.contains_key("service.features[0]"));
+        assert!(flattened.contains_key("service.features[1]"));
+        assert!(flattened.contains_key("limits.memory"));
+        assert!(flattened.contains_key("empty"));
+        assert!(flattened.contains_key("list"));
+    }
+
+    #[test]
+    fn diff_report_contains_expected_change_set() {
+        let base = ConfigDocument::for_test(
+            "base",
+            json!({
+                "service": {
+                    "name": "alpha",
+                    "replicas": 2,
+                    "features": ["audit", "telemetry"]
+                },
+                "limits": {
+                    "memory": "1Gi",
+                    "cpu": "500m"
+                }
+            }),
+        );
+        let target = ConfigDocument::for_test(
+            "target",
+            json!({
+                "service": {
+                    "name": "alpha",
+                    "replicas": 3,
+                    "features": ["audit"]
+                },
+                "limits": {
+                    "memory": "2Gi",
+                    "cpu": "750m"
+                },
+                "telemetry": {
+                    "enabled": true
+                }
+            }),
+        );
+        let report =
+            build_config_diff_report(&base, &target).expect("diff report should succeed");
+        assert_eq!(report.summary.added, 1);
+        assert_eq!(report.summary.removed, 1);
+        assert_eq!(report.summary.updated, 3);
+        assert_eq!(report.schema_diff.changes.len(), 5);
+        let keys: Vec<String> = report
+            .schema_diff
+            .changes
+            .iter()
+            .map(|change| change.key.as_str().unwrap().to_string())
+            .collect();
+        assert_eq!(
+            keys,
+            vec![
+                "limits.cpu",
+                "limits.memory",
+                "service.features[1]",
+                "service.replicas",
+                "telemetry.enabled"
+            ]
+        );
+        if let Value::Array(items) = &report.change_set["items"] {
+            assert_eq!(items.len(), 5);
+        } else {
+            panic!("change_set items should be an array");
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 enum OutputFormat {
     Json,
@@ -148,6 +755,7 @@ enum CliError {
     Io(std::io::Error),
     ManifestDiagnostic(GuardDiagnostic),
     Json(serde_json::Error),
+    ChangeSet(AuditBridgeError),
 }
 
 impl fmt::Display for CliError {
@@ -166,7 +774,10 @@ impl fmt::Display for CliError {
                     write!(f, "マニフェストの検証に失敗しました: {}", diag.message)
                 }
             }
-            CliError::Json(err) => write!(f, "JSON 生成に失敗しました: {err}"),
+            CliError::Json(err) => write!(f, "JSON の処理に失敗しました: {err}"),
+            CliError::ChangeSet(err) => {
+                write!(f, "ChangeSet の生成に失敗しました: {err}")
+            }
         }
     }
 }
@@ -191,9 +802,18 @@ impl From<GuardDiagnostic> for CliError {
     }
 }
 
+impl From<AuditBridgeError> for CliError {
+    fn from(value: AuditBridgeError) -> Self {
+        CliError::ChangeSet(value)
+    }
+}
+
 fn print_help() {
     eprintln!(
-        "使い方: remlc <command> [options]\n\nサブコマンド:\n  manifest dump  reml.toml を JSON へダンプ"
+        "使い方: remlc <command> [options]\n\nサブコマンド:\n\
+  manifest dump         reml.toml を JSON へダンプ\n\
+  config lint           マニフェスト/スキーマを検証して JSON レポートを表示\n\
+  config diff <old> <new>  JSON 設定ファイル同士の差分を ChangeSet 形式で出力"
     );
 }
 
@@ -203,5 +823,29 @@ fn print_manifest_help() {
         --manifest <path>  読み込む reml.toml（既定: ./reml.toml）\n\
         --format json      現時点で JSON のみサポート\n\
         --output <path>    指定するとファイルへ書き出し、未指定なら stdout へ出力"
+    );
+}
+
+fn print_config_help() {
+    eprintln!(
+        "使い方: remlc config <subcommand>\n\nサブコマンド:\n\
+  lint   --manifest <reml.toml> [--schema schema.json] [--format human|json]\n\
+  diff   <base.json> <target.json> [--format human|json]"
+    );
+}
+
+fn print_config_lint_help() {
+    eprintln!(
+        "使い方: remlc config lint [--manifest <path>] [--schema <schema.json>] [--format human|json]\n\n\
+        --manifest <path>  検証対象の reml.toml（既定: ./reml.toml）\n\
+        --schema <path>    Schema(JSON) との互換チェックを有効化\n\
+        --format human|json  出力形式を切替（既定: json）"
+    );
+}
+
+fn print_config_diff_help() {
+    eprintln!(
+        "使い方: remlc config diff <old.json> <new.json> [--format human|json]\n\n\
+        --format human|json  ChangeSet 出力を JSON か TTY に切替（既定: json）"
     );
 }
