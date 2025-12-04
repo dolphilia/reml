@@ -191,6 +191,21 @@
     - 失敗時は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md#config-data` へ Issue 番号を追記する GitHub Actions を実装し、既存の Diagnostics 連携と同じテンプレートを用いる。
     - CI 追加後は `README.md` のバッジや `docs/plans/rust-migration/3-0-ci-and-dual-write-strategy.md` のフローチャートにも Config Lint ジョブを追記する。
 
+#### 7.1 実施結果（Run ID: 20250609-config-tests）
+- `compiler/rust/runtime/tests/manifest_validation.rs` に 10 ケースのスナップショットテストを追加し、`project.name`/`project.version` 欠落、`project.kind`/`stage` の未知値、`build.optimize`/`build.profiles.*.optimize` の未知値、`dsl.entry` 未設定、`dsl.kind` 不一致、`expect_effects_stage` の未知 Stage、`stage_bounds.minimum` の検証失敗まで網羅した。各テストは `compiler/rust/runtime/tests/snapshots/manifest_validation__*.snap` へ JSON で固定し、`INSTA_UPDATE=always cargo test --test manifest_validation` で更新する運用を明文化した。
+- `compiler/rust/frontend/tests/manifest_integration.rs` を追加し、`fixtures/config_integration` 配下の `reml.toml`/`schema.json`/`dsl` を読み込んで Manifest→Schema→`apply_manifest_overrides` の一連フローを検証した。`config.compatibility_profile = json-relaxed` が `RunConfig` 拡張に伝搬することと、`ensure_schema_version_compatibility` が `StageId::Beta` で整合することをテストで保証した。
+- リスク管理文書 `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に `config_validation_cases >= 10` を追加し、Config/Data のフォールトテーブルが 2 桁を下回った場合はリスク登録 (ID: `config-data`) を必須化した。
+
+#### 7.2 実施結果（Run ID: 20250609-config-diff-ci）
+- `compiler/rust/frontend/tests/core_iter_collectors.rs` に `config_diff_report` ケースを追加し、`examples/core_config/cli/config_{old,new}.json` の差分を `PersistentMap::diff_change_set` で再現して `__snapshots__/core_iter_collectors.snap` へ記録した。これに合わせて `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` に `case=config_diff_report` を追記し、ChangeSet サマリが監査ログとして残るようにした。
+- `tooling/scripts/verify-config-diff.sh` を新設し、`cargo run --bin remlc -- config diff` の出力と `examples/core_config/cli/diff.expected.json` を `diff -u` で比較する自動検証ステップを整備した。`UPDATE_GOLDEN=1` でゴールデン更新も可能。
+- `tooling/ci/collect-iterator-audit-metrics.py` に `--section config` と `--config-source` を追加し、Config Diff ゴールデンの ChangeSet に `summary/metadata/items` が揃っているかを `config.diff.change_set` メトリクスで確認できるようにした。
+
+#### 7.3 実施結果（Run ID: 20250609-config-ci-job）
+- `.github/workflows/rust-frontend.yml` を追加し、`config-lint` ジョブで `cargo run --bin remlc -- config lint --manifest examples/core_config/reml.toml --schema examples/core_config/cli/schema.json --format json` を実行、`lint-report.json` をアーティファクト化するまでを自動化した。ジョブは `tooling/scripts/verify-config-diff.sh` を併走させ、差分ゴールデンの一致を保証する。
+- `README.md` に Rust Frontend CI の存在を追記し、`docs/plans/rust-migration/3-0-ci-and-dual-write-strategy.md` §3.0.11 (新設) で Config/Data Lint ジョブの役割と成果物 (`config-lint-report`) を共有した。
+- `docs/plans/bootstrap-roadmap/0-4-risk-handling.md#config-data` に CI 失敗時のフォローアップ手順（Issue 登録＋ Run ID 記録）を追加し、Config/Data のリスクレビューが自走するようにした。
+
 ## 成果物と検証
 - Manifest/Schema/ConfigCompatibility API が仕様通りに実装され、効果タグ・診断・監査が整合すること。
 - DSL エクスポート・Capability 情報がマニフェストから取得でき、Phase 4 の移行処理に再利用できること。

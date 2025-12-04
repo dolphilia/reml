@@ -100,3 +100,8 @@
 ---
 
 本計画は P3 完了時に Rust CI をデフォルトへ昇格させるための前提条件を整理したものである。dual-write 成果物の取扱いと監査メトリクスの詳細は [3-1-observability-alignment.md](3-1-observability-alignment.md) へ引き渡す。
+
+## 3.0.11 Config/Data Lint ジョブ
+- **ジョブ概要**: `.github/workflows/rust-frontend.yml` に `config-lint` ジョブを追加し、`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin remlc -- config lint --manifest examples/core_config/reml.toml --schema examples/core_config/cli/schema.json --format json` を実行して `lint-report.json` を生成する。ジョブの冒頭で `tooling/scripts/verify-config-diff.sh` を実行し、`remlc config diff` の結果と `examples/core_config/cli/diff.expected.json` の差分がゼロであることを検証する。
+- **監査メトリクス**: Config Diff のゴールデンは `python3 tooling/ci/collect-iterator-audit-metrics.py --section config --config-source <diff.json> --require-success` で検証し、`config.diff.change_set` の `pass_rate` が 1.0 を維持できなかった場合は `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の `case=config_diff_report` に Run ID を追記する。リスク登録は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md#config-data` に従う。
+- **参照資料**: テスト資産は `compiler/rust/runtime/tests/manifest_validation.rs` と `compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap`、サンプルは `examples/core_config/cli/*.json`、運用手順は `docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md#71-実施結果run-id-20250609-config-tests` に記録する。

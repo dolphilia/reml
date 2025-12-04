@@ -683,3 +683,62 @@ config_compat_event: {
   },
   "timestamp": "2025-01-01T00:00:00Z"
 }
+config_diff_report: {
+  "kind": "config_diff",
+  "summary": {
+    "added": 1,
+    "removed": 1,
+    "updated": 3,
+    "total": 5
+  },
+  "change_set": {
+    "origin": "core.collections",
+    "policy": "core.collections.audit.v1",
+    "category": "collections.diff",
+    "stage": "stable",
+    "kind": "collections.diff.map",
+    "summary": {
+      "added": 1,
+      "removed": 1,
+      "updated": 3,
+      "total": 5
+    },
+    "metadata": {
+      "stage": "stable",
+      "category": "collections.diff",
+      "kind": "collections.diff.map",
+      "origin": "core.collections"
+    },
+    "items": [
+      {
+        "kind": "collections.diff.updated",
+        "key": "limits.cpu",
+        "previous": "500m",
+        "current": "750m"
+      },
+      {
+        "kind": "collections.diff.updated",
+        "key": "limits.memory",
+        "previous": "1Gi",
+        "current": "2Gi"
+      },
+      {
+        "kind": "collections.diff.removed",
+        "key": "service.features[1]",
+        "previous": "telemetry"
+      },
+      {
+        "kind": "collections.diff.updated",
+        "key": "service.replicas",
+        "previous": 2,
+        "current": 3
+      },
+      {
+        "kind": "collections.diff.added",
+        "key": "telemetry.enabled",
+        "current": true
+      }
+    ],
+    "total": 5
+  }
+}

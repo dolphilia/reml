@@ -841,6 +841,59 @@ def collect_watcher_audit_metrics(paths: Sequence[Path]) -> Optional[Dict[str, A
     }
 
 
+def collect_config_diff_metrics(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+    for path in paths:
+        total += 1
+        try:
+            data = load_json(path)
+        except ValueError as exc:
+            failures.append({"file": str(path), "reason": str(exc)})
+            continue
+        change_set = data.get("change_set")
+        if not isinstance(change_set, dict):
+            failures.append({"file": str(path), "reason": "missing change_set"})
+            continue
+        summary = _as_dict(change_set.get("summary"))
+        metadata = _as_dict(change_set.get("metadata"))
+        items = change_set.get("items")
+        missing: List[str] = []
+        for field in ("added", "removed", "updated", "total"):
+            if summary is None or not isinstance(summary.get(field), (int, float)):
+                missing.append(f"summary.{field}")
+        if not isinstance(items, list) or not items:
+            missing.append("items[]")
+        stage = None
+        if metadata and isinstance(metadata.get("stage"), str):
+            stage = metadata.get("stage").strip()
+        elif isinstance(change_set.get("stage"), str):
+            stage = change_set.get("stage").strip()
+        if missing:
+            entry = {"file": str(path), "missing": missing}
+            if stage:
+                entry["stage"] = stage
+            failures.append(entry)
+            continue
+        passed += 1
+    if total == 0:
+        return None
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    status = "success" if pass_rate == 1.0 else "failed"
+    return {
+        "metric": "config.diff.change_set",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "sources": [str(path) for path in paths],
+        "failures": failures,
+        "status": status,
+    }
+
+
 def _diagnostic_has_code(diag: Dict[str, Any], target: str) -> bool:
     primary = primary_code_of(diag)
     if primary == target:
@@ -6903,6 +6956,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Path to audit JSON (repeatable).",
     )
     parser.add_argument(
+        "--config-source",
+        action="append",
+        dest="config_sources",
+        help="Path to config diff JSON (repeatable).",
+    )
+    parser.add_argument(
         "--suite",
         choices=[
             "collectors",
@@ -6929,6 +6988,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "review",
             "numeric_time",
             "core_io",
+            "config",
         ],
         default="all",
         help="Collect metrics for a specific section (default: all).",
@@ -7116,6 +7176,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "text",
         "runtime",
         "review",
+        "config",
     ]
     if suite_sections:
         sections = suite_sections
@@ -7230,6 +7291,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 if stripped:
                     platform_filters.add(stripped)
 
+    config_source_paths: List[Path] = _ensure_path_list(
+        getattr(args, "config_sources", None)
+    )
     text_source_paths: List[Path] = _ensure_path_list(
         getattr(args, "text_sources", None)
     )
@@ -7343,6 +7407,29 @@ def main(argv: Optional[List[str]] = None) -> int:
                 + "\n"
             )
             return 2
+
+    config_metric: Optional[Dict[str, Any]] = None
+    if "config" in sections:
+        config_sources = config_source_paths
+        if not config_sources and sections == ["config"]:
+            default_config_path = Path("examples/core_config/cli/diff.expected.json")
+            if default_config_path.is_file():
+                config_sources = [default_config_path]
+        if not config_sources:
+            sys.stderr.write(
+                "Config diff source not found. --config-source で JSON を指定するか "
+                "examples/core_config/cli/diff.expected.json を生成してください。\n"
+            )
+            return 2
+        missing_config_sources = [
+            str(path) for path in config_sources if not path.is_file()
+        ]
+        if missing_config_sources:
+            sys.stderr.write(
+                "Missing config diff files: " + ", ".join(missing_config_sources) + "\n"
+            )
+            return 2
+        config_metric = collect_config_diff_metrics(config_sources)
 
     review_diff_paths = _ensure_path_list(getattr(args, "review_diff", None))
     review_coverage_paths = _ensure_path_list(getattr(args, "review_coverage", None))
@@ -7681,15 +7768,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
     if "diag" in sections:
         diag_metric = collect_diag_metrics(sources, args.metrics_case)
-    if sections == ['effects']:
-        diagnostic_presence_metric = None
-    else:
+    has_diag_section = bool(set(sections) & diagnostic_sections)
+    if has_diag_section:
         diagnostic_presence_metric = collect_diagnostic_audit_presence_metric(sources)
-
-    if sections == ['effects']:
-        diagnostics_summary = None
-    else:
         diagnostics_summary = summarize_diagnostics(sources)
+    else:
+        diagnostic_presence_metric = None
+        diagnostics_summary = None
 
     diagnostic_totals_metric: Optional[Dict[str, Any]] = None
     audit_event_metric: Optional[Dict[str, Any]] = None
@@ -7742,6 +7827,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         metrics_list.append(text_metric)
     if runtime_metric and "runtime" in sections:
         metrics_list.append(runtime_metric)
+    if config_metric and "config" in sections:
+        metrics_list.append(config_metric)
 
     if lexer_metrics and "parser" not in sections:
         metrics_list.extend(lexer_metrics)
@@ -7829,6 +7916,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["text"] = text_metric
     if runtime_metric and "runtime" in sections:
         combined["runtime"] = runtime_metric
+    if config_metric and "config" in sections:
+        combined["config"] = config_metric
 
     combined_audit_sources: List[str] = []
     for metrics in (iterator_metrics, typeclass_metrics, bridge_metrics):

@@ -8,6 +8,7 @@ use std::{
 use uuid::Uuid;
 
 use reml_frontend::pipeline::{AuditEmitter, PipelineDescriptor};
+use reml_runtime::collections::persistent::btree::PersistentMap;
 use reml_runtime::config::{
     ConfigCompatibility, ConfigCompatibilitySource, ConfigFormat, ResolvedConfigCompatibility,
 };
@@ -191,6 +192,78 @@ fn config_compat_audit_event() -> String {
     serde_json::to_string_pretty(&event).unwrap()
 }
 
+fn flatten_config_tree(value: &Value) -> BTreeMap<String, Value> {
+    fn flatten_value(value: &Value, path: &str, out: &mut BTreeMap<String, Value>) {
+        match value {
+            Value::Object(entries) => {
+                if entries.is_empty() {
+                    let key = if path.is_empty() { "$" } else { path };
+                    out.insert(key.to_string(), Value::Object(serde_json::Map::new()));
+                }
+                for (key, child) in entries {
+                    let next = if path.is_empty() {
+                        key.clone()
+                    } else {
+                        format!("{path}.{key}")
+                    };
+                    flatten_value(child, &next, out);
+                }
+            }
+            Value::Array(items) => {
+                if items.is_empty() {
+                    let key = if path.is_empty() { "$" } else { path };
+                    out.insert(key.to_string(), Value::Array(vec![]));
+                    return;
+                }
+                for (index, child) in items.iter().enumerate() {
+                    let next = if path.is_empty() {
+                        format!("[{index}]")
+                    } else {
+                        format!("{path}[{index}]")
+                    };
+                    flatten_value(child, &next, out);
+                }
+            }
+            _ => {
+                let key = if path.is_empty() { "$" } else { path };
+                out.insert(key.to_string(), value.clone());
+            }
+        }
+    }
+
+    let mut flattened = BTreeMap::new();
+    flatten_value(value, "", &mut flattened);
+    flattened
+}
+
+fn config_diff_report() -> String {
+    let base: Value = serde_json::from_str(include_str!(
+        "../../../../examples/core_config/cli/config_old.json"
+    ))
+    .expect("config_old fixture");
+    let target: Value = serde_json::from_str(include_str!(
+        "../../../../examples/core_config/cli/config_new.json"
+    ))
+    .expect("config_new fixture");
+    let base_map = PersistentMap::from_map(flatten_config_tree(&base));
+    let target_map = PersistentMap::from_map(flatten_config_tree(&target));
+    let change_set = base_map
+        .diff_change_set(&target_map)
+        .expect("change_set diff");
+    let summary = change_set.summary();
+    let payload = json!({
+        "kind": "config_diff",
+        "summary": {
+            "added": summary.added,
+            "removed": summary.removed,
+            "updated": summary.updated,
+            "total": summary.total()
+        },
+        "change_set": change_set.to_value()
+    });
+    serde_json::to_string_pretty(&payload).unwrap()
+}
+
 fn custom_snapshot(
     kind: CollectorKind,
     source: &'static str,
@@ -332,6 +405,7 @@ fn core_iter_collectors_snapshot() {
         ("collect_cell_ref_effects", collect_cell_ref_effects()),
         ("table_csv_import", table_csv_import()),
         ("config_compat_event", config_compat_audit_event()),
+        ("config_diff_report", config_diff_report()),
     ];
     let actual = cases
         .into_iter()

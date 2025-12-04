@@ -1,0 +1,19 @@
+{
+  "name": "config-integration",
+  "version": {
+    "major": 1,
+    "minor": 1,
+    "patch": 0
+  },
+  "description": "Schema fixture for manifest integration test",
+  "fields": {
+    "service": {
+      "name": "service",
+      "data_type": "String",
+      "required": true
+    }
+  },
+  "metadata": {
+    "source": "tests/manifest_integration"
+  }
+}

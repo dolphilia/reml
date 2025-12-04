@@ -40,6 +40,11 @@
 - OCaml 実装との互換性確保のため、致命的な差分が発生した場合は OCaml 実装を一時的に正とし、Reml 実装を修正する。
 - 重大な脆弱性が見つかった場合は、Phase に関わらず緊急パッチを適用し、`docs/notes/` に詳細な対応メモを残す。
 
+### <a id="config-data"></a>Config/Data テスト監視
+- **指標**: `config_validation_cases >= 10` を維持する。`compiler/rust/runtime/tests/manifest_validation.rs` のケース数が 9 件以下になった場合は本節へリスク登録し、欠落テーブルを補完するまでフェーズ移行を保留する。
+- **自動検証**: `tooling/scripts/verify-config-diff.sh` で `remlc config diff` の出力と `examples/core_config/cli/diff.expected.json` を比較し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section config --config-source <diff.json> --require-success` で `config.diff.change_set` 指標を算出する。pass_rate < 1.0 の場合は `reports/spec-audit/ch3/` に失敗ログを保存する。
+- **CI 連携**: `.github/workflows/rust-frontend.yml` の `config-lint` ジョブが `remlc config lint --manifest examples/core_config/reml.toml --schema examples/core_config/cli/schema.json --format json` を実行し、`lint-report.json` をアーティファクトとして公開する。ジョブが失敗した場合は GitHub Issue を作成し、その番号と Run ID を本節に追記してフォローアップを記録する。
+
 ---
 
 本章は計画期間中に常に更新される生きたリスク台帳として扱う。未解決のリスクが存在する限り、次フェーズへ進む前に状態をレビューし、必要なタスクを各フェーズ文書（`1-x`〜`4-x` 系列）へ反映させる。
