@@ -24,7 +24,10 @@
 - [ ] `docs/notes/collections-audit-bridge-todo.md` に 5.1.2 手順の追跡ログと KPI 同期予定を追加し、`ConfigMergeOutcome` → `REML_COLLECTIONS_CHANGE_SET_PATH` → `FormatterContext::change_set` の全パスがドキュメント化されていることを確認する。現状の TODO は `Core.Collections 棟` の audit_bridge 項でフォローする。
 - [ ] `collector.effect.audit` を出力するシナリオで `core.collections.audit` Capability をチェックし、`CollectError::CapabilityDenied` が `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` に記録されていることを `scripts/validate-diagnostic-json.sh --pattern collector.effect.audit` で検証する。`tooling/ci/collect-iterator-audit-metrics.py --scenario audit_cap` の KPI に `collector.effect.audit_presence` と `collections.change_set.total` を追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` Phase3 Capability 列へ反映させる。
 - [ ] `CollectError::CapabilityDenied` の発生/解消経路を `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の `capability` ケースに記録し、`reports/iterator-collector-summary.md` `status=audit_cap` 行に `capability`/`collector.effect.audit` の webhook を添えて `scripts/poc_dualwrite_compare.sh --target audit_bridge` の `collector.capability` output を突き合わせるルーチンを確認する。
-- [x] `config.diff.bridge`: `compiler/rust/runtime/src/config/collection_diff.rs` で `SchemaDiff`/`ConfigChange` を実装し、`scripts/validate-diagnostic-json.sh --section config` で `schema_diff.*` キーの存在を検証するブロックを追加した。これにより Config/Data との差分 JSON の双方向整合性が仕様上の TODO として追跡できるようになった。
+- [x] `config.diff.bridge`: `compiler/rust/runtime/src/config/collection_diff.rs` で `SchemaDiff`/`ConfigChange` を実装し、`scripts/validate-diagnostic-json.sh --section config` で `schema_diff.*` キーの存在を検証するブロックを追加した。これにより Config/Data との差分 JSON の双方向整合性が仕様上の TODO として追跡できるようになった（2025-12-03 追記: 同セクションで Config 診断メタデータの整合チェックも実施する）。
+
+## Config/Data 監査 TODO（W40 追加）
+- [x] `config_diagnostics_pass_rate >= 0.95`: `reports/spec-audit/ch3/config_diagnostics-20251203.json` で `config.missing_manifest` シナリオをゴールデン化し、`scripts/validate-diagnostic-json.sh --section config` が `extensions["config"]` と `audit_metadata["config.*"]` を同時確認するよう更新した。CLI/LSP 双方の Config 診断が監査メタデータを欠落させた場合に即座に検出できる。
 
 ### `rust-gap` トラッキング表（2025-11-17 更新）
 | 差分 ID | 章/カテゴリ | 症状 | Rust 監査手順 | 備考 |

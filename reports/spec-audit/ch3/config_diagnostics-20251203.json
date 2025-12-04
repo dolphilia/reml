@@ -1,0 +1,52 @@
+[
+  {
+    "schema_version": "3.0.0-alpha",
+    "timestamp": "2025-12-03T09:00:00Z",
+    "id": "00000000-0000-0000-0000-000000000000",
+    "message": "`reml.toml` を検出できませんでした",
+    "severity": "error",
+    "domain": "config",
+    "codes": ["config.missing_manifest"],
+    "primary": {
+      "file": "examples/core_config/missing_manifest/reml.toml",
+      "start_line": 0,
+      "start_col": 0,
+      "end_line": 0,
+      "end_col": 0
+    },
+    "audit": {
+      "audit_id": "cli/config-diagnostics-20251203#0",
+      "metadata": {
+        "audit.channel": "cli",
+        "config.path": "examples/core_config/missing_manifest/reml.toml",
+        "config.source": "cli"
+      }
+    },
+    "audit_metadata": {
+      "config.path": "examples/core_config/missing_manifest/reml.toml",
+      "config.source": "cli",
+      "config.profile": "strict",
+      "config.compatibility": {
+        "format": "toml",
+        "stage": "beta"
+      },
+      "config.diff": {
+        "missing": ["examples/core_config/missing_manifest/reml.toml"]
+      }
+    },
+    "extensions": {
+      "config": {
+        "path": "examples/core_config/missing_manifest/reml.toml",
+        "source": "cli",
+        "profile": "strict",
+        "compatibility": {
+          "format": "toml",
+          "stage": "beta"
+        },
+        "diff": {
+          "missing": ["examples/core_config/missing_manifest/reml.toml"]
+        }
+      }
+    }
+  }
+]

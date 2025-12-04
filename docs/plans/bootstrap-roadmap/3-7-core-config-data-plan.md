@@ -115,6 +115,11 @@
     - `runtime/tests/run_config_integration.rs` を追加し、`reml run --config fixtures/*.toml` の挙動を再現して CLI 経由の統合テストを実施する。
     - `docs/spec/3-10-core-env.md` と `docs/spec/3-8-core-runtime-capability.md` の関連節へ参照リンクを追記し、Config/Data/API の接合を明文化する。
 
+#### 4.2 実施結果（Run ID: 20251205-config-diagnostics）
+- `compiler/rust/frontend/src/diagnostic/messages/` を新設し、`config.rs` に `config.missing_manifest` / `config.schema_mismatch` / `config.compat.unsupported` のテンプレートを実装した。いずれも `DiagnosticDomain::Config`・`config.*` メタデータ・`AuditMetadata` への書き戻しを共通ヘルパ (`ConfigDiagnosticMetadata`) で扱えるようにし、`extensions["config"]` と `audit_metadata["config.*"]` の欠落を防ぐ単体テストを追加している。
+- Config 診断の証跡として `reports/spec-audit/ch3/config_diagnostics-20251203.json` を追加し、`scripts/validate-diagnostic-json.sh --section config` が `config_diagnostics` ゴールデンに含まれる `config.*` 拡張を必須チェックするよう更新した（既存の `schema_diff.*` 判定はファイル名で自動切り替え）。これにより CLI/LSP の Config 診断 JSON が監査用の最小フィールドを欠落させた場合に検出できる。
+- `docs/notes/spec-integrity-audit-checklist.md` に `config_diagnostics_pass_rate >= 0.95` の KPI 行を追加し、`--section config` が `extensions["config"]` と `audit_metadata["config.*"]` の両方を満たすことを監査手順として記録した。Phase 3 で Config/Data を組み込む際のベースラインとして Run ID を共有済み。
+
 ### 5. データ互換性・マイグレーション支援（55週目）
 **担当領域**: 将来互換
 

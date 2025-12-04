@@ -159,6 +159,8 @@ if [[ "${#TARGET_ARGS[@]}" -eq 0 ]]; then
     TARGETS+=("$ROOT_DIR/tests/data/core_path")
   elif [[ "$SUITE" == "audit" ]]; then
     TARGETS+=("$ROOT_DIR/reports/audit/privacy")
+  elif [[ "$SECTION" == "config" ]]; then
+    TARGETS+=("$ROOT_DIR/reports/spec-audit/ch3/config_diagnostics-20251203.json")
   else
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/diagnostics")
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/audit")
@@ -1286,6 +1288,11 @@ def parse_entries(content: str, file_name: str):
                 raise RuntimeError(f"JSONL parse error {file_name}:{line_no}: {exc}") from exc
         return entries
     else:
+        if isinstance(data, dict):
+            diagnostics = data.get("diagnostics")
+            if isinstance(diagnostics, list):
+                return diagnostics
+            return [data]
         return data if isinstance(data, list) else [data]
 
 
@@ -1302,14 +1309,36 @@ def contains_schema_diff(node) -> bool:
     return False
 
 
+def has_config_metadata(entry) -> bool:
+    if not isinstance(entry, dict):
+        return False
+    extensions = entry.get("extensions")
+    config_extension = (
+        isinstance(extensions, dict) and isinstance(extensions.get("config"), dict)
+    )
+    audit_metadata = entry.get("audit_metadata")
+    audit_has_config = False
+    if isinstance(audit_metadata, dict):
+        audit_has_config = any(
+            isinstance(key, str) and key.startswith("config.")
+            for key in audit_metadata.keys()
+        )
+    return config_extension and audit_has_config
+
+
 paths = [pathlib.Path(item) for item in sys.argv[1:] if item]
 
 for path in paths:
     if not path.exists():
         continue
     entries = parse_entries(path.read_text(encoding="utf-8"), str(path))
-    if not any(contains_schema_diff(entry) for entry in entries):
-        raise RuntimeError(f"{path}: schema_diff metadata が見つかりません")
+    name = path.name.lower()
+    if "config_diagnostics" in name:
+        if not any(has_config_metadata(entry) for entry in entries):
+            raise RuntimeError(f"{path}: config.* metadata が不足しています")
+    else:
+        if not any(contains_schema_diff(entry) for entry in entries):
+            raise RuntimeError(f"{path}: schema_diff metadata が見つかりません")
 PY
       EXIT_CODE=1
     fi

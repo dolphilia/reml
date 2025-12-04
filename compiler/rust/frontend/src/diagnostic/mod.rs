@@ -4,6 +4,7 @@ pub mod effects;
 pub mod filter;
 pub mod formatter;
 pub mod json;
+pub mod messages;
 pub mod recover;
 pub mod unicode;
 
