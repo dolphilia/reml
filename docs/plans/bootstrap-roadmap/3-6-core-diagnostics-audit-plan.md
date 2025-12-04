@@ -190,14 +190,28 @@
     - 6.1.a `docs/spec/3-6-core-diagnostics-audit.md` のコードサンプルを Rust 実装の最新構造体に合わせ、`reml` コードブロックと JSON 例を再生成する。
     - 6.1.b `examples/core_diagnostics/` に `*.expected.diagnostic.json` と `*.expected.audit.jsonl` を追加し、`tooling/examples/run_examples.sh --update-golden` の手順を README に記載する。
     - 6.1.c `docs/spec/1-0-language-core-overview.md` と `docs/spec/3-0-core-library-overview.md` に診断基盤の概要更新を反映させる。
+
+#### 6.1 実施結果（Run ID: 20290730-doc-sample-refresh）
+- `docs/spec/3-6-core-diagnostics-audit.md` の `Diagnostic` 定義を Rust Frontend の実装（`schema_version`、`SeverityHint`、`codes`、`span_trace`、`structured_hints`、`FixIt`、`audit_metadata` など）に合わせて全面更新し、`effect {migration}` の説明と Config/Data 章との連携、`Location`/`TraceFrame`/`StructuredHint` 型の擬似コードを追加した。`pipeline_branch.expected.diagnostic.json` 抜粋も `schema_version`・`run_config.lex`・`stream_meta` を含む内容へ差し替え、Stage/Audit/KPI で参照するキーの不一致を解消。
+- `examples/core_diagnostics/README.md` に `tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` が `schema_version`・`run_config.lex`・`stream_meta`・`structured_hints` を含むゴールデンを再生成する旨を追記し、監査ゴールデン (`*.expected.audit.jsonl`) を `collect-iterator-audit-metrics.py` でそのまま検証できることを明文化。
+- `docs/spec/1-0-language-core-overview.md` と `docs/spec/3-0-core-library-overview.md` の導線文を更新し、Core Diagnostics 章のゴールデンが `structured_hints`・`stage_trace`・`schema_version="3.0.0-alpha"` を常に出力すること、Chapter 1/3 のサンプルが `tooling/examples/run_examples.sh` で再生成されることを追加記述した。
 6.2. `README.md`/`3-0-phase3-self-host.md` に Diagnostics 実装ステータスと活用ガイドを追記する。
     - 6.2.a `README.md` の章一覧に「3.6 Core Diagnostics & Audit」を追加し、ステータスバッジを図示する。
     - 6.2.b `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` の Phase 3 条件テーブルへ診断実装の完了チェックを追加し、CI 連動条件を記述する。
     - 6.2.c `docs/plans/rust-migration/overview.md` の P3 ドキュメント一覧に診断実装ガイドが存在する旨を脚注でリンクする。
+
+#### 6.2 実施結果（Run ID: 20290730-readme-sync）
+- `README.md` の「サンプル実装」へ `examples/core_diagnostics/README.md` を追加し、3.6 章のゴールデンを押さえる導線をトップページからも辿れるようにした。
+- `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` のマイルストーン表（M5: Diagnostics & Config）に `schema_version=3.0.0-alpha`・`structured_hints`・`config.migration.*`・`bridge.stage.*` の固定化を明記し、Phase 3 判定条件へ CLI/Audit ゴールデンの存在を組み込んだ。
+- `docs/plans/rust-migration/overview.md` P3 セクションへ `docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` を正式な参照として追加し、Rust 移植タスクから Core Diagnostics 計画書へ直結できるようにした。
 6.3. `docs/guides/ai-integration.md`/`docs/guides/runtime-bridges.md` の診断・監査セクションを更新する。
     - 6.3.a AI ガイドでは診断 JSON の解釈手順と `effect.stage.*` の注意点を解説する段落を追加する。
     - 6.3.b Runtime Bridges ガイドでは `AuditEnvelope` の `bridge.stage.*` 例を載せ、プラグイン開発者が参照できるようにする。
     - 6.3.c 更新後に `docs/notes/dsl-plugin-roadmap.md` へ交差参照を追記し、プラグイン昇格審査と診断監査が同じ証跡を共有することを明記する。
+
+#### 6.3 実施結果（Run ID: 20290730-guide-bridge-ai）
+- `docs/guides/ai-integration.md` §5.4 に `structured_hints`・`fixits`・`audit_metadata` の読み取り手順を新設し、AI 連携時に Stage/Audit 情報へアクセスする方法を `schema_version="3.0.0-alpha"` とともに説明した。
+- `docs/guides/runtime-bridges.md` §1.2 に `bridge_stage_verified` の NDJSON 例を挿入し、`bridge.stage.*` と `pipeline.*` が同一 `AuditEnvelope` に含まれる形をサンプル化。`docs/notes/dsl-plugin-roadmap.md` では AI ガイドと Runtime Bridge ガイドの該当節を指す交差参照を追加し、プラグイン審査で共有する証跡セットを揃えた。
 
 #### 6.1 実施結果（Run ID: 20290730-doc-golden）
 - `docs/spec/3-6-core-diagnostics-audit.md` §9 を再構成し、`examples/core_diagnostics/pipeline_branch.reml` のコード片と `CliDiagnosticEnvelope`／`AuditEvent` の JSON 抜粋を掲載した。`pipeline_branch.expected.diagnostic.json` と `pipeline_success.expected.audit.jsonl` を引用し、`pipeline.*` キーや `run_config` の必須項目を明文化した。

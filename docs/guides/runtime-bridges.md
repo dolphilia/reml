@@ -35,6 +35,13 @@
 ### 1.2 監査ログの整備 (`AuditEnvelope`)
 
 - FFI ブリッジを導入する場合は `AuditEnvelope.metadata.bridge` を必ず出力し、`tooling/runtime/audit-schema.json` で定義されたキー（`status`, `target`, `arch`, `platform`, `abi`, `expected_abi`, `ownership`, `extern_symbol`, `return.*`）を揃えます。
+- Core Diagnostics 章で利用している NDJSON 形式と同じ構造で Runtime Bridge の監査イベントも保存する。`bridge_stage_verified` を例に取ると、`pipeline_*` と `bridge.stage.*` が揃った 1 行は次のようになる。
+
+```jsonc
+{"timestamp":"2025-07-01T10:31:55Z","envelope":{"audit_id":"c6cdebe5-2a50-4b2b-96c6-0f74f1fa0f11","capability":"core.runtime.bridge","metadata":{"audit.channel":"cli","audit.policy.version":"rust.poc.audit.v1","bridge.id":"host.fs","bridge.stage.required":"exact:beta","bridge.stage.actual":"at_least:beta","bridge.reload.diff":"fs-hot-reload.diff","bridge.reload.requested_by":"dsl://examples/core_diagnostics/pipeline_success.reml","event.kind":"bridge_stage_verified","pipeline.dsl_id":"pipeline_success.reml","pipeline.id":"dsl://examples/core_diagnostics/pipeline_success.reml","schema.version":"3.0.0-alpha"}}}
+```
+
+- `bridge.return` には返り値の取り扱いを明示します。Borrowed → `wrap_foreign_ptr`、Transferred → `wrap_foreign_ptr` + `dec_ref` といった処理を `status`・`wrap`・`release_handler`・`rc_adjustment` で追跡し、監査ゲートが参照できるようにします。
 - `bridge.return` には返り値の取り扱いを明示します。Borrowed → `wrap_foreign_ptr`、Transferred → `wrap_foreign_ptr` + `dec_ref` といった処理を `status`・`wrap`・`release_handler`・`rc_adjustment` で追跡し、監査ゲートが参照できるようにします。
 - CLI で `remlc --emit-audit` を実行した結果は `compiler/ocaml/tests/golden/audit/cli-ffi-bridge-*.jsonl.golden` に固定し、プラットフォーム別（`linux`, `windows`, `macos-arm64`）の成功ログを最低 1 件ずつ保持します。
 - CI では `tooling/ci/collect-iterator-audit-metrics.py` → `tooling/ci/sync-iterator-audit.sh` の流れで `ffi_bridge.audit_pass_rate` を収集します。macOS（`macos-arm64`）の pass_rate が 1.0 未満、もしくはログが欠落している場合はジョブを失敗させ、再取得を促してください。

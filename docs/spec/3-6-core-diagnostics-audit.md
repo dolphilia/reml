@@ -7,11 +7,11 @@
 | 項目 | 内容 |
 | --- | --- |
 | ステータス | 正式仕様 |
-| 効果タグ | `@pure`, `effect {diagnostic}`, `effect {audit}`, `effect {debug}`, `effect {trace}`, `effect {privacy}` |
+| 効果タグ | `@pure`, `effect {diagnostic}`, `effect {audit}`, `effect {debug}`, `effect {trace}`, `effect {privacy}`, `effect {migration}` |
 | 依存モジュール | `Core.Prelude`, `Core.Text`, `Core.Numeric & Time`, `Core.Config`, `Core.Data`, `Core.IO` |
 | 相互参照 | [2.5 エラー設計](2-5-error.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.7 Core Config & Data](3-7-core-config-data.md) |
 
-> **段階的導入ポリシー**: 新しい効果カテゴリや Capability と連携する診断は、`Diagnostic.extensions["effects"].stage`に `Experimental` / `Beta` / `Stable` を記録し、実験フラグで有効化した機能を明示する。CLI と LSP は `stage` が `Experimental` の診断をデフォルトで `Warning` に落とし、`--ack-experimental-diagnostics` を指定した場合のみ `Error` へ昇格させる運用を推奨する。
+> **段階的導入ポリシー**: 新しい効果カテゴリや Capability と連携する診断は、`Diagnostic.extensions["effects"].stage`に `Experimental` / `Beta` / `Stable` を記録し、実験フラグで有効化した機能を明示する。CLI と LSP は `stage` が `Experimental` の診断をデフォルトで `Warning` に落とし、`--ack-experimental-diagnostics` を指定した場合のみ `Error` へ昇格させる運用を推奨する。`effect {migration}` は [3-7 Core Config & Data](3-7-core-config-data.md) で追加された `MigrationPlan` API が Configuration 差分を適用するときに用いるタグであり、Config CLI (`reml config migrate`) が `Diagnostic.extensions["migration"]` と `AuditEnvelope.metadata["config.migration.*"]` を同時に書き込めることを保証する。
 
 ## 1. `Diagnostic` 構造体
 
@@ -19,32 +19,75 @@
 
 ```reml
 pub type Diagnostic = {
+  schema_version: Str,
   id: Option<Uuid>,
   message: Str,
   severity: Severity,
+  severity_hint: Option<SeverityHint>,
   domain: Option<DiagnosticDomain>,
   code: Option<Str>,
+  codes: List<Str>,
   primary: Span,
+  location: Option<Location>,
+  span_trace: List<TraceFrame>,
   secondary: List<SpanLabel>,
+  notes: List<DiagnosticNote>,
   hints: List<Hint>,
+  structured_hints: List<StructuredHint>,
+  fixits: List<FixIt>,
   expected: Option<ExpectationSummary>,
+  recoverability: Recoverability,
+  audit_metadata: Map<Str, Json>,
   audit: AuditEnvelope,
   timestamp: Timestamp,
 }
 
-pub type SpanLabel = {
-  span: Span,
-  message: Option<Str>,
+pub enum Severity = Error | Warning | Info | Hint
+
+pub enum SeverityHint = Rollback | Retry | Ignore | Escalate
+
+pub type SpanLabel = { span: Span, message: Option<Str> }
+pub type DiagnosticNote = { label: Str, message: Str, span: Option<Span> }
+pub type StructuredHint = {
+  id: Str,
+  title: Str,
+  kind: Str,
+  span: Option<Location>,
+  payload: Option<Json>,
+  actions: List<FixIt>,
 }
 
-pub enum Severity = Error | Warning | Info | Hint
+pub enum FixIt =
+  | Insert { span: Span, text: Str }
+  | Replace { span: Span, text: Str }
+  | Delete { span: Span }
+
+pub type Location = {
+  file: Path,
+  line: Int,
+  column: Int,
+  endLine: Int,
+  endColumn: Int,
+}
+
+pub type TraceFrame = { label: Option<Str>, span: Span }
 ```
 
 - `severity` は CLI・LSP・監査ログで共通の 4 値（`Error` / `Warning` / `Info` / `Hint`）を採用し、情報診断とヒント診断を区別したフィルタリングを可能にする。Phase 2-5 の DIAG-001 で OCaml 実装側の列挙型と JSON/LSP 変換を全面的に更新し、旧来の `Note` バリアントは `Info` へ統合された[^diag001-phase25]。
+- `schema_version` は `Diagnostic` JSON の互換性を示す識別子であり、Rust Frontend CLI/LSP では `3.0.0-alpha` を固定で書き込む（`CliDiagnosticEnvelope.schema_version` と同じ値を共有する）。
 - `domain` は診断が属する責務領域（構文、型、ターゲット等）を表す。`None` の場合はコンポーネント既定値を利用する。Phase 2-5 の DIAG-003 で CLI/LSP/監査ログの語彙拡張が実装反映され、脚注に進捗を記録している[^diag003-phase25-domain]。
+- `primary` はハイライト付きの範囲情報、`location` は IDE/LSP 互換の簡易座標（`file`/`line`/`column`/`endLine`/`endColumn`）であり、双方を揃えておくことで CLI/LSP/監査ログから同じ座標へジャンプできる。
+- `severity_hint` は CLI/LSP/AI が「Retry 可能か」「即時 Rollback が必要か」を判断するための追加ヒント。`collect-iterator-audit-metrics.py --section diagnostics` は `severity_hint` を必須フィールドとして統計を収集する。
+- `codes` は補助的なエイリアスを持つ診断コード（例: `parser.syntax_error` + `syntax.eof`）を全て列挙したリストであり、`code` がメイン識別子、`codes` が LSP/AI 向けの全文検索対象となる。
+- `span_trace` は Streaming/Packrat の実行経路を `TraceFrame` として保持し、CLI/LSP/監査ログで共通の `span_trace[*].span` 情報を提供する。
+- `notes` は診断の補足情報を複数保持し、`label` と `message` を並列で提示する。`reml_frontend --output human` ではこれらが 2 次情報として出力され、LSP では `relatedInformation` へ変換される。
+- `structured_hints` は `hint.id`・`hint.title`・`hint.kind quick_fix|information`・`hint.actions` を持つ UI フレンドリーなヒント集合であり、`Diagnostic.hints`（メッセージ主体）と同じデータを構造化した形で保持する。CLI/LSP/AI は `structured_hints` を参照して FixIt UI や「自動修正」ボタンを生成する。
+- `fixits` は `Insert` / `Replace` / `Delete` の 3 種を標準化し、`structured_hints.actions` でも同じ JSON を再利用する。`tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-sample.json` では複数 FixIt を含むサンプルを用意している。
 - `timestamp` は [3.4](3-4-core-numeric-time.md) の `Timestamp` を利用し、診断生成時に `Core.Numeric.now()` を呼び出す。Phase 2-5 の DIAG-002 で CLI / テスト双方に必須化され、`phase2.5.audit.v1` テンプレートで固定化された[^diag002-phase25]。
+- `recoverability` は `core::error::Recoverability` 列挙と一致し、`fatal` / `retryable` / `report-only` 等の状態を取りうる。`CliDiagnosticEnvelope.summary.stats.diagnostic_count_by_recoverability` で集計され、AI/CI が自動ロールバックの可否を判断する。
 - `AuditEnvelope` は監査情報を同梱する構造（後述）。`audit` フィールドそのものも DIAG-002 により省略不可となり、監査ログとの 1 対 1 対応を保証する[^diag002-phase25]。
 - `ExpectedSummary` は LSP/CLI でメッセージを国際化するための鍵と引数を保持する。Phase 2-5 ERR-001 で Menhir 期待集合を集約する `ExpectationSummary` 出力が OCaml 実装へ導入され、CLI/LSP/監査ログで同じ候補一覧を提示できるようになった[^err001-phase25-core].
+- `audit_metadata` は `AuditEnvelope.metadata` と同じキーバリューを `Diagnostic` 側に複製したものであり、CLI/LSP/AI/CI から監査情報へアクセスする際に JSON Lines をパースせず参照できる。`effects.stage.*`、`pipeline.*`、`config.migration.*` はこのフィールドと `audit.metadata` の両方に出力する。
 
 ### 1.1 `AuditEnvelope`
 
@@ -125,6 +168,8 @@ enum Stage = Experimental | Beta | Stable
 ```
 
 `Stage` は Capability Registry（3.8 §1）と共有される列挙で、CLI/LSP は `Stage` に基づき表示レベルを調整する。`before` / `handled` / `residual` は 1.3 §I の効果計算結果に対応し、`residual = ∅` の場合は純粋化可能であることを意味する。`unhandled_operations` は `effects.handler.unhandled_operation` 診断（2.5 §B-10）で IDE へ提示する一覧として使用する。`required_stage` と `actual_stage` は Capability 要件と実際の Stage の差分を記録し、0-1 §1.2 の安全性指針に基づく是正アクションを促す基礎データとなる。`capability_metadata` には `Runtime.CapabilityDescriptor` を保持し、提供主体・効果タグ・最終検証時刻を監査ログへ転写する。
+
+Config/Data 章の `MigrationPlan` API（3-7 §5.1）も同じ `EffectsExtension` を利用して `effect {migration}` を発火し、`AuditEnvelope.metadata["config.migration.*"]` と `Diagnostic.audit_metadata["config.migration.*"]` を同期させる。CLI やガイドでは `migration` タグの診断を `--effect-tag migration` でフィルタできる。
 
 ### 1.4 型クラス診断拡張 `typeclass`
 
@@ -1156,6 +1201,7 @@ fn main() -> Int = pipeline_branch(true)
 
 ```jsonc
 {
+  "schema_version": "3.0.0-alpha",
   "command": "Check",
   "phase": "Reporting",
   "run_id": "2d3b5d70-a4c2-4a5e-93c2-fc1ec51f93bf",
@@ -1176,10 +1222,18 @@ fn main() -> Int = pipeline_branch(true)
       },
       "run_config": {
         "packrat": true,
-        "streaming": false,
+        "trace": false,
         "effects": {
           "type_row_mode": "ty-integrated"
+        },
+        "lex": {
+          "identifier_profile": "unicode",
+          "profile": "strict_json"
         }
+      },
+      "stream_meta": {
+        "packrat_enabled": true,
+        "bridge": null
       }
     }
   },
@@ -1198,6 +1252,8 @@ fn main() -> Int = pipeline_branch(true)
 ```
 
 Pipeline 成功時は `diagnostics=[]` で CLI が正常終了し、`pipeline_completed` イベントが `pipeline.outcome=success` を記録する。`pipeline_branch` のように分岐を含むサンプルでも `AuditEnvelope.metadata.pipeline.node` が入力ファイル名に基づいて一意化され、CI で `pipeline.*` キーの欠落を検知できる。
+
+ここで示した JSON には `schema_version = "3.0.0-alpha"`・`run_config.lex.identifier_profile`・`stream_meta.packrat_enabled` が含まれており、`tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` を実行するとこれらの値がゴールデンファイルへ自動的に反映される。LSP/AI/CI は `run_config.lex` から字句プロファイルを、`stream_meta` から Packrat/Streaming の実際の実行パスと Bridge 有無を読み取れるため、`collect-iterator-audit-metrics.py --section streaming` の KPI と整合させやすい。
 
 ## 10. CLI/LSP 連携の具体例
 

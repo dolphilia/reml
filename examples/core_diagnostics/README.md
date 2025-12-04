@@ -22,4 +22,6 @@ tooling/examples/run_examples.sh --suite core_diagnostics --update-golden
 - `pipeline_success.expected.audit.jsonl`: `AuditEmitter` が出力した NDJSON (`pipeline_started` / `pipeline_completed`)。
 - `pipeline_branch.*`: 同じ形式で分岐サンプルの結果を保存。
 
+`CliDiagnosticEnvelope` ゴールデンには `schema_version = "3.0.0-alpha"`、`summary.stats.run_config.lex`、`summary.stats.stream_meta`、`summary.stats.run_config.trace` など Phase 3 で追加されたフィールドが含まれる。`structured_hints` や `fixits` を確認したい場合は診断を 1 件以上生成する入力を `cases` 引数に渡し、本 README の手順に沿って `--update-golden` すると `diagnostics[*].structured_hints[*].actions[*]` まで含む JSON を取得できる。監査ゴールデンは `AuditEnvelope.metadata.pipeline.*` と `cli.*` 系メタデータを NDJSON のまま保持し、`collect-iterator-audit-metrics.py --section diagnostics --source examples/core_diagnostics/*.expected.audit.jsonl` で再検証できる。
+
 CI やドキュメントはこれらのファイルを参照し、`docs/spec/3-6-core-diagnostics-audit.md` §9 のサンプルとも連動している。

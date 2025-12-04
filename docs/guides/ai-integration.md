@@ -66,6 +66,8 @@
 - `examples/core_diagnostics/pipeline_branch.expected.diagnostic.json` は `CliDiagnosticEnvelope` を整形したゴールデンであり、AI 連携で取り扱う最小構成の JSON を示している。`tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` で再生成し、`summary.stats.run_config.effects.type_row_mode` や `stream_meta.packrat_enabled` のような補助指標も含めて取得する。
 - `effects.stage.*` / `capability.*` / `bridge.stage.*` は `diagnostics[].extensions` と `diagnostics[].audit_metadata` の双方に存在する。AI 推論時は `effects.stage.actual` と `effect.stage.required` の差分、および `audit_metadata["pipeline.node"]` を併せて解析し、どの DSL ノードで Stage 違反が発生したかを正確に説明する。
 - 監査ログは NDJSON（例: `examples/core_diagnostics/pipeline_success.expected.audit.jsonl`）で保存され、`pipeline_started` と `pipeline_completed` のメタデータが 1 行ずつ付与される。`cli.run_id` と `audit_id` をキーに `diagnostics` 側と突き合わせることで、AI 連携が複数エンドポイント（CLI/LSP/監査ダッシュボード）の整合を簡単に確認できる。
+- `diagnostics[].structured_hints[*]` と `diagnostics[].fixits[*]` は UI でそのまま Quick Fix を提示するための構造化データであり、`kind`（`quick_fix`/`information`）・`actions[*].kind`（`insert`/`replace`/`delete`）を AI が参照することで「自動修正を提案する／ヒントのみ表示する」判断を行える。`schema_version = "3.0.0-alpha"` の JSON では `structured_hints` が常に配列で提供される点に注意する。
+- `diagnostics[].audit_metadata` は `AuditEnvelope.metadata` を JSON レベルで複製したフィールドであり、監査 NDJSON を別途読み込まなくても `pipeline.*` や `config.migration.*` の値を検索できる。AI クライアントは `audit_metadata` のみをキャッシュし、詳細調査が必要になった場合に NDJSON 側を参照する二段構成を推奨する。
 
 ## 6. Unicode 正規化ポリシー
 - AI への入力は **常に** `Unicode.normalize(str, NormalizationForm::NFC)` を通過させ、識別子候補は `Unicode.prepare_identifier` を併用する。`examples/core-text/text_unicode.reml` では Bytes→Str→String 正規化、`TextBuilder`、`log_grapheme_stats` をまとめており、`expected/text_unicode.tokens.golden` を差分比較に利用できる。  

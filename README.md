@@ -49,6 +49,7 @@ Reml (Readable & Expressive Meta Language) はパーサーコンビネーター�
 - [Core.Collections 統合サンプル](examples/core-collections/README.md)
 - [Core.Text & Unicode サンプル](examples/core-text/README.md)
 - [Core Config & Manifest サンプル](examples/core_config/README.md)
+- [Core Diagnostics & Audit サンプル](examples/core_diagnostics/README.md)
 
 ## Core.Collections 進捗
 
