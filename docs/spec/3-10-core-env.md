@@ -53,7 +53,7 @@ fn config_dir(app: Str) -> Result<Path, EnvError>                  // `effect {i
 
 ### 2.1 設定互換フラグの解決
 
-設定ファイルの互換モード（3-7 §1.5）は `RunConfig.extensions["config"]` を通じて供給される。優先順位は **CLI オプション > 環境変数 > マニフェスト > 既定値** とし、CLI が `RunConfig.cli_overrides.compat` を設定した場合はそれ以降の層を無視する。CLI/CI は環境変数でオーバーライドできるよう、以下のキーを予約する。
+設定ファイルの互換モード（3-7 §1.5）は `RunConfig.extensions["config"]` を通じて供給される。優先順位は **CLI オプション > 環境変数 > マニフェスト > 既定値** とし、CLI が `RunConfig.cli_overrides.compat` を設定した場合はそれ以降の層を無視する。`reml_frontend --manifest reml.toml` のようにマニフェストを直接読み込む場合は `RunConfigManifestOverrides::manifest_extension` が `extensions["config"].manifest` に挿入され、`config.source = "manifest"` と `config.path`（絶対パス）、`config.project.stage`、`config.build.targets` などを一括で共有する。Rust 実装では `apply_manifest_overrides` が CLI/IDE 双方で同じ処理を再利用し、監査ログへ `config.manifest.*` メタデータを残すことを必須とする。CLI/CI は環境変数でオーバーライドできるよう、以下のキーを予約する。
 
 | 環境変数 | 例 | 説明 |
 | --- | --- | --- |

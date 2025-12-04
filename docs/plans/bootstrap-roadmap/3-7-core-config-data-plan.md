@@ -115,6 +115,12 @@
     - `runtime/tests/run_config_integration.rs` を追加し、`reml run --config fixtures/*.toml` の挙動を再現して CLI 経由の統合テストを実施する。
     - `docs/spec/3-10-core-env.md` と `docs/spec/3-8-core-runtime-capability.md` の関連節へ参照リンクを追記し、Config/Data/API の接合を明文化する。
 
+#### 4.3 実施結果（Run ID: 20251210-runconfig-manifest）
+- `compiler/rust/runtime/src/run_config.rs` を新設し、`ApplyManifestOverridesArgs` / `RunConfigManifestOverrides` / `apply_manifest_overrides` を追加。`config.manifest.*`、`project.capabilities`、互換プロファイルの情報を `RunConfig.extensions["config"]` に投影できるようになり、`Manifest::compatibility_layer` の結果を `CompatibilityLayer` として保持する。
+- CLI 側では `reml_frontend --manifest <path>` を導入し、`ManifestLoader::load` → `apply_manifest_overrides` → `RunSettings::apply_manifest_overrides` の順に連携する経路を実装。`parser.runconfig.extensions.config.manifest` が `audit_metadata["config.*"]` と同期することを `build_config_extension` のスナップショットで確認した。
+- `compiler/rust/runtime/tests/run_config_integration.rs` を追加し、マニフェストから生成された拡張に `config.source = "manifest"` / `config.runtime_stage` / 互換情報が含まれることを検証。CLI 統合までは `reml_frontend` の既存テスト（streaming_metrics 等）で `--manifest` を併用し、Packrat / Trace 設定と共存できることを手動確認した。
+- ドキュメントは `docs/spec/3-10-core-env.md` §2.1 に `RunConfigManifestOverrides` の流れと `--manifest` オプションを追記し、`docs/spec/3-8-core-runtime-capability.md` §1.3 の `RunConfig` 解説へ `config.manifest` の監査メタデータを追加。これにより Stage/Capability 判定の参照元が仕様レベルで定義された。
+
 #### 4.2 実施結果（Run ID: 20251205-config-diagnostics）
 - `compiler/rust/frontend/src/diagnostic/messages/` を新設し、`config.rs` に `config.missing_manifest` / `config.schema_mismatch` / `config.compat.unsupported` のテンプレートを実装した。いずれも `DiagnosticDomain::Config`・`config.*` メタデータ・`AuditMetadata` への書き戻しを共通ヘルパ (`ConfigDiagnosticMetadata`) で扱えるようにし、`extensions["config"]` と `audit_metadata["config.*"]` の欠落を防ぐ単体テストを追加している。
 - Config 診断の証跡として `reports/spec-audit/ch3/config_diagnostics-20251203.json` を追加し、`scripts/validate-diagnostic-json.sh --section config` が `config_diagnostics` ゴールデンに含まれる `config.*` 拡張を必須チェックするよう更新した（既存の `schema_diff.*` 判定はファイル名で自動切り替え）。これにより CLI/LSP の Config 診断 JSON が監査用の最小フィールドを欠落させた場合に検出できる。

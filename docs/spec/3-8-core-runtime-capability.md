@@ -255,6 +255,7 @@ fn family_tag(info: PlatformInfo) -> Str                  // `@pure`
 
 * `PlatformInfo` は `Core.Env`（[3-10](3-10-core-env.md)）や `RunConfig.extensions["target"]` と同期させる。CLI が指定したターゲットと実行時情報が乖離した場合は `DiagnosticDomain::Target` で `target.config.mismatch` を発行し、`Diagnostic.extensions["target"]` に `profile_id` / `triple` / 差異一覧を記録する。Phase 2-5 DIAG-003 Step5 で `Target` / `Plugin` / `Lsp` ドメイン向けの監査メタデータと脚注を整備し、仕様上の語彙と OCaml 実装が一致するよう更新した[^diag003-phase25-capability]。
 * `features` は `@cfg(feature = "...")` と連携し、ビルドプロファイルや CLI オプションで有効にした拡張機能の集合を表す。`runtime_capabilities` にはハードウェア検出結果を格納し、`RunConfig` の最適化スイッチ（Packrat/左再帰/トレース等）の既定値に利用できる。`target_capabilities` はターゲット固有挙動（Unicode/ファイルシステム/ABI 等）を表し、`@cfg(capability = "...")` や `RunConfigTarget.capabilities` と同期する。
+* `config.manifest` は `RunConfigManifestOverrides` により `manifest_path`・`project.stage`・`build.targets`・`config.compatibility` を集約したサブオブジェクトで、`CapabilityRegistry` が Stage 判定や DSL 契約（3-7 §1.2）と突き合わせる際のソースオブトゥルースとなる。CLI・LSP は `extensions["config"].manifest` をそのまま `AuditEnvelope.metadata["config.*"]` にコピーし、`effect.stage.*` や `bridge.stage.*` 診断の根拠として使用する。
 * `profile_id` / `triple` / `stdlib_version` / `runtime_revision` は `TargetProfile` 由来のメタデータを保持し、コンパイラが生成した `RunArtifactMetadata`（2-6 §B-2-1-a）と一致することを保証する。
 * `family_tag` は `"unix"` や `"windows"` といったスカラー文字列を返し、`RunConfig.extensions["target"]` の `family` フィールドを埋める際に使用する。
 * Capability Registry は `register("platform", handle)` を通じてプラットフォーム情報提供者を差し替え可能。未登録時はホスト依存の既定実装が自動登録される。

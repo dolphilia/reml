@@ -46,7 +46,10 @@ use reml_frontend::typeck::{
 };
 use reml_runtime::config::{
     compatibility_profile, resolve_compat, CompatibilityLayer, CompatibilityProfileError,
-    ConfigFormat, ResolveCompatOptions, ResolvedConfigCompatibility,
+    ConfigFormat, ManifestLoader, ResolveCompatOptions, ResolvedConfigCompatibility,
+};
+use reml_runtime::run_config::{
+    apply_manifest_overrides, ApplyManifestOverridesArgs, RunConfigManifestOverrides,
 };
 use reml_runtime::stage::StageId as RuntimeStageId;
 use reml_runtime::text::LocaleId;
@@ -449,6 +452,7 @@ struct CliArgs {
     stream_config: StreamSettings,
     runtime_capabilities: Vec<RuntimeCapability>,
     config_path: Option<PathBuf>,
+    manifest_path: Option<PathBuf>,
     telemetry_requests: Vec<TelemetryRequest>,
 }
 
@@ -666,6 +670,28 @@ impl RunSettings {
 
     fn set_config_stage(&mut self, stage: RuntimeStageId) {
         self.config_stage = stage;
+    }
+
+    fn config_stage(&self) -> RuntimeStageId {
+        self.config_stage
+    }
+
+    fn config_format(&self) -> ConfigFormat {
+        self.config_format
+    }
+
+    fn apply_manifest_overrides(&mut self, overrides: RunConfigManifestOverrides) {
+        if let Some(layer) = overrides.compatibility_layer {
+            self.config_compat_manifest = Some(layer);
+        }
+        let manifest_payload = Value::Object(overrides.manifest_extension);
+        self.config = self.config.with_extension("config", |existing| {
+            let mut payload = existing
+                .and_then(|value| value.as_object().cloned())
+                .unwrap_or_default();
+            payload.insert("manifest".into(), manifest_payload.clone());
+            Value::Object(payload)
+        });
     }
 
     fn apply_cli_config_profile(
@@ -1023,6 +1049,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut stream_config = StreamSettings::default();
     let mut runtime_capabilities: Vec<RuntimeCapability> = Vec::new();
     let mut config_path: Option<PathBuf> = None;
+    let mut manifest_path: Option<PathBuf> = None;
     let mut trace_overridden = false;
     let mut merge_warnings_overridden = false;
     let mut diagnostic_filter_overridden = false;
@@ -1326,6 +1353,12 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .ok_or_else(|| "--config はパスを伴う必要があります")?;
                 config_path = Some(PathBuf::from(&path));
             }
+            "--manifest" => {
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--manifest はパスを伴う必要があります")?;
+                manifest_path = Some(PathBuf::from(&path));
+            }
             _ if arg.starts_with("--") => {
                 return Err(format!("未知のオプション: {arg}").into());
             }
@@ -1365,6 +1398,24 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         ) {
             eprintln!("[CONFIG] {}", error);
         }
+    }
+
+    if let Some(manifest_file) = manifest_path.clone() {
+        let loader = ManifestLoader::new();
+        let manifest = loader.load(&manifest_file).map_err(|diag| {
+            format!(
+                "{}: {} ({})",
+                manifest_file.display(),
+                diag.message,
+                diag.code
+            )
+        })?;
+        let overrides = apply_manifest_overrides(ApplyManifestOverridesArgs {
+            manifest: &manifest,
+            format: run_config.config_format(),
+            stage: run_config.config_stage(),
+        });
+        run_config.apply_manifest_overrides(overrides);
     }
 
     let dualwrite = dualwrite_run_label.map(|run_label| DualwriteCliOpts {
@@ -1444,6 +1495,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         stream_config,
         runtime_capabilities,
         config_path,
+        manifest_path,
         telemetry_requests,
     })
 }
@@ -1462,6 +1514,7 @@ fn print_help(program_name: &str) {
   --emit-constraints <PATH>      Typecheck 制約を JSON で保存
   --emit-typeck-debug <PATH>     型推論デバッグ情報を JSON で保存
   --config-compat <PROFILE>      設定ファイル互換プロファイルを指定 (strict-json / json-relaxed 等)
+  --manifest <PATH>              reml.toml マニフェストを読み込み RunConfig に反映
   --emit-effects-metrics <PATH>  効果メトリクスを JSON で保存
   --emit-diagnostics             標準出力へ診断 JSON を出力
   --emit-audit-log               Audit メタデータを出力（--emit-audit も利用可能）
