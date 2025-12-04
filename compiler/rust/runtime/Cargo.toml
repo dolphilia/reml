@@ -22,6 +22,8 @@ core_io = []
 "core-io" = ["core_io"]
 core_path = []
 "core-path" = ["core_path"]
+experimental_migration = []
+"experimental-migration" = ["experimental_migration"]
 
 [[bin]]
 name = "text_stream_decode"

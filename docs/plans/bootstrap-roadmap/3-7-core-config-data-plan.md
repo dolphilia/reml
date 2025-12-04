@@ -133,6 +133,13 @@
     - `compiler/rust/core/config/migration.rs` を新設し、`MigrationPlan` の JSON/TOML 表現を定義、`#[cfg(feature = "experimental-migration")]` で囲んだ上でドキュメントに opt-in 手順を記す。
     - `effect {migration}` を `docs/spec/1-3-effects-safety.md` の効果テーブルへ追加する提案メモを作成し、`docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` に連携項目として貼る。
     - `reports/spec-audit/ch3/migration_plan-pilot.md` に PoC 実行ログ（Manifest 差分→MigrationPlan 生成→ChangeSet 適用）を残し、Phase 4 実装者に引き継ぐ。
+
+#### 5.1 実施結果（Run ID: 20251224-migration-plan-alpha）
+- `compiler/rust/runtime/Cargo.toml` に `experimental_migration` フィーチャを追加し、`compiler/rust/runtime/src/config/migration.rs` で `MigrationPlan`/`MigrationStep`/`MigrationRiskLevel`/`MigrationDuration`/`ReorganizationStrategy`/`TypeConversionPlan` を `serde` 対応の構造体として実装した。`pub const MIGRATION_EFFECT_TAG` を導入し、`effect {migration}` を利用する API が共通のタグ名を参照できるようにしている。
+- `config::mod.rs` で上記モジュールを `#[cfg(feature = "experimental_migration")]` 付きで再輸出し、デフォルトビルドでは未公開、`cargo test -p reml_runtime --features experimental-migration` で PoC を実行できるようにした（`migration.rs` には JSON ラウンドトリップテストを追加済み）。
+- `docs/spec/1-3-effects-safety.md` と `docs/spec/3-7-core-config-data.md` に実装メモを追記し、`MigrationPlan` 利用時は `experimental-migration` フィーチャを明示すること、`effect {migration}` が監査ログに出力されることを仕様側で説明した。
+- `docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md#1.2` の Run ID ログを更新し、Config/Data 章から出力される `effect {migration}` の監査キーを Diagnostics 計画にも紐付けた。
+- `reports/spec-audit/ch3/migration_plan-pilot.md` を新設し、`cargo test -p reml_runtime migration_plan::tests::plan_serialization_roundtrip --features experimental-migration` の実行ログ、`serde_json` で生成されるサンプル JSON、`ChangeSet` 連携 TODO を記録した。Phase 4 の `reml config migrate` CLI へ渡すための PoC ルートとして参照する。
 5.2. Manifest/Schema のバージョン互換チェックを追加し、移行シナリオを `docs/notes/dsl-plugin-roadmap.md` に記録する。
     - `Manifest.version` と `Schema.version` を比較し、互換条件（`major` は一致、`minor` は `>=` など）を `docs/spec/3-7-core-config-data.md` に追記するための diff を準備する。
     - 互換性チェックの結果を `reports/dual-write/config_versioning/` に保存し、DSL プラグイン毎の移行ステップを `dsl-plugin-roadmap.md` に表形式で追記する。

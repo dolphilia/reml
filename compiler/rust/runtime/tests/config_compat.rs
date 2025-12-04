@@ -23,12 +23,8 @@ fn config_compat_toml_relaxed_snapshot() {
 fn compatibility_profile_helper_handles_aliases() {
     let compat = compatibility_profile("toml-relaxed").expect("profile");
     assert_eq!(compat.unquoted_key, KeyPolicy::AllowAlphaNumeric);
-    assert_eq!(
-        compat.trailing_comma,
-        TrailingCommaMode::ArraysAndObjects
-    );
-    let err = compatibility_profile("unknown-profile")
-        .expect_err("should reject unknown profile");
+    assert_eq!(compat.trailing_comma, TrailingCommaMode::ArraysAndObjects);
+    let err = compatibility_profile("unknown-profile").expect_err("should reject unknown profile");
     assert_eq!(err.requested(), "unknown-profile");
 }
 

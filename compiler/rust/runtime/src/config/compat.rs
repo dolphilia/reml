@@ -100,7 +100,10 @@ impl ConfigCompatibility {
 }
 
 /// Stage / Format 組み合わせから推奨互換プロファイルを構築する。
-pub fn compatibility_profile_for_stage(format: ConfigFormat, stage: StageId) -> ConfigCompatibility {
+pub fn compatibility_profile_for_stage(
+    format: ConfigFormat,
+    stage: StageId,
+) -> ConfigCompatibility {
     match stage {
         StageId::Stable => ConfigCompatibility::stable(format),
         StageId::Beta => match format {
@@ -380,9 +383,7 @@ impl CompatibilityViolationKind {
             CompatibilityViolationKind::UnquotedKey => {
                 "互換ポリシーで禁止された bare key が検出されました"
             }
-            CompatibilityViolationKind::DuplicateKey => {
-                "設定内で重複したキーが検出されました"
-            }
+            CompatibilityViolationKind::DuplicateKey => "設定内で重複したキーが検出されました",
             CompatibilityViolationKind::NumberFormat => {
                 "互換ポリシーに反する数値表現が検出されました"
             }
@@ -421,21 +422,18 @@ pub fn compatibility_violation_diagnostic(
     let mut audit = Map::new();
     audit.insert("config.source".into(), Value::String(source.to_string()));
     if let Some(path) = path {
-        audit.insert("config.path".into(), Value::String(path.display().to_string()));
+        audit.insert(
+            "config.path".into(),
+            Value::String(path.display().to_string()),
+        );
     }
     if let Some(key_path_value) = config_payload.get("key_path") {
         audit.insert("config.key_path".into(), key_path_value.clone());
     }
     let mut compat_object = Map::new();
-    compat_object.insert(
-        "violation".into(),
-        Value::String(kind.label().to_string()),
-    );
+    compat_object.insert("violation".into(), Value::String(kind.label().to_string()));
     if let Some(format) = format {
-        compat_object.insert(
-            "format".into(),
-            Value::String(format.as_str().to_string()),
-        );
+        compat_object.insert("format".into(), Value::String(format.as_str().to_string()));
     }
     if let Some(profile) = profile_label {
         compat_object.insert("profile".into(), Value::String(profile.to_string()));
@@ -443,10 +441,7 @@ pub fn compatibility_violation_diagnostic(
     if let Some(stage) = stage {
         compat_object.insert("stage".into(), Value::String(stage.as_str().to_string()));
     }
-    config_payload.insert(
-        "compatibility".into(),
-        Value::Object(compat_object.clone()),
-    );
+    config_payload.insert("compatibility".into(), Value::Object(compat_object.clone()));
     audit.insert("config.compatibility".into(), Value::Object(compat_object));
 
     let mut extensions = Map::new();

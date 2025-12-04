@@ -617,7 +617,7 @@ impl Default for ProjectKind {
 }
 
 impl ProjectKind {
-    fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         match self {
             ProjectKind::Application => "application",
             ProjectKind::Library => "library",
@@ -668,7 +668,7 @@ pub enum ProjectStage {
 }
 
 impl ProjectStage {
-    fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         match self {
             ProjectStage::Experimental => "experimental",
             ProjectStage::Beta => "beta",
@@ -724,7 +724,7 @@ pub enum OptimizeLevel {
 }
 
 impl OptimizeLevel {
-    fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         match self {
             OptimizeLevel::Debug => "debug",
             OptimizeLevel::Release => "release",

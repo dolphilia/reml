@@ -25,34 +25,22 @@ pub fn apply_manifest_overrides(
     let mut manifest_payload = Map::new();
     manifest_payload.insert("source".into(), json!("manifest"));
     if let Some(path) = args.manifest.manifest_path() {
-        manifest_payload.insert(
-            "path".into(),
-            Value::String(path.display().to_string()),
-        );
+        manifest_payload.insert("path".into(), Value::String(path.display().to_string()));
     }
     manifest_payload.insert(
         "runtime_stage".into(),
         Value::String(args.stage.as_str().to_string()),
     );
-    manifest_payload.insert(
-        "project".into(),
-        project_payload(args.manifest),
-    );
+    manifest_payload.insert("project".into(), project_payload(args.manifest));
     if let Some(build) = build_payload(args.manifest) {
         manifest_payload.insert("build".into(), build);
     }
 
-    let compatibility_layer =
-        args.manifest
-            .compatibility_layer(args.format, args.stage);
+    let compatibility_layer = args.manifest.compatibility_layer(args.format, args.stage);
     if let Some(layer) = &compatibility_layer {
-        manifest_payload.insert(
-            "compatibility_source".into(),
-            json!("manifest"),
-        );
+        manifest_payload.insert("compatibility_source".into(), json!("manifest"));
         if let Some(label) = layer.profile_label.as_ref() {
-            manifest_payload
-                .insert("compatibility_profile".into(), json!(label));
+            manifest_payload.insert("compatibility_profile".into(), json!(label));
         }
         if let Ok(value) = serde_json::to_value(&layer.compatibility) {
             manifest_payload.insert("compatibility".into(), value);
@@ -79,10 +67,7 @@ fn project_payload(manifest: &Manifest) -> Value {
     let mut project = Map::new();
     project.insert("name".into(), json!(manifest.project.name.0));
     project.insert("version".into(), json!(manifest.project.version.0));
-    project.insert(
-        "stage".into(),
-        json!(manifest.project.stage.as_str()),
-    );
+    project.insert("stage".into(), json!(manifest.project.stage.as_str()));
     if !manifest.project.capabilities.is_empty() {
         let caps = manifest
             .project
@@ -123,10 +108,7 @@ fn build_payload(manifest: &Manifest) -> Option<Value> {
             .collect::<Vec<_>>();
         build.insert("features".into(), Value::Array(features));
     }
-    build.insert(
-        "optimize".into(),
-        json!(manifest.build.optimize.as_str()),
-    );
+    build.insert("optimize".into(), json!(manifest.build.optimize.as_str()));
     build.insert(
         "warnings_as_errors".into(),
         json!(manifest.build.warnings_as_errors),

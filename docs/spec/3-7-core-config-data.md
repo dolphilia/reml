@@ -302,6 +302,8 @@ pub enum RiskLevel = None | Low | Medium | High | Critical
 
 - `ChangeSet` は監査ログ（4.7）で利用する差分形式。`plan` は CLI/CI でレビュー可能なパッチを生成する。
 
+> **実装メモ（Phase 3-7）**: Rust 実装では `reml_runtime::config::migration` モジュール（`compiler/rust/runtime/src/config/migration.rs`）に `MigrationPlan`/`MigrationStep`/`RiskLevel` を実装し、`Cargo` フィーチャ `experimental-migration` 有効時のみ公開している。CLI からプランを生成する段階では `effect {migration}` を付与し、監査ログに `config.migration.*` メタデータを残すことを前提にする。【P:docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md#5.1】
+
 ## 3. Config 実行 API
 
 ```reml

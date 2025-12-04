@@ -55,6 +55,8 @@ Chapter 3 の標準ライブラリは `Σ_core` / `Σ_system` を細分化する
 
 タグは `EffectTag` として単一化され、`allows_effects`／`effect_scope` の検査では `Σ` の一部として扱う。標準ライブラリ外で新しいタグを導入する場合は、本節に追記し関連仕様との整合を確認する。
 
+> **実装メモ（Phase 3-7）**: `effect {migration}` は Rust 実装では `reml_runtime::config::migration`（`compiler/rust/runtime/src/config/migration.rs`）に定義された `MigrationPlan` API を利用する時のみ発生させる。`Cargo.toml` では `--features experimental-migration` を明示し、ベータ段階でのみオプトインできるようにしている。【P:docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md#5.1】
+
 `Σ = Σ_core ∪ Σ_system` が言語仕様で追跡する効果全体であり、コンパイラは任意の式・関数について潜在効果集合 `effects(expr) ⊆ Σ` を算出する。
 > **実装状況（Phase 2-7）**: 効果集合は `TArrow` に統合済みであり、既定の `RunConfig.extensions["effects"].type_row_mode` は `"ty-integrated"`。互換目的で効果行を診断メタデータとして扱いたい場合は `"metadata-only"` を明示し、移行期の検証では `"dual-write"` を使用する。
 

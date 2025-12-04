@@ -7,7 +7,6 @@ pub mod audit;
 pub mod collections;
 pub mod config;
 pub mod data;
-pub mod run_config;
 #[cfg(feature = "metrics")]
 pub mod diagnostics;
 pub mod io;
@@ -16,6 +15,7 @@ pub mod numeric;
 pub mod path;
 pub mod prelude;
 pub mod registry;
+pub mod run_config;
 pub mod stage;
 pub mod text;
 #[cfg(any(feature = "core_time", feature = "metrics"))]

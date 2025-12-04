@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
 #[cfg(test)]
 use serde_json::json;
+use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// `Core.Data` のスキーマを表現する。

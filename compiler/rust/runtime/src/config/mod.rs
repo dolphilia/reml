@@ -2,26 +2,33 @@
 //! `reml.toml` マニフェスト・互換設定型を提供する。
 //! `PersistentMap::merge_with_change_set` を公開し、監査ログへ
 //! `ChangeSet` を取り込む手続きを補助する。
-pub mod compat;
 pub mod collection_diff;
+pub mod compat;
 pub mod manifest;
+#[cfg(feature = "experimental_migration")]
+pub mod migration;
 
+pub use collection_diff::{ChangeKind, ConfigChange, SchemaDiff, SchemaDiffMetadata};
 pub use compat::{
     compatibility_profile, compatibility_profile_for_stage, compatibility_violation_diagnostic,
     resolve_compat, CommentPair, CompatibilityDiagnosticBuilder, CompatibilityLayer,
-    CompatibilityProfile, CompatibilityProfileError, CompatibilityViolationKind, ConfigCompatibility,
-    ConfigCompatibilitySource, ConfigFormat, ConfigTriviaProfile, DuplicateKeyPolicy, KeyPolicy,
-    NumberCompatibility, ResolveCompatOptions, ResolvedConfigCompatibility, TrailingCommaMode,
-    CONFIG_COMPAT_DUPLICATE_KEY_CODE, CONFIG_COMPAT_NUMBER_CODE,
-    CONFIG_COMPAT_TRAILING_COMMA_CODE, CONFIG_COMPAT_UNQUOTED_KEY_CODE,
+    CompatibilityProfile, CompatibilityProfileError, CompatibilityViolationKind,
+    ConfigCompatibility, ConfigCompatibilitySource, ConfigFormat, ConfigTriviaProfile,
+    DuplicateKeyPolicy, KeyPolicy, NumberCompatibility, ResolveCompatOptions,
+    ResolvedConfigCompatibility, TrailingCommaMode, CONFIG_COMPAT_DUPLICATE_KEY_CODE,
+    CONFIG_COMPAT_NUMBER_CODE, CONFIG_COMPAT_TRAILING_COMMA_CODE, CONFIG_COMPAT_UNQUOTED_KEY_CODE,
 };
-pub use collection_diff::{ChangeKind, ConfigChange, SchemaDiff, SchemaDiffMetadata};
 pub use manifest::{
     declared_effects, load_manifest, update_dsl_signature, validate_manifest, CapabilityId,
     ConfigCompatibilityEntry, ConfigRoot, Contact, DependencySpec, DslEntry, DslExportRef,
     DslExportSignature, DslSignatureStageBounds, Manifest, ManifestBuilder, ManifestLoader,
     ManifestParseError, OptimizeLevel, PackageName, ProjectKind, ProjectSection, ProjectStage,
     RegistrySection, SemanticVersion, TargetTriple,
+};
+#[cfg(feature = "experimental_migration")]
+pub use migration::{
+    MigrationDuration, MigrationPlan, MigrationRiskLevel, MigrationStep, ReorganizationStrategy,
+    TypeConversionPlan, MIGRATION_EFFECT_TAG,
 };
 
 use std::{
