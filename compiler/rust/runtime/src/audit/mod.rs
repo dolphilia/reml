@@ -124,6 +124,7 @@ impl AuditEventKind {
             "pipeline_completed" => AuditEventKind::PipelineCompleted,
             "pipeline_failed" => AuditEventKind::PipelineFailed,
             "capability_mismatch" => AuditEventKind::CapabilityMismatch,
+            "capability_check" => AuditEventKind::CapabilityCheck,
             "async_supervisor_restarted" => AuditEventKind::AsyncSupervisorRestarted,
             "async_supervisor_exhausted" => AuditEventKind::AsyncSupervisorExhausted,
             "config_compat_changed" => AuditEventKind::ConfigCompatChanged,

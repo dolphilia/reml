@@ -108,6 +108,11 @@
     - 4.2.a `reml_runtime::audit` に `AuditEventKind::CapabilityCheck` を追加し、`verify_capability_stage` の成功/失敗を JSON Lines で保存する。
     - 4.2.b `compiler/rust/runtime/tests/audit_capability.rs` を追加し、`collect-iterator-audit-metrics.py --section runtime --scenario capability_check` で検証可能なゴールデンを整備する。
     - 4.2.c `docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md#4.1` に倣い、`effects.contract.stage_mismatch` と同じキー名を `AuditEnvelope.metadata` へ転写することで差分比較が容易になるよう整備する。
+
+#### 4.2 実施結果（Run ID: 20290705-capability-audit-log）
+- `compiler/rust/runtime/src/audit/mod.rs` の `AuditEventKind::from_str` に `capability_check` を追加し、`CapabilityRegistry::record_capability_check` が出力する `event.kind = "capability_check"` を公式にバリデーション対象へ格納した。これにより CLI/診断/audit で `effect.stage.*` のキーが欠落していないか `AuditEnvelope::validate` で検知できる。
+- `compiler/rust/runtime/tests/audit_capability.rs` を新設し、Stage 合格・Stage 違反の両ケースで `capability_checks()` が生成する `AuditEvent` を検証するテストを追加した。テストでは `event.validate()` を通して必須キーが揃っているか確認しつつ、RunConfig/Stage 要件に応じた結果 (`capability.result = success|error`) と `capability.error.code` が正しく設定されることを確認している。
+- `tests/golden/audit/capability_check_success.jsonl` と `tests/golden/audit/capability_check_stage_violation.jsonl` を追加し、`serde_json` 直列化した `AuditEvent` を JSON Lines 形式で保存。`assert_matches_golden` ヘルパがこれらゴールデンと比較するため、`collect-iterator-audit-metrics.py --section runtime --scenario capability_check` で同じフォーマットを解析すれば `effect.stage.required` や `capability.error.*` の有無を自動確認できる。
 4.3. `describe_all` 等の補助関数を実装し、ドキュメント生成や CLI (`reml capability list`) で再利用する。
     - 4.3.a `CapabilityRegistry::describe_all` を `Iterator<Item = CapabilityDescriptor>` で返す API として実装し、`reml capability list` CLI（`compiler/rust/runtime/bin/reml_capability.rs`）から利用する。
     - 4.3.b `docs/plans/bootstrap-roadmap/README.md` と `docs/spec/3-8-core-runtime-capability.md` の Capability 表を `scripts/capability/generate_md.py`（新設）で自動生成し、`describe_all` の出力を Markdown へ変換する。
