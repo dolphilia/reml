@@ -24,7 +24,9 @@ pub use contract::{
     CapabilityContractSpan, ConductorCapabilityContract, ConductorCapabilityRequirement,
 };
 pub use descriptor::{
-    CapabilityDescriptor, CapabilityId, CapabilityProvider, CapabilityTimestamp, EffectTag,
+    CapabilityDescriptor, CapabilityId, CapabilityIsolationLevel, CapabilityMetadata,
+    CapabilityPermission, CapabilityProvider, CapabilitySandboxProfile,
+    CapabilitySecurityMetadata, CapabilitySecuritySignature, CapabilityTimestamp, EffectTag,
 };
 pub use gc::{GcCapability, GcCapabilityMetadata, GcStrategy};
 pub use handle::{CapabilityHandle, CapabilityHandleKind, CapabilityHandleTypeError};

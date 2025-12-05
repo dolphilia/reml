@@ -179,6 +179,32 @@ pub enum CapabilityProvider = Core
 - `CapabilityDescriptor` は `CapabilityRegistry::describe` が返す公開メタデータであり、監査ログや診断へ転写することを想定する。`effect_scope` と `stage` は登録時点の設定を示し、0-1 §1.2 の安全性基準に合致するかを確認する根拠となる。
 - `provider` は Capability を提供する主体を特定し、`Core`（標準組み込み）、`Plugin`（プラグインモジュール）、`ExternalBridge`（外部 DSL ブリッジなど）、`RuntimeComponent`（ランタイム内部構成要素）を区別する。`manifest_path` は `reml.toml` など構成ファイル上の位置を指し、`last_verified_at` は `verify_capability_stage` が成功した最新時刻（3-4 §1 `Timestamp`）を格納する。
 - `verify_capability_stage` が失敗した場合は `CapabilityDescriptor.stage` を `CapabilityError.actual_stage` として埋め込み、診断側で要求 Stage との差分を即座に計算できるようにする。成功時は `last_verified_at` を更新し、キャッシュの鮮度を維持する。
+- CLI からは `reml_frontend --capability describe <CapabilityId> [--output human|json]` を利用して Descriptor を即時取得できる。デフォルトは JSON 形式であり、人が読む際は `--output human` を指定する。
+
+```shell
+$ reml_frontend --capability describe io.fs.read --output json
+{
+  "id": "io.fs.read",
+  "stage": "stable",
+  "effect_scope": [
+    "io",
+    "fs.read"
+  ],
+  "provider": {
+    "kind": "core"
+  },
+  "manifest_path": null,
+  "last_verified_at": null,
+  "security": {
+    "audit_required": false,
+    "isolation_level": "none",
+    "permissions": [],
+    "sandbox_profile": null,
+    "signature": null,
+    "policy": null
+  }
+}
+```
 
 ```reml
 pub type CapabilitySet = Set<CapabilityId>

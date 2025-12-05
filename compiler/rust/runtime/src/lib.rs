@@ -26,7 +26,9 @@ pub use capability::{
         CapabilityContractSpan, ConductorCapabilityContract, ConductorCapabilityRequirement,
     },
     descriptor::{
-        CapabilityDescriptor, CapabilityId, CapabilityProvider, CapabilityTimestamp, EffectTag,
+        CapabilityDescriptor, CapabilityId, CapabilityIsolationLevel, CapabilityMetadata,
+        CapabilityPermission, CapabilityProvider, CapabilitySandboxProfile,
+        CapabilitySecurityMetadata, CapabilitySecuritySignature, CapabilityTimestamp, EffectTag,
     },
     registry::{CapabilityError, CapabilityRegistry},
 };

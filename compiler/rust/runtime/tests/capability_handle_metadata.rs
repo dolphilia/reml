@@ -32,7 +32,10 @@ fn handle_descriptor_preserves_effect_scope_and_provider() {
     let desc_ref = handle.descriptor();
     assert_eq!(desc_ref.stage(), StageId::Beta);
     assert!(desc_ref.effect_scope().contains("effect.io"));
-    assert!(matches!(desc_ref.provider, CapabilityProvider::Core));
+    assert!(matches!(
+        desc_ref.metadata().provider,
+        CapabilityProvider::Core
+    ));
 
     let io_ref: &IoCapability = (&handle).try_into().unwrap();
     assert!(io_ref

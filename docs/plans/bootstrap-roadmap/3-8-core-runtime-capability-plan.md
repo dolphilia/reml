@@ -99,6 +99,11 @@
     - 4.1.a `compiler/rust/runtime/src/capability/descriptor.rs` に構造体を定義し、`serde::Serialize`/`schemars::JsonSchema` の導出を行う。
     - 4.1.b `CapabilityMetadata` に `last_verified_at: Timestamp`/`provider`/`manifest_path`/`security` 情報を含め、`describe` API から JSON 形式で取得できるようにする。
     - 4.1.c `reml_frontend --capability describe <id>` CLI を追加し、`docs/spec/3-8-core-runtime-capability.md#capabilitydescriptor` の出力例を最新ログへ差し替える。
+
+#### 4.1 実施結果（Run ID: 20290704-capability-descriptor-cli）
+- `compiler/rust/runtime/src/capability/descriptor.rs` に `CapabilityMetadata` / `CapabilitySecurityMetadata` を追加し、`provider`/`manifest_path`/`last_verified_at`/`security` を `serde` で `CapabilityDescriptor` に `flatten` する形で公開した。`CapabilityIsolationLevel` や `CapabilityPermission` など仕様 §1.2 のフィールドも Rust 側で列挙化したため、`CapabilityRegistry::describe` の戻り値をそのまま JSON Schema に載せられる。
+- `compiler/rust/frontend/src/bin/reml_frontend.rs` に `--capability describe <id> [--output human|json]` を実装し、Registry から `CapabilityDescriptor` を抽出して JSON/人間可読テキストのどちらでも表示できるようにした。Human 表示では Stage/効果タグ/Provider/セキュリティ属性を整形し、監査レビュー時の卓上確認を CLI だけで完結できる。
+- `docs/spec/3-8-core-runtime-capability.md#capabilitydescriptor` に CLI サンプルを追記し、`reml_frontend --capability describe io.fs.read --output json` の出力例を提示。実装したメタデータが仕様と一致していること、および JSON のレイアウトが 3.8 章の規定と矛盾しないことを確認できる。
 4.2. Capability 検証結果を `AuditEnvelope` へ書き込む API を実装し、`AuditEvent::CapabilityMismatch` の発火をテストする。
     - 4.2.a `reml_runtime::audit` に `AuditEventKind::CapabilityCheck` を追加し、`verify_capability_stage` の成功/失敗を JSON Lines で保存する。
     - 4.2.b `compiler/rust/runtime/tests/audit_capability.rs` を追加し、`collect-iterator-audit-metrics.py --section runtime --scenario capability_check` で検証可能なゴールデンを整備する。

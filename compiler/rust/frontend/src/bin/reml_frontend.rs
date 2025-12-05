@@ -53,6 +53,10 @@ use reml_runtime::run_config::{
 };
 use reml_runtime::stage::StageId as RuntimeStageId;
 use reml_runtime::text::LocaleId;
+use reml_runtime::{
+    CapabilityDescriptor, CapabilityIsolationLevel, CapabilityPermission, CapabilityProvider,
+    CapabilityRegistry, CapabilityTimestamp,
+};
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -76,7 +80,201 @@ struct FilterStats {
     audit_anonymized: usize,
 }
 
+fn try_run_capability_command() -> Result<bool, Box<dyn std::error::Error>> {
+    let mut argv = env::args();
+    let _program_name = argv.next();
+    let args: Vec<String> = argv.collect();
+    if args.first().map(|arg| arg.as_str()) != Some("--capability") {
+        return Ok(false);
+    }
+    let mut iter = args.iter().skip(1);
+    let subcommand = iter
+        .next()
+        .ok_or("--capability には describe などのサブコマンドを指定してください")?;
+    match subcommand.as_str() {
+        "describe" => {
+            let capability_id = iter
+                .next()
+                .ok_or("--capability describe には Capability ID が必要です")?
+                .to_string();
+            let mut format = OutputFormat::Json;
+            while let Some(arg) = iter.next() {
+                match arg.as_str() {
+                    "--output" => {
+                        let value = iter.next().ok_or(
+                            "--capability describe --output には human/json を指定してください",
+                        )?;
+                        format = OutputFormat::parse(value)?;
+                    }
+                    "--human" => format = OutputFormat::Human,
+                    "--json" => format = OutputFormat::Json,
+                    other => {
+                        return Err(format!(
+                            "--capability describe の未知のオプション: {other}"
+                        )
+                        .into())
+                    }
+                }
+            }
+            run_capability_describe(&capability_id, format)?;
+            Ok(true)
+        }
+        other => Err(format!("--capability {other} は未サポートです").into()),
+    }
+}
+
+fn run_capability_describe(
+    capability_id: &str,
+    format: OutputFormat,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let registry = CapabilityRegistry::registry();
+    let descriptor = registry
+        .describe(capability_id)
+        .map_err(|err| format!("Capability `{capability_id}` の取得に失敗しました: {err}"))?;
+    match format {
+        OutputFormat::Json => {
+            let body = serde_json::to_string_pretty(&descriptor)?;
+            println!("{body}");
+        }
+        OutputFormat::Human => print_capability_descriptor_human(&descriptor),
+        OutputFormat::Lsp => {
+            return Err("--capability describe では LSP 出力をサポートしていません".into())
+        }
+    }
+    Ok(())
+}
+
+fn print_capability_descriptor_human(descriptor: &CapabilityDescriptor) {
+    println!("Capability: {}", descriptor.id);
+    println!("  stage: {}", descriptor.stage().as_str());
+    if descriptor.effect_scope().is_empty() {
+        println!("  effect_scope: (none)");
+    } else {
+        println!(
+            "  effect_scope: [{}]",
+            descriptor
+                .effect_scope()
+                .iter()
+                .map(|effect| effect.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
+    let metadata = descriptor.metadata();
+    println!(
+        "  provider: {}",
+        format_capability_provider(&metadata.provider)
+    );
+    if let Some(path) = metadata.manifest_path.as_ref() {
+        println!("  manifest_path: {}", path.display());
+    }
+    if let Some(timestamp) = metadata.last_verified_at {
+        println!(
+            "  last_verified_at: {}",
+            format_capability_timestamp(timestamp)
+        );
+    }
+    let security = &metadata.security;
+    println!(
+        "  security.audit_required: {}",
+        if security.audit_required { "true" } else { "false" }
+    );
+    println!(
+        "  security.isolation_level: {}",
+        format_isolation_level(&security.isolation_level)
+    );
+    if security.permissions.is_empty() {
+        println!("  security.permissions: (none)");
+    } else {
+        println!("  security.permissions:");
+        for permission in &security.permissions {
+            println!("    - {}", format_permission(permission));
+        }
+    }
+    if let Some(policy) = &security.policy {
+        println!("  security.policy: {policy}");
+    }
+    if let Some(profile) = &security.sandbox_profile {
+        println!(
+            "  security.sandbox: {}{}",
+            profile.name,
+            profile
+                .version
+                .as_ref()
+                .map(|version| format!(" v{version}"))
+                .unwrap_or_default()
+        );
+    }
+    if let Some(signature) = &security.signature {
+        println!(
+            "  security.signature: issuer={:?}, algorithm={:?}, digest={:?}",
+            signature.issuer, signature.algorithm, signature.digest
+        );
+    }
+}
+
+fn format_capability_provider(provider: &CapabilityProvider) -> String {
+    match provider {
+        CapabilityProvider::Core => "core".to_string(),
+        CapabilityProvider::Plugin { package, version } => {
+            let mut label = format!("plugin:{package}");
+            if let Some(version) = version {
+                label.push('@');
+                label.push_str(version);
+            }
+            label
+        }
+        CapabilityProvider::ExternalBridge { name, version } => {
+            let mut label = format!("bridge:{name}");
+            if let Some(version) = version {
+                label.push('@');
+                label.push_str(version);
+            }
+            label
+        }
+        CapabilityProvider::RuntimeComponent { name } => {
+            format!("runtime:{name}")
+        }
+    }
+}
+
+fn format_capability_timestamp(timestamp: CapabilityTimestamp) -> String {
+    format!("{}.{:09}s (unix)", timestamp.seconds, timestamp.nanos.max(0))
+}
+
+fn format_isolation_level(level: &CapabilityIsolationLevel) -> &'static str {
+    match level {
+        CapabilityIsolationLevel::None => "none",
+        CapabilityIsolationLevel::Sandboxed => "sandboxed",
+        CapabilityIsolationLevel::FullIsolation => "full_isolation",
+    }
+}
+
+fn format_permission(permission: &CapabilityPermission) -> String {
+    match permission {
+        CapabilityPermission::ReadConfig => "read_config".to_string(),
+        CapabilityPermission::WriteConfig => "write_config".to_string(),
+        CapabilityPermission::FileSystem { pattern } => {
+            format!("filesystem({pattern})")
+        }
+        CapabilityPermission::Network { pattern } => format!("network({pattern})"),
+        CapabilityPermission::Runtime { operation } => {
+            format!("runtime({operation})")
+        }
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let capability_command_executed = match try_run_capability_command() {
+        Ok(executed) => executed,
+        Err(err) => {
+            eprintln!("[CAPABILITY] {err}");
+            std::process::exit(1);
+        }
+    };
+    if capability_command_executed {
+        return Ok(());
+    }
     let args = parse_args()?;
     let cli_command = args.cli_command();
     let mut audit_emitter = AuditEmitter::stderr(args.emit_audit);
