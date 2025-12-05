@@ -6,7 +6,8 @@
 use once_cell::sync::OnceCell;
 
 use crate::{
-    capability::registry::{CapabilityError, CapabilityRegistry},
+    capability::registry::CapabilityError,
+    runtime::api::guard_io_capability,
     stage::{StageId, StageRequirement},
 };
 
@@ -24,18 +25,23 @@ pub(crate) const CAP_SECURITY_FS_POLICY: &str = "security.fs.policy";
 pub(crate) const CAP_MEMORY_BUFFERED_IO: &str = "memory.buffered_io";
 pub(crate) const CAP_WATCH_RESOURCE_LIMITS: &str = "watcher.resource_limits";
 
+const EFFECTS_IO_FS_READ: &[&str] = &["io", "fs.read"];
+const EFFECTS_IO_FS_WRITE: &[&str] = &["io", "fs.write", "mem"];
+const EFFECTS_FS_PERMISSIONS: &[&str] = &["io", "security"];
+const EFFECTS_FS_SYMLINK_QUERY: &[&str] = &["io", "fs.symlink"];
+const EFFECTS_FS_SYMLINK_MODIFY: &[&str] = &["io", "fs.symlink", "security"];
+const EFFECTS_MEMORY_BUFFERED_IO: &[&str] = &["mem"];
+const EFFECTS_SECURITY_POLICY: &[&str] = &["security"];
+const EFFECTS_WATCHER: &[&str] = &["io", "watcher"];
+
 /// ファイルシステム操作向け Capability を検証するアダプタ。
-pub struct FsAdapter {
-    registry: &'static CapabilityRegistry,
-}
+pub struct FsAdapter;
 
 impl FsAdapter {
     /// グローバルアダプタを取得する。
     pub fn global() -> &'static Self {
         static INSTANCE: OnceCell<FsAdapter> = OnceCell::new();
-        INSTANCE.get_or_init(|| FsAdapter {
-            registry: CapabilityRegistry::registry(),
-        })
+        INSTANCE.get_or_init(|| FsAdapter)
     }
 
     /// `io.fs.read` Capability を検証する。
@@ -44,6 +50,7 @@ impl FsAdapter {
             &IO_FS_READ_STAGE,
             CAP_IO_FS_READ,
             StageRequirement::AtLeast(StageId::Beta),
+            EFFECTS_IO_FS_READ,
         )
     }
 
@@ -53,6 +60,7 @@ impl FsAdapter {
             &IO_FS_WRITE_STAGE,
             CAP_IO_FS_WRITE,
             StageRequirement::AtLeast(StageId::Beta),
+            EFFECTS_IO_FS_WRITE,
         )
     }
 
@@ -62,6 +70,7 @@ impl FsAdapter {
             &FS_PERMISSIONS_READ_STAGE,
             CAP_FS_PERMISSIONS_READ,
             StageRequirement::Exact(StageId::Stable),
+            EFFECTS_FS_PERMISSIONS,
         )
     }
 
@@ -71,6 +80,7 @@ impl FsAdapter {
             &FS_PERMISSIONS_MODIFY_STAGE,
             CAP_FS_PERMISSIONS_MODIFY,
             StageRequirement::Exact(StageId::Stable),
+            EFFECTS_FS_PERMISSIONS,
         )
     }
 
@@ -80,6 +90,7 @@ impl FsAdapter {
             &FS_SYMLINK_QUERY_STAGE,
             CAP_FS_SYMLINK_QUERY,
             StageRequirement::AtLeast(StageId::Beta),
+            EFFECTS_FS_SYMLINK_QUERY,
         )
     }
 
@@ -89,6 +100,7 @@ impl FsAdapter {
             &FS_SYMLINK_MODIFY_STAGE,
             CAP_FS_SYMLINK_MODIFY,
             StageRequirement::Exact(StageId::Stable),
+            EFFECTS_FS_SYMLINK_MODIFY,
         )
     }
 
@@ -98,6 +110,7 @@ impl FsAdapter {
             &FS_POLICY_STAGE,
             CAP_SECURITY_FS_POLICY,
             StageRequirement::Exact(StageId::Stable),
+            EFFECTS_SECURITY_POLICY,
         )
     }
 
@@ -107,6 +120,7 @@ impl FsAdapter {
             &MEMORY_BUFFERED_IO_STAGE,
             CAP_MEMORY_BUFFERED_IO,
             StageRequirement::AtLeast(StageId::Beta),
+            EFFECTS_MEMORY_BUFFERED_IO,
         )
     }
 
@@ -115,13 +129,15 @@ impl FsAdapter {
         cache: &OnceCell<StageId>,
         capability: &'static str,
         requirement: StageRequirement,
+        required_effects: &[&str],
     ) -> IoResult<()> {
         if let Some(stage) = cache.get() {
             record_bridge_stage_probe(capability, requirement, *stage);
             return Ok(());
         }
-        match self.registry.verify_stage_for_io(capability, requirement) {
-            Ok(stage) => {
+        match guard_io_capability(capability, requirement, required_effects) {
+            Ok(guard) => {
+                let stage = guard.actual_stage();
                 let _ = cache.set(stage);
                 record_bridge_stage_probe(capability, requirement, stage);
                 Ok(())
@@ -132,17 +148,13 @@ impl FsAdapter {
 }
 
 /// ファイル監視 Capability を検証するアダプタ（実装が入るまで Stage 判定のみ）。
-pub struct WatcherAdapter {
-    registry: &'static CapabilityRegistry,
-}
+pub struct WatcherAdapter;
 
 impl WatcherAdapter {
     /// グローバルインスタンスを取得する。
     pub fn global() -> &'static Self {
         static INSTANCE: OnceCell<WatcherAdapter> = OnceCell::new();
-        INSTANCE.get_or_init(|| WatcherAdapter {
-            registry: CapabilityRegistry::registry(),
-        })
+        INSTANCE.get_or_init(|| WatcherAdapter)
     }
 
     /// `fs.watcher.native` Capability を検証する。
@@ -151,6 +163,7 @@ impl WatcherAdapter {
             &FS_WATCH_NATIVE_STAGE,
             CAP_FS_WATCH_NATIVE,
             StageRequirement::AtLeast(StageId::Beta),
+            EFFECTS_WATCHER,
         )
     }
 
@@ -160,6 +173,7 @@ impl WatcherAdapter {
             &FS_WATCH_RECURSIVE_STAGE,
             CAP_FS_WATCH_RECURSIVE,
             StageRequirement::Exact(StageId::Stable),
+            EFFECTS_WATCHER,
         )
     }
 
@@ -169,6 +183,7 @@ impl WatcherAdapter {
             &WATCH_RESOURCE_LIMITS_STAGE,
             CAP_WATCH_RESOURCE_LIMITS,
             StageRequirement::AtLeast(StageId::Beta),
+            EFFECTS_WATCHER,
         )
     }
 
@@ -177,13 +192,15 @@ impl WatcherAdapter {
         cache: &OnceCell<StageId>,
         capability: &'static str,
         requirement: StageRequirement,
+        required_effects: &[&str],
     ) -> IoResult<()> {
         if let Some(stage) = cache.get() {
             record_bridge_stage_probe(capability, requirement, *stage);
             return Ok(());
         }
-        match self.registry.verify_stage_for_io(capability, requirement) {
-            Ok(stage) => {
+        match guard_io_capability(capability, requirement, required_effects) {
+            Ok(guard) => {
+                let stage = guard.actual_stage();
                 let _ = cache.set(stage);
                 record_bridge_stage_probe(capability, requirement, stage);
                 Ok(())

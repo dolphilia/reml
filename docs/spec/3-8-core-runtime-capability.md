@@ -382,7 +382,27 @@ pub struct MailboxStats {
 pub enum PriorityPolicy = FIFO | Priority { levels: u8 }
 ```
 
+#### Core Runtime API シーケンス {#core-runtime-api}
 
+- `Core.IO`/`Core.Time`/`Core.Async` は操作開始前に `Core.Runtime` のガード API（`guard_io_capability` / `guard_time_capability` / `guard_async_capability` in `compiler/rust/runtime/src/runtime/api.rs`）を呼び出し、Stage 要件と効果タグを必ず検証する。ガードは `CapabilityGuard` として `actual_stage` を保持し、`AtLeast(StageId::Beta)` のような条件を `satisfies()` で即座に確認できる。
+- ガード API は `CapabilityRegistry::verify_capability_stage` の薄いラッパであり、成功時に `AuditEventKind::CapabilityCheck` を発行して `AuditEnvelope.metadata["effect.*"]` を埋める。`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` の `core-io-capability-map.md` に列挙された Stage/効果要件と直接対応し、IO/Path API が `["io","fs.read"]` や `["security"]` といった仕様上のタグを要求することを保証する。
+- `Core.Time` のタイムゾーン API (`compiler/rust/runtime/src/time/timezone.rs`) は `guard_time_capability("core.time.timezone.lookup", StageRequirement::AtLeast(StageId::Beta), ["time"])` を経由して Stage 検証を行い、失敗時は `TimeError::system_clock_unavailable` に変換する。`core.async.scheduler` などのランタイム専用 Capability は `guard_async_capability` を通じて同じ検証を共有し、未登録環境では `CapabilityError::NotRegistered` を報告する。
+
+```mermaid
+sequenceDiagram
+    participant Caller as Core.IO / Core.Time / Core.Async
+    participant Runtime as Core.Runtime API
+    participant Registry as CapabilityRegistry
+    participant Audit as AuditEnvelope
+    Caller->>Runtime: guard_*_capability(id, requirement, effects)
+    Runtime->>Registry: verify_capability_stage(...)
+    Registry-->>Runtime: StageId (actual)
+    Runtime-->>Caller: CapabilityGuard
+    Registry-->>Audit: event.kind = "capability_check"
+```
+
+- 上記シーケンスは Diagnostics/Audit 章（3-6）で要求される `effects.contract.stage_mismatch` と互換であり、Stage 判定結果が診断と監査の両方へ共通キーで転写される。`compiler/rust/runtime/tests/core_runtime_capability_guard.rs` では `core.io`/`core.time`/`core.async` のガードが期待通り動くことを `cargo test -p reml_runtime core_runtime_capability_guard` で検証し、リグレッションを防止する。
+- `FsAdapter::ensure_*` や `Timezone::timezone/local` といった API は本ガードを通じて `record_bridge_stage_probe` や `TimeError` に Stage 情報を転写し、RunConfig・RuntimeBridgePlan が参照する KPI を一貫させる。今後 `Core.Async` の API を追加する際も同じガードを再利用し、Stage ポリシーの抜け漏れを防ぐ。
 
 ### 1.5 Regex Capability {#regex-capability}
 

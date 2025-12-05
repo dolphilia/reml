@@ -1,13 +1,16 @@
 use super::{Duration, TimeError, TimeResult, Timestamp, NANOS_PER_SECOND_I128};
-use crate::capability::registry::CapabilityRegistry;
-use crate::io::time_env_snapshot;
-use crate::stage::{StageId, StageRequirement};
+use crate::{
+    io::time_env_snapshot,
+    runtime::api::guard_time_capability,
+    stage::{StageId, StageRequirement},
+};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 const LOOKUP_CAPABILITY: &str = "core.time.timezone.lookup";
 const LOCAL_CAPABILITY: &str = "core.time.timezone.local";
 const MAX_OFFSET_SECONDS: i64 = 18 * 60 * 60;
+const TIME_EFFECT_SCOPE: &[&str] = &["time"];
 const IANA_TIMEZONES: &[(&str, i64)] = &[
     ("Asia/Tokyo", 9 * 3600),
     ("Europe/London", 0),
@@ -175,11 +178,9 @@ fn timezone_from_iana(raw: &str) -> Option<Timezone> {
 }
 
 fn verify_capability(capability: &str) -> TimeResult<()> {
-    let registry = CapabilityRegistry::registry();
     let requirement = StageRequirement::AtLeast(StageId::Beta);
     let snapshot = time_env_snapshot();
-    registry
-        .verify_capability_stage(capability, requirement, &[])
+    guard_time_capability(capability, requirement, TIME_EFFECT_SCOPE)
         .map(|_| ())
         .map_err(|err| {
             TimeError::system_clock_unavailable(err.detail().to_string())
