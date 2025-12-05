@@ -31,15 +31,15 @@ pub enum StageRequirement {
 }
 
 impl StageRequirement {
-    pub const fn matches(&self, actual: StageId) -> bool {
+    pub fn matches(&self, actual: StageId) -> bool {
         Self::satisfies(*self, actual)
     }
 
-    /// 仕様で定義される `satisfies` 判定の const fn 版。
-    pub const fn satisfies(self, actual: StageId) -> bool {
+    /// 仕様で定義される `satisfies` 判定。
+    pub fn satisfies(self, actual: StageId) -> bool {
         match self {
-            StageRequirement::Exact(expected) => *expected == actual,
-            StageRequirement::AtLeast(threshold) => stage_rank(actual) >= stage_rank(*threshold),
+            StageRequirement::Exact(expected) => expected == actual,
+            StageRequirement::AtLeast(threshold) => stage_rank(actual) >= stage_rank(threshold),
         }
     }
 }

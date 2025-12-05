@@ -9,7 +9,7 @@ use reml_runtime::{
     CapabilityDescriptor, CapabilityProvider, StageId,
 };
 
-fn descriptor(id: &str, stage: StageId, effects: &[&str]) -> CapabilityDescriptor {
+fn make_descriptor(id: &str, stage: StageId, effects: &[&str]) -> CapabilityDescriptor {
     CapabilityDescriptor::new(
         id,
         stage,
@@ -20,7 +20,7 @@ fn descriptor(id: &str, stage: StageId, effects: &[&str]) -> CapabilityDescripto
 
 #[test]
 fn handle_descriptor_preserves_effect_scope_and_provider() {
-    let io_desc = descriptor(
+    let io_desc = make_descriptor(
         "io.fs.read",
         StageId::Beta,
         &["effect.io", "effect.io.blocking"],
@@ -29,10 +29,10 @@ fn handle_descriptor_preserves_effect_scope_and_provider() {
         IoCapability::new(io_desc, IoCapabilityMetadata::default()).into();
 
     assert_eq!(handle.kind(), CapabilityHandleKind::Io);
-    let descriptor = handle.descriptor();
-    assert_eq!(descriptor.stage(), StageId::Beta);
-    assert!(descriptor.effect_scope().contains("effect.io"));
-    assert!(matches!(descriptor.provider, CapabilityProvider::Core));
+    let desc_ref = handle.descriptor();
+    assert_eq!(desc_ref.stage(), StageId::Beta);
+    assert!(desc_ref.effect_scope().contains("effect.io"));
+    assert!(matches!(desc_ref.provider, CapabilityProvider::Core));
 
     let io_ref: &IoCapability = (&handle).try_into().unwrap();
     assert!(io_ref
@@ -42,7 +42,7 @@ fn handle_descriptor_preserves_effect_scope_and_provider() {
 
     // 別種の Capability も生成しておき、descriptor API が共有できることを確認。
     let plugin_handle: CapabilityHandle = PluginCapability::new(
-        descriptor(
+        make_descriptor(
             "plugin.core.audit",
             StageId::Experimental,
             &["effect.audit"],
@@ -56,7 +56,7 @@ fn handle_descriptor_preserves_effect_scope_and_provider() {
 #[test]
 fn try_from_reports_handle_mismatch() {
     let security_handle: CapabilityHandle = SecurityCapability::new(
-        descriptor("security.fs.policy", StageId::Stable, &["effect.security"]),
+        make_descriptor("security.fs.policy", StageId::Stable, &["effect.security"]),
         SecurityCapabilityMetadata::default(),
     )
     .into();
@@ -68,7 +68,7 @@ fn try_from_reports_handle_mismatch() {
     assert_eq!(err.actual(), CapabilityHandleKind::Security);
 
     let actor_handle: CapabilityHandle = ActorCapability::new(
-        descriptor("actor.runtime", StageId::Alpha, &["effect.actor"]),
+        make_descriptor("actor.runtime", StageId::Alpha, &["effect.actor"]),
         ActorCapabilityMetadata::default(),
     )
     .into();
