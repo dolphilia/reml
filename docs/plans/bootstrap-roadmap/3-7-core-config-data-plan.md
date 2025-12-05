@@ -87,6 +87,7 @@
 - `compiler/rust/runtime/tests/config_compat.rs` へ解決順序/マニフェスト構文の単体テストを追加し、`ConfigCompatibilitySource` が CLI > Env > Manifest > Default で選ばれることと、manifest の `feature_guard` が `ConfigCompatibility` へ反映されることを検証した。
 - `compiler/rust/frontend/src/parser/api.rs` の `RunConfig` に `config_compat: Option<ResolvedConfigCompatibility>` を追加、`build_config_extension` で `compatibility` 情報を JSON 化し `parser.runconfig.extensions.config.compatibility_*` を埋めるようにした。CLI 側（`reml_frontend`）は `--config-compat <profile>` オプションを追加し、Stage（`--effect-stage`/`--effect-stage-runtime`）情報から `RuntimeStageId` に変換した上で `resolve_compat` を呼び出して `RunConfig` に保持する。ヘルパ `convert_stage_id` で Chapter1 Stage ID を Runtime Stage へマップしている。
 - `docs/spec/3-7-core-config-data.md` §1.5 に manifest テーブル例と Rust CLI の `--config-compat` 設定例を追記し、優先順位の第 1 層（CLI オプション）が実装済みであることを明記した。
+- `docs/plans/bootstrap-roadmap/assets/core-runtime-capability-init.md` と `assets/capability-error-matrix.csv` を参照し、Manifest→RunConfig→CapabilityRegistry の初期化順序と契約違反時の診断コードを Config 計画側からも把握できるようになった（Run ID: 20291221-capability-init-seq）。
 
 #### 3.1 実施結果（Run ID: 20251203-schema-core-data）
 - `compiler/rust/runtime/src/data/{mod.rs,schema.rs}` に `Schema`/`Field`/`ValidationRule`/`SchemaDiff` を実装し、ビルダー API・差分検出・`FieldAttribute` を仕様 3-7 §2 の構造と整合させた。`SchemaDataType` は JSON/TOML 双方のエイリアスをサポートする列挙体として導入し、`FieldBuilder`/`ValidationRuleBuilder` で `effect {config}` 拡張の基礎を揃えた。

@@ -34,6 +34,9 @@
 | --- | --- | --- |
 | `compiler/rust/runtime/ffi/` | ランタイム FFI ラッパ crate（`extern` 宣言、`Result<T, FfiError>` 変換、所有権ヘルパ、`AuditContext` 連携） | `runtime/native/include/`, `docs/guides/reml-ffi-handbook.md`, `docs/spec/3-9` |
 | Capability Registry バインディング | Rust 側 `CapabilityRegistry` 実装／FFI、Stage/効果タグチェック、`verify_capability_stage` API | `docs/spec/3-8-core-runtime-capability.md`, `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` |
+
+> **補足（2029-12-21 Run ID: 20291221-core-runtime-capability）**  
+> `docs/plans/bootstrap-roadmap/assets/capability-handle-inventory.csv` と `assets/capability-stage-field-gap.csv` に Rust 実装の欠落点を集約した。Registry/Stage 判定の進捗を追う際は本計画から該当 CSV へ直接遷移して確認すること。
 | 監査・診断 API | `audit.log`, `Diagnostic.extensions["bridge"]`, `security.report_violation` の Rust ラッパ | `docs/spec/3-6-core-diagnostics-audit.md`, `docs/guides/runtime-bridges.md` |
 | テストハーネス | Rust 側 `cargo test` 相当の FFI/ランタイム検証、`ffi-smoke`（同期/非同期/タイムアウト） | `runtime/native/tests/`, `docs/guides/reml-ffi-handbook.md` |
 

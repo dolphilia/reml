@@ -20,14 +20,29 @@
     - 1.1.a `docs/spec/3-8-core-runtime-capability.md` §1〜§1.3 と `compiler/rust/runtime/src/` 以下の `rg "Capability"` 結果を突き合わせ、型ごとの実装状況を `docs/plans/bootstrap-roadmap/assets/capability-handle-inventory.csv`（新規）へ整理する。列には `Gc/Io/Async/...` と `定義済み/未実装/不要` のステータスを記し、Run ID を脚注として残す。
     - 1.1.b `compiler/rust/runtime/tests/` で既に PoC が存在する Capability を棚卸しし、利用できるテストデータやモックを `docs/notes/runtime-capability-stage-log.md#capability-handle-inventory` にリンクする。
     - 1.1.c 差分一覧を `docs/plans/rust-migration/2-1-runtime-integration.md` と共有し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md#core-runtime-capability` へ KPI（例: `capability.handle_coverage`）と Run ID を追記する。
+
+#### 1.1 実施結果（Run ID: 20291221-core-runtime-capability）
+- `docs/plans/bootstrap-roadmap/assets/capability-handle-inventory.csv` で GC/IO/Async/Audit など 14 種類の Capability を列挙し、Rust 側の入口／テスト／実装状態（未実装・Stage 検証のみ等）を整理した。唯一 Stage 検証が存在するのは `compiler/rust/runtime/src/io/adapters.rs#L27-L233` の Fs/Watcher アダプタであり、その他のハンドルが未実装であることを表で可視化した。
+- `docs/notes/runtime-capability-stage-log.md` に `## Capability Handle Inventory (20291221)` を追加し、棚卸し表と `fs_adapter_ensures_capabilities` などの PoC テストをリンクした。Stage ログから直接 CSV を参照できる導線を確保している。
+- `docs/plans/rust-migration/2-1-runtime-integration.md` の Capability Registry 要件節へ本 CSV を参照する脚注を追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` には新 KPI `capability.handle_coverage` と Run ID を登録した。KPI 更新時は `python3 tooling/ci/collect-iterator-audit-metrics.py --section runtime --dry-run` のログを参照する運用とした。
 1.2. Stage/Effect 情報の保持形式と `CapabilityDescriptor` のフィールドを設計し、Diagnostics/Audit との連携要件を整理する。
     - 1.2.a `StageId`/`StageRequirement`/`CapabilityDescriptor` のフィールドを `docs/spec/1-3-effects-safety.md#capability-stage-contract` と本章 §1.2 から抽出し、`docs/plans/bootstrap-roadmap/assets/capability-stage-field-gap.csv` に「仕様の必須列」「Rust 実装の現状」「対応する診断キー」を表形式で記録する。
     - 1.2.b `docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` の `StageAuditPayload` 項とクロスリンクし、`effects.contract.stage_mismatch`／`bridge.stage.*` など診断キーへの転写経路をシーケンス図 (`assets/capability-stage-flow.mmd`) としてまとめる。
     - 1.2.c `collect-iterator-audit-metrics.py --section runtime --dry-run` を実行して現状の `runtime.capability_stage_presence` を計測し、KPI 化するための CSV (`assets/metrics/runtime-capability-stage.csv`) を作成する。
+
+#### 1.2 実施結果（Run ID: 20291221-stage-field-gap）
+- `docs/plans/bootstrap-roadmap/assets/capability-stage-field-gap.csv` で Stage/Effect 関連フィールド 10 項目のギャップを明文化した。`StageRequirement::satisfies` が欠落している点や `CapabilityDescriptor.provider/effect_scope/manifest_path` が未実装であることを `diagnostic_or_audit_key` 列とセットで確認できる。
+- Stage 情報のデータフローを `docs/plans/bootstrap-roadmap/assets/capability-stage-flow.mmd` に描画し、RunConfig/Manifest/CapabilityRegistry/StageAuditPayload/Audit/KPI の関係を `collect-iterator-audit-metrics` へ接続した。`docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` から当該図を参照できるよう相互リンクを設定。
+- `python3 tooling/ci/collect-iterator-audit-metrics.py --section runtime --dry-run` の出力を `docs/plans/bootstrap-roadmap/assets/metrics/runtime-capability-stage.csv` に保存し、`runtime.capability_validation` の `pass_rate=1.0` と対象候補（default/windows-msvc/macOS arm64）を Run ID 付きで記録した。
 1.3. 登録 API (`register`, `describe`) の初期化順序と競合処理を決定する。
     - 1.3.a `compiler/rust/runtime/src/lib.rs` と `reml_runtime::bootstrap`（存在しない場合は新設）を読み取り、Capability 登録シーケンスを `docs/plans/bootstrap-roadmap/assets/core-runtime-capability-init.md` に文章＋Mermaid 図でまとめる。
     - 1.3.b 競合時に返す `CapabilityError` バリアント（`AlreadyRegistered`, `MissingDependency`, `StageViolation` 等）と `Diagnostic` 出力メッセージのマッピング表を `assets/capability-error-matrix.csv` として作成する。
     - 1.3.c RunConfig → ConfigManifest → CapabilityRegistry 初期化の依存関係を `docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md#3.3` と同期し、相互参照リンクを追加する。
+
+#### 1.3 実施結果（Run ID: 20291221-capability-init-seq）
+- `docs/plans/bootstrap-roadmap/assets/core-runtime-capability-init.md` を作成し、RunConfig での `--effect-stage` 取り込みから Manifest 契約生成・`CapabilityRegistry::verify_capability_stage` 呼び出し・`StageAuditPayload` 形成・監査 KPI 更新に至るシーケンスを文章化した。図 (`capability-stage-flow.mmd`) と併せて Config 計画 (§3.3) へリンク済み。
+- `docs/plans/bootstrap-roadmap/assets/capability-error-matrix.csv` を追加し、`StageViolation`/`EffectScopeMismatch`/`AlreadyRegistered`/`ContractViolation` などのエラー種別と診断コード・監査イベント・実装状況を整理した。現状は StageMismatch 以外が未実装である点を計画書上で共有できる。
+- `docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md` へ本 Run ID と assets への参照を追記し、Manifest→Runtime の依存が Config/Runtime 両計画から同じ資料に辿れるようにした。
 
 ### 2. Registry とハンドル実装（56-57週目）
 **担当領域**: 基盤 API

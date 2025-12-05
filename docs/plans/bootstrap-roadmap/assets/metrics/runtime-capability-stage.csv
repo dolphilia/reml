@@ -1,0 +1,2 @@
+run_id,date,metric,total,passed,failed,pass_rate,runtime_candidates,sources,notes
+20291221-runtime-stage,2029-12-21,runtime.capability_validation,1,1,0,1.0,"default:stable | x86_64-pc-windows-msvc:beta | arm64-apple-darwin:beta","reports/runtime-capabilities-validation.json","python3 tooling/ci/collect-iterator-audit-metrics.py --section runtime --dry-run"
