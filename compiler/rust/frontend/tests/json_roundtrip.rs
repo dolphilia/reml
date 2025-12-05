@@ -49,8 +49,7 @@ fn sample_envelope() -> CliDiagnosticEnvelope {
 #[test]
 fn cli_envelope_roundtrips_via_serde_json() {
     let envelope = sample_envelope();
-    let json_line =
-        serde_json::to_string(&envelope).expect("cli envelope must serialize to json");
+    let json_line = serde_json::to_string(&envelope).expect("cli envelope must serialize to json");
     let decoded: CliDiagnosticEnvelope =
         serde_json::from_str(&json_line).expect("cli envelope json must deserialize");
     assert_eq!(decoded, envelope);
@@ -59,8 +58,14 @@ fn cli_envelope_roundtrips_via_serde_json() {
 #[test]
 fn render_human_output_matches_fixture_shape() {
     let envelope = sample_envelope();
-    let rendered =
-        render_human_output_to_string(&envelope).expect("human output must render without io error");
-    assert!(rendered.contains("diagnostics=1"), "human output must contain summary line");
-    assert!(rendered.contains("parser.syntax.expected_tokens"), "human output must show diagnostic code");
+    let rendered = render_human_output_to_string(&envelope)
+        .expect("human output must render without io error");
+    assert!(
+        rendered.contains("diagnostics=1"),
+        "human output must contain summary line"
+    );
+    assert!(
+        rendered.contains("parser.syntax.expected_tokens"),
+        "human output must show diagnostic code"
+    );
 }

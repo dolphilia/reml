@@ -9,8 +9,8 @@ mod driver;
 pub mod env;
 mod metrics;
 mod scheme;
-pub mod types;
 pub mod telemetry;
+pub mod types;
 
 pub use capability::RuntimeCapability;
 pub use constraint::iterator::{

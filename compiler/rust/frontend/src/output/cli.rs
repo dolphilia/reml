@@ -203,9 +203,7 @@ fn render_human_output<W: Write>(
 }
 
 /// テストやスナップショット取得向けに、Human 出力を文字列として取得する。
-pub fn render_human_output_to_string(
-    envelope: &CliDiagnosticEnvelope,
-) -> io::Result<String> {
+pub fn render_human_output_to_string(envelope: &CliDiagnosticEnvelope) -> io::Result<String> {
     let mut buffer = Vec::new();
     render_human_output(&mut buffer, envelope)?;
     Ok(String::from_utf8(buffer).expect("human output must be utf8"))

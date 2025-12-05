@@ -33,10 +33,8 @@ impl TraitResolutionTelemetry {
     ) -> Self {
         let generated_at = formatter::current_timestamp();
         let graph = ConstraintGraphSummary::from_constraints(&report.constraints, export_dot);
-        let resolutions = TraitResolutionRecord::from_violations(
-            &report.violations,
-            graph.export_dot.clone(),
-        );
+        let resolutions =
+            TraitResolutionRecord::from_violations(&report.violations, graph.export_dot.clone());
         Self {
             schema_version: TELEMETRY_SCHEMA_VERSION,
             generated_at,
@@ -165,12 +163,7 @@ impl ConstraintGraphBuilder {
         )
     }
 
-    fn ensure_node(
-        &mut self,
-        key: String,
-        label: String,
-        kind: ConstraintGraphNodeKind,
-    ) -> usize {
+    fn ensure_node(&mut self, key: String, label: String, kind: ConstraintGraphNodeKind) -> usize {
         if let Some(id) = self.index.get(&key) {
             return *id;
         }
@@ -200,20 +193,14 @@ pub struct TraitResolutionRecord {
 }
 
 impl TraitResolutionRecord {
-    fn from_violations(
-        violations: &[TypecheckViolation],
-        export_dot: Option<String>,
-    ) -> Vec<Self> {
+    fn from_violations(violations: &[TypecheckViolation], export_dot: Option<String>) -> Vec<Self> {
         violations
             .iter()
             .filter_map(|violation| Self::from_violation(violation, export_dot.clone()))
             .collect()
     }
 
-    fn from_violation(
-        violation: &TypecheckViolation,
-        export_dot: Option<String>,
-    ) -> Option<Self> {
+    fn from_violation(violation: &TypecheckViolation, export_dot: Option<String>) -> Option<Self> {
         match violation.kind {
             TypecheckViolationKind::StageMismatch => {
                 Self::from_stage_mismatch(violation, export_dot)

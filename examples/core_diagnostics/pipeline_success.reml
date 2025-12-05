@@ -5,8 +5,6 @@
 use Core;
 
 fn pipeline_success() -> Int =
-  let lhs = 21;
-  let rhs = 21;
-  lhs + rhs
+  21 + 21
 
 fn main() -> Int = pipeline_success()

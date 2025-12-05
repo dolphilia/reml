@@ -218,14 +218,8 @@ impl<W: Write> AuditEmitter<W> {
         }
         let timestamp = formatter::current_timestamp();
         let mut metadata = descriptor.base_metadata(&timestamp);
-        metadata.insert(
-            "config.source".to_string(),
-            json!(resolved.source.as_str()),
-        );
-        metadata.insert(
-            "config.format".to_string(),
-            json!(resolved.format.as_str()),
-        );
+        metadata.insert("config.source".to_string(), json!(resolved.source.as_str()));
+        metadata.insert("config.format".to_string(), json!(resolved.format.as_str()));
         let profile = resolved
             .profile_label
             .clone()

@@ -1,36 +1,307 @@
 {
   "command": "Check",
   "phase": "Reporting",
-  "run_id": "e42f7a4d-c933-4a97-ab6d-2820d1d676d7",
+  "run_id": "0230d059-0f1b-4213-9326-a3b041e35e8c",
   "diagnostics": [],
   "summary": {
     "inputs": [
-      "examples/core_diagnostics/pipeline_success.reml"
+      "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_success.reml"
     ],
-    "started_at": "2025-07-01T10:31:55Z",
-    "finished_at": "2025-07-01T10:31:55Z",
+    "started_at": "-4657-10-29T23:53:10Z",
+    "finished_at": "-4657-10-29T23:53:10Z",
     "artifact": null,
     "stats": {
-      "cli_command": "target/debug/reml_frontend --output json --emit-audit-log examples/core_diagnostics/pipeline_success.reml",
+      "cli_command": "target/debug/reml_frontend --output json --emit-audit-log /Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_success.reml",
       "diagnostic_count": 0,
+      "filtering": {
+        "audit_policy_anonymized": 0,
+        "audit_policy_dropped": 0,
+        "suppressed": 0
+      },
       "parse_result": {
+        "farthest_error_offset": null,
+        "packrat_cache": [
+          {
+            "entry": {
+              "approx_bytes": 118,
+              "expectations": [],
+              "sample_tokens": [
+                {
+                  "kind": "Success",
+                  "lexeme": "function"
+                }
+              ],
+              "summary": {
+                "alternatives": [],
+                "humanized": "success"
+              }
+            },
+            "parser_id": 2,
+            "range_end": 341,
+            "range_start": 301
+          },
+          {
+            "entry": {
+              "approx_bytes": 118,
+              "expectations": [],
+              "sample_tokens": [
+                {
+                  "kind": "Success",
+                  "lexeme": "function"
+                }
+              ],
+              "summary": {
+                "alternatives": [],
+                "humanized": "success"
+              }
+            },
+            "parser_id": 2,
+            "range_end": 380,
+            "range_start": 343
+          }
+        ],
+        "packrat_snapshot": {
+          "approx_bytes": 236,
+          "entries": 2
+        },
+        "packrat_stats": {
+          "approx_bytes": 236,
+          "budget_drops": 0,
+          "entries": 2,
+          "evictions": 0,
+          "hits": 4,
+          "pruned": 0,
+          "queries": 6
+        },
         "recovered": false,
-        "farthest_error_offset": null
+        "span_trace": [],
+        "trace_events": [
+          {
+            "event_kind": "use_decl_accepted",
+            "label": "Core",
+            "span": {
+              "end": 298,
+              "start": 290
+            },
+            "trace_id": "syntax:use"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "binary",
+            "span": {
+              "end": 341,
+              "start": 334
+            },
+            "trace_id": "syntax:expr::binary"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "literal",
+            "span": {
+              "end": 336,
+              "start": 334
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "literal",
+            "span": {
+              "end": 336,
+              "start": 334
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "literal",
+            "span": {
+              "end": 341,
+              "start": 339
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "literal",
+            "span": {
+              "end": 341,
+              "start": 339
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "binary",
+            "span": {
+              "end": 341,
+              "start": 334
+            },
+            "trace_id": "syntax:expr::binary"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "call",
+            "span": {
+              "end": 380,
+              "start": 362
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 378,
+              "start": 362
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 378,
+              "start": 362
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "call",
+            "span": {
+              "end": 380,
+              "start": 362
+            },
+            "trace_id": "syntax:expr::call"
+          }
+        ]
       },
       "run_config": {
-        "packrat": true,
-        "trace": false,
-        "effects": {
-          "type_row_mode": "ty-integrated"
+        "extensions": {
+          "config": {
+            "ack_experimental_diagnostics": false,
+            "compatibility": {
+              "duplicate_key": "error",
+              "feature_guard": [],
+              "number": "strict",
+              "trailing_comma": "arrays_and_objects",
+              "trivia": {
+                "block": [],
+                "doc_comment": null,
+                "hash_inline": true,
+                "line": [
+                  "#",
+                  "//"
+                ],
+                "shebang": false
+              },
+              "unquoted_key": "allow_alpha_numeric"
+            },
+            "compatibility_profile": "toml-relaxed",
+            "compatibility_source": "default",
+            "experimental_effects": false,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "source": "cli",
+            "trace": false
+          },
+          "effects": {
+            "type_row_mode": "ty-integrated"
+          },
+          "lex": {
+            "identifier_profile": "unicode",
+            "profile": "strict_json"
+          },
+          "recover": {
+            "notes": false,
+            "sync_tokens": []
+          },
+          "stream": {
+            "checkpoint": "unspecified",
+            "chunk_size": 0,
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "enabled": false,
+            "flow": {
+              "await_count": 0,
+              "backpressure": {
+                "max_lag_bytes": 0
+              },
+              "backpressure_count": 0,
+              "checkpoints_closed": 1,
+              "policy": "auto",
+              "resume_count": 0
+            },
+            "flow_max_lag": 0,
+            "flow_policy": "auto",
+            "packrat_enabled": true,
+            "resume_hint": "unspecified"
+          },
+          "target": {
+            "capabilities": [],
+            "detected": {
+              "arch": "aarch64",
+              "family": "unix",
+              "os": "macos",
+              "runtime_revision": null,
+              "stdlib_version": null
+            },
+            "diagnostics": true,
+            "extra": {},
+            "features": [],
+            "profile_id": "macos-aarch64",
+            "requested": {
+              "arch": "aarch64",
+              "capabilities": [],
+              "diagnostics": true,
+              "family": "unix",
+              "features": [],
+              "os": "macos"
+            },
+            "runtime_revision": null,
+            "stdlib_version": null,
+            "triple": null
+          }
         },
-        "lex": {
-          "identifier_profile": "unicode",
-          "profile": "strict_json"
+        "runtime_capabilities": [],
+        "switches": {
+          "ack_experimental_diagnostics": false,
+          "experimental_effects": false,
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "trace": false
         }
       },
       "stream_meta": {
+        "bridge": null,
+        "flow": {
+          "await_count": 0,
+          "backpressure_count": 0,
+          "checkpoints_closed": 1,
+          "resume_count": 0
+        },
+        "last_reason": null,
+        "packrat": {
+          "approx_bytes": 236,
+          "budget_drops": 0,
+          "entries": 2,
+          "evictions": 0,
+          "hits": 4,
+          "pruned": 0,
+          "queries": 6
+        },
         "packrat_enabled": true,
-        "bridge": null
+        "span_trace": {
+          "dropped": 0,
+          "retained": 0
+        }
       }
     }
   },

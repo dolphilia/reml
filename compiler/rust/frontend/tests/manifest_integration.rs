@@ -1,9 +1,7 @@
 #![cfg(feature = "schema")]
 
 use reml_runtime::config::{
-    apply_manifest_overrides,
-    compat::TrailingCommaMode,
-    ensure_schema_version_compatibility,
+    apply_manifest_overrides, compat::TrailingCommaMode, ensure_schema_version_compatibility,
     load_manifest, validate_manifest, ApplyManifestOverridesArgs, ConfigFormat,
 };
 use reml_runtime::data::schema::Schema;

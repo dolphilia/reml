@@ -15,9 +15,7 @@ fn manifest_dump_matches_golden() {
     let manifest = Manifest::parse_toml(&raw)
         .expect("manifest parse")
         .with_manifest_path(&manifest_path);
-    let actual = serde_json::to_string_pretty(&manifest)
-        .expect("serialize manifest")
-        + "\n";
+    let actual = serde_json::to_string_pretty(&manifest).expect("serialize manifest") + "\n";
     let expected = fs::read_to_string(&expected_path).expect("golden json");
     assert_eq!(
         actual, expected,

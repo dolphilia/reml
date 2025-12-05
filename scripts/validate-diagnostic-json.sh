@@ -595,6 +595,13 @@ def _is_nonempty_string(value: object) -> bool:
     return isinstance(value, str) and value.strip() != ""
 
 
+def _is_valid_provider_value(value: object) -> bool:
+    if isinstance(value, dict):
+        kind = value.get("kind")
+        return isinstance(kind, str) and kind.strip() != ""
+    return _is_nonempty_string(value)
+
+
 def _ensure_metadata_strings(container: Optional[dict], prefix: str, keys: Sequence[str]) -> List[str]:
     if not isinstance(container, dict):
         return [f"{prefix} (not object)"]
@@ -676,6 +683,46 @@ def validate_core_parser_fields(diag: dict) -> List[str]:
 
     return errors
 
+def validate_capability_metadata(diag: dict) -> List[str]:
+    errors: List[str] = []
+    extensions = diag.get("extensions")
+    if not isinstance(extensions, dict):
+        errors.append("extensions (not object)")
+        return errors
+    if not _is_nonempty_string(extensions.get("capability.id")):
+        errors.append("extensions.capability.id")
+    if not _is_nonempty_string(extensions.get("capability.stage")):
+        errors.append("extensions.capability.stage")
+    provider = extensions.get("capability.provider")
+    if not _is_valid_provider_value(provider):
+        errors.append("extensions.capability.provider")
+
+    audit_metadata = diag.get("audit_metadata")
+    if not isinstance(audit_metadata, dict):
+        errors.append("audit_metadata (not object)")
+    else:
+        if not _is_nonempty_string(audit_metadata.get("capability.id")):
+            errors.append("audit_metadata.capability.id")
+        if not _is_nonempty_string(audit_metadata.get("capability.stage")):
+            errors.append("audit_metadata.capability.stage")
+        if not _is_valid_provider_value(audit_metadata.get("capability.provider")):
+            errors.append("audit_metadata.capability.provider")
+
+    audit_block = diag.get("audit")
+    metadata = None
+    if isinstance(audit_block, dict):
+        metadata = audit_block.get("metadata")
+    if not isinstance(metadata, dict):
+        errors.append("audit.metadata (not object)")
+    else:
+        if not _is_nonempty_string(metadata.get("capability.id")):
+            errors.append("audit.metadata.capability.id")
+        if not _is_nonempty_string(metadata.get("capability.stage")):
+            errors.append("audit.metadata.capability.stage")
+        if not _is_valid_provider_value(metadata.get("capability.provider")):
+            errors.append("audit.metadata.capability.provider")
+    return errors
+
 def validate_collections_diff_extensions(diag: dict) -> List[str]:
     errors: List[str] = []
     audit_block = diag.get("audit")
@@ -740,6 +787,9 @@ for path_str in files:
                         continue
                     if effect_tag_set and not diag_has_effect_tag(diag, effect_tag_set):
                         continue
+                    has_runtime_tag = False
+                    if effect_tag_set and "runtime" in effect_tag_set:
+                        has_runtime_tag = diag_has_effect_tag(diag, {"runtime"})
                     file_contains_relevant_diag = True
                     if is_parser_diagnostic(diag):
                         expected = diag.get("expected")
@@ -836,6 +886,16 @@ for path_str in files:
                                 f"{path}: diagnostics[{diag_index}].audit.metadata",
                                 file=sys.stderr,
                             )
+                            error = True
+                    if has_runtime_tag:
+                        capability_errors = validate_capability_metadata(diag)
+                        if capability_errors:
+                            for field in capability_errors:
+                                print(
+                                    "[validate-diagnostic-json] runtime capability metadata missing: "
+                                    f"{path}: diagnostics[{diag_index}].{field}",
+                                    file=sys.stderr,
+                                )
                             error = True
                     coll_ext_errors = validate_collections_diff_extensions(diag)
                     if coll_ext_errors:

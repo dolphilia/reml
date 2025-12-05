@@ -1,13 +1,21 @@
-// Core Diagnostics パイプラインの分岐経路を確認するサンプル。
-// 監査ログでは `pipeline.node` と入力ファイル名の対応を確認できる。
+// Core Diagnostics パイプラインの分岐経路と Stage mismatch 診断を確認するサンプル。
+// flag の値によって `Console` effect を実行し、`effects.contract.stage_mismatch` を発火させる。
 
 use Core;
 
-fn choose(flag: Bool) -> Int =
-  if flag then 1 else -1
+fn choose(flag: Bool) -> Int {
+  if flag then 1 else 2
+}
+
+fn trigger_console(value: Int) -> Unit =
+  perform Console value
 
 fn pipeline_branch(flag: Bool) -> Int =
-  let base = 10;
-  base + choose(flag)
+  do {
+    let base = 10;
+    let delta = choose(flag);
+    let _ = trigger_console(delta);
+    base + delta
+  }
 
 fn main() -> Int = pipeline_branch(true)

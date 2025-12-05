@@ -1,30 +1,71 @@
 use crate::streaming::RuntimeBridgeSignal;
 use crate::typeck::{RuntimeCapability, StageContext, StageTraceStep};
+use reml_runtime::{CapabilityDescriptor, CapabilityRegistry};
 use serde_json::{json, Map, Value};
+
+#[derive(Debug, Clone)]
+struct CapabilityMetadataEntry {
+    id: String,
+    stage: String,
+    provider: Option<Value>,
+}
+
+impl CapabilityMetadataEntry {
+    fn from_descriptor(descriptor: &CapabilityDescriptor) -> Self {
+        let provider = serde_json::to_value(descriptor.metadata().provider.clone()).ok();
+        Self {
+            id: descriptor.id.clone(),
+            stage: descriptor.stage().as_str().to_string(),
+            provider,
+        }
+    }
+
+    fn from_runtime_capability(capability: &RuntimeCapability) -> Self {
+        Self {
+            id: capability.id().to_string(),
+            stage: capability.stage().as_str().to_string(),
+            provider: None,
+        }
+    }
+
+    fn detail_value(&self) -> Value {
+        let mut entry = Map::new();
+        entry.insert("capability".to_string(), json!(self.id));
+        entry.insert("stage".to_string(), json!(self.stage));
+        if let Some(provider) = &self.provider {
+            entry.insert("provider".to_string(), provider.clone());
+        }
+        Value::Object(entry)
+    }
+
+    fn provider_value(&self) -> Option<Value> {
+        self.provider.clone()
+    }
+}
 
 /// 効果ステージと Capability のメタ情報を JSON に焼き込むための文脈。
 #[derive(Debug, Clone)]
 pub struct EffectAuditContext {
     required_stage: Option<String>,
     actual_stage: Option<String>,
-    runtime_capabilities: Vec<RuntimeCapability>,
+    capability_metadata: Vec<CapabilityMetadataEntry>,
     stage_trace: Vec<StageTraceStep>,
     bridge_signal: Option<RuntimeBridgeSignal>,
 }
 
 impl EffectAuditContext {
     /// 生のステージ文字列で初期化する。
-    pub fn new(
+    fn new(
         required_stage: Option<String>,
         actual_stage: Option<String>,
-        runtime_capabilities: Vec<RuntimeCapability>,
+        capability_metadata: Vec<CapabilityMetadataEntry>,
         stage_trace: Vec<StageTraceStep>,
         bridge_signal: Option<RuntimeBridgeSignal>,
     ) -> Self {
         Self {
             required_stage,
             actual_stage,
-            runtime_capabilities,
+            capability_metadata,
             stage_trace,
             bridge_signal,
         }
@@ -39,7 +80,7 @@ impl EffectAuditContext {
         Self {
             required_stage: Some(context.capability.label()),
             actual_stage: Some(context.runtime.label()),
-            runtime_capabilities: runtime_capabilities.to_vec(),
+            capability_metadata: collect_capability_metadata(runtime_capabilities),
             stage_trace: context.stage_trace.clone(),
             bridge_signal,
         }
@@ -50,29 +91,26 @@ impl EffectAuditContext {
     }
 
     pub fn primary_capability(&self) -> Option<&str> {
-        self.runtime_capabilities
-            .first()
-            .map(|cap| cap.id().as_str())
+        self.capability_metadata.first().map(|cap| cap.id.as_str())
+    }
+
+    fn primary_metadata(&self) -> Option<&CapabilityMetadataEntry> {
+        self.capability_metadata.first()
     }
 
     fn capability_ids_value(&self) -> Value {
         Value::Array(
-            self.runtime_capabilities
+            self.capability_metadata
                 .iter()
-                .map(|cap| Value::String(cap.id().to_string()))
+                .map(|cap| Value::String(cap.id.clone()))
                 .collect(),
         )
     }
 
     fn capability_details(&self) -> Vec<Value> {
-        self.runtime_capabilities
+        self.capability_metadata
             .iter()
-            .map(|cap| {
-                let mut entry = Map::new();
-                entry.insert("capability".to_string(), json!(cap.id()));
-                entry.insert("stage".to_string(), json!(cap.stage().as_str()));
-                Value::Object(entry)
-            })
+            .map(|entry| entry.detail_value())
             .collect()
     }
 
@@ -95,11 +133,11 @@ impl EffectAuditContext {
                 "stage": actual,
             }));
         }
-        for cap in &self.runtime_capabilities {
+        for cap in &self.capability_metadata {
             trace.push(json!({
                 "source": "runtime_capability",
-                "capability": cap.id(),
-                "stage": cap.stage().as_str(),
+                "capability": cap.id,
+                "stage": cap.stage,
             }));
         }
         trace
@@ -120,6 +158,13 @@ impl EffectAuditContext {
     fn capability_details_value(&self) -> Value {
         Value::Array(self.capability_details())
     }
+
+    fn provider_values(&self) -> Vec<Value> {
+        self.capability_metadata
+            .iter()
+            .map(|entry| entry.provider_value().unwrap_or(Value::Null))
+            .collect()
+    }
 }
 
 /// Stage/Capability メタデータを診断・監査経路へ展開するための共通コンテナ。
@@ -127,7 +172,7 @@ impl EffectAuditContext {
 pub struct StageAuditPayload {
     required_stage: Option<String>,
     actual_stage: Option<String>,
-    runtime_capabilities: Vec<RuntimeCapability>,
+    capability_metadata: Vec<CapabilityMetadataEntry>,
     stage_trace: Vec<StageTraceStep>,
     bridge_signal: Option<RuntimeBridgeSignal>,
 }
@@ -145,7 +190,7 @@ impl StageAuditPayload {
         Self {
             required_stage: Some(context.capability.label()),
             actual_stage: Some(context.runtime.label()),
-            runtime_capabilities: capabilities.to_vec(),
+            capability_metadata: collect_capability_metadata(capabilities),
             stage_trace: trace,
             bridge_signal,
         }
@@ -155,7 +200,7 @@ impl StageAuditPayload {
         EffectAuditContext::new(
             self.required_stage.clone(),
             self.actual_stage.clone(),
-            self.runtime_capabilities.clone(),
+            self.capability_metadata.clone(),
             self.stage_trace.clone(),
             self.bridge_signal.clone(),
         )
@@ -170,9 +215,7 @@ impl StageAuditPayload {
     }
 
     pub fn primary_capability(&self) -> Option<&str> {
-        self.runtime_capabilities
-            .first()
-            .map(|cap| cap.id().as_str())
+        self.capability_metadata.first().map(|cap| cap.id.as_str())
     }
 
     pub fn bridge_signal(&self) -> Option<&RuntimeBridgeSignal> {
@@ -186,6 +229,17 @@ impl StageAuditPayload {
     pub fn extend_stage_trace(&mut self, extra: &[StageTraceStep]) {
         self.stage_trace.extend(extra.iter().cloned());
     }
+}
+
+fn collect_capability_metadata(capabilities: &[RuntimeCapability]) -> Vec<CapabilityMetadataEntry> {
+    let registry = CapabilityRegistry::registry();
+    capabilities
+        .iter()
+        .map(|cap| match registry.describe(cap.id().as_str()) {
+            Ok(descriptor) => CapabilityMetadataEntry::from_descriptor(&descriptor),
+            Err(_) => CapabilityMetadataEntry::from_runtime_capability(cap),
+        })
+        .collect()
 }
 
 pub fn apply_extensions(context: &EffectAuditContext, extensions: &mut Map<String, Value>) {
@@ -298,6 +352,7 @@ fn apply_flattened_extension_keys(
 ) {
     let ids_value = context.capability_ids();
     let capability_details = context.capability_details_value();
+    let provider_values = context.provider_values();
     extensions.insert("effect.capabilities".to_string(), ids_value.clone());
     extensions.insert(
         "effect.required_capabilities".to_string(),
@@ -329,6 +384,12 @@ fn apply_flattened_extension_keys(
     if let Some(primary) = context.primary_capability() {
         capability_ext.insert("primary".to_string(), json!(primary));
     }
+    if !provider_values.is_empty() {
+        capability_ext.insert(
+            "providers".to_string(),
+            Value::Array(provider_values.clone()),
+        );
+    }
     capability_ext.insert(
         "stage".to_string(),
         json!({
@@ -339,6 +400,16 @@ fn apply_flattened_extension_keys(
     capability_ext.insert("detail".to_string(), capability_details.clone());
     capability_ext.insert("required_capabilities".to_string(), ids_value);
     extensions.insert("capability".to_string(), Value::Object(capability_ext));
+    if let Some(primary_entry) = context.primary_metadata() {
+        extensions.insert("capability.id".to_string(), json!(primary_entry.id.clone()));
+        extensions.insert(
+            "capability.stage".to_string(),
+            json!(primary_entry.stage.clone()),
+        );
+        if let Some(provider) = primary_entry.provider_value() {
+            extensions.insert("capability.provider".to_string(), provider);
+        }
+    }
 }
 
 fn apply_contract_extensions(context: &EffectAuditContext, extensions: &mut Map<String, Value>) {
@@ -518,6 +589,24 @@ fn apply_effect_audit_metadata(context: &EffectAuditContext, metadata: &mut Map<
         "effect.actual_capabilities".to_string(),
         capability_details.clone(),
     );
+    metadata.insert(
+        "capability.providers".to_string(),
+        Value::Array(context.provider_values()),
+    );
+    if let Some(primary_entry) = context.primary_metadata() {
+        metadata.insert("capability.id".to_string(), json!(primary_entry.id.clone()));
+        metadata.insert(
+            "capability.stage".to_string(),
+            json!(primary_entry.stage.clone()),
+        );
+        metadata.insert(
+            "capability.stage.actual".to_string(),
+            json!(primary_entry.stage.clone()),
+        );
+        if let Some(provider) = primary_entry.provider_value() {
+            metadata.insert("capability.provider".to_string(), provider);
+        }
+    }
     metadata.insert(
         "effect.stage.actual_capabilities".to_string(),
         capability_details.clone(),

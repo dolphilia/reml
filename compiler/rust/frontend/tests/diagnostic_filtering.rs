@@ -20,11 +20,7 @@ fn severity_is_downgraded_for_unacknowledged_experimental_stage() {
         let mut extensions = Map::new();
         extensions.insert("effects".to_string(), Value::Object(effects));
         apply_experimental_stage_policy(&mut diag, &extensions, ack);
-        assert_eq!(
-            diag.severity,
-            Some(expected),
-            "stage={label}, ack={ack}"
-        );
+        assert_eq!(diag.severity, Some(expected), "stage={label}, ack={ack}");
     }
 }
 

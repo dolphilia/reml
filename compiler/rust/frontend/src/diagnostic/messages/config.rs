@@ -193,10 +193,7 @@ fn apply_config_metadata(diag: &mut FrontendDiagnostic, metadata: &ConfigDiagnos
 fn take_config_extension(diag: &mut FrontendDiagnostic) -> Map<String, Value> {
     match diag.extensions.remove("config") {
         Some(Value::Object(map)) => map,
-        Some(other) => other
-            .as_object()
-            .cloned()
-            .unwrap_or_else(Map::new),
+        Some(other) => other.as_object().cloned().unwrap_or_else(Map::new),
         None => Map::new(),
     }
 }

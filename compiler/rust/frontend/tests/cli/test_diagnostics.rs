@@ -50,15 +50,14 @@ fn sample_envelope() -> CliDiagnosticEnvelope {
 #[test]
 fn cli_json_output_snapshot() {
     let envelope = sample_envelope();
-    let json_line =
-        serde_json::to_string(&envelope).expect("cli envelope must serialize to json");
+    let json_line = serde_json::to_string(&envelope).expect("cli envelope must serialize to json");
     assert_snapshot!("cli_json_output", json_line);
 }
 
 #[test]
 fn cli_human_output_snapshot() {
     let envelope = sample_envelope();
-    let human =
-        render_human_output_to_string(&envelope).expect("human output must render without io error");
+    let human = render_human_output_to_string(&envelope)
+        .expect("human output must render without io error");
     assert_snapshot!("cli_human_output", human);
 }

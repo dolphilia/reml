@@ -172,20 +172,14 @@ fn config_compat_audit_event() -> String {
     let event_line = payload.lines().next().unwrap_or_default();
     let mut event: Value = serde_json::from_str(event_line).expect("audit json");
     if let Some(obj) = event.as_object_mut() {
-        obj.insert(
-            "timestamp".to_string(),
-            json!("2025-01-01T00:00:00Z"),
-        );
+        obj.insert("timestamp".to_string(), json!("2025-01-01T00:00:00Z"));
         if let Some(envelope) = obj.get_mut("envelope").and_then(Value::as_object_mut) {
             envelope.insert(
                 "audit_id".to_string(),
                 json!("00000000-0000-0000-0000-000000000000"),
             );
             if let Some(metadata) = envelope.get_mut("metadata").and_then(Value::as_object_mut) {
-                metadata.insert(
-                    "timestamp".to_string(),
-                    json!("2025-01-01T00:00:00Z"),
-                );
+                metadata.insert("timestamp".to_string(), json!("2025-01-01T00:00:00Z"));
             }
         }
     }

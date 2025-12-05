@@ -1,11 +1,11 @@
-use reml_runtime::config::{
-    ensure_schema_version_compatibility, load_manifest, validate_manifest, Manifest,
-};
 use reml_runtime::collections::{
     audit_bridge::{AuditBridgeError, ChangeSet},
     persistent::btree::PersistentMap,
 };
 use reml_runtime::config::SchemaDiff as ConfigChangeSummary;
+use reml_runtime::config::{
+    ensure_schema_version_compatibility, load_manifest, validate_manifest, Manifest,
+};
 use reml_runtime::config::{ChangeKind, ConfigChange};
 use reml_runtime::data::schema::Schema;
 use reml_runtime::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic};
@@ -14,8 +14,8 @@ use serde_json::{self, Map, Value};
 use std::env;
 use std::fmt;
 use std::fs;
-use std::{collections::BTreeMap, process};
 use std::path::{Path, PathBuf};
+use std::{collections::BTreeMap, process};
 
 fn main() {
     match try_main() {
@@ -245,7 +245,9 @@ impl ConfigLintOptions {
                 }
                 "--format" => {
                     let value = iter.next().ok_or_else(|| {
-                        CliError::Usage("--format には human もしくは json を指定してください".to_string())
+                        CliError::Usage(
+                            "--format には human もしくは json を指定してください".to_string(),
+                        )
                     })?;
                     opts.output_format = ReportFormat::parse(&value)?;
                 }
@@ -280,7 +282,9 @@ impl ConfigDiffOptions {
             match arg.as_str() {
                 "--format" => {
                     let value = iter.next().ok_or_else(|| {
-                        CliError::Usage("--format には human もしくは json を指定してください".to_string())
+                        CliError::Usage(
+                            "--format には human もしくは json を指定してください".to_string(),
+                        )
                     })?;
                     opts.output_format = ReportFormat::parse(&value)?;
                 }
@@ -325,7 +329,10 @@ impl ConfigLintReport {
         Self {
             command: "config.lint",
             manifest: opts.manifest_path.display().to_string(),
-            schema: opts.schema_path.as_ref().map(|path| path.display().to_string()),
+            schema: opts
+                .schema_path
+                .as_ref()
+                .map(|path| path.display().to_string()),
             diagnostics,
             stats: LintStats {
                 validated,
@@ -415,8 +422,7 @@ struct ConfigDocument {
 impl ConfigDocument {
     fn load(path: &Path) -> Result<Self, CliError> {
         let body = fs::read_to_string(path)?;
-        let value: Value =
-            serde_json::from_str(&body).map_err(|err| CliError::Json(err))?;
+        let value: Value = serde_json::from_str(&body).map_err(|err| CliError::Json(err))?;
         Ok(Self::from_value(path.to_path_buf(), value))
     }
 
@@ -525,7 +531,11 @@ fn flatten_config_value(value: &Value, path: &str, out: &mut BTreeMap<String, Va
             }
         }
         _ => {
-            let key = if path.is_empty() { "$".to_string() } else { path.to_string() };
+            let key = if path.is_empty() {
+                "$".to_string()
+            } else {
+                path.to_string()
+            };
             out.insert(key, value.clone());
         }
     }
@@ -539,10 +549,7 @@ fn print_lint_report(report: &ConfigLintReport, format: ReportFormat) -> Result<
         }
         ReportFormat::Human => {
             if report.stats.validated {
-                println!(
-                    "[config.lint] {} OK",
-                    report.manifest
-                );
+                println!("[config.lint] {} OK", report.manifest);
             } else {
                 println!(
                     "[config.lint] {} で {} 件の問題が見つかりました",
@@ -550,10 +557,7 @@ fn print_lint_report(report: &ConfigLintReport, format: ReportFormat) -> Result<
                     report.diagnostics.len()
                 );
                 for diag in &report.diagnostics {
-                    println!(
-                        "  - [{}] {}: {}",
-                        diag.severity, diag.code, diag.message
-                    );
+                    println!("  - [{}] {}: {}", diag.severity, diag.code, diag.message);
                 }
             }
         }
@@ -703,8 +707,7 @@ mod tests {
                 }
             }),
         );
-        let report =
-            build_config_diff_report(&base, &target).expect("diff report should succeed");
+        let report = build_config_diff_report(&base, &target).expect("diff report should succeed");
         assert_eq!(report.summary.added, 1);
         assert_eq!(report.summary.removed, 1);
         assert_eq!(report.summary.updated, 3);

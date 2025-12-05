@@ -109,10 +109,9 @@ fn try_run_capability_command() -> Result<bool, Box<dyn std::error::Error>> {
                     "--human" => format = OutputFormat::Human,
                     "--json" => format = OutputFormat::Json,
                     other => {
-                        return Err(format!(
-                            "--capability describe の未知のオプション: {other}"
+                        return Err(
+                            format!("--capability describe の未知のオプション: {other}").into()
                         )
-                        .into())
                     }
                 }
             }
@@ -177,7 +176,11 @@ fn print_capability_descriptor_human(descriptor: &CapabilityDescriptor) {
     let security = &metadata.security;
     println!(
         "  security.audit_required: {}",
-        if security.audit_required { "true" } else { "false" }
+        if security.audit_required {
+            "true"
+        } else {
+            "false"
+        }
     );
     println!(
         "  security.isolation_level: {}",
@@ -239,7 +242,11 @@ fn format_capability_provider(provider: &CapabilityProvider) -> String {
 }
 
 fn format_capability_timestamp(timestamp: CapabilityTimestamp) -> String {
-    format!("{}.{:09}s (unix)", timestamp.seconds, timestamp.nanos.max(0))
+    format!(
+        "{}.{:09}s (unix)",
+        timestamp.seconds,
+        timestamp.nanos.max(0)
+    )
 }
 
 fn format_isolation_level(level: &CapabilityIsolationLevel) -> &'static str {
@@ -291,12 +298,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Err(err) = audit_emitter.pipeline_started(&descriptor) {
         eprintln!("[AUDIT] pipeline_started の書き出しに失敗しました: {err}");
     }
-    if let Err(err) =
-        audit_emitter.config_compat_changed(&descriptor, &resolved_cli_compat)
-    {
-        eprintln!(
-            "[AUDIT] config_compat_changed の書き出しに失敗しました: {err}"
-        );
+    if let Err(err) = audit_emitter.config_compat_changed(&descriptor, &resolved_cli_compat) {
+        eprintln!("[AUDIT] config_compat_changed の書き出しに失敗しました: {err}");
     }
 
     match run_frontend(&args) {
@@ -892,10 +895,7 @@ impl RunSettings {
         });
     }
 
-    fn apply_cli_config_profile(
-        &mut self,
-        label: &str,
-    ) -> Result<(), CompatibilityProfileError> {
+    fn apply_cli_config_profile(&mut self, label: &str) -> Result<(), CompatibilityProfileError> {
         let compatibility = compatibility_profile(label)?;
         self.config_compat_cli = Some(CompatibilityLayer::new(
             compatibility,
