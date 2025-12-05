@@ -29,8 +29,8 @@ use super::{
     },
 };
 use crate::{
-    collections::audit_bridge::ChangeSet,
     capability::registry::{CapabilityError, CapabilityRegistry},
+    collections::audit_bridge::ChangeSet,
     StageId, StageRequirement as RegistryStageRequirement,
 };
 use serde_json::{Map as JsonObject, Number, Value};

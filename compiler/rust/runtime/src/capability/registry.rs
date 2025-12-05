@@ -1,10 +1,14 @@
-use std::fmt;
+use std::{
+    fmt,
+    sync::{RwLock, RwLockReadGuard},
+};
 
-use once_cell::sync::OnceLock;
+use once_cell::sync::Lazy;
 
 use crate::stage::{StageId, StageRequirement};
 
-static REGISTRY: OnceLock<CapabilityRegistry> = OnceLock::new();
+static REGISTRY: Lazy<RwLock<Option<&'static CapabilityRegistry>>> =
+    Lazy::new(|| RwLock::new(None));
 
 /// Capability を検証するためのレジストリ。
 #[derive(Debug)]
@@ -15,7 +19,22 @@ pub struct CapabilityRegistry {
 impl CapabilityRegistry {
     /// シングルトンのレジストリを取得する。
     pub fn registry() -> &'static Self {
-        REGISTRY.get_or_init(Self::new)
+        if let Some(instance) = Self::try_get_cached(REGISTRY.read().unwrap()) {
+            return instance;
+        }
+        let mut guard = REGISTRY.write().unwrap();
+        if let Some(instance) = *guard {
+            return instance;
+        }
+        let leaked: &'static CapabilityRegistry = Box::leak(Box::new(Self::new()));
+        *guard = Some(leaked);
+        leaked
+    }
+
+    fn try_get_cached(
+        guard: RwLockReadGuard<'_, Option<&'static CapabilityRegistry>>,
+    ) -> Option<&'static Self> {
+        *guard
     }
 
     fn new() -> Self {
@@ -96,7 +115,13 @@ impl std::error::Error for CapabilityError {}
 
 #[cfg(test)]
 pub(crate) fn reset_for_tests() {
-    REGISTRY.take();
+    if let Some(instance) = REGISTRY.write().unwrap().take() {
+        unsafe {
+            drop(Box::from_raw(
+                instance as *const CapabilityRegistry as *mut CapabilityRegistry,
+            ));
+        }
+    }
 }
 
 #[cfg(test)]

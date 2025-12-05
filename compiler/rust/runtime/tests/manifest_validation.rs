@@ -1,4 +1,5 @@
 use insta::assert_yaml_snapshot;
+use reml_runtime::config::OptimizeLevel;
 use reml_runtime::config::{
     manifest::{
         BuildProfile, DslCategory, DslEntry, DslExportRef, DslExportSignature,
@@ -6,7 +7,6 @@ use reml_runtime::config::{
     },
     update_dsl_signature, ProjectStage, SemanticVersion,
 };
-use reml_runtime::config::OptimizeLevel;
 use reml_runtime::prelude::ensure::GuardDiagnostic;
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -89,13 +89,13 @@ fn manifest_rejects_unknown_build_optimize() {
 #[test]
 fn manifest_rejects_unknown_profile_optimize() {
     let mut manifest = base_manifest();
-    manifest
-        .build
-        .profiles
-        .insert("custom".into(), BuildProfile {
+    manifest.build.profiles.insert(
+        "custom".into(),
+        BuildProfile {
             optimize: Some(OptimizeLevel::Unknown("hyper".into())),
             ..BuildProfile::default()
-        });
+        },
+    );
     expect_manifest_error("manifest_unknown_profile_optimize", manifest);
 }
 
@@ -141,7 +141,9 @@ fn update_dsl_signature_validates_stage_bounds() {
         }),
         extra: serde_json::Map::new(),
     };
-    signature.extra.insert("stage".into(), Value::String("beta".into()));
+    signature
+        .extra
+        .insert("stage".into(), Value::String("beta".into()));
     let err = update_dsl_signature(manifest, "demo", signature).expect_err("invalid bounds");
     assert_yaml_snapshot!("manifest_stage_bounds_invalid", snapshot_diag(err));
 }

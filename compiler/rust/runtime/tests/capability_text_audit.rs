@@ -1,5 +1,7 @@
-use reml_runtime::registry::CapabilityRegistry;
-use reml_runtime::stage::{StageId, StageRequirement};
+use reml_runtime::{
+    stage::{StageId, StageRequirement},
+    CapabilityRegistry,
+};
 
 #[test]
 fn capability_text_audit_is_reported_stable() {

@@ -933,8 +933,11 @@ pub fn ensure_schema_version_compatibility(
         None => return Ok(()),
     };
     let manifest_path = manifest.manifest_path().map(|path| path.as_path());
-    let manifest_version =
-        parse_manifest_semver(&manifest.project.version, manifest_path, schema.name.as_str())?;
+    let manifest_version = parse_manifest_semver(
+        &manifest.project.version,
+        manifest_path,
+        schema.name.as_str(),
+    )?;
     let schema_parts = SemanticVersionParts::from_schema(schema_version);
     if manifest_version.major != schema_parts.major {
         return Err(schema_version_incompatible(
@@ -1319,10 +1322,7 @@ fn parse_manifest_semver(
             schema_name,
         ));
     }
-    let core = raw
-        .split(|ch| ch == '-' || ch == '+')
-        .next()
-        .unwrap_or(raw);
+    let core = raw.split(|ch| ch == '-' || ch == '+').next().unwrap_or(raw);
     let mut segments = core.split('.');
     let major = segments.next();
     let minor = segments.next();
@@ -1371,22 +1371,21 @@ fn manifest_version_parse_error(
         &["project", "version"],
     );
     if let Some(Value::Object(config)) = diagnostic.extensions.get_mut("config") {
-        config.insert("version_mismatch".into(), Value::String("parse_error".into()));
         config.insert(
-            "manifest_version".into(),
-            Value::String(raw.to_string()),
+            "version_mismatch".into(),
+            Value::String("parse_error".into()),
         );
-        config.insert(
-            "schema_name".into(),
-            Value::String(schema_name.to_string()),
-        );
+        config.insert("manifest_version".into(), Value::String(raw.to_string()));
+        config.insert("schema_name".into(), Value::String(schema_name.to_string()));
     }
-    diagnostic
-        .audit_metadata
-        .insert("config.version_reason".into(), Value::String("parse_error".into()));
-    diagnostic
-        .audit_metadata
-        .insert("config.schema_name".into(), Value::String(schema_name.to_string()));
+    diagnostic.audit_metadata.insert(
+        "config.version_reason".into(),
+        Value::String("parse_error".into()),
+    );
+    diagnostic.audit_metadata.insert(
+        "config.schema_name".into(),
+        Value::String(schema_name.to_string()),
+    );
     diagnostic
 }
 
@@ -1430,17 +1429,16 @@ fn schema_version_incompatible(
             "schema_version".into(),
             Value::String(schema_version_str.clone()),
         );
-        config.insert(
-            "schema_name".into(),
-            Value::String(schema_name.to_string()),
-        );
+        config.insert("schema_name".into(), Value::String(schema_name.to_string()));
         config.insert(
             "version_mismatch".into(),
-            Value::String(match reason {
-                SemanticVersionMismatch::Major => "major",
-                SemanticVersionMismatch::SchemaAhead => "schema_ahead",
-            }
-            .into()),
+            Value::String(
+                match reason {
+                    SemanticVersionMismatch::Major => "major",
+                    SemanticVersionMismatch::SchemaAhead => "schema_ahead",
+                }
+                .into(),
+            ),
         );
     }
     diagnostic.audit_metadata.insert(
@@ -1453,11 +1451,13 @@ fn schema_version_incompatible(
     );
     diagnostic.audit_metadata.insert(
         "config.version_reason".into(),
-        Value::String(match reason {
-            SemanticVersionMismatch::Major => "major",
-            SemanticVersionMismatch::SchemaAhead => "schema_ahead",
-        }
-        .into()),
+        Value::String(
+            match reason {
+                SemanticVersionMismatch::Major => "major",
+                SemanticVersionMismatch::SchemaAhead => "schema_ahead",
+            }
+            .into(),
+        ),
     );
     diagnostic
 }

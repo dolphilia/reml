@@ -1,6 +1,6 @@
 use reml_runtime::{
-    registry::CapabilityRegistry,
     stage::{StageId, StageRequirement},
+    CapabilityRegistry,
 };
 
 #[test]

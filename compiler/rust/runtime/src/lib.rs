@@ -3,8 +3,8 @@
 //! 将来のフロントエンド／ランタイム統合で利用する。
 
 mod anyhow;
-pub mod capability;
 pub mod audit;
+pub mod capability;
 pub mod collections;
 pub mod config;
 pub mod data;

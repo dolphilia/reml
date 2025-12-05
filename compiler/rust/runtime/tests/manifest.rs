@@ -202,8 +202,8 @@ fn schema_version_check_fails_when_schema_is_newer() {
     let mut manifest = manifest_with_project(ProjectStage::Stable);
     manifest.project.version = SemanticVersion("1.1.0".into());
     let schema = schema_with_version("core.config", (1, 2, 0));
-    let err = ensure_schema_version_compatibility(&manifest, &schema)
-        .expect_err("schema minor is ahead");
+    let err =
+        ensure_schema_version_compatibility(&manifest, &schema).expect_err("schema minor is ahead");
     assert_eq!(err.code, "config.schema.version_incompatible");
 }
 

@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Number, Value};
 
 use crate::{
-    prelude::ensure::{DiagnosticSeverity, GuardDiagnostic},
     capability::registry::CapabilityError,
+    prelude::ensure::{DiagnosticSeverity, GuardDiagnostic},
     stage::{StageId, StageRequirement},
     time::{self, Duration, Timestamp},
 };
