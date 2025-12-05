@@ -1,15 +1,17 @@
 use std::{
     collections::{HashMap, HashSet},
+    path::PathBuf,
     sync::{RwLock, RwLockReadGuard},
 };
 
 use once_cell::sync::Lazy;
-use serde_json::{Map as JsonMap, Value};
+use serde_json::{Map as JsonMap, Number, Value};
 use thiserror::Error;
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 use super::{
     audit::{AuditCapability, AuditCapabilityMetadata},
+    contract::{CapabilityContractSpan, ConductorCapabilityContract, ConductorCapabilityRequirement},
     descriptor::{CapabilityDescriptor, CapabilityId, CapabilityProvider, EffectTag},
     handle::CapabilityHandle,
     io::{IoAdapterKind, IoCapability, IoCapabilityMetadata, IoOperationKind},
@@ -19,6 +21,7 @@ use super::{
     security::{SecurityCapability, SecurityCapabilityMetadata, SecurityPolicyKind},
 };
 use crate::{
+    config::manifest::{ManifestCapabilities, ManifestCapabilityError},
     audit::{AuditEnvelope, AuditEvent, AuditEventKind},
     stage::{StageId, StageRequirement},
 };
@@ -85,6 +88,121 @@ impl CapabilityRegistry {
                 handle,
             },
         );
+        Ok(())
+    }
+
+    fn ensure_manifest_alignment(
+        &self,
+        requirement: &ConductorCapabilityRequirement,
+        descriptor: &CapabilityDescriptor,
+        manifest: &ManifestCapabilities,
+        manifest_path: Option<&PathBuf>,
+    ) -> Result<(), CapabilityError> {
+        let manifest_entry = match manifest.get(&requirement.id) {
+            Some(entry) => entry,
+            None => {
+                let error = CapabilityError::contract_violation(
+                    requirement.id.clone(),
+                    manifest_path.cloned(),
+                    requirement.source_span.clone(),
+                    Some(descriptor.clone()),
+                    format!(
+                        "manifest entry for capability '{}' is missing",
+                        requirement.id
+                    ),
+                );
+                self.record_capability_check(
+                    &requirement.id,
+                    requirement.stage,
+                    Some(descriptor.stage()),
+                    Some(descriptor),
+                    &requirement.declared_effects,
+                    Err(&error),
+                );
+                return Err(error);
+            }
+        };
+
+        if manifest_entry.stage != requirement.stage {
+            let message = format!(
+                "manifest stage {} does not match contract stage {} for '{}'",
+                manifest_entry.stage, requirement.stage, requirement.id
+            );
+            let error = CapabilityError::contract_violation(
+                requirement.id.clone(),
+                manifest_path.cloned(),
+                requirement.source_span.clone(),
+                Some(descriptor.clone()),
+                message,
+            );
+            self.record_capability_check(
+                &requirement.id,
+                requirement.stage,
+                Some(descriptor.stage()),
+                Some(descriptor),
+                &requirement.declared_effects,
+                Err(&error),
+            );
+            return Err(error);
+        }
+
+        let required_effects: HashSet<_> = requirement.declared_effects.iter().cloned().collect();
+        let manifest_effects: HashSet<_> =
+            manifest_entry.declared_effects.iter().cloned().collect();
+        if required_effects != manifest_effects {
+            let missing: Vec<_> = required_effects
+                .difference(&manifest_effects)
+                .cloned()
+                .collect();
+            let extra: Vec<_> = manifest_effects
+                .difference(&required_effects)
+                .cloned()
+                .collect();
+            let message = format!(
+                "declared_effects mismatch for '{}': missing {:?}, unexpected {:?}",
+                requirement.id, missing, extra
+            );
+            let error = CapabilityError::contract_violation(
+                requirement.id.clone(),
+                manifest_path.cloned(),
+                requirement.source_span.clone(),
+                Some(descriptor.clone()),
+                message,
+            );
+            self.record_capability_check(
+                &requirement.id,
+                requirement.stage,
+                Some(descriptor.stage()),
+                Some(descriptor),
+                &requirement.declared_effects,
+                Err(&error),
+            );
+            return Err(error);
+        }
+
+        if manifest_entry.source_span != requirement.source_span {
+            let message = format!(
+                "source span mismatch for '{}': manifest={:?}, contract={:?}",
+                requirement.id, manifest_entry.source_span, requirement.source_span
+            );
+            let error = CapabilityError::contract_violation(
+                requirement.id.clone(),
+                manifest_path.cloned(),
+                requirement.source_span.clone(),
+                Some(descriptor.clone()),
+                message,
+            );
+            self.record_capability_check(
+                &requirement.id,
+                requirement.stage,
+                Some(descriptor.stage()),
+                Some(descriptor),
+                &requirement.declared_effects,
+                Err(&error),
+            );
+            return Err(error);
+        }
+
         Ok(())
     }
 
@@ -202,6 +320,39 @@ impl CapabilityRegistry {
     ) -> Result<StageId, CapabilityError> {
         self.verify_capability(capability, requirement, _required_effects)
             .map(|handle| handle.descriptor().stage())
+    }
+
+    /// Conductor 契約全体を検証する。
+    pub fn verify_conductor_contract(
+        &self,
+        contract: ConductorCapabilityContract,
+    ) -> Result<(), CapabilityError> {
+        let manifest_bundle = if let Some(path) = contract.manifest_path.as_ref() {
+            let manifest_caps =
+                ManifestCapabilities::load(path).map_err(|source| {
+                    CapabilityError::manifest_load_failure(Some(path.clone()), source)
+                })?;
+            Some((path.clone(), manifest_caps))
+        } else {
+            None
+        };
+
+        for requirement in contract.requirements {
+            let handle = self.verify_capability(
+                &requirement.id,
+                requirement.stage,
+                &requirement.declared_effects,
+            )?;
+            if let Some((manifest_path, manifest_caps)) = &manifest_bundle {
+                self.ensure_manifest_alignment(
+                    &requirement,
+                    handle.descriptor(),
+                    manifest_caps,
+                    Some(manifest_path),
+                )?;
+            }
+        }
+        Ok(())
     }
 
     fn descriptor_for(&self, capability: &str) -> Option<CapabilityDescriptor> {
@@ -330,6 +481,29 @@ impl CapabilityRegistry {
                                     .map(Value::String)
                                     .collect(),
                             ),
+                        );
+                    }
+                }
+                if let CapabilityError::ContractViolation {
+                    manifest_path,
+                    source_span,
+                    ..
+                } = error
+                {
+                    if let Some(path) = manifest_path {
+                        metadata.insert(
+                            "config.manifest.path".into(),
+                            Value::String(path.display().to_string()),
+                        );
+                    }
+                    if let Some(span) = source_span {
+                        metadata.insert(
+                            "config.manifest.span.start".into(),
+                            Value::Number(Number::from(span.start)),
+                        );
+                        metadata.insert(
+                            "config.manifest.span.end".into(),
+                            Value::Number(Number::from(span.end)),
                         );
                     }
                 }
@@ -564,6 +738,21 @@ pub enum CapabilityError {
         missing_effects: Vec<String>,
         message: String,
     },
+    #[error("{message}")]
+    ContractViolation {
+        capability_id: CapabilityId,
+        manifest_path: Option<PathBuf>,
+        source_span: Option<CapabilityContractSpan>,
+        descriptor: Option<CapabilityDescriptor>,
+        message: String,
+    },
+    #[error("{message}")]
+    ManifestLoadFailure {
+        manifest_path: Option<PathBuf>,
+        #[source]
+        source: ManifestCapabilityError,
+        message: String,
+    },
 }
 
 impl CapabilityError {
@@ -630,12 +819,42 @@ impl CapabilityError {
         }
     }
 
+    fn contract_violation(
+        capability_id: impl Into<String>,
+        manifest_path: Option<PathBuf>,
+        source_span: Option<CapabilityContractSpan>,
+        descriptor: Option<CapabilityDescriptor>,
+        message: impl Into<String>,
+    ) -> Self {
+        CapabilityError::ContractViolation {
+            capability_id: capability_id.into(),
+            manifest_path,
+            source_span,
+            descriptor,
+            message: message.into(),
+        }
+    }
+
+    fn manifest_load_failure(
+        manifest_path: Option<PathBuf>,
+        source: ManifestCapabilityError,
+    ) -> Self {
+        let message = format!("unable to load manifest capabilities: {source}");
+        CapabilityError::ManifestLoadFailure {
+            manifest_path,
+            source,
+            message,
+        }
+    }
+
     pub fn code(&self) -> &'static str {
         match self {
             CapabilityError::AlreadyRegistered { .. } => "runtime.capability.already_registered",
             CapabilityError::NotRegistered { .. } => "runtime.capability.unknown",
             CapabilityError::StageViolation { .. } => "capability.stage.mismatch",
             CapabilityError::EffectScopeMismatch { .. } => "capability.effect_scope.mismatch",
+            CapabilityError::ContractViolation { .. } => "config.manifest.capability_contract",
+            CapabilityError::ManifestLoadFailure { .. } => "config.manifest.capability_contract",
         }
     }
 
@@ -645,6 +864,8 @@ impl CapabilityError {
             CapabilityError::NotRegistered { message, .. } => message,
             CapabilityError::StageViolation { message, .. } => message,
             CapabilityError::EffectScopeMismatch { message, .. } => message,
+            CapabilityError::ContractViolation { message, .. } => message,
+            CapabilityError::ManifestLoadFailure { message, .. } => message,
         }
     }
 
@@ -661,6 +882,7 @@ impl CapabilityError {
             // 3-6 Core Diagnostics の `effects.contract.stage_mismatch` で Capability 情報を転写する。
             CapabilityError::StageViolation { descriptor, .. } => descriptor.as_ref(),
             CapabilityError::EffectScopeMismatch { descriptor, .. } => descriptor.as_ref(),
+            CapabilityError::ContractViolation { descriptor, .. } => descriptor.as_ref(),
             _ => None,
         }
     }

@@ -22,9 +22,12 @@ pub mod text;
 pub mod time;
 
 pub use capability::{
+    contract::{
+        CapabilityContractSpan, ConductorCapabilityContract, ConductorCapabilityRequirement,
+    },
     descriptor::{
         CapabilityDescriptor, CapabilityId, CapabilityProvider, CapabilityTimestamp, EffectTag,
     },
     registry::{CapabilityError, CapabilityRegistry},
 };
-pub use stage::{StageId, StageRequirement};
+pub use stage::{StageId, StageParseError, StageRequirement};

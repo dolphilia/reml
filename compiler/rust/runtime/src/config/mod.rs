@@ -21,9 +21,11 @@ pub use compat::{
 pub use manifest::{
     declared_effects, ensure_schema_version_compatibility, load_manifest, update_dsl_signature,
     validate_manifest, CapabilityId, ConfigCompatibilityEntry, ConfigRoot, Contact, DependencySpec,
-    DslEntry, DslExportRef, DslExportSignature, DslSignatureStageBounds, Manifest, ManifestBuilder,
-    ManifestLoader, ManifestParseError, OptimizeLevel, PackageName, ProjectKind, ProjectSection,
-    ProjectStage, RegistrySection, SemanticVersion, TargetTriple,
+    DslEntry, DslExportRef, DslExportSignature, DslSignatureStageBounds, Manifest,
+    ManifestBuilder, ManifestCapabilities, ManifestCapabilityError, ManifestLoader,
+    ManifestParseError, OptimizeLevel, PackageName, ProjectKind, ProjectSection, ProjectStage,
+    RegistrySection, RunCapabilityEntry, RunSection, RunTargetSection, SemanticVersion,
+    TargetTriple,
 };
 #[cfg(feature = "experimental_migration")]
 pub use migration::{

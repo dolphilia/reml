@@ -1,0 +1,6 @@
+[project]
+name = "contract-demo"
+version = "0.1.0"
+
+[run.target]
+capabilities = []

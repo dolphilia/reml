@@ -1,6 +1,7 @@
 pub mod actor;
 pub mod async_runtime;
 pub mod audit;
+pub mod contract;
 pub mod descriptor;
 pub mod gc;
 pub mod handle;
@@ -19,6 +20,9 @@ pub mod system;
 pub use actor::{ActorCapability, ActorCapabilityMetadata, ActorSchedulerKind};
 pub use async_runtime::{AsyncCapability, AsyncCapabilityMetadata, AsyncSchedulerKind};
 pub use audit::{AuditCapability, AuditCapabilityMetadata, AuditTransport};
+pub use contract::{
+    CapabilityContractSpan, ConductorCapabilityContract, ConductorCapabilityRequirement,
+};
 pub use descriptor::{
     CapabilityDescriptor, CapabilityId, CapabilityProvider, CapabilityTimestamp, EffectTag,
 };

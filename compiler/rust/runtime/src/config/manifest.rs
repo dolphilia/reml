@@ -3,17 +3,22 @@ use super::compat::{
     ConfigTriviaProfile, DuplicateKeyPolicy, KeyPolicy, NumberCompatibility, TrailingCommaMode,
 };
 use crate::{
+    capability::contract::{
+        CapabilityContractSpan, ConductorCapabilityContract, ConductorCapabilityRequirement,
+    },
     data::schema::{Schema, SchemaVersion},
     prelude::ensure::{DiagnosticSeverity, GuardDiagnostic},
-    stage::StageId,
+    stage::{StageId, StageParseError, StageRequirement},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Map, Value};
 use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt, fs,
+    collections::{BTreeMap, BTreeSet, HashMap},
+    fmt, fs, io,
     path::{Path, PathBuf},
+    str::FromStr,
 };
+use thiserror::Error;
 use toml::de;
 
 const CONFIG_DOMAIN: &str = "config";
@@ -47,6 +52,8 @@ pub struct Manifest {
     pub registry: RegistrySection,
     #[serde(default)]
     pub config: ConfigRoot,
+    #[serde(default)]
+    pub run: RunSection,
     #[serde(skip)]
     manifest_path: Option<PathBuf>,
 }
@@ -91,6 +98,21 @@ impl Manifest {
             .or_else(|| self.config.compatibility.get(&format.as_str().to_string()))?;
         let base = compatibility_profile_for_stage(format, stage);
         Some(entry.to_layer(base))
+    }
+
+    /// `run.target.capabilities` から契約を生成する。
+    pub fn conductor_capability_contract(
+        &self,
+    ) -> Result<ConductorCapabilityContract, ManifestCapabilityError> {
+        let mut requirements = Vec::new();
+        for entry in &self.run.target.capabilities {
+            requirements.push(entry.to_requirement()?);
+        }
+        let mut contract = ConductorCapabilityContract::new(requirements);
+        if let Some(path) = self.manifest_path() {
+            contract.manifest_path = Some(path.clone());
+        }
+        Ok(contract)
     }
 }
 
@@ -146,6 +168,173 @@ impl ConfigCompatibilityEntry {
     }
 }
 
+/// `run` ルートセクション。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RunSection {
+    #[serde(default)]
+    pub target: RunTargetSection,
+}
+
+/// `run.target` サブセクション。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RunTargetSection {
+    #[serde(default)]
+    pub capabilities: Vec<RunCapabilityEntry>,
+}
+
+/// `run.target.capabilities[]` の 1 エントリ。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RunCapabilityEntry {
+    pub id: CapabilityId,
+    #[serde(default)]
+    pub stage: Option<String>,
+    #[serde(default)]
+    pub declared_effects: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_span: Option<CapabilityContractSpan>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+}
+
+impl RunCapabilityEntry {
+    fn to_requirement(&self) -> Result<ConductorCapabilityRequirement, ManifestCapabilityError> {
+        let stage_label = self
+            .stage
+            .as_deref()
+            .ok_or_else(|| ManifestCapabilityError::MissingStage {
+                capability: self.id.0.clone(),
+            })?;
+        let stage = StageRequirement::from_str(stage_label).map_err(|source| {
+            ManifestCapabilityError::InvalidStage {
+                capability: self.id.0.clone(),
+                value: stage_label.to_string(),
+                source,
+            }
+        })?;
+        let mut declared_effects = self.declared_effects.clone();
+        declared_effects.sort();
+        declared_effects.dedup();
+        Ok(ConductorCapabilityRequirement {
+            id: self.id.0.clone(),
+            stage,
+            declared_effects,
+            source_span: self.source_span.clone(),
+        })
+    }
+
+    fn manifest_record(&self) -> Result<ManifestCapabilityRecord, ManifestCapabilityError> {
+        let requirement = self.to_requirement()?;
+        Ok(ManifestCapabilityRecord {
+            stage: requirement.stage,
+            declared_effects: requirement.declared_effects,
+            source_span: requirement.source_span,
+            provider: self.provider.clone(),
+        })
+    }
+}
+
+/// `run.target.capabilities` 読み込み時のエラー。
+#[derive(Debug, Error)]
+pub enum ManifestCapabilityError {
+    #[error("Capability `{capability}` の stage が指定されていません")]
+    MissingStage { capability: String },
+    #[error(
+        "Capability `{capability}` の stage `{value}` を解析できません: {source}"
+    )]
+    InvalidStage {
+        capability: String,
+        value: String,
+        #[source]
+        source: StageParseError,
+    },
+    #[error("Capability `{capability}` が重複しています")]
+    DuplicateCapability { capability: String },
+    #[error("`run.target.capabilities` の読み込みに失敗しました: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("`run.target.capabilities` の解析に失敗しました: {0}")]
+    Parse(String),
+}
+
+impl From<ManifestParseError> for ManifestCapabilityError {
+    fn from(value: ManifestParseError) -> Self {
+        ManifestCapabilityError::Parse(value.to_string())
+    }
+}
+
+impl Clone for ManifestCapabilityError {
+    fn clone(&self) -> Self {
+        match self {
+            ManifestCapabilityError::MissingStage { capability } => {
+                ManifestCapabilityError::MissingStage {
+                    capability: capability.clone(),
+                }
+            }
+            ManifestCapabilityError::InvalidStage {
+                capability,
+                value,
+                source,
+            } => ManifestCapabilityError::InvalidStage {
+                capability: capability.clone(),
+                value: value.clone(),
+                source: StageParseError::new(source.to_string()),
+            },
+            ManifestCapabilityError::DuplicateCapability { capability } => {
+                ManifestCapabilityError::DuplicateCapability {
+                    capability: capability.clone(),
+                }
+            }
+            ManifestCapabilityError::Io(err) => {
+                ManifestCapabilityError::Io(io::Error::new(err.kind(), err.to_string()))
+            }
+            ManifestCapabilityError::Parse(message) => {
+                ManifestCapabilityError::Parse(message.clone())
+            }
+        }
+    }
+}
+
+/// Manifest に書かれた Capability 1 件ぶんの情報。
+#[derive(Debug, Clone)]
+pub struct ManifestCapabilityRecord {
+    pub stage: StageRequirement,
+    pub declared_effects: Vec<String>,
+    pub source_span: Option<CapabilityContractSpan>,
+    pub provider: Option<String>,
+}
+
+/// `run.target.capabilities` から生成したマップ。
+#[derive(Debug, Clone)]
+pub struct ManifestCapabilities {
+    entries: HashMap<String, ManifestCapabilityRecord>,
+}
+
+impl ManifestCapabilities {
+    pub fn from_manifest(manifest: &Manifest) -> Result<Self, ManifestCapabilityError> {
+        let mut entries = HashMap::new();
+        for entry in &manifest.run.target.capabilities {
+            if entries.contains_key(&entry.id.0) {
+                return Err(ManifestCapabilityError::DuplicateCapability {
+                    capability: entry.id.0.clone(),
+                });
+            }
+            entries.insert(entry.id.0.clone(), entry.manifest_record()?);
+        }
+        Ok(Self { entries })
+    }
+
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, ManifestCapabilityError> {
+        let manifest_path = path.as_ref();
+        let body = fs::read_to_string(manifest_path)?;
+        let manifest = Manifest::parse_toml(&body)?
+            .with_manifest_path(manifest_path.to_path_buf());
+        Self::from_manifest(&manifest)
+    }
+
+    pub fn get(&self, capability: &str) -> Option<&ManifestCapabilityRecord> {
+        self.entries.get(capability)
+    }
+}
+
 /// `Manifest` を構築するための簡易ビルダー。
 #[derive(Debug, Default)]
 pub struct ManifestBuilder {
@@ -175,6 +364,11 @@ impl ManifestBuilder {
 
     pub fn registry(mut self, registry: RegistrySection) -> Self {
         self.manifest.registry = registry;
+        self
+    }
+
+    pub fn run(mut self, run: RunSection) -> Self {
+        self.manifest.run = run;
         self
     }
 
