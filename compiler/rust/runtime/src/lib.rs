@@ -21,5 +21,10 @@ pub mod text;
 #[cfg(any(feature = "core_time", feature = "metrics"))]
 pub mod time;
 
-pub use capability::registry::{CapabilityError, CapabilityRegistry};
+pub use capability::{
+    descriptor::{
+        CapabilityDescriptor, CapabilityId, CapabilityProvider, CapabilityTimestamp, EffectTag,
+    },
+    registry::{CapabilityError, CapabilityRegistry},
+};
 pub use stage::{StageId, StageRequirement};

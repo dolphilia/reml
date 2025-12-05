@@ -1,7 +1,10 @@
 //! 簡易 Stage/Capability 判定モデル。
 
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
 /// ランタイムが扱う Stage ID。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum StageId {
     Experimental,
     Alpha,
@@ -21,16 +24,21 @@ impl StageId {
 }
 
 /// Capability Registry で使用する Stage 要件。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum StageRequirement {
     Exact(StageId),
     AtLeast(StageId),
 }
 
 impl StageRequirement {
-    pub fn matches(&self, actual: StageId) -> bool {
+    pub const fn matches(&self, actual: StageId) -> bool {
+        Self::satisfies(*self, actual)
+    }
+
+    /// 仕様で定義される `satisfies` 判定の const fn 版。
+    pub const fn satisfies(self, actual: StageId) -> bool {
         match self {
-            StageRequirement::Exact(expected) => expected == &actual,
+            StageRequirement::Exact(expected) => *expected == actual,
             StageRequirement::AtLeast(threshold) => stage_rank(actual) >= stage_rank(*threshold),
         }
     }

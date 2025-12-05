@@ -1,0 +1,79 @@
+use std::convert::TryInto;
+
+use reml_runtime::{
+    capability::{
+        ActorCapability, ActorCapabilityMetadata, CapabilityHandle, CapabilityHandleKind,
+        CapabilityHandleTypeError, IoCapability, IoCapabilityMetadata, IoOperationKind,
+        PluginCapability, PluginCapabilityMetadata, SecurityCapability, SecurityCapabilityMetadata,
+    },
+    CapabilityDescriptor, CapabilityProvider, StageId,
+};
+
+fn descriptor(id: &str, stage: StageId, effects: &[&str]) -> CapabilityDescriptor {
+    CapabilityDescriptor::new(
+        id,
+        stage,
+        effects.iter().copied().collect::<Vec<_>>(),
+        CapabilityProvider::Core,
+    )
+}
+
+#[test]
+fn handle_descriptor_preserves_effect_scope_and_provider() {
+    let io_desc = descriptor(
+        "io.fs.read",
+        StageId::Beta,
+        &["effect.io", "effect.io.blocking"],
+    );
+    let handle: CapabilityHandle =
+        IoCapability::new(io_desc, IoCapabilityMetadata::default()).into();
+
+    assert_eq!(handle.kind(), CapabilityHandleKind::Io);
+    let descriptor = handle.descriptor();
+    assert_eq!(descriptor.stage(), StageId::Beta);
+    assert!(descriptor.effect_scope().contains("effect.io"));
+    assert!(matches!(descriptor.provider, CapabilityProvider::Core));
+
+    let io_ref: &IoCapability = (&handle).try_into().unwrap();
+    assert!(io_ref
+        .metadata()
+        .operations
+        .contains(&IoOperationKind::Read));
+
+    // 別種の Capability も生成しておき、descriptor API が共有できることを確認。
+    let plugin_handle: CapabilityHandle = PluginCapability::new(
+        descriptor(
+            "plugin.core.audit",
+            StageId::Experimental,
+            &["effect.audit"],
+        ),
+        PluginCapabilityMetadata::default(),
+    )
+    .into();
+    assert_eq!(plugin_handle.descriptor().stage(), StageId::Experimental);
+}
+
+#[test]
+fn try_from_reports_handle_mismatch() {
+    let security_handle: CapabilityHandle = SecurityCapability::new(
+        descriptor("security.fs.policy", StageId::Stable, &["effect.security"]),
+        SecurityCapabilityMetadata::default(),
+    )
+    .into();
+
+    let result: Result<IoCapability, CapabilityHandleTypeError> =
+        security_handle.clone().try_into();
+    let err = result.expect_err("security handle should not convert to IO");
+    assert_eq!(err.expected(), CapabilityHandleKind::Io);
+    assert_eq!(err.actual(), CapabilityHandleKind::Security);
+
+    let actor_handle: CapabilityHandle = ActorCapability::new(
+        descriptor("actor.runtime", StageId::Alpha, &["effect.actor"]),
+        ActorCapabilityMetadata::default(),
+    )
+    .into();
+    let _: ActorCapability = actor_handle
+        .clone()
+        .try_into()
+        .expect("actor handle should convert successfully");
+}
