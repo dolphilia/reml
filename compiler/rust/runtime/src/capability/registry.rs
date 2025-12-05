@@ -1,10 +1,15 @@
 use std::{
-    fmt,
+    collections::HashMap,
     sync::{RwLock, RwLockReadGuard},
 };
 
 use once_cell::sync::Lazy;
+use thiserror::Error;
 
+use super::{
+    descriptor::{CapabilityDescriptor, CapabilityId},
+    handle::CapabilityHandle,
+};
 use crate::stage::{StageId, StageRequirement};
 
 static REGISTRY: Lazy<RwLock<Option<&'static CapabilityRegistry>>> =
@@ -13,7 +18,7 @@ static REGISTRY: Lazy<RwLock<Option<&'static CapabilityRegistry>>> =
 /// Capability を検証するためのレジストリ。
 #[derive(Debug)]
 pub struct CapabilityRegistry {
-    _private: (),
+    entries: RwLock<CapabilityEntries>,
 }
 
 impl CapabilityRegistry {
@@ -38,26 +43,91 @@ impl CapabilityRegistry {
     }
 
     fn new() -> Self {
-        Self { _private: () }
+        Self {
+            entries: RwLock::new(CapabilityEntries::default()),
+        }
+    }
+
+    /// Capability を登録する。
+    pub fn register(&self, handle: CapabilityHandle) -> Result<(), CapabilityError> {
+        let descriptor = handle.descriptor().clone();
+        let capability_id = descriptor.id.clone();
+        let mut entries = self.entries.write().unwrap();
+        if entries.entries.contains_key(&capability_id) {
+            return Err(CapabilityError::already_registered(capability_id));
+        }
+        entries.ordered_keys.push(capability_id.clone());
+        entries.entries.insert(
+            capability_id,
+            CapabilityEntry {
+                descriptor,
+                handle,
+            },
+        );
+        Ok(())
+    }
+
+    /// Capability ハンドルを取得する。
+    pub fn get(&self, capability: &str) -> Result<CapabilityHandle, CapabilityError> {
+        let entries = self.entries.read().unwrap();
+        entries
+            .entries
+            .get(capability)
+            .map(|entry| entry.handle.clone())
+            .ok_or_else(|| CapabilityError::not_registered(capability))
+    }
+
+    /// CapabilityDescriptor を返す。
+    pub fn describe(&self, capability: &str) -> Result<CapabilityDescriptor, CapabilityError> {
+        let entries = self.entries.read().unwrap();
+        entries
+            .entries
+            .get(capability)
+            .map(|entry| entry.descriptor.clone())
+            .ok_or_else(|| CapabilityError::not_registered(capability))
+    }
+
+    /// すべての CapabilityDescriptor を登録順に返す。
+    pub fn describe_all(&self) -> Vec<CapabilityDescriptor> {
+        let entries = self.entries.read().unwrap();
+        entries
+            .ordered_keys
+            .iter()
+            .filter_map(|id| entries.entries.get(id))
+            .map(|entry| entry.descriptor.clone())
+            .collect()
     }
 
     pub fn verify_capability_stage(
         &self,
-        _capability: &str,
+        capability: &str,
         requirement: StageRequirement,
         _required_effects: &[String],
     ) -> Result<StageId, CapabilityError> {
-        // 現状の PoC ではすべての Capability が stable とみなされる。
-        let actual = StageId::Stable;
+        // 将来の 3.2 タスクで effect_scope 検証と未登録 Capability の扱いを拡張する。
+        // 現段階では既存挙動との互換性を優先し、登録済みなら Descriptor を使用し、
+        // 未登録の場合は Stable 相当として扱う。
+        let actual = self
+            .descriptor_for(capability)
+            .map(|descriptor| descriptor.stage())
+            .unwrap_or(StageId::Stable);
         if requirement.matches(actual) {
             Ok(actual)
         } else {
-            Err(CapabilityError::new(
-                "capability.stage.mismatch",
-                format!("required {:?} but runtime is {:?}", requirement, actual),
-            )
-            .with_actual_stage(actual))
+            Err(CapabilityError::stage_violation(
+                capability,
+                requirement,
+                actual,
+            ))
         }
+    }
+
+    fn descriptor_for(&self, capability: &str) -> Option<CapabilityDescriptor> {
+        let entries = self.entries.read().unwrap();
+        entries
+            .entries
+            .get(capability)
+            .map(|entry| entry.descriptor.clone())
     }
 
     /// Core.IO アダプタ向けの Stage 検証ヘルパ。
@@ -70,51 +140,110 @@ impl CapabilityRegistry {
     }
 }
 
-/// Capability 検証に失敗した場合のエラー。
+#[derive(Debug, Default)]
+struct CapabilityEntries {
+    entries: HashMap<CapabilityId, CapabilityEntry>,
+    ordered_keys: Vec<CapabilityId>,
+}
+
 #[derive(Debug, Clone)]
-pub struct CapabilityError {
-    code: &'static str,
-    detail: String,
-    actual_stage: Option<StageId>,
+struct CapabilityEntry {
+    descriptor: CapabilityDescriptor,
+    handle: CapabilityHandle,
+}
+
+/// Capability 検証に失敗した場合のエラー。
+#[derive(Debug, Clone, Error)]
+pub enum CapabilityError {
+    #[error("{message}")]
+    AlreadyRegistered {
+        capability_id: CapabilityId,
+        message: String,
+    },
+    #[error("{message}")]
+    NotRegistered {
+        capability_id: CapabilityId,
+        message: String,
+    },
+    #[error("{message}")]
+    StageViolation {
+        capability_id: CapabilityId,
+        required: StageRequirement,
+        actual: StageId,
+        message: String,
+    },
 }
 
 impl CapabilityError {
-    pub fn new(code: &'static str, detail: impl Into<String>) -> Self {
-        Self {
-            code,
-            detail: detail.into(),
-            actual_stage: None,
+    fn already_registered(capability_id: impl Into<String>) -> Self {
+        let capability_id = capability_id.into();
+        let message = format!("capability '{capability_id}' is already registered");
+        CapabilityError::AlreadyRegistered {
+            capability_id,
+            message,
+        }
+    }
+
+    fn not_registered(capability_id: impl Into<String>) -> Self {
+        let capability_id = capability_id.into();
+        let message = format!("capability '{capability_id}' is not registered");
+        CapabilityError::NotRegistered {
+            capability_id,
+            message,
+        }
+    }
+
+    pub fn stage_violation(
+        capability_id: impl Into<String>,
+        required: StageRequirement,
+        actual: StageId,
+    ) -> Self {
+        let capability_id = capability_id.into();
+        let message = format!(
+            "capability '{capability_id}' requires {} but runtime is {}",
+            requirement_description(required),
+            actual.as_str()
+        );
+        CapabilityError::StageViolation {
+            capability_id,
+            required,
+            actual,
+            message,
         }
     }
 
     pub fn code(&self) -> &'static str {
-        self.code
+        match self {
+            CapabilityError::AlreadyRegistered { .. } => "runtime.capability.already_registered",
+            CapabilityError::NotRegistered { .. } => "runtime.capability.unknown",
+            CapabilityError::StageViolation { .. } => "capability.stage.mismatch",
+        }
     }
 
     pub fn detail(&self) -> &str {
-        &self.detail
+        match self {
+            CapabilityError::AlreadyRegistered { message, .. } => message,
+            CapabilityError::NotRegistered { message, .. } => message,
+            CapabilityError::StageViolation { message, .. } => message,
+        }
     }
 
     pub fn actual_stage(&self) -> Option<StageId> {
-        self.actual_stage
-    }
-
-    pub fn with_actual_stage(mut self, stage: StageId) -> Self {
-        self.actual_stage = Some(stage);
-        self
+        match self {
+            CapabilityError::StageViolation { actual, .. } => Some(*actual),
+            _ => None,
+        }
     }
 }
 
-impl fmt::Display for CapabilityError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.code, self.detail)
+fn requirement_description(requirement: StageRequirement) -> String {
+    match requirement {
+        StageRequirement::Exact(stage) => format!("exact {}", stage.as_str()),
+        StageRequirement::AtLeast(stage) => format!("at least {}", stage.as_str()),
     }
 }
 
-impl std::error::Error for CapabilityError {}
-
-#[cfg(test)]
-pub(crate) fn reset_for_tests() {
+pub fn reset_for_tests() {
     if let Some(instance) = REGISTRY.write().unwrap().take() {
         unsafe {
             drop(Box::from_raw(

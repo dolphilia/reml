@@ -65,6 +65,11 @@
     - 2.3.b `register` 実行時に `describe_all()` で利用するインデックス（`HashMap` + `Vec<CapabilityDescriptor>`）を更新するための内部 API を設計し、`docs/plans/bootstrap-roadmap/assets/capability-registry-datamodel.md` に図示する。
     - 2.3.c `compiler/rust/runtime/tests/capability_registry.rs` に `#[test_case]` で重複登録・未登録アクセス・`describe` の成功/失敗を確認するテーブル駆動テストを追加する。
 
+#### 2.3 実施結果（Run ID: 20290622-capability-registry-register）
+- `compiler/rust/runtime/src/capability/registry.rs` に `CapabilityEntries`（`HashMap` + 登録順 `Vec`）と `CapabilityError` 列挙体を実装し、`register`/`get`/`describe`/`describe_all` を追加。未登録 Capability には `CapabilityError::NotRegistered` を返し、Stage 判定は従来どおり `StageId::Stable` フォールバックを維持する TODO をコメントとして残した。
+- `compiler/rust/runtime/tests/capability_registry.rs` を刷新し、登録→取得→`describe_all` までの成功パス、重複登録エラー、未登録アクセスの 3 ケースをテーブル化（`test-case` クレート未導入のため通常の `#[test]` で代替）。`CARGO_NET_OFFLINE=true cargo test capability_registry`（`compiler/rust/runtime`）で新テストを実行済み。
+- `docs/plans/bootstrap-roadmap/assets/capability-registry-datamodel.md` を新設し、データモデル・エラー更新を図示。`capability-error-matrix.csv` の `AlreadyRegistered`/`UnknownCapability` 行を「実装済み」に更新した。`RuntimeError` 型が Rust 実装になく `impl From<CapabilityError> for RuntimeError` は未着手なので、`docs/plans/rust-migration/p2-runtime-gap-report.md#P2G-03` の TODO として継続する。
+
 ### 3. Stage 検証 API 実装（57週目）
 **担当領域**: ステージ管理
 
