@@ -1,0 +1,317 @@
+{
+  "capabilities": [
+    {
+      "effect_scope": [
+        "fs.read",
+        "io"
+      ],
+      "id": "io.fs.read",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Stable"
+    },
+    {
+      "effect_scope": [
+        "fs.write",
+        "io",
+        "mem"
+      ],
+      "id": "io.fs.write",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Stable"
+    },
+    {
+      "effect_scope": [
+        "io",
+        "security"
+      ],
+      "id": "fs.permissions.read",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Stable"
+    },
+    {
+      "effect_scope": [
+        "io",
+        "security"
+      ],
+      "id": "fs.permissions.modify",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Stable"
+    },
+    {
+      "effect_scope": [
+        "fs.symlink",
+        "io"
+      ],
+      "id": "fs.symlink.query",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Stable"
+    },
+    {
+      "effect_scope": [
+        "fs.symlink",
+        "io",
+        "security"
+      ],
+      "id": "fs.symlink.modify",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Stable"
+    },
+    {
+      "effect_scope": [
+        "io",
+        "watcher"
+      ],
+      "id": "fs.watcher.native",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Stable"
+    },
+    {
+      "effect_scope": [
+        "io",
+        "watcher"
+      ],
+      "id": "fs.watcher.recursive",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Stable"
+    },
+    {
+      "effect_scope": [
+        "io",
+        "watcher"
+      ],
+      "id": "watcher.resource_limits",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Stable"
+    },
+    {
+      "effect_scope": [
+        "mem"
+      ],
+      "id": "memory.buffered_io",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Stable"
+    },
+    {
+      "effect_scope": [
+        "security"
+      ],
+      "id": "security.fs.policy",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Stable"
+    },
+    {
+      "effect_scope": [
+        "time"
+      ],
+      "id": "core.time.timezone.lookup",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Beta"
+    },
+    {
+      "effect_scope": [
+        "time"
+      ],
+      "id": "core.time.timezone.local",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Beta"
+    },
+    {
+      "effect_scope": [
+        "audit",
+        "mem"
+      ],
+      "id": "core.collections.audit",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Stable"
+    },
+    {
+      "effect_scope": [
+        "audit"
+      ],
+      "id": "metrics.emit",
+      "last_verified_at": null,
+      "manifest_path": null,
+      "provider": {
+        "kind": "core"
+      },
+      "security": {
+        "audit_required": false,
+        "isolation_level": "none",
+        "permissions": [],
+        "policy": null,
+        "sandbox_profile": null,
+        "signature": null
+      },
+      "stage": "Stable"
+    }
+  ],
+  "schema_version": "3.0.0-alpha"
+}

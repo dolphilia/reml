@@ -29,6 +29,10 @@ experimental_migration = []
 name = "text_stream_decode"
 path = "examples/io/text_stream_decode.rs"
 
+[[bin]]
+name = "reml_capability"
+path = "src/bin/reml_capability.rs"
+
 [dependencies]
 uuid = { version = "1.8", features = ["serde"] }
 unicode-segmentation = "1.11"

@@ -65,8 +65,11 @@ Core.Runtime の Capability で Stage 要件や監査メタデータの扱いに
 - 目的: `3-8-core-runtime-capability.md` §1.1 に列挙された Capability ハンドルの実装状況を Rust 側で棚卸しし、Stage 判定や監査統合の欠落を共有する。
 - 成果物:
   - `docs/plans/bootstrap-roadmap/assets/capability-handle-inventory.csv`: Gc/Io/Async/Audit など 14 項目の状態（未実装/Stage 検証のみ/部分実装）と参照ファイル（例: `compiler/rust/runtime/src/io/adapters.rs#L27-L233`, `compiler/rust/runtime/src/audit/mod.rs`）を記載。
-  - `docs/plans/bootstrap-roadmap/assets/capability-stage-field-gap.csv`: `CapabilityDescriptor.provider` や `StageRequirement::satisfies` など Stage/Effect 項目の欠落を Diagnostic/Audit キーと紐付けて記録。
-  - `docs/plans/bootstrap-roadmap/assets/core-runtime-capability-init.md`: RunConfig→Manifest→CapabilityRegistry→StageAuditPayload の初期化順序と `collect-iterator-audit-metrics --section runtime` への接続を記述。
-  - `docs/plans/bootstrap-roadmap/assets/capability-error-matrix.csv`: `CapabilityError` バリアント別にトリガー条件・診断コード・監査イベント・実装状況を整理。
+- `docs/plans/bootstrap-roadmap/assets/capability-stage-field-gap.csv`: `CapabilityDescriptor.provider` や `StageRequirement::satisfies` など Stage/Effect 項目の欠落を Diagnostic/Audit キーと紐付けて記録。
+- `docs/plans/bootstrap-roadmap/assets/core-runtime-capability-init.md`: RunConfig→Manifest→CapabilityRegistry→StageAuditPayload の初期化順序と `collect-iterator-audit-metrics --section runtime` への接続を記述。
+- `docs/plans/bootstrap-roadmap/assets/capability-error-matrix.csv`: `CapabilityError` バリアント別にトリガー条件・診断コード・監査イベント・実装状況を整理。
 - 測定: `python3 tooling/ci/collect-iterator-audit-metrics.py --section runtime --dry-run` を実行し、`reports/runtime-capabilities-validation.json` ベースの `runtime.capability_validation` KPI を `docs/plans/bootstrap-roadmap/assets/metrics/runtime-capability-stage.csv` に保存（pass_rate=1.0、候補 3 つ）。
 - 依存更新: `docs/plans/rust-migration/2-1-runtime-integration.md` と `docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md#3.3` へインベントリと初期化メモの参照を追加済み。Phase 3 以降の実装で `StageAuditPayload` が `CapabilityDescriptor` を受け取るよう設計変更を検討する。
+
+## Capability List Update
+- 2025-12-05 22:45:42 UTC: CLI `compiler/rust/runtime/target/debug/reml_capability` → JSON `reports/spec-audit/ch3/capability_list-20251205.json`、docs `docs/spec/3-8-core-runtime-capability.md`, `docs/plans/bootstrap-roadmap/README.md` を更新

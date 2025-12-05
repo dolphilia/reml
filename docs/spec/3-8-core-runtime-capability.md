@@ -67,19 +67,27 @@ pub enum CapabilityHandle =
   | Security(SecurityCapability);
 ```
 
-各 Capability の概要は以下の通りで、OS／プラットフォーム依存コンポーネントは公式プラグイン仕様（Chapter 4）に詳細を委ねる。標準配布では未登録状態を既定とし、導入時に `SecurityCapability` で審査する。
+各 Capability の概要は以下の通りで、OS／プラットフォーム依存コンポーネントは公式プラグイン仕様（Chapter 4）に詳細を委ねる。表は `reml_capability list --format json` の結果を `scripts/capability/generate_md.py` で生成し、Stage/効果スコープ/Provider/Manifest 情報を常に最新化できるようにしている。
 
-| Capability | 主担当効果 | 役割 | 参照章 |
-| --- | --- | --- | --- |
-| `AsyncCapability` | `io.async`, `io.timer` | スケジューラ・Waker・バックプレッシャ API を公開し、`Core.Async` を支える | 本章 §1.4, [3-9](3-9-core-async-ffi-unsafe.md) §1.1 |
-| `ActorRuntimeCapability` | `io.async`, `audit` | Mailbox や分散トランスポート、Actor 監査フックを提供 | 本章 §1.4, [3-9](3-9-core-async-ffi-unsafe.md) §1.9 |
-| `SyscallCapability` | `syscall`, `memory`, `unsafe` | OS システムコール呼び出しと監査フック | [4-1 System Capability プラグイン](4-1-system-plugin.md) |
-| `ProcessCapability` | `process`, `thread` | プロセス生成・スレッド管理（標準ランタイムでは `runtime/native/src/os.c` の `reml_os_thread_*` で Win32/POSIX API を抽象化し、GC/ワーカースレッド起動に対応） | [4-2 Process Capability プラグイン](4-2-process-plugin.md) |
-| `MemoryCapability` | `memory` | メモリマップ/共有メモリ/保護制御 | [4-3 Memory Capability プラグイン](4-3-memory-plugin.md) |
-| `SignalCapability` | `signal` | シグナル登録・送信・待機 | [4-4 Signal Capability プラグイン](4-4-signal-plugin.md) |
-| `HardwareCapability` | `hardware` | CPU 検出・性能カウンタ・NUMA | [4-5 Hardware Capability プラグイン](4-5-hardware-plugin.md) |
-| `RealTimeCapability` | `realtime`, `io.timer` | リアルタイムスケジューラ・高精度タイマ | [4-6 RealTime Capability プラグイン](4-6-realtime-plugin.md) |
-| `SecurityCapability` | `security`, `audit` | セキュリティポリシー適用と証跡記録 | 本章 §1.2, §2.7 |
+<!-- capability-table:start -->
+| Capability | Stage | Effect Scope | Provider | Manifest Path |
+| --- | --- | --- | --- | --- |
+| `io.fs.read` | `Stable` | `fs.read`<br>`io` | Core | - |
+| `io.fs.write` | `Stable` | `fs.write`<br>`io`<br>`mem` | Core | - |
+| `fs.permissions.read` | `Stable` | `io`<br>`security` | Core | - |
+| `fs.permissions.modify` | `Stable` | `io`<br>`security` | Core | - |
+| `fs.symlink.query` | `Stable` | `fs.symlink`<br>`io` | Core | - |
+| `fs.symlink.modify` | `Stable` | `fs.symlink`<br>`io`<br>`security` | Core | - |
+| `fs.watcher.native` | `Stable` | `io`<br>`watcher` | Core | - |
+| `fs.watcher.recursive` | `Stable` | `io`<br>`watcher` | Core | - |
+| `watcher.resource_limits` | `Stable` | `io`<br>`watcher` | Core | - |
+| `memory.buffered_io` | `Stable` | `mem` | Core | - |
+| `security.fs.policy` | `Stable` | `security` | Core | - |
+| `core.time.timezone.lookup` | `Beta` | `time` | Core | - |
+| `core.time.timezone.local` | `Beta` | `time` | Core | - |
+| `core.collections.audit` | `Stable` | `audit`<br>`mem` | Core | - |
+| `metrics.emit` | `Stable` | `audit` | Core | - |
+<!-- capability-table:end -->
 
 Capability Registry は上記バリアントを通じてシステム API を表面化し、効果タグと runtime 権限を整合させる。
 

@@ -30,6 +30,6 @@ pub use capability::{
         CapabilityPermission, CapabilityProvider, CapabilitySandboxProfile,
         CapabilitySecurityMetadata, CapabilitySecuritySignature, CapabilityTimestamp, EffectTag,
     },
-    registry::{CapabilityError, CapabilityRegistry},
+    registry::{CapabilityDescriptorList, CapabilityError, CapabilityRegistry},
 };
 pub use stage::{StageId, StageParseError, StageRequirement};

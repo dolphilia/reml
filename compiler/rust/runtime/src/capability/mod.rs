@@ -37,7 +37,7 @@ pub use metrics::{MetricsCapability, MetricsCapabilityMetadata, MetricsExporterK
 pub use plugin::{PluginCapability, PluginCapabilityMetadata};
 pub use process::{ProcessCapability, ProcessCapabilityMetadata, ProcessSpawnStrategy};
 pub use realtime::{RealtimeCapability, RealtimeCapabilityMetadata, RealtimeClockSource};
-pub use registry::{CapabilityError, CapabilityRegistry};
+pub use registry::{CapabilityDescriptorList, CapabilityError, CapabilityRegistry};
 pub use security::{SecurityCapability, SecurityCapabilityMetadata, SecurityPolicyKind};
 pub use signal::{SignalCapability, SignalCapabilityMetadata};
 pub use system::{SystemCapability, SystemCapabilityMetadata};

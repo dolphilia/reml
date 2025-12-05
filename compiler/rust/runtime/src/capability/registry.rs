@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    ops::{Deref, DerefMut},
     path::PathBuf,
     sync::{RwLock, RwLockReadGuard},
 };
@@ -227,14 +228,15 @@ impl CapabilityRegistry {
     }
 
     /// すべての CapabilityDescriptor を登録順に返す。
-    pub fn describe_all(&self) -> Vec<CapabilityDescriptor> {
+    pub fn describe_all(&self) -> CapabilityDescriptorList {
         let entries = self.entries.read().unwrap();
-        entries
+        let descriptors = entries
             .ordered_keys
             .iter()
             .filter_map(|id| entries.entries.get(id))
             .map(|entry| entry.descriptor.clone())
-            .collect()
+            .collect();
+        CapabilityDescriptorList::new(descriptors)
     }
 
     /// Capability ハンドルを取得し Stage/効果スコープを検証する。
@@ -544,6 +546,62 @@ struct CapabilityEntries {
 struct CapabilityEntry {
     descriptor: CapabilityDescriptor,
     handle: CapabilityHandle,
+}
+
+/// CapabilityDescriptor の列挙結果。
+#[derive(Debug, Clone, Default)]
+pub struct CapabilityDescriptorList {
+    descriptors: Vec<CapabilityDescriptor>,
+}
+
+impl CapabilityDescriptorList {
+    pub fn new(descriptors: Vec<CapabilityDescriptor>) -> Self {
+        Self { descriptors }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.descriptors.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.descriptors.len()
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, CapabilityDescriptor> {
+        self.descriptors.iter()
+    }
+}
+
+impl IntoIterator for CapabilityDescriptorList {
+    type Item = CapabilityDescriptor;
+    type IntoIter = std::vec::IntoIter<CapabilityDescriptor>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.descriptors.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a CapabilityDescriptorList {
+    type Item = &'a CapabilityDescriptor;
+    type IntoIter = std::slice::Iter<'a, CapabilityDescriptor>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.descriptors.iter()
+    }
+}
+
+impl Deref for CapabilityDescriptorList {
+    type Target = [CapabilityDescriptor];
+
+    fn deref(&self) -> &Self::Target {
+        &self.descriptors
+    }
+}
+
+impl DerefMut for CapabilityDescriptorList {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.descriptors
+    }
 }
 
 fn builtin_capabilities() -> Vec<CapabilityHandle> {

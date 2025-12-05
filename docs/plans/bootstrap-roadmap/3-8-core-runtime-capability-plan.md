@@ -118,6 +118,13 @@
     - 4.3.b `docs/plans/bootstrap-roadmap/README.md` と `docs/spec/3-8-core-runtime-capability.md` の Capability 表を `scripts/capability/generate_md.py`（新設）で自動生成し、`describe_all` の出力を Markdown へ変換する。
     - 4.3.c `tooling/runtime/capability_list.py` で CLI 出力 → Markdown 変換 → `docs/spec/3-8` 反映を自動化し、作業ログを `docs/notes/runtime-capability-stage-log.md#capability-list-update` に残す。
 
+#### 4.3 実施結果（Run ID: 20290705-capability-list-cli）
+- `CapabilityRegistry::describe_all()` を `CapabilityDescriptorList` で返すように拡張し、`IntoIterator` 実装と `len`/`iter` を提供した。これにより CLI や将来の API で iterator として扱える。
+- `reml_capability` バイナリを追加し、`reml_capability list --format json|markdown` で Registry 内容を CLI から確認できるようにした。JSON 出力は `schema_version = "3.0.0-alpha"` を含み、Markdown 出力は表形式で Stage/EffectScope/Provider/Manifest を掲載する。
+- `scripts/capability/generate_md.py` と `tooling/runtime/capability_list.py` を追加。後者は CLI → JSON 保存（`reports/spec-audit/ch3/capability_list-YYYYMMDD.json`）→ Markdown 生成 → `docs/spec/3-8-core-runtime-capability.md` / `docs/plans/bootstrap-roadmap/README.md` 反映 → `docs/notes/runtime-capability-stage-log.md#capability-list-update` へのログ追記を自動化する。
+- 上記スクリプトを実行し、2 つのドキュメントには `<!-- capability-table:start -->` / `<!-- capability-table:end -->` マーカー内へ自動生成テーブルを挿入した。README には Snapshot セクションを新設し、更新手順を明記した。
+- `docs/notes/runtime-capability-stage-log.md#Capability List Update` へ「CLI パス / JSON 保存先 / 更新ドキュメント」を記録し、今後の再実行時に参照できる履歴を確保した。
+
 ### 5. 依存モジュールとの統合（58週目）
 **担当領域**: Chapter 3 連携
 
