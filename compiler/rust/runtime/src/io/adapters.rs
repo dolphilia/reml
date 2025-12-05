@@ -6,7 +6,7 @@
 use once_cell::sync::OnceCell;
 
 use crate::{
-    registry::{CapabilityError, CapabilityRegistry},
+    capability::registry::{CapabilityError, CapabilityRegistry},
     stage::{StageId, StageRequirement},
 };
 
@@ -26,7 +26,7 @@ pub(crate) const CAP_WATCH_RESOURCE_LIMITS: &str = "watcher.resource_limits";
 
 /// ファイルシステム操作向け Capability を検証するアダプタ。
 pub struct FsAdapter {
-    registry: CapabilityRegistry,
+    registry: &'static CapabilityRegistry,
 }
 
 impl FsAdapter {
@@ -133,7 +133,7 @@ impl FsAdapter {
 
 /// ファイル監視 Capability を検証するアダプタ（実装が入るまで Stage 判定のみ）。
 pub struct WatcherAdapter {
-    registry: CapabilityRegistry,
+    registry: &'static CapabilityRegistry,
 }
 
 impl WatcherAdapter {

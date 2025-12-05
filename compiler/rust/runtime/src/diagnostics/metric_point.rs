@@ -5,7 +5,7 @@ use serde_json::{json, Map, Number, Value};
 
 use crate::{
     prelude::ensure::{DiagnosticSeverity, GuardDiagnostic},
-    registry::CapabilityError,
+    capability::registry::CapabilityError,
     stage::{StageId, StageRequirement},
     time::{self, Duration, Timestamp},
 };

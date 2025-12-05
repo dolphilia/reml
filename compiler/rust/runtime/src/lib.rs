@@ -3,6 +3,7 @@
 //! 将来のフロントエンド／ランタイム統合で利用する。
 
 mod anyhow;
+pub mod capability;
 pub mod audit;
 pub mod collections;
 pub mod config;
@@ -14,11 +15,11 @@ pub mod io;
 pub mod numeric;
 pub mod path;
 pub mod prelude;
-pub mod registry;
 pub mod run_config;
 pub mod stage;
 pub mod text;
 #[cfg(any(feature = "core_time", feature = "metrics"))]
 pub mod time;
 
+pub use capability::registry::{CapabilityError, CapabilityRegistry};
 pub use stage::{StageId, StageRequirement};

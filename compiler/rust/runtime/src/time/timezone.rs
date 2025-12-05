@@ -1,6 +1,6 @@
 use super::{Duration, TimeError, TimeResult, Timestamp, NANOS_PER_SECOND_I128};
 use crate::io::time_env_snapshot;
-use crate::registry::CapabilityRegistry;
+use crate::capability::registry::CapabilityRegistry;
 use crate::stage::{StageId, StageRequirement};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;

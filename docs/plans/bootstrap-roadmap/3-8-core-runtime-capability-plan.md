@@ -51,6 +51,11 @@
     - 2.1.a `compiler/rust/runtime/src/capability/registry.rs`（新設）で `OnceLock<CapabilityRegistry>` を利用したスレッド安全シングルトンを実装し、`cfg(test)` で再初期化できる `fn reset_for_tests()` を用意する。
     - 2.1.b `registry()` が `Send + Sync` を満たすことを `static_assertions::assert_impl_all!(CapabilityRegistry: Send, Sync);` で検証し、`cargo test -p reml_runtime capability_registry_traits` を CI チェックに追加する。
     - 2.1.c `docs/plans/rust-migration/2-1-runtime-integration.md#2.1.4` と同期し、初期化順序（Config → Diagnostics → Runtime）の図版へ `registry()` 呼び出しを追記する。
+
+#### 2.1 実施結果（Run ID: 20290614-capability-registry-singleton）
+- `compiler/rust/runtime/src/capability/registry.rs` を新設し、`OnceLock<CapabilityRegistry>` ベースのシングルトン `registry()`／テスト用リセット `reset_for_tests()` を実装した。既存の Stage 検証 API はこのモジュールへ移設し、`io/adapters` や `prelude::collectors` から `capability::registry` を参照する構成へ整理済み。
+- `compiler/rust/runtime/tests/capability_registry.rs` に `capability_registry_traits` テストを追加し、`static_assertions::assert_impl_all!` で `CapabilityRegistry: Send + Sync` を保証する。実装箇所は `cargo test -p reml_runtime capability_registry_traits` で CI へ統合予定。
+- `docs/plans/rust-migration/2-1-runtime-integration.md#2.1.4` の Capability Registry 行へ本モジュールの導線（`compiler/rust/runtime/src/capability/registry.rs`）と Run ID を追記し、Rust Runtime 初期化図から `registry()` 呼び出しを辿れるよう更新した。
 2.2. `CapabilityHandle` バリアントと具象 Capability (Gc/Io/Async/Audit 等) のメタデータ構造を定義する。
     - 2.2.a `compiler/rust/runtime/src/capability/handle.rs` に列挙体を実装し、`CapabilityDescriptor` へアクセスする共通メソッドや `TryFrom<CapabilityHandle>` 実装を用意する。
     - 2.2.b 各 Capability ごとにメタデータ構造を `compiler/rust/runtime/src/capability/{io,gc,async}.rs` などの個別ファイルへ分割し、`serde`/`schemars` 導線を整える。

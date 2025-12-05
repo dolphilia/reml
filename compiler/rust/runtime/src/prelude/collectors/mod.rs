@@ -30,7 +30,7 @@ use super::{
 };
 use crate::{
     collections::audit_bridge::ChangeSet,
-    registry::{CapabilityError, CapabilityRegistry},
+    capability::registry::{CapabilityError, CapabilityRegistry},
     StageId, StageRequirement as RegistryStageRequirement,
 };
 use serde_json::{Map as JsonObject, Number, Value};

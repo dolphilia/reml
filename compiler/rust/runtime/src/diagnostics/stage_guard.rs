@@ -1,5 +1,5 @@
 use crate::{
-    registry::{CapabilityError, CapabilityRegistry},
+    capability::registry::{CapabilityError, CapabilityRegistry},
     stage::{StageId, StageRequirement},
 };
 

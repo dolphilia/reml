@@ -1,13 +1,25 @@
-use crate::stage::{StageId, StageRequirement};
 use std::fmt;
 
-/// Capability を検証するための簡易レジストリ。
-#[derive(Debug, Clone)]
-pub struct CapabilityRegistry;
+use once_cell::sync::OnceLock;
+
+use crate::stage::{StageId, StageRequirement};
+
+static REGISTRY: OnceLock<CapabilityRegistry> = OnceLock::new();
+
+/// Capability を検証するためのレジストリ。
+#[derive(Debug)]
+pub struct CapabilityRegistry {
+    _private: (),
+}
 
 impl CapabilityRegistry {
-    pub fn registry() -> Self {
-        Self
+    /// シングルトンのレジストリを取得する。
+    pub fn registry() -> &'static Self {
+        REGISTRY.get_or_init(Self::new)
+    }
+
+    fn new() -> Self {
+        Self { _private: () }
     }
 
     pub fn verify_capability_stage(
@@ -81,3 +93,28 @@ impl fmt::Display for CapabilityError {
 }
 
 impl std::error::Error for CapabilityError {}
+
+#[cfg(test)]
+pub(crate) fn reset_for_tests() {
+    REGISTRY.take();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn registry_returns_same_instance() {
+        let first = CapabilityRegistry::registry() as *const CapabilityRegistry;
+        let second = CapabilityRegistry::registry() as *const CapabilityRegistry;
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn reset_for_tests_clears_instance() {
+        let first = CapabilityRegistry::registry() as *const CapabilityRegistry;
+        reset_for_tests();
+        let second = CapabilityRegistry::registry() as *const CapabilityRegistry;
+        assert_ne!(first, second);
+    }
+}
