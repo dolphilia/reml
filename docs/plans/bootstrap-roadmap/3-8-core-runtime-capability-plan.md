@@ -81,6 +81,12 @@
     - 3.2.a `verify_capability_stage` で `CapabilityDescriptor.effect_scope` と `StageRequirement` を同時に検証し、`EffectScopeMismatch` エラーを `CapabilityError` に追加する。
     - 3.2.b `verify_capability` 成功/失敗を `AuditEnvelope` の `AuditEventKind::CapabilityCheck` へ記録し、`collect-iterator-audit-metrics.py --section runtime` が読み取れるメタデータキーを定義する。
     - 3.2.c `compiler/rust/runtime/tests/verify_capability.rs` に Stage 条件の成功/失敗、EffectScope 不一致、未登録 Capability の各ケースをテーブル駆動テストとして実装する。
+
+#### 3.2 実施結果（Run ID: 20240608-capability-stage-verify）
+- `compiler/rust/runtime/src/capability/registry.rs` に `CapabilityRegistry::verify_capability` を追加し、Stage 判定と `CapabilityDescriptor.effect_scope` の両方をチェックするよう更新。`CapabilityError` へ `EffectScopeMismatch` を新設し、`missing_effects()` / `required_effects()` で診断拡張から不足タグを特定できるようにした。これに合わせ `StageId::Stable` フォールバックを除去し、レジストリ生成時に Core.IO/Time/Metrics/Audit で必要な Capability を自動登録して Stage 情報を常備する。
+- `verify_capability` の成功／失敗を `AuditEventKind::CapabilityCheck` として `AuditEnvelope.metadata` に記録し、`effect.stage.required` / `effect.stage.actual` / `capability.result` / `effect.required_capabilities` など `collect-iterator-audit-metrics.py --section runtime` が想定するキー群をすべて埋めるよう整備した。Stage/Effect 不一致時には `effect.missing_effects` も書き込み、`runtime.capability_validation` KPI から差分検知できる。
+- `compiler/rust/runtime/tests/verify_capability.rs` を新設し、Stage 成功・StageViolation・EffectScopeMismatch・未登録の 4 ケースを `reset_for_tests()` つきで検証。既存の `capability_registry.rs` テストも自動登録済み Capability に対応するよう修正した。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml verify_capability` で新テストが緑化することを確認済み。
+- `docs/plans/bootstrap-roadmap/assets/capability-error-matrix.csv` の `EffectScopeMismatch` 行を「実装済み」に更新し、Runtime 実装と KPI 表の双方から参照できる Run ID を追記した。
 3.3. `verify_conductor_contract` を実装し、Manifest (3-7) と連携した契約チェックをテストする。
     - 3.3.a `reml_runtime::config::manifest` に `ConductorCapabilityRequirement` 生成ロジックを追加し、`run.target.capabilities` 节から Stage/Effect/Provider 情報を抽出する。
     - 3.3.b `compiler/rust/runtime/tests/conductor_contract.rs` のフィクスチャ（`tests/fixtures/manifest/capability_contract.json` 等）で成功/失敗パターンを検証し、`manifest_path` と `source_span` が `CapabilityError::ContractViolation` に埋め込まれることを確認する。

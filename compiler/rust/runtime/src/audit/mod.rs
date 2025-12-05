@@ -51,6 +51,16 @@ const CAPABILITY_MISMATCH_KEYS: &[&str] = &[
     "capability.actual_stage",
     "dsl.node",
 ];
+const CAPABILITY_CHECK_KEYS: &[&str] = &[
+    "capability.id",
+    "capability.result",
+    "effect.capability",
+    "effect.stage.required",
+    "effect.stage.actual",
+    "capability.ids",
+    "effect.required_capabilities",
+    "effect.actual_capabilities",
+];
 const ASYNC_SUPERVISOR_RESTARTED_KEYS: &[&str] = &[
     "async.supervisor.id",
     "async.supervisor.actor",
@@ -82,6 +92,7 @@ pub enum AuditEventKind {
     AsyncSupervisorExhausted,
     ConfigCompatChanged,
     EnvMutation,
+    CapabilityCheck,
     BridgeReload,
     BridgeRollback,
     Custom(String),
@@ -99,6 +110,7 @@ impl AuditEventKind {
             AuditEventKind::AsyncSupervisorExhausted => Cow::Borrowed("async_supervisor_exhausted"),
             AuditEventKind::ConfigCompatChanged => Cow::Borrowed("config_compat_changed"),
             AuditEventKind::EnvMutation => Cow::Borrowed("env_mutation"),
+            AuditEventKind::CapabilityCheck => Cow::Borrowed("capability_check"),
             AuditEventKind::BridgeReload => Cow::Borrowed("bridge.reload"),
             AuditEventKind::BridgeRollback => Cow::Borrowed("bridge.rollback"),
             AuditEventKind::Custom(value) => Cow::Owned(value.clone()),
@@ -133,6 +145,7 @@ impl AuditEventKind {
             AuditEventKind::AsyncSupervisorExhausted => Some(ASYNC_SUPERVISOR_EXHAUSTED_KEYS),
             AuditEventKind::ConfigCompatChanged => Some(CONFIG_COMPAT_CHANGED_KEYS),
             AuditEventKind::EnvMutation => Some(ENV_MUTATION_KEYS),
+            AuditEventKind::CapabilityCheck => Some(CAPABILITY_CHECK_KEYS),
             AuditEventKind::BridgeReload | AuditEventKind::BridgeRollback => {
                 Some(BRIDGE_RELOAD_KEYS)
             }
