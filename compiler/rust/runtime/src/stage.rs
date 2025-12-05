@@ -4,7 +4,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// ランタイムが扱う Stage ID。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
 pub enum StageId {
     Experimental,
     Alpha,
@@ -32,13 +34,13 @@ pub enum StageRequirement {
 
 impl StageRequirement {
     pub fn matches(&self, actual: StageId) -> bool {
-        Self::satisfies(*self, actual)
+        (*self).satisfies(actual)
     }
 
     /// 仕様で定義される `satisfies` 判定。
-    pub fn satisfies(self, actual: StageId) -> bool {
+    pub const fn satisfies(self, actual: StageId) -> bool {
         match self {
-            StageRequirement::Exact(expected) => expected == actual,
+            StageRequirement::Exact(expected) => stage_rank(actual) == stage_rank(expected),
             StageRequirement::AtLeast(threshold) => stage_rank(actual) >= stage_rank(threshold),
         }
     }

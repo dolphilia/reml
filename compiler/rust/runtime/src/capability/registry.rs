@@ -107,8 +107,9 @@ impl CapabilityRegistry {
         // 将来の 3.2 タスクで effect_scope 検証と未登録 Capability の扱いを拡張する。
         // 現段階では既存挙動との互換性を優先し、登録済みなら Descriptor を使用し、
         // 未登録の場合は Stable 相当として扱う。
-        let actual = self
-            .descriptor_for(capability)
+        let descriptor = self.descriptor_for(capability);
+        let actual = descriptor
+            .as_ref()
             .map(|descriptor| descriptor.stage())
             .unwrap_or(StageId::Stable);
         if requirement.matches(actual) {
@@ -118,6 +119,7 @@ impl CapabilityRegistry {
                 capability,
                 requirement,
                 actual,
+                descriptor,
             ))
         }
     }
@@ -170,6 +172,7 @@ pub enum CapabilityError {
         capability_id: CapabilityId,
         required: StageRequirement,
         actual: StageId,
+        descriptor: Option<CapabilityDescriptor>,
         message: String,
     },
 }
@@ -197,6 +200,7 @@ impl CapabilityError {
         capability_id: impl Into<String>,
         required: StageRequirement,
         actual: StageId,
+        descriptor: Option<CapabilityDescriptor>,
     ) -> Self {
         let capability_id = capability_id.into();
         let message = format!(
@@ -208,6 +212,7 @@ impl CapabilityError {
             capability_id,
             required,
             actual,
+            descriptor,
             message,
         }
     }
@@ -231,6 +236,14 @@ impl CapabilityError {
     pub fn actual_stage(&self) -> Option<StageId> {
         match self {
             CapabilityError::StageViolation { actual, .. } => Some(*actual),
+            _ => None,
+        }
+    }
+
+    pub fn descriptor(&self) -> Option<&CapabilityDescriptor> {
+        match self {
+            // 3-6 Core Diagnostics の `effects.contract.stage_mismatch` で Capability 情報を転写する。
+            CapabilityError::StageViolation { descriptor, .. } => descriptor.as_ref(),
             _ => None,
         }
     }
