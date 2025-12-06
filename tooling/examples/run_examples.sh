@@ -149,7 +149,13 @@ for example in "${FILES[@]}"; do
         CMD+=(--emit-audit-log)
       fi
       CMD+=("${target}")
-      "${CMD[@]}" >"${diag_tmp}" 2>"${audit_tmp}"
+      if "${CMD[@]}" >"${diag_tmp}" 2>"${audit_tmp}"; then
+        :
+      else
+        # 致命的診断を含むサンプル（例: pipeline_branch）は非ゼロ終了するため、ゴールデン更新時のみ警告を出して継続する
+        code=$?
+        echo "    -> ${example} exited with status ${code} (continuing --update-golden)" >&2
+      fi
     )
     diag_path="${target%.reml}.expected.diagnostic.json"
     audit_path="${target%.reml}.expected.audit.jsonl"
