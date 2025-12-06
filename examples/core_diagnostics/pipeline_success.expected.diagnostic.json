@@ -1,14 +1,14 @@
 {
   "command": "Check",
   "phase": "Reporting",
-  "run_id": "346ca0de-c2d0-4e42-aa6a-e3cc188382b3",
+  "run_id": "a375f6ef-2d42-4bc1-b933-b473bb7681d4",
   "diagnostics": [],
   "summary": {
     "inputs": [
       "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_success.reml"
     ],
-    "started_at": "-4657-10-30T04:14:59Z",
-    "finished_at": "-4657-10-30T04:14:59Z",
+    "started_at": "-4657-10-30T07:14:07Z",
+    "finished_at": "-4657-10-30T07:14:07Z",
     "artifact": null,
     "stats": {
       "cli_command": "target/debug/reml_frontend --output json --emit-audit-log /Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_success.reml",

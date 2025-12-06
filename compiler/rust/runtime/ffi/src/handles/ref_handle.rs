@@ -20,10 +20,13 @@ pub struct RefHandle<T> {
 impl<T> RefHandle<T> {
     /// 内部可変性付きの `Ref` を構築する。
     pub fn new(value: T) -> Self {
+        Self::try_new(value).expect("core.collections.ref capability verification failed")
+    }
+
+    /// Capability 検証込みで `Ref` を構築する。
+    pub fn try_new(value: T) -> Result<Self, BorrowError> {
         register_ref_capability();
-        Self {
-            inner: EffectfulRef::new(value),
-        }
+        EffectfulRef::try_new(value).map(|inner| Self { inner })
     }
 
     /// 共有借用を取得する。

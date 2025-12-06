@@ -47,3 +47,8 @@
 ### Run ID: 3961ffb6-ed62-499c-ad04-e1bff4bd3274
 - `tooling/examples/run_examples.sh --suite core_diagnostics --with-audit` を実行し、`core_diagnostics/pipeline_branch.reml` が `effects.contract.stage_mismatch` を発火して `exit_code=1` でもスイート全体が継続することを確認。スクリプトは `core_diagnostics/pipeline_branch.reml` のみ `allowed failure` として扱い、その他の例でエラーが発生した場合は即時失敗する。
 - `examples/core_diagnostics/README.md` に Stage mismatch 用サンプルであることと `allowed failure` 動作を追記し、フォローアップに挙げていた `set -e` との整合課題を本 Run でクローズした。
+
+### Run ID: 80b0d934-6b51-4718-9fc4-dcff8c57b849
+- `tooling/examples/run_examples.sh --suite core_diagnostics --with-audit --update-golden` を実行し、`pipeline_success`/`pipeline_branch` の期待値を単一コマンドで更新した。`pipeline_branch` の `exit_code=1` は `allowed failure during --update-golden` としてログに記録され、スイート全体の更新を阻害しないことを確認。
+- 上記コマンドで生成した `examples/core_diagnostics/pipeline_branch.expected.{diagnostic.json,audit.jsonl}` を用いて `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` を再生成し、`capability.id=console` / `effect.stage.*` / `bridge.stage.trace` の最新メタデータと Run ID を記録した。
+- `scripts/validate-diagnostic-json.sh reports/spec-audit/ch3/capability_stage-mismatch-20251206.json --effect-tag runtime` を再実行し、`capability.*` / `effect.stage.*` / `effects.contract.stage_trace` / `pipeline.*` が CLI/Audit 双方に存在することを検証した。検証結果は `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#5.2-実施結果` と本書にリンク済み。

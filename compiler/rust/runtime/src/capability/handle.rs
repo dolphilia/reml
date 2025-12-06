@@ -5,10 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     actor::ActorCapability, async_runtime::AsyncCapability, audit::AuditCapability,
-    gc::GcCapability, hardware::HardwareCapability, io::IoCapability, memory::MemoryCapability,
-    metrics::MetricsCapability, plugin::PluginCapability, process::ProcessCapability,
-    realtime::RealtimeCapability, security::SecurityCapability, signal::SignalCapability,
-    system::SystemCapability, CapabilityDescriptor,
+    collections::CollectionsCapability, gc::GcCapability, hardware::HardwareCapability,
+    io::IoCapability, memory::MemoryCapability, metrics::MetricsCapability, plugin::PluginCapability,
+    process::ProcessCapability, realtime::RealtimeCapability, security::SecurityCapability,
+    signal::SignalCapability, system::SystemCapability, CapabilityDescriptor,
 };
 
 /// Capability ごとの型付きハンドル。
@@ -17,6 +17,7 @@ pub enum CapabilityHandle {
     Gc(GcCapability),
     Io(IoCapability),
     Async(AsyncCapability),
+    Collections(CollectionsCapability),
     Audit(AuditCapability),
     Metrics(MetricsCapability),
     Memory(MemoryCapability),
@@ -36,6 +37,7 @@ impl CapabilityHandle {
             CapabilityHandle::Gc(handle) => handle.descriptor(),
             CapabilityHandle::Io(handle) => handle.descriptor(),
             CapabilityHandle::Async(handle) => handle.descriptor(),
+            CapabilityHandle::Collections(handle) => handle.descriptor(),
             CapabilityHandle::Audit(handle) => handle.descriptor(),
             CapabilityHandle::Metrics(handle) => handle.descriptor(),
             CapabilityHandle::Memory(handle) => handle.descriptor(),
@@ -55,6 +57,7 @@ impl CapabilityHandle {
             CapabilityHandle::Gc(_) => CapabilityHandleKind::Gc,
             CapabilityHandle::Io(_) => CapabilityHandleKind::Io,
             CapabilityHandle::Async(_) => CapabilityHandleKind::Async,
+            CapabilityHandle::Collections(_) => CapabilityHandleKind::Collections,
             CapabilityHandle::Audit(_) => CapabilityHandleKind::Audit,
             CapabilityHandle::Metrics(_) => CapabilityHandleKind::Metrics,
             CapabilityHandle::Memory(_) => CapabilityHandleKind::Memory,
@@ -86,6 +89,13 @@ impl CapabilityHandle {
     pub fn as_async(&self) -> Option<&AsyncCapability> {
         match self {
             CapabilityHandle::Async(handle) => Some(handle),
+            _ => None,
+        }
+    }
+
+    pub fn as_collections(&self) -> Option<&CollectionsCapability> {
+        match self {
+            CapabilityHandle::Collections(handle) => Some(handle),
             _ => None,
         }
     }
@@ -186,6 +196,12 @@ impl From<AsyncCapability> for CapabilityHandle {
     }
 }
 
+impl From<CollectionsCapability> for CapabilityHandle {
+    fn from(value: CollectionsCapability) -> Self {
+        CapabilityHandle::Collections(value)
+    }
+}
+
 impl From<AuditCapability> for CapabilityHandle {
     fn from(value: AuditCapability) -> Self {
         CapabilityHandle::Audit(value)
@@ -259,6 +275,7 @@ pub enum CapabilityHandleKind {
     Gc,
     Io,
     Async,
+    Collections,
     Audit,
     Metrics,
     Memory,
@@ -342,6 +359,7 @@ macro_rules! impl_try_from_handle {
 impl_try_from_handle!(GcCapability, Gc, Gc);
 impl_try_from_handle!(IoCapability, Io, Io);
 impl_try_from_handle!(AsyncCapability, Async, Async);
+impl_try_from_handle!(CollectionsCapability, Collections, Collections);
 impl_try_from_handle!(AuditCapability, Audit, Audit);
 impl_try_from_handle!(MetricsCapability, Metrics, Metrics);
 impl_try_from_handle!(MemoryCapability, Memory, Memory);

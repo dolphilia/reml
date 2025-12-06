@@ -8,10 +8,42 @@ use std::{
     sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError},
 };
 
+use once_cell::sync::OnceCell;
+
 #[cfg(feature = "core_prelude")]
 use crate::core_prelude::iter::{EffectLabels, EffectSet};
+use crate::{
+    capability::registry::{CapabilityError, CapabilityRegistry},
+    stage::{StageId, StageRequirement},
+};
 #[cfg(not(feature = "core_prelude"))]
 use crate::prelude::iter::{EffectLabels, EffectSet};
+
+const CORE_COLLECTIONS_REF_CAPABILITY: &str = "core.collections.ref";
+const REF_STAGE_REQUIREMENT: StageRequirement = StageRequirement::Exact(StageId::Stable);
+const REF_REQUIRED_EFFECTS: [&str; 3] = ["mem", "mut", "rc"];
+static REF_CAPABILITY_STAGE: OnceCell<Result<StageId, CapabilityError>> = OnceCell::new();
+
+fn ensure_ref_capability_stage() -> Result<StageId, CapabilityError> {
+    REF_CAPABILITY_STAGE
+        .get_or_init(|| {
+            let registry = CapabilityRegistry::registry();
+            let required_effects = REF_REQUIRED_EFFECTS
+                .iter()
+                .map(|tag| tag.to_string())
+                .collect::<Vec<_>>();
+            registry.verify_capability_stage(
+                CORE_COLLECTIONS_REF_CAPABILITY,
+                REF_STAGE_REQUIREMENT,
+                &required_effects,
+            )
+        })
+        .clone()
+}
+
+fn ensure_ref_capability() -> Result<(), BorrowError> {
+    ensure_ref_capability_stage().map(|_| ()).map_err(Into::into)
+}
 
 struct RefInner<T> {
     value: RwLock<T>,
@@ -133,6 +165,7 @@ impl<'a, T> DerefMut for RefMutGuard<'a, T> {
 pub enum BorrowError {
     Poisoned(&'static str),
     BorrowConflict(&'static str),
+    CapabilityDenied(CapabilityError),
 }
 
 impl fmt::Display for BorrowError {
@@ -140,11 +173,25 @@ impl fmt::Display for BorrowError {
         match self {
             Self::Poisoned(op) => write!(f, "{op} lock poisoned"),
             Self::BorrowConflict(op) => write!(f, "{op} borrow conflict"),
+            Self::CapabilityDenied(err) => write!(f, "{err}"),
         }
     }
 }
 
-impl Error for BorrowError {}
+impl Error for BorrowError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::CapabilityDenied(err) => Some(err),
+            _ => None,
+        }
+    }
+}
+
+impl From<CapabilityError> for BorrowError {
+    fn from(value: CapabilityError) -> Self {
+        BorrowError::CapabilityDenied(value)
+    }
+}
 
 /// 効果計測付きの共有参照。
 pub struct EffectfulRef<T> {
@@ -155,10 +202,17 @@ pub struct EffectfulRef<T> {
 impl<T> EffectfulRef<T> {
     /// 新しいハンドルを構築する。
     pub fn new(value: T) -> Self {
-        Self {
+        Self::try_new(value)
+            .expect("core.collections.ref capability verification failed")
+    }
+
+    /// Capability を検証したうえで新しいハンドルを構築する。
+    pub fn try_new(value: T) -> Result<Self, BorrowError> {
+        ensure_ref_capability()?;
+        Ok(Self {
             handle: Ref::new(value),
             effects: EffectCell::new(EffectSet::PURE),
-        }
+        })
     }
 
     fn with_effects(&self, update: impl FnOnce(&mut EffectSet)) {

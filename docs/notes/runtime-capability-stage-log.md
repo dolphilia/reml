@@ -9,7 +9,7 @@ Core.Runtime の Capability で Stage 要件や監査メタデータの扱いに
   - `examples/core_diagnostics/pipeline_branch.expected.diagnostic.json` に `capability.id=console` / `capability.expected_stage=at_least:beta` / `capability.actual_stage=at_least:stable` を保持し、`effects.contract.stage_trace` と `bridge.stage.trace` が CLI/LSP/Audit 共通で同一配列を指すことを確認。
   - 監査ログは `examples/core_diagnostics/pipeline_branch.expected.audit.jsonl`（2 行）に保存し、`pipeline.outcome=success` / `pipeline.exit_code=failure` が stage mismatch 発生時でも揃うことを確認。
 - 観測方法:
-  - `cargo run --quiet --bin reml_frontend -- --output json --emit-audit-log examples/core_diagnostics/pipeline_branch.reml` で Run ID `31bed62e-f04e-4810-acc2-ce5138088068` を取得し、結果を `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` に集約。
+  - `tooling/examples/run_examples.sh --suite core_diagnostics --with-audit --update-golden`（内部で `target/debug/reml_frontend --output json --emit-audit-log .../pipeline_branch.reml` を実行）で Run ID `80b0d934-6b51-4718-9fc4-dcff8c57b849` を取得し、結果を `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` に集約。
   - `scripts/validate-diagnostic-json.sh reports/spec-audit/ch3/capability_stage-mismatch-20251206.json --effect-tag runtime` を実行して `capability.*` / `effect.stage.*` / `effects.contract.stage_trace` / `pipeline.*` の必須キーが欠落していないことを確認。
 - 関連ドキュメント: `docs/plans/bootstrap-roadmap/pipeline_branch-stage-mismatch-plan.md`（§6 実施ログ）、`docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#5.2-実施結果`
 

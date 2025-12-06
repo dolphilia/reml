@@ -12,6 +12,7 @@ use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 use super::{
     audit::{AuditCapability, AuditCapabilityMetadata},
+    collections::{CollectionsCapability, CollectionsCapabilityMetadata},
     contract::{CapabilityContractSpan, ConductorCapabilityContract, ConductorCapabilityRequirement},
     descriptor::{CapabilityDescriptor, CapabilityId, CapabilityProvider, EffectTag},
     handle::CapabilityHandle,
@@ -682,6 +683,7 @@ fn builtin_capabilities() -> Vec<CapabilityHandle> {
         security_capability("security.fs.policy", StageId::Stable, &["security"]),
         realtime_capability("core.time.timezone.lookup", StageId::Beta, &["time"]),
         realtime_capability("core.time.timezone.local", StageId::Beta, &["time"]),
+        collections_ref_capability(),
         audit_capability("core.collections.audit", StageId::Stable, &["audit", "mem"]),
         metrics_capability("metrics.emit", StageId::Stable, &["audit"]),
     ]
@@ -761,6 +763,24 @@ fn metrics_capability(id: &'static str, stage: StageId, effects: &[&str]) -> Cap
             ],
             supports_histogram: true,
             supports_sampling: true,
+        },
+    ))
+}
+
+fn collections_ref_capability() -> CapabilityHandle {
+    CapabilityHandle::Collections(CollectionsCapability::new(
+        descriptor(
+            "core.collections.ref",
+            StageId::Stable,
+            &["mem", "mut", "rc"],
+        ),
+        CollectionsCapabilityMetadata {
+            collector_effects: vec![
+                "collector.effect.rc".into(),
+                "collector.effect.mut".into(),
+            ],
+            tracks_mutation: true,
+            tracks_reference_count: true,
         },
     ))
 }

@@ -1,0 +1,858 @@
+{
+  "metrics": [
+    {
+      "metric": "diagnostic.audit_presence_rate",
+      "total": 9,
+      "passed": 9,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "sources": [
+        "reports/spec-audit/ch1/core_iter_collectors.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "collector.effect.audit_snapshot",
+      "total": 9,
+      "passed": 9,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "stage": {
+        "actual_counts": {
+          "stable": 2,
+          "beta": 6,
+          "unknown": 1
+        },
+        "required_counts": {
+          "stable": 2,
+          "beta": 7
+        },
+        "mode_counts": {
+          "exact": 2,
+          "at_least": 7
+        },
+        "source_counts": {
+          "ListCollector::finish": 1,
+          "VecCollector::finish": 1,
+          "MapCollector::push": 1,
+          "SetCollector::finish": 1,
+          "StringCollector::push": 1,
+          "TableCollector::finish": 1,
+          "TableCollector::push": 1,
+          "CellRefCollector::finish": 1,
+          "TableCollector::csv_import": 1
+        },
+        "capability_counts": {
+          "core.collector.list": 1,
+          "core.collector.vec": 1,
+          "core.collector.map": 1,
+          "core.collector.set": 1,
+          "core.collector.string": 1,
+          "core.collector.table": 3
+        },
+        "kind_counts": {
+          "list": 1,
+          "vec": 1,
+          "map": 1,
+          "set": 1,
+          "string": 1,
+          "table": 3,
+          "custom": 1
+        },
+        "mismatch": 0,
+        "mismatch_rate": 0.0,
+        "audit_pass_rate": 1.0
+      },
+      "effects": {
+        "counts": {
+          "mem": 8,
+          "mut": 8,
+          "debug": 0,
+          "async_pending": 0,
+          "audit": 2,
+          "time": 0
+        },
+        "rates": {
+          "mem": 0.8888888888888888,
+          "mut": 0.8888888888888888,
+          "debug": 0.0,
+          "async_pending": 0.0,
+          "audit": 0.2222222222222222,
+          "time": 0.0
+        },
+        "markers": {
+          "mem_reservation": 16,
+          "reserve": 2,
+          "finish": 6,
+          "mem_bytes": 303,
+          "time_calls": 0
+        }
+      },
+      "errors": {
+        "total": 3,
+        "rate_per_total": 0.3333333333333333,
+        "counts": {
+          "duplicate_key": 2,
+          "invalid_encoding": 1
+        },
+        "rate_per_total_by_kind": {
+          "duplicate_key": 0.2222222222222222,
+          "invalid_encoding": 0.1111111111111111
+        },
+        "rate_within_errors": {
+          "duplicate_key": 0.6666666666666666,
+          "invalid_encoding": 0.3333333333333333
+        },
+        "details": [
+          {
+            "case": "collect_map_duplicate",
+            "kind": "duplicate_key",
+            "key": "\"dup\""
+          },
+          {
+            "case": "collect_string_invalid",
+            "kind": "invalid_encoding",
+            "key": null
+          },
+          {
+            "case": "collect_table_duplicate",
+            "kind": "duplicate_key",
+            "key": "\"dup\""
+          }
+        ]
+      },
+      "cases": [
+        {
+          "id": "collect_list_baseline",
+          "kind": "list",
+          "capability": "core.collector.list",
+          "stage_actual": "stable",
+          "stage_required": "stable",
+          "stage_mode": "exact",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": true,
+            "mut": false,
+            "debug": false,
+            "async_pending": false,
+            "audit": false,
+            "time": false
+          },
+          "markers": {
+            "mem_reservation": 12,
+            "reserve": 0,
+            "finish": 1,
+            "mem_bytes": 12,
+            "time_calls": 0
+          }
+        },
+        {
+          "id": "collect_vec_mem_reservation",
+          "kind": "vec",
+          "capability": "core.collector.vec",
+          "stage_actual": "beta",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "audit": false,
+            "time": false
+          },
+          "markers": {
+            "mem_reservation": 4,
+            "reserve": 2,
+            "finish": 1,
+            "mem_bytes": 36,
+            "time_calls": 0
+          }
+        },
+        {
+          "id": "collect_map_duplicate",
+          "kind": "map",
+          "capability": "core.collector.map",
+          "stage_actual": "beta",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "audit": false,
+            "time": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 0,
+            "mem_bytes": 28,
+            "time_calls": 0
+          },
+          "error_kind": "duplicate_key",
+          "error_key": "\"dup\""
+        },
+        {
+          "id": "collect_set_stage",
+          "kind": "set",
+          "capability": "core.collector.set",
+          "stage_actual": "stable",
+          "stage_required": "stable",
+          "stage_mode": "exact",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "audit": true,
+            "time": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 1,
+            "mem_bytes": 15,
+            "time_calls": 0
+          }
+        },
+        {
+          "id": "collect_string_invalid",
+          "kind": "string",
+          "capability": "core.collector.string",
+          "stage_actual": "beta",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "audit": false,
+            "time": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 0,
+            "mem_bytes": 0,
+            "time_calls": 0
+          },
+          "error_kind": "invalid_encoding"
+        },
+        {
+          "id": "collect_table_baseline",
+          "kind": "table",
+          "capability": "core.collector.table",
+          "stage_actual": "beta",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "audit": false,
+            "time": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 1,
+            "mem_bytes": 56,
+            "time_calls": 0
+          }
+        },
+        {
+          "id": "collect_table_duplicate",
+          "kind": "table",
+          "capability": "core.collector.table",
+          "stage_actual": "beta",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "audit": false,
+            "time": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 0,
+            "mem_bytes": 28,
+            "time_calls": 0
+          },
+          "error_kind": "duplicate_key",
+          "error_key": "\"dup\""
+        },
+        {
+          "id": "collect_cell_ref_effects",
+          "kind": "custom",
+          "capability": null,
+          "stage_actual": "unknown",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": false,
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "audit": false,
+            "time": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 1,
+            "mem_bytes": 0,
+            "time_calls": 0
+          }
+        },
+        {
+          "id": "table_csv_import",
+          "kind": "table",
+          "capability": "core.collector.table",
+          "stage_actual": "beta",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "audit": true,
+            "time": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 1,
+            "mem_bytes": 128,
+            "time_calls": 0
+          }
+        }
+      ],
+      "schema_versions": [
+        "collector.snapshot.v1"
+      ],
+      "sources": [
+        "reports/spec-audit/ch1/core_iter_collectors.json"
+      ],
+      "status": "success"
+    },
+    {
+      "metric": "collector.effect.cell_rc",
+      "scenario": "ref_internal_mutation",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "cell_mutations_total": 1,
+      "rc_ops_total": 2,
+      "borrow_conflicts": 0,
+      "ref_borrow_conflict_rate": 0.0,
+      "failures": [],
+      "sources": [
+        "reports/spec-audit/ch1/core_iter_collectors.json"
+      ],
+      "schema_versions": [
+        "collector.snapshot.v1"
+      ],
+      "required_audit_keys": [
+        "collector.effect.cell",
+        "collector.effect.rc"
+      ]
+    }
+  ],
+  "extra_metrics": [
+    {
+      "metric": "collector.effect.cell_rc",
+      "scenario": "ref_internal_mutation",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "cell_mutations_total": 1,
+      "rc_ops_total": 2,
+      "borrow_conflicts": 0,
+      "ref_borrow_conflict_rate": 0.0,
+      "failures": [],
+      "sources": [
+        "reports/spec-audit/ch1/core_iter_collectors.json"
+      ],
+      "schema_versions": [
+        "collector.snapshot.v1"
+      ],
+      "required_audit_keys": [
+        "collector.effect.cell",
+        "collector.effect.rc"
+      ]
+    }
+  ],
+  "scenarios": [
+    "ref_internal_mutation"
+  ],
+  "metric": "diagnostic.audit_presence_rate",
+  "total": 9,
+  "passed": 9,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "pass_fraction": 1.0,
+  "required_audit_keys": [
+    "cli.audit_id",
+    "cli.change_set",
+    "schema.version",
+    "timestamp"
+  ],
+  "sources": [
+    "reports/spec-audit/ch1/core_iter_collectors.json"
+  ],
+  "failures": [],
+  "diagnostic_audit": {
+    "metric": "diagnostic.audit_presence_rate",
+    "total": 9,
+    "passed": 9,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "timestamp"
+    ],
+    "sources": [
+      "reports/spec-audit/ch1/core_iter_collectors.json"
+    ],
+    "failures": []
+  },
+  "collector": {
+    "metric": "collector.effect.audit_snapshot",
+    "total": 9,
+    "passed": 9,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "stage": {
+      "actual_counts": {
+        "stable": 2,
+        "beta": 6,
+        "unknown": 1
+      },
+      "required_counts": {
+        "stable": 2,
+        "beta": 7
+      },
+      "mode_counts": {
+        "exact": 2,
+        "at_least": 7
+      },
+      "source_counts": {
+        "ListCollector::finish": 1,
+        "VecCollector::finish": 1,
+        "MapCollector::push": 1,
+        "SetCollector::finish": 1,
+        "StringCollector::push": 1,
+        "TableCollector::finish": 1,
+        "TableCollector::push": 1,
+        "CellRefCollector::finish": 1,
+        "TableCollector::csv_import": 1
+      },
+      "capability_counts": {
+        "core.collector.list": 1,
+        "core.collector.vec": 1,
+        "core.collector.map": 1,
+        "core.collector.set": 1,
+        "core.collector.string": 1,
+        "core.collector.table": 3
+      },
+      "kind_counts": {
+        "list": 1,
+        "vec": 1,
+        "map": 1,
+        "set": 1,
+        "string": 1,
+        "table": 3,
+        "custom": 1
+      },
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "audit_pass_rate": 1.0
+    },
+    "effects": {
+      "counts": {
+        "mem": 8,
+        "mut": 8,
+        "debug": 0,
+        "async_pending": 0,
+        "audit": 2,
+        "time": 0
+      },
+      "rates": {
+        "mem": 0.8888888888888888,
+        "mut": 0.8888888888888888,
+        "debug": 0.0,
+        "async_pending": 0.0,
+        "audit": 0.2222222222222222,
+        "time": 0.0
+      },
+      "markers": {
+        "mem_reservation": 16,
+        "reserve": 2,
+        "finish": 6,
+        "mem_bytes": 303,
+        "time_calls": 0
+      }
+    },
+    "errors": {
+      "total": 3,
+      "rate_per_total": 0.3333333333333333,
+      "counts": {
+        "duplicate_key": 2,
+        "invalid_encoding": 1
+      },
+      "rate_per_total_by_kind": {
+        "duplicate_key": 0.2222222222222222,
+        "invalid_encoding": 0.1111111111111111
+      },
+      "rate_within_errors": {
+        "duplicate_key": 0.6666666666666666,
+        "invalid_encoding": 0.3333333333333333
+      },
+      "details": [
+        {
+          "case": "collect_map_duplicate",
+          "kind": "duplicate_key",
+          "key": "\"dup\""
+        },
+        {
+          "case": "collect_string_invalid",
+          "kind": "invalid_encoding",
+          "key": null
+        },
+        {
+          "case": "collect_table_duplicate",
+          "kind": "duplicate_key",
+          "key": "\"dup\""
+        }
+      ]
+    },
+    "cases": [
+      {
+        "id": "collect_list_baseline",
+        "kind": "list",
+        "capability": "core.collector.list",
+        "stage_actual": "stable",
+        "stage_required": "stable",
+        "stage_mode": "exact",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": true,
+          "mut": false,
+          "debug": false,
+          "async_pending": false,
+          "audit": false,
+          "time": false
+        },
+        "markers": {
+          "mem_reservation": 12,
+          "reserve": 0,
+          "finish": 1,
+          "mem_bytes": 12,
+          "time_calls": 0
+        }
+      },
+      {
+        "id": "collect_vec_mem_reservation",
+        "kind": "vec",
+        "capability": "core.collector.vec",
+        "stage_actual": "beta",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": true,
+          "mut": true,
+          "debug": false,
+          "async_pending": false,
+          "audit": false,
+          "time": false
+        },
+        "markers": {
+          "mem_reservation": 4,
+          "reserve": 2,
+          "finish": 1,
+          "mem_bytes": 36,
+          "time_calls": 0
+        }
+      },
+      {
+        "id": "collect_map_duplicate",
+        "kind": "map",
+        "capability": "core.collector.map",
+        "stage_actual": "beta",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": true,
+          "mut": true,
+          "debug": false,
+          "async_pending": false,
+          "audit": false,
+          "time": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 0,
+          "mem_bytes": 28,
+          "time_calls": 0
+        },
+        "error_kind": "duplicate_key",
+        "error_key": "\"dup\""
+      },
+      {
+        "id": "collect_set_stage",
+        "kind": "set",
+        "capability": "core.collector.set",
+        "stage_actual": "stable",
+        "stage_required": "stable",
+        "stage_mode": "exact",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": true,
+          "mut": true,
+          "debug": false,
+          "async_pending": false,
+          "audit": true,
+          "time": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 1,
+          "mem_bytes": 15,
+          "time_calls": 0
+        }
+      },
+      {
+        "id": "collect_string_invalid",
+        "kind": "string",
+        "capability": "core.collector.string",
+        "stage_actual": "beta",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": true,
+          "mut": true,
+          "debug": false,
+          "async_pending": false,
+          "audit": false,
+          "time": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 0,
+          "mem_bytes": 0,
+          "time_calls": 0
+        },
+        "error_kind": "invalid_encoding"
+      },
+      {
+        "id": "collect_table_baseline",
+        "kind": "table",
+        "capability": "core.collector.table",
+        "stage_actual": "beta",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": true,
+          "mut": true,
+          "debug": false,
+          "async_pending": false,
+          "audit": false,
+          "time": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 1,
+          "mem_bytes": 56,
+          "time_calls": 0
+        }
+      },
+      {
+        "id": "collect_table_duplicate",
+        "kind": "table",
+        "capability": "core.collector.table",
+        "stage_actual": "beta",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": true,
+          "mut": true,
+          "debug": false,
+          "async_pending": false,
+          "audit": false,
+          "time": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 0,
+          "mem_bytes": 28,
+          "time_calls": 0
+        },
+        "error_kind": "duplicate_key",
+        "error_key": "\"dup\""
+      },
+      {
+        "id": "collect_cell_ref_effects",
+        "kind": "custom",
+        "capability": null,
+        "stage_actual": "unknown",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": false,
+          "mut": true,
+          "debug": false,
+          "async_pending": false,
+          "audit": false,
+          "time": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 1,
+          "mem_bytes": 0,
+          "time_calls": 0
+        }
+      },
+      {
+        "id": "table_csv_import",
+        "kind": "table",
+        "capability": "core.collector.table",
+        "stage_actual": "beta",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": true,
+          "mut": true,
+          "debug": false,
+          "async_pending": false,
+          "audit": true,
+          "time": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 1,
+          "mem_bytes": 128,
+          "time_calls": 0
+        }
+      }
+    ],
+    "schema_versions": [
+      "collector.snapshot.v1"
+    ],
+    "sources": [
+      "reports/spec-audit/ch1/core_iter_collectors.json"
+    ],
+    "status": "success"
+  },
+  "schema_versions": [
+    "collector.snapshot.v1"
+  ],
+  "diagnostics": {
+    "total": 9,
+    "error": 3,
+    "warning": 0,
+    "info": 6,
+    "hint": 0,
+    "other": 0,
+    "sources": [
+      "reports/spec-audit/ch1/core_iter_collectors.json"
+    ],
+    "info_fraction": 0.6666666666666666,
+    "hint_fraction": 0.0,
+    "info_hint_ratio": 0.6666666666666666,
+    "parser_total": 0,
+    "parser_expected": 0,
+    "parser_expected_ratio": 0.0,
+    "parser_expected_tokens_avg": 0.0
+  },
+  "thresholds": {
+    "source": "docs/plans/bootstrap-roadmap/assets/metrics/core_collections_thresholds.json",
+    "results": [
+      {
+        "metric": "collector.effect.cell_rc",
+        "scenario": "ref_internal_mutation",
+        "field": "cell_mutations_total",
+        "value": 1,
+        "min": 1,
+        "status": "ok"
+      },
+      {
+        "metric": "collector.effect.cell_rc",
+        "scenario": "ref_internal_mutation",
+        "field": "ref_borrow_conflict_rate",
+        "value": 0.0,
+        "max": 0.35,
+        "status": "ok"
+      },
+      {
+        "metric": "collector.table.csv_import",
+        "scenario": "table_csv_import",
+        "field": "table_insert_throughput",
+        "status": "metric_missing"
+      },
+      {
+        "metric": "collector.table.csv_import",
+        "scenario": "table_csv_import",
+        "field": "csv_load_latency_ms",
+        "status": "metric_missing"
+      }
+    ],
+    "failures": [
+      "threshold metric missing: collector.table.csv_import (table_csv_import)"
+    ]
+  },
+  "enforcement": {
+    "failures": [
+      "threshold metric missing: collector.table.csv_import (table_csv_import)"
+    ],
+    "require_success": true
+  }
+}

@@ -2,6 +2,7 @@ pub mod actor;
 pub mod async_runtime;
 pub mod audit;
 pub mod contract;
+pub mod collections;
 pub mod descriptor;
 pub mod gc;
 pub mod handle;
@@ -23,6 +24,7 @@ pub use audit::{AuditCapability, AuditCapabilityMetadata, AuditTransport};
 pub use contract::{
     CapabilityContractSpan, ConductorCapabilityContract, ConductorCapabilityRequirement,
 };
+pub use collections::{CollectionsCapability, CollectionsCapabilityMetadata};
 pub use descriptor::{
     CapabilityDescriptor, CapabilityId, CapabilityIsolationLevel, CapabilityMetadata,
     CapabilityPermission, CapabilityProvider, CapabilitySandboxProfile,

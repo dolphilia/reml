@@ -3,8 +3,9 @@ use std::convert::TryInto;
 use reml_runtime::{
     capability::{
         ActorCapability, ActorCapabilityMetadata, CapabilityHandle, CapabilityHandleKind,
-        CapabilityHandleTypeError, IoCapability, IoCapabilityMetadata, IoOperationKind,
-        PluginCapability, PluginCapabilityMetadata, SecurityCapability, SecurityCapabilityMetadata,
+        CapabilityHandleTypeError, CollectionsCapability, CollectionsCapabilityMetadata,
+        IoCapability, IoCapabilityMetadata, IoOperationKind, PluginCapability,
+        PluginCapabilityMetadata, SecurityCapability, SecurityCapabilityMetadata,
     },
     CapabilityDescriptor, CapabilityProvider, StageId,
 };
@@ -54,6 +55,24 @@ fn handle_descriptor_preserves_effect_scope_and_provider() {
     )
     .into();
     assert_eq!(plugin_handle.descriptor().stage(), StageId::Experimental);
+
+    let collections_handle: CapabilityHandle = CollectionsCapability::new(
+        make_descriptor("core.collections.ref", StageId::Stable, &["mem", "mut", "rc"]),
+        CollectionsCapabilityMetadata {
+            collector_effects: vec!["collector.effect.rc".into()],
+            tracks_mutation: true,
+            tracks_reference_count: true,
+        },
+    )
+    .into();
+    assert_eq!(
+        collections_handle.kind(),
+        CapabilityHandleKind::Collections
+    );
+    assert!(collections_handle
+        .descriptor()
+        .effect_scope()
+        .contains("mut"));
 }
 
 #[test]

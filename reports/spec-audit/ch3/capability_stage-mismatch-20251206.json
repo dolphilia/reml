@@ -1,13 +1,13 @@
 {
   "schema_version": "3.0.0-alpha",
-  "created_at": "2025-12-06T00:22:31Z",
+  "created_at": "2025-12-06T07:14:34",
   "plan": "docs/plans/bootstrap-roadmap/pipeline_branch-stage-mismatch-plan.md",
-  "run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
-  "cli_command": "target/debug/reml_frontend --output json --emit-audit-log ../../../examples/core_diagnostics/pipeline_branch.reml",
-  "input": "../../../examples/core_diagnostics/pipeline_branch.reml",
+  "run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
+  "cli_command": "target/debug/reml_frontend --output json --emit-audit-log /Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
+  "input": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
   "diagnostic": {
     "audit": {
-      "audit_id": "6872c73b-37bd-522a-841f-4833c5ccc7d1",
+      "audit_id": "b1a2768b-a4fb-5542-9a31-78fbd8039747",
       "change_set": {
         "items": [
           {
@@ -15,40 +15,40 @@
               "--output",
               "json",
               "--emit-audit-log",
-              "../../../examples/core_diagnostics/pipeline_branch.reml"
+              "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
             ],
             "command": "target/debug/reml_frontend",
             "kind": "cli-command"
           },
           {
             "kind": "input",
-            "path": "../../../examples/core_diagnostics/pipeline_branch.reml",
+            "path": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
             "target": "rust-poc"
           }
         ],
         "origin": "cli",
         "policy": "rust.poc.audit.v1",
-        "run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
+        "run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
         "source": {
           "args": [
             "--output",
             "json",
             "--emit-audit-log",
-            "../../../examples/core_diagnostics/pipeline_branch.reml"
+            "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
           ],
           "command": "target/debug/reml_frontend",
           "workspace": "."
         }
       },
       "metadata": {
-        "audit.build_id": "46571030T000410Z",
+        "audit.build_id": "46571030T071408Z",
         "audit.channel": "cli",
-        "audit.id.label": "cli/46571030T000410Z#0",
-        "audit.id.uuid": "6872c73b-37bd-522a-841f-4833c5ccc7d1",
+        "audit.id.label": "cli/46571030T071408Z#0",
+        "audit.id.uuid": "b1a2768b-a4fb-5542-9a31-78fbd8039747",
         "audit.policy.version": "rust.poc.audit.v1",
         "audit.sequence": 0,
         "audit.source.workspace": ".",
-        "audit.timestamp": "-4657-10-30T00:04:10Z",
+        "audit.timestamp": "-4657-10-30T07:14:08Z",
         "bridge.stage.actual_capabilities": [],
         "bridge.stage.required_capabilities": [],
         "capability.actual_stage": "at_least:stable",
@@ -60,7 +60,7 @@
           "expected": "at_least:beta"
         },
         "capability.providers": [],
-        "cli.audit_id": "cli/46571030T000410Z#0",
+        "cli.audit_id": "cli/46571030T071408Z#0",
         "cli.change_set": {
           "items": [
             {
@@ -68,26 +68,26 @@
                 "--output",
                 "json",
                 "--emit-audit-log",
-                "../../../examples/core_diagnostics/pipeline_branch.reml"
+                "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
               ],
               "command": "target/debug/reml_frontend",
               "kind": "cli-command"
             },
             {
               "kind": "input",
-              "path": "../../../examples/core_diagnostics/pipeline_branch.reml",
+              "path": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
               "target": "rust-poc"
             }
           ],
           "origin": "cli",
           "policy": "rust.poc.audit.v1",
-          "run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
+          "run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
           "source": {
             "args": [
               "--output",
               "json",
               "--emit-audit-log",
-              "../../../examples/core_diagnostics/pipeline_branch.reml"
+              "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
             ],
             "command": "target/debug/reml_frontend",
             "workspace": "."
@@ -96,7 +96,7 @@
         "cli.command": "Check",
         "cli.phase": "Reporting",
         "cli.program": "target/debug/reml_frontend",
-        "cli.run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
+        "cli.run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
         "effect.actual_capabilities": [],
         "effect.capability": "console",
         "effect.required_capabilities": [],
@@ -369,14 +369,14 @@
       }
     },
     "audit_metadata": {
-      "audit.build_id": "46571030T000410Z",
+      "audit.build_id": "46571030T071408Z",
       "audit.channel": "cli",
-      "audit.id.label": "cli/46571030T000410Z#0",
-      "audit.id.uuid": "6872c73b-37bd-522a-841f-4833c5ccc7d1",
+      "audit.id.label": "cli/46571030T071408Z#0",
+      "audit.id.uuid": "b1a2768b-a4fb-5542-9a31-78fbd8039747",
       "audit.policy.version": "rust.poc.audit.v1",
       "audit.sequence": 0,
       "audit.source.workspace": ".",
-      "audit.timestamp": "-4657-10-30T00:04:10Z",
+      "audit.timestamp": "-4657-10-30T07:14:08Z",
       "bridge.stage.actual_capabilities": [],
       "bridge.stage.required_capabilities": [],
       "capability.actual_stage": "at_least:stable",
@@ -388,7 +388,7 @@
         "expected": "at_least:beta"
       },
       "capability.providers": [],
-      "cli.audit_id": "cli/46571030T000410Z#0",
+      "cli.audit_id": "cli/46571030T071408Z#0",
       "cli.change_set": {
         "items": [
           {
@@ -396,26 +396,26 @@
               "--output",
               "json",
               "--emit-audit-log",
-              "../../../examples/core_diagnostics/pipeline_branch.reml"
+              "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
             ],
             "command": "target/debug/reml_frontend",
             "kind": "cli-command"
           },
           {
             "kind": "input",
-            "path": "../../../examples/core_diagnostics/pipeline_branch.reml",
+            "path": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
             "target": "rust-poc"
           }
         ],
         "origin": "cli",
         "policy": "rust.poc.audit.v1",
-        "run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
+        "run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
         "source": {
           "args": [
             "--output",
             "json",
             "--emit-audit-log",
-            "../../../examples/core_diagnostics/pipeline_branch.reml"
+            "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
           ],
           "command": "target/debug/reml_frontend",
           "workspace": "."
@@ -424,7 +424,7 @@
       "cli.command": "Check",
       "cli.phase": "Reporting",
       "cli.program": "target/debug/reml_frontend",
-      "cli.run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
+      "cli.run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
       "effect.actual_capabilities": [],
       "effect.capability": "console",
       "effect.required_capabilities": [],
@@ -839,7 +839,7 @@
         "codes": [
           "effects.contract.stage_mismatch"
         ],
-        "timestamp": "-4657-10-30T00:04:10Z"
+        "timestamp": "-4657-10-30T07:14:08Z"
       },
       "effect.actual_capabilities": [],
       "effect.capabilities": [],
@@ -1103,7 +1103,7 @@
       "column": 3,
       "endColumn": 24,
       "endLine": 11,
-      "file": "../../../examples/core_diagnostics/pipeline_branch.reml",
+      "file": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
       "line": 11
     },
     "message": "`console` を呼び出すにはステージ `at_least:beta` が必要ですが、実行時ステージ `at_least:stable` では許可されていません",
@@ -1117,7 +1117,7 @@
     "primary": {
       "end_col": 24,
       "end_line": 11,
-      "file": "../../../examples/core_diagnostics/pipeline_branch.reml",
+      "file": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
       "highlight": {
         "column_end": 24,
         "column_start": 3,
@@ -1134,56 +1134,56 @@
     "secondary": [],
     "severity": "error",
     "severity_hint": null,
-    "timestamp": "-4657-10-30T00:04:10Z"
+    "timestamp": "-4657-10-30T07:14:08Z"
   },
   "audit_events": [
     {
-      "timestamp": "-4657-10-30T00:04:10Z",
+      "timestamp": "-4657-10-30T07:14:08Z",
       "envelope": {
-        "audit_id": "f5405cca-e50e-4977-b5cd-8cc2a98d4727",
+        "audit_id": "70154f19-b275-4687-ba4e-a66ca2c3b2d8",
         "capability": "core.diagnostics",
         "metadata": {
           "audit.channel": "cli",
           "audit.policy.version": "rust.poc.audit.v1",
           "cli.command": "Check",
-          "cli.command_line": "target/debug/reml_frontend --output json --emit-audit-log ../../../examples/core_diagnostics/pipeline_branch.reml",
-          "cli.input": "../../../examples/core_diagnostics/pipeline_branch.reml",
+          "cli.command_line": "target/debug/reml_frontend --output json --emit-audit-log /Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
+          "cli.input": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
           "cli.phase": "Reporting",
           "cli.program": "target/debug/reml_frontend",
-          "cli.run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
+          "cli.run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
           "event.kind": "pipeline_started",
           "pipeline.dsl_id": "pipeline_branch",
-          "pipeline.id": "dsl://../../../examples/core_diagnostics/pipeline_branch.reml",
+          "pipeline.id": "dsl:///Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
           "pipeline.node": "pipeline_branch.reml",
           "schema.version": "3.0.0-alpha",
-          "timestamp": "-4657-10-30T00:04:10Z"
+          "timestamp": "-4657-10-30T07:14:08Z"
         }
       }
     },
     {
-      "timestamp": "-4657-10-30T00:04:10Z",
+      "timestamp": "-4657-10-30T07:14:08Z",
       "envelope": {
-        "audit_id": "d4dc2cd6-ab4a-4d71-8d4c-27e1a4477db1",
+        "audit_id": "108975d0-62aa-4f91-8804-1f27b6e6b581",
         "capability": "core.diagnostics",
         "metadata": {
           "audit.channel": "cli",
           "audit.policy.version": "rust.poc.audit.v1",
           "cli.command": "Check",
-          "cli.command_line": "target/debug/reml_frontend --output json --emit-audit-log ../../../examples/core_diagnostics/pipeline_branch.reml",
-          "cli.input": "../../../examples/core_diagnostics/pipeline_branch.reml",
+          "cli.command_line": "target/debug/reml_frontend --output json --emit-audit-log /Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
+          "cli.input": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
           "cli.phase": "Reporting",
           "cli.program": "target/debug/reml_frontend",
-          "cli.run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
+          "cli.run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
           "event.kind": "pipeline_completed",
           "pipeline.count": 1,
           "pipeline.diagnostics": 1,
           "pipeline.dsl_id": "pipeline_branch",
           "pipeline.exit_code": "failure",
-          "pipeline.id": "dsl://../../../examples/core_diagnostics/pipeline_branch.reml",
+          "pipeline.id": "dsl:///Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
           "pipeline.node": "pipeline_branch.reml",
           "pipeline.outcome": "success",
           "schema.version": "3.0.0-alpha",
-          "timestamp": "-4657-10-30T00:04:10Z"
+          "timestamp": "-4657-10-30T07:14:08Z"
         }
       }
     }
