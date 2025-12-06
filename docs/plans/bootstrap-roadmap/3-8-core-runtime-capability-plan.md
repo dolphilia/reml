@@ -211,14 +211,29 @@
     - 7.1.a `cargo test -p reml_runtime capability_registry::*` を CI の必須ジョブに追加し、`CapabilityError` のメッセージをスナップショット (`insta`) で固定する。
     - 7.1.b `cargo nextest run -p reml_runtime --run-ignored ignored-only capability_registry` を想定し、多重登録ベンチ相当の負荷テストを `#[ignore]` 付きで用意する。
     - 7.1.c 共通フィクスチャを `compiler/rust/runtime/tests/fixtures/capabilities/*.json` に配置し、`serde_json` で読み込むテストヘルパを整備する。
+
+#### 7.1 実施結果（Run ID: 20251210-runtime-capability-ci-checklist）
+- `docs/plans/bootstrap-roadmap/assets/runtime-capability-ci-checklist.md` を新設し、単体テスト/KPI/ログ出力の導線を 7.1 の手順順に表形式でまとめた。`cargo test -p reml_runtime capability_registry -- --nocapture` を CI 必須ジョブ化するためのメモ、`insta` スナップショット (`tests/snapshots/capability_registry__*.snap`) のレビュー要領、`cargo nextest run -p reml_runtime --run-ignored capability_registry_load` を使った 1,000 件登録テスト、`tests/fixtures/capabilities/*.json` の共通フィクスチャ整備など、要求事項を 1 ページで参照できる。
+- 失敗時の記録先を `reports/spec-audit/ch3/runtime_capability-unit-YYYYMMDD.md` / `runtime_capability-load-YYYYMMDD.log` に固定し、`docs/plans/bootstrap-roadmap/0-4-risk-handling.md#runtime-capability` と `docs/notes/runtime-capability-stage-log.md` から同じ Run ID を逆参照できるようにした。単体テストで得た差分をそのまま 3.8 計画に書き戻す運用を確立した形である。
+- `docs/plans/bootstrap-roadmap/pipeline_branch-stage-mismatch-plan.md#7-テスト・ci-反映` からも本チェックリストをリンクし、Core.Diagnostics の Stage mismatch サンプルと Runtime Capability 単体テストのノウハウが交差するよう整合を取った。
 7.2. 統合テストで TypeChecker/Runtime/Config からの Capability チェックが期待通り動くことを確認する。
     - 7.2.a `tooling/examples/run_examples.sh --suite core_runtime_capability --with-audit` を新設し、`examples/core_runtime_capability/*.reml` から診断+監査ゴールデンを生成する。
     - 7.2.b `scripts/poc_dualwrite_compare.sh` に `--runtime-capability` モードを追加し、OCaml 実装ログと差分を比較する。
     - 7.2.c `collect-iterator-audit-metrics.py --section runtime --scenario capability_registry` を Linux/macOS/Windows すべてで実行し、`reports/audit/dashboard/core_runtime-YYYYMMDD.md` に記録する。
+
+#### 7.2 実施結果（Run ID: 20251210-core-runtime-capability-suite）
+- `assets/runtime-capability-ci-checklist.md` §2 に `core_runtime_capability` 例題スイートの設計を追記し、`tooling/examples/run_examples.sh --suite core_runtime_capability --with-audit (--update-golden)` の CLI 引数、`suite_config/core_runtime_capability.env` での `ALLOW_FAILURE=registry_stage_violation` 設定、`examples/core_runtime_capability/README.md` へ記載すべきゴールデン生成手順を定義した。StageViolation ケースも `allowed failure` として継続実行できるよう Core.Diagnostics スイートと同じ制御フローを採用している。
+- `collect-iterator-audit-metrics.py --section runtime --scenario capability_registry` のスイート対応を明記し、生成物を `reports/spec-audit/ch3/runtime_capability-suite-YYYYMMDD.json` へ保存して KPI 化する。ここで得られた `capability_registry_pass_rate` は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Runtime 行に追加した。
+- `scripts/poc_dualwrite_compare.sh --runtime-capability <example>` を追加する TODO を Runbook に記載し、結果ログを `reports/dual-write/runtime_capability/` に集める方針を Phase2 Rust Migration 計画 (`docs/plans/rust-migration/2-1-runtime-integration.md`) と共有した。Core.Diagnostics の pipeline_branch 計画からも同スイートを参照できるよう、相互リンクを設定している。
 7.3. CI に Capability 検証を組み込み、違反が発生した場合に `0-4-risk-handling.md` へ記録する仕組みを追加する。
     - 7.3.a `.github/workflows/rust-runtime.yaml`（新設）で `cargo test -p reml_runtime capability_registry` と `tooling/examples/run_examples.sh --suite core_runtime_capability --with-audit` を並列実行する。
     - 7.3.b CI 失敗時に `docs/plans/bootstrap-roadmap/0-4-risk-handling.md#runtime-capability` へ Run ID と Git SHA を自動追記するスクリプト (`scripts/ci/post_failure_runtime_capability.sh`) を準備する。
     - 7.3.c `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表に `runtime.capability_ci_pass_rate` を追加し、CI から `assets/metrics/runtime-capability-ci.csv` を append する。
+
+#### 7.3 実施結果（Run ID: 20251210-runtime-capability-ci-metrics）
+- `docs/plans/bootstrap-roadmap/assets/metrics/runtime-capability-ci.csv` を用意し、`run_id,date,job,pass_rate,failures,command,artifact,notes` を記録するテンプレートを追加した。`runtime-capability-unit`／`runtime-capability-nextest`／`core-runtime-capability-suite` 各ジョブの結果を CI から追記し、`reports/spec-audit/ch3/runtime_capability-ci-summary-YYYYMMDD.json` をアーティファクトへ添付する運用を策定した。
+- `assets/runtime-capability-ci-checklist.md` §3 に `.github/workflows/rust-runtime.yaml` のマトリクス構成と `scripts/ci/post_failure_runtime_capability.sh` の出力先（`docs/plans/bootstrap-roadmap/0-4-risk-handling.md#runtime-capability`, `reports/audit/dashboard/runtime_capability-ci-YYYYMMDD.md`）を明記し、CI 失敗時に自動でリスク登録・ログ採取が行われるようにした。
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `runtime.capability_ci_pass_rate` を追記し、Core.Diagnostics 側の `pipeline_branch` 指標と並べて Stage mismatch の可観測性をトラッキングできるようにした。`docs/plans/bootstrap-roadmap/pipeline_branch-stage-mismatch-plan.md#7-テスト・ci-反映` との相互リンクも更新し、同一の CI 報告ラインを使い回せるように整備している。
 
 ## 成果物と検証
 - Capability Registry/API が仕様通りに実装され、Stage 判定と監査ログが正しく機能すること。
