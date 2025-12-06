@@ -33,3 +33,8 @@
 ---
 
 本構成により、計画書は仕様書と常に相互参照される生きた文書として保守される。以降の章では、各フェーズの実行計画と測定フレームワークを詳細に定義する。
+
+## 0.2.5 Capability Registry マイルストーン
+- Phase 3 (`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#303c-capability-registry-完成条件`) では `reml_capability list --format json` を `scripts/capability/generate_md.py` に渡し、`docs/spec/3-8-core-runtime-capability.md` / `docs/plans/bootstrap-roadmap/README.md` のテーブルを同時更新する。更新ログは `docs/notes/runtime-capability-stage-log.md` に Run ID 付きで保存する。
+- CI では `python3 tooling/ci/collect-iterator-audit-metrics.py --section runtime --require-success --matrix docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md --report reports/spec-audit/ch3/core_io_capabilities.json` を実行し、`runtime.capability_validation` / `core_io.capability_matrix_pass_rate` を `0-3-audit-and-metrics.md` の KPI に追記する。
+- Stage mismatch サンプル (`examples/core_diagnostics/pipeline_branch.reml`) と監査ログ (`reports/spec-audit/ch3/capability_stage-mismatch-20251206.json`) を REAME/仕様/計画から横断参照できるよう保ち、Capability Registry の復旧計画 (`docs/plans/bootstrap-roadmap/pipeline_branch-stage-mismatch-plan.md`) を更新するたびに本節へリンクを追加する。

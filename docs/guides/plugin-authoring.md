@@ -51,6 +51,17 @@ use ::Core.Platform.Posix.Notify
 - `AuditEnvelope.metadata` にプラグイン固有の設定（通知エンドポイント等）を記録し、`Core.Diagnostics` の保持方針に従う。
 - Phase 2-5 ERR-001 で `Diagnostic.expected` に `ExpectationSummary` が常時含まれるようになったため、プラグイン側でも CLI/LSP と同じ期待集合を利用できる。`Core.Diagnostics.humanize_expected` を呼び出して候補一覧を提示し、DSL 独自の補完や自動修復に活用する。
 
+#### 2.2.1 Capability 情報の検証
+
+```bash
+reml_capability list --format json > tmp/capabilities.json
+python3 scripts/capability/generate_md.py --json tmp/capabilities.json
+reml_capability describe io.fs.read --output human
+```
+
+- `reml_capability describe <id>` を利用すると `stage`・`effect_scope`・`provider` を CLI で確認でき、`plugin-capability-matrix.csv`（`docs/plans/bootstrap-roadmap/assets/plugin-capability-matrix.csv`）と突合しやすくなる。CI では `reml_capability list --format json` を `reports/spec-audit/ch3/capability_list-YYYYMMDD.json` に記録し、`scripts/capability/generate_md.py` で仕様のテーブルと同期させる。
+- Stage 要件や監査ログの実例は `examples/core_diagnostics/pipeline_branch.reml`（`effects.contract.stage_mismatch`）と `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` に保存している。プラグイン側で Stage mismatch をテストする場合は `tooling/examples/run_examples.sh --suite core_diagnostics --with-audit` を流用すると、`capability.id` / `effect.stage.*` / `bridge.stage.*` の必須キーをまとめて検証できる。
+
 ### 2.3 Core.IO / Core.Path の活用
 
 - ファイル／パスを扱うプラグインは `Core.IO` の `with_reader` / `with_writer` / `copy` と `Core.Path` の `validate_path` / `sandbox_path` を標準化された順番で呼び出し、`IoContext.operation`・`metadata.io.helper` を必ず設定する。サンプルは [examples/core_io/file_copy.reml](../../examples/core_io/file_copy.reml) と [examples/core_path/security_check.reml](../../examples/core_path/security_check.reml) を参照。

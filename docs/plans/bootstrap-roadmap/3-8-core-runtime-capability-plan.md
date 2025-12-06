@@ -180,14 +180,29 @@
     - 6.1.a `docs/spec/3-8-core-runtime-capability.md` のテーブルを 4.3.b のスクリプトから再生成し、Stage/EffectScope/Provider を自動反映する。
     - 6.1.b `docs/spec/3-0-core-library-overview.md` と `docs/spec/1-0-language-core-overview.md` の Capability 概要に Stage API 追加内容を反映する。
     - 6.1.c `docs/notes/runtime-capability-stage-log.md` に Run ID と図版（Mermaid → PNG/SVG）を添付し、更新履歴を残す。
+
+#### 6.1 実施結果（Run ID: 20251230-capability-doc-sync）
+- `reml_capability list --format json > reports/spec-audit/ch3/capability_list-20251205.json` を再取得し、`python3 scripts/capability/generate_md.py --json ... --output docs/spec/3-8-core-runtime-capability.md` で 3.8 章の表を更新した。
+- Chapter 0/1 の概要（`docs/spec/3-0-core-library-overview.md`、`docs/spec/1-0-language-core-overview.md`）へ `capability_stage-mismatch-20251206.json` を参照する段落を追記し、Stage mismatch サンプルの導線を確保した。
+- `docs/notes/runtime-capability-stage-log.md` に Run ID とともに `docs/plans/bootstrap-roadmap/assets/capability-stage-flow.svg` を追加し、Mermaid 図 (`capability-stage-flow.mmd`) のエクスポート手順を記録した。
 6.2. `3-0-phase3-self-host.md`/`README.md` に Capability Registry 実装ステータスと利用ガイドを追記する。
     - 6.2.a `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#完成条件` に Capability Registry 完了チェックと `collect-iterator-audit-metrics --section runtime` の結果を参照する脚注を追加する。
     - 6.2.b `README.md` の章索引に 3.8 章のステータスバッジ（例: ✅ Stage API 実装済み）を追加し、参照リンクを更新する。
     - 6.2.c `docs/plans/bootstrap-roadmap/0-2-roadmap-structure.md` のガントチャートへ Capability Registry マイルストーンを追加する。
+
+#### 6.2 実施結果（Run ID: 20251230-capability-roadmap）
+- `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` に `### 3.0.3c Capability Registry 完成条件` を追加し、`tooling/examples/run_examples.sh --suite core_diagnostics --with-audit --update-golden` と `collect-iterator-audit-metrics.py --section runtime --matrix docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` を Phase 3 の判定基準へ組み込んだ。
+- README の「Core.Runtime & Capability 進捗」節で `reml_capability describe` の使い方と `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` の参照先を案内し、Stage 監査サンプルを一覧化した。
+- `docs/plans/bootstrap-roadmap/0-2-roadmap-structure.md` に `## 0.2.5 Capability Registry マイルストーン` を追加し、Capability テーブル更新と KPI 取得ルートを文書体系へ位置付けた。
 6.3. `docs/notes/dsl-plugin-roadmap.md` に Stage/Capability の適用例を追加し、プラグイン開発者向けに共有する。
     - 6.3.a DSL プラグイン別の Capability 要求表を `docs/plans/bootstrap-roadmap/assets/plugin-capability-matrix.csv` として作成し、`4-7-core-parse-plugin.md` から参照する。
     - 6.3.b `docs/notes/dsl-plugin-roadmap.md#effect-handling-matrix` に Stage 要件のサンプル（`verify_conductor_contract` 実行例）を追記する。
     - 6.3.c `docs/guides/plugin-authoring.md` に `reml capability describe <plugin-id>` の利用方法と Plan 3.8 への依存を追記する。
+
+#### 6.3 実施結果（Run ID: 20251230-plugin-capability）
+- `docs/plans/bootstrap-roadmap/assets/plugin-capability-matrix.csv` を作成し、`plugin.dsl.template` / `plugin.dsl.observability` / `plugin.native-ui` の Capability/Stage 依存を CSV で一覧化した。
+- `docs/notes/dsl-plugin-roadmap.md` に `### 5.2 Capability 要求マトリクス` を追加し、上記 CSV と `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json`・`runtime_bridge-stage-records-20251206.json` を使った検証方法を共有した。
+- `docs/guides/plugin-authoring.md` の §2.2 に `reml_capability describe` / `scripts/capability/generate_md.py` の利用例と Stage mismatch チェック手順を追記し、Plan 3.8 の成果物をガイドへ組み込んだ。
 
 ### 7. テスト・CI 統合（59週目）
 **担当領域**: 品質保証

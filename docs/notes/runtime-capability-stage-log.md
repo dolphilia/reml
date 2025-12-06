@@ -2,6 +2,11 @@
 
 Core.Runtime の Capability で Stage 要件や監査メタデータの扱いに差分が生じた場合、本ログに記録する。`collect-iterator-audit-metrics.py` で検証する KPI とリンクし、Phase3 self-host 判定時に参照する。
 
+## 2025-12-30 Capability ドキュメント同期（Run ID: 20251230-capability-doc-sync）
+- `scripts/capability/generate_md.py --json reports/spec-audit/ch3/capability_list-20251205.json --output docs/spec/3-8-core-runtime-capability.md` を実行し、`reml_capability list --format json` の結果を仕様本文のテーブルへ再反映した。README のスナップショットと同じ JSON を用いることで、Stage/EffectScope/Provider 情報が 3.8 章・リポジトリ索引・CI レポート間で揃う。
+- `docs/spec/3-0-core-library-overview.md` と `docs/spec/1-0-language-core-overview.md` に Capability Registry／`effects.contract.stage_mismatch` サンプルへの導線を追記した。`reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` を参照すれば Stage 差分の監査ログをそのまま確認できる。
+- `docs/plans/bootstrap-roadmap/assets/capability-stage-flow.mmd` をもとに `docs/plans/bootstrap-roadmap/assets/capability-stage-flow.svg` を書き出し（Mermaid 図を手動で SVG 化）、RunConfig→CapabilityRegistry→StageAuditPayload→Diagnostics/Audit/KPI の経路を図式化した。図の再生成は `mmdc -i capability-stage-flow.mmd -o capability-stage-flow.svg`（Mermaid CLI が利用可能な環境）または今回追加した SVG を直接編集して行う。
+
 ## 2025-12-06 Core.Diagnostics Stage mismatch
 - 対象 Capability: `console`（`effects.contract.stage_mismatch` を再現する `examples/core_diagnostics/pipeline_branch.reml`）
 - Stage 要件: `StageRequirement::AtLeast(StageId::Beta)`（`perform Console` が `RuntimeBridgeRegistry` の `core.console` と突き合わせられる）
