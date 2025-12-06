@@ -671,6 +671,206 @@ def _normalize_severity_label(value: Optional[object]) -> Optional[str]:
     return None
 
 
+CAPABILITY_MATRIX_START = "<!-- capability-matrix:start -->"
+CAPABILITY_MATRIX_END = "<!-- capability-matrix:end -->"
+CAPABILITY_STAGE_LEVELS = {"experimental", "alpha", "beta", "stable"}
+
+
+def _extract_capability_matrix_block(text: str) -> List[str]:
+    start_index = text.find(CAPABILITY_MATRIX_START)
+    end_index = text.find(CAPABILITY_MATRIX_END)
+    if start_index == -1 or end_index == -1 or end_index <= start_index:
+        raise ValueError("capability matrix markers not found")
+    block = text[start_index + len(CAPABILITY_MATRIX_START) : end_index]
+    return block.splitlines()
+
+
+def _normalize_capability_matrix_header(label: str) -> Optional[str]:
+    normalized = label.strip().lower()
+    normalized = normalized.replace("　", " ")
+    normalized = normalized.replace("effects", "effect")
+    mapping = {
+        "capability id": "capability_id",
+        "capability": "capability_id",
+        "stage": "stage",
+        "provider": "provider",
+        "effect scope": "effect_scope",
+        "hook": "hook",
+        "status": "status",
+        "notes": "notes",
+    }
+    if normalized in mapping:
+        return mapping[normalized]
+    if normalized in mapping.values():
+        return normalized
+    return None
+
+
+def _strip_markdown_inline(value: str) -> str:
+    result = value.strip()
+    if result.startswith("`") and result.endswith("`") and len(result) >= 2:
+        result = result[1:-1]
+    replacements = {
+        "<br />": ";",
+        "<br/>": ";",
+        "<br>": ";",
+    }
+    for key, repl in replacements.items():
+        result = result.replace(key, repl)
+    return result.strip()
+
+
+def _is_table_separator_row(cells: Sequence[str]) -> bool:
+    for cell in cells:
+        stripped = cell.strip().replace("-", "").replace(":", "")
+        if stripped:
+            return False
+    return True
+
+
+def _parse_effect_scope_field(value: str) -> List[str]:
+    if not value:
+        return []
+    normalized = value.replace(",", ";")
+    scopes = []
+    for token in normalized.split(";"):
+        trimmed = token.strip()
+        if trimmed:
+            scopes.append(trimmed)
+    return scopes
+
+
+def _parse_stage_spec(stage: str) -> Optional[str]:
+    if not stage:
+        return None
+    normalized = stage.strip().lower()
+    if not normalized:
+        return None
+    if normalized.startswith("exact:"):
+        level = normalized.split(":", 1)[1]
+        if level in CAPABILITY_STAGE_LEVELS:
+            return f"exact:{level}"
+        return None
+    if normalized.startswith("at_least:"):
+        level = normalized.split(":", 1)[1]
+        if level in CAPABILITY_STAGE_LEVELS:
+            return f"at_least:{level}"
+        return None
+    if normalized.startswith("platform:"):
+        targets = normalized.split(":", 1)[1].strip()
+        return f"platform:{targets}" if targets else None
+    return None
+
+
+def _parse_capability_matrix_table(text: str) -> List[Dict[str, str]]:
+    block_lines = _extract_capability_matrix_block(text)
+    rows: List[Dict[str, str]] = []
+    headers: List[str] = []
+    for raw_line in block_lines:
+        line = raw_line.strip()
+        if not line or not line.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if not headers:
+            headers = []
+            for cell in cells:
+                normalized = _normalize_capability_matrix_header(cell)
+                headers.append(normalized or cell.strip().lower())
+            continue
+        if _is_table_separator_row(cells):
+            continue
+        row: Dict[str, str] = {}
+        for header, cell in zip(headers, cells):
+            key = header or ""
+            if not key:
+                continue
+            row[key] = _strip_markdown_inline(cell)
+        rows.append(row)
+    if not rows:
+        raise ValueError("capability matrix table is empty")
+    return rows
+
+
+def collect_core_io_capability_matrix(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+    collected: List[Dict[str, Any]] = []
+    for path in paths:
+        try:
+            text = path.read_text()
+        except OSError as exc:  # pragma: no cover - filesystem error
+            sys.stderr.write(f"[capability_matrix] {path}: {exc}\n")
+            continue
+        try:
+            rows = _parse_capability_matrix_table(text)
+        except ValueError as exc:
+            sys.stderr.write(f"[capability_matrix] {path}: {exc}\n")
+            continue
+        for row in rows:
+            total += 1
+            capability_id = row.get("capability_id", "").strip()
+            stage_spec = row.get("stage", "").strip()
+            provider = row.get("provider", "").strip()
+            effect_scope = row.get("effect_scope", "")
+            hook = row.get("hook", "").strip()
+            notes = row.get("notes", "").strip()
+            status_value = (row.get("status") or "").strip().lower()
+            normalized_stage = _parse_stage_spec(stage_spec)
+            scopes = _parse_effect_scope_field(effect_scope)
+            issues: List[str] = []
+            if not capability_id:
+                issues.append("capability_id")
+            if not normalized_stage:
+                issues.append("stage")
+            if not provider:
+                issues.append("provider")
+            if not scopes:
+                issues.append("effect_scope")
+            if status_value and any(
+                keyword in status_value for keyword in ("missing", "blocked", "todo")
+            ):
+                issues.append(f"status={status_value}")
+            entry = {
+                "capability_id": capability_id,
+                "stage": normalized_stage or stage_spec,
+                "provider": provider,
+                "hook": hook,
+                "status": status_value or "unspecified",
+                "effect_scope": scopes,
+                "notes": notes,
+                "file": str(path),
+            }
+            collected.append(entry)
+            if issues:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "capability_id": capability_id or "?",
+                        "issues": sorted(set(issues)),
+                    }
+                )
+            else:
+                passed += 1
+    if total == 0:
+        return None
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    status = "success" if not failures else "failed"
+    return {
+        "metric": "core_io.capability_matrix_pass_rate",
+        "scenario": "capability_matrix",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "entries": collected,
+        "failures": failures,
+        "sources": [str(path) for path in paths],
+        "status": status,
+    }
+
+
 IO_ERROR_RATE_THRESHOLD = 1.0
 
 
@@ -6962,6 +7162,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Path to config diff JSON (repeatable).",
     )
     parser.add_argument(
+        "--matrix",
+        action="append",
+        dest="matrix_paths",
+        help="Capability マトリクス (Markdown/CSV)。capability_matrix シナリオで指定。",
+    )
+    parser.add_argument(
         "--suite",
         choices=[
             "collectors",
@@ -7088,6 +7294,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "emit_metric",
             "diagnostics_summary",
             "watcher_audit",
+            "capability_matrix",
         ],
         help="Scenario-specific validation (repeatable).",
     )
@@ -7310,6 +7517,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     tz_source_paths: List[Path] = _ensure_path_list(getattr(args, "tz_sources", None))
     metric_source_paths: List[Path] = _ensure_path_list(
         getattr(args, "metric_sources", None)
+    )
+    matrix_paths: List[Path] = _ensure_path_list(
+        getattr(args, "matrix_paths", None)
     )
     if not text_source_paths and TEXT_DEFAULT_METRICS_PATH.is_file():
         text_source_paths = [TEXT_DEFAULT_METRICS_PATH]
@@ -7623,6 +7833,26 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
             return 2
         append_metrics.append(diag_summary_metric)
+
+    if "capability_matrix" in scenario_filters:
+        if not matrix_paths:
+            sys.stderr.write(
+                "capability_matrix シナリオには --matrix で Capability マップを指定してください。\n"
+            )
+            return 2
+        missing_matrix = [str(path) for path in matrix_paths if not path.is_file()]
+        if missing_matrix:
+            sys.stderr.write(
+                "Missing capability matrix files: " + ", ".join(missing_matrix) + "\n"
+            )
+            return 2
+        capability_matrix_metric = collect_core_io_capability_matrix(matrix_paths)
+        if capability_matrix_metric is None:
+            sys.stderr.write(
+                "capability_matrix: マトリクスが空です。docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md を確認してください。\n"
+            )
+            return 2
+        append_metrics.append(capability_matrix_metric)
 
     if "watcher_audit" in scenario_filters:
         if not sources:

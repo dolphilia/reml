@@ -1,0 +1,383 @@
+{
+  "metrics": [
+    {
+      "metric": "core_io.capability_matrix_pass_rate",
+      "scenario": "capability_matrix",
+      "total": 13,
+      "passed": 13,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "entries": [
+        {
+          "capability_id": "io.fs.read",
+          "stage": "at_least:beta",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_read_capability",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "fs.read"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "io.fs.write",
+          "stage": "at_least:beta",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_write_capability",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "fs.write",
+            "mem"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "fs.permissions.read",
+          "stage": "exact:stable",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_permissions_read",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "security"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "fs.permissions.modify",
+          "stage": "exact:stable",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_permissions_modify",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "security"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "fs.symlink.query",
+          "stage": "at_least:beta",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_symlink_query",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "fs.symlink"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "fs.symlink.modify",
+          "stage": "exact:stable",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_symlink_modify",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "fs.symlink",
+            "security"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "security.fs.policy",
+          "stage": "exact:stable",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_security_policy",
+          "status": "implemented",
+          "effect_scope": [
+            "security"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "memory.buffered_io",
+          "stage": "at_least:beta",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_buffered_io_capability",
+          "status": "implemented",
+          "effect_scope": [
+            "mem"
+          ],
+          "notes": "BufferedReader/IoContext 連携済み",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "fs.watcher.native",
+          "stage": "at_least:beta",
+          "provider": "core",
+          "hook": "WatcherAdapter::ensure_native_capability",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "watcher"
+          ],
+          "notes": "Watcher API 初期化時に Stage 判定",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "fs.watcher.recursive",
+          "stage": "exact:stable",
+          "provider": "core",
+          "hook": "WatcherAdapter::ensure_recursive_capability",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "watcher"
+          ],
+          "notes": "Recursive mode を要求する場合のみ",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "watcher.resource_limits",
+          "stage": "at_least:beta",
+          "provider": "core",
+          "hook": "WatcherAdapter::ensure_resource_limit_capability",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "watcher"
+          ],
+          "notes": "`WatchLimits` 利用時に必須",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "watcher.fschange",
+          "stage": "platform:linux+macos+windows",
+          "provider": "platform",
+          "hook": "ensure_watcher_feature(FsChange)",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "watcher"
+          ],
+          "notes": "非対応 OS は `IoErrorKind::UnsupportedPlatform` を返し `metadata.io.feature` へ記録",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "watcher.recursive",
+          "stage": "platform:linux+macos+windows",
+          "provider": "platform",
+          "hook": "ensure_watcher_feature(Recursive)",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "watcher"
+          ],
+          "notes": "macOS は FSEvents 制約のため Stage 扱いを `Beta` として監査に記録",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        }
+      ],
+      "failures": [],
+      "sources": [
+        "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+      ],
+      "status": "success"
+    }
+  ],
+  "extra_metrics": [
+    {
+      "metric": "core_io.capability_matrix_pass_rate",
+      "scenario": "capability_matrix",
+      "total": 13,
+      "passed": 13,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "entries": [
+        {
+          "capability_id": "io.fs.read",
+          "stage": "at_least:beta",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_read_capability",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "fs.read"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "io.fs.write",
+          "stage": "at_least:beta",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_write_capability",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "fs.write",
+            "mem"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "fs.permissions.read",
+          "stage": "exact:stable",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_permissions_read",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "security"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "fs.permissions.modify",
+          "stage": "exact:stable",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_permissions_modify",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "security"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "fs.symlink.query",
+          "stage": "at_least:beta",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_symlink_query",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "fs.symlink"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "fs.symlink.modify",
+          "stage": "exact:stable",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_symlink_modify",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "fs.symlink",
+            "security"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "security.fs.policy",
+          "stage": "exact:stable",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_security_policy",
+          "status": "implemented",
+          "effect_scope": [
+            "security"
+          ],
+          "notes": "-",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "memory.buffered_io",
+          "stage": "at_least:beta",
+          "provider": "core",
+          "hook": "FsAdapter::ensure_buffered_io_capability",
+          "status": "implemented",
+          "effect_scope": [
+            "mem"
+          ],
+          "notes": "BufferedReader/IoContext 連携済み",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "fs.watcher.native",
+          "stage": "at_least:beta",
+          "provider": "core",
+          "hook": "WatcherAdapter::ensure_native_capability",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "watcher"
+          ],
+          "notes": "Watcher API 初期化時に Stage 判定",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "fs.watcher.recursive",
+          "stage": "exact:stable",
+          "provider": "core",
+          "hook": "WatcherAdapter::ensure_recursive_capability",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "watcher"
+          ],
+          "notes": "Recursive mode を要求する場合のみ",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "watcher.resource_limits",
+          "stage": "at_least:beta",
+          "provider": "core",
+          "hook": "WatcherAdapter::ensure_resource_limit_capability",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "watcher"
+          ],
+          "notes": "`WatchLimits` 利用時に必須",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "watcher.fschange",
+          "stage": "platform:linux+macos+windows",
+          "provider": "platform",
+          "hook": "ensure_watcher_feature(FsChange)",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "watcher"
+          ],
+          "notes": "非対応 OS は `IoErrorKind::UnsupportedPlatform` を返し `metadata.io.feature` へ記録",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        },
+        {
+          "capability_id": "watcher.recursive",
+          "stage": "platform:linux+macos+windows",
+          "provider": "platform",
+          "hook": "ensure_watcher_feature(Recursive)",
+          "status": "implemented",
+          "effect_scope": [
+            "io",
+            "watcher"
+          ],
+          "notes": "macOS は FSEvents 制約のため Stage 扱いを `Beta` として監査に記録",
+          "file": "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+        }
+      ],
+      "failures": [],
+      "sources": [
+        "docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md"
+      ],
+      "status": "success"
+    }
+  ],
+  "scenarios": [
+    "capability_matrix"
+  ],
+  "schema_versions": [],
+  "enforcement": {
+    "require_success": true
+  }
+}

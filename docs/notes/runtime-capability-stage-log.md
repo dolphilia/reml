@@ -11,6 +11,8 @@ Core.Runtime の Capability で Stage 要件や監査メタデータの扱いに
 - 観測方法:
   - `tooling/examples/run_examples.sh --suite core_diagnostics --with-audit --update-golden`（内部で `target/debug/reml_frontend --output json --emit-audit-log .../pipeline_branch.reml` を実行）で Run ID `80b0d934-6b51-4718-9fc4-dcff8c57b849` を取得し、結果を `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` に集約。
   - `scripts/validate-diagnostic-json.sh reports/spec-audit/ch3/capability_stage-mismatch-20251206.json --effect-tag runtime` を実行して `capability.*` / `effect.stage.*` / `effects.contract.stage_trace` / `pipeline.*` の必須キーが欠落していないことを確認。
+- フォローアップ:
+  - ✅ 2025-12-06: `tooling/examples/run_examples.sh --suite core_diagnostics --with-audit` を再実行し、`pipeline_success`（run_id=`06c6a78e-be71-4323-a6fd-23e74515bf34`）/`pipeline_branch`（run_id=`ec456a62-42bc-4cf6-9fed-5858fdc9fc83`）の audit メタデータが Capability マトリクス更新後も変化していないことを確認。Run 情報は `docs/plans/bootstrap-roadmap/pipeline_branch-stage-mismatch-plan.md#run-id-ec456a62-42bc-4cf6-9fed-5858fdc9fc83` に追記済み。
 - 関連ドキュメント: `docs/plans/bootstrap-roadmap/pipeline_branch-stage-mismatch-plan.md`（§6 実施ログ）、`docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#5.2-実施結果`
 
 ## 2025-12-08 Core.Time / Timezone
@@ -55,6 +57,15 @@ Core.Runtime の Capability で Stage 要件や監査メタデータの扱いに
   - Watcher 実装後は `RuntimeBridgeRegistry` の `describe_bridge("native.fs.watch")` 出力を `docs/notes/runtime-bridges-roadmap.md` に添付し、Stage mismtach が出た場合は本ログにも Run ID を追記する。
 - ✅ 2025-12-19: `compiler/rust/runtime/src/path/security.rs` で `SecurityPolicy` / `PathSecurityError` を導入し、`validate_path` / `sandbox_path` / `is_safe_symlink` が `FsAdapter::ensure_security_policy()`・`ensure_symlink_query()` を呼び出すように更新。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml path_security` と `tests/data/core_path/security/*.json` で `core.path.security.invalid`/`violation`/`symlink` 診断に `metadata.security.reason`, `effect.security`, `effect.stage.required = "stable"` が含まれることを確認した。`core-io-capability-map` と `core-io-effects-matrix` にも Rust 実装の検証ポイントを追記済み。
 - 関連ドキュメント: `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md`, `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §1.3, `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md`（Runbook 追記）、`docs/guides/runtime-bridges.md`
+
+## 2025-12-06 Core.IO Capability マトリクス（Run ID: 20251206-core-io-capability-matrix）
+- 対象 Capability: `io.fs.*`, `fs.permissions.*`, `fs.symlink.*`, `fs.watcher.*`, `watcher.*`, `security.fs.policy`, `memory.buffered_io`
+- 目的: `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` に Stage/Provider/効果スコープ列を追加し、CI で `collect-iterator-audit-metrics.py --section core_io --scenario capability_matrix --matrix docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md --output reports/spec-audit/ch3/core_io_capabilities.json --require-success` を実行するための基準票を整備する。
+- 成果物:
+  - `reports/spec-audit/ch3/core_io_capabilities.json` に `core_io.capability_matrix_pass_rate`（pass_rate=1.0, total=13）を保存し、`watcher.fschange`/`watcher.recursive` の `platform:*` 行が OS 不一致を検知できることを確認。
+  - `reports/spec-audit/ch3/io_bridge-capability-sync-20251206.md` を追加し、`RuntimeBridgeRegistry` と Capability Registry の同期状況（Watcher Stage trace と Capability Hook の対応）を記録。
+  - `tests/capabilities/core_io_registry.json` / `compiler/rust/runtime/tests/core_io_capabilities.rs` を更新し、`cargo test -p reml_runtime core_io_capability_matrix` が `fs.symlink.modify` / `fs.watcher.*` / `watcher.resource_limits` を網羅するようにした。
+- 関連ドキュメント: `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#5.5`（Runbook 追加）、`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md`（Capability 整合セクション）、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（`core_io.capability_matrix_pass_rate` KPI 追加）、`docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md`
 
 ## 2025-12-21 Core.IO Watcher クロスプラットフォーム Capability
 - 対象 Capability: `watcher.fschange`, `watcher.recursive`, `watcher.resource_limits`（`fs.watcher.*` に対する OS サポート層）

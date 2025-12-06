@@ -52,3 +52,7 @@
 - `tooling/examples/run_examples.sh --suite core_diagnostics --with-audit --update-golden` を実行し、`pipeline_success`/`pipeline_branch` の期待値を単一コマンドで更新した。`pipeline_branch` の `exit_code=1` は `allowed failure during --update-golden` としてログに記録され、スイート全体の更新を阻害しないことを確認。
 - 上記コマンドで生成した `examples/core_diagnostics/pipeline_branch.expected.{diagnostic.json,audit.jsonl}` を用いて `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` を再生成し、`capability.id=console` / `effect.stage.*` / `bridge.stage.trace` の最新メタデータと Run ID を記録した。
 - `scripts/validate-diagnostic-json.sh reports/spec-audit/ch3/capability_stage-mismatch-20251206.json --effect-tag runtime` を再実行し、`capability.*` / `effect.stage.*` / `effects.contract.stage_trace` / `pipeline.*` が CLI/Audit 双方に存在することを検証した。検証結果は `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#5.2-実施結果` と本書にリンク済み。
+
+### Run ID: ec456a62-42bc-4cf6-9fed-5858fdc9fc83
+- `tooling/examples/run_examples.sh --suite core_diagnostics --with-audit` を実行し、`pipeline_success`（run_id=`06c6a78e-be71-4323-a6fd-23e74515bf34`）と `pipeline_branch`（run_id=`ec456a62-42bc-4cf6-9fed-5858fdc9fc83`）の両方が最新 Runtime で再現できることを確認した。`pipeline_branch` は許容された失敗として `effects.contract.stage_mismatch` 1 件のみを出力し、`pipeline.outcome=success` と `pipeline.exit_code=failure` の組み合わせが audit NDJSON に揃っている。
+- 本 Run の CLI/Audit 出力は既存ゴールデンと差分が無かったためファイル更新は不要だが、`docs/notes/runtime-capability-stage-log.md#2025-12-06-core-diagnostics-stage-mismatch` に run_id を追記し、5.5 節の Runbook（Capability マトリクス）変更後も Stage ミスマッチ再現手順が維持されていることを明示した。

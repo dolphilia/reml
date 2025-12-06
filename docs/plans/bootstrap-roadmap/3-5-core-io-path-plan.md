@@ -31,6 +31,7 @@
 1.3. OS 依存機能 (permissions, symlink) の抽象化方針を決め、Runtime Capability (3-8) との連携を確認する。  
 実施ステップ:
 - `docs/spec/3-8-core-runtime-capability.md` §8-§10 を参照し、`fs.permissions.*`, `fs.symlink.*`, `fs.watcher.*` などの Capability ID を `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` に整理する。
+- Core.IO Capability マップには `<!-- capability-matrix:start -->` ブロックを追加し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario capability_matrix --matrix docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md --output reports/spec-audit/ch3/core_io_capabilities.json --require-success` で Stage/Provider/効果スコープの欠落を検知できるようにする。CI の `core-io-path` ジョブで当該シナリオを実行し、`core_io.capability_matrix_pass_rate` の閾値を `0-3-audit-and-metrics.md` に登録する。
 - `compiler/rust/runtime/src/runtime_bridge/` と `runtime/native/` を調査し、OS 固有実装を切り替えるアダプタ層（`FsAdapter`/`WatcherAdapter`）の責務を設計メモにまとめる。
 - Capability 連携の検証ポイントを `docs/notes/runtime-capability-stage-log.md` に追記し、CI で `verify_capability_stage` を実行する Runbook を `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` と同期させる。
 

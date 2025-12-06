@@ -5,6 +5,30 @@
 - 仕様 [3-5 Core IO & Path](../../spec/3-5-core-io-path.md) と [3-8 Core Runtime & Capability](../../spec/3-8-core-runtime-capability.md) §8-§10 を横断し、Runtime Capability Registry・Runtime Bridge・監査計画との整合を確認する。
 - Phase3 `core-io-path` ジョブで `verify_capability_stage` の Runbook を共有し、`docs/notes/runtime-capability-stage-log.md`・`docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` へフィードバックできる状態を作る。
 
+## Capability マトリクス（機械判定用）
+
+`python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario capability_matrix --matrix docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md --output reports/spec-audit/ch3/core_io_capabilities.json --require-success` は下表を読み取り、Stage/Provider/効果スコープの欠落がないか検証する。`Stage` 列は `exact:<stage>` / `at_least:<stage>` / `platform:<targets>` 形式で記述し、`Effect Scope` は `;` 区切りで `EffectTag` を並べる。`Status` が `missing`/`blocked` の行は自動的に失敗扱いとなるため、既知の未実装項目を追跡する際は `Notes` に理由を記す。
+
+<!-- capability-matrix:start -->
+| Capability ID | Stage | Provider | Effect Scope | Hook | Status | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| `io.fs.read` | `at_least:beta` | core | io;fs.read | `FsAdapter::ensure_read_capability` | implemented | - |
+| `io.fs.write` | `at_least:beta` | core | io;fs.write;mem | `FsAdapter::ensure_write_capability` | implemented | - |
+| `fs.permissions.read` | `exact:stable` | core | io;security | `FsAdapter::ensure_permissions_read` | implemented | - |
+| `fs.permissions.modify` | `exact:stable` | core | io;security | `FsAdapter::ensure_permissions_modify` | implemented | - |
+| `fs.symlink.query` | `at_least:beta` | core | io;fs.symlink | `FsAdapter::ensure_symlink_query` | implemented | - |
+| `fs.symlink.modify` | `exact:stable` | core | io;fs.symlink;security | `FsAdapter::ensure_symlink_modify` | implemented | - |
+| `security.fs.policy` | `exact:stable` | core | security | `FsAdapter::ensure_security_policy` | implemented | - |
+| `memory.buffered_io` | `at_least:beta` | core | mem | `FsAdapter::ensure_buffered_io_capability` | implemented | BufferedReader/IoContext 連携済み |
+| `fs.watcher.native` | `at_least:beta` | core | io;watcher | `WatcherAdapter::ensure_native_capability` | implemented | Watcher API 初期化時に Stage 判定 |
+| `fs.watcher.recursive` | `exact:stable` | core | io;watcher | `WatcherAdapter::ensure_recursive_capability` | implemented | Recursive mode を要求する場合のみ |
+| `watcher.resource_limits` | `at_least:beta` | core | io;watcher | `WatcherAdapter::ensure_resource_limit_capability` | implemented | `WatchLimits` 利用時に必須 |
+| `watcher.fschange` | `platform:linux+macos+windows` | platform | io;watcher | `ensure_watcher_feature(FsChange)` | implemented | 非対応 OS は `IoErrorKind::UnsupportedPlatform` を返し `metadata.io.feature` へ記録 |
+| `watcher.recursive` | `platform:linux+macos+windows` | platform | io;watcher | `ensure_watcher_feature(Recursive)` | implemented | macOS は FSEvents 制約のため Stage 扱いを `Beta` として監査に記録 |
+<!-- capability-matrix:end -->
+
+`Effect Scope` は `CapabilityDescriptor.effect_scope` と一致する必要があり、差分がある場合は `collect-iterator-audit-metrics.py --section core_io --scenario capability_matrix` が失敗する。`Hook` 列には Stage 検証を呼び出す Rust 実装（モジュール + 関数）を記載し、メンテナンス時に参照できるようにする。
+
 ## Capability 対応表
 | Capability ID | API/効果タグ | Stage 要件 | OS / Adapter 依存 | Rust 実装フック | Diagnostics / Audit 検証 | 状態 |
 | --- | --- | --- | --- | --- | --- | --- |
