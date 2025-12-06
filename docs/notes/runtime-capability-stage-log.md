@@ -65,6 +65,7 @@ Core.Runtime の Capability で Stage 要件や監査メタデータの扱いに
   - `reports/spec-audit/ch3/core_io_capabilities.json` に `core_io.capability_matrix_pass_rate`（pass_rate=1.0, total=13）を保存し、`watcher.fschange`/`watcher.recursive` の `platform:*` 行が OS 不一致を検知できることを確認。
   - `reports/spec-audit/ch3/io_bridge-capability-sync-20251206.md` を追加し、`RuntimeBridgeRegistry` と Capability Registry の同期状況（Watcher Stage trace と Capability Hook の対応）を記録。
   - `tests/capabilities/core_io_registry.json` / `compiler/rust/runtime/tests/core_io_capabilities.rs` を更新し、`cargo test -p reml_runtime core_io_capability_matrix` が `fs.symlink.modify` / `fs.watcher.*` / `watcher.resource_limits` を網羅するようにした。
+- Rust ランタイムの `RuntimeBridgeRegistry` を `runtime::bridge` モジュールとして実装し、`FsAdapter::ensure_*` などの Stage 検証で `record_stage_probe` が呼ばれるように更新。`BRIDGE_STAGE_RECORDS_PATH=reports/spec-audit/ch3/runtime_bridge-stage-records-20251206.json cargo test -p reml_runtime stage_records_are_accessible_after_fs_operations -- --nocapture` を実行すると JSON スナップショットを取得でき、io_bridge-capability-sync レポートから Rust 側 Stage 記録を引用可能になった。
 - 関連ドキュメント: `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#5.5`（Runbook 追加）、`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md`（Capability 整合セクション）、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（`core_io.capability_matrix_pass_rate` KPI 追加）、`docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md`
 
 ## 2025-12-21 Core.IO Watcher クロスプラットフォーム Capability

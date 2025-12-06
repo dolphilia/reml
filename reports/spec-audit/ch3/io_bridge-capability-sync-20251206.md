@@ -29,9 +29,11 @@
 - `core_io_capabilities.json` で 13 行すべてが `Stage`/`Provider`/`Effect Scope` を満たし、`pass_rate=1.0` を記録。Watcher 派生行（`watcher.fschange` / `watcher.recursive`）は `platform:linux|macos|windows` として保持され、`metadata.io.feature` が `IoErrorKind::UnsupportedPlatform` に転写されることを確認済み。
 - `pipeline_branch` 監査ログ（`examples/core_diagnostics/pipeline_branch.expected.audit.jsonl`）では `bridge.stage.trace[*]` と `effects.contract.stage_trace[*]` が同一配列であり、Capability Registry → RuntimeBridgeRegistry の Stage 要件が一致している。
 - `cargo test -p reml_runtime core_io_capability_matrix` で `fs.symlink.modify` / `fs.watcher.*` / `watcher.resource_limits` を含む Stage 検証が成功。失敗ケース（`io.fs.read` に `Exact(StageId::Alpha)` を要求）も `capability.stage.mismatch` として検知され、Registry 側の Stage メタデータがテストで参照できることを確認。
+- Rust ランタイム内でも Bridge 記録が参照できるようになり、`cargo test -p reml_runtime stage_records_are_accessible_after_fs_operations -- --nocapture` を `BRIDGE_STAGE_RECORDS_PATH=reports/spec-audit/ch3/runtime_bridge-stage-records-20251206.json` と共に実行すると、`RuntimeBridgeRegistry` が収集した Stage プローブを JSON として書き出せる。
 
 ## 生成物
 - `reports/spec-audit/ch3/core_io_capabilities.json`
+- `reports/spec-audit/ch3/runtime_bridge-stage-records-20251206.json`
 - `examples/core_diagnostics/pipeline_branch.expected.{diagnostic.json,audit.jsonl}`（差分なし、Run ID のみ確認）
 - `tests/capabilities/core_io_registry.json`（Watcher/Permissions 行を追加）
 

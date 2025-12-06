@@ -1,0 +1,26 @@
+{
+  "records": [
+    {
+      "actual": "Stable",
+      "capability": "io.fs.read",
+      "required": {
+        "AtLeast": "Beta"
+      },
+      "timestamp": {
+        "nanos_since_epoch": 665384000,
+        "secs_since_epoch": 1765020391
+      }
+    },
+    {
+      "actual": "Stable",
+      "capability": "io.fs.write",
+      "required": {
+        "AtLeast": "Beta"
+      },
+      "timestamp": {
+        "nanos_since_epoch": 665419000,
+        "secs_since_epoch": 1765020391
+      }
+    }
+  ]
+}

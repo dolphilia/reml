@@ -1,18 +1,7 @@
-use once_cell::sync::Lazy;
 use serde_json::{Map as JsonMap, Value};
-use std::collections::HashMap;
-use std::sync::Mutex;
 
+use crate::runtime::bridge::RuntimeBridgeRegistry;
 use crate::stage::{StageId, StageRequirement};
-
-#[derive(Clone, Copy)]
-struct StageSnapshot {
-    required: StageRequirement,
-    actual: StageId,
-}
-
-static BRIDGE_STAGE_CACHE: Lazy<Mutex<HashMap<&'static str, StageSnapshot>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
 
 /// Capability 検証で得られた Stage をブリッジ監査用に記録する。
 pub(crate) fn record_bridge_stage_probe(
@@ -20,15 +9,7 @@ pub(crate) fn record_bridge_stage_probe(
     requirement: StageRequirement,
     actual: StageId,
 ) {
-    if let Ok(mut cache) = BRIDGE_STAGE_CACHE.lock() {
-        cache.insert(
-            capability,
-            StageSnapshot {
-                required: requirement,
-                actual,
-            },
-        );
-    }
+    RuntimeBridgeRegistry::global().record_stage_probe(capability, requirement, actual);
 }
 
 /// `IoError` の Audit メタデータへ `bridge.stage.*` 情報を注入する。
@@ -36,13 +17,7 @@ pub(crate) fn attach_bridge_stage_metadata(
     capability: &str,
     metadata: &mut JsonMap<String, Value>,
 ) {
-    let snapshot = {
-        let cache = match BRIDGE_STAGE_CACHE.lock() {
-            Ok(lock) => lock,
-            Err(_) => return,
-        };
-        cache.get(capability).copied()
-    };
+    let snapshot = RuntimeBridgeRegistry::global().latest_stage_record(capability);
     let Some(snapshot) = snapshot else {
         return;
     };
@@ -79,9 +54,11 @@ fn requirement_label(requirement: StageRequirement) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::runtime::bridge::RuntimeBridgeRegistry;
 
     #[test]
     fn attaches_bridge_stage_metadata_once_recorded() {
+        RuntimeBridgeRegistry::global().clear();
         let capability = "io.fs.read";
         record_bridge_stage_probe(
             capability,
