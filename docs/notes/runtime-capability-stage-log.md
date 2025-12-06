@@ -2,6 +2,17 @@
 
 Core.Runtime の Capability で Stage 要件や監査メタデータの扱いに差分が生じた場合、本ログに記録する。`collect-iterator-audit-metrics.py` で検証する KPI とリンクし、Phase3 self-host 判定時に参照する。
 
+## 2025-12-06 Core.Diagnostics Stage mismatch
+- 対象 Capability: `console`（`effects.contract.stage_mismatch` を再現する `examples/core_diagnostics/pipeline_branch.reml`）
+- Stage 要件: `StageRequirement::AtLeast(StageId::Beta)`（`perform Console` が `RuntimeBridgeRegistry` の `core.console` と突き合わせられる）
+- 診断・監査メタデータ:
+  - `examples/core_diagnostics/pipeline_branch.expected.diagnostic.json` に `capability.id=console` / `capability.expected_stage=at_least:beta` / `capability.actual_stage=at_least:stable` を保持し、`effects.contract.stage_trace` と `bridge.stage.trace` が CLI/LSP/Audit 共通で同一配列を指すことを確認。
+  - 監査ログは `examples/core_diagnostics/pipeline_branch.expected.audit.jsonl`（2 行）に保存し、`pipeline.outcome=success` / `pipeline.exit_code=failure` が stage mismatch 発生時でも揃うことを確認。
+- 観測方法:
+  - `cargo run --quiet --bin reml_frontend -- --output json --emit-audit-log examples/core_diagnostics/pipeline_branch.reml` で Run ID `31bed62e-f04e-4810-acc2-ce5138088068` を取得し、結果を `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` に集約。
+  - `scripts/validate-diagnostic-json.sh reports/spec-audit/ch3/capability_stage-mismatch-20251206.json --effect-tag runtime` を実行して `capability.*` / `effect.stage.*` / `effects.contract.stage_trace` / `pipeline.*` の必須キーが欠落していないことを確認。
+- 関連ドキュメント: `docs/plans/bootstrap-roadmap/pipeline_branch-stage-mismatch-plan.md`（§6 実施ログ）、`docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#5.2-実施結果`
+
 ## 2025-12-08 Core.Time / Timezone
 - 対象 Capability: `core.time.timezone.local`, `core.time.timezone.lookup`
 - Stage 要件: `StageRequirement::AtLeast(StageId::Beta)`（`compiler/rust/runtime/src/time/timezone.rs::verify_capability`）

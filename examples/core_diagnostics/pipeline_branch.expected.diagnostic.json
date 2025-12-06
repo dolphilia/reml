@@ -1,11 +1,11 @@
 {
   "command": "Check",
   "phase": "Reporting",
-  "run_id": "09d5737a-9577-4433-b5e1-717cb536d615",
+  "run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
   "diagnostics": [
     {
       "audit": {
-        "audit_id": "4b3702da-ecc3-546d-81b2-d2b12d9e9864",
+        "audit_id": "6872c73b-37bd-522a-841f-4833c5ccc7d1",
         "change_set": {
           "items": [
             {
@@ -26,7 +26,7 @@
           ],
           "origin": "cli",
           "policy": "rust.poc.audit.v1",
-          "run_id": "09d5737a-9577-4433-b5e1-717cb536d615",
+          "run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
           "source": {
             "args": [
               "--output",
@@ -39,14 +39,14 @@
           }
         },
         "metadata": {
-          "audit.build_id": "46571029T235326Z",
+          "audit.build_id": "46571030T000410Z",
           "audit.channel": "cli",
-          "audit.id.label": "cli/46571029T235326Z#0",
-          "audit.id.uuid": "4b3702da-ecc3-546d-81b2-d2b12d9e9864",
+          "audit.id.label": "cli/46571030T000410Z#0",
+          "audit.id.uuid": "6872c73b-37bd-522a-841f-4833c5ccc7d1",
           "audit.policy.version": "rust.poc.audit.v1",
           "audit.sequence": 0,
           "audit.source.workspace": ".",
-          "audit.timestamp": "-4657-10-29T23:53:26Z",
+          "audit.timestamp": "-4657-10-30T00:04:10Z",
           "bridge.stage.actual_capabilities": [],
           "bridge.stage.required_capabilities": [],
           "capability.actual_stage": "at_least:stable",
@@ -58,7 +58,7 @@
             "expected": "at_least:beta"
           },
           "capability.providers": [],
-          "cli.audit_id": "cli/46571029T235326Z#0",
+          "cli.audit_id": "cli/46571030T000410Z#0",
           "cli.change_set": {
             "items": [
               {
@@ -79,7 +79,7 @@
             ],
             "origin": "cli",
             "policy": "rust.poc.audit.v1",
-            "run_id": "09d5737a-9577-4433-b5e1-717cb536d615",
+            "run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
             "source": {
               "args": [
                 "--output",
@@ -94,7 +94,7 @@
           "cli.command": "Check",
           "cli.phase": "Reporting",
           "cli.program": "target/debug/reml_frontend",
-          "cli.run_id": "09d5737a-9577-4433-b5e1-717cb536d615",
+          "cli.run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
           "effect.actual_capabilities": [],
           "effect.capability": "console",
           "effect.required_capabilities": [],
@@ -367,14 +367,14 @@
         }
       },
       "audit_metadata": {
-        "audit.build_id": "46571029T235326Z",
+        "audit.build_id": "46571030T000410Z",
         "audit.channel": "cli",
-        "audit.id.label": "cli/46571029T235326Z#0",
-        "audit.id.uuid": "4b3702da-ecc3-546d-81b2-d2b12d9e9864",
+        "audit.id.label": "cli/46571030T000410Z#0",
+        "audit.id.uuid": "6872c73b-37bd-522a-841f-4833c5ccc7d1",
         "audit.policy.version": "rust.poc.audit.v1",
         "audit.sequence": 0,
         "audit.source.workspace": ".",
-        "audit.timestamp": "-4657-10-29T23:53:26Z",
+        "audit.timestamp": "-4657-10-30T00:04:10Z",
         "bridge.stage.actual_capabilities": [],
         "bridge.stage.required_capabilities": [],
         "capability.actual_stage": "at_least:stable",
@@ -386,7 +386,7 @@
           "expected": "at_least:beta"
         },
         "capability.providers": [],
-        "cli.audit_id": "cli/46571029T235326Z#0",
+        "cli.audit_id": "cli/46571030T000410Z#0",
         "cli.change_set": {
           "items": [
             {
@@ -407,7 +407,7 @@
           ],
           "origin": "cli",
           "policy": "rust.poc.audit.v1",
-          "run_id": "09d5737a-9577-4433-b5e1-717cb536d615",
+          "run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
           "source": {
             "args": [
               "--output",
@@ -422,7 +422,7 @@
         "cli.command": "Check",
         "cli.phase": "Reporting",
         "cli.program": "target/debug/reml_frontend",
-        "cli.run_id": "09d5737a-9577-4433-b5e1-717cb536d615",
+        "cli.run_id": "31bed62e-f04e-4810-acc2-ce5138088068",
         "effect.actual_capabilities": [],
         "effect.capability": "console",
         "effect.required_capabilities": [],
@@ -837,7 +837,7 @@
           "codes": [
             "effects.contract.stage_mismatch"
           ],
-          "timestamp": "-4657-10-29T23:53:26Z"
+          "timestamp": "-4657-10-30T00:04:10Z"
         },
         "effect.actual_capabilities": [],
         "effect.capabilities": [],
@@ -1132,15 +1132,15 @@
       "secondary": [],
       "severity": "error",
       "severity_hint": null,
-      "timestamp": "-4657-10-29T23:53:26Z"
+      "timestamp": "-4657-10-30T00:04:10Z"
     }
   ],
   "summary": {
     "inputs": [
       "../../../examples/core_diagnostics/pipeline_branch.reml"
     ],
-    "started_at": "-4657-10-29T23:53:26Z",
-    "finished_at": "-4657-10-29T23:53:26Z",
+    "started_at": "-4657-10-30T00:04:10Z",
+    "finished_at": "-4657-10-30T00:04:10Z",
     "artifact": null,
     "stats": {
       "cli_command": "target/debug/reml_frontend --output json --emit-audit-log ../../../examples/core_diagnostics/pipeline_branch.reml",

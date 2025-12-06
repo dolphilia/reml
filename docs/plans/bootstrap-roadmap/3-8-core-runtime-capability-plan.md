@@ -136,6 +136,10 @@
     - 5.2.a `compiler/rust/frontend/src/diagnostic/effects.rs` の `StageAuditPayload` に `CapabilityDescriptor` 情報を合流させ、`capability.id`/`capability.provider`/`capability.stage` を CLI/LSP/Audit で共有する。
     - 5.2.b `examples/core_diagnostics/pipeline_branch.reml` を Rust Frontend で実行し、`effects.contract.stage_mismatch` に Capability 情報が含まれるゴールデンを `reports/spec-audit/ch3/capability_stage-mismatch-YYYYMMDD.json` として保存する。
     - 5.2.c `scripts/validate-diagnostic-json.sh --effect-tag runtime` を追加し、Capability 情報欠落を CI で検知できるようにする。
+#### 5.2 実施結果（Run ID: 31bed62e-f04e-4810-acc2-ce5138088068）
+- `tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` を `pipeline_success` に対して実行し、続いて `cargo run --quiet --bin reml_frontend -- --output json --emit-audit-log examples/core_diagnostics/pipeline_branch.reml` を手動で再現して `examples/core_diagnostics/pipeline_branch.expected.{diagnostic.json,audit.jsonl}` を `effects.contract.stage_mismatch` 1 件のみを含む最新ゴールデンへ更新した（`pipeline_branch` は意図的に `exit_code=1` のため脚本からは停止することを確認済み、フォローアップとして `run_examples.sh` のエラー処理改善を TODO として残す）。
+- 上記 Run の結果を `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` に記録し、`CliDiagnosticEnvelope` と 2 件の `AuditEnvelope` をまとめて保存した。`schema_version="3.0.0-alpha"` / `capability.id=console` / `effect.stage.required=at_least:beta` / `effect.stage.actual=at_least:stable` がそろっていることを確認。
+- `scripts/validate-diagnostic-json.sh reports/spec-audit/ch3/capability_stage-mismatch-20251206.json --effect-tag runtime` を実行して必須メタデータを検証し、`capability.*`/`effect.stage.*`/`effects.contract.stage_trace` が欠落していないことを確認した。検証ログと Run ID は本節と `docs/notes/runtime-capability-stage-log.md#2025-12-06-core-diagnostics-stage-mismatch` へリンク済み。
 5.3. Config Manifest (3-7) との連携を確認し、マニフェストに記載された Capability 要件が契約検証へ渡ることを確かめる。
     - 5.3.a `reml_runtime::config::manifest` で `run.target.capabilities` を読み込み、`ConductorCapabilityRequirement` に変換するロジックを追加する。
     - 5.3.b `compiler/rust/runtime/tests/manifest_validation.rs` に Stage/Effect 情報を含むフィクスチャを追加し、成功/失敗両ケースを `cargo test manifest_capabilities_*` で検証する。

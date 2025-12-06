@@ -36,3 +36,9 @@
 - Stage mismatch の再現には `Console` Capability の Stage 設定（beta 要求）が前提であり、ランタイム環境によっては `at_least:stable` が発行されず診断が再現しない恐れがある。`CapabilityRegistry` の初期化や CLI オプションを変更するスクリプトが存在する場合は Run 前に確認する。
 - `tooling/examples/run_examples.sh` は `pipeline_success` の更新も再実行するため、他メンテナが並列で触れている場合はゴールデン競合が起こり得る。必要に応じて `examples/core_diagnostics/README.md` に注意書きを追加する。
 - 監査レポートの JSON は今後の計画に再利用するため、`docs-migrations.log` へ記録を残すか、`reports/spec-audit/ch3/README.md` を更新して保管方法を共有する。
+
+## 6. 実施ログ（Run ID: 31bed62e-f04e-4810-acc2-ce5138088068）
+- `tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` を実行したところ `pipeline_branch` が意図通り `exit_code=1` で停止するためスクリプトが途中で止まることを再確認。`pipeline_success` 側は同スクリプトで更新しつつ、`cargo run --quiet --bin reml_frontend -- --output json --emit-audit-log examples/core_diagnostics/pipeline_branch.reml` を単体で走らせ、標準出力/標準エラーを `tmp/` 経由でキャプチャして `examples/core_diagnostics/pipeline_branch.expected.{diagnostic.json,audit.jsonl}` を手動で整形した。
+- 上記 Run の `CliDiagnosticEnvelope` / `AuditEnvelope` をまとめた `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` を作成し、`pipeline_branch` の再現手順・コマンド・stage trace をワンパッケージで参照できるようにした。
+- `scripts/validate-diagnostic-json.sh reports/spec-audit/ch3/capability_stage-mismatch-20251206.json --effect-tag runtime` を実行し、`capability.id=console` / `effect.stage.required=at_least:beta` / `effect.stage.actual=at_least:stable` / `effects.contract.stage_trace` が CLI/Audit の両方に残っていることを確認した。検証ログと Run ID は `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#5.2-実施結果` と `docs/notes/runtime-capability-stage-log.md#2025-12-06-core-diagnostics-stage-mismatch` にリンク済み。
+- フォローアップ: `tooling/examples/run_examples.sh` が致命的診断を含むサンプルでもゴールデン更新を完走できるよう `set -e` との整合を見直す（例: `pipeline_branch` 実行部分のみ `|| true` を許可する）タスクを `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` 側に登録する。
