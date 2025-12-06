@@ -131,6 +131,20 @@ fi
 
 FRONTEND_DIR="${ROOT}/compiler/rust/frontend"
 
+# Stage mismatch を意図的に発生させるサンプルなど、非ゼロ終了を許容する
+# 例はここで列挙する。
+allows_failure() {
+  local example="$1"
+  case "$example" in
+    core_diagnostics/pipeline_branch.reml)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 for example in "${FILES[@]}"; do
   target="${ROOT}/examples/${example}"
   if [[ ! -f "${target}" ]]; then
@@ -139,6 +153,10 @@ for example in "${FILES[@]}"; do
   fi
 
   echo "==> running ${example}"
+  allow_failure=false
+  if allows_failure "${example}"; then
+    allow_failure=true
+  fi
   if [[ "${UPDATE_GOLDEN}" == true ]]; then
     diag_tmp="$(mktemp)"
     audit_tmp="$(mktemp)"
@@ -152,9 +170,12 @@ for example in "${FILES[@]}"; do
       if "${CMD[@]}" >"${diag_tmp}" 2>"${audit_tmp}"; then
         :
       else
-        # 致命的診断を含むサンプル（例: pipeline_branch）は非ゼロ終了するため、ゴールデン更新時のみ警告を出して継続する
         code=$?
-        echo "    -> ${example} exited with status ${code} (continuing --update-golden)" >&2
+        if [[ "${allow_failure}" == true ]]; then
+          echo "    -> ${example} exited with status ${code} (allowed failure during --update-golden)" >&2
+        else
+          exit "${code}"
+        fi
       fi
     )
     diag_path="${target%.reml}.expected.diagnostic.json"
@@ -201,7 +222,16 @@ PY
         CMD+=(--emit-audit-log)
       fi
       CMD+=("${target}")
-      "${CMD[@]}"
+      if "${CMD[@]}"; then
+        :
+      else
+        code=$?
+        if [[ "${allow_failure}" == true ]]; then
+          echo "    -> ${example} exited with status ${code} (allowed failure)" >&2
+        else
+          exit "${code}"
+        fi
+      fi
     )
   fi
 done

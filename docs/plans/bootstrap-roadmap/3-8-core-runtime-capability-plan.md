@@ -144,6 +144,10 @@
     - 5.3.a `reml_runtime::config::manifest` で `run.target.capabilities` を読み込み、`ConductorCapabilityRequirement` に変換するロジックを追加する。
     - 5.3.b `compiler/rust/runtime/tests/manifest_validation.rs` に Stage/Effect 情報を含むフィクスチャを追加し、成功/失敗両ケースを `cargo test manifest_capabilities_*` で検証する。
     - 5.3.c Manifest 検証ログを `reports/spec-audit/ch3/manifest_capability-YYYYMMDD.md` に保存し、`docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md#5.1` へリンクを張る。
+#### 5.3 実施結果（Run ID: 20260225-manifest-capability-contract）
+- `compiler/rust/runtime/tests/manifest_validation.rs` に `conductor_capability_contract_round_trip` と `manifest_capabilities_detect_duplicate_ids` を追加し、`Manifest::conductor_capability_contract()` が `StageRequirement::AtLeast(StageId::Beta)`・`declared_effects`・`manifest_path` を保持すること、`ManifestCapabilities::from_manifest()` が重複 ID を `ManifestCapabilityError::DuplicateCapability` として検出することを検証した。Stage / Effect の期待値は `RunCapabilityEntry::declared_effects` をソート・重複排除する既存ロジックと突き合わせている。
+- `cargo test -p reml_runtime manifest_validation` を実行し、結果と CLI ログを `reports/spec-audit/ch3/manifest_capability-20260225.md` に保存した。ログには `tests/manifest_validation.rs` の対象ケース、利用した manifest ビルダー（`capability_entry` ヘルパ）、期待エラー内容が含まれる。
+- Config 計画書 `docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md#5.1` に本 Run ID とレポートへの参照を追記し、Manifest/Capability 連携タスクの完了点から 3-8 計画を逆参照できるようにした。
 5.4. `core.collections.ref` capability を `CapabilityRegistry` に登録し、`RefHandle` を介した `collector.effect.rc`/`collector.effect.mut` の監査を `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` の 3.2.3 セクションと `docs/guides/runtime-bridges.md` の橋渡し解説に記録することで、Core.Collections と RuntimeBridge の契約整合性を担保する。
     - 5.4.a `CapabilityHandle::CollectionsRef`（仮）を追加し、`reml_runtime::collections::ref` の API から Stage チェックを呼び出す。
     - 5.4.b `collector.effect.rc`/`collector.effect.mut` の Stage 情報を `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md#3.2.3` の KPI へ追記し、`reports/spec-audit/ch3/collections_ref-YYYYMMDD.md` に実測ログを保存する。
