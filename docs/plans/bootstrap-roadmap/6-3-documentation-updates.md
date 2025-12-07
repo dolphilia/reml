@@ -257,8 +257,8 @@
 
 ## 参考資料
 - [4-0-phase4-migration.md](4-0-phase4-migration.md)
-- [4-2-multitarget-release-pipeline.md](4-2-multitarget-release-pipeline.md)
-- [4-4-ecosystem-migration.md](4-4-ecosystem-migration.md)
+- [6-2-multitarget-release-pipeline.md](6-2-multitarget-release-pipeline.md)
+- [6-4-ecosystem-migration.md](6-4-ecosystem-migration.md)
 - [notes/guides-to-spec-integration-plan.md](../../notes/guides-to-spec-integration-plan.md)
 - [0-0-overview.md](../../spec/0-0-overview.md)
 - [0-2-glossary.md](../../spec/0-2-glossary.md)

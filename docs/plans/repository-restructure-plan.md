@@ -70,7 +70,7 @@
 │   ├─ README.md            # 開発者体験・CI/リリース整備のハブ
 │   ├─ cli/                 # `1-6-developer-experience.md` で定義された CLI 資産
 │   ├─ ci/                  # `1-7-linux-validation-infra.md` 等で言及される CI スクリプト・ローカル再現ツール
-│   ├─ release/             # `4-2-multitarget-release-pipeline.md` の署名・配布スクリプト
+│   ├─ release/             # `6-2-multitarget-release-pipeline.md` の署名・配布スクリプト
 │   └─ lsp/                 # Phase2 以降で整備する LSP / IDE 連携資産
 ├─ examples/                # 旧 `examples/` を改称し、実装サンプルを整理
 ├─ AGENTS.md                # AI エージェント共通指針
@@ -97,7 +97,7 @@ docs/spec/
 - `compiler/self-host/` は Phase 3 自己ホスト化（`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md`）の準備領域として空ディレクトリを用意し、セルフホスト実装開始時にサブモジュールを配置する。
 - `runtime/native/` は最小 RC ランタイム（`docs/plans/bootstrap-roadmap/1-5-runtime-integration.md`）と将来の Capability 対応を配置し、ターゲット別サブディレクトリ（`linux/`, `windows/` など）を必要に応じて追加する。
 - `tooling/cli/` は `docs/plans/bootstrap-roadmap/1-6-developer-experience.md` で定義された CLI 資産とヘルプドキュメント、`tooling/ci/` は `docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md` などで参照されるローカル再現スクリプトや CI 補助スクリプトを格納する。
-- `tooling/release/` は `docs/plans/bootstrap-roadmap/4-2-multitarget-release-pipeline.md` に基づく署名・パッケージング・配布スクリプトの置き場とし、秘密情報管理のガイドラインを README に明記する。
+- `tooling/release/` は `docs/plans/bootstrap-roadmap/6-2-multitarget-release-pipeline.md` に基づく署名・パッケージング・配布スクリプトの置き場とし、秘密情報管理のガイドラインを README に明記する。
 - `tooling/lsp/` は Phase 2 以降に計画されている LSP/IDE 資産（`docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` など）を集約し、CLI と共通の診断ポリシーを共有する。
 - `.github/workflows/` は現行どおり維持し、`tooling/ci/` のスクリプトから参照することで CI 設定とローカル補助の責務を分離する。
 

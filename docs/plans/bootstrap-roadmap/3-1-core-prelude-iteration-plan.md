@@ -43,7 +43,7 @@
 - `examples/language-impl-comparison/` に `ensure` を利用した DSL サンプルを追加（別タスクでコード化）し、`docs/spec/3-0-core-library-overview.md`・`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` へ当該ユーティリティの有効化を脚注として記録する。
 
 2.3. 例外排除ポリシーを検証するため、Rust 実装で `panic`/`abort` を伴う経路を禁止するテストを作成し、期待差分を `0-3-audit-and-metrics.md` へ記録する。必要に応じて OCaml 実装の挙動を参考情報として添付するが、自動比較対象には含めない。
-- panic を許容するのは `effect {debug}` のみとし、CI で `cargo test --release -Z panic-abort-tests`（または `RUSTFLAGS="-C panic=abort"`）を追加。失敗時は `docs/plans/bootstrap-roadmap/4-5-backward-compat-checklist.md` に回帰として残す。
+- panic を許容するのは `effect {debug}` のみとし、CI で `cargo test --release -Z panic-abort-tests`（または `RUSTFLAGS="-C panic=abort"`）を追加。失敗時は `docs/plans/bootstrap-roadmap/6-5-backward-compat-checklist.md` に回帰として残す。
 - `compiler/rust/frontend/tests/panic_forbidden.rs`（`trybuild`/`ui` テスト想定）を追加し、`panic!` や `unwrap_unchecked` を利用した場合に `#[deny(panic_fmt)]` でコンパイルエラーを発生させる。例外的に `expect` を許容するルールはテストで明文化する。
 - 計測ログ（panic 経路検出・禁止件数）は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に KPI として追記し、集計コマンドと実行日時を `reports/spec-audit/ch0/links.md` フォーマットで参照可能にする。
 
@@ -56,7 +56,7 @@
 | ✅ 2.2a | `ensure`/`ensure_not_null` を実装し、`Diagnostic` 変換と `core.prelude.ensure_failed` キーを登録 | `docs/spec/3-6-core-diagnostics-audit.md:210-260`, `tooling/ci/collect-iterator-audit-metrics.py` | `compiler/rust/runtime/src/prelude/ensure.rs`, `docs/spec/3-6-core-diagnostics-audit.md` 脚注更新案 | `scripts/validate-diagnostic-json.sh`, `reports/diagnostic-format-regression.md` 比較 | Diagnostics チーム | 36週目前半 |
 | ✅ 2.2b | `examples/language-impl-comparison/` の DSL サンプルと `docs/spec/3-0-core-library-overview.md` の脚注を更新 | `docs/spec/3-0-core-library-overview.md`, `examples/language-impl-comparison/` | `reml/prelude_guard_template.reml`、脚注リンク、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` の更新案 | `render_preview` の Result 伝播ログ、`core.prelude.ensure_failed` メタデータの検証メモ | Docs チーム | 36週目後半 |
 | ✅ 2.3a | panic 禁止 UI テストと lint 設定（`panic_fmt` 欠如のため `non-fmt-panics`＋静的検証に置換）を実装 | `docs/spec/1-3-effects-safety.md`, `docs/plans/rust-migration/unified-porting-principles.md` | `compiler/rust/frontend/tests/panic_forbidden.rs`, `.cargo/config.toml` lint 更新 | `cargo test panic_forbidden`, `RUSTFLAGS="-Dnon-fmt-panics"` | Core Library チーム | 36週目後半 |
-| ✅ 2.3b | `0-3-audit-and-metrics.md`/`4-5-backward-compat-checklist.md` への KPI・回帰項目追加 | `reports/diagnostic-format-regression.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` | KPI 記録・回帰トラッキングチケット | KPI CSV 更新、監査ログ照合作業メモ | QA/PM | 36週目末 |
+| ✅ 2.3b | `0-3-audit-and-metrics.md`/`6-5-backward-compat-checklist.md` への KPI・回帰項目追加 | `reports/diagnostic-format-regression.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` | KPI 記録・回帰トラッキングチケット | KPI CSV 更新、監査ログ照合作業メモ | QA/PM | 36週目末 |
 
 > 2.3a 補足: Rust 安定版には `panic_fmt` lint が存在しないため、`.cargo/config.toml` に `-Dnon-fmt-panics` を設定したうえで `compiler/rust/frontend/tests/panic_forbidden.rs` による静的検証で `panic!`/`unwrap_unchecked` を監視し、`effect {debug}` 以外の経路が導入された場合にはテストで検出する。
 
@@ -331,7 +331,7 @@ OCaml の `solve_collector`/`solve_iterator` は `Iter`/`Collector`/`Option`/`Re
 ### 完了チェックリスト
 - [x] `cargo xtask prelude-audit --strict` が `Option`/`Result` API で差分 0 を返し（`reports/spec-audit/ch0/links.md#prelude-実装ログ` 参照）、`core_prelude.missing_api = 0` の測定結果を保存した。
 - [x] `cargo test core_prelude_option_result panic_forbidden` が成功し、`scripts/validate-diagnostic-json.sh` の比較結果を `reports/diagnostic-format-regression.md` に差分なしで反映した。
-- [x] `0-3-audit-and-metrics.md` に `core_prelude.missing_api = 0`、`core_prelude.panic_path = 0` を追加し、`4-5-backward-compat-checklist.md` へ fallback プランを登録済み。
+- [x] `0-3-audit-and-metrics.md` に `core_prelude.missing_api = 0`、`core_prelude.panic_path = 0` を追加し、`6-5-backward-compat-checklist.md` へ fallback プランを登録済み。
 - [x] `docs/spec/3-0-core-library-overview.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` に Option/Result 実装ステータスの脚注リンクを追記し、Phase 3-1 以降の参照経路を確立した。
 
 ## 成果物と検証

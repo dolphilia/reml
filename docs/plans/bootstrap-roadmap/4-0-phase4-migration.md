@@ -1,81 +1,66 @@
-# 4.0 Phase 4 — 移行完了と運用体制
+# 4.0 Phase 4 — 実用テスト統合計画
 
-Phase 4 は Reml セルフホスト実装（Rust 版）を正式版として採用し、OCaml 実装を参照専用のアーカイブへ移行する段階である。互換性確認、リリース体制、エコシステム支援を整え、Reml 開発者コミュニティがセルフホスト版のみを前提に活動できるようにする。
+Phase 4 は Rust 実装コンパイラを "実務レベル" で検証することに特化した工程であり、`.reml` ファイルを実際に読み込み、コンパイルし、実行する統合テストを整備する。Phase 3 で整った標準ライブラリと Capability を活かし、Phase 5（セルフホスト）および Phase 6（正式リリース）以前に「現場投入できる挙動か」を確認する。
 
 ## 4.0.1 目的
-- Reml セルフホスト実装の出力が Phase 3 で確立した仕様ベースのゴールデンテスト・監査メトリクスと一致することを証明し、**x86_64 Linux を正式版のターゲット**として正式なリリースパイプラインへ組み込む。
-- [5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md) に沿ったツールチェーン整備（パッケージ管理、CI/CD、診断集計）を完了させる。
-- OCaml 実装は LTS 運用を行わず、参照用コードとしてアーカイブする。文書には参考リンクを残しつつ、CI/配布/dual-write から完全に切り離す。
+- `docs/spec/0-1-project-purpose.md` が求める性能と安全性の指標を、実際の `.reml` プロジェクトで測定可能な形に落とし込む。
+- Rust 実装の CLI (`reml_frontend`, `remlc`) とランタイムを用い、**コンパイル→実行→結果検証** のエンドツーエンドパイプラインを GitHub Actions / ローカル検証の両方で再現できるようにする。
+- Phase 5 でセルフホストビルドへ進むための「現実的なシナリオカバレッジ」「診断/監査メトリクス」「失敗時の切り分けログ」を整備する。
 
 ## 4.0.2 スコープ境界
-- **含む**: 出力一致検証、ローリングリリース戦略、ドキュメント更新、エコシステム（パッケージ、プラグイン、CI テンプレート）への周知、**マルチターゲット（x86_64 Linux/Windows + ARM64 macOS）の正式サポート確立**。
-- **含まない**: 追加ターゲット（WASM/WASI/他アーキテクチャ）の正式サポート、JIT/最適化高度化。これらは別計画または次期フェーズへ引き継ぐ。
-- **前提条件**: Phase 3 のセルフホスト成果（マルチターゲット対応完了）、`0-3-audit-and-metrics.md` での性能/診断ベンチマーク、`0-4-risk-handling.md` の未解決リスク一覧。
+- **含む**: `.reml` シナリオの再整理、入力/出力/診断のゴールデン化、Rust 実装 CLI を使った自動テスト実行、CI と `collect-iterator-audit-metrics.py` の統合、`examples/`・`tests/` の再分類。
+- **含まない**: セルフホスト（Phase 5）に必要な自己コンパイルや Stage 昇格判定、正式リリース手続（Phase 6）。ただし、それらの前提となるシナリオ・メトリクス・レポートは Phase 4 で準備する。
+- **前提条件**: Phase 3 の Chapter 3 実装完了、`docs/plans/rust-migration/overview.md` の P1〜P3 成果、`0-3-audit-and-metrics.md` で定義された KPI。
 
-## 4.0.2a 作業ディレクトリ
-- `tooling/ci`, `.github/workflows/` : マルチターゲット CI と成果物検証
-- `tooling/release` : 署名・notarization・配布スクリプト
-- `compiler/ocaml/`, `runtime/native` : セルフホスト成果物の最終ビルド
-- `docs/spec/`, `docs/guides/`, `docs/notes/` : ドキュメント更新とリスク記録
-- `examples/` : 出力比較・回帰テストで使用するサンプル
+## 4.0.3 作業ディレクトリ / 主な対象
+- `examples/`（`core_*` / `dsl_*` / `pipeline_*` 系）
+- `tooling/examples/run_examples.sh`, `tooling/ci/collect-iterator-audit-metrics.py`
+- `compiler/rust/frontend`, `compiler/rust/runtime`, `compiler/rust/tests`
+- `docs/spec/3-x`, `docs/guides/core-parse-streaming.md`, `docs/guides/runtime-bridges.md`
+- 新設予定: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`, `reports/spec-audit/ch4/*.md`
 
-## 4.0.3 成果物とマイルストーン
+## 4.0.4 成果物とマイルストーン
 | マイルストーン | 内容 | 検証方法 | 期限目安 |
 |----------------|------|----------|----------|
-| M1: 出力一致サインオフ | LLVM IR / バイナリ / 診断の差分が承認閾値内に収束 | 自動差分レポート + レビュア承認記録 | Phase 4 開始後 6 週 |
-| M2: リリースパイプライン | セルフホスト実装を CI/CD に組み込み、署名付き成果物を配布 | CI 成果物レビュー、署名確認 | 開始後 10 週 |
-| M3: エコシステム移行 | パッケージマネージャ、プラグイン、ガイドをセルフホスト前提に更新 | `README.md` / ガイド更新、コミュニティ告知 | 開始後 14 週 |
-| M4: 旧実装アーカイブ | OCaml 実装を参照専用ブランチへ移行し、セルフホスト版のみを配布対象とするアナウンス発行 | `docs/guides/` 追加資料、リスク確認 | 開始後 18 週 |
+| M1: シナリオマトリクス確定 | `.reml` 入力の分類（Prelude/IO/Capability/Runtime/Plugin/CLI）と評価観点 | `phase4-scenario-matrix.csv`、レビューサインオフ | Phase 4 開始後 3 週 |
+| M2: 実行パイプライン稼働 | `run_examples.sh --suite practical` と `cargo test --package reml_e2e` で compile→run→inspect を自動化 | GitHub Actions サンドボックス実行、`reports/spec-audit/ch4/practical-suite-*.md` | 開始後 6 週 |
+| M3: 観測メトリクス接続 | `collect-iterator-audit-metrics.py` の実用シナリオ対応、`0-3-audit-and-metrics.md` KPI 更新 | メトリクス JSON / Markdown レポート、`--require-success` 完走 | 開始後 8 週 |
+| M4: Phase 5 ハンドオーバー判定 | シナリオ網羅率 ≥ 85%、回帰テスト自動化、未解決リスク整理 | `phase4-readiness.md`、レビュー記録 | 開始後 10 週 |
 
-## 4.0.4 実装タスク
+## 4.0.5 ワークストリーム
+1. **シナリオ設計と資産棚卸し**
+   - `examples/`、`tests/`、`docs/spec` のコード片を洗い出し、`.reml` の入力形式・依存 Capability・期待出力を `phase4-scenario-matrix.csv` に整理。
+   - `docs/spec/3-5-core-io-path.md` や `3-8-core-runtime-capability.md` に掲載されたサンプルを実行可能な `.reml` へ拡張し、`reports/spec-audit/ch3` の資産とリンク。
+   - `docs/plans/rust-migration/p1-front-end-checklists.csv`、`p1-test-migration-*.txt` で未使用のケースを Phase 4 シナリオへ転用。
 
-> **ターゲット方針**: Phase 4 の正式リリースは **x86_64 Linux を第一ターゲット**とし、Windows x64 と ARM64 macOS を公式サポート対象として同時リリースする。配布優先度は Linux > Windows > macOS とする。
+2. **実行パイプライン構築**
+   - `tooling/examples/run_examples.sh` に Phase 4 専用スイート（`practical`, `integration`, `selfhost-smoke`）を追加し、Rust 実装 CLI `remlc` を使った compile→run を共通 API に統一。
+   - `.github/workflows/` に「Phase 4 practical tests」ジョブを追加し、`cargo test -p reml_e2e -- --scenario practical`（仮）と `run_examples.sh --suite practical --update-golden` を監査ログ付きで実行。
+   - `compiler/rust/tests/practical/` に新しい統合テスト（ファイルごと compile run）を追加し、`Result`/`Option`/`Capability` の挙動を JSON で保存。
 
-1. **マルチターゲット互換性検証**
-   - LLVM IR の構造差分（関数単位）を**x86_64 Linux、Windows x64、ARM64 macOS の 3 ターゲット全て**で比較し、差分がある場合は `docs/notes/llvm-spec-status-survey.md` の未決項目に照らして承認または修正。
-   - **x86_64 Linux (ELF) 成果物を基準**にし、`llvm-diff` と `dwarfdump` でデバッグ情報・シンボル整合を確認する。
-   - Windows (PE) と macOS (Mach-O) の成果物も同様に検証し、ターゲット固有の差異は許容範囲として記録。
-   - 診断メッセージの差分を比較し、[3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) のキーセットに準拠するか確認。
-2. **マルチターゲットリリースパイプライン構築**
-   - [5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md) の手順に従い、ビルド→テスト→署名→配布までを自動化。
-   - **3 ターゲット全てのアーティファクト生成を CI で自動化**:
-     - x86_64 Linux: `.tar.gz` + 署名
-     - Windows x64: `.zip` + オプションでコードサイニング
-     - ARM64 macOS: `.tar.gz` + Apple notarization (`codesign`/`notarytool`)
-   - 公式リリースノートフォーマット（[5-5-roadmap-metrics.md](../../spec/5-5-roadmap-metrics.md) 参照）でセルフホスト移行の進捗を報告。
-3. **ドキュメント更新**
-   - `README.md` と [0-0-overview.md](../../spec/0-0-overview.md) にセルフホスト完了と **x86_64 Linux を正式版の第一ターゲット**とする旨を明記。
-   - Windows x64 と ARM64 macOS も公式サポート対象として併記し、ダウンロードリンクを提供。
-   - `docs/guides/llvm-integration-notes.md` をアップデートし、Phase 4 以降の拡張計画（WASM/WASI/JIT 等）を付録化。
-4. **エコシステム整備**
-   - パッケージレジストリ ([5-2-registry-distribution.md](../../spec/5-2-registry-distribution.md)) にセルフホスト版を登録し、**3 ターゲット全てのバイナリを配布**。x86_64 Linux を推奨ターゲットとして明示。OCaml 版を非推奨マーク。
-   - プラグイン開発ガイド (`docs/guides/DSL-plugin.md`) をセルフホスト ABI 前提に更新し、マルチターゲット対応の注意点を追加。
-5. **後方互換チェックリストの定義と実施**
-   - 後方互換チェックリストを `0-3-audit-and-metrics.md` に追加し、以下を含める:
-     - Phase 3 のゴールデンテストと比較した LLVM IR・診断キー・監査ログの一致率（関数単位で 95% 以上／診断キー 100%）
-     - 性能差異（Phase 3 ベースライン比 ±5% 以内）
-     - 3 ターゲット全てでのエンドツーエンドテスト通過
-   - チェックリスト通過後、OCaml 実装を `archive/ocaml-reference` ブランチとして保管し、ドキュメントには参照リンクのみを残す。
-6. **サポートポリシー策定**
-   - セルフホスト版のみを対象とするサポート期間・更新フローを `0-4-risk-handling.md` に記録し、コミュニティへ周知（OCaml 実装は非サポート扱い）。
-   - **マルチターゲット対応の優先度**: Linux > Windows > macOS。新機能はまず Linux で検証し、Windows/macOS へ展開。
+3. **観測・診断メトリクス統合**
+   - `collect-iterator-audit-metrics.py` に Phase 4 シナリオ用のセクション（`--section practical`）を追加し、`tooling/ci` レポートと `0-3-audit-and-metrics.md` KPI を同期。
+   - `reports/spec-audit/ch4/` を新設し、`.reml` ごとの compile→run ログ、診断 JSON、監査 JSONL、性能カウンタをまとめる。
+   - `.reml` 実行時の AuditEnvelope に `scenario.id`, `input.hash`, `runtime.bridge` などのタグを追加し、Phase 5 以降の自己ホスト計測へ引き継ぐ。
 
-## 4.0.5 測定と検証
-- **性能リグレッション**: Phase 3 のベースラインと比較して ±5% 以内を目標とする（3 ターゲット全て）。超過時は緩和策を `0-4-risk-handling.md` へ登録。
-- **Stage/Capability**: すべての Stage 要件が `Stable` 以上に昇格し、監査ログにミスマッチが無いことを確認。
-- **診断整合**: 主要エラーケースでのメッセージ差分がゼロ、またはレビュア承認済みの改善のみであること。
-- **マルチターゲットリリース検証**:
-  - x86_64 Linux: 署名検証、主要ディストリビューション（Ubuntu/Debian/Fedora）での動作確認
-  - Windows x64: コードサイニング（オプション）、Windows 10/11 での動作確認
-  - ARM64 macOS: Apple Notary Service での notarization (`notarytool submit --wait`)、Gatekeeper 通過確認
+4. **フィールドデータ/レグレッション管理**
+   - `docs/notes/dsl-plugin-roadmap.md`、`docs/guides/plugin-authoring.md` で紹介している DSL / Plugin 例を Phase 4 スイートへ取り込み、`RuntimeBridge`/`Capability` チェックを伴う実行例を追加。
+   - 実運用想定のワークスペース（複数 `.reml` ファイル、`@dsl_export`、`core.io` 連携）のミニプロジェクトを `examples/practical/` に作成し、`reports/spec-audit/ch4/practical-bundle-*.md` に結果を残す。
+   - レグレッションが発生した場合、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と連携し、Phase 4 専用の `PRACTICAL-###` 問題として登録する手順を定義。
 
-## 4.0.6 リスクとフォローアップ
-- **エコシステム乗り換え遅延**: サードパーティが移行に遅延した場合に備え、Rust セルフホスト版への移行手順とフォールバックガイドを用意（OCaml 実装へのパッチ提供は行わない）。
-- **ツール互換性**: 既存 IDE/CI 連携が想定と異なる場合は、ガイドにトラブルシュートを追加し、`docs/notes/` に TODO ノートを残す。
-- **人員負荷**: 移行期のレビュー負荷が高いため、レビュアの割当と休日計画を `0-3-audit-and-metrics.md` のレビュー欄で可視化する。
-- **マルチターゲット配布の複雑化**: 3 ターゲット全てのリリース準備により工数増加。CI 自動化を徹底し、手動作業を最小化。
-- **ターゲット固有の問題**: 各ターゲットで固有の問題（例: macOS notarization 失敗、Windows Defender 誤検知）が発生した場合の修正フローとリトライ SLA を `0-4-risk-handling.md` に明記する。
+## 4.0.6 測定と検証
+- **シナリオ網羅率**: `phase4-scenario-matrix.csv` に登録したカテゴリのうち、最低 85% を週次で実行（`core`, `io`, `diagnostics`, `capability`, `plugin`）。
+- **性能指標**: `.reml` 単位で `parse_throughput` / `memory_peak_ratio` を測定し、`reports/spec-audit/ch4/perf-*.md` に保存。
+- **診断ギャップ**: 実行パイプラインで得た診断 JSON を `scripts/validate-diagnostic-json.sh` で検証し、差異ゼロを Phase 4 の進捗条件とする。
+- **監査メトリクス**: `collect-iterator-audit-metrics.py --section practical --require-success` を CI で必須化し、観測指標（`practical.pass_rate`, `practical.stage_mismatch`）を `0-3-audit-and-metrics.md` に追記。
 
----
+## 4.0.7 リスクとフォローアップ
+- **シナリオ不足**: Phase 3 の章別作業で生まれたケースが不足している場合、`docs/notes/core-library-outline.md` を再確認し、欠落分は Phase 4 で追加する。必要に応じて `docs/notes/phase4-practical-test-backlog.md`（新設）へ TODO 記録。
+- **実行コストの肥大化**: `.reml` 実行に時間がかかる場合、`--scenario smoke` と `--scenario full` の 2 モードを定義して CI を段階化する。詳細は `6-2-multitarget-release-pipeline.md` へ連携。
+- **診断差分の発生**: 実行系で検出された差分は `docs/plans/rust-migration/1-3-dual-write-runbook.md` の手順に従って報告し、Phase 3 の該当章や Phase 2-7 の残課題票に紐付ける。
+- **再現性欠如**: 実運用 `.reml` が依存する外部ファイル/Capability を再現できない場合、`runtime/native` にテスト用 Capability Stub を実装し、`docs/spec/3-8-core-runtime-capability.md` の Stage ルールに基づき明示的に opt-in させる。
 
-Phase 4 の完了により、Reml プロジェクトはセルフホスト実装を正式な開発基盤として採用し、以降の最適化・ターゲット拡張・エコシステム成長にフォーカスできる体制が整う。
+## 4.0.8 連携とハンドオーバー
+- Phase 5 のセルフホスト計画に向け、`phase4-readiness.md` に実用テストの観測値と既知の制約をまとめる（Self-Host MVP が参照）。
+- Phase 6（旧 Phase 4）で利用する互換性検証シナリオは、Phase 4 の成果（`.reml` + メトリクス）をそのまま入力にする。`6-0-phase6-migration.md` 冒頭にリンクを貼り、再実行手順を共通化する。
+- `docs/plans/bootstrap-roadmap/README.md` と `SUMMARY.md` に Phase 4 の役割を追記し、`README` のクリティカルパスを「Phase 4 practical → Phase 5 self-host → Phase 6 release」へ更新する。

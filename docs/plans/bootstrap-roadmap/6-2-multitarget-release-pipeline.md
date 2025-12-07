@@ -258,7 +258,7 @@
 
 ## 参考資料
 - [4-0-phase4-migration.md](4-0-phase4-migration.md)
-- [4-1-multitarget-compatibility-verification.md](4-1-multitarget-compatibility-verification.md)
+- [6-1-multitarget-compatibility-verification.md](6-1-multitarget-compatibility-verification.md)
 - [3-0-phase3-self-host.md](3-0-phase3-self-host.md)
 - [5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md)
 - [5-2-registry-distribution.md](../../spec/5-2-registry-distribution.md)
