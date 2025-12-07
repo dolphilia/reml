@@ -56,6 +56,47 @@
 - `examples/README.md`・`examples/practical/README.md` に Phase 4 の `spec_core`/`practical` 階層を追記し、`docs/notes/examples-regression-log.md` へ Practical 反映ログを残した。旧 `examples/core_io/*` などの参照は「実務ケースは `practical/` へ移行した」旨の注記を追加。
 - `phase4-scenario-matrix.csv` へ `runtime_bridge` 列を追加し、`CH3-PLG-310` など Capability を要求する行に `audit_bridge` を登録。IO/Path/Plugin 系の `input_path` を Practical パスへ統一し、`expected/practical/core_io/file_copy/canonical.audit.jsonl` などのゴールデンと 1:1 対応させた。
 
+#### 🔁 追加バックログ（Chapter 1〜3 `.reml` 拡充計画）
+
+`examples/spec_core/chapter1` に偏っていたケースを Chapter 1 BNF／型推論／効果仕様全域へ広げ、さらに `chapter2`（Core.Parse API）と Chapter 3（Core.Text/Core.Diagnostics/Core.Env）へ `.reml` を追加する計画を以下のとおり整理した。全ケースは `phase4-scenario-matrix.csv` に `resolution=pending` で登録し、`expected/` ゴールデンおよび診断キーを定義したうえで `run_examples.sh --suite spec-core --suite practical` に組み込む。
+
+##### Chapter 1（構文・型・効果）
+
+- **CH1-MOD-003**（[1-1 §B.1](../spec/1-1-syntax.md#b1-モジュールとインポート)）: `examples/spec_core/chapter1/module_use/bnf-compilationunit-module-use-alias-ok.reml` と `expected/.../module_use/bnf-compilationunit-module-use-alias-ok.stdout` を追加し、`use Core.Parse.{Lex, Op.{Infix, Prefix}}` の再帰展開と `module spec_core.match_guard` のヘッダ処理を実行テスト化する。
+- **CH1-MOD-004**（同 §B.1）: `examples/spec_core/chapter1/module_use/bnf-usedecl-super-root-invalid.reml` を用意し、`super` をルートモジュールで参照した際に `language.use.invalid_super` 診断を発行することを確認する。`expected/.../bnf-usedecl-super-root-invalid.diagnostic.json` でエラー位置・トークンを固定化する。
+- **CH1-ATTR-101/102**（[1-1 §B.6](../spec/1-1-syntax.md#b6-属性attributes)）: `chapter1/attributes` ディレクトリを新設し、`bnf-attr-cfg-let-gate-ok.reml`（`@cfg(target = "cli")` で `let` ブロックを条件実行）と、未定義ターゲットを指定する `bnf-attr-cfg-missing-flag-error.reml`（`language.cfg.unsatisfied_branch` 診断）を追加する。`expected/...stdout` と `.diagnostic.json` を対にして `RunConfig` 分岐をテストする。
+- **CH1-FN-101**（[1-1 §B.4 関数宣言](../spec/1-1-syntax.md#b4-宣言の種類)）: `chapter1/fn_decl/bnf-fndecl-generic-default-effect-ok.reml` でジェネリック引数・デフォルト引数・`!{io}` 効果注釈を組み合わせ、`expected/.../fn_decl/bnf-fndecl-generic-default-effect-ok.stdout` で推論と効果列の整合を確認する。
+- **CH1-TYPE-201**（同 §B.4 型宣言）: `chapter1/type_decl/bnf-typedef-sum-recordpattern-ok.reml` を作成し、Sum/Record パターンと `..` 残余束縛を `expected/...stdout` でゴールデン化する。
+- **CH1-TRAIT-301**（[1-2 §B.1](../spec/1-2-types-Inference.md#b-トレイト型クラス風と静的オーバーロード)）: `chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml` で `trait Show<T> where T: Copy` + デフォルト実装を記述し、辞書生成のログを `expected/...stdout` に固定する。
+- **CH1-IMPL-302**（[1-2 §B.2](../spec/1-2-types-Inference.md#b2-解決と整合性)）: `chapter1/trait_impl/bnf-impldecl-duplicate-error.reml` と `expected/...duplicate-error.diagnostic.json` を追加し、同一型への重複 `impl` に `typeclass.impl.duplicate` 診断が出るかを確認する。
+- **CH1-INF-601**（[1-2 §H.1](../spec/1-2-types-Inference.md#h1-let-一般化)）: `chapter1/type_inference/bnf-inference-let-generalization-ok.reml` を追加し、`let id = fn x => x` が多相推論され `Vec<i64>`/`Vec<Text>` で再利用できることを `expected/...stdout` で実証する。
+- **CH1-INF-602**（[1-2 §C.3 値制限](../spec/1-2-types-Inference.md#c3-値制限value-restriction)）: `chapter1/type_inference/bnf-inference-value-restriction-error.reml` を追加し、`var cell = []` を一般化しようとすると `language.inference.value_restriction` 診断が発生することを確認する。
+- **CH1-EFF-701**（[1-3 §B](../spec/1-3-effects-safety.md#b-デフォルトの純粋性と値制限)）: `chapter1/effects/bnf-attr-pure-perform-error.reml` を増やし、`@pure fn` 内で `perform Console.log` を呼び出した際に `effects.purity.violated` 診断が発生することを `expected/...diagnostic.json` で固定する。
+- **CH1-DSL-801**（[1-1 §B.8](../spec/1-1-syntax.md#b8-dsl制御ブロック-conductor)）: `chapter1/conductor/bnf-conductor-basic-pipeline-ok.reml` を実装し、`conductor telemetry { channels { ... } execution { ... } }` のブロック展開結果を `expected/...stdout` で確認する。`reports/spec-audit/ch4/` に `conductor` 監査タグを追加する計画に紐付ける。
+- **CH1-MATCH-003**（[1-1 §C.3](../spec/1-1-syntax.md#c3-パターン束縛match-で共通)）: `chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml` を追加し、`Some(x) when x > 10 as large` のような `when` + `as` バインダを許容することを `expected/...stdout` で保証する。
+
+##### Chapter 2（Parser API）
+
+- **CH2-PARSE-101**（[2-2 §A-3](../spec/2-2-core-combinator.md#a-3-変換コミット回復)）: `examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml` を新設し、`Core.Parse.or` と `commit` を組み合わせた `.reml` を `expected/...stdout` でゴールデン化する。`phase4-scenario-matrix` では `Runtime × chapter2.parser` として扱う。
+- **CH2-PARSE-201**（[2-5 §E](../spec/2-5-error.md#e-recoverの仕様)）: `chapter2/parser_core/core-parse-recover-diagnostic.reml` を追加し、`Parse.recover` で `core.parse.recover.branch` 診断 JSON を生成する経路をテストする。
+- **CH2-STREAM-301**（[2-7 §C-1](../spec/2-7-core-parse-streaming.md#c-1-continuation-型)）: `chapter2/streaming/core-parse-runstream-demandhint-ok.reml` を記述し、`run_stream` と `DemandHint::More` の協調を `expected/...stdout` で検証する。
+- **CH2-OP-401**（[2-4 §A-2](../spec/2-4-op-builder.md#a-2-レベル宣言fixity)）: `chapter2/op_builder/core-opbuilder-level-conflict-error.reml` と診断 JSON を作り、同じ優先度レベルに別 fixity を混在させた際の `core.parse.opbuilder.level_conflict` エラーを確認する。
+
+##### Chapter 3（Core.Text / Diagnostics / Env）
+
+- **CH3-TEXT-401**（[3-3 §4.1](../spec/3-3-core-text-unicode.md#41-grapheme-word-sentence-境界)）: `examples/practical/core_text/unicode/grapheme_nfc_mix.reml` を追加し、`Core.Text.graphemes` + `normalize(:nfc)` の往復結果を `expected/practical/core_text/unicode/grapheme_nfc_mix.stdout` で記録する。
+- **CH3-TEXT-402**（[3-3 §3.3](../spec/3-3-core-text-unicode.md#33-診断連携と-parseerror)）: `.../grapheme_boundary_edge.reml` と診断 JSON を作り、結合文字の途中で切断した場合に `core.text.unicode.segment_mismatch` 診断が上がることをテストする。
+- **CH3-DIAG-501**（[3-6 §1.1](../spec/3-6-core-diagnostics-audit.md#11-auditenvelope)）: `examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml` を追加し、`AuditEnvelope.metadata` に `scenario.id` と `effect.stage.required` が埋まる JSONL を `expected/...audit.jsonl` に保存する。
+- **CH3-RUNTIME-601**（[3-8 §10.2](../spec/3-8-core-runtime-capability.md#102-stage-ポリシーと-capability-契約)）: `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml` を作成し、`runtime_bridge.stage_mismatch` 診断を `expected/...diagnostic.json` で固定する。
+- **CH3-ENV-701**（[3-10 §1](../spec/3-10-core-env.md#1-環境変数アクセス)）: `examples/practical/core_env/envcfg/env_merge_by_profile.reml` と対応する stdout を整備し、`core.env.merge_profiles` が `@cfg` と同期することを確認する。`IO × chapter3.env` の代表ケースとして扱う。
+
+実装手順（共通）:
+
+1. `examples/spec_core/chapter1/{module_use,attributes,fn_decl,...}` および `chapter2/{parser_core,streaming,op_builder}`、`examples/practical/core_{text,diagnostics,runtime,env}` を作成し、`docs/spec/0-3-code-style-guide.md` に沿って `.reml` を配置する。
+2. 各 `.reml` に対応する `expected/` ゴールデン（`stdout`/`diagnostic.json`/`audit.jsonl`）を生成し、`phase4-scenario-matrix.csv` の `scenario_id` と 1:1 に対応させる。
+3. `run_examples.sh` へ `spec_core chapter1/chapter2` サブセットを追加し、`cargo test -p reml_e2e -- --scenario spec-core` で自動実行できるよう `reports/spec-audit/ch4/spec-core-dashboard.md` にタグを追加する。
+4. 診断ケース（`language.use.invalid_super` など）は `docs/spec/3-6-core-diagnostics-audit.md` のキー定義を引用し、必要に応じて `docs/spec/0-2-glossary.md` に用語を追記する。
+
 ### 3. マトリクス検証とレビューサインオフ（72週目）
 - `phase4-scenario-matrix.csv` に `resolution` 列を設け、`ok` / `impl_fix` / `spec_fix` を入力。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` とリンクするケースは `impl_fix` として登録。
 - `reports/spec-audit/ch4/spec-core-dashboard.md` にシナリオ一覧と Pass/Fail 状態を出力する `scripts/gen_phase4_dashboard.py` を用意し、レビューで差分を確認できるようにする。
