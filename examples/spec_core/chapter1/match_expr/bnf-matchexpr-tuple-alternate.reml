@@ -1,0 +1,14 @@
+module Spec.Core.Chapter1.Match.TupleCase
+
+use Core.Prelude
+
+// BNF: MatchExpr + TuplePattern（docs/spec/1-5-formal-grammar-bnf.md §4, §5）
+fn describe(pair: (Int, Int)) -> Str {
+  match pair with
+    (0, y) -> "y=" + y.to_string()
+    (x, _) -> "x=" + x.to_string()
+}
+
+fn main() -> Str {
+  describe((7, 3))
+}
