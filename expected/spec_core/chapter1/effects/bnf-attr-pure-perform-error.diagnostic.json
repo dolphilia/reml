@@ -1,0 +1,16 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter1/effects/bnf-attr-pure-perform-error.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "effects.purity.violated",
+      "message": "`@pure` 関数 `announce` で `perform Console.log` が検出されました。",
+      "notes": [
+        {
+          "message": "`@pure` を外すか `Console.log` をハンドラで捕捉してください。"
+        }
+      ]
+    }
+  ]
+}

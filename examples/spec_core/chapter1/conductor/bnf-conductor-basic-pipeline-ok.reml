@@ -1,0 +1,20 @@
+module Spec.Core.Chapter1.Conductor.Basic
+
+use Core.Prelude
+
+// BNF: conductor block（docs/spec/1-5-formal-grammar-bnf.md §2）
+conductor telemetry {
+  channels {
+    source.metrics ~> sink.dashboard: Stream<Int>
+  }
+
+  execution {
+    println("telemetry boot")
+  }
+
+  monitoring with Telemetry.Observer
+}
+
+fn main() -> Str {
+  "conductor-ready"
+}

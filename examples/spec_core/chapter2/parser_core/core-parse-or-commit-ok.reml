@@ -1,0 +1,18 @@
+module Spec.Core.Chapter2.Parser.OrCommit
+
+use Core.Parse as Parse
+use Core.Prelude
+
+// Chapter 2 §2.2: `or` + `commit` でバックトラック境界を制御
+fn signed_number() -> Parse.Parser<Int> {
+  Parse.or(
+    Parse.then(Parse.expect_symbol("+"), Parse.expect_int()),
+    Parse.commit(Parse.expect_int())
+  )
+}
+
+fn main() -> Str {
+  match Parse.run(signed_number(), "+42") with
+    Ok(value) -> format("parsed=%d", [value])
+    Err(diag) -> diag.message
+}

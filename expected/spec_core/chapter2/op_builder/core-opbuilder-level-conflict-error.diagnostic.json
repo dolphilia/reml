@@ -1,0 +1,16 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "core.parse.opbuilder.level_conflict",
+      "message": "優先度 5 に複数の fixity (`infix_left` と `infix_right`) が登録されました。",
+      "notes": [
+        {
+          "message": "各レベルにつき 1 種類の fixity のみを指定してください。"
+        }
+      ]
+    }
+  ]
+}

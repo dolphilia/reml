@@ -1,0 +1,16 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "runtime.bridge.stage_mismatch",
+      "message": "Bridge `telemetry_bridge` は Stage::Beta で、要求 Stage::Stable を満たしていません。",
+      "notes": [
+        {
+          "message": "`reml.toml` の stage_bounds を更新するか、要求レベルを下げてください。"
+        }
+      ]
+    }
+  ]
+}

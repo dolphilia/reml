@@ -1,0 +1,11 @@
+module Spec.Core.Chapter1.TypeInference.LetGeneralization
+
+use Core.Prelude
+
+// BNF: Let binding + type inference（docs/spec/1-2-types-Inference.md §H.1）
+fn main() -> Str {
+  let id = fn (x) => x
+  let first = id(42)
+  let second = id("phase4")
+  format("first=%d | second=%s", [first, second])
+}

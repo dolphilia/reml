@@ -1,0 +1,16 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/practical/core_text/unicode/grapheme_boundary_edge.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "core.text.unicode.segment_mismatch",
+      "message": "結合文字の途中で区切られたため Grapheme 境界を構築できません。",
+      "notes": [
+        {
+          "message": "`Text.slice` では Grapheme 安全なインデックスを利用してください。"
+        }
+      ]
+    }
+  ]
+}

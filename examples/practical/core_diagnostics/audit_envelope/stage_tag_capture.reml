@@ -1,0 +1,15 @@
+module Examples.Practical.CoreDiagnostics.AuditEnvelope
+
+use Core.Diagnostics
+
+fn record() {
+  let envelope = Diagnostics.AuditEnvelope.new()
+  envelope.metadata["scenario.id"] = "CH3-DIAG-501"
+  envelope.metadata["effect.stage.required"] = "beta"
+  Diagnostics.emit(envelope)
+}
+
+fn main() -> Str {
+  record()
+  "audit-envelope"
+}

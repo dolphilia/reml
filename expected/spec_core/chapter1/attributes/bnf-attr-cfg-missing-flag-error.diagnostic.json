@@ -1,0 +1,16 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter1/attributes/bnf-attr-cfg-missing-flag-error.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "language.cfg.unsatisfied_branch",
+      "message": "未定義ターゲット `quantum` を参照する `@cfg` は評価できません。",
+      "notes": [
+        {
+          "message": "`target = \"cli\"` などサポート済みのプロファイルを利用してください。"
+        }
+      ]
+    }
+  ]
+}

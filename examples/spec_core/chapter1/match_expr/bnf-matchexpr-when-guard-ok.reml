@@ -1,0 +1,15 @@
+module Spec.Core.Chapter1.Match.Guard
+
+use Core.Prelude
+
+// BNF: MatchExpr + PatternGuards（docs/spec/1-5-formal-grammar-bnf.md §4）
+fn describe(value: Option<Int>) -> Str {
+  match value with
+    Some(x) when x > 10 as large -> "large=" + large.to_string()
+    Some(x) -> "small=" + x.to_string()
+    None -> "none"
+}
+
+fn main() -> Str {
+  describe(Some(27))
+}

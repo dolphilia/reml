@@ -1,0 +1,16 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter1/module_use/bnf-usedecl-super-root-invalid.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "language.use.invalid_super",
+      "message": "ルートモジュールでは `super` を利用できません。",
+      "notes": [
+        {
+          "message": "`use ::Core.Prelude` など明示的なルート参照に書き換えてください。"
+        }
+      ]
+    }
+  ]
+}

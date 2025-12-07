@@ -1,0 +1,29 @@
+module Spec.Core.Chapter1.TypeDecl.SumRecord
+
+use Core.Prelude
+
+// BNF: TypeDecl / SumType（docs/spec/1-5-formal-grammar-bnf.md §2）
+type PackageVersion = { major: Int, minor: Int, patch: Int }
+
+type Manifest =
+  | Library({ name: Str, version: PackageVersion, .. })
+  | Tool(Str)
+
+fn describe(manifest: Manifest) -> Str {
+  match manifest with
+    Library({ name, version, .. }) ->
+      format(
+        "%s@%d.%d.%d",
+        [name, version.major, version.minor, version.patch]
+      )
+    Tool(entry) -> "tool:" + entry
+}
+
+fn main() -> Str {
+  let pkg = Library({
+    name = "spec-core",
+    version = { major = 1, minor = 5, patch = 0 },
+    maintainer = "phase4"
+  })
+  describe(pkg)
+}

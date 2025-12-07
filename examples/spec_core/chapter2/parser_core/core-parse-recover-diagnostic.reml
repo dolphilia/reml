@@ -1,0 +1,15 @@
+module Spec.Core.Chapter2.Parser.Recover
+
+use Core.Parse as Parse
+use Core.Prelude
+
+fn statement() -> Parse.Parser<Int> {
+  Parse.and_then(Parse.expect_keyword("let"), Parse.expect_ident())
+}
+
+fn main() -> Str {
+  let source = "let = 1"
+  match Parse.run_with_recovery(statement(), source) with
+    Err(diag) -> diag.to_json()
+    Ok(_) -> "unexpected-ok"
+}

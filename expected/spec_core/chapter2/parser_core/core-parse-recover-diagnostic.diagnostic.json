@@ -1,0 +1,16 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "core.parse.recover.branch",
+      "message": "`Parse.recover` が `let` 文の識別子位置で分岐回復を実施しました。",
+      "notes": [
+        {
+          "message": "`let name = value` の `name` を補完するか、`run_with_recovery` のログを確認してください。"
+        }
+      ]
+    }
+  ]
+}

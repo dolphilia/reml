@@ -5,5 +5,9 @@ Phase 4 のシナリオマトリクスで「実務投入」「監査ログ付き
 - `core_io/file_copy/`: Core.IO + Core.Path の Reader/Writer、Sandbox、監査ログの組み合わせ
 - `core_path/security_check/`: SecurityPolicy による拒否と診断 (`core.path.security.*`) の固定化
 - `core_config/audit_bridge/`: `@dsl_export` で Runtime Bridge を登録し、Manifest ダンプと Stage 整合性を確認
+- `core_text/unicode/`: Chapter 3.3 の Grapheme/正規化 API を `.reml` から直接検証
+- `core_diagnostics/audit_envelope/`: `AuditEnvelope.metadata` に `scenario.id` と Stage 情報を記録するログ例
+- `core_runtime/capability/`: Runtime Bridge Stage の整合性チェック (`runtime.bridge.stage_mismatch`) を再現
+- `core_env/envcfg/`: `core.env.merge_profiles` と `@cfg` プロファイル同期の成功例
 
 > 補足: 旧 `examples/core_io/*.reml` 等は参照用として残しつつ、Phase 4 以降のテストは本ディレクトリを参照する運用へ切り替えます。

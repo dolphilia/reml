@@ -1,0 +1,16 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter1/type_inference/bnf-inference-value-restriction-error.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "language.inference.value_restriction",
+      "message": "`var cell = []` は汎化できない式を共有しようとしました。",
+      "notes": [
+        {
+          "message": "可変セルを共有する場合は `fn` で包むか、明示的な型を指定してください。"
+        }
+      ]
+    }
+  ]
+}
