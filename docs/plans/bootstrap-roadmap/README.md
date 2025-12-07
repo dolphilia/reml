@@ -134,6 +134,10 @@ Rust 実装を実務レベルの `.reml` シナリオで検証し、セルフホ
 | ファイル | マイルストーン | 内容 | 期限目安 |
 |---------|--------------|------|---------|
 | [4-0-phase4-migration.md](4-0-phase4-migration.md) | - | Phase 4 実用テスト計画（シナリオ/パイプライン/測定） | 10週 |
+| [4-1-scenario-matrix-plan.md](4-1-scenario-matrix-plan.md) | M1: シナリオマトリクス | `.reml` 入力分類、`phase4-scenario-matrix` 整備、例示コード移植 | 72週 |
+| [4-2-practical-execution-pipeline-plan.md](4-2-practical-execution-pipeline-plan.md) | M2: 実行パイプライン | `run_examples.sh`/`cargo test -p reml_e2e` を用いた compile→run→verify の自動化 | 75週 |
+| [4-3-observability-and-metrics-plan.md](4-3-observability-and-metrics-plan.md) | M3: 観測メトリクス | `collect-iterator-audit-metrics.py --section practical` とダッシュボード整備 | 77週 |
+| [4-4-field-regression-and-readiness-plan.md](4-4-field-regression-and-readiness-plan.md) | M4: フィールドデータ | レグレッション管理、`phase4-readiness.md` 作成、Phase 5 へのハンドオーバー | 78週 |
 
 **依存関係**: Phase 3 の全成果完了 → Phase 4 シナリオ整備 → Phase 5 へハンドオーバー
 
