@@ -90,6 +90,11 @@
 - **CH3-RUNTIME-601**（[3-8 §10.2](../spec/3-8-core-runtime-capability.md#102-stage-ポリシーと-capability-契約)）: `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml` を作成し、`runtime_bridge.stage_mismatch` 診断を `expected/...diagnostic.json` で固定する。
 - **CH3-ENV-701**（[3-10 §1](../spec/3-10-core-env.md#1-環境変数アクセス)）: `examples/practical/core_env/envcfg/env_merge_by_profile.reml` と対応する stdout を整備し、`core.env.merge_profiles` が `@cfg` と同期することを確認する。`IO × chapter3.env` の代表ケースとして扱う。
 
+##### FFI/Core Prelude 依存（spec_core ハーネス）
+
+- **FFI-CORE-PRELUDE-001**（[3-1 Core Prelude](../spec/3-1-core-prelude-iteration.md) / [3-6 Diagnostics](../spec/3-6-core-diagnostics-audit.md)）：`compiler/rust/frontend/tests/core_iter_{effects,adapters,collectors,pipeline}.rs` を `.reml` シナリオと同様に追跡し、`reml_runtime_ffi` を `core_prelude` 付きで再利用できるかをマトリクスに記載する。`input_path` はテストファイル/スナップショット（`tests/snapshots/core_iter_*`）を指し、`expected` には `cargo test --package reml_frontend spec_core` の YAML ゴールデンを登録する。
+- `resolution` が `pending` のあいだは capability shim の導入（`reml_runtime_ffi` に `capability::registry` を再輸出する補助モジュールを追加）を Phase 4.1 のフォローアップとして扱い、完了時に `ok` として `phase4-scenario-matrix.csv` と `reports/spec-audit/ch4/spec-core-dashboard.md` を同時更新する。
+
 実装手順（共通）:
 
 1. `examples/spec_core/chapter1/{module_use,attributes,fn_decl,...}` および `chapter2/{parser_core,streaming,op_builder}`、`examples/practical/core_{text,diagnostics,runtime,env}` を作成し、`docs/spec/0-3-code-style-guide.md` に沿って `.reml` を配置する。

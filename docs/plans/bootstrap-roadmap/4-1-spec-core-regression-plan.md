@@ -26,6 +26,7 @@
 | Effect/Type 診断 | `CH1-EFF-701`, `CH1-IMPL-302` | `effects.purity.*`, `typeclass.impl.duplicate` | 同上 | Parser で脱落するため型診断に到達しない |
 | Chapter2 Core.Parse | `CH2-PARSE-*` | `core.parse.recover.branch` 等 | 同上 | Parser 自身の self-test すら開始できない |
 | Chapter3 practical | `CH3-IO-*`, `CH3-PLG-310` など | ステージ/IO/Capability 診断 | 同上 | Top-level で `use Core.*` が失敗し、実行前に脱落 |
+| FFI/Core Prelude | `cargo test --package reml_frontend spec_core`（`tests/core_iter_*`）| `core_iter_*` スナップショット、`core_prelude` 依存の CLI 診断 | `reml_runtime_ffi` が `capability::*` 参照でコンパイル不能 | `compiler/rust/frontend/Cargo.toml` の dev-dep で `reml_runtime_ffi` + `core_prelude` を要求するが、`ffi/src/lib.rs` には `capability` module がなく、`core_prelude` が `crate::capability::registry` を参照するためリンク切れ（`compiler/rust/runtime/src/prelude/collectors/mod.rs:32`） |
 
 ## 作業計画
 
@@ -60,6 +61,23 @@
 7. **Phase4 Scenario Matrix の自動同期**（5.5 週）  
    - `ScenarioResult` を `phase4-scenario-matrix.csv` の `resolution_notes` に反映する補助スクリプト（`tooling/examples/update_phase4_resolution.py` 仮）を用意し、Pass/Fail に応じて `ok/impl_fix/spec_fix` を更新。  
    - `reports/spec-audit/ch4/spec-core-dashboard.md` / `practical-suite-index.md` を Phase4 README で参照し、週次レビュー資料として扱う。
+
+### フェーズD: `reml_runtime_ffi` capability shim 回収（新規）
+
+Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep として `core_prelude` 機能を有効化する（`compiler/rust/frontend/Cargo.toml:47-51`）。しかし FFI 側では `core_prelude` を疑似的に `#[path = "../../src/prelude/..."]` で取り込んでいるだけで、依存している `crate::capability::registry::*` ツリーが存在せずビルドが止まる。Phase 4 では `core_iter_*` 系スナップショットから Chapter 1 の効果/Stage カバレッジを得る必要があるため、`reml_runtime_ffi` に capability shim を導入して `cargo test --package reml_frontend spec_core` が常に起動できる状態を作る。
+
+1. **依存パスの棚卸しと仕様根拠の整理**（5.6 週）  
+   - `compiler/rust/runtime/ffi/src/lib.rs:16-65` と `core_prelude` 配下の `collectors/mod.rs`, `iter/mod.rs` を洗い出し、`crate::capability::registry` 以外の未解決参照が無いことを確認。必要に応じて `docs/spec/3-1-core-prelude-iteration.md` と `docs/spec/3-6-core-diagnostics-audit.md` の要件（監査ログ + Stage Requirement）を引用し、shim が仕様面の整合を壊さないかレビュー項目を用意する。  
+   - `phase4-scenario-matrix.csv` に `FFI-CORE-PRELUDE-001`（`core_iter_effects`, `core_iter_adapters`, `core_iter_collectors`, `core_iter_pipeline`）行を追加し、`resolution=pending` のまま本フェーズの出口条件に紐付ける。
+
+2. **capability shim の実装計画**（5.7 週）  
+   - 既存の `registry.rs` を `crate::capability::registry` として再輸出する薄いモジュール（`ffi/src/capability.rs`）を追加し、`CapabilityError` / `CapabilityRegistry` / `BridgeIntent` / `RuntimeBridgeRegistry` が `core_prelude` から見えるようにする。  
+   - shim を追加したら `cargo check -p reml_runtime_ffi --features core_prelude`、`cargo test --package reml_frontend core_iter_effects` を CI へ組み込み、`spec_core` スイートが `parser.syntax.expected_tokens` 以外の理由で停止しない状態を KPI として記録する。  
+   - `docs/plans/rust-migration/1-3-dual-write-runbook.md` の `capability` 共有セクションと整合するか確認し、必要であれば同 runbook へ補足する。
+
+3. **検証とフォローアップ**（5.8 週）  
+   - shim 経由で `core_prelude` が利用可能になったら、`tests/core_iter_*` の snapshot を更新し `reports/spec-audit/ch4/spec-core-dashboard.md` に `FFI/Core Prelude` の pass 率を新設。  
+   - `capability` shim の将来廃止に備え、`reml_runtime` モジュールを直接依存として使う長期方針を `docs/notes/core-library-outline.md` へ TODO 記録し、Phase 5 で `reml_core_prelude` を共通 crate 化する提案を追記する。
 
 ## 成果物と KPI
 
