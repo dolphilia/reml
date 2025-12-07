@@ -1,0 +1,75 @@
+# 4.1 Phase 4 spec_core / practical 回帰是正計画
+
+## 背景と課題
+
+- `tooling/examples/run_examples.sh --suite spec_core` / `--suite practical`（`run_phase4_suite.py` 発行）により、Phase 4 で整備した `.reml` シナリオが Rust フロントエンドでは一貫して受理されていないことが判明した。
+- `reports/spec-audit/ch4/spec-core-dashboard.md` / `practical-suite-index.md` では **全シナリオが `parser.syntax.expected_tokens` と `typeck.aborted.ast_unavailable`（または CLI 正常終了だが診断ゼロ）** の状態であり、Chapter 1〜3 の仕様試験が成立していない。
+- 実装側は `docs/spec/1-5-formal-grammar-bnf.md` のトップレベル規則（`module` + `use` + `fn/let`）を解析できず、`--output json` で AST/Typed AST を得られないため型推論や効果診断が一切回らない。Phase 4 M1 exit 条件（Scenario 85% 実行）を満たすには、回帰要因を特定し段階的に是正する計画が必要。
+
+## 目的
+
+1. `examples/spec_core/`（Chapter 1〜2 BNF/推論）および `examples/practical/`（Chapter 3 実務ケース）を **Rust フロントエンド CLI で解析・型検査できる状態** に戻す。
+2. `phase4-scenario-matrix.csv` に登録された `diagnostic_keys` と CLI 出力を照合し、`reports/spec-audit/ch4/*.md` で Pass/Fail を追跡できるようにする。
+3. 解析の障害を修正する過程で、仕様側の不足が判明した場合は `docs/spec/1-x`〜`3-x` へ追記する判断材料（spec_fix/impl_fix）を明確にする。
+
+## スコープ
+
+- **含む**: Rust フロントエンド (`compiler/rust/frontend`) の Parser/Typeck/CLI オプション是正、`run_phase4_suite.py` の診断差分検知を活かしたレポーティング改善、`reports/spec-audit/ch4/` の定期更新。必要に応じて `RunConfig` / `ParseRunner` / `DiagnosticFilter` の既定値も調整する。
+- **含まない**: `.reml` シナリオ自体の削減や仕様変更の強行。実行環境依存（ファイルI/Oの実処理、Capability 実体）の stub 化は別タスクとして扱い、本計画では Parser/Typeck が構文どおりに動くことを優先する。
+
+## 現状確認（2025-12-07 実行ログより）
+
+| 分類 | 代表 Scenario | 期待診断 | 実際の CLI 出力 | 備考 |
+| --- | --- | --- | --- | --- |
+| Module/Use トップレベル | `CH1-MOD-003`, `CH1-LET-001` 他多数 | `[]` または `language.*` 系 | `parser.syntax.expected_tokens`, `typeck.aborted.ast_unavailable` | `module` 直後の `use` 群を許容できず、`effect` or `fn` を要求している |
+| `@cfg` 属性 | `CH1-ATTR-101`, `CH1-ATTR-102` | `language.cfg.unsatisfied_branch` など | `parser.syntax.expected_tokens` | ブロック属性の構文が Parser に登録されていない |
+| Effect/Type 診断 | `CH1-EFF-701`, `CH1-IMPL-302` | `effects.purity.*`, `typeclass.impl.duplicate` | 同上 | Parser で脱落するため型診断に到達しない |
+| Chapter2 Core.Parse | `CH2-PARSE-*` | `core.parse.recover.branch` 等 | 同上 | Parser 自身の self-test すら開始できない |
+| Chapter3 practical | `CH3-IO-*`, `CH3-PLG-310` など | ステージ/IO/Capability 診断 | 同上 | Top-level で `use Core.*` が失敗し、実行前に脱落 |
+
+## 作業計画
+
+### フェーズA: Parser BNF 整合
+1. **トップレベル定義と `use` 再導入**（4.2 週）  
+   - `parser/mod.rs` の `parse_top_level_prefix` が `module` 宣言の後に `UseDecl` を許容していない箇所を是正し、BNF（1-5 §1）に合わせる。  
+   - `syntax.expected_tokens` が `effect`/`fn` しか提示しない状況を、`UseDecl`/`Attr`/`ValDecl` まで含むよう `ExpectedToken` 生成ロジックを更新。  
+   - `CH1-MOD-003` / `CH1-LET-001` / `CH1-LET-002` を use-case とした unit / integration テストを `compiler/rust/frontend/tests/spec_core/` に追加。
+
+2. **属性 (`@cfg`, `@pure`) とブロック式の Parser 修正**（4.3 週）  
+   - `AttrList` がブロック式（`{ ... }`）や `fn` 前に付与された場合に落ちる箇所を修正し、`docs/spec/1-1-syntax.md §B.6` のサンプルを CLI で解析できるようにする。  
+   - `CH1-ATTR-101/102`, `CH1-EFF-701` をターゲットに parser-only テストを追加。
+
+3. **Conductor/DSL, Streaming Parser の最小受理**（4.4 週）  
+   - `conductor` ブロックや `run_stream` テストが構文エラーになる箇所を特定し、`docs/spec/1-5` の派生構文に合わせたノードを復活。  
+   - `CH1-DSL-801`, `CH2-STREAM-301` を通すまで Parser を段階調整。
+
+### フェーズB: Typeck / Effect 診断の復元
+4. **型推論 / 効果行の非アクティブ化回収**（5.1 週）  
+   - Parserが通るようになった後も `typeck.aborted.ast_unavailable` が解消しない場合、`TypecheckDriver` が AST を拒否する条件（`allow_module_body` 等）の見直しを行う。  
+   - `CH1-INF-601/602`, `CH1-EFF-701`, `CH1-IMPL-302` を `cargo test -p reml_e2e -- --scenario spec-core` に組み込み、期待診断と照合する自動テストを用意。
+
+5. **Core.Parse/Runtime 仕様のアクティブ化**（5.3 週）  
+   - `CH2-PARSE-*` 用に `Parse.run` / `Parse.run_with_recovery` が CLI から呼び出せるよう `core::Prelude` の module import を整備。  
+   - `CH3-RUNTIME-601`, `CH3-PLG-310` など Capability 関連は stub 実装で構文エラーを避け、診断 (`runtime.bridge.stage_mismatch` など) が出力できるようにする。
+
+### フェーズC: 自動実行とレポートの固定化
+6. **`run_phase4_suite.py` のサマリ強化と CI 組み込み**（5.4 週）  
+   - 現在 `--allow-failures` 前提のレポート生成を、既定では「失敗があれば exit 1」としつつ、失敗時のログ保存（`reports/spec-audit/ch4/logs/`）を追加。  
+   - `.github/workflows/phase4-spec-core.yml`（新規）で `run_examples.sh --suite spec_core` → `--suite practical` を nightly で回し、成功件数/KPI を記録。
+
+7. **Phase4 Scenario Matrix の自動同期**（5.5 週）  
+   - `ScenarioResult` を `phase4-scenario-matrix.csv` の `resolution_notes` に反映する補助スクリプト（`tooling/examples/update_phase4_resolution.py` 仮）を用意し、Pass/Fail に応じて `ok/impl_fix/spec_fix` を更新。  
+   - `reports/spec-audit/ch4/spec-core-dashboard.md` / `practical-suite-index.md` を Phase4 README で参照し、週次レビュー資料として扱う。
+
+## 成果物と KPI
+
+- `parser.syntax.expected_tokens` / `typeck.aborted.ast_unavailable` が Phase 4 の spec_core/practical スイートで発生しないこと（期待診断があるケースを除く）。  
+- `reports/spec-audit/ch4/spec-core-dashboard.md` における **Pass 率 70% 以上**、Phase 4 M1 exit 条件の 85% へ段階的に到達。  
+- `cargo test -p reml_e2e -- --scenario spec-core` / `--scenario practical` を追加し、CI で `spec.chapter1.pass_rate`, `spec.chapter3.pass_rate` KPI を更新。  
+- 主要な spec_fix/impl_fix の判断を `phase4-scenario-matrix.csv` の `resolution_notes` に残し、Phase 5 以降のハンドオーバー資料として利用可能にする。
+
+## 依存関係とフォローアップ
+
+- Parser/Typeck 修正は Phase 3 の `docs/spec/1-x` / `docs/spec/3-x` 更新と連動するため、仕様差分を検出した場合は `2-5-spec-drift-remediation.md` の手順に沿って仕様側へ反映。  
+- Core.IO / Capability の挙動差分は `3-5-core-io-path-plan.md` や `3-8-core-runtime-capability-plan.md` の残課題と共有し、必要なら Phase 3 計画へ逆流させる。  
+- Self-host フェーズ（Phase 5）へ進む前に本計画の KPI を満たし、`reports/spec-audit/ch4` を Stage 0/1/2 のリグレッションベースとして採用する。
