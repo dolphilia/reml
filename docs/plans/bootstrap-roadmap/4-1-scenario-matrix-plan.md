@@ -35,9 +35,9 @@
   | `docs/spec/1-1-syntax.md§B.1` | `docs/spec/1-1-syntax/examples/use_nested(.reml)` | Prelude / Runtime | `reports/spec-audit/ch1/use_nested-20251119-diagnostics.json`, `use_nested_rustcap-20251117` | `ok`（Rust Frontend CLI/Streaming で診断 0） |
   | `docs/spec/1-1-syntax.md§B.5` | `docs/spec/1-1-syntax/examples/effect_handler.reml` | Capability | `reports/spec-audit/ch1/effect_handler-20251119-diagnostics.json` | `ok`（StageRequirement::AtLeast(Beta)） |
   | `docs/spec/1-0-language-core-overview.md§4.1` | `examples/cli/trace_sample.reml` | CLI | `reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/trace_sample_cli.ocaml.diagnostics.json` | `pending`（Rust ゴールデン化待ち） |
-  | `docs/spec/3-5-core-io-path.md§7` | `examples/core_io/file_copy.reml` / `examples/core_path/security_check.reml` | IO | `reports/spec-audit/ch3/core_io_summary-20251201.md`, `tests/data/core_path/security/relative_denied.json` | `pending`（`expected/` へのゴールデン搬入待ち） |
+| `docs/spec/3-5-core-io-path.md§7` | `examples/practical/core_io/file_copy/canonical.reml` / `examples/practical/core_path/security_check/relative_denied.reml` | IO | `reports/spec-audit/ch3/core_io_summary-20251201.md`, `tests/data/core_path/security/relative_denied.json` | `pending`（`expected/` へのゴールデン搬入待ち） |
   | `docs/spec/3-0-core-library-overview.md§3.6` | `examples/core_diagnostics/pipeline_branch.reml` | Runtime | `examples/core_diagnostics/pipeline_branch.expected.diagnostic.json` | `ok`（`effects.contract.stage_mismatch` を再現） |
-  | `docs/spec/3-0-core-library-overview.md§3.7` | `examples/core_config/dsl/audit_bridge.reml` | Plugin | `examples/core_config/reml.toml` | `pending`（`manifest dump` diff の expected 化を Phase4 内で行う） |
+| `docs/spec/3-0-core-library-overview.md§3.7` | `examples/practical/core_config/audit_bridge/audit_bridge.reml` | Plugin | `examples/core_config/reml.toml` | `pending`（`manifest dump` diff の expected 化を Phase4 内で行う） |
 
 - `docs/plans/bootstrap-roadmap/assets/README.md` に `category × spec.chapter` の基準表を新設。Phase4 以降で追加カテゴリが必要になった場合はこの表を更新してから `phase4-scenario-matrix.csv` の `category` 列を編集する運用に切り替えた。
 - `scripts/migrate_phase4_matrix.py` を作成。`python3 scripts/migrate_phase4_matrix.py --write` で `docs/plans/bootstrap-roadmap/p1-test-migration-*.txt` を解析し、未登録の ID を `phase4-scenario-matrix.csv` へ `variant=legacy` で一括追記できる。`--write` なしは dry-run として CSV を標準出力へ流す。
@@ -48,6 +48,13 @@
 - `docs/spec/3-5-core-io-path.md`, `docs/spec/3-6-core-diagnostics-audit.md`, `docs/spec/3-8-core-runtime-capability.md`, `docs/spec/3-10-core-env.md` の実用例を `examples/practical/` に移植し、入出力および監査ログ例を `expected/` ディレクトリに保存。
 - `docs/guides/runtime-bridges.md` / `docs/guides/plugin-authoring.md` と連携し、Capability を要求する `.reml` には `runtime_bridge`/`capability` の列を追加。Stage 要件を `phase4-scenario-matrix.csv` へ反映する。
 - Chapter 1 の各構文に対し、`.reml` で表現可能な全バリエーションを列挙（例: `let` のパターン束縛書式、`match` の分岐、`effect handler` の `with`/`match` 等）。規則ごとに `variant` 列を設け、表記揺れの漏れが可視化されるようにする。
+
+#### ✅ 70〜71 週実施ログ
+
+- `examples/spec_core/README.md` を新設し、`chapter1/let_binding/`・`chapter1/effect_handlers/` に BNF 規則名を含むファイル（`bnf-valdecl-let-simple-ok.reml` など）と `expected/spec_core/...` のゴールデンを配置。`phase4-scenario-matrix.csv` の `CH1-LET-*` 行をこれらの ID へ差し替えて BNF ベースの命名規約を固定した。
+- `examples/practical/core_io/file_copy/canonical.reml`, `examples/practical/core_path/security_check/relative_denied.reml`, `examples/practical/core_config/audit_bridge/audit_bridge.reml` を追加し、既存の `expected/practical/*` JSON / stdout / audit ログを新パスへ更新。関連仕様（`docs/spec/3-5-core-io-path.md`, `docs/spec/3-0-core-library-overview.md`）とガイド（`docs/guides/runtime-bridges.md`, `docs/guides/plugin-authoring.md`）の参照先も Practical 配下に揃えた。
+- `examples/README.md`・`examples/practical/README.md` に Phase 4 の `spec_core`/`practical` 階層を追記し、`docs/notes/examples-regression-log.md` へ Practical 反映ログを残した。旧 `examples/core_io/*` などの参照は「実務ケースは `practical/` へ移行した」旨の注記を追加。
+- `phase4-scenario-matrix.csv` へ `runtime_bridge` 列を追加し、`CH3-PLG-310` など Capability を要求する行に `audit_bridge` を登録。IO/Path/Plugin 系の `input_path` を Practical パスへ統一し、`expected/practical/core_io/file_copy/canonical.audit.jsonl` などのゴールデンと 1:1 対応させた。
 
 ### 3. マトリクス検証とレビューサインオフ（72週目）
 - `phase4-scenario-matrix.csv` に `resolution` 列を設け、`ok` / `impl_fix` / `spec_fix` を入力。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` とリンクするケースは `impl_fix` として登録。

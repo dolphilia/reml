@@ -1,0 +1,11 @@
+module Spec.Core.Chapter1.Let.Simple
+
+use Core.Prelude
+
+// BNF: ValDecl（docs/spec/1-5-formal-grammar-bnf.md §2）
+let greeting_prefix = "hello "
+
+fn main() -> Str {
+  let suffix = "Reml"
+  greeting_prefix + suffix
+}

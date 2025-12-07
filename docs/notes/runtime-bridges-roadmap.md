@@ -3,7 +3,7 @@
 `docs/guides/runtime-bridges.md` と Phase3 Core.IO/Path の計画 (`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md`) を接続する運用メモ。Bridge / Plugin / サンプル実行が参照すべき Runbook をここに集約し、CI 指標とリンクさせる。
 
 ## 1. Core.IO & Path サンプルの取り込み
-- `examples/core_io/file_copy.reml` と `examples/core_path/security_check.reml` を `tooling/examples/run_examples.sh --suite core_io|core_path` から実行する。CI では `core_io.example_suite_pass_rate`（`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`）として 1.0 を維持する。
+- `examples/practical/core_io/file_copy/canonical.reml` と `examples/practical/core_path/security_check/relative_denied.reml`（旧 `examples/core_io` / `examples/core_path`）を `tooling/examples/run_examples.sh --suite core_io|core_path` から実行する。CI では `core_io.example_suite_pass_rate`（`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`）として 1.0 を維持する。
 - 実行ログは `reports/spec-audit/ch3/core_io_examples-YYYYMMDD.md` と `reports/spec-audit/ch3/core_path_examples-YYYYMMDD.md` に保存し、Bridge/Plugin のレビュー時に引用する。
 - サンプルが失敗した場合は `docs/notes/core-io-path-gap-log.md` にギャップを登録し、`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md#6` のステータスを `In Progress` へ戻す。
 

@@ -1,8 +1,8 @@
 {
   "schema_version": "3.0.0-alpha",
-  "scenario": "examples/core_config/dsl/audit_bridge.reml",
+  "scenario": "examples/practical/core_config/audit_bridge/audit_bridge.reml",
   "manifest": {
-    "entry": "dsl/audit_bridge.reml",
+    "entry": "practical/core_config/audit_bridge/audit_bridge.reml",
     "stage": "beta",
     "exports": [
       {

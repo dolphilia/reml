@@ -1,6 +1,6 @@
 {
   "schema_version": "3.0.0-alpha",
-  "scenario": "examples/core_path/security_check.reml",
+  "scenario": "examples/practical/core_path/security_check/relative_denied.reml",
   "diagnostics": [
     {
       "severity": "error",

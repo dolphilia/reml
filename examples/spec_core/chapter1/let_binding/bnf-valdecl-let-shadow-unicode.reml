@@ -1,0 +1,11 @@
+module Spec.Core.Chapter1.Let.ShadowUnicode
+
+use Core.Prelude
+
+// BNF: ValDecl + Ident（Unicode XID）。同一識別子の再束縛を意図的に発生させる。
+let αβ = 1
+let αβ = αβ + 1
+
+fn main() -> Int {
+  αβ
+}

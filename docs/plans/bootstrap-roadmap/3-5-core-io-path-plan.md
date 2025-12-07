@@ -243,13 +243,13 @@
 
 6.3. `examples/` にファイル操作・パス検証の例を追加し、CI で自動実行する。  
 実施ステップ:
-- `examples/core_io/file_copy.reml`, `examples/core_path/security_check.reml` を追加し、`Core.IO` API の実際の使い方とエラーハンドリングを示す。
+- `examples/practical/core_io/file_copy/canonical.reml`, `examples/practical/core_path/security_check/relative_denied.reml`（旧 `examples/core_io` / `examples/core_path`）を追加し、`Core.IO` API の実際の使い方とエラーハンドリングを示す。
 - `tooling/examples/run_examples.sh --suite core_io` を整備し、CI (`.github/workflows/examples.yml`) で Reml スクリプトを実行するよう設定する。
 - `docs/notes/examples-regression-log.md` に新例の実行結果とトラブルシューティングを記録し、リグレッション時の調査手順を共有する。
 
 > 進行ログ（Phase3 W50, §6）
 > - `docs/spec/3-5-core-io-path.md`、`docs/spec/3-0-core-library-overview.md`、`docs/guides/runtime-bridges.md`、`docs/guides/plugin-authoring.md` に Reader/Writer と Path セキュリティのサンプル参照を追記し、`docs/plans/bootstrap-roadmap/README.md`・`docs/plans/rust-migration/overview.md`・`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` にも本タスクの完了条件を明記した。
-> - `examples/core_io/file_copy.reml` / `examples/core_path/security_check.reml` と `tooling/examples/run_examples.sh --suite core_io|core_path` を追加し、`core_io.example_suite_pass_rate` KPI を `0-3-audit-and-metrics.md` へ登録。`examples/README.md` と各 README に概要・実行手順を記録した。
+> - `examples/practical/core_io/file_copy/canonical.reml` / `examples/practical/core_path/security_check/relative_denied.reml`（旧 `examples/core_io` / `examples/core_path`）と `tooling/examples/run_examples.sh --suite core_io|core_path` を追加し、`core_io.example_suite_pass_rate` KPI を `0-3-audit-and-metrics.md` へ登録。`examples/README.md` と各 README に概要・実行手順を記録した。
 > - `docs/notes/runtime-bridges-roadmap.md` と `docs/notes/examples-regression-log.md` を新設し、Runtime Bridge / Plugin / サンプル実行の Runbook とリグレッション記録を共有。`docs/notes/core-io-path-gap-log.md` にも「サンプル・ドキュメント整合」のギャップ解消ログを追記した。
 
 ### 7. テスト・ベンチマーク統合（50週目）

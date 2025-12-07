@@ -138,7 +138,7 @@ fn sandbox_path(path: Path, root: Path) -> Result<Path, SecurityError>          
 fn is_safe_symlink(path: Path) -> Result<Bool, IoError>                           // `effect {io, io.blocking, security}`
 ```
 
-- セキュリティポリシーの適用と診断メタデータの整合例は [examples/core_path/security_check.reml](../../examples/core_path/security_check.reml) を参照。`SecurityPolicy` で許可ルートを定義 → `validate_path` で拒否理由を `metadata.security.reason` に記録 → `sandbox_path` で canonical path を得てから `is_safe_symlink` で `effect {security}` を計測する順序を示している。
+- セキュリティポリシーの適用と診断メタデータの整合例は [examples/practical/core_path/security_check/relative_denied.reml](../../examples/practical/core_path/security_check/relative_denied.reml) を参照。`SecurityPolicy` で許可ルートを定義 → `validate_path` で拒否理由を `metadata.security.reason` に記録 → `sandbox_path` で canonical path を得てから `is_safe_symlink` で `effect {security}` を計測する順序を示している。
 
 ### 4.3 文字列ユーティリティ（クロスプラットフォーム）
 
@@ -240,7 +240,7 @@ fn load_config(path: Str, audit: AuditSink) -> Result<AppConfig, Diagnostic> =
 
 - `with_reader` と `buffered` を組み合わせ、`Config.parse_yaml`（Chapter 3.7）に渡す例。
 - 所要時間を `log_io` で監査ログに記録し、`audit_id` を伝播。
-- ファイル入出力とパスサンドボックスを同時に扱うサンプルは [examples/core_io/file_copy.reml](../../examples/core_io/file_copy.reml) へ収録している。`with_reader` / `with_writer` / `copy` を `sandbox_path` と組み合わせ、`log_io("examples.core_io.file_copy", ...)` で `metadata.io.helper` と `effect.stage.*` を監査ログへ残す実装例である。
+- ファイル入出力とパスサンドボックスを同時に扱うサンプルは [examples/practical/core_io/file_copy/canonical.reml](../../examples/practical/core_io/file_copy/canonical.reml) へ収録している。`with_reader` / `with_writer` / `copy` を `sandbox_path` と組み合わせ、`log_io("examples.core_io.file_copy", ...)` で `metadata.io.helper` と `effect.stage.*` を監査ログへ残す実装例である。
 
 ## 8. 非同期 IO との統合
 
