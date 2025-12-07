@@ -213,7 +213,7 @@ fn bridge_return_to_value(return_info: &BridgeReturnAuditMetadata<'_>) -> Value 
 }
 
 /// 監査に失敗した場合のエラー。
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AuditError {
     Transport(String),
     Encoding(String),

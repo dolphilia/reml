@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr, time::SystemTime};
 
 /// Capability の識別子。
@@ -44,7 +45,7 @@ impl fmt::Display for CapabilityProvider {
 }
 
 /// Stage の識別子。順序付き。
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum StageId {
     Experimental,
     Alpha,
@@ -71,7 +72,7 @@ pub struct StageParseError {
 }
 
 impl StageParseError {
-    fn new(details: impl Into<String>) -> Self {
+    pub fn new(details: impl Into<String>) -> Self {
         Self {
             details: details.into(),
         }
@@ -113,7 +114,7 @@ impl fmt::Display for StageId {
 }
 
 /// Stage 要件。Exact/AtLeast をサポート。
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StageRequirement {
     Exact(StageId),
     AtLeast(StageId),

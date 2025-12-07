@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt,
+    path::Path,
     sync::{Arc, Mutex},
     time::SystemTime,
 };
@@ -153,8 +154,19 @@ impl CapabilityRegistry {
         self.get(id)
     }
 
-    /// Stage 要件と効果スコープを検証し、ハンドルを返す。
+    /// Stage 要件と効果スコープを検証し、必要な Stage を返す。
     pub fn verify_capability_stage(
+        &self,
+        id: impl AsRef<str>,
+        requirement: StageRequirement,
+        required_effects: &[String],
+    ) -> Result<StageId, CapabilityError> {
+        self.verify_capability_handle(id, requirement, required_effects)
+            .map(|handle| handle.descriptor().stage)
+    }
+
+    /// Stage 要件と効果スコープを検証し、ハンドルを返す。
+    pub fn verify_capability_handle(
         &self,
         id: impl AsRef<str>,
         requirement: StageRequirement,
@@ -210,7 +222,6 @@ impl CapabilityRegistry {
         requirement: StageRequirement,
     ) -> Result<StageId, CapabilityError> {
         self.verify_capability_stage(capability, requirement, &[])
-            .map(|handle| handle.descriptor().stage)
     }
 
     /// Conductor/DSL から渡された契約集合を検査する。
@@ -219,11 +230,14 @@ impl CapabilityRegistry {
         contract: ConductorCapabilityContract,
         audit_sink: Option<&AuditSink>,
     ) -> Result<(), CapabilityError> {
-        let manifest_path = contract.manifest_path.clone();
-        let manifest_data = if let Some(path) = manifest_path.as_deref() {
+        let manifest_path_buf = contract.manifest_path.clone();
+        let manifest_path_label = manifest_path_buf
+            .as_ref()
+            .map(|path| path.to_string_lossy().into_owned());
+        let manifest_data = if let Some(path) = manifest_path_buf.as_deref() {
             Some(ManifestCapabilities::load(path).map_err(|source| {
                 CapabilityError::ManifestLoadFailure {
-                    manifest_path: manifest_path.clone(),
+                    manifest_path: manifest_path_label.clone(),
                     source,
                 }
             })?)
@@ -232,7 +246,7 @@ impl CapabilityRegistry {
         };
 
         for requirement in &contract.requirements {
-            let handle = self.verify_capability_stage(
+            let handle = self.verify_capability_handle(
                 &requirement.id,
                 requirement.stage,
                 &requirement.declared_effects,
@@ -241,7 +255,7 @@ impl CapabilityRegistry {
                 audit_sink,
                 requirement,
                 handle.descriptor(),
-                manifest_path.as_deref(),
+                manifest_path_buf.as_deref(),
             )?;
 
             if let Some(manifest) = manifest_data.as_ref() {
@@ -249,14 +263,14 @@ impl CapabilityRegistry {
                     if entry.stage != requirement.stage {
                         log_manifest_mismatch_event(
                             audit_sink,
-                            manifest_path.as_deref(),
+                            manifest_path_buf.as_deref(),
                             requirement,
                             Some(entry),
                             "stage mismatch",
                         )?;
                         return Err(CapabilityError::ManifestMismatch {
                             id: requirement.id.clone(),
-                            manifest_path: manifest_path.clone(),
+                            manifest_path: manifest_path_label.clone(),
                             reason: format!(
                                 "manifest stage={} vs contract stage={}",
                                 entry.stage, requirement.stage
@@ -271,14 +285,14 @@ impl CapabilityRegistry {
                     if requirement_effects != manifest_effects {
                         log_manifest_mismatch_event(
                             audit_sink,
-                            manifest_path.as_deref(),
+                            manifest_path_buf.as_deref(),
                             requirement,
                             Some(entry),
                             "declared_effects mismatch",
                         )?;
                         return Err(CapabilityError::ManifestMismatch {
                             id: requirement.id.clone(),
-                            manifest_path: manifest_path.clone(),
+                            manifest_path: manifest_path_label.clone(),
                             reason: format!(
                                 "manifest effects {:?} vs contract {:?}",
                                 manifest_effects, requirement_effects
@@ -289,28 +303,28 @@ impl CapabilityRegistry {
                     if entry.source_span != requirement.source_span {
                         log_manifest_mismatch_event(
                             audit_sink,
-                            manifest_path.as_deref(),
+                            manifest_path_buf.as_deref(),
                             requirement,
                             Some(entry),
                             "source span mismatch",
                         )?;
                         return Err(CapabilityError::ManifestMismatch {
                             id: requirement.id.clone(),
-                            manifest_path: manifest_path.clone(),
+                            manifest_path: manifest_path_label.clone(),
                             reason: "manifest と source_span が一致しません".into(),
                         });
                     }
                 } else {
                     log_manifest_mismatch_event(
                         audit_sink,
-                        manifest_path.as_deref(),
+                        manifest_path_buf.as_deref(),
                         requirement,
                         None,
                         "missing manifest entry",
                     )?;
                     return Err(CapabilityError::ManifestMismatch {
                         id: requirement.id.clone(),
-                        manifest_path: manifest_path.clone(),
+                        manifest_path: manifest_path_label.clone(),
                         reason: "manifest entry が見つかりません".into(),
                     });
                 }
@@ -322,7 +336,7 @@ impl CapabilityRegistry {
 }
 
 /// Capability 検証エラー。
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CapabilityError {
     AlreadyRegistered {
         id: CapabilityId,
@@ -423,7 +437,7 @@ fn log_contract_audit(
     sink: Option<&AuditSink>,
     requirement: &ConductorCapabilityRequirement,
     descriptor: &CapabilityDescriptor,
-    manifest_path: Option<&str>,
+    manifest_path: Option<&Path>,
 ) -> Result<(), CapabilityError> {
     if let Some(sink) = sink {
         let mut metadata = Map::new();
@@ -462,7 +476,7 @@ fn log_contract_audit(
         if let Some(path) = manifest_path {
             metadata.insert(
                 "effect.manifest_path".into(),
-                Value::String(path.to_string()),
+                Value::String(path.to_string_lossy().into_owned()),
             );
         }
         if let Some(span) = requirement.source_span {
@@ -483,7 +497,7 @@ fn log_contract_audit(
 
 fn log_manifest_mismatch_event(
     sink: Option<&AuditSink>,
-    manifest_path: Option<&str>,
+    manifest_path: Option<&Path>,
     requirement: &ConductorCapabilityRequirement,
     entry: Option<&ManifestCapabilityEntry>,
     reason: &str,
@@ -538,7 +552,7 @@ fn log_manifest_mismatch_event(
         if let Some(path) = manifest_path {
             metadata.insert(
                 "effect.manifest_path".into(),
-                Value::String(path.to_string()),
+                Value::String(path.to_string_lossy().into_owned()),
             );
         }
         sink.log("effect.stage.capability_mismatch", Value::Null, metadata)
@@ -552,7 +566,10 @@ mod tests {
     use super::*;
     use crate::capability_handle::CapabilityHandle;
     use crate::capability_metadata::{CapabilityDescriptor, CapabilityProvider, StageId};
-    use crate::{AuditSink, ConductorCapabilityContract, ConductorCapabilityRequirement, Span};
+    use crate::{
+        AuditSink, CapabilityContractSpan, ConductorCapabilityContract,
+        ConductorCapabilityRequirement,
+    };
     use std::{fs, time::SystemTime};
 
     fn new_gc_handle(id: &str, stage: StageId) -> CapabilityHandle {
@@ -585,7 +602,7 @@ mod tests {
 
         let required_effects = vec!["ffi".into()];
         let verified = registry
-            .verify_capability_stage(
+            .verify_capability_handle(
                 &id,
                 StageRequirement::Exact(StageId::Beta),
                 &required_effects,
@@ -642,7 +659,7 @@ mod tests {
         let _ = registry.handles.lock().expect("lock").remove(&id);
         registry.register(handle).expect("登録失敗");
 
-        let span = Span::new(4, 11);
+        let span = CapabilityContractSpan::new(4, 11);
         let contract = ConductorCapabilityContract {
             requirements: vec![ConductorCapabilityRequirement {
                 id: id.clone(),
@@ -706,7 +723,7 @@ declared_effects = ["ffi"]
                 declared_effects: vec!["ffi".into()],
                 source_span: None,
             }],
-            manifest_path: Some(manifest_path.to_string_lossy().into_owned()),
+            manifest_path: Some(manifest_path.clone()),
         };
         let sink = AuditSink::new();
 

@@ -1,8 +1,34 @@
-use std::{collections::HashMap, fmt, fs, path::Path, str::FromStr};
+use std::{
+    collections::HashMap,
+    fmt, fs,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use toml::Value;
+use serde::{Deserialize, Serialize};
+use crate::{capability_metadata::StageRequirement, CapabilityId};
 
-use crate::{capability_metadata::StageRequirement, CapabilityId, Span};
+/// Manifest で保持する Capability 要求スパン。
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CapabilityContractSpan {
+    pub start: u32,
+    pub end: u32,
+}
+
+impl CapabilityContractSpan {
+    pub const fn new(start: u32, end: u32) -> Self {
+        if end < start {
+            Self { start, end: start }
+        } else {
+            Self { start, end }
+        }
+    }
+
+    pub const fn len(&self) -> u32 {
+        self.end.saturating_sub(self.start)
+    }
+}
 
 /// Conductor 契約の単位要件。
 #[derive(Debug, Clone)]
@@ -10,14 +36,28 @@ pub struct ConductorCapabilityRequirement {
     pub id: CapabilityId,
     pub stage: StageRequirement,
     pub declared_effects: Vec<String>,
-    pub source_span: Option<Span>,
+    pub source_span: Option<CapabilityContractSpan>,
 }
 
 /// DSL/Conductor から渡される契約全体。
 #[derive(Debug, Clone)]
 pub struct ConductorCapabilityContract {
     pub requirements: Vec<ConductorCapabilityRequirement>,
-    pub manifest_path: Option<String>,
+    pub manifest_path: Option<PathBuf>,
+}
+
+impl ConductorCapabilityContract {
+    pub fn new(requirements: Vec<ConductorCapabilityRequirement>) -> Self {
+        Self {
+            requirements,
+            manifest_path: None,
+        }
+    }
+
+    pub fn with_manifest_path(mut self, path: impl Into<PathBuf>) -> Self {
+        self.manifest_path = Some(path.into());
+        self
+    }
 }
 
 /// `reml.toml` の `run.target.capabilities` から読み取った登録情報。
@@ -29,8 +69,8 @@ pub struct ManifestCapabilities {
 impl ManifestCapabilities {
     /// ファイルパスを読み取り、構造化された能力データを返す。
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ManifestError> {
-        let text = fs::read_to_string(path.as_ref()).map_err(ManifestError::Io)?;
-        let value: Value = toml::from_str(&text).map_err(ManifestError::Parse)?;
+        let text = fs::read_to_string(path.as_ref()).map_err(ManifestError::from)?;
+        let value: Value = toml::from_str(&text).map_err(ManifestError::from)?;
         Self::from_toml(value)
     }
 
@@ -102,14 +142,14 @@ impl ManifestCapabilities {
 pub struct ManifestCapabilityEntry {
     pub stage: StageRequirement,
     pub declared_effects: Vec<String>,
-    pub source_span: Option<Span>,
+    pub source_span: Option<CapabilityContractSpan>,
 }
 
 /// マニフェスト読み込み・解析時のエラー。
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ManifestError {
-    Io(std::io::Error),
-    Parse(toml::de::Error),
+    Io(String),
+    Parse(String),
     MissingCapabilities,
     InvalidCapabilityEntry(String),
     DuplicateCapability(CapabilityId),
@@ -141,17 +181,17 @@ impl std::error::Error for ManifestError {}
 
 impl From<std::io::Error> for ManifestError {
     fn from(value: std::io::Error) -> Self {
-        ManifestError::Io(value)
+        ManifestError::Io(value.to_string())
     }
 }
 
 impl From<toml::de::Error> for ManifestError {
     fn from(value: toml::de::Error) -> Self {
-        ManifestError::Parse(value)
+        ManifestError::Parse(value.to_string())
     }
 }
 
-fn parse_span(value: &Value) -> Option<Span> {
+fn parse_span(value: &Value) -> Option<CapabilityContractSpan> {
     let table = value.as_table()?;
     let start = table.get("start")?.as_integer()?;
     let end = table
@@ -165,7 +205,7 @@ fn parse_span(value: &Value) -> Option<Span> {
         })?;
     let start = to_u32(start)?;
     let end = to_u32(end)?;
-    Some(Span::new(start, end))
+    Some(CapabilityContractSpan::new(start, end))
 }
 
 fn to_u32(value: i64) -> Option<u32> {

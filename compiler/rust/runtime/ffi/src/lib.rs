@@ -16,12 +16,16 @@ use std::{
 mod audit;
 mod capability_handle;
 mod capability_metadata;
+mod capability;
 #[cfg(feature = "core_prelude")]
 #[path = "../../src/collections/mod.rs"]
 pub mod collections;
 #[cfg(feature = "core_prelude")]
 #[path = "../../src/config/mod.rs"]
 pub mod config;
+#[cfg(feature = "core_prelude")]
+#[path = "../../src/data/mod.rs"]
+pub mod data;
 #[cfg(feature = "core_prelude")]
 pub mod core_collections_metrics;
 #[cfg(feature = "core_prelude")]
@@ -31,7 +35,7 @@ pub use core_prelude as prelude;
 #[path = "../../src/io/mod.rs"]
 pub mod io;
 pub mod stage {
-    pub use crate::capability_metadata::{StageId, StageRequirement};
+    pub use crate::capability_metadata::{StageId, StageParseError, StageRequirement};
 }
 #[cfg(feature = "core_prelude")]
 #[path = "../../src/text/mod.rs"]
@@ -42,6 +46,8 @@ mod ffi_contract;
 mod handles;
 mod manifest_contract;
 mod registry;
+#[path = "../../src/runtime/mod.rs"]
+pub mod runtime;
 mod security;
 
 pub use audit::{AuditContext, AuditEntry, AuditError, AuditSink};
@@ -58,7 +64,9 @@ pub use env::{
 };
 #[cfg(feature = "core_prelude")]
 pub use handles::{register_ref_capability, register_table_csv_capability, RefHandle};
-pub use manifest_contract::{ConductorCapabilityContract, ConductorCapabilityRequirement};
+pub use manifest_contract::{
+    CapabilityContractSpan, ConductorCapabilityContract, ConductorCapabilityRequirement,
+};
 pub use registry::{
     BridgeIntent, BridgeStageTraceStep, CapabilityError, CapabilityRegistry, RuntimeBridgeRegistry,
     RuntimeBridgeStreamSignal,
@@ -557,7 +565,7 @@ where
 {
     let registry = CapabilityRegistry::registry();
     let ctx = options.new_context(symbol).map_err(BridgeError::Audit)?;
-    let handle = match registry.verify_capability_stage(
+    let handle = match registry.verify_capability_handle(
         capability_id,
         options.stage_requirement,
         &options.security_policy.required_effects,
