@@ -41,6 +41,7 @@
 
 - `docs/plans/bootstrap-roadmap/assets/README.md` に `category × spec.chapter` の基準表を新設。Phase4 以降で追加カテゴリが必要になった場合はこの表を更新してから `phase4-scenario-matrix.csv` の `category` 列を編集する運用に切り替えた。
 - `scripts/migrate_phase4_matrix.py` を作成。`python3 scripts/migrate_phase4_matrix.py --write` で `docs/plans/bootstrap-roadmap/p1-test-migration-*.txt` を解析し、未登録の ID を `phase4-scenario-matrix.csv` へ `variant=legacy` で一括追記できる。`--write` なしは dry-run として CSV を標準出力へ流す。
+- `expected/cli/trace_sample/trace_sample_cli.diagnostic.json`, `expected/practical/core_io/file_copy/canonical.audit.jsonl`, `expected/practical/core_path/security_check/relative_denied.diagnostic.json`, `expected/practical/core_config/audit_bridge/manifest_snapshot.json` を追加し、該当シナリオ（CH1-CLI-101 / CH3-IO-201 / CH3-PATH-202 / CH3-PLG-310）の `resolution` を `ok` に更新。
 
 ### 2. `.reml` ケース作成とリンク付け（70〜71週目）
 - `docs/spec/1-x` 各節に対して「正例/境界例/負例」の `.reml` を最低 1 セット作成し、`examples/spec_core/chapter1/` に配置。`docs/spec/1-5-formal-grammar-bnf.md` の各規則 ID をファイル名に含め、双方向参照を可能にする。
