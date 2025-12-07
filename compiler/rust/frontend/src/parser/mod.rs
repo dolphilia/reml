@@ -1013,6 +1013,9 @@ fn module_parser<'src>(
         .allow_trailing()
         .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
 
+    let let_decl =
+        build_let_decl_parser(pattern_var.clone(), type_name.clone(), expr.clone());
+
     let block_body_parser = {
         let stmt = build_stmt_parser(expr.clone(), pattern_var.clone(), type_name.clone());
         just(TokenKind::LBrace)
@@ -1060,25 +1063,27 @@ fn module_parser<'src>(
     enum ModuleItem {
         Effect(EffectDecl),
         Function(Function),
+        Decl(Decl),
     }
 
     let module_item = choice((
         effect_decl.clone().map(ModuleItem::Effect),
+        let_decl.clone().map(ModuleItem::Decl),
         function.clone().map(ModuleItem::Function),
     ));
 
-    effect_decl
+    module_item
         .repeated()
-        .then(function.clone())
-        .then(module_item.repeated())
         .then_ignore(just(TokenKind::EndOfFile).or_not())
-        .map(|((effects, first_function), rest)| {
-            let mut effects_vec = effects;
-            let mut functions_vec = vec![first_function];
-            for item in rest {
+        .map(|items| {
+            let mut effects_vec = Vec::new();
+            let mut functions_vec = Vec::new();
+            let mut decls_vec = Vec::new();
+            for item in items {
                 match item {
                     ModuleItem::Effect(effect) => effects_vec.push(effect),
                     ModuleItem::Function(function) => functions_vec.push(function),
+                    ModuleItem::Decl(decl) => decls_vec.push(decl),
                 }
             }
             Module {
@@ -1086,7 +1091,7 @@ fn module_parser<'src>(
                 uses: Vec::new(),
                 effects: effects_vec,
                 functions: functions_vec,
-                decls: Vec::new(),
+                decls: decls_vec,
             }
         })
 }
@@ -1727,6 +1732,37 @@ fn range_to_span(span: Range<usize>) -> Span {
     Span::new(span.start as u32, span.end as u32)
 }
 
+fn build_let_decl_parser<P, Q, R>(
+    pattern_var: Q,
+    type_parser: R,
+    expr: P,
+) -> impl ChumskyParser<TokenKind, Decl, Error = Simple<TokenKind>> + Clone
+where
+    P: ChumskyParser<TokenKind, Expr, Error = Simple<TokenKind>> + Clone,
+    Q: ChumskyParser<TokenKind, Pattern, Error = Simple<TokenKind>> + Clone,
+    R: ChumskyParser<TokenKind, TypeAnnot, Error = Simple<TokenKind>> + Clone,
+{
+    just(TokenKind::KeywordLet)
+        .ignore_then(pattern_var)
+        .then(
+            just(TokenKind::Colon)
+                .ignore_then(type_parser)
+                .or_not(),
+        )
+        .then_ignore(just(TokenKind::Assign))
+        .then(expr)
+        .map_with_span(|((pattern, ty), value), span: Range<usize>| Decl {
+            attrs: Vec::new(),
+            visibility: Visibility::Private,
+            kind: DeclKind::Let {
+                pattern,
+                value,
+                type_annotation: ty,
+            },
+            span: range_to_span(span),
+        })
+}
+
 fn build_stmt_parser<P, Q, R>(
     expr: P,
     pattern_var: Q,
@@ -1737,31 +1773,15 @@ where
     Q: ChumskyParser<TokenKind, Pattern, Error = Simple<TokenKind>> + Clone,
     R: ChumskyParser<TokenKind, TypeAnnot, Error = Simple<TokenKind>> + Clone,
 {
-    let let_stmt = just(TokenKind::KeywordLet)
-        .ignore_then(pattern_var.clone())
-        .then(
-            just(TokenKind::Colon)
-                .ignore_then(type_parser.clone())
-                .or_not(),
-        )
-        .then_ignore(just(TokenKind::Assign))
-        .then(expr.clone())
-        .map_with_span(|((pattern, ty), value), span: Range<usize>| {
-            let decl = Decl {
-                attrs: Vec::new(),
-                visibility: Visibility::Private,
-                kind: DeclKind::Let {
-                    pattern,
-                    value,
-                    type_annotation: ty,
-                },
-                span: range_to_span(span.clone()),
-            };
-            Stmt {
-                kind: StmtKind::Decl { decl },
-                span: range_to_span(span),
-            }
-        });
+    let let_stmt_parser =
+        build_let_decl_parser(pattern_var.clone(), type_parser.clone(), expr.clone());
+    let let_stmt = let_stmt_parser.map(|decl| {
+        let span = decl.span;
+        Stmt {
+            kind: StmtKind::Decl { decl },
+            span,
+        }
+    });
 
     let expr_stmt = expr.map_with_span(|expression, span: Range<usize>| Stmt {
         kind: StmtKind::Expr {
