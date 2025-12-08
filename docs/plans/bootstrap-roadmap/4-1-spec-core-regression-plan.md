@@ -158,6 +158,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 - `CH1-ATTR-101` の Example Fix: `examples/spec_core/chapter1/attributes/bnf-attr-cfg-let-gate-ok.reml` の `var message` へ `Str` 注釈を付与し、`language.inference.value_restriction` を発火させずに `@cfg(target = "cli")` の挙動のみを検証できるようにした。`phase4-scenario-matrix.csv` は `resolution=ok`・`spec_vs_impl_decision=example_fix` とし、更新理由を `resolution_notes` へ記録した。
 - `CH1-EFF-701` の Spec Fix: `expected/spec_core/chapter1/effects/bnf-attr-pure-perform-error.diagnostic.json` を `effects.purity.violated` と `effects.contract.stage_mismatch` の 2 診断構成へ更新し、[docs/spec/1-3-effects-safety.md](../../spec/1-3-effects-safety.md) §C に Stage 不一致が併発する条件と根拠（3-6/3-8 章の Capability 契約）を追記。マトリクスの `diagnostic_keys` / `resolution_notes` も同期した。
+
 ### フェーズF: 全 `.reml` 逐次実行・完全是正（新規）
 
 `examples/` 配下にあるすべての `.reml` を 1 ファイルずつ愚直に実行し、期待した成功/失敗へ確実に到達させるフェーズ。効率よりも完遂を優先し、実行ログと仕様照合結果を `phase4-scenario-matrix.csv`・`reports/spec-audit/ch4/*.md`・`docs/notes/examples-regression-log.md` に逐次反映する。
