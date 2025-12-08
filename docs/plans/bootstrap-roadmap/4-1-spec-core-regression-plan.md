@@ -67,7 +67,7 @@
 ### フェーズB: Typeck / Effect 診断の復元
 4. **型推論 / 効果行の非アクティブ化回収**（5.1 週）  
    - Parserが通るようになった後も `typeck.aborted.ast_unavailable` が解消しない場合、`TypecheckDriver` が AST を拒否する条件（`allow_module_body` 等）の見直しを行う。  
-   - `CH1-INF-601/602`, `CH1-EFF-701`, `CH1-IMPL-302` を `cargo test -p reml_e2e -- --scenario spec-core` に組み込み、期待診断と照合する自動テストを用意。
+   - `CH1-INF-601/602`, `CH1-EFF-701`, `CH1-IMPL-302` を `cargo test -p reml_e2e --test scenario -- --scenario spec-core` に組み込み、期待診断と照合する自動テストを用意。
 
 #### ✅ 5.1 週 実施ログ（Typeck / Effect 診断の復元）
 
@@ -124,7 +124,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 1. **ハーネス更新と一括実行**（5.9 週）  
    - `tooling/examples/run_examples.sh --suite spec-core` と `run_phase4_suite.py --suite spec-core` に `chapter1/control_flow`・`literals`・`lambda` など新設ディレクトリを登録し、`expected/spec_core/**` のゴールデン生成コマンドを README に追記する。  
-   - `cargo test -p reml_e2e -- --scenario spec-core` を nightly CI に追加し、`examples/spec_core/chapter1` から `chapter2` までの `.reml` が少なくとも 1 回は CLI で解析・型検査・実行されることを KPI にする。`reports/spec-audit/ch4/spec-core-dashboard.md` には「Missing Examples Closeout」セクションを設け、実行件数と成功率を記録する。
+   - `cargo test -p reml_e2e --test scenario -- --scenario spec-core` を nightly CI に追加し、`examples/spec_core/chapter1` から `chapter2` までの `.reml` が少なくとも 1 回は CLI で解析・型検査・実行されることを KPI にする。`reports/spec-audit/ch4/spec-core-dashboard.md` には「Missing Examples Closeout」セクションを設け、実行件数と成功率を記録する。
 
 2. **失敗時の切り分け手順**（5.9〜6.0 週）  
    - `reports/spec-audit/ch4/logs/` に保存される `*.stdout` と `*.diagnostic.json` を、`phase4-scenario-matrix.csv` の `expected`・`diagnostic_keys` と突き合わせて自動判定する `scripts/triage_spec_core_failures.py`（新規）を作成。  
@@ -143,12 +143,12 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 - `tooling/examples/run_examples.sh` と `tooling/examples/run_phase4_suite.py` へ `chapter1/control_flow` / `literals` / `lambda` の存在チェックを追加し、「必要ディレクトリが欠けている場合は Phase4 スイートを停止する」安全策を導入。Missing Examples を登録した `phase4-scenario-matrix.csv` と突き合わせて漏れがあれば即時に検知できるようにした。
 - `expected/spec_core/chapter1/control_flow|literals|lambda` を明示的に確保したうえで `examples/spec_core/README.md` にゴールデン生成コマンド（`cargo run --quiet --bin reml_frontend ... > expected/...`、診断例は `--output json | jq`）を追記し、今後の stdout / diagnostic JSON の再取得手順を文書化した。
-- `.github/workflows/phase4-spec-core.yml` に `cargo test -p reml_e2e -- --scenario spec-core` を nightly Step として追加し、Missing Examples を含む `.reml` が 1 日 1 回は CLI 実行される KPI を確保。`reports/spec-audit/ch4/spec-core-dashboard.md` へ「Missing Examples Closeout」セクションを新設し、`chapter1/control_flow(0/8)`・`chapter1/literals(2/3)`・`chapter1/lambda(0/2)` の成功率を集計してフェーズ進捗を追跡する。
+- `.github/workflows/phase4-spec-core.yml` に `cargo test -p reml_e2e --test scenario -- --scenario spec-core` を nightly Step として追加し、Missing Examples を含む `.reml` が 1 日 1 回は CLI 実行される KPI を確保。`reports/spec-audit/ch4/spec-core-dashboard.md` へ「Missing Examples Closeout」セクションを新設し、`chapter1/control_flow(0/8)`・`chapter1/literals(2/3)`・`chapter1/lambda(0/2)` の成功率を集計してフェーズ進捗を追跡する。
 ## 成果物と KPI
 
 - `parser.syntax.expected_tokens` / `typeck.aborted.ast_unavailable` が Phase 4 の spec_core/practical スイートで発生しないこと（期待診断があるケースを除く）。  
 - `reports/spec-audit/ch4/spec-core-dashboard.md` における **Pass 率 70% 以上**、Phase 4 M1 exit 条件の 85% へ段階的に到達。  
-- `cargo test -p reml_e2e -- --scenario spec-core` / `--scenario practical` を追加し、CI で `spec.chapter1.pass_rate`, `spec.chapter3.pass_rate` KPI を更新。  
+- `cargo test -p reml_e2e --test scenario -- --scenario spec-core` / `--scenario practical` を追加し、CI で `spec.chapter1.pass_rate`, `spec.chapter3.pass_rate` KPI を更新。  
 - 主要な spec_fix/impl_fix の判断を `phase4-scenario-matrix.csv` の `resolution_notes` に残し、Phase 5 以降のハンドオーバー資料として利用可能にする。
 
 ## 依存関係とフォローアップ
