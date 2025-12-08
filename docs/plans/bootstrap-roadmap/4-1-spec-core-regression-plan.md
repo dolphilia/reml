@@ -45,12 +45,12 @@
    - `examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml`・`bnf-impldecl-duplicate-error.reml` を参考に、`trait` ヘッダ（型パラメータ、where 句）、`impl` ターゲット型、メソッドブロックをそれぞれ受理できるか確認するための parser-only テストを追加。  
    - `parser.syntax.expected_tokens` が `trait` / `impl` を候補に含むよう `ExpectedTokenCollector` を更新し、`CH1-IMPL-302` で `typeclass.impl.duplicate` 診断に到達できる状態を整える。
 
-#### 🔍 4.4 週 実施ログ（Trait/Impl / Match ガード）
+#### ✅ 4.4 週 実施ログ（Trait/Impl / Match ガード）
 
-- `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend ../../../examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml` を 2026-02-14 に実行し、`CH1-TRAIT-301` が診断ゼロで通過することを確認。`phase4-scenario-matrix.csv` の該当行を `resolution=ok` / `spec_vs_impl_decision=ok` に更新した。
-- 同じコマンドで `bnf-impldecl-duplicate-error.reml` を解析したところ診断 0 件のままで、期待していた `typeclass.impl.duplicate` が出力されないことを再確認。Rust 実装側の型クラス辞書が重複 impl を検出できていないため、`CH1-IMPL-302` を `impl_fix` 判定へ切り替え、Typeck 実装に重複検査を戻すタスクを Phase B へ繰り越した。
-- `match` ガードケース `bnf-matchexpr-when-guard-ok.reml` を `cargo run --bin reml_frontend ...` で実行したところ、`parser.syntax.expected_tokens` / `typeck.aborted.ast_unavailable` が発火し `when` / `as` トークンを受理できないことが判明。Lexer には `KeywordWhen` が未登録で、`match_arm` もガード/エイリアス構文を解析していないため、`CH1-MATCH-003` も `impl_fix` へ更新し、Phase A で要素技術（新キーワードと AST への alias 追加）を補填するフォローアップを起票した。
-- 上記調査結果を `phase4-scenario-matrix.csv` に反映済みで、`reports/spec-audit/ch4/spec-core-dashboard.md` の失敗理由欄にも現状の CLI 出力（診断ゼロまたは `parser.syntax.expected_tokens`）を記録した。
+- `match` ガードと `as` エイリアス構文を Rust Parser/Lexer に再実装（`KeywordWhen` 追加、`MatchArm` alias フィールド、guard/alias の順不同許容）し、`cargo test -p reml_frontend spec_core::ch1_match_003_accepts_guard_and_alias` と CLI 実行（`cargo run --bin reml_frontend ../../../examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml`）の双方で `CH1-MATCH-003` が診断ゼロになることを確認。`docs/spec/1-1-syntax.md` / `1-5-formal-grammar-bnf.md` にガード/エイリアス規則を追加し、`phase4-scenario-matrix.csv` の該当行を `resolution=ok` に更新した。
+- 型推論ドライバへ重複 impl 検出（`typeclass.impl.duplicate`）を復元し、`cargo run --bin reml_frontend ../../../examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml` および `cargo test -p reml_frontend spec_core::ch1_impl_302_reports_duplicate_impl_violation` で `CH1-IMPL-302` の期待診断を確認。`TypecheckViolationKind::ImplDuplicate` を新設して `phase4-scenario-matrix.csv` を `resolution=ok` へ更新した。
+- 既存の `CH1-TRAIT-301` も再度 CLI で確認し、match/impl 系フォローアップ完了後の Phase4 KPI へ反映済み。
+- 2026-02-16 追認: `cargo run --bin reml_frontend -- ../../../examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml` / `trait_impl/bnf-traitdecl-default-where-ok.reml` / `trait_impl/bnf-impldecl-duplicate-error.reml` を再実行し、`CH1-MATCH-003` は診断 0、`CH1-TRAIT-301` は CLI 成功、`CH1-IMPL-302` は `typeclass.impl.duplicate` を返すことを再確認。併せて `cargo test -p reml_frontend spec_core::ch1_match_003_accepts_guard_and_alias` を再度通し、`phase4-scenario-matrix.csv` 側の `resolution_notes` に追記して Phase4 KPI ログへ残した。
 
 4. **Conductor/DSL, Streaming Parser の最小受理**（4.5 週）  
    - `conductor` ブロックや `run_stream` テストが構文エラーになる箇所を特定し、`docs/spec/1-5` の派生構文に合わせたノードを復活。  
@@ -62,6 +62,7 @@
 - Streaming 代表例 `examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml` について `cargo test -p reml_frontend spec_core::ch2_stream_301_parses_streaming_example` を実行し、`Parse.run_stream` 呼び出しと `DemandHint::More` 引数が AST に保持されること、リテラル配列や戻り値型 (`Parse::Parser<List<Int>>`) が失われないことを確認した。
 - 上記確認結果に合わせ、`phase4-scenario-matrix.csv` の `CH1-DSL-801` / `CH2-STREAM-301` 行を `resolution=ok`・`spec_vs_impl_decision=ok` へ更新し、再発時に参照できるよう検証コマンドを `resolution_notes` に記録した。
 - `expected/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.stdout` および `expected/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.stdout` を現行 CLI のゴールデンとして維持し、`run_examples.sh --suite spec_core` での再取得なしでも差分比較できる状態を確保した。
+- 2026-02-16 追認: `cargo test -p reml_frontend spec_core::ch1_dsl_801_parses_conductor_sections` と `spec_core::ch2_stream_301_parses_streaming_example` を再実行して AST 断面が現在の Parser 実装でも保持されることを確認し、`phase4-scenario-matrix.csv` の `CH1-DSL-801` / `CH2-STREAM-301` `resolution_notes` に追跡ログを追加した。
 
 ### フェーズB: Typeck / Effect 診断の復元
 4. **型推論 / 効果行の非アクティブ化回収**（5.1 週）  

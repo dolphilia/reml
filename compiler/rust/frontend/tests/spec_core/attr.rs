@@ -16,7 +16,10 @@ fn ch1_attr_101_records_block_attributes() {
         .expect("select_message should exist");
     let statements = match &select_fn.body.kind {
         ExprKind::Block { statements, .. } => statements,
-        other => panic!("expected select_message body to be a block, got {:?}", other),
+        other => panic!(
+            "expected select_message body to be a block, got {:?}",
+            other
+        ),
     };
     let attr_block = statements.iter().find_map(|stmt| {
         if let StmtKind::Expr { expr } = &stmt.kind {
@@ -96,7 +99,10 @@ fn ch1_eff_701_records_pure_attribute_and_perform_path() {
             LiteralKind::String { value, .. } => {
                 assert_eq!(value, "hi", "perform argument should keep string literal")
             }
-            other => panic!("expected perform argument to be a string literal, got {:?}", other),
+            other => panic!(
+                "expected perform argument to be a string literal, got {:?}",
+                other
+            ),
         },
         other => panic!("expected perform argument literal, got {:?}", other),
     }

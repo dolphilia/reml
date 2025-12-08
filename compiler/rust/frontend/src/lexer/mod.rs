@@ -142,6 +142,8 @@ enum RawToken {
     KeywordElse,
     #[token("match")]
     KeywordMatch,
+    #[token("when")]
+    KeywordWhen,
     #[token("with")]
     KeywordWith,
     #[token("for")]
@@ -470,6 +472,9 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             }
             Ok(RawToken::KeywordMatch) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordMatch, "match")
+            }
+            Ok(RawToken::KeywordWhen) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordWhen, "when")
             }
             Ok(RawToken::KeywordWith) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordWith, "with")

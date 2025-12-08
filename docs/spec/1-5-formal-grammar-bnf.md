@@ -217,7 +217,9 @@ ArrayLiteral    ::= "[" Expr { "," Expr } [","] "]"
 
 IfExpr          ::= "if" Expr "then" Expr ["else" Expr]
 MatchExpr       ::= "match" Expr "with" MatchArm { MatchArm }
-MatchArm        ::= "|" Pattern "->" Expr
+MatchArm        ::= "|" Pattern MatchGuard? MatchAlias? "->" Expr
+MatchGuard      ::= "when" Expr
+MatchAlias      ::= "as" Ident
 WhileExpr       ::= "while" Expr Block
 ForExpr         ::= "for" Pattern "in" Expr Block
 LoopExpr        ::= "loop" Block

@@ -3,8 +3,8 @@ use reml_frontend::parser::ast::{
     ImplDecl, ImplItem, LiteralKind, Module, Param, Pattern, PatternKind, Stmt, StmtKind, TypeKind,
     UseTree, Visibility,
 };
-use reml_frontend::typeck::{TypecheckConfig, TypecheckDriver, TypecheckReport};
 use reml_frontend::span::Span;
+use reml_frontend::typeck::{TypecheckConfig, TypecheckDriver, TypecheckReport};
 
 mod common;
 
@@ -131,7 +131,6 @@ fn ch1_dsl_801_parses_conductor_sections() {
     }
 }
 
-
 #[test]
 fn ch2_stream_301_parses_streaming_example() {
     let module = parse_example_module(
@@ -165,6 +164,49 @@ fn ch2_stream_301_parses_streaming_example() {
         expr_contains_array(&main_fn.body),
         "stream chunks array literal should survive parsing"
     );
+}
+
+#[test]
+fn ch1_match_003_accepts_guard_and_alias() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml",
+    );
+    let describe_fn = module
+        .functions
+        .iter()
+        .find(|function| function.name.name == "describe")
+        .expect("describe function should be present");
+    let match_expr = match &describe_fn.body.kind {
+        ExprKind::Block { statements, .. } => statements
+            .iter()
+            .find_map(|stmt| match &stmt.kind {
+                StmtKind::Expr { expr } => Some(expr),
+                _ => None,
+            })
+            .expect("match expression should exist in describe body"),
+        other => panic!("expected describe body to be a block, got {:?}", other),
+    };
+    match &match_expr.kind {
+        ExprKind::Match { arms, .. } => {
+            let guarded_arm = arms
+                .first()
+                .expect("match expression should contain at least one arm");
+            assert!(
+                guarded_arm.guard.is_some(),
+                "match guard should be captured on the first arm"
+            );
+            let alias_name = guarded_arm
+                .alias
+                .as_ref()
+                .map(|ident| ident.name.as_str())
+                .unwrap_or("missing");
+            assert_eq!(
+                alias_name, "large",
+                "match arm alias should be parsed as `large`"
+            );
+        }
+        other => panic!("expected match expression, got {:?}", other),
+    }
 }
 
 #[test]
@@ -257,13 +299,13 @@ fn expr_contains_array(expr: &Expr) -> bool {
             expr_contains_array(callee) || args.iter().any(expr_contains_array)
         }
         ExprKind::PerformCall { call } => expr_contains_array(&call.argument),
-        ExprKind::Pipe { left, right }
-        | ExprKind::Binary { left, right, .. } => {
+        ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
             expr_contains_array(left) || expr_contains_array(right)
         }
         ExprKind::Unary { expr: inner, .. } => expr_contains_array(inner),
-        ExprKind::FieldAccess { target, .. }
-        | ExprKind::TupleAccess { target, .. } => expr_contains_array(target),
+        ExprKind::FieldAccess { target, .. } | ExprKind::TupleAccess { target, .. } => {
+            expr_contains_array(target)
+        }
         ExprKind::Index { target, index } => {
             expr_contains_array(target) || expr_contains_array(index)
         }
@@ -285,17 +327,12 @@ fn expr_contains_array(expr: &Expr) -> bool {
                     .map_or(false, |branch| expr_contains_array(branch))
         }
         ExprKind::Match { target, arms } => {
-            expr_contains_array(target)
-                || arms
-                    .iter()
-                    .any(|arm| expr_contains_array(&arm.body))
+            expr_contains_array(target) || arms.iter().any(|arm| expr_contains_array(&arm.body))
         }
         ExprKind::While { condition, body } => {
             expr_contains_array(condition) || expr_contains_array(body)
         }
-        ExprKind::For { start, end, .. } => {
-            expr_contains_array(start) || expr_contains_array(end)
-        }
+        ExprKind::For { start, end, .. } => expr_contains_array(start) || expr_contains_array(end),
         ExprKind::Block { statements, .. } => statements.iter().any(stmt_contains_array),
         ExprKind::Return { value } => value
             .as_ref()
@@ -303,14 +340,15 @@ fn expr_contains_array(expr: &Expr) -> bool {
         ExprKind::Assign { target, value } => {
             expr_contains_array(target) || expr_contains_array(value)
         }
-        ExprKind::Identifier(_)
-        | ExprKind::ModulePath(_)
-        | ExprKind::Continue => false,
+        ExprKind::Identifier(_) | ExprKind::ModulePath(_) | ExprKind::Continue => false,
     }
 }
 
 fn has_violation(report: &TypecheckReport, code: &str) -> bool {
-    report.violations.iter().any(|violation| violation.code == code)
+    report
+        .violations
+        .iter()
+        .any(|violation| violation.code == code)
 }
 
 fn dummy_span() -> Span {
@@ -441,11 +479,7 @@ fn ch1_inf_601_typecheck_runs_without_ast_abort() {
     let id_lambda = make_lambda("x", ident_expr("x"));
     let id_decl = stmt_from_decl(make_let_decl("id", id_lambda));
     let first_decl = stmt_from_decl(make_let_decl("first", ident_expr("id")));
-    let statements = vec![
-        id_decl,
-        first_decl,
-        stmt_expr(ident_expr("first")),
-    ];
+    let statements = vec![id_decl, first_decl, stmt_expr(ident_expr("first"))];
     let body = block_expr(statements);
     let report = run_typecheck(build_function(body, Vec::new()));
     assert!(
@@ -483,6 +517,22 @@ fn ch1_eff_701_reports_purity_violation() {
     assert!(
         has_violation(&report, "effects.purity.violated"),
         "pure functions performing effects must emit purity violations"
+    );
+}
+
+#[test]
+fn ch1_impl_302_reports_duplicate_impl_violation() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    let has_duplicate = report
+        .violations
+        .iter()
+        .any(|violation| violation.code == "typeclass.impl.duplicate");
+    assert!(
+        has_duplicate,
+        "duplicate impl scenario should emit typeclass.impl.duplicate diagnostic"
     );
 }
 

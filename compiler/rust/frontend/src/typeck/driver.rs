@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use once_cell::sync::Lazy;
 use serde::Serialize;
@@ -76,10 +76,7 @@ impl TypecheckDriver {
             let mut constraints = Vec::new();
             let mut env = module_env.clone();
             let mut param_bindings = Vec::new();
-            let is_pure = function
-                .attrs
-                .iter()
-                .any(|attr| attr.name.name == "pure");
+            let is_pure = function.attrs.iter().any(|attr| attr.name.name == "pure");
             let function_context = FunctionContext::new(function.name.name.as_str(), is_pure);
 
             for param in &function.params {
@@ -167,6 +164,7 @@ impl TypecheckDriver {
             detect_iterator_stage_mismatches(&dict_ref_drafts, &final_substitution, config);
         violations.extend(iterator_stage_violations);
         violations.extend(detect_capability_violations(module, config));
+        violations.extend(detect_duplicate_impls(module));
         let violations = compress_typecheck_violations(violations);
 
         let used_impls = all_constraints
@@ -269,6 +267,7 @@ pub enum TypecheckViolationKind {
     IteratorStageMismatch,
     ValueRestriction,
     PurityViolation,
+    ImplDuplicate,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -436,19 +435,15 @@ impl TypecheckViolation {
         }
     }
 
-    fn purity_violation(
-        span: Span,
-        function: Option<String>,
-        effect: String,
-    ) -> Self {
+    fn purity_violation(span: Span, function: Option<String>, effect: String) -> Self {
         let message = match function.as_ref() {
             Some(name) => {
-                format!("`@pure` 関数 `{}` で `perform {}` が検出されました。", name, effect)
+                format!(
+                    "`@pure` 関数 `{}` で `perform {}` が検出されました。",
+                    name, effect
+                )
             }
-            None => format!(
-                "`@pure` ブロックで `perform {}` が検出されました。",
-                effect
-            ),
+            None => format!("`@pure` ブロックで `perform {}` が検出されました。", effect),
         };
         Self {
             kind: TypecheckViolationKind::PurityViolation,
@@ -461,6 +456,27 @@ impl TypecheckViolation {
             ))],
             capability: None,
             function,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn impl_duplicate(span: Span, trait_name: String, target: String, previous_span: Span) -> Self {
+        let message = format!(
+            "`{}` への `{}` impl が重複定義されています。",
+            target, trait_name
+        );
+        Self {
+            kind: TypecheckViolationKind::ImplDuplicate,
+            code: "typeclass.impl.duplicate",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "最初の impl は {previous_span} にあります"
+            ))],
+            capability: None,
+            function: None,
             expected: None,
             iterator_stage: None,
             capability_mismatch: None,
@@ -488,7 +504,8 @@ impl TypecheckViolation {
         match self.kind {
             TypecheckViolationKind::ConditionLiteralBool
             | TypecheckViolationKind::AstUnavailable
-            | TypecheckViolationKind::ValueRestriction => "type",
+            | TypecheckViolationKind::ValueRestriction
+            | TypecheckViolationKind::ImplDuplicate => "type",
             TypecheckViolationKind::ResidualLeak
             | TypecheckViolationKind::StageMismatch
             | TypecheckViolationKind::IteratorStageMismatch
@@ -805,12 +822,7 @@ fn infer_expr(
                 dict_refs,
                 context,
             );
-            make_typed(
-                expr,
-                TypedExprKindDraft::Unknown,
-                block_ty,
-                block_dict_refs,
-            )
+            make_typed(expr, TypedExprKindDraft::Unknown, block_ty, block_dict_refs)
         }
         ExprKind::Lambda { params, body, .. } => {
             let mut lambda_env = env.enter_scope();
@@ -1286,6 +1298,31 @@ fn detect_capability_violations(
                 Some(usage.span),
                 Some(descriptor.id().to_string()),
             ));
+        }
+    }
+    violations
+}
+
+fn detect_duplicate_impls(module: &Module) -> Vec<TypecheckViolation> {
+    let mut seen: HashMap<String, Span> = HashMap::new();
+    let mut violations = Vec::new();
+    for decl in &module.decls {
+        if let DeclKind::Impl(impl_decl) = &decl.kind {
+            if let Some(trait_ref) = &impl_decl.trait_ref {
+                let trait_name = trait_ref.render();
+                let target = impl_decl.target.render();
+                let key = format!("{}::{}", trait_name, target);
+                if let Some(previous_span) = seen.get(&key) {
+                    violations.push(TypecheckViolation::impl_duplicate(
+                        decl.span,
+                        trait_name,
+                        target,
+                        *previous_span,
+                    ));
+                } else {
+                    seen.insert(key, decl.span);
+                }
+            }
         }
     }
     violations

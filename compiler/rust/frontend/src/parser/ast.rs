@@ -607,6 +607,8 @@ pub struct MatchArm {
     pub pattern: Pattern,
     pub guard: Option<Expr>,
     pub body: Expr,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alias: Option<Ident>,
     pub span: Span,
 }
 
@@ -948,7 +950,7 @@ pub struct TypeAnnot {
 }
 
 impl TypeAnnot {
-    fn render(&self) -> String {
+    pub fn render(&self) -> String {
         self.kind.render()
     }
 }
@@ -1137,17 +1139,10 @@ impl Expr {
         Self::block_with_attrs(statements, Vec::new(), span)
     }
 
-    pub fn block_with_attrs(
-        statements: Vec<Stmt>,
-        attrs: Vec<Attribute>,
-        span: Span,
-    ) -> Self {
+    pub fn block_with_attrs(statements: Vec<Stmt>, attrs: Vec<Attribute>, span: Span) -> Self {
         Self {
             span,
-            kind: ExprKind::Block {
-                attrs,
-                statements,
-            },
+            kind: ExprKind::Block { attrs, statements },
         }
     }
 

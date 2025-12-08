@@ -836,22 +836,19 @@ fn module_parser<'src>(
                 annotation_kind: None,
             });
 
-        let simple = qualified_ident
-            .clone()
-            .map(|name| TypeAnnot {
-                span: name.span,
-                kind: TypeKind::Ident { name },
-                annotation_kind: None,
-            });
+        let simple = qualified_ident.clone().map(|name| TypeAnnot {
+            span: name.span,
+            kind: TypeKind::Ident { name },
+            annotation_kind: None,
+        });
 
-        let app = qualified_ident
-            .clone()
-            .then(args.clone())
-            .map_with_span(|(callee, args), span: Range<usize>| TypeAnnot {
+        let app = qualified_ident.clone().then(args.clone()).map_with_span(
+            |(callee, args), span: Range<usize>| TypeAnnot {
                 span: range_to_span(span),
                 kind: TypeKind::App { callee, args },
                 annotation_kind: None,
-            });
+            },
+        );
 
         let record_field = ident
             .clone()
@@ -1012,7 +1009,7 @@ fn module_parser<'src>(
             pattern_for_expr.clone(),
             type_parser_for_expr.clone(),
             ident_expr.clone(),
-    );
+        );
 
         let raw_block = just(TokenKind::LBrace)
             .ignore_then(stmt.repeated())
@@ -1030,17 +1027,51 @@ fn module_parser<'src>(
                 }
             });
 
+        let match_guard = just(TokenKind::KeywordWhen)
+            .ignore_then(expr.clone())
+            .then(
+                just(TokenKind::KeywordAs)
+                    .ignore_then(lower_ident.clone())
+                    .map(Some)
+                    .or_not(),
+            )
+            .map(|(guard_expr, alias)| (guard_expr, alias.unwrap_or(None)))
+            .boxed();
+
         let match_arm = just(TokenKind::Bar)
             .or_not()
             .ignore_then(pattern_for_expr.clone())
+            .then(match_guard.or_not())
+            .then(
+                just(TokenKind::KeywordAs)
+                    .ignore_then(lower_ident.clone())
+                    .map(Some)
+                    .or_not(),
+            )
             .then_ignore(just(TokenKind::Arrow))
             .then(expr.clone())
-            .map_with_span(|(pattern, body), span: Range<usize>| MatchArm {
-                pattern,
-                guard: None,
-                body,
-                span: range_to_span(span),
-            });
+            .try_map(
+                |(((pattern, guard_info), alias_after_guard), body), span: Range<usize>| {
+                    let (guard, alias_from_guard) = guard_info
+                        .map(|(guard_expr, alias)| (Some(guard_expr), alias))
+                        .unwrap_or((None, None));
+                    let alias_tail = alias_after_guard.flatten();
+                    if alias_from_guard.is_some() && alias_tail.is_some() {
+                        return Err(Simple::custom(
+                            span.clone(),
+                            "match arm に複数の `as` は指定できません",
+                        ));
+                    }
+                    let alias = alias_from_guard.or(alias_tail);
+                    Ok(MatchArm {
+                        pattern,
+                        guard,
+                        alias,
+                        body,
+                        span: range_to_span(span),
+                    })
+                },
+            );
 
         let match_expr = just(TokenKind::KeywordMatch)
             .ignore_then(expr.clone())
@@ -1062,7 +1093,7 @@ fn module_parser<'src>(
             string_literal,
             array_literal,
             record_literal,
-             tuple_literal,
+            tuple_literal,
             ident_expr.clone(),
             paren_expr,
         ))
@@ -1119,13 +1150,59 @@ fn module_parser<'src>(
             })
             .boxed();
 
-        let additive = call
+        let multiplicative = call
             .clone()
-            .then(just(TokenKind::Plus).ignore_then(call.clone()).repeated())
+            .then(
+                choice((
+                    just(TokenKind::Star).to("*"),
+                    just(TokenKind::Slash).to("/"),
+                    just(TokenKind::Percent).to("%"),
+                ))
+                .then(call.clone())
+                .repeated(),
+            )
             .map(|(first, rest)| {
-                rest.into_iter().fold(first, |lhs, rhs| {
+                rest.into_iter().fold(first, |lhs, (op, rhs)| {
                     let span = span_union(lhs.span(), rhs.span());
-                    Expr::binary("+", lhs, rhs, span)
+                    Expr::binary(op, lhs, rhs, span)
+                })
+            });
+
+        let additive = multiplicative
+            .clone()
+            .then(
+                choice((
+                    just(TokenKind::Plus).to("+"),
+                    just(TokenKind::Minus).to("-"),
+                ))
+                .then(multiplicative.clone())
+                .repeated(),
+            )
+            .map(|(first, rest)| {
+                rest.into_iter().fold(first, |lhs, (op, rhs)| {
+                    let span = span_union(lhs.span(), rhs.span());
+                    Expr::binary(op, lhs, rhs, span)
+                })
+            });
+
+        let comparison = additive
+            .clone()
+            .then(
+                choice((
+                    just(TokenKind::Gt).to(">"),
+                    just(TokenKind::Ge).to(">="),
+                    just(TokenKind::Lt).to("<"),
+                    just(TokenKind::Le).to("<="),
+                    just(TokenKind::EqEq).to("=="),
+                    just(TokenKind::NotEqual).to("!="),
+                ))
+                .then(additive.clone())
+                .repeated(),
+            )
+            .map(|(first, rest)| {
+                rest.into_iter().fold(first, |lhs, (op, rhs)| {
+                    let span = span_union(lhs.span(), rhs.span());
+                    Expr::binary(op, lhs, rhs, span)
                 })
             });
 
@@ -1170,7 +1247,7 @@ fn module_parser<'src>(
                 Expr::assign(target, value, range_to_span(span))
             });
 
-        choice((if_expr, perform_expr, assignment_expr, block_expr, additive)).boxed()
+        choice((if_expr, perform_expr, assignment_expr, block_expr, comparison)).boxed()
     });
 
     let attribute = build_attribute_parser(expr.clone(), ident.clone());
@@ -1183,11 +1260,7 @@ fn module_parser<'src>(
                 .ignore_then(type_parser.clone())
                 .or_not(),
         )
-        .then(
-            just(TokenKind::Assign)
-                .ignore_then(expr.clone())
-                .or_not(),
-        );
+        .then(just(TokenKind::Assign).ignore_then(expr.clone()).or_not());
 
     let params = param
         .map(|((name, ty), default)| Param {
@@ -1212,10 +1285,7 @@ fn module_parser<'src>(
         .map(|params| params.unwrap_or_default());
 
     let trait_reference = type_parser.clone().try_map(|ty, span: Range<usize>| {
-        TraitRef::from_type_annotation(&ty).ok_or(Simple::custom(
-            span,
-            "トレイト参照が必要です",
-        ))
+        TraitRef::from_type_annotation(&ty).ok_or(Simple::custom(span, "トレイト参照が必要です"))
     });
 
     let type_bound = type_parser
@@ -1227,13 +1297,13 @@ fn module_parser<'src>(
                 .separated_by(just(TokenKind::Comma))
                 .at_least(1),
         )
-        .map_with_span(|(target, bounds), span: Range<usize>| {
-            WherePredicate::TypeBound {
+        .map_with_span(
+            |(target, bounds), span: Range<usize>| WherePredicate::TypeBound {
                 target,
                 bounds,
                 span: range_to_span(span),
-            }
-        });
+            },
+        );
 
     let where_predicate = choice((
         type_bound,
@@ -1259,18 +1329,19 @@ fn module_parser<'src>(
                 .ignore_then(type_parser.clone())
                 .or_not(),
         )
-        .map_with_span(|(((fn_span, name), params), ret_type), span: Range<usize>| {
-            let signature_span = range_to_span(span);
-            FunctionSignature {
-                name,
-                params,
-                ret_type,
-                span: Span::new(fn_span.start.min(signature_span.start), signature_span.end),
-            }
-        });
+        .map_with_span(
+            |(((fn_span, name), params), ret_type), span: Range<usize>| {
+                let signature_span = range_to_span(span);
+                FunctionSignature {
+                    name,
+                    params,
+                    ret_type,
+                    span: Span::new(fn_span.start.min(signature_span.start), signature_span.end),
+                }
+            },
+        );
 
-    let let_decl_raw =
-        build_let_decl_parser(pattern.clone(), type_parser.clone(), expr.clone());
+    let let_decl_raw = build_let_decl_parser(pattern.clone(), type_parser.clone(), expr.clone());
     let let_decl = attr_list
         .clone()
         .then(let_decl_raw.clone())
@@ -1281,8 +1352,7 @@ fn module_parser<'src>(
             decl
         });
 
-    let var_decl_raw =
-        build_var_decl_parser(pattern.clone(), type_parser.clone(), expr.clone());
+    let var_decl_raw = build_var_decl_parser(pattern.clone(), type_parser.clone(), expr.clone());
     let var_decl = attr_list
         .clone()
         .then(var_decl_raw.clone())
@@ -1400,21 +1470,23 @@ fn module_parser<'src>(
                 .ignore_then(trait_item.repeated())
                 .then_ignore(just(TokenKind::RBrace)),
         )
-        .map_with_span(|(((name, generics), where_clause), items), span: Range<usize>| {
-            let trait_decl = TraitDecl {
-                name,
-                generics,
-                where_clause,
-                items,
-                span: range_to_span(span.clone()),
-            };
-            Decl {
-                attrs: Vec::new(),
-                visibility: Visibility::Private,
-                span: range_to_span(span),
-                kind: DeclKind::Trait(trait_decl),
-            }
-        });
+        .map_with_span(
+            |(((name, generics), where_clause), items), span: Range<usize>| {
+                let trait_decl = TraitDecl {
+                    name,
+                    generics,
+                    where_clause,
+                    items,
+                    span: range_to_span(span.clone()),
+                };
+                Decl {
+                    attrs: Vec::new(),
+                    visibility: Visibility::Private,
+                    span: range_to_span(span),
+                    kind: DeclKind::Trait(trait_decl),
+                }
+            },
+        );
 
     let trait_decl = attr_list
         .clone()
@@ -1435,13 +1507,11 @@ fn module_parser<'src>(
     let impl_decl_raw = just(TokenKind::KeywordImpl)
         .ignore_then(parse_generics.clone())
         .then(
-            type_parser
-                .clone()
-                .then(
-                    just(TokenKind::KeywordFor)
-                        .ignore_then(type_parser.clone())
-                        .or_not(),
-                ),
+            type_parser.clone().then(
+                just(TokenKind::KeywordFor)
+                    .ignore_then(type_parser.clone())
+                    .or_not(),
+            ),
         )
         .then(where_clause.clone())
         .then(
@@ -1454,10 +1524,7 @@ fn module_parser<'src>(
                 let (trait_ref, target) = match target_opt {
                     Some(target) => {
                         let trait_ref = TraitRef::from_type_annotation(&head).ok_or_else(|| {
-                            Simple::custom(
-                                span_to_range(head.span),
-                                "トレイト参照が必要です",
-                            )
+                            Simple::custom(span_to_range(head.span), "トレイト参照が必要です")
                         })?;
                         (Some(trait_ref), target)
                     }
@@ -1498,12 +1565,10 @@ fn module_parser<'src>(
         Monitoring(ConductorMonitoringBlock),
     }
 
-    let conductor_endpoint = dotted_ident
-        .clone()
-        .map(|path| ConductorEndpoint {
-            span: path.span,
-            path,
-        });
+    let conductor_endpoint = dotted_ident.clone().map(|path| ConductorEndpoint {
+        span: path.span,
+        path,
+    });
 
     let conductor_arg = choice((
         ident
@@ -1569,14 +1634,14 @@ fn module_parser<'src>(
         .then(conductor_endpoint.clone())
         .then_ignore(just(TokenKind::Colon))
         .then(type_parser.clone())
-        .map_with_span(|((source, target), payload), span: Range<usize>| {
-            ConductorChannelRoute {
+        .map_with_span(
+            |((source, target), payload), span: Range<usize>| ConductorChannelRoute {
                 source,
                 target,
                 payload,
                 span: range_to_span(span),
-            }
-        });
+            },
+        );
 
     let conductor_channels = just(TokenKind::KeywordChannels)
         .ignore_then(just(TokenKind::LBrace))
@@ -1593,30 +1658,27 @@ fn module_parser<'src>(
         .then_ignore(just(TokenKind::RBrace))
         .map(ConductorSection::Channels);
 
-    let block_only_expr = expr.clone().try_map(|body, span: Range<usize>| match body.kind {
-        ExprKind::Block { .. } => Ok((body, range_to_span(span))),
-        _ => Err(Simple::custom(
-            span,
-            "ブロック式が必要です",
-        )),
-    });
+    let block_only_expr = expr
+        .clone()
+        .try_map(|body, span: Range<usize>| match body.kind {
+            ExprKind::Block { .. } => Ok((body, range_to_span(span))),
+            _ => Err(Simple::custom(span, "ブロック式が必要です")),
+        });
 
     let conductor_execution = just(TokenKind::KeywordExecution)
         .ignore_then(block_only_expr.clone())
-        .map(|(body, span)| {
-            ConductorSection::Execution(ConductorExecutionBlock { body, span })
-        });
+        .map(|(body, span)| ConductorSection::Execution(ConductorExecutionBlock { body, span }));
 
     let monitor_target = choice((
         just(TokenKind::KeywordWith)
             .ignore_then(qualified_ident.clone())
             .map(ConductorMonitorTarget::Module),
-        dotted_ident
-            .clone()
-            .map(|path| ConductorMonitorTarget::Endpoint(ConductorEndpoint {
+        dotted_ident.clone().map(|path| {
+            ConductorMonitorTarget::Endpoint(ConductorEndpoint {
                 span: path.span,
                 path,
-            })),
+            })
+        }),
     ))
     .or_not();
 
@@ -2401,11 +2463,7 @@ where
 {
     just(TokenKind::KeywordLet)
         .ignore_then(pattern_var)
-        .then(
-            just(TokenKind::Colon)
-                .ignore_then(type_parser)
-                .or_not(),
-        )
+        .then(just(TokenKind::Colon).ignore_then(type_parser).or_not())
         .then_ignore(just(TokenKind::Assign))
         .then(expr)
         .map_with_span(|((pattern, ty), value), span: Range<usize>| Decl {
@@ -2432,11 +2490,7 @@ where
 {
     just(TokenKind::KeywordVar)
         .ignore_then(pattern_var)
-        .then(
-            just(TokenKind::Colon)
-                .ignore_then(type_parser)
-                .or_not(),
-        )
+        .then(just(TokenKind::Colon).ignore_then(type_parser).or_not())
         .then_ignore(just(TokenKind::Assign))
         .then(expr)
         .map_with_span(|((pattern, ty), value), span: Range<usize>| Decl {
