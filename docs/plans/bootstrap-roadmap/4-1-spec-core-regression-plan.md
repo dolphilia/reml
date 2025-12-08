@@ -144,6 +144,15 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - `tooling/examples/run_examples.sh` と `tooling/examples/run_phase4_suite.py` へ `chapter1/control_flow` / `literals` / `lambda` の存在チェックを追加し、「必要ディレクトリが欠けている場合は Phase4 スイートを停止する」安全策を導入。Missing Examples を登録した `phase4-scenario-matrix.csv` と突き合わせて漏れがあれば即時に検知できるようにした。
 - `expected/spec_core/chapter1/control_flow|literals|lambda` を明示的に確保したうえで `examples/spec_core/README.md` にゴールデン生成コマンド（`cargo run --quiet --bin reml_frontend ... > expected/...`、診断例は `--output json | jq`）を追記し、今後の stdout / diagnostic JSON の再取得手順を文書化した。
 - `.github/workflows/phase4-spec-core.yml` に `cargo test -p reml_e2e --test scenario -- --scenario spec-core` を nightly Step として追加し、Missing Examples を含む `.reml` が 1 日 1 回は CLI 実行される KPI を確保。`reports/spec-audit/ch4/spec-core-dashboard.md` へ「Missing Examples Closeout」セクションを新設し、`chapter1/control_flow(0/8)`・`chapter1/literals(2/3)`・`chapter1/lambda(0/2)` の成功率を集計してフェーズ進捗を追跡する。
+
+#### ✅ 6.0 週 実施ログ（Failure Triage 自動化）
+
+- `reports/spec-audit/ch4/logs/spec_core-*.md` に出力される失敗ログを解析し、`phase4-scenario-matrix.csv` の `resolution`/`resolution_notes` を自動更新する `scripts/triage_spec_core_failures.py` を作成。`--log`（Markdown ログ）、`--matrix`（CSV）、`--include-status`（既定: `pending`）、`--apply`（dry-run 切り替え）を引数に取り、`python3 scripts/triage_spec_core_failures.py --suite spec_core --log reports/spec-audit/ch4/logs/spec_core-20251208T173235Z.md --apply` で Phase4 backlog をまとめて triage できるようにした。
+- 自動判定の基準を以下に整理し、`resolution` を `example_fix` / `impl_fix` / `spec_fix` のいずれかに決定するロジックを実装。判定理由は `resolution_notes` に `{日付} triage_spec_core_failures.py (...) で {resolution} 判定: {理由} / log=... / CLI="..." / 期待=... / 実際=...` の形式で残し、CLI コマンドやログパスの追跡ができるようにした。
+  1. `example_fix`: `diagnostic_keys` が非空であるにもかかわらず CLI 出力の Diagnostics が 0 件（例: `CH1-ATTR-102` や `CH1-INF-602`）。`.reml` や `expected/` の修正が必要なケースを示す。
+  2. `impl_fix`: `diagnostic_keys = []` のシナリオで Diagnostics や JSON 解析エラーが発生した場合、または exit code が非 0（例: `CH1-FN-101`, `CH1-CONTROL_FLOW-*`, `CH1-LAMBDA-*`）。Rust Frontend/Runtime の回収対象として扱う。
+  3. `spec_fix`: 両者で Diagnostics が出力されているがコード集合が異なる場合（例: `CH1-EFF-701`, `CH1-LET-004`, `CH1-MATCH-004`）。仕様書または `diagnostic_keys` の定義自体を再検討する。
+- 上記スクリプトにより `resolution=pending` だった 26 シナリオ（`CH1-MOD-004`, `CH1-ATTR-101/102`, `CH1-FN-101`, `CH1-TYPE-201/202/203`, `CH1-INF-601/602`, `CH1-EFF-701`, `CH1-LET-004`, `CH1-MATCH-004`, `CH1-BLOCK-001`, `CH1` control_flow 系 10 件, `CH1-LIT-202`, `CH1-FN-103`, `CH1-LAMBDA-101/102`, `CH2-OP-401` 等）を `example_fix`・`impl_fix`・`spec_fix` に分類し、ログパス・CLI コマンド・期待/実測 Diagnsotics を `resolution_notes` に追記済み。`reports/spec-audit/ch4/README.md` に triage の使い方を追記し、Phase4 KPI レビューで再現コマンドと根拠を即参照できる状態を確保した。
 ## 成果物と KPI
 
 - `parser.syntax.expected_tokens` / `typeck.aborted.ast_unavailable` が Phase 4 の spec_core/practical スイートで発生しないこと（期待診断があるケースを除く）。  
