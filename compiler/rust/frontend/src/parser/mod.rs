@@ -43,9 +43,12 @@ use crate::streaming::{
 use crate::token::{Token, TokenKind};
 use crate::unicode::{unicode_diagnostic_code, UnicodeDetail};
 use ast::{
-    Attribute, Decl, DeclKind, EffectDecl, Expr, ExprKind, Function, HandlerDecl, Ident, Literal,
-    LiteralKind, MatchArm, Module, ModuleHeader, ModulePath, Param, Pattern, PatternKind,
-    RelativeHead, Stmt, StmtKind, TypeAnnot, TypeKind, UseDecl, UseItem, UseTree, Visibility,
+    Attribute, ConductorArg, ConductorChannelRoute, ConductorDecl, ConductorDslDef,
+    ConductorDslTail, ConductorEndpoint, ConductorExecutionBlock, ConductorMonitorTarget,
+    ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind, EffectDecl, Expr, ExprKind,
+    Function, HandlerDecl, Ident, Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath,
+    Param, Pattern, PatternKind, RelativeHead, Stmt, StmtKind, TypeAnnot, TypeKind, UseDecl,
+    UseItem, UseTree, Visibility,
 };
 
 /// パース結果の簡易表現。
@@ -782,22 +785,126 @@ fn module_parser<'src>(
 
     let ident = identifier.clone().map(|(name, span)| Ident { name, span });
 
+    let lower_ident = just(TokenKind::Identifier).map_with_span(move |_, span: Range<usize>| {
+        let slice = &source[span.start..span.end];
+        Ident {
+            name: slice.to_string(),
+            span: range_to_span(span),
+        }
+    });
+
     let int_literal = just(TokenKind::IntLiteral).map_with_span(move |_, span: Range<usize>| {
         let slice = &source[span.start..span.end];
         let value = slice.parse::<i64>().unwrap_or_default();
         Expr::int(value, slice.to_string(), range_to_span(span))
     });
 
-    let type_name = ident.clone().map(|ident| TypeAnnot {
-        span: ident.span,
-        kind: TypeKind::Ident { name: ident },
-        annotation_kind: None,
+    let separator = choice((
+        just(TokenKind::Dot).to(()),
+        just(TokenKind::Colon)
+            .ignore_then(just(TokenKind::Colon))
+            .to(()),
+    ));
+
+    let qualified_ident = ident
+        .clone()
+        .then(separator.clone().ignore_then(ident.clone()).repeated())
+        .map(|(first, rest)| merge_qualified_ident(first, rest));
+
+    let dotted_ident = ident
+        .clone()
+        .then(just(TokenKind::Dot).ignore_then(ident.clone()).repeated())
+        .map(|(first, rest)| merge_dotted_ident(first, rest));
+
+    let type_parser = recursive(|ty| {
+        let args = ty
+            .clone()
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing()
+            .delimited_by(just(TokenKind::Lt), just(TokenKind::Gt));
+
+        let tuple_type = ty
+            .clone()
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing()
+            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
+            .map_with_span(|elements, span: Range<usize>| TypeAnnot {
+                span: range_to_span(span),
+                kind: TypeKind::Tuple { elements },
+                annotation_kind: None,
+            });
+
+        let simple = qualified_ident
+            .clone()
+            .map(|name| TypeAnnot {
+                span: name.span,
+                kind: TypeKind::Ident { name },
+                annotation_kind: None,
+            });
+
+        let app = qualified_ident
+            .clone()
+            .then(args.clone())
+            .map_with_span(|(callee, args), span: Range<usize>| TypeAnnot {
+                span: range_to_span(span),
+                kind: TypeKind::App { callee, args },
+                annotation_kind: None,
+            });
+
+        choice((tuple_type, app, simple))
     });
-    let pattern_var = ident.clone().map(|ident| Pattern {
+
+    let type_parser_for_expr = type_parser.clone();
+    let pattern_var = lower_ident.clone().map(|ident| Pattern {
         span: ident.span,
         kind: PatternKind::Var(ident),
     });
 
+    let pattern = recursive(|pat| {
+        let tuple_pattern = pat
+            .clone()
+            .separated_by(just(TokenKind::Comma))
+            .at_least(2)
+            .allow_trailing()
+            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
+            .map_with_span(|elements, span: Range<usize>| Pattern {
+                span: range_to_span(span),
+                kind: PatternKind::Tuple { elements },
+            });
+
+        let pattern_ctor = qualified_ident
+            .clone()
+            .then(
+                pat.clone()
+                    .separated_by(just(TokenKind::Comma))
+                    .allow_trailing()
+                    .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
+                    .or_not(),
+            )
+            .map(|(name, args)| Pattern {
+                span: name.span,
+                kind: PatternKind::Constructor {
+                    name,
+                    args: args.unwrap_or_default(),
+                },
+            });
+
+        let wildcard_pattern =
+            just(TokenKind::Underscore).map_with_span(|_, span: Range<usize>| Pattern {
+                span: range_to_span(span),
+                kind: PatternKind::Wildcard,
+            });
+
+        choice((
+            tuple_pattern,
+            pattern_var.clone(),
+            pattern_ctor,
+            wildcard_pattern,
+        ))
+    });
+
+    let pattern_for_expr = pattern.clone();
+    let pattern_for_block = pattern.clone();
     let ident_for_expr = ident.clone();
     let expr = recursive(move |expr| {
         let attribute = build_attribute_parser(expr.clone(), ident_for_expr.clone());
@@ -826,16 +933,45 @@ fn module_parser<'src>(
                 Expr::string(unescaped, range_to_span(span))
             });
 
+        let tuple_literal = expr
+            .clone()
+            .separated_by(just(TokenKind::Comma))
+            .at_least(2)
+            .allow_trailing()
+            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
+            .map_with_span(|elements, span: Range<usize>| {
+                Expr::literal(
+                    Literal {
+                        value: LiteralKind::Tuple { elements },
+                    },
+                    range_to_span(span),
+                )
+            });
+
         let paren_expr = expr
             .clone()
             .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
 
-        let stmt = build_stmt_parser(
-            expr.clone(),
-            pattern_var.clone(),
-            type_name.clone(),
-            ident_expr.clone(),
-        );
+        let array_literal = expr
+            .clone()
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing()
+            .delimited_by(just(TokenKind::LBracket), just(TokenKind::RBracket))
+            .map_with_span(|elements, span: Range<usize>| {
+                Expr::literal(
+                    Literal {
+                        value: LiteralKind::Array { elements },
+                    },
+                    range_to_span(span),
+                )
+            });
+
+    let stmt = build_stmt_parser(
+        expr.clone(),
+        pattern_for_expr.clone(),
+        type_parser_for_expr.clone(),
+        ident_expr.clone(),
+    );
 
         let raw_block = just(TokenKind::LBrace)
             .ignore_then(stmt.repeated())
@@ -853,47 +989,9 @@ fn module_parser<'src>(
                 }
             });
 
-        let separator = choice((
-            just(TokenKind::Dot).to(()),
-            just(TokenKind::Colon)
-                .ignore_then(just(TokenKind::Colon))
-                .to(()),
-        ));
-
-        let qualified_ident = ident_for_expr
-            .clone()
-            .then(separator.ignore_then(ident_for_expr.clone()).repeated())
-            .map(|(first, rest)| merge_qualified_ident(first, rest));
-
-        let pattern_ctor = qualified_ident
-            .clone()
-            .then(
-                pattern_var
-                    .clone()
-                    .separated_by(just(TokenKind::Comma))
-                    .allow_trailing()
-                    .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
-                    .or_not(),
-            )
-            .map(|(name, args)| Pattern {
-                span: name.span,
-                kind: PatternKind::Constructor {
-                    name,
-                    args: args.unwrap_or_default(),
-                },
-            });
-
-        let wildcard_pattern =
-            just(TokenKind::Underscore).map_with_span(|_, span: Range<usize>| Pattern {
-                span: range_to_span(span),
-                kind: PatternKind::Wildcard,
-            });
-
-        let pattern = choice((pattern_ctor, wildcard_pattern, pattern_var.clone()));
-
         let match_arm = just(TokenKind::Bar)
             .or_not()
-            .ignore_then(pattern.clone())
+            .ignore_then(pattern_for_expr.clone())
             .then_ignore(just(TokenKind::Arrow))
             .then(expr.clone())
             .map_with_span(|(pattern, body), span: Range<usize>| MatchArm {
@@ -921,6 +1019,8 @@ fn module_parser<'src>(
             int_literal.clone(),
             bool_literal,
             string_literal,
+            array_literal,
+             tuple_literal,
             ident_expr.clone(),
             paren_expr,
         ))
@@ -949,7 +1049,7 @@ fn module_parser<'src>(
 
         let postfix = choice((
             call_args.map(|(args, span)| Postfix::Call(args, span)),
-            separator.ignore_then(field_ident).map(|field| {
+            separator.clone().ignore_then(field_ident).map(|field| {
                 let span = field.span;
                 Postfix::Field(field, span)
             }),
@@ -1034,17 +1134,19 @@ fn module_parser<'src>(
     let attribute = build_attribute_parser(expr.clone(), ident.clone());
     let attr_list = attribute.clone().repeated();
 
-    let param = ident.clone().then(
-        just(TokenKind::Colon)
-            .ignore_then(type_name.clone())
-            .or_not(),
-    );
+    let param = ident
+        .clone()
+        .then(
+            just(TokenKind::Colon)
+                .ignore_then(type_parser.clone())
+                .or_not(),
+        );
 
     let params = param
-        .map(|(name, _)| Param {
+        .map(|(name, ty)| Param {
             span: name.span,
             name,
-            type_annotation: None,
+            type_annotation: ty,
             default: None,
         })
         .separated_by(just(TokenKind::Comma))
@@ -1052,7 +1154,7 @@ fn module_parser<'src>(
         .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
 
     let let_decl_raw =
-        build_let_decl_parser(pattern_var.clone(), type_name.clone(), expr.clone());
+        build_let_decl_parser(pattern.clone(), type_parser.clone(), expr.clone());
     let let_decl = attr_list
         .clone()
         .then(let_decl_raw.clone())
@@ -1064,7 +1166,7 @@ fn module_parser<'src>(
         });
 
     let var_decl_raw =
-        build_var_decl_parser(pattern_var.clone(), type_name.clone(), expr.clone());
+        build_var_decl_parser(pattern.clone(), type_parser.clone(), expr.clone());
     let var_decl = attr_list
         .clone()
         .then(var_decl_raw.clone())
@@ -1078,8 +1180,8 @@ fn module_parser<'src>(
     let block_body_parser = {
         let stmt = build_stmt_parser(
             expr.clone(),
-            pattern_var.clone(),
-            type_name.clone(),
+            pattern_for_block.clone(),
+            type_parser.clone(),
             ident.clone().map(Expr::identifier),
         );
         just(TokenKind::LBrace)
@@ -1094,14 +1196,14 @@ fn module_parser<'src>(
         .then(params)
         .then(
             just(TokenKind::Arrow)
-                .ignore_then(type_name.clone())
+                .ignore_then(type_parser.clone())
                 .or_not(),
         )
         .then(choice((
             just(TokenKind::Assign).ignore_then(expr.clone()),
             block_body_parser.clone(),
         )))
-        .map(move |((((fn_span, name), params), _ret_type), body)| {
+        .map(move |((((fn_span, name), params), ret_type), body)| {
             let function_span = Span::new(fn_span.start.min(name.span.start), body.span().end);
             record_streaming_success(&streaming_state_success, function_span);
             Function {
@@ -1109,7 +1211,7 @@ fn module_parser<'src>(
                 params,
                 span: function_span,
                 body,
-                ret_type: None,
+                ret_type,
                 attrs: Vec::new(),
             }
         });
@@ -1122,6 +1224,204 @@ fn module_parser<'src>(
                 function.attrs = attrs;
             }
             function
+        });
+
+    #[derive(Clone)]
+    enum ConductorSection {
+        Dsl(ConductorDslDef),
+        Channels(Vec<ConductorChannelRoute>),
+        Execution(ConductorExecutionBlock),
+        Monitoring(ConductorMonitoringBlock),
+    }
+
+    let conductor_endpoint = dotted_ident
+        .clone()
+        .map(|path| ConductorEndpoint {
+            span: path.span,
+            path,
+        });
+
+    let conductor_arg = choice((
+        ident
+            .clone()
+            .then_ignore(just(TokenKind::Colon))
+            .then(expr.clone())
+            .map_with_span(|(name, value), span: Range<usize>| ConductorArg {
+                name: Some(name),
+                value,
+                span: range_to_span(span),
+            }),
+        expr.clone()
+            .map_with_span(|value, span: Range<usize>| ConductorArg {
+                name: None,
+                value,
+                span: range_to_span(span),
+            }),
+    ));
+
+    let conductor_tail = just(TokenKind::PipeForward)
+        .ignore_then(ident.clone())
+        .then(
+            conductor_arg
+                .clone()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing()
+                .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
+                .or_not(),
+        )
+        .map_with_span(|(stage, args), span: Range<usize>| ConductorDslTail {
+            stage,
+            args: args.unwrap_or_default(),
+            span: range_to_span(span),
+        });
+
+    let conductor_dsl_def = ident
+        .clone()
+        .then_ignore(just(TokenKind::Colon))
+        .then(ident.clone())
+        .then(
+            just(TokenKind::Assign)
+                .ignore_then(expr.clone())
+                .map(|expr| {
+                    let span = expr.span();
+                    ConductorPipelineSpec { expr, span }
+                })
+                .or_not(),
+        )
+        .then(conductor_tail.repeated())
+        .map_with_span(|(((alias, target), pipeline), tails), span: Range<usize>| {
+            ConductorSection::Dsl(ConductorDslDef {
+                alias,
+                target,
+                pipeline,
+                tails,
+                span: range_to_span(span),
+            })
+        });
+
+    let conductor_channel_route = conductor_endpoint
+        .clone()
+        .then_ignore(just(TokenKind::ChannelPipe))
+        .then(conductor_endpoint.clone())
+        .then_ignore(just(TokenKind::Colon))
+        .then(type_parser.clone())
+        .map_with_span(|((source, target), payload), span: Range<usize>| {
+            ConductorChannelRoute {
+                source,
+                target,
+                payload,
+                span: range_to_span(span),
+            }
+        });
+
+    let conductor_channels = just(TokenKind::KeywordChannels)
+        .ignore_then(just(TokenKind::LBrace))
+        .ignore_then(
+            conductor_channel_route
+                .clone()
+                .then_ignore(
+                    just(TokenKind::Comma)
+                        .or(just(TokenKind::Semicolon))
+                        .repeated(),
+                )
+                .repeated(),
+        )
+        .then_ignore(just(TokenKind::RBrace))
+        .map(ConductorSection::Channels);
+
+    let block_only_expr = expr.clone().try_map(|body, span: Range<usize>| match body.kind {
+        ExprKind::Block { .. } => Ok((body, range_to_span(span))),
+        _ => Err(Simple::custom(
+            span,
+            "ブロック式が必要です",
+        )),
+    });
+
+    let conductor_execution = just(TokenKind::KeywordExecution)
+        .ignore_then(block_only_expr.clone())
+        .map(|(body, span)| {
+            ConductorSection::Execution(ConductorExecutionBlock { body, span })
+        });
+
+    let monitor_target = choice((
+        just(TokenKind::KeywordWith)
+            .ignore_then(qualified_ident.clone())
+            .map(ConductorMonitorTarget::Module),
+        dotted_ident
+            .clone()
+            .map(|path| ConductorMonitorTarget::Endpoint(ConductorEndpoint {
+                span: path.span,
+                path,
+            })),
+    ))
+    .or_not();
+
+    let conductor_monitoring = just(TokenKind::KeywordMonitoring)
+        .ignore_then(monitor_target)
+        .then(block_only_expr.clone().or_not())
+        .map_with_span(|(target, body), span: Range<usize>| {
+            let fallback_span = range_to_span(span);
+            let (body, block_span) = body
+                .map(|(expr, expr_span)| (expr, expr_span))
+                .unwrap_or_else(|| {
+                    let empty_block = Expr::block(Vec::new(), fallback_span);
+                    (empty_block, fallback_span)
+                });
+            ConductorSection::Monitoring(ConductorMonitoringBlock {
+                target,
+                body,
+                span: block_span,
+            })
+        });
+
+    let conductor_section = choice((
+        conductor_dsl_def,
+        conductor_channels,
+        conductor_execution,
+        conductor_monitoring,
+    ));
+
+    let conductor_decl = just(TokenKind::KeywordConductor)
+        .ignore_then(ident.clone())
+        .then(
+            just(TokenKind::LBrace)
+                .ignore_then(conductor_section.repeated())
+                .then_ignore(just(TokenKind::RBrace)),
+        )
+        .map_with_span(|(name, sections), span: Range<usize>| {
+            let mut dsl_defs = Vec::new();
+            let mut channels = Vec::new();
+            let mut execution = None;
+            let mut monitoring = None;
+            for section in sections {
+                match section {
+                    ConductorSection::Dsl(def) => dsl_defs.push(def),
+                    ConductorSection::Channels(mut routes) => channels.append(&mut routes),
+                    ConductorSection::Execution(block) => {
+                        if execution.is_none() {
+                            execution = Some(block);
+                        }
+                    }
+                    ConductorSection::Monitoring(block) => {
+                        if monitoring.is_none() {
+                            monitoring = Some(block);
+                        }
+                    }
+                }
+            }
+            Decl {
+                attrs: Vec::new(),
+                visibility: Visibility::Private,
+                span: range_to_span(span.clone()),
+                kind: DeclKind::Conductor(ConductorDecl {
+                    name,
+                    dsl_defs,
+                    channels,
+                    execution,
+                    monitoring,
+                    span: range_to_span(span),
+                }),
+            }
         });
 
     let effect_decl = just(TokenKind::KeywordEffect)
@@ -1145,6 +1445,7 @@ fn module_parser<'src>(
         effect_decl.clone().map(ModuleItem::Effect),
         let_decl.clone().map(ModuleItem::Decl),
         var_decl.clone().map(ModuleItem::Decl),
+        conductor_decl.clone().map(ModuleItem::Decl),
         function.clone().map(ModuleItem::Function),
     ));
 
@@ -1247,7 +1548,7 @@ fn record_decl_trace_events(decl: &Decl, events: &mut Vec<ParserTraceEvent>) {
         DeclKind::Handler(handler) => {
             events.push(ParserTraceEvent::handler(handler));
         }
-        DeclKind::Conductor { .. }
+        DeclKind::Conductor(_)
         | DeclKind::Fn { .. }
         | DeclKind::Type { .. }
         | DeclKind::Trait { .. }
@@ -1798,6 +2099,15 @@ fn span_union(left: Span, right: Span) -> Span {
 fn merge_qualified_ident(first: Ident, rest: Vec<Ident>) -> Ident {
     rest.into_iter().fold(first, |mut acc, segment| {
         acc.name.push_str("::");
+        acc.name.push_str(&segment.name);
+        acc.span = span_union(acc.span, segment.span);
+        acc
+    })
+}
+
+fn merge_dotted_ident(first: Ident, rest: Vec<Ident>) -> Ident {
+    rest.into_iter().fold(first, |mut acc, segment| {
+        acc.name.push('.');
         acc.name.push_str(&segment.name);
         acc.span = span_union(acc.span, segment.span);
         acc

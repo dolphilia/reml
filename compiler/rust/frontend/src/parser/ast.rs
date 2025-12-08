@@ -181,7 +181,7 @@ impl Decl {
             DeclKind::Impl { name, .. } => format!("impl {}", name.name),
             DeclKind::Extern { name, .. } => format!("extern {}", name.name),
             DeclKind::Handler(handler) => format!("handler {}", handler.name.name),
-            DeclKind::Conductor { name, .. } => format!("conductor {}", name.name),
+            DeclKind::Conductor(decl) => format!("conductor {}", decl.name.name),
         }
     }
 }
@@ -221,10 +221,85 @@ pub enum DeclKind {
     },
     Effect(EffectDecl),
     Handler(HandlerDecl),
-    Conductor {
-        name: Ident,
-        span: Span,
-    },
+    Conductor(ConductorDecl),
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ConductorDecl {
+    pub name: Ident,
+    pub dsl_defs: Vec<ConductorDslDef>,
+    pub channels: Vec<ConductorChannelRoute>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execution: Option<ConductorExecutionBlock>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub monitoring: Option<ConductorMonitoringBlock>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ConductorDslDef {
+    pub alias: Ident,
+    pub target: Ident,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pipeline: Option<ConductorPipelineSpec>,
+    pub tails: Vec<ConductorDslTail>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ConductorPipelineSpec {
+    pub expr: Expr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ConductorDslTail {
+    pub stage: Ident,
+    pub args: Vec<ConductorArg>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ConductorArg {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<Ident>,
+    pub value: Expr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ConductorChannelRoute {
+    pub source: ConductorEndpoint,
+    pub target: ConductorEndpoint,
+    pub payload: TypeAnnot,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ConductorEndpoint {
+    pub path: Ident,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ConductorExecutionBlock {
+    pub body: Expr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ConductorMonitoringBlock {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target: Option<ConductorMonitorTarget>,
+    pub body: Expr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ConductorMonitorTarget {
+    Module(Ident),
+    Endpoint(ConductorEndpoint),
 }
 
 #[derive(Debug, Clone, Serialize)]
