@@ -569,6 +569,7 @@ dependencies = [
  "reml_adapter",
  "serde",
  "serde_json",
+ "thiserror",
  "time",
  "toml",
  "unicode-normalization",

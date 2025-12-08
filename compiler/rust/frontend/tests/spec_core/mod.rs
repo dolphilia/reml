@@ -103,3 +103,55 @@ fn ch1_let_002_supports_tuple_pattern_bindings() {
         "expected sum_pair to contain a tuple-pattern let binding"
     );
 }
+
+#[test]
+fn ch1_attr_101_records_block_attributes() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/attributes/bnf-attr-cfg-let-gate-ok.reml",
+    );
+    let select_fn = module
+        .functions
+        .iter()
+        .find(|function| function.name.name == "select_message")
+        .expect("select_message should exist");
+    let statements = match &select_fn.body.kind {
+        ExprKind::Block { statements, .. } => statements,
+        other => panic!("expected select_message body to be a block, got {:?}", other),
+    };
+    let attr_block = statements.iter().find_map(|stmt| {
+        if let StmtKind::Expr { expr } = &stmt.kind {
+            if let ExprKind::Block { attrs, .. } = &expr.kind {
+                if !attrs.is_empty() {
+                    return Some(attrs);
+                }
+            }
+        }
+        None
+    });
+    let attrs = attr_block.expect("expected block expression with attributes");
+    assert_eq!(attrs.len(), 1, "expected a single @cfg attribute");
+    assert_eq!(attrs[0].name.name, "cfg");
+    assert_eq!(
+        attrs[0].args.len(),
+        1,
+        "expected cfg attribute to retain its predicate expression"
+    );
+}
+
+#[test]
+fn ch1_attr_102_attaches_attributes_to_functions() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/attributes/bnf-attr-cfg-missing-flag-error.reml",
+    );
+    let hidden_fn = module
+        .functions
+        .iter()
+        .find(|function| function.name.name == "hidden")
+        .expect("hidden function should be parsed");
+    assert_eq!(
+        hidden_fn.attrs.len(),
+        1,
+        "expected @cfg attribute on hidden function"
+    );
+    assert_eq!(hidden_fn.attrs[0].name.name, "cfg");
+}

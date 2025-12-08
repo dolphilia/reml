@@ -43,9 +43,9 @@ use crate::streaming::{
 use crate::token::{Token, TokenKind};
 use crate::unicode::{unicode_diagnostic_code, UnicodeDetail};
 use ast::{
-    Decl, DeclKind, EffectDecl, Expr, ExprKind, Function, HandlerDecl, Ident, Literal, LiteralKind,
-    MatchArm, Module, ModuleHeader, ModulePath, Param, Pattern, PatternKind, RelativeHead, Stmt,
-    StmtKind, TypeAnnot, TypeKind, UseDecl, UseItem, UseTree, Visibility,
+    Attribute, Decl, DeclKind, EffectDecl, Expr, ExprKind, Function, HandlerDecl, Ident, Literal,
+    LiteralKind, MatchArm, Module, ModuleHeader, ModulePath, Param, Pattern, PatternKind,
+    RelativeHead, Stmt, StmtKind, TypeAnnot, TypeKind, UseDecl, UseItem, UseTree, Visibility,
 };
 
 /// パース結果の簡易表現。
@@ -798,8 +798,11 @@ fn module_parser<'src>(
         kind: PatternKind::Var(ident),
     });
 
-    let expr = recursive(|expr| {
-        let ident_expr = ident.clone().map(Expr::identifier);
+    let ident_for_expr = ident.clone();
+    let expr = recursive(move |expr| {
+        let attribute = build_attribute_parser(expr.clone(), ident_for_expr.clone());
+        let attr_list = attribute.clone().repeated();
+        let ident_expr = ident_for_expr.clone().map(Expr::identifier);
 
         let bool_literal = choice((
             just(TokenKind::KeywordTrue)
@@ -829,10 +832,21 @@ fn module_parser<'src>(
 
         let stmt = build_stmt_parser(expr.clone(), pattern_var.clone(), type_name.clone());
 
-        let block_expr = just(TokenKind::LBrace)
+        let raw_block = just(TokenKind::LBrace)
             .ignore_then(stmt.repeated())
             .then_ignore(just(TokenKind::RBrace))
-            .map_with_span(|stmts, span: Range<usize>| Expr::block(stmts, range_to_span(span)));
+            .map_with_span(|stmts, span: Range<usize>| (stmts, range_to_span(span)));
+
+        let block_expr = attr_list
+            .clone()
+            .then(raw_block.clone())
+            .map(|(attrs, (stmts, span))| {
+                if attrs.is_empty() {
+                    Expr::block(stmts, span)
+                } else {
+                    Expr::block_with_attrs(stmts, attrs, span)
+                }
+            });
 
         let separator = choice((
             just(TokenKind::Dot).to(()),
@@ -841,9 +855,9 @@ fn module_parser<'src>(
                 .to(()),
         ));
 
-        let qualified_ident = ident
+        let qualified_ident = ident_for_expr
             .clone()
-            .then(separator.ignore_then(ident.clone()).repeated())
+            .then(separator.ignore_then(ident_for_expr.clone()).repeated())
             .map(|(first, rest)| merge_qualified_ident(first, rest));
 
         let pattern_ctor = qualified_ident
@@ -921,7 +935,7 @@ fn module_parser<'src>(
             .map_with_span(|args, span: Range<usize>| (args, range_to_span(span)));
 
         let field_ident = choice((
-            ident.clone(),
+            ident_for_expr.clone(),
             just(TokenKind::KeywordNew).map_with_span(|_, span: Range<usize>| Ident {
                 name: "new".to_string(),
                 span: range_to_span(span),
@@ -985,7 +999,7 @@ fn module_parser<'src>(
 
         let perform_expr = just(TokenKind::KeywordPerform)
             .map_with_span(move |_, span: Range<usize>| range_to_span(span))
-            .then(ident.clone())
+            .then(ident_for_expr.clone())
             .then(expr.clone())
             .map(|((perform_span, effect), argument)| {
                 let arg_span = argument.span();
@@ -993,8 +1007,19 @@ fn module_parser<'src>(
                 Expr::perform(effect, argument, full_span)
             });
 
-        choice((if_expr, perform_expr, block_expr, additive)).boxed()
+        let assignment_expr = ident_expr
+            .clone()
+            .then_ignore(just(TokenKind::Assign))
+            .then(expr.clone())
+            .map_with_span(|(target, value), span: Range<usize>| {
+                Expr::assign(target, value, range_to_span(span))
+            });
+
+        choice((if_expr, perform_expr, assignment_expr, block_expr, additive)).boxed()
     });
+
+    let attribute = build_attribute_parser(expr.clone(), ident.clone());
+    let attr_list = attribute.clone().repeated();
 
     let param = ident.clone().then(
         just(TokenKind::Colon)
@@ -1013,8 +1038,17 @@ fn module_parser<'src>(
         .allow_trailing()
         .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
 
-    let let_decl =
+    let let_decl_raw =
         build_let_decl_parser(pattern_var.clone(), type_name.clone(), expr.clone());
+    let let_decl = attr_list
+        .clone()
+        .then(let_decl_raw.clone())
+        .map(|(attrs, mut decl)| {
+            if !attrs.is_empty() {
+                decl.attrs = attrs;
+            }
+            decl
+        });
 
     let block_body_parser = {
         let stmt = build_stmt_parser(expr.clone(), pattern_var.clone(), type_name.clone());
@@ -1024,7 +1058,7 @@ fn module_parser<'src>(
             .map_with_span(|stmts, span: Range<usize>| Expr::block(stmts, range_to_span(span)))
     };
 
-    let function = just(TokenKind::KeywordFn)
+    let fn_core = just(TokenKind::KeywordFn)
         .map_with_span(move |_, span: Range<usize>| range_to_span(span))
         .then(ident.clone())
         .then(params)
@@ -1046,7 +1080,18 @@ fn module_parser<'src>(
                 span: function_span,
                 body,
                 ret_type: None,
+                attrs: Vec::new(),
             }
+        });
+
+    let function = attr_list
+        .clone()
+        .then(fn_core.clone())
+        .map(|(attrs, mut function)| {
+            if !attrs.is_empty() {
+                function.attrs = attrs;
+            }
+            function
         });
 
     let effect_decl = just(TokenKind::KeywordEffect)
@@ -1305,7 +1350,7 @@ fn record_expr_trace_events(expr: &Expr, events: &mut Vec<ParserTraceEvent>) {
             record_expr_trace_events(&handle.target, events);
         }
         ExprKind::Continue => {}
-        ExprKind::Block { statements } => {
+        ExprKind::Block { statements, .. } => {
             for stmt in statements {
                 record_stmt_trace_events(stmt, events);
             }
@@ -1791,6 +1836,41 @@ where
     });
 
     choice((let_stmt, expr_stmt))
+}
+
+fn build_attribute_parser<P, Q>(
+    expr: P,
+    ident: Q,
+) -> impl ChumskyParser<TokenKind, Attribute, Error = Simple<TokenKind>> + Clone
+where
+    P: ChumskyParser<TokenKind, Expr, Error = Simple<TokenKind>> + Clone,
+    Q: ChumskyParser<TokenKind, Ident, Error = Simple<TokenKind>> + Clone,
+{
+    let args = expr
+        .clone()
+        .separated_by(just(TokenKind::Comma))
+        .allow_trailing()
+        .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
+        .map_with_span(|values, span: Range<usize>| (values, Some(range_to_span(span))))
+        .or_not();
+
+    just(TokenKind::At)
+        .map_with_span(|_, span: Range<usize>| range_to_span(span))
+        .then(ident)
+        .then(args)
+        .map(|((at_span, name), args)| {
+            let (args, args_span) = args.unwrap_or_else(|| (Vec::new(), None));
+            let span_start = at_span.start.min(name.span.start);
+            let span_end = args_span
+                .as_ref()
+                .map(|span| span.end)
+                .unwrap_or(name.span.end);
+            Attribute {
+                name,
+                args,
+                span: Span::new(span_start, span_end),
+            }
+        })
 }
 
 fn record_streaming_error(

@@ -319,6 +319,7 @@ pub enum ExprKind {
     },
     Continue,
     Block {
+        attrs: Vec<Attribute>,
         statements: Vec<Stmt>,
     },
     Unsafe {
@@ -715,6 +716,7 @@ pub struct Function {
     pub body: Expr,
     pub ret_type: Option<TypeAnnot>,
     pub span: Span,
+    pub attrs: Vec<Attribute>,
 }
 
 impl Function {
@@ -956,9 +958,30 @@ impl Expr {
     }
 
     pub fn block(statements: Vec<Stmt>, span: Span) -> Self {
+        Self::block_with_attrs(statements, Vec::new(), span)
+    }
+
+    pub fn block_with_attrs(
+        statements: Vec<Stmt>,
+        attrs: Vec<Attribute>,
+        span: Span,
+    ) -> Self {
         Self {
             span,
-            kind: ExprKind::Block { statements },
+            kind: ExprKind::Block {
+                attrs,
+                statements,
+            },
+        }
+    }
+
+    pub fn assign(target: Expr, value: Expr, span: Span) -> Self {
+        Self {
+            span,
+            kind: ExprKind::Assign {
+                target: Box::new(target),
+                value: Box::new(value),
+            },
         }
     }
 
@@ -1018,7 +1041,7 @@ impl Expr {
                     .map(|expr| expr.render())
                     .unwrap_or_else(|| "unit".to_string())
             ),
-            ExprKind::Block { statements } => format!(
+            ExprKind::Block { statements, .. } => format!(
                 "block({})",
                 statements
                     .iter()
