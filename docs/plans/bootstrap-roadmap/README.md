@@ -142,6 +142,11 @@ Rust 実装を実務レベルの `.reml` シナリオで検証し、セルフホ
 
 **依存関係**: Phase 3 の全成果完了 → Phase 4 シナリオ整備 → Phase 5 へハンドオーバー
 
+#### Phase 4 監査レポートと自動同期
+
+- `tooling/examples/run_phase4_suite.py` / `tooling/examples/run_examples.sh --suite spec_core|practical` を用いて `reports/spec-audit/ch4/spec-core-dashboard.md`・`reports/spec-audit/ch4/practical-suite-index.md` を生成し、週次レビュー資料として参照する。
+- `tooling/examples/update_phase4_resolution.py` を実行すると最新の ScenarioResult が `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `resolution` / `resolution_notes` / `spec_vs_impl_decision` に反映される。`reports/spec-audit/ch4/logs/` と併せて KPI を追跡し、Phase 5 へのハンドオーバーに備える。
+
 ### Phase 5: セルフホスト移行
 
 Phase 4 の成果を基に Rust コンパイラが自分自身をビルドできる状態を作り、Stage 0/1/2 の再現性と監査ログを確立する（期間: 約10週）。
