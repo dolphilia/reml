@@ -11,13 +11,31 @@ use super::scheme::Scheme;
 use super::types::{BuiltinType, Type, TypeVarGen};
 use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 use crate::effects::diagnostics::CapabilityMismatch;
-use crate::parser::ast::{Expr, ExprKind, Function, Ident, Literal, LiteralKind, Module};
+use crate::parser::ast::{
+    Decl, DeclKind, Expr, ExprKind, Function, Ident, Literal, LiteralKind, Module, Pattern,
+    PatternKind, Stmt, StmtKind,
+};
 use crate::semantics::typed;
 use crate::span::Span;
 
 /// 型推論の簡易ドライバ。現時点では AST を走査して
 /// メトリクスとサマリ情報のみを生成する。
 pub struct TypecheckDriver;
+
+#[derive(Clone, Copy)]
+struct FunctionContext<'a> {
+    name: Option<&'a str>,
+    is_pure: bool,
+}
+
+impl<'a> FunctionContext<'a> {
+    fn new(name: &'a str, is_pure: bool) -> Self {
+        Self {
+            name: Some(name),
+            is_pure,
+        }
+    }
+}
 
 impl TypecheckDriver {
     pub fn infer_module(module: Option<&Module>, config: &TypecheckConfig) -> TypecheckReport {
@@ -58,6 +76,11 @@ impl TypecheckDriver {
             let mut constraints = Vec::new();
             let mut env = module_env.clone();
             let mut param_bindings = Vec::new();
+            let is_pure = function
+                .attrs
+                .iter()
+                .any(|attr| attr.name.name == "pure");
+            let function_context = FunctionContext::new(function.name.name.as_str(), is_pure);
 
             for param in &function.params {
                 let ty = var_gen.fresh_type();
@@ -71,7 +94,6 @@ impl TypecheckDriver {
 
             let typed_body = infer_function(
                 function,
-                function.name.name.as_str(),
                 &mut env,
                 &mut var_gen,
                 &mut solver,
@@ -80,6 +102,7 @@ impl TypecheckDriver {
                 &mut metrics,
                 &mut violations,
                 &mut dict_ref_drafts,
+                function_context,
             );
 
             all_constraints.extend(constraints.drain(..));
@@ -91,7 +114,7 @@ impl TypecheckDriver {
                 .map(|binding| substitution.apply(&binding.ty))
                 .collect::<Vec<_>>();
             let function_type = Type::arrow(param_types.clone(), resolved_return.clone());
-            let scheme = generalize_function_type(&module_env, function_type);
+            let scheme = generalize_type(&module_env, function_type);
             let scheme_id = typed_module.schemes.len();
             typed_module
                 .schemes
@@ -244,6 +267,8 @@ pub enum TypecheckViolationKind {
     ResidualLeak,
     StageMismatch,
     IteratorStageMismatch,
+    ValueRestriction,
+    PurityViolation,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -394,6 +419,54 @@ impl TypecheckViolation {
         .with_expected_summary(top_level_declaration_summary())
     }
 
+    fn value_restriction(span: Span, binding: String) -> Self {
+        Self {
+            kind: TypecheckViolationKind::ValueRestriction,
+            code: "language.inference.value_restriction",
+            message: format!("`var {binding}` は汎化できない式を共有しようとしました。"),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "可変セルを共有する場合は `fn` で包むか、明示的な型を指定してください。",
+            )],
+            capability: None,
+            function: None,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn purity_violation(
+        span: Span,
+        function: Option<String>,
+        effect: String,
+    ) -> Self {
+        let message = match function.as_ref() {
+            Some(name) => {
+                format!("`@pure` 関数 `{}` で `perform {}` が検出されました。", name, effect)
+            }
+            None => format!(
+                "`@pure` ブロックで `perform {}` が検出されました。",
+                effect
+            ),
+        };
+        Self {
+            kind: TypecheckViolationKind::PurityViolation,
+            code: "effects.purity.violated",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "`@pure` を外すか `{}` をハンドラで捕捉してください。",
+                effect
+            ))],
+            capability: None,
+            function,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
     fn ast_unavailable() -> Self {
         Self {
             kind: TypecheckViolationKind::AstUnavailable,
@@ -414,10 +487,12 @@ impl TypecheckViolation {
     pub fn domain(&self) -> &'static str {
         match self.kind {
             TypecheckViolationKind::ConditionLiteralBool
-            | TypecheckViolationKind::AstUnavailable => "type",
+            | TypecheckViolationKind::AstUnavailable
+            | TypecheckViolationKind::ValueRestriction => "type",
             TypecheckViolationKind::ResidualLeak
             | TypecheckViolationKind::StageMismatch
-            | TypecheckViolationKind::IteratorStageMismatch => "effects",
+            | TypecheckViolationKind::IteratorStageMismatch
+            | TypecheckViolationKind::PurityViolation => "effects",
         }
     }
 
@@ -440,7 +515,6 @@ struct FunctionStats {
 
 fn infer_function(
     function: &Function,
-    function_name: &str,
     env: &mut TypeEnv,
     var_gen: &mut TypeVarGen,
     solver: &mut ConstraintSolver,
@@ -449,6 +523,7 @@ fn infer_function(
     metrics: &mut TypecheckMetrics,
     violations: &mut Vec<TypecheckViolation>,
     dict_refs: &mut Vec<DictRefDraft>,
+    context: FunctionContext<'_>,
 ) -> TypedExprDraft {
     infer_expr(
         &function.body,
@@ -460,13 +535,13 @@ fn infer_function(
         metrics,
         violations,
         dict_refs,
-        Some(function_name),
+        context,
     )
 }
 
 fn infer_expr(
     expr: &Expr,
-    env: &TypeEnv,
+    env: &mut TypeEnv,
     var_gen: &mut TypeVarGen,
     solver: &mut ConstraintSolver,
     constraints: &mut Vec<Constraint>,
@@ -474,7 +549,7 @@ fn infer_expr(
     metrics: &mut TypecheckMetrics,
     violations: &mut Vec<TypecheckViolation>,
     dict_refs: &mut Vec<DictRefDraft>,
-    function_name: Option<&str>,
+    context: FunctionContext<'_>,
 ) -> TypedExprDraft {
     stats.typed_exprs += 1;
     metrics.record_expr();
@@ -525,7 +600,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
-                function_name,
+                context,
             );
             let right_result = infer_expr(
                 right,
@@ -537,7 +612,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
-                function_name,
+                context,
             );
             stats.constraints += 1;
             metrics.record_constraint("binary.operands");
@@ -573,7 +648,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
-                function_name,
+                context,
             );
             let typed_args = args
                 .iter()
@@ -588,7 +663,7 @@ fn infer_expr(
                         metrics,
                         violations,
                         dict_refs,
-                        function_name,
+                        context,
                     )
                 })
                 .collect();
@@ -613,7 +688,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
-                function_name,
+                context,
             );
             constraints.push(Constraint::has_capability(
                 Type::builtin(BuiltinType::Unknown),
@@ -625,6 +700,13 @@ fn infer_expr(
                 call.effect.name.clone(),
                 &argument_result.ty,
             );
+            if context.is_pure {
+                violations.push(TypecheckViolation::purity_violation(
+                    expr.span(),
+                    context.name.map(|name| name.to_string()),
+                    call.effect.name.clone(),
+                ));
+            }
             make_typed(
                 expr,
                 TypedExprKindDraft::PerformCall {
@@ -652,14 +734,9 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
-                function_name,
+                context,
             );
-            check_bool_condition(
-                condition.span(),
-                &condition_result.ty,
-                violations,
-                function_name,
-            );
+            check_bool_condition(condition.span(), &condition_result.ty, violations, context);
             let then_result = infer_expr(
                 then_branch,
                 env,
@@ -670,7 +747,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
-                function_name,
+                context,
             );
             let synthetic_else = Expr::literal(
                 Literal {
@@ -689,7 +766,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
-                function_name,
+                context,
             );
             stats.constraints += 1;
             metrics.record_constraint("conditional");
@@ -715,12 +792,263 @@ fn infer_expr(
                 Vec::new(),
             )
         }
+        ExprKind::Block { statements, .. } => {
+            let (block_ty, block_dict_refs) = infer_block(
+                statements,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                context,
+            );
+            make_typed(
+                expr,
+                TypedExprKindDraft::Unknown,
+                block_ty,
+                block_dict_refs,
+            )
+        }
+        ExprKind::Lambda { params, body, .. } => {
+            let mut lambda_env = env.enter_scope();
+            let mut param_types = Vec::new();
+            for param in params {
+                let ty = var_gen.fresh_type();
+                lambda_env.insert(param.name.name.clone(), Scheme::simple(ty.clone()));
+                param_types.push(ty);
+            }
+            let body_result = infer_expr(
+                body,
+                &mut lambda_env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                context,
+            );
+            let lambda_ty = Type::arrow(param_types, body_result.ty.clone());
+            make_typed(
+                expr,
+                TypedExprKindDraft::Unknown,
+                lambda_ty,
+                body_result.dict_ref_ids,
+            )
+        }
         _ => make_typed(
             expr,
             TypedExprKindDraft::Unknown,
             Type::builtin(BuiltinType::Unknown),
             Vec::new(),
         ),
+    }
+}
+
+fn infer_block(
+    statements: &[Stmt],
+    parent_env: &TypeEnv,
+    var_gen: &mut TypeVarGen,
+    solver: &mut ConstraintSolver,
+    constraints: &mut Vec<Constraint>,
+    stats: &mut FunctionStats,
+    metrics: &mut TypecheckMetrics,
+    violations: &mut Vec<TypecheckViolation>,
+    dict_refs: &mut Vec<DictRefDraft>,
+    context: FunctionContext<'_>,
+) -> (Type, Vec<typed::DictRefId>) {
+    let mut block_env = parent_env.enter_scope();
+    let mut last_ty = Type::builtin(BuiltinType::Unknown);
+    let mut block_dict_refs = Vec::new();
+    for stmt in statements {
+        match &stmt.kind {
+            StmtKind::Decl { decl } => {
+                let stmt_refs = infer_decl(
+                    decl,
+                    &mut block_env,
+                    var_gen,
+                    solver,
+                    constraints,
+                    stats,
+                    metrics,
+                    violations,
+                    dict_refs,
+                    context,
+                );
+                block_dict_refs.extend(stmt_refs);
+            }
+            StmtKind::Expr { expr } => {
+                let expr_result = infer_expr(
+                    expr,
+                    &mut block_env,
+                    var_gen,
+                    solver,
+                    constraints,
+                    stats,
+                    metrics,
+                    violations,
+                    dict_refs,
+                    context,
+                );
+                last_ty = expr_result.ty.clone();
+                block_dict_refs.extend(expr_result.dict_ref_ids);
+            }
+            StmtKind::Assign { target, value } => {
+                let target_result = infer_expr(
+                    target,
+                    &mut block_env,
+                    var_gen,
+                    solver,
+                    constraints,
+                    stats,
+                    metrics,
+                    violations,
+                    dict_refs,
+                    context,
+                );
+                block_dict_refs.extend(target_result.dict_ref_ids);
+                let value_result = infer_expr(
+                    value,
+                    &mut block_env,
+                    var_gen,
+                    solver,
+                    constraints,
+                    stats,
+                    metrics,
+                    violations,
+                    dict_refs,
+                    context,
+                );
+                block_dict_refs.extend(value_result.dict_ref_ids);
+            }
+            StmtKind::Defer { expr } => {
+                let defer_result = infer_expr(
+                    expr,
+                    &mut block_env,
+                    var_gen,
+                    solver,
+                    constraints,
+                    stats,
+                    metrics,
+                    violations,
+                    dict_refs,
+                    context,
+                );
+                block_dict_refs.extend(defer_result.dict_ref_ids);
+            }
+        }
+    }
+    (last_ty, block_dict_refs)
+}
+
+fn infer_decl(
+    decl: &Decl,
+    env: &mut TypeEnv,
+    var_gen: &mut TypeVarGen,
+    solver: &mut ConstraintSolver,
+    constraints: &mut Vec<Constraint>,
+    stats: &mut FunctionStats,
+    metrics: &mut TypecheckMetrics,
+    violations: &mut Vec<TypecheckViolation>,
+    dict_refs: &mut Vec<DictRefDraft>,
+    context: FunctionContext<'_>,
+) -> Vec<typed::DictRefId> {
+    match &decl.kind {
+        DeclKind::Let {
+            pattern,
+            value,
+            type_annotation: _,
+        } => infer_binding(
+            pattern,
+            value,
+            env,
+            var_gen,
+            solver,
+            constraints,
+            stats,
+            metrics,
+            violations,
+            dict_refs,
+            context,
+        ),
+        DeclKind::Var {
+            pattern,
+            value,
+            type_annotation,
+        } => {
+            let dicts = infer_binding(
+                pattern,
+                value,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                context,
+            );
+            if type_annotation.is_none() {
+                if let Some(name) = pattern_binding_name(pattern) {
+                    violations.push(TypecheckViolation::value_restriction(decl.span, name));
+                }
+            }
+            dicts
+        }
+        _ => Vec::new(),
+    }
+}
+
+fn infer_binding(
+    pattern: &Pattern,
+    value: &Expr,
+    env: &mut TypeEnv,
+    var_gen: &mut TypeVarGen,
+    solver: &mut ConstraintSolver,
+    constraints: &mut Vec<Constraint>,
+    stats: &mut FunctionStats,
+    metrics: &mut TypecheckMetrics,
+    violations: &mut Vec<TypecheckViolation>,
+    dict_refs: &mut Vec<DictRefDraft>,
+    context: FunctionContext<'_>,
+) -> Vec<typed::DictRefId> {
+    let value_result = infer_expr(
+        value,
+        env,
+        var_gen,
+        solver,
+        constraints,
+        stats,
+        metrics,
+        violations,
+        dict_refs,
+        context,
+    );
+    let substitution = solver.substitution().clone();
+    let resolved_ty = substitution.apply(&value_result.ty);
+    let scheme = generalize_type(env, resolved_ty.clone());
+    bind_pattern_to_env(pattern, &scheme, env);
+    value_result.dict_ref_ids
+}
+
+fn bind_pattern_to_env(pattern: &Pattern, scheme: &Scheme, env: &mut TypeEnv) {
+    match &pattern.kind {
+        PatternKind::Var(ident) => {
+            env.insert(ident.name.clone(), scheme.clone());
+        }
+        _ => {}
+    }
+}
+
+fn pattern_binding_name(pattern: &Pattern) -> Option<String> {
+    match &pattern.kind {
+        PatternKind::Var(ident) => Some(ident.name.clone()),
+        _ => None,
     }
 }
 
@@ -872,7 +1200,7 @@ fn register_dict_ref(
     id
 }
 
-fn generalize_function_type(env: &TypeEnv, ty: Type) -> Scheme {
+fn generalize_type(env: &TypeEnv, ty: Type) -> Scheme {
     let env_vars = env.free_type_variables();
     let mut quantifiers = ty
         .free_type_variables()
@@ -908,7 +1236,7 @@ fn check_bool_condition(
     span: Span,
     ty: &Type,
     violations: &mut Vec<TypecheckViolation>,
-    function_name: Option<&str>,
+    context: FunctionContext<'_>,
 ) {
     if matches!(ty, Type::Builtin(BuiltinType::Bool)) {
         return;
@@ -916,7 +1244,7 @@ fn check_bool_condition(
     violations.push(TypecheckViolation::condition_literal_bool(
         span,
         ty.clone(),
-        function_name.map(|name| name.to_string()),
+        context.name.map(|name| name.to_string()),
     ));
 }
 
@@ -1005,6 +1333,11 @@ fn collect_perform_effects(expr: &Expr, usages: &mut Vec<EffectUsage>) {
                 collect_perform_effects(then_branch, usages);
             }
         }
+        ExprKind::Block { statements, .. } => {
+            for stmt in statements {
+                collect_perform_effects_in_stmt(stmt, usages);
+            }
+        }
         ExprKind::Binary { left, right, .. } => {
             collect_perform_effects(left, usages);
             collect_perform_effects(right, usages);
@@ -1015,7 +1348,31 @@ fn collect_perform_effects(expr: &Expr, usages: &mut Vec<EffectUsage>) {
                 collect_perform_effects(arg, usages);
             }
         }
+        ExprKind::Lambda { body, .. } => {
+            collect_perform_effects(body, usages);
+        }
         ExprKind::Literal(_) | ExprKind::Identifier(_) => {}
+        _ => {}
+    }
+}
+
+fn collect_perform_effects_in_stmt(stmt: &Stmt, usages: &mut Vec<EffectUsage>) {
+    match &stmt.kind {
+        StmtKind::Decl { decl } => collect_perform_effects_in_decl(decl, usages),
+        StmtKind::Expr { expr } => collect_perform_effects(expr, usages),
+        StmtKind::Assign { target, value } => {
+            collect_perform_effects(target, usages);
+            collect_perform_effects(value, usages);
+        }
+        StmtKind::Defer { expr } => collect_perform_effects(expr, usages),
+    }
+}
+
+fn collect_perform_effects_in_decl(decl: &Decl, usages: &mut Vec<EffectUsage>) {
+    match &decl.kind {
+        DeclKind::Let { value, .. } | DeclKind::Var { value, .. } => {
+            collect_perform_effects(value, usages);
+        }
         _ => {}
     }
 }

@@ -1,7 +1,9 @@
 use reml_frontend::parser::ast::{
-    ConductorMonitorTarget, Decl, DeclKind, Expr, ExprKind, LiteralKind, Pattern, PatternKind, Stmt,
-    StmtKind, TypeKind, UseTree,
+    Attribute, ConductorMonitorTarget, Decl, DeclKind, EffectCall, Expr, ExprKind, Function, Ident,
+    LiteralKind, Module, Param, Pattern, PatternKind, Stmt, StmtKind, TypeKind, UseTree, Visibility,
 };
+use reml_frontend::typeck::{TypecheckConfig, TypecheckDriver, TypecheckReport};
+use reml_frontend::span::Span;
 
 mod common;
 
@@ -128,6 +130,7 @@ fn ch1_dsl_801_parses_conductor_sections() {
     }
 }
 
+
 #[test]
 fn ch2_stream_301_parses_streaming_example() {
     let module = parse_example_module(
@@ -227,6 +230,183 @@ fn expr_contains_array(expr: &Expr) -> bool {
         | ExprKind::ModulePath(_)
         | ExprKind::Continue => false,
     }
+}
+
+fn has_violation(report: &TypecheckReport, code: &str) -> bool {
+    report.violations.iter().any(|violation| violation.code == code)
+}
+
+fn dummy_span() -> Span {
+    Span::default()
+}
+
+fn make_ident(name: &str) -> Ident {
+    Ident {
+        name: name.to_string(),
+        span: dummy_span(),
+    }
+}
+
+fn make_pattern(name: &str) -> Pattern {
+    Pattern {
+        kind: PatternKind::Var(make_ident(name)),
+        span: dummy_span(),
+    }
+}
+
+fn make_let_decl(name: &str, value: Expr) -> Decl {
+    Decl {
+        attrs: Vec::new(),
+        visibility: Visibility::Private,
+        kind: DeclKind::Let {
+            pattern: make_pattern(name),
+            value,
+            type_annotation: None,
+        },
+        span: dummy_span(),
+    }
+}
+
+fn make_var_decl(name: &str, value: Expr) -> Decl {
+    Decl {
+        attrs: Vec::new(),
+        visibility: Visibility::Private,
+        kind: DeclKind::Var {
+            pattern: make_pattern(name),
+            value,
+            type_annotation: None,
+        },
+        span: dummy_span(),
+    }
+}
+
+fn stmt_from_decl(decl: Decl) -> Stmt {
+    Stmt {
+        kind: StmtKind::Decl { decl },
+        span: dummy_span(),
+    }
+}
+
+fn stmt_expr(expr: Expr) -> Stmt {
+    Stmt {
+        kind: StmtKind::Expr {
+            expr: Box::new(expr),
+        },
+        span: dummy_span(),
+    }
+}
+
+fn make_lambda(param: &str, body: Expr) -> Expr {
+    let param = Param {
+        name: make_ident(param),
+        type_annotation: None,
+        default: None,
+        span: dummy_span(),
+    };
+    Expr {
+        span: dummy_span(),
+        kind: ExprKind::Lambda {
+            params: vec![param],
+            ret_type: None,
+            body: Box::new(body),
+        },
+    }
+}
+
+fn make_perform(effect: &str, argument: Expr) -> Expr {
+    Expr {
+        span: dummy_span(),
+        kind: ExprKind::PerformCall {
+            call: EffectCall {
+                effect: make_ident(effect),
+                argument: Box::new(argument),
+            },
+        },
+    }
+}
+
+fn literal_int(value: i64) -> Expr {
+    Expr::int(value, value.to_string(), dummy_span())
+}
+
+fn ident_expr(name: &str) -> Expr {
+    Expr::identifier(make_ident(name))
+}
+
+fn block_expr(statements: Vec<Stmt>) -> Expr {
+    Expr::block(statements, dummy_span())
+}
+
+fn build_function(body: Expr, attrs: Vec<Attribute>) -> Function {
+    Function {
+        name: make_ident("sample"),
+        params: Vec::new(),
+        body,
+        ret_type: None,
+        span: dummy_span(),
+        attrs,
+    }
+}
+
+fn run_typecheck(function: Function) -> TypecheckReport {
+    let module = Module {
+        header: None,
+        uses: Vec::new(),
+        effects: Vec::new(),
+        functions: vec![function],
+        decls: Vec::new(),
+    };
+    TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default())
+}
+
+#[test]
+fn ch1_inf_601_typecheck_runs_without_ast_abort() {
+    let id_lambda = make_lambda("x", ident_expr("x"));
+    let id_decl = stmt_from_decl(make_let_decl("id", id_lambda));
+    let first_decl = stmt_from_decl(make_let_decl("first", ident_expr("id")));
+    let statements = vec![
+        id_decl,
+        first_decl,
+        stmt_expr(ident_expr("first")),
+    ];
+    let body = block_expr(statements);
+    let report = run_typecheck(build_function(body, Vec::new()));
+    assert!(
+        !has_violation(&report, "typeck.aborted.ast_unavailable"),
+        "typeck.aborted.ast_unavailable should not appear for CH1-INF-601"
+    );
+    assert!(
+        !report.functions.is_empty(),
+        "typed functions should be recorded when type inference succeeds"
+    );
+}
+
+#[test]
+fn ch1_inf_602_reports_value_restriction_violation() {
+    let cell_decl = stmt_from_decl(make_var_decl("cell", literal_int(0)));
+    let statements = vec![cell_decl];
+    let body = block_expr(statements);
+    let report = run_typecheck(build_function(body, Vec::new()));
+    assert!(
+        has_violation(&report, "language.inference.value_restriction"),
+        "value restriction diagnostics should surface for CH1-INF-602"
+    );
+}
+
+#[test]
+fn ch1_eff_701_reports_purity_violation() {
+    let perform = stmt_expr(make_perform("Console::log", literal_int(1)));
+    let body = block_expr(vec![perform]);
+    let attrs = vec![Attribute {
+        name: make_ident("pure"),
+        args: Vec::new(),
+        span: dummy_span(),
+    }];
+    let report = run_typecheck(build_function(body, attrs));
+    assert!(
+        has_violation(&report, "effects.purity.violated"),
+        "pure functions performing effects must emit purity violations"
+    );
 }
 
 fn stmt_contains_array(stmt: &Stmt) -> bool {

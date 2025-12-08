@@ -49,6 +49,13 @@
    - Parserが通るようになった後も `typeck.aborted.ast_unavailable` が解消しない場合、`TypecheckDriver` が AST を拒否する条件（`allow_module_body` 等）の見直しを行う。  
    - `CH1-INF-601/602`, `CH1-EFF-701`, `CH1-IMPL-302` を `cargo test -p reml_e2e -- --scenario spec-core` に組み込み、期待診断と照合する自動テストを用意。
 
+#### ✅ 5.1 週 実施ログ（Typeck / Effect 診断の復元）
+
+- `compiler/rust/frontend/src/typeck/driver.rs` を拡張し、`ExprKind::Block` / `StmtKind::{Decl,Assign,Defer}` を追加解析できるようにした。`let`/`var` 束縛をスコープ毎に一般化し、`DeclKind::Var` で `type_annotation` が無い場合は `language.inference.value_restriction` を発火させる。  
+- `@pure` 関数が `perform` を呼び出した際に `effects.purity.violated` を生成する `FunctionContext` を追加し、`TypecheckViolation` に `PurityViolation` を新設した。`collect_perform_effects` もブロック/ラムダを辿るよう更新済み。  
+- `compiler/rust/frontend/tests/spec_core/mod.rs` に `CH1-INF-601/602`・`CH1-EFF-701` を対象とした typeck テストを追加し、`typeck.aborted.ast_unavailable` が発生しないことと新診断が出力されることを `cargo test -p reml_frontend --test spec_core` で確認した。  
+- ⚠️ `CH1-IMPL-302` は現状 Parser が `trait` / `impl` 構文を受理できず `parser.syntax.expected_tokens` で脱落するため、Typeck 層へ AST が渡らない。`examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml` を解析すると `parser.diagnostics` が 1 件返ることを確認済みで、Phase A の `impl` サポートが完了するまで本シナリオは pending とする。
+
 5. **Core.Parse/Runtime 仕様のアクティブ化**（5.3 週）  
    - `CH2-PARSE-*` 用に `Parse.run` / `Parse.run_with_recovery` が CLI から呼び出せるよう `core::Prelude` の module import を整備。  
    - `CH3-RUNTIME-601`, `CH3-PLG-310` など Capability 関連は stub 実装で構文エラーを避け、診断 (`runtime.bridge.stage_mismatch` など) が出力できるようにする。
