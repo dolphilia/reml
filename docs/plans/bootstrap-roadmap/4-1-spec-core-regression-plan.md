@@ -49,6 +49,13 @@
    - `conductor` ブロックや `run_stream` テストが構文エラーになる箇所を特定し、`docs/spec/1-5` の派生構文に合わせたノードを復活。  
    - `CH1-DSL-801`, `CH2-STREAM-301` を通すまで Parser を段階調整。
 
+#### ✅ 4.5 週 実施ログ（Conductor/DSL / Streaming Parser）
+
+- `compiler/rust/frontend/src/parser/mod.rs` の `conductor_section` 系まとめて復元済みブロックが `examples/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.reml` を受理できることを、`cargo test -p reml_frontend spec_core::ch1_dsl_801_parses_conductor_sections`（2026-02-14 実行）で確認。`DeclKind::Conductor` に channels / execution / monitoring が載ることを AST アサーションで保証した。
+- Streaming 代表例 `examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml` について `cargo test -p reml_frontend spec_core::ch2_stream_301_parses_streaming_example` を実行し、`Parse.run_stream` 呼び出しと `DemandHint::More` 引数が AST に保持されること、リテラル配列や戻り値型 (`Parse::Parser<List<Int>>`) が失われないことを確認した。
+- 上記確認結果に合わせ、`phase4-scenario-matrix.csv` の `CH1-DSL-801` / `CH2-STREAM-301` 行を `resolution=ok`・`spec_vs_impl_decision=ok` へ更新し、再発時に参照できるよう検証コマンドを `resolution_notes` に記録した。
+- `expected/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.stdout` および `expected/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.stdout` を現行 CLI のゴールデンとして維持し、`run_examples.sh --suite spec_core` での再取得なしでも差分比較できる状態を確保した。
+
 ### フェーズB: Typeck / Effect 診断の復元
 4. **型推論 / 効果行の非アクティブ化回収**（5.1 週）  
    - Parserが通るようになった後も `typeck.aborted.ast_unavailable` が解消しない場合、`TypecheckDriver` が AST を拒否する条件（`allow_module_body` 等）の見直しを行う。  
