@@ -1118,6 +1118,10 @@ fn module_parser<'src>(
                 name: "new".to_string(),
                 span: range_to_span(span),
             }),
+            just(TokenKind::KeywordThen).map_with_span(|_, span: Range<usize>| Ident {
+                name: "then".to_string(),
+                span: range_to_span(span),
+            }),
         ));
 
         let postfix = choice((
@@ -2222,7 +2226,7 @@ fn parse_module_path(tokens: &[Token], start: usize) -> Option<(ModulePath, Span
         Some(token) if token.kind == TokenKind::Colon
     ) {
         idx += 2;
-        let (first_segment, consumed_idx) = parse_ident_with_index(tokens, idx)?;
+        let (first_segment, consumed_idx) = parse_module_path_segment(tokens, idx)?;
         idx = consumed_idx;
         let mut segments = vec![first_segment];
         let mut span_end = segments.last().map(|ident| ident.span).unwrap();
@@ -2230,17 +2234,10 @@ fn parse_module_path(tokens: &[Token], start: usize) -> Option<(ModulePath, Span
             if token.kind != TokenKind::Dot {
                 break;
             }
-            if let Some(next) = tokens.get(idx + 1) {
-                match next.kind {
-                    TokenKind::Identifier | TokenKind::UpperIdentifier => {
-                        let (segment, consumed_idx) = parse_ident_with_index(tokens, idx + 1)?;
-                        span_end = span_union(span_end, segment.span);
-                        segments.push(segment);
-                        idx = consumed_idx;
-                    }
-                    TokenKind::LBrace | TokenKind::Star | TokenKind::KeywordAs => break,
-                    _ => break,
-                }
+            if let Some((segment, consumed_idx)) = parse_module_path_segment(tokens, idx + 1) {
+                span_end = span_union(span_end, segment.span);
+                segments.push(segment);
+                idx = consumed_idx;
             } else {
                 break;
             }
@@ -2290,23 +2287,40 @@ fn parse_module_path(tokens: &[Token], start: usize) -> Option<(ModulePath, Span
         if token.kind != TokenKind::Dot {
             break;
         }
-        if let Some(next) = tokens.get(idx + 1) {
-            match next.kind {
-                TokenKind::Identifier | TokenKind::UpperIdentifier => {
-                    let (ident, consumed_idx) = parse_ident_with_index(tokens, idx + 1)?;
-                    span_end = span_union(span_end, ident.span);
-                    segments.push(ident);
-                    idx = consumed_idx;
-                }
-                TokenKind::LBrace | TokenKind::Star | TokenKind::KeywordAs => break,
-                _ => break,
-            }
+        if let Some((ident, consumed_idx)) = parse_module_path_segment(tokens, idx + 1) {
+            span_end = span_union(span_end, ident.span);
+            segments.push(ident);
+            idx = consumed_idx;
         } else {
             break;
         }
     }
     let span = Span::new(head_span.start, span_end.end);
     Some((ModulePath::Relative { head, segments }, span, idx))
+}
+
+fn parse_module_path_segment(tokens: &[Token], start: usize) -> Option<(Ident, usize)> {
+    let token = tokens.get(start)?;
+    match token.kind {
+        TokenKind::Identifier | TokenKind::UpperIdentifier => {
+            parse_ident_with_index(tokens, start)
+        }
+        TokenKind::KeywordThen => {
+            let name = token
+                .lexeme
+                .clone()
+                .or_else(|| token.kind.keyword_literal().map(|text| text.to_string()))
+                .unwrap_or_else(String::new);
+            Some((
+                Ident {
+                    name,
+                    span: token.span,
+                },
+                start + 1,
+            ))
+        }
+        _ => None,
+    }
 }
 
 fn parse_use_items(tokens: &[Token], start: usize) -> Option<(Vec<UseItem>, Span, usize)> {

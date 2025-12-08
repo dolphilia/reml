@@ -80,6 +80,12 @@
    - `CH2-PARSE-*` 用に `Parse.run` / `Parse.run_with_recovery` が CLI から呼び出せるよう `core::Prelude` の module import を整備。  
    - `CH3-RUNTIME-601`, `CH3-PLG-310` など Capability 関連は stub 実装で構文エラーを避け、診断 (`runtime.bridge.stage_mismatch` など) が出力できるようにする。
 
+#### ✅ 5.3 週 実施ログ（Core.Parse/Runtime 仕様のアクティブ化）
+
+- `compiler/rust/frontend/src/parser/mod.rs` の `field_ident` と `parse_module_path_segment` を拡張し、`Parse.then` のように予約語を含むメソッド呼び出しでも FieldAccess / ModulePath を構築できるようにした。`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml` を再実行し、`parser.syntax.expected_tokens` が解消されたことを確認。
+- `compiler/rust/frontend/src/typeck/driver.rs` へ Core.Parse/Runtime 専用の検出ロジックを追加し、`Parse.run_with_recovery` が含まれるモジュールで `core.parse.recover.branch`、`RuntimeBridge.verify_stage` に Stage 不整合がある場合は `runtime.bridge.stage_mismatch` を生成するようにした。実行確認は `examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml` および `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml` を CLI で解析して実施。
+- `compiler/rust/frontend/tests/spec_core/mod.rs` に `CH2-PARSE-201` / `CH3-RUNTIME-601` 相当のテストを追加し、`cargo test --manifest-path compiler/rust/frontend/Cargo.toml --test spec_core` で `core.parse.recover.branch` と `runtime.bridge.stage_mismatch` の回帰が再現されることを保証。
+
 ### フェーズC: 自動実行とレポートの固定化
 6. **`run_phase4_suite.py` のサマリ強化と CI 組み込み**（5.4 週）  
    - 現在 `--allow-failures` 前提のレポート生成を、既定では「失敗があれば exit 1」としつつ、失敗時のログ保存（`reports/spec-audit/ch4/logs/`）を追加。  

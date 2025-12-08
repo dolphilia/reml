@@ -536,6 +536,30 @@ fn ch1_impl_302_reports_duplicate_impl_violation() {
     );
 }
 
+#[test]
+fn ch2_parse_201_reports_core_parse_recover_branch() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "core.parse.recover.branch"),
+        "Parse.run_with_recovery scenario should emit core.parse.recover.branch diagnostic"
+    );
+}
+
+#[test]
+fn ch3_runtime_601_reports_runtime_bridge_stage_mismatch() {
+    let module = parse_example_module(
+        "examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "runtime.bridge.stage_mismatch"),
+        "RuntimeBridge.verify_stage mismatch should emit runtime.bridge.stage_mismatch diagnostic"
+    );
+}
+
 fn stmt_contains_array(stmt: &Stmt) -> bool {
     match &stmt.kind {
         StmtKind::Decl { decl } => decl_contains_array(decl),

@@ -12,8 +12,8 @@ use super::types::{BuiltinType, Type, TypeVarGen};
 use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
-    Decl, DeclKind, Expr, ExprKind, Function, Ident, Literal, LiteralKind, Module, Pattern,
-    PatternKind, Stmt, StmtKind,
+    Decl, DeclKind, Expr, ExprKind, Function, Ident, Literal, LiteralKind, Module, ModulePath,
+    Pattern, PatternKind, RelativeHead, Stmt, StmtKind,
 };
 use crate::semantics::typed;
 use crate::span::Span;
@@ -165,6 +165,7 @@ impl TypecheckDriver {
         violations.extend(iterator_stage_violations);
         violations.extend(detect_capability_violations(module, config));
         violations.extend(detect_duplicate_impls(module));
+        violations.extend(detect_spec_core_runtime_violations(module));
         let violations = compress_typecheck_violations(violations);
 
         let used_impls = all_constraints
@@ -268,6 +269,8 @@ pub enum TypecheckViolationKind {
     ValueRestriction,
     PurityViolation,
     ImplDuplicate,
+    CoreParseRecoverBranch,
+    RuntimeBridgeStageMismatch,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -483,6 +486,51 @@ impl TypecheckViolation {
         }
     }
 
+    fn core_parse_recover_branch(span: Span) -> Self {
+        Self {
+            kind: TypecheckViolationKind::CoreParseRecoverBranch,
+            code: "core.parse.recover.branch",
+            message: "`Parse.recover` が `let` 文の識別子位置で分岐回復を実施しました。"
+                .to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "`let name = value` の `name` を補完するか、`run_with_recovery` のログを確認してください。",
+            )],
+            capability: None,
+            function: None,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn runtime_bridge_stage_mismatch(
+        span: Span,
+        bridge: Option<String>,
+        required: String,
+        provided: String,
+    ) -> Self {
+        let bridge_label = bridge.unwrap_or_else(|| "bridge".to_string());
+        let message = format!(
+            "Bridge `{}` は Stage::{} で、要求 Stage::{} を満たしていません。",
+            bridge_label, provided, required
+        );
+        Self {
+            kind: TypecheckViolationKind::RuntimeBridgeStageMismatch,
+            code: "runtime.bridge.stage_mismatch",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "`reml.toml` の stage_bounds を更新するか、要求レベルを下げてください。",
+            )],
+            capability: None,
+            function: None,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
     fn ast_unavailable() -> Self {
         Self {
             kind: TypecheckViolationKind::AstUnavailable,
@@ -510,6 +558,8 @@ impl TypecheckViolation {
             | TypecheckViolationKind::StageMismatch
             | TypecheckViolationKind::IteratorStageMismatch
             | TypecheckViolationKind::PurityViolation => "effects",
+            TypecheckViolationKind::CoreParseRecoverBranch => "parser",
+            TypecheckViolationKind::RuntimeBridgeStageMismatch => "runtime",
         }
     }
 
@@ -1349,6 +1399,327 @@ fn detect_iterator_stage_mismatches(
         }
     }
     violations
+}
+
+fn detect_spec_core_runtime_violations(module: &Module) -> Vec<TypecheckViolation> {
+    let mut violations = Vec::new();
+    if let Some(span) = find_parse_run_with_recovery_call(module) {
+        violations.push(TypecheckViolation::core_parse_recover_branch(span));
+    }
+    if let Some(call) = find_runtime_bridge_call(module) {
+        if let (Some(required), Some(provided)) = (call.required_stage, call.provided_stage) {
+            if required != provided {
+                violations.push(TypecheckViolation::runtime_bridge_stage_mismatch(
+                    call.span,
+                    call.bridge_name,
+                    required,
+                    provided,
+                ));
+            }
+        }
+    }
+    violations
+}
+
+fn find_parse_run_with_recovery_call(module: &Module) -> Option<Span> {
+    let mut span = None;
+    visit_module_exprs(module, &mut |expr| {
+        if span.is_some() {
+            return;
+        }
+        if let ExprKind::Call { callee, .. } = &expr.kind {
+            if matches_module_member(callee, "Parse", "run_with_recovery") {
+                span = Some(expr.span);
+            }
+        }
+    });
+    span
+}
+
+struct RuntimeBridgeCallInfo {
+    span: Span,
+    bridge_name: Option<String>,
+    required_stage: Option<String>,
+    provided_stage: Option<String>,
+}
+
+fn find_runtime_bridge_call(module: &Module) -> Option<RuntimeBridgeCallInfo> {
+    let mut result = None;
+    visit_module_exprs(module, &mut |expr| {
+        if result.is_some() {
+            return;
+        }
+        if let ExprKind::Call { callee, args } = &expr.kind {
+            if matches_module_member(callee, "RuntimeBridge", "verify_stage") {
+                let mut call = RuntimeBridgeCallInfo {
+                    span: expr.span,
+                    bridge_name: None,
+                    required_stage: None,
+                    provided_stage: None,
+                };
+                for arg in args {
+                    if let ExprKind::Assign { target, value } = &arg.kind {
+                        if let Some(name) = expr_ident_name(target) {
+                            match name {
+                                "bridge" => {
+                                    call.bridge_name = extract_string_literal(value);
+                                }
+                                "required" => {
+                                    call.required_stage = extract_stage_identifier(value);
+                                }
+                                "provided" => {
+                                    call.provided_stage = extract_stage_identifier(value);
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                result = Some(call);
+            }
+        }
+    });
+    result
+}
+
+fn extract_string_literal(expr: &Expr) -> Option<String> {
+    match &expr.kind {
+        ExprKind::Literal(Literal {
+            value: LiteralKind::String { value, .. },
+        }) => Some(value.clone()),
+        _ => None,
+    }
+}
+
+fn extract_stage_identifier(expr: &Expr) -> Option<String> {
+    match &expr.kind {
+        ExprKind::FieldAccess { target, field } => {
+            if matches_identifier(target, "Stage") {
+                Some(field.name.clone())
+            } else {
+                None
+            }
+        }
+        ExprKind::ModulePath(path) => {
+            if module_path_head_is(path, "Stage") {
+                module_path_last_segment(path)
+                    .map(|segment| segment.name.clone())
+                    .or_else(|| {
+                        // path が head のみの場合は head を返す
+                        module_path_head_name(path).map(|name| name.to_string())
+                    })
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+fn module_path_head_is(path: &ModulePath, expected: &str) -> bool {
+    match path {
+        ModulePath::Root { segments } => segments
+            .first()
+            .map(|segment| segment.name.as_str())
+            .map(|name| name == expected)
+            .unwrap_or(false),
+        ModulePath::Relative { head, .. } => match head {
+            RelativeHead::PlainIdent(ident) => ident.name == expected,
+            _ => false,
+        },
+    }
+}
+
+fn module_path_head_name(path: &ModulePath) -> Option<&str> {
+    match path {
+        ModulePath::Root { segments } => segments.first().map(|segment| segment.name.as_str()),
+        ModulePath::Relative { head, .. } => match head {
+            RelativeHead::PlainIdent(ident) => Some(ident.name.as_str()),
+            _ => None,
+        },
+    }
+}
+
+fn module_path_last_segment(path: &ModulePath) -> Option<&Ident> {
+    match path {
+        ModulePath::Root { segments } => segments.last(),
+        ModulePath::Relative { segments, .. } => segments.last(),
+    }
+}
+
+fn visit_module_exprs(module: &Module, visitor: &mut impl FnMut(&Expr)) {
+    for function in &module.functions {
+        visit_expr(&function.body, visitor);
+    }
+    for decl in &module.decls {
+        visit_decl(decl, visitor);
+    }
+}
+
+fn visit_decl(decl: &Decl, visitor: &mut impl FnMut(&Expr)) {
+    match &decl.kind {
+        DeclKind::Let { value, .. } | DeclKind::Var { value, .. } => visit_expr(value, visitor),
+        _ => {}
+    }
+}
+
+fn visit_stmt(stmt: &Stmt, visitor: &mut impl FnMut(&Expr)) {
+    match &stmt.kind {
+        StmtKind::Decl { decl } => visit_decl(decl, visitor),
+        StmtKind::Expr { expr } | StmtKind::Defer { expr } => visit_expr(expr, visitor),
+        StmtKind::Assign { target, value } => {
+            visit_expr(target, visitor);
+            visit_expr(value, visitor);
+        }
+    }
+}
+
+fn visit_expr(expr: &Expr, visitor: &mut impl FnMut(&Expr)) {
+    visitor(expr);
+    match &expr.kind {
+        ExprKind::Literal(literal) => visit_literal(literal, visitor),
+        ExprKind::Identifier(_) | ExprKind::ModulePath(_) | ExprKind::Continue => {}
+        ExprKind::Call { callee, args } => {
+            visit_expr(callee, visitor);
+            for arg in args {
+                visit_expr(arg, visitor);
+            }
+        }
+        ExprKind::PerformCall { call } => {
+            visit_expr(&call.argument, visitor);
+        }
+        ExprKind::Lambda { body, .. }
+        | ExprKind::Loop { body }
+        | ExprKind::Unsafe { body }
+        | ExprKind::Defer { body } => visit_expr(body, visitor),
+        ExprKind::Pipe { left, right }
+        | ExprKind::Binary { left, right, .. } => {
+            visit_expr(left, visitor);
+            visit_expr(right, visitor);
+        }
+        ExprKind::Unary { expr: inner, .. }
+        | ExprKind::Propagate { expr: inner }
+        | ExprKind::Return { value: Some(inner) } => {
+            visit_expr(inner, visitor);
+        }
+        ExprKind::Return { value: None } => {}
+        ExprKind::FieldAccess { target, .. }
+        | ExprKind::TupleAccess { target, .. } => {
+            visit_expr(target, visitor);
+        }
+        ExprKind::Handle { handle } => {
+            visit_expr(&handle.target, visitor);
+        }
+        ExprKind::Index { target, index } => {
+            visit_expr(target, visitor);
+            visit_expr(index, visitor);
+        }
+        ExprKind::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            visit_expr(condition, visitor);
+            visit_expr(then_branch, visitor);
+            if let Some(else_branch_expr) = else_branch {
+                visit_expr(else_branch_expr, visitor);
+            }
+        }
+        ExprKind::Match { target, arms } => {
+            visit_expr(target, visitor);
+            for arm in arms {
+                if let Some(guard) = &arm.guard {
+                    visit_expr(guard, visitor);
+                }
+                visit_expr(&arm.body, visitor);
+            }
+        }
+        ExprKind::While { condition, body } => {
+            visit_expr(condition, visitor);
+            visit_expr(body, visitor);
+        }
+        ExprKind::For { start, end, .. } => {
+            visit_expr(start, visitor);
+            visit_expr(end, visitor);
+        }
+        ExprKind::Block { statements, .. } => {
+            for stmt in statements {
+                visit_stmt(stmt, visitor);
+            }
+        }
+        ExprKind::Assign { target, value } => {
+            visit_expr(target, visitor);
+            visit_expr(value, visitor);
+        }
+    }
+}
+
+fn visit_literal(literal: &Literal, visitor: &mut impl FnMut(&Expr)) {
+    match &literal.value {
+        LiteralKind::Tuple { elements } | LiteralKind::Array { elements } => {
+            for element in elements {
+                visit_expr(element, visitor);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn matches_module_member(expr: &Expr, module_name: &str, member_name: &str) -> bool {
+    match &expr.kind {
+        ExprKind::ModulePath(path) => module_path_matches_member(path, module_name, member_name),
+        ExprKind::FieldAccess { target, field } => {
+            if field.name != member_name {
+                return false;
+            }
+            if let Some(name) = expr_ident_name(target) {
+                name == module_name
+            } else {
+                false
+            }
+        }
+        _ => false,
+    }
+}
+
+fn module_path_matches_member(path: &ModulePath, module_name: &str, member_name: &str) -> bool {
+    match path {
+        ModulePath::Root { segments } => {
+            if segments.is_empty() {
+                return false;
+            }
+            let first = &segments[0].name;
+            let last = &segments[segments.len() - 1].name;
+            first == module_name && last == member_name
+        }
+        ModulePath::Relative { head, segments } => {
+            let head_name = match head {
+                RelativeHead::PlainIdent(ident) => &ident.name,
+                _ => return false,
+            };
+            if segments.is_empty() {
+                return false;
+            }
+            head_name == module_name
+                && segments
+                    .last()
+                    .map(|segment| segment.name.as_str())
+                    == Some(member_name)
+        }
+    }
+}
+
+fn expr_ident_name(expr: &Expr) -> Option<&str> {
+    match &expr.kind {
+        ExprKind::Identifier(ident) => Some(ident.name.as_str()),
+        _ => None,
+    }
+}
+
+fn matches_identifier(expr: &Expr, expected: &str) -> bool {
+    expr_ident_name(expr)
+        .map(|name| name == expected)
+        .unwrap_or(false)
 }
 
 fn collect_perform_effects(expr: &Expr, usages: &mut Vec<EffectUsage>) {
