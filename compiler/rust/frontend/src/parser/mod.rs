@@ -830,7 +830,12 @@ fn module_parser<'src>(
             .clone()
             .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
 
-        let stmt = build_stmt_parser(expr.clone(), pattern_var.clone(), type_name.clone());
+        let stmt = build_stmt_parser(
+            expr.clone(),
+            pattern_var.clone(),
+            type_name.clone(),
+            ident_expr.clone(),
+        );
 
         let raw_block = just(TokenKind::LBrace)
             .ignore_then(stmt.repeated())
@@ -997,14 +1002,22 @@ fn module_parser<'src>(
                 Expr::if_else(condition, then_branch, else_branch, full_span)
             });
 
+        let effect_args = expr
+            .clone()
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing()
+            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
+            .map_with_span(|args, span: Range<usize>| (args, range_to_span(span)));
+
         let perform_expr = just(TokenKind::KeywordPerform)
             .map_with_span(move |_, span: Range<usize>| range_to_span(span))
-            .then(ident_for_expr.clone())
-            .then(expr.clone())
-            .map(|((perform_span, effect), argument)| {
-                let arg_span = argument.span();
-                let full_span = Span::new(perform_span.start.min(effect.span.start), arg_span.end);
-                Expr::perform(effect, argument, full_span)
+            .then(qualified_ident.clone())
+            .then(effect_args.clone())
+            .map(|((perform_span, effect), (args, args_span))| {
+                let argument = build_effect_argument_expr(args, args_span);
+                let effect_span = effect.span;
+                let span = span_union(perform_span, span_union(effect_span, args_span));
+                Expr::perform(effect, argument, span)
             });
 
         let assignment_expr = ident_expr
@@ -1050,8 +1063,25 @@ fn module_parser<'src>(
             decl
         });
 
+    let var_decl_raw =
+        build_var_decl_parser(pattern_var.clone(), type_name.clone(), expr.clone());
+    let var_decl = attr_list
+        .clone()
+        .then(var_decl_raw.clone())
+        .map(|(attrs, mut decl)| {
+            if !attrs.is_empty() {
+                decl.attrs = attrs;
+            }
+            decl
+        });
+
     let block_body_parser = {
-        let stmt = build_stmt_parser(expr.clone(), pattern_var.clone(), type_name.clone());
+        let stmt = build_stmt_parser(
+            expr.clone(),
+            pattern_var.clone(),
+            type_name.clone(),
+            ident.clone().map(Expr::identifier),
+        );
         just(TokenKind::LBrace)
             .ignore_then(stmt.repeated())
             .then_ignore(just(TokenKind::RBrace))
@@ -1114,12 +1144,13 @@ fn module_parser<'src>(
     let module_item = choice((
         effect_decl.clone().map(ModuleItem::Effect),
         let_decl.clone().map(ModuleItem::Decl),
+        var_decl.clone().map(ModuleItem::Decl),
         function.clone().map(ModuleItem::Function),
     ));
 
     module_item
         .repeated()
-        .then_ignore(just(TokenKind::EndOfFile).or_not())
+        .then_ignore(just(TokenKind::EndOfFile))
         .map(|items| {
             let mut effects_vec = Vec::new();
             let mut functions_vec = Vec::new();
@@ -1808,25 +1839,83 @@ where
         })
 }
 
-fn build_stmt_parser<P, Q, R>(
-    expr: P,
+fn build_var_decl_parser<P, Q, R>(
     pattern_var: Q,
     type_parser: R,
-) -> impl ChumskyParser<TokenKind, Stmt, Error = Simple<TokenKind>> + Clone
+    expr: P,
+) -> impl ChumskyParser<TokenKind, Decl, Error = Simple<TokenKind>> + Clone
 where
     P: ChumskyParser<TokenKind, Expr, Error = Simple<TokenKind>> + Clone,
     Q: ChumskyParser<TokenKind, Pattern, Error = Simple<TokenKind>> + Clone,
     R: ChumskyParser<TokenKind, TypeAnnot, Error = Simple<TokenKind>> + Clone,
 {
+    just(TokenKind::KeywordVar)
+        .ignore_then(pattern_var)
+        .then(
+            just(TokenKind::Colon)
+                .ignore_then(type_parser)
+                .or_not(),
+        )
+        .then_ignore(just(TokenKind::Assign))
+        .then(expr)
+        .map_with_span(|((pattern, ty), value), span: Range<usize>| Decl {
+            attrs: Vec::new(),
+            visibility: Visibility::Private,
+            kind: DeclKind::Var {
+                pattern,
+                value,
+                type_annotation: ty,
+            },
+            span: range_to_span(span),
+        })
+}
+
+fn build_stmt_parser<P, Q, R, S>(
+    expr: P,
+    pattern_var: Q,
+    type_parser: R,
+    ident_expr: S,
+) -> impl ChumskyParser<TokenKind, Stmt, Error = Simple<TokenKind>> + Clone
+where
+    P: ChumskyParser<TokenKind, Expr, Error = Simple<TokenKind>> + Clone,
+    Q: ChumskyParser<TokenKind, Pattern, Error = Simple<TokenKind>> + Clone,
+    R: ChumskyParser<TokenKind, TypeAnnot, Error = Simple<TokenKind>> + Clone,
+    S: ChumskyParser<TokenKind, Expr, Error = Simple<TokenKind>> + Clone,
+{
     let let_stmt_parser =
         build_let_decl_parser(pattern_var.clone(), type_parser.clone(), expr.clone());
-    let let_stmt = let_stmt_parser.map(|decl| {
-        let span = decl.span;
-        Stmt {
-            kind: StmtKind::Decl { decl },
-            span,
-        }
-    });
+
+    let var_stmt_parser =
+        build_var_decl_parser(pattern_var.clone(), type_parser.clone(), expr.clone());
+
+    let decl_stmt = choice((
+        let_stmt_parser.map(|decl| {
+            let span = decl.span;
+            Stmt {
+                kind: StmtKind::Decl { decl },
+                span,
+            }
+        }),
+        var_stmt_parser.map(|decl| {
+            let span = decl.span;
+            Stmt {
+                kind: StmtKind::Decl { decl },
+                span,
+            }
+        }),
+    ));
+
+    let assign_stmt = ident_expr
+        .clone()
+        .then_ignore(just(TokenKind::ColonAssign))
+        .then(expr.clone())
+        .map_with_span(|(target, value), span: Range<usize>| Stmt {
+            kind: StmtKind::Assign {
+                target: Box::new(target),
+                value: Box::new(value),
+            },
+            span: range_to_span(span),
+        });
 
     let expr_stmt = expr.map_with_span(|expression, span: Range<usize>| Stmt {
         kind: StmtKind::Expr {
@@ -1835,7 +1924,7 @@ where
         span: range_to_span(span),
     });
 
-    choice((let_stmt, expr_stmt))
+    choice((decl_stmt, assign_stmt, expr_stmt))
 }
 
 fn build_attribute_parser<P, Q>(
@@ -1871,6 +1960,24 @@ where
                 span: Span::new(span_start, span_end),
             }
         })
+}
+
+fn build_effect_argument_expr(args: Vec<Expr>, span: Span) -> Expr {
+    match args.len() {
+        0 => Expr::literal(
+            Literal {
+                value: LiteralKind::Unit,
+            },
+            span,
+        ),
+        1 => args.into_iter().next().unwrap(),
+        _ => Expr::literal(
+            Literal {
+                value: LiteralKind::Tuple { elements: args },
+            },
+            span,
+        ),
+    }
 }
 
 fn record_streaming_error(
@@ -2165,7 +2272,7 @@ mod driver {
             },
             Case {
                 source: r#"effect ConsoleLog
-fn emit(msg: String) = perform ConsoleLog msg
+fn emit(msg: String) = perform ConsoleLog(msg)
 fn main() = emit("leak")"#,
                 expected_ast: Some(
                     "effect ConsoleLog\nfn emit(msg) = perform ConsoleLog var(msg)\nfn main() = call(var(emit))[str(\"leak\")]",

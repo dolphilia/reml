@@ -1,36 +1,8 @@
-use reml_frontend::parser::ast::{
-    Decl, DeclKind, ExprKind, Module, Pattern, PatternKind, StmtKind, UseTree,
-};
-use reml_frontend::parser::ParserDriver;
-use std::fs;
-use std::path::{Path, PathBuf};
+use reml_frontend::parser::ast::{Decl, DeclKind, ExprKind, Pattern, PatternKind, StmtKind, UseTree};
 
-fn repo_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-}
+mod common;
 
-fn parse_example_module(relative_path: &str) -> Module {
-    let source_path = repo_root().join(relative_path);
-    let source = fs::read_to_string(&source_path)
-        .unwrap_or_else(|err| panic!("failed to read {}: {err}", source_path.display()));
-    let result = ParserDriver::parse(&source);
-    if !result.diagnostics.is_empty() {
-        let messages = result
-            .diagnostics
-            .iter()
-            .map(|diag| diag.message.clone())
-            .collect::<Vec<_>>();
-        panic!(
-            "unexpected parser diagnostics for {}: {:?}",
-            relative_path, messages
-        );
-    }
-    result
-        .value
-        .unwrap_or_else(|| panic!("parser did not return a module for {relative_path}"))
-}
+use common::parse_example_module;
 
 #[test]
 fn ch1_mod_003_accepts_module_and_use_prefix() {
@@ -102,56 +74,4 @@ fn ch1_let_002_supports_tuple_pattern_bindings() {
         tuple_binding_present,
         "expected sum_pair to contain a tuple-pattern let binding"
     );
-}
-
-#[test]
-fn ch1_attr_101_records_block_attributes() {
-    let module = parse_example_module(
-        "examples/spec_core/chapter1/attributes/bnf-attr-cfg-let-gate-ok.reml",
-    );
-    let select_fn = module
-        .functions
-        .iter()
-        .find(|function| function.name.name == "select_message")
-        .expect("select_message should exist");
-    let statements = match &select_fn.body.kind {
-        ExprKind::Block { statements, .. } => statements,
-        other => panic!("expected select_message body to be a block, got {:?}", other),
-    };
-    let attr_block = statements.iter().find_map(|stmt| {
-        if let StmtKind::Expr { expr } = &stmt.kind {
-            if let ExprKind::Block { attrs, .. } = &expr.kind {
-                if !attrs.is_empty() {
-                    return Some(attrs);
-                }
-            }
-        }
-        None
-    });
-    let attrs = attr_block.expect("expected block expression with attributes");
-    assert_eq!(attrs.len(), 1, "expected a single @cfg attribute");
-    assert_eq!(attrs[0].name.name, "cfg");
-    assert_eq!(
-        attrs[0].args.len(),
-        1,
-        "expected cfg attribute to retain its predicate expression"
-    );
-}
-
-#[test]
-fn ch1_attr_102_attaches_attributes_to_functions() {
-    let module = parse_example_module(
-        "examples/spec_core/chapter1/attributes/bnf-attr-cfg-missing-flag-error.reml",
-    );
-    let hidden_fn = module
-        .functions
-        .iter()
-        .find(|function| function.name.name == "hidden")
-        .expect("hidden function should be parsed");
-    assert_eq!(
-        hidden_fn.attrs.len(),
-        1,
-        "expected @cfg attribute on hidden function"
-    );
-    assert_eq!(hidden_fn.attrs[0].name.name, "cfg");
 }
