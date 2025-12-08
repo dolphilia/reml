@@ -158,6 +158,185 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 - `CH1-ATTR-101` の Example Fix: `examples/spec_core/chapter1/attributes/bnf-attr-cfg-let-gate-ok.reml` の `var message` へ `Str` 注釈を付与し、`language.inference.value_restriction` を発火させずに `@cfg(target = "cli")` の挙動のみを検証できるようにした。`phase4-scenario-matrix.csv` は `resolution=ok`・`spec_vs_impl_decision=example_fix` とし、更新理由を `resolution_notes` へ記録した。
 - `CH1-EFF-701` の Spec Fix: `expected/spec_core/chapter1/effects/bnf-attr-pure-perform-error.diagnostic.json` を `effects.purity.violated` と `effects.contract.stage_mismatch` の 2 診断構成へ更新し、[docs/spec/1-3-effects-safety.md](../../spec/1-3-effects-safety.md) §C に Stage 不一致が併発する条件と根拠（3-6/3-8 章の Capability 契約）を追記。マトリクスの `diagnostic_keys` / `resolution_notes` も同期した。
+### フェーズF: 全 `.reml` 逐次実行・完全是正（新規）
+
+`examples/` 配下にあるすべての `.reml` を 1 ファイルずつ愚直に実行し、期待した成功/失敗へ確実に到達させるフェーズ。効率よりも完遂を優先し、実行ログと仕様照合結果を `phase4-scenario-matrix.csv`・`reports/spec-audit/ch4/*.md`・`docs/notes/examples-regression-log.md` に逐次反映する。
+
+#### フェーズF 実施手順
+
+1. **spec_core から順に実行**  
+   - `examples/spec_core/**` をディレクトリ順に巡回し、`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json <file>` を 1 つずつ実行。  
+   - `expected/spec_core/**` と `phase4-scenario-matrix.csv` の `diagnostic_keys` を照合し、成功（診断 0）または期待診断一致であればチェックリストを `[x]` へ更新。  
+   - 想定外の挙動を検出した場合は、まず `.reml` コードが仕様と整合しているかを `docs/spec/1-x` と比べて確認し、コード修正（Example Fix）が必要か、実装修正（Compiler Fix）が必要か、仕様追記（Spec Fix）が必要かを切り分ける。
+
+2. **practical → core_* → そのほかの順で拡大**  
+   - spec_core の全チェック完了後に `examples/practical/**`、続いて `examples/core_*`、`examples/cli`、`examples/ffi`、`examples/language-impl-comparison` を順番に処理する。  
+   - `phase4-scenario-matrix.csv` 未登録のファイルは `reports/spec-audit/ch4/logs/` の ID と対応づけた新規シナリオ（例: `GENERIC-LANG-001`）を追加し、`resolution=manual_review` で進捗管理を開始。
+
+3. **失敗時の triage**  
+   - `scripts/triage_spec_core_failures.py --suite <suite> --log <log> --matrix docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv --apply` を活用し、`resolution` と `resolution_notes` を一括更新。  
+   - Example Fix と判断した場合は `.reml`/`expected` の改修内容と再実行コマンドを `docs/plans/bootstrap-roadmap/4-1-missing-examples-plan.md` へ連動記録。Compiler Fix は Phase A〜E の該当フェーズに紐づく Issue を起票し、Spec Fix は `docs/spec/` 側への追記案を同時作成する。
+
+4. **再実行と KPI 反映**  
+   - 修正後は必ず同じ CLI コマンドで再実行し、期待結果を確認のうえチェックボックスを `[x]` 化する。  
+   - `reports/spec-audit/ch4/spec-core-dashboard.md` と `practical-suite-index.md` の KPI を更新し、`phase4-scenario-matrix.csv` の `resolution_notes` に参照ログ/コマンドを残す。
+
+5. **完了判定**  
+   - すべてのチェックボックスが `[x]` になり、`run_phase4_suite.py --suite spec_core --allow-failures=0` / `--suite practical` がともに成功した時点で Phase 5 へ引き継ぐ。  
+   - フォローアップは `docs/plans/bootstrap-roadmap/4-4-field-regression-and-readiness-plan.md` にまとめ、Self-host 準備タスクへフィードバックする。
+
+#### 判定ポリシー
+
+- **成功ケース**: CLI exit code 0 かつ `expected/*.stdout` / `expected/*.diagnostic.json` と完全一致。  
+- **想定失敗ケース**: CLI 出力の診断が `phase4-scenario-matrix.csv` に列挙されたキーと一致している状態。  
+- **想定外失敗**:  
+  - コード問題 → Example Fix として `.reml` / `expected` / `README` を更新。  
+  - 実装問題 → Compiler Fix（Parser/Typeck/Runtime/FFI）として Phase A〜E の担当ラインへ逆流。  
+  - 仕様不足 → Spec Fix で `docs/spec/` への追記を実施。  
+- **ログ記録**: すべての判断は `resolution_notes` と `reports/spec-audit/ch4/logs/` に CLI コマンド付きで記録する。効率化のためのバッチ実行は禁止し、逐次ログを取る。
+
+#### フェーズF 進捗トラッカー（初期状態: 未実施）
+
+> `[ ]` を `[x]` に変更することで達成状況を可視化する。`期待` は成功/失敗/TBD の初期想定であり、実施後は `phase4-scenario-matrix.csv` と同期する。
+
+**examples/spec_core/chapter1/type_inference**
+- [ ] `examples/spec_core/chapter1/type_inference/bnf-inference-let-generalization-ok.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/type_inference/bnf-inference-value-restriction-error.reml`（期待: 失敗診断）
+
+**examples/spec_core/chapter1/fn_decl**
+- [ ] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-generic-default-effect-ok.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml`（期待: 失敗診断）
+- [ ] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-no-args-ok.reml`（期待: 成功）
+
+**examples/spec_core/chapter1/effect_handlers**
+- [ ] `examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-perform-counter.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-missing-with.reml`（期待: 失敗診断）
+
+**examples/spec_core/chapter1/attributes**
+- [ ] `examples/spec_core/chapter1/attributes/bnf-attr-cfg-missing-flag-error.reml`（期待: 失敗診断）
+- [ ] `examples/spec_core/chapter1/attributes/bnf-attr-cfg-let-gate-ok.reml`（期待: 成功）
+
+**examples/spec_core/chapter1/module_use**
+- [ ] `examples/spec_core/chapter1/module_use/bnf-usedecl-super-root-invalid.reml`（期待: 失敗診断）
+- [ ] `examples/spec_core/chapter1/module_use/bnf-compilationunit-module-use-alias-ok.reml`（期待: 成功）
+
+**examples/spec_core/chapter1/lambda**
+- [ ] `examples/spec_core/chapter1/lambda/bnf-lambda-arg-pattern.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml`（期待: 成功）
+
+**examples/spec_core/chapter1/trait_impl**
+- [ ] `examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml`（期待: 失敗診断）
+- [ ] `examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml`（期待: 成功）
+
+**examples/spec_core/chapter1/type_decl**
+- [ ] `examples/spec_core/chapter1/type_decl/bnf-typedecl-alias-generic-ok.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/type_decl/bnf-typedecl-new-struct-ok.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/type_decl/bnf-typedef-sum-recordpattern-ok.reml`（期待: 成功）
+
+**examples/spec_core/chapter1/let_binding**
+- [ ] `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-pattern-tuple.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-shadow-unicode.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-simple-ok.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/let_binding/bnf-valdecl-missing-initializer-error.reml`（期待: 失敗診断）
+
+**examples/spec_core/chapter1/control_flow**
+- [ ] `examples/spec_core/chapter1/control_flow/bnf-ifexpr-missing-else-type-mismatch.reml`（期待: 失敗診断）
+- [ ] `examples/spec_core/chapter1/control_flow/bnf-ifexpr-blocks-ok.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/control_flow/bnf-loopexpr-break-value-ok.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/control_flow/bnf-whileexpr-condition-type-error.reml`（期待: 失敗診断）
+- [ ] `examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-pattern-ok.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/control_flow/bnf-loopexpr-unreachable-code.reml`（期待: 失敗診断）
+- [ ] `examples/spec_core/chapter1/control_flow/bnf-whileexpr-condition-bool-ok.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-invalid-type.reml`（期待: 失敗診断）
+
+**examples/spec_core/chapter1/literals**
+- [ ] `examples/spec_core/chapter1/literals/bnf-literal-int-boundary-max.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/literals/bnf-literal-float-forms.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.reml`（期待: 成功）
+
+**examples/spec_core/chapter1/match_expr**
+- [ ] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-option-canonical.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-missing-arrow-error.reml`（期待: 失敗診断）
+- [ ] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml`（期待: 成功）
+
+**examples/spec_core/chapter1/effects・conductor・block**
+- [ ] `examples/spec_core/chapter1/effects/bnf-attr-pure-perform-error.reml`（期待: 失敗診断）
+- [ ] `examples/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter1/block/bnf-block-unclosed-brace-error.reml`（期待: 失敗診断）
+
+**examples/spec_core/chapter2**
+- [ ] `examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml`（期待: 成功）
+- [ ] `examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml`（期待: 失敗診断）
+- [ ] `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`（期待: 失敗診断）
+- [ ] `examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml`（期待: 成功）
+
+**examples/practical**
+- [ ] `examples/practical/core_path/security_check/relative_denied.reml`（期待: 成功/フォールバック診断）
+- [ ] `examples/practical/core_config/audit_bridge/audit_bridge.reml`（期待: 成功）
+- [ ] `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`（期待: 失敗診断）
+- [ ] `examples/practical/core_io/file_copy/canonical.reml`（期待: 成功）
+- [ ] `examples/practical/core_text/unicode/grapheme_boundary_edge.reml`（期待: 成功）
+- [ ] `examples/practical/core_text/unicode/grapheme_nfc_mix.reml`（期待: 成功）
+- [ ] `examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml`（期待: 成功）
+- [ ] `examples/practical/core_env/envcfg/env_merge_by_profile.reml`（期待: 成功）
+
+**examples/core_path / core_config / cli / core_io / core-collections / string_literal**
+- [ ] `examples/core_path/security_check.reml`（期待: 成功）
+- [ ] `examples/core_config/cli/dsl/sample.reml`（期待: 成功）
+- [ ] `examples/core_config/dsl/telemetry_bridge.reml`（期待: 成功）
+- [ ] `examples/core_config/dsl/audit_bridge.reml`（期待: 成功）
+- [ ] `examples/cli/type_error.reml`（期待: 失敗診断）
+- [ ] `examples/cli/emit_suite.reml`（期待: 成功）
+- [ ] `examples/cli/trace_sample.reml`（期待: 成功）
+- [ ] `examples/cli/add.reml`（期待: 成功）
+- [ ] `examples/core-collections/usage.reml`（期待: 成功）
+- [ ] `examples/string_literal.reml`（期待: 成功）
+- [ ] `examples/core_io/file_copy.reml`（期待: 成功）
+
+**examples/ffi**
+- [ ] `examples/ffi/macos/ffi_dispatch_async.reml`（期待: 成功）
+- [ ] `examples/ffi/macos/ffi_malloc_arm64.reml`（期待: 成功）
+- [ ] `examples/ffi/windows/ownership_transfer.reml`（期待: 成功）
+- [ ] `examples/ffi/windows/struct_passing.reml`（期待: 成功）
+- [ ] `examples/ffi/windows/messagebox.reml`（期待: 成功）
+
+**examples/language-impl-comparison/reml**
+- [ ] `examples/language-impl-comparison/reml/audit_pipeline_integration.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/basic_interpreter.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/conductor_data_pipeline.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/pl0.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/json_extended.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/async_actor_supervision.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/markdown_parser.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/sql_parser.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/prelude_guard_template.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/external_dsl_bridge.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/pratt_parser.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/toml_parser.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/yaml_parser.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/json_parser_combinator.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/basic_interpreter_combinator.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/config_manifest_lifecycle.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/template_engine.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/algebraic_effects.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/json_parser.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/stream_processing_dsl.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/hindley_milner.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/markdown_parser_combinator.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/pl0_combinator.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/mini_lisp.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/regex_engine.reml`（期待: 成功）
+- [ ] `examples/language-impl-comparison/reml/mini_lisp_combinator.reml`（期待: 成功）
+
+**examples/core-text / core_diagnostics**
+- [ ] `examples/core-text/text_unicode.reml`（期待: 成功）
+- [ ] `examples/core_diagnostics/pipeline_branch.reml`（期待: 成功）
+- [ ] `examples/core_diagnostics/pipeline_success.reml`（期待: 成功）
+- [ ] `examples/core_diagnostics/constraint_graph/simple_chain.reml`（期待: 成功）
+
+> リストに含まれない新規 `.reml` を追加した場合は、本計画と `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の両方へ同時追加し、週次レビューで差異が無いことを確認する。
+
 ## 成果物と KPI
 
 - `parser.syntax.expected_tokens` / `typeck.aborted.ast_unavailable` が Phase 4 の spec_core/practical スイートで発生しないこと（期待診断があるケースを除く）。  
