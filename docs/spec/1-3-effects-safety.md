@@ -102,11 +102,13 @@ Chapter 3 の標準ライブラリは `Σ_core` / `Σ_system` を細分化する
 * **違反時は型エラー同等のわかりやすい診断**を出す。
 * 例：
 
-  ```reml
-  @pure
-  fn sum(xs: [i64]) -> i64 = { print("x"); fold(xs, 0, (+)) }
-  // error: @pure 関数で io 効果が検出されました … at print
-  ```
+```reml
+@pure
+fn sum(xs: [i64]) -> i64 = { print("x"); fold(xs, 0, (+)) }
+// error: @pure 関数で io 効果が検出されました … at print
+```
+
+> 補足: Capability Registry で Stage 契約が有効な環境では、`@pure` 違反を検出した際に `effects.contract.stage_mismatch` も併発する場合があります。たとえば `Console.log` のように `StageRequirement::AtLeast(Beta)` を要求する効果を、`RunConfig` が `at_least:stable` のまま実行すると `effects.purity.violated` に加えて Stage 不一致診断が報告されます（[3-6-core-diagnostics-audit.md](3-6-core-diagnostics-audit.md) §1、[3-8-core-runtime-capability.md](3-8-core-runtime-capability.md) §10 を参照）。Phase 4 では `diagnostic_keys` に両コードを登録し、監査ログでも `effect.stage.required/actual` を追跡してください。
 
 ### C.1 条件付きコンパイルと効果境界 {#cfg-attribute}
 

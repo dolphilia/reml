@@ -4,7 +4,7 @@ use Core.Prelude
 
 // BNF: Attrs + AttrArgs（docs/spec/1-5-formal-grammar-bnf.md §0）
 fn select_message() -> Str {
-  var message = "disabled"
+  var message: Str = "disabled"
 
   @cfg(target = "cli")
   {

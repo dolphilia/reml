@@ -153,6 +153,11 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
   2. `impl_fix`: `diagnostic_keys = []` のシナリオで Diagnostics や JSON 解析エラーが発生した場合、または exit code が非 0（例: `CH1-FN-101`, `CH1-CONTROL_FLOW-*`, `CH1-LAMBDA-*`）。Rust Frontend/Runtime の回収対象として扱う。
   3. `spec_fix`: 両者で Diagnostics が出力されているがコード集合が異なる場合（例: `CH1-EFF-701`, `CH1-LET-004`, `CH1-MATCH-004`）。仕様書または `diagnostic_keys` の定義自体を再検討する。
 - 上記スクリプトにより `resolution=pending` だった 26 シナリオ（`CH1-MOD-004`, `CH1-ATTR-101/102`, `CH1-FN-101`, `CH1-TYPE-201/202/203`, `CH1-INF-601/602`, `CH1-EFF-701`, `CH1-LET-004`, `CH1-MATCH-004`, `CH1-BLOCK-001`, `CH1` control_flow 系 10 件, `CH1-LIT-202`, `CH1-FN-103`, `CH1-LAMBDA-101/102`, `CH2-OP-401` 等）を `example_fix`・`impl_fix`・`spec_fix` に分類し、ログパス・CLI コマンド・期待/実測 Diagnsotics を `resolution_notes` に追記済み。`reports/spec-audit/ch4/README.md` に triage の使い方を追記し、Phase4 KPI レビューで再現コマンドと根拠を即参照できる状態を確保した。
+
+#### ✅ 6.1 週 実施ログ（Example/Spec Fix フロー）
+
+- `CH1-ATTR-101` の Example Fix: `examples/spec_core/chapter1/attributes/bnf-attr-cfg-let-gate-ok.reml` の `var message` へ `Str` 注釈を付与し、`language.inference.value_restriction` を発火させずに `@cfg(target = "cli")` の挙動のみを検証できるようにした。`phase4-scenario-matrix.csv` は `resolution=ok`・`spec_vs_impl_decision=example_fix` とし、更新理由を `resolution_notes` へ記録した。
+- `CH1-EFF-701` の Spec Fix: `expected/spec_core/chapter1/effects/bnf-attr-pure-perform-error.diagnostic.json` を `effects.purity.violated` と `effects.contract.stage_mismatch` の 2 診断構成へ更新し、[docs/spec/1-3-effects-safety.md](../../spec/1-3-effects-safety.md) §C に Stage 不一致が併発する条件と根拠（3-6/3-8 章の Capability 契約）を追記。マトリクスの `diagnostic_keys` / `resolution_notes` も同期した。
 ## 成果物と KPI
 
 - `parser.syntax.expected_tokens` / `typeck.aborted.ast_unavailable` が Phase 4 の spec_core/practical スイートで発生しないこと（期待診断があるケースを除く）。  
