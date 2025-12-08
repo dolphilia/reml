@@ -175,8 +175,9 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
    - `phase4-scenario-matrix.csv` 未登録のファイルは `reports/spec-audit/ch4/logs/` の ID と対応づけた新規シナリオ（例: `GENERIC-LANG-001`）を追加し、`resolution=manual_review` で進捗管理を開始。
 
 3. **失敗時の triage**  
-   - `scripts/triage_spec_core_failures.py --suite <suite> --log <log> --matrix docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv --apply` を活用し、`resolution` と `resolution_notes` を一括更新。  
-   - Example Fix と判断した場合は `.reml`/`expected` の改修内容と再実行コマンドを `docs/plans/bootstrap-roadmap/4-1-missing-examples-plan.md` へ連動記録。Compiler Fix は Phase A〜E の該当フェーズに紐づく Issue を起票し、Spec Fix は `docs/spec/` 側への追記案を同時作成する。
+   - `.reml` 実行結果が想定どおりかをまず確認し、期待と異なる場合は該当ファイルのコードを仕様書と照合して誤りがないか調査する。  
+   - コード側に誤りがあると判断した場合は `.reml` や `expected/` を修正する。ただし期待どおりにするだけのためにロジックを過度に単純化したり、テスト難易度を下げることは避ける。  
+   - コードに問題が無いと判断した場合はコンパイラ側の回収対象として扱い、Parser/Typeck/Runtime/FFI のどこに問題があるかを特定し、修正計画を作成して実装する。修正完了後は `resolution_notes` に根拠とコマンドを記録する。
 
 4. **再実行と KPI 反映**  
    - 修正後は必ず同じ CLI コマンドで再実行し、期待結果を確認のうえチェックボックスを `[x]` 化する。  
