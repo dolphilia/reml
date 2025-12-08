@@ -112,6 +112,12 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
    - shim 経由で `core_prelude` が利用可能になったら、`tests/core_iter_*` の snapshot を更新し `reports/spec-audit/ch4/spec-core-dashboard.md` に `FFI/Core Prelude` の pass 率を新設。  
    - `capability` shim の将来廃止に備え、`reml_runtime` モジュールを直接依存として使う長期方針を `docs/notes/core-library-outline.md` へ TODO 記録し、Phase 5 で `reml_core_prelude` を共通 crate 化する提案を追記する。
 
+#### ✅ 5.7 週 実施ログ（FFI/Core Prelude capability shim）
+
+- `compiler/rust/runtime/ffi/src/lib.rs:16-74` と `src/capability.rs` を棚卸しし、`#[cfg(feature = "core_prelude")]` で読み込む `collections`/`config`/`prelude` 群が `crate::capability::{contract,registry}` を参照する前提になっていることを確認。`docs/spec/3-1-core-prelude-iteration.md§3` と `docs/spec/3-6-core-diagnostics-audit.md§1` の Stage 契約を根拠に、rustc 上で `cargo check -p reml_runtime_ffi --features core_prelude` を実行して shim が依存関係を満たすことを再検証した（log: `compiler/rust/runtime/ffi` 直下、2026-02-17 13:20JST）。
+- Phase4 KPI に FFI 回路を組み込むため `phase4-scenario-matrix.csv` へ `FFI-CORE-PRELUDE-001` を追加し、`category=FFI` / `spec_chapter=chapter3.prelude` / `stage_requirement=StageRequirement::AtLeast(Beta)` として `core_iter_effects` スナップショットを追跡。`docs/plans/bootstrap-roadmap/assets/README.md` に `FFI` 行を追加し、同時に `docs/spec/0-2-glossary.md` へ「FFI/Core Prelude 回帰カテゴリー」を登録した。`resolution_notes` には `cargo check -p reml_runtime_ffi --features core_prelude` と `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_effects` の組み合わせを記録し、以降の再実行ログを集約できるようにした。
+- dual-write ランブック `docs/plans/rust-migration/1-3-dual-write-runbook.md` の前提条件へ「FFI/Core Prelude ハーネス確認」を追加し、`core_iter_*` テストを実行する前に `reml_runtime_ffi` capability shim を `cargo check` で保証する手順を明文化。`reports/spec-audit/ch4/spec-core-dashboard.md` に `FFI/Core Prelude` KPI セクションを新設して、`FFI-CORE-PRELUDE-001` の pass 率と参照コマンドをレポートに残す。長期的には `docs/notes/core-library-outline.md` の TODO に shim 廃止計画を追記し、Phase 5 で `reml_runtime` との直接依存へ移行することを記録した。
+
 ## 成果物と KPI
 
 - `parser.syntax.expected_tokens` / `typeck.aborted.ast_unavailable` が Phase 4 の spec_core/practical スイートで発生しないこと（期待診断があるケースを除く）。  

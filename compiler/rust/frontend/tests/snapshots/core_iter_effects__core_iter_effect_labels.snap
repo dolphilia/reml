@@ -5,12 +5,12 @@ expression: cases
 ---
 - case: pure_effects
   effects:
-    mem: false
-    mutating: false
-    debug: false
     async_pending: false
     audit: false
+    debug: false
+    mem: false
     mem_bytes: 0
+    mutating: false
     predicate_calls: 0
   stage:
     actual: beta
@@ -22,12 +22,12 @@ expression: cases
     source: "core_iter_effects::pure_effects"
 - case: buffered_effects
   effects:
-    mem: true
-    mutating: false
-    debug: false
     async_pending: false
     audit: false
+    debug: false
+    mem: true
     mem_bytes: 3
+    mutating: false
     predicate_calls: 0
   stage:
     actual: beta
@@ -39,12 +39,12 @@ expression: cases
     source: "core_iter_effects::buffered_effects"
 - case: try_unfold_effects
   effects:
-    mem: false
-    mutating: false
-    debug: true
     async_pending: false
     audit: false
+    debug: true
+    mem: false
     mem_bytes: 0
+    mutating: false
     predicate_calls: 0
   stage:
     actual: beta

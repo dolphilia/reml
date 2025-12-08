@@ -68,6 +68,7 @@ Bytes/Str (generation = g) ──borrow──▶ GraphemeSeq { index_cache(g) }
 ### TODO
 - `RuntimeCacheSpec` セクションは Phase 3 完了時に `docs/spec/3-3-core-text-unicode.md` へ昇格させ、`IndexCache`/`TextBuilder`/`log_grapheme_stats` を仕様本文へ反映する。
 - `IndexCache` の `serde`/`AuditEnvelope` 出力は `docs/spec/3-6-core-diagnostics-audit.md` 付録のメタデータテーブルへキー (`text.index_cache.generation`, `text.index_cache.len`) を追加して追跡する。
+- `FFI/Core Prelude shim` は Phase4 の暫定策であり、`phase4-scenario-matrix.csv` の `FFI-CORE-PRELUDE-001` で回帰監視を行う。Phase5 では `reml_runtime` へ直接依存する `core_prelude` crate を切り出し、`reml_runtime_ffi` から shim を削除する計画を `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md#フェーズd` と同期させる。移行時は `compiler/rust/frontend/tests/core_iter_*` のスナップショットと `reports/spec-audit/ch4/spec-core-dashboard.md` の KPI を更新する責務を明示しておく。
 
 ### <a id="collector-f2-監査ログ"></a>Collector F2 監査ログ（WBS 3.1b）
 

@@ -4,6 +4,15 @@
 - 対象シナリオ: 24 件 / 成功 0 件 / 失敗 24 件
 - 入力ソース: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
 
+## FFI/Core Prelude KPI（Phase4 追補）
+
+- 監視対象: `FFI-CORE-PRELUDE-001`（`category=FFI`, `spec_chapter=chapter3.prelude`）。Rust Frontend の `core_iter_effects.rs`／`core_iter_collectors.rs`／`core_iter_pipeline.rs` を dev-dep `reml_runtime_ffi` + `core_prelude` で再生し、`docs/spec/3-1-core-prelude-iteration.md` と `docs/spec/3-6-core-diagnostics-audit.md` の Stage/Capability 契約を満たすかを確認する。
+- コマンド（2026-02-17 実行）:
+  - `cd compiler/rust/runtime/ffi && cargo check --features core_prelude`
+  - `cd compiler/rust/frontend && cargo test core_iter_effects`
+- 成果物: `compiler/rust/frontend/tests/snapshots/core_iter_effects__core_iter_effect_labels.snap` をアルファベット順キーへ更新し、`cargo test core_iter_effects` が snapshot 差分ゼロで完走。`phase4-scenario-matrix.csv` の `FFI-CORE-PRELUDE-001` `resolution_notes` と同じログを本レポートに残し、Run 毎に StageMismatch が再発しないことを確認できるようにした。
+- 判定: ✅ pass（`StageRequirement::AtLeast(Beta)` / `capability = core.iter.core` を再確認）。次回以降も spec_core/practical スイートに追加する再生タスクは本 GitHub Actions nightly から参照する。
+
 | Scenario | File | 期待 Diagnostics | 実際 Diagnostics | Exit | 判定 | 備考 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `CH1-LET-001` | `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-simple-ok.reml` | — | `parser.syntax.expected_tokens`<br>`typeck.aborted.ast_unavailable` | 1 | ❌ fail | 基本的な let 束縛。Result/Option を含まない純粋ケースで、Phase4TestCase における基準入力。 |

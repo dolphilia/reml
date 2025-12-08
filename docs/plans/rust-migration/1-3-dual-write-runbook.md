@@ -7,6 +7,7 @@
 - P0 ベースライン（`0-1-baseline-and-diff-assets.md`）のゴールデンデータが最新であり、`scripts/validate-diagnostic-json.sh` が通過する。
 - `tooling/ci/collect-iterator-audit-metrics.py` がローカル環境で実行できる（Python 3.10 以上を推奨）。
 - 出力先ディレクトリ `reports/dual-write/` に書き込み権限がある。
+- `reml_runtime_ffi` の capability shim（`compiler/rust/runtime/ffi/src/capability.rs`）が `core_prelude` 機能付きでビルド可能であること。Phase4 `FFI-CORE-PRELUDE-001` の前提として `cd compiler/rust/runtime/ffi && cargo check --features core_prelude` を通し、`core_iter_*` テストと同じ Stage/Capability メタデータが得られるか確認する。
 
 ## 1.3.2 実行手順
 
