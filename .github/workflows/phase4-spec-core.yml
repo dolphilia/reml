@@ -39,6 +39,13 @@ jobs:
             exit 1
           fi
 
+      - name: Run spec_core e2e regression suite
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test -p reml_e2e -- --scenario spec-core
+
       - name: Publish KPI summary
         if: always()
         shell: bash

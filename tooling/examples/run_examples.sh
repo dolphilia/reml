@@ -4,6 +4,18 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+SPEC_CORE_REQUIRED_SOURCE_DIRS=(
+  "examples/spec_core/chapter1/control_flow"
+  "examples/spec_core/chapter1/literals"
+  "examples/spec_core/chapter1/lambda"
+)
+
+SPEC_CORE_REQUIRED_EXPECTED_DIRS=(
+  "expected/spec_core/chapter1/control_flow"
+  "expected/spec_core/chapter1/literals"
+  "expected/spec_core/chapter1/lambda"
+)
+
 usage() {
   cat <<'EOF'
 usage: tooling/examples/run_examples.sh --suite <name> [--with-audit] [--update-golden]
@@ -50,6 +62,29 @@ if [[ -z "${SUITE}" ]]; then
 fi
 
 if [[ "${SUITE}" == "spec_core" || "${SUITE}" == "practical" ]]; then
+  if [[ "${SUITE}" == "spec_core" ]]; then
+    missing=()
+    for dir in "${SPEC_CORE_REQUIRED_SOURCE_DIRS[@]}"; do
+      if [[ ! -d "${ROOT}/${dir}" ]]; then
+        missing+=("${dir}")
+      fi
+    done
+    for dir in "${SPEC_CORE_REQUIRED_EXPECTED_DIRS[@]}"; do
+      if [[ ! -d "${ROOT}/${dir}" ]]; then
+        missing+=("${dir}")
+      fi
+    done
+    if [[ ${#missing[@]} -gt 0 ]]; then
+      {
+        echo "spec_core スイートに必要なディレクトリが不足しています。"
+        for dir in "${missing[@]}"; do
+          echo "  - ${dir}"
+        done
+        echo "docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md の Phase4 Missing Examples 手順に従い整備してください。"
+      } >&2
+      exit 1
+    fi
+  fi
   if [[ "${WITH_AUDIT}" == true || "${UPDATE_GOLDEN}" == true ]]; then
     echo "${SUITE} スイートでは --with-audit / --update-golden オプションは未対応です。" >&2
     exit 1

@@ -4,6 +4,17 @@
 - 対象シナリオ: 44 件 / 成功 14 件 / 失敗 30 件
 - 入力ソース: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
 
+## Missing Examples Closeout
+
+- `tooling/examples/run_examples.sh --suite spec_core` と `tooling/examples/run_phase4_suite.py` が `chapter1/control_flow` / `literals` / `lambda` を必須ディレクトリとして検証
+- `cargo test -p reml_e2e -- --scenario spec-core` を nightly CI（`phase4-spec-core.yml`）へ追加し、全 Missing Examples を 1 日 1 回以上 CLI 実行
+
+| ディレクトリ | シナリオ数 | 成功 | 成功率 | 備考 |
+| --- | --- | --- | --- | --- |
+| `chapter1/control_flow/` | 8 | 0 | 0% | `CH1-IF-101`〜`CH1-FOR-102` はすべて CLI で失敗。`parser.syntax.expected_tokens` を次フェーズで是正する。 |
+| `chapter1/literals/` | 3 | 2 | 66% | `CH1-LIT-202` のみ `parser.syntax.expected_tokens` で失敗。指数表記の Lexer/regression 修正が必要。 |
+| `chapter1/lambda/` | 2 | 0 | 0% | `CH1-LAMBDA-101/102` が `parser.syntax.expected_tokens` を返し AST へ到達せず。 |
+
 | Scenario | File | 期待 Diagnostics | 実際 Diagnostics | Exit | 判定 | 備考 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `CH1-LET-001` | `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-simple-ok.reml` | — | — | 0 | ✅ pass | 基本的な let 束縛。Result/Option を含まない純粋ケースで、Phase4TestCase における基準入力。 |

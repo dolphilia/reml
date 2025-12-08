@@ -139,6 +139,11 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
    - `reports/spec-audit/ch4/logs/spec_core-*.md` を週次レビュー資料として整備し、`examples/spec_core` の pass 率を Phase 4 KPI に追加。`docs/plans/bootstrap-roadmap/4-4-field-regression-and-readiness-plan.md` へフィードバックし、Phase 5 Self-host へ移行する前に Example Fix/Compiler Fix/Spec Fix の残件を可視化する。  
    - `docs/plans/rust-migration/1-3-dual-write-runbook.md` の検証チェックリストへ「spec_core full suite」のステップを追加し、Phase 3 の Rust Migration 計画と Phase 4 のサンプル整備が一体で動作するようにする。
 
+#### ✅ 5.9 週 実施ログ（Missing Examples ハーネス更新）
+
+- `tooling/examples/run_examples.sh` と `tooling/examples/run_phase4_suite.py` へ `chapter1/control_flow` / `literals` / `lambda` の存在チェックを追加し、「必要ディレクトリが欠けている場合は Phase4 スイートを停止する」安全策を導入。Missing Examples を登録した `phase4-scenario-matrix.csv` と突き合わせて漏れがあれば即時に検知できるようにした。
+- `expected/spec_core/chapter1/control_flow|literals|lambda` を明示的に確保したうえで `examples/spec_core/README.md` にゴールデン生成コマンド（`cargo run --quiet --bin reml_frontend ... > expected/...`、診断例は `--output json | jq`）を追記し、今後の stdout / diagnostic JSON の再取得手順を文書化した。
+- `.github/workflows/phase4-spec-core.yml` に `cargo test -p reml_e2e -- --scenario spec-core` を nightly Step として追加し、Missing Examples を含む `.reml` が 1 日 1 回は CLI 実行される KPI を確保。`reports/spec-audit/ch4/spec-core-dashboard.md` へ「Missing Examples Closeout」セクションを新設し、`chapter1/control_flow(0/8)`・`chapter1/literals(2/3)`・`chapter1/lambda(0/2)` の成功率を集計してフェーズ進捗を追跡する。
 ## 成果物と KPI
 
 - `parser.syntax.expected_tokens` / `typeck.aborted.ast_unavailable` が Phase 4 の spec_core/practical スイートで発生しないこと（期待診断があるケースを除く）。  

@@ -28,6 +28,15 @@ SUITE_PREFIXES = {
     "practical": ("examples/practical/",),
 }
 
+REQUIRED_SUBDIRS = {
+    "spec_core": (
+        "examples/spec_core/chapter1/control_flow/",
+        "examples/spec_core/chapter1/literals/",
+        "examples/spec_core/chapter1/lambda/",
+    ),
+    "practical": (),
+}
+
 SUITE_REPORT = {
     "spec_core": "spec-core-dashboard.md",
     "practical": "practical-suite-index.md",
@@ -104,6 +113,24 @@ def load_scenarios(root: Path, suite: str) -> List[Scenario]:
             scenarios.append(scenario)
     if not scenarios:
         raise SystemExit(f"{suite}: 対象シナリオが見つかりません (prefixes={prefixes})")
+    required_dirs = REQUIRED_SUBDIRS.get(suite, ())
+    if required_dirs:
+        coverage = {prefix: False for prefix in required_dirs}
+        for scenario in scenarios:
+            try:
+                rel_path = scenario.input_path.relative_to(root).as_posix()
+            except ValueError:
+                rel_path = scenario.input_path.as_posix()
+            for prefix in required_dirs:
+                normalized = prefix if prefix.endswith("/") else f"{prefix}/"
+                if rel_path.startswith(normalized):
+                    coverage[prefix] = True
+        missing = [prefix for prefix, hit in coverage.items() if not hit]
+        if missing:
+            missing_lines = "\n  - ".join(missing)
+            raise SystemExit(
+                f"{suite}: Phase4 Missing Examples ディレクトリに紐付くシナリオが不足しています。\n  - {missing_lines}"
+            )
     return scenarios
 
 
