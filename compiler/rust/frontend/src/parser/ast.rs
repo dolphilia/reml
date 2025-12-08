@@ -177,8 +177,20 @@ impl Decl {
             DeclKind::Fn { name, .. } => format!("fn {} ...", name.name),
             DeclKind::Effect(effect) => format!("effect {}", effect.name.name),
             DeclKind::Type { name, .. } => format!("type {}", name.name),
-            DeclKind::Trait { name, .. } => format!("trait {}", name.name),
-            DeclKind::Impl { name, .. } => format!("impl {}", name.name),
+            DeclKind::Trait(trait_decl) => format!("trait {}", trait_decl.name.name),
+            DeclKind::Impl(impl_decl) => {
+                let mut label = String::from("impl");
+                if let Some(trait_ref) = &impl_decl.trait_ref {
+                    label.push(' ');
+                    label.push_str(&trait_ref.render());
+                    label.push(' ');
+                    label.push_str("for ");
+                } else {
+                    label.push(' ');
+                }
+                label.push_str(&impl_decl.target.render());
+                label
+            }
             DeclKind::Extern { name, .. } => format!("extern {}", name.name),
             DeclKind::Handler(handler) => format!("handler {}", handler.name.name),
             DeclKind::Conductor(decl) => format!("conductor {}", decl.name.name),
@@ -207,14 +219,8 @@ pub enum DeclKind {
         name: Ident,
         span: Span,
     },
-    Trait {
-        name: Ident,
-        span: Span,
-    },
-    Impl {
-        name: Ident,
-        span: Span,
-    },
+    Trait(TraitDecl),
+    Impl(ImplDecl),
     Extern {
         name: Ident,
         span: Span,
@@ -234,6 +240,101 @@ pub struct ConductorDecl {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub monitoring: Option<ConductorMonitoringBlock>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct FunctionSignature {
+    pub name: Ident,
+    pub params: Vec<Param>,
+    pub ret_type: Option<TypeAnnot>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TraitDecl {
+    pub name: Ident,
+    pub generics: Vec<Ident>,
+    pub where_clause: Vec<WherePredicate>,
+    pub items: Vec<TraitItem>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TraitItem {
+    pub attrs: Vec<Attribute>,
+    pub signature: FunctionSignature,
+    pub default_body: Option<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ImplDecl {
+    pub generics: Vec<Ident>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trait_ref: Option<TraitRef>,
+    pub target: TypeAnnot,
+    pub where_clause: Vec<WherePredicate>,
+    pub items: Vec<ImplItem>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ImplItem {
+    Function(Function),
+    Decl(Decl),
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum WherePredicate {
+    TypeBound {
+        target: TypeAnnot,
+        bounds: Vec<TraitRef>,
+        span: Span,
+    },
+    Trait {
+        trait_ref: TraitRef,
+    },
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TraitRef {
+    pub name: Ident,
+    pub args: Vec<TypeAnnot>,
+    pub span: Span,
+}
+
+impl TraitRef {
+    pub fn render(&self) -> String {
+        if self.args.is_empty() {
+            self.name.name.clone()
+        } else {
+            let args = self
+                .args
+                .iter()
+                .map(TypeAnnot::render)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{}<{}>", self.name.name, args)
+        }
+    }
+
+    pub fn from_type_annotation(ty: &TypeAnnot) -> Option<Self> {
+        match &ty.kind {
+            TypeKind::Ident { name } => Some(TraitRef {
+                name: name.clone(),
+                args: Vec::new(),
+                span: ty.span,
+            }),
+            TypeKind::App { callee, args } => Some(TraitRef {
+                name: callee.clone(),
+                args: args.clone(),
+                span: ty.span,
+            }),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

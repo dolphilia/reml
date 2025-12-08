@@ -1,6 +1,7 @@
 use reml_frontend::parser::ast::{
     Attribute, ConductorMonitorTarget, Decl, DeclKind, EffectCall, Expr, ExprKind, Function, Ident,
-    LiteralKind, Module, Param, Pattern, PatternKind, Stmt, StmtKind, TypeKind, UseTree, Visibility,
+    ImplDecl, ImplItem, LiteralKind, Module, Param, Pattern, PatternKind, Stmt, StmtKind, TypeKind,
+    UseTree, Visibility,
 };
 use reml_frontend::typeck::{TypecheckConfig, TypecheckDriver, TypecheckReport};
 use reml_frontend::span::Span;
@@ -164,6 +165,82 @@ fn ch2_stream_301_parses_streaming_example() {
         expr_contains_array(&main_fn.body),
         "stream chunks array literal should survive parsing"
     );
+}
+
+#[test]
+fn ch1_trait_decl_handles_generics_and_where_clause() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml",
+    );
+    let trait_decl = module
+        .decls
+        .iter()
+        .find_map(|decl| match &decl.kind {
+            DeclKind::Trait(trait_decl) => Some(trait_decl),
+            _ => None,
+        })
+        .expect("trait declaration should be parsed");
+    assert_eq!(trait_decl.name.name, "Show");
+    assert_eq!(trait_decl.generics.len(), 1);
+    assert_eq!(
+        trait_decl.where_clause.len(),
+        1,
+        "expected trait where clause to be collected"
+    );
+    assert_eq!(
+        trait_decl.items.len(),
+        2,
+        "two trait methods should be recorded"
+    );
+    let first_item = &trait_decl.items[0];
+    assert_eq!(first_item.signature.name.name, "show");
+    assert!(
+        first_item.default_body.is_none(),
+        "trait method without body should not synthesize a block"
+    );
+    let second_item = &trait_decl.items[1];
+    assert_eq!(second_item.signature.name.name, "show_with_label");
+    assert!(
+        matches!(
+            second_item.default_body.as_ref().map(|expr| &expr.kind),
+            Some(ExprKind::Block { .. })
+        ),
+        "default implementation should be parsed as a block expression"
+    );
+}
+
+#[test]
+fn ch1_impl_decl_supports_trait_impl_items() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml",
+    );
+    let impls = module
+        .decls
+        .iter()
+        .filter_map(|decl| match &decl.kind {
+            DeclKind::Impl(impl_decl) => Some(impl_decl),
+            _ => None,
+        })
+        .collect::<Vec<&ImplDecl>>();
+    assert_eq!(impls.len(), 2, "duplicate impls should both be parsed");
+    let trait_impl = impls
+        .iter()
+        .find(|impl_decl| impl_decl.trait_ref.is_some())
+        .expect("trait impl should exist in duplicate scenario");
+    let trait_ref = trait_impl
+        .trait_ref
+        .as_ref()
+        .expect("trait reference should be recorded");
+    assert_eq!(trait_ref.name.name, "MiniDisplay");
+    assert_eq!(
+        trait_impl.items.len(),
+        1,
+        "impl block should retain the render method"
+    );
+    match &trait_impl.items[0] {
+        ImplItem::Function(function) => assert_eq!(function.name.name, "render"),
+        other => panic!("expected function impl item, got {:?}", other),
+    }
 }
 
 fn expr_contains_array(expr: &Expr) -> bool {
