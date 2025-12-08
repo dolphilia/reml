@@ -50,6 +50,8 @@ class ScenarioResult:
     exit_code: int
     succeeded: bool
     error_message: str | None = None
+    stdout: str = ""
+    stderr: str = ""
 
 
 def parse_args() -> argparse.Namespace:
@@ -161,6 +163,8 @@ def run_reml_frontend(root: Path, scenario: Scenario) -> ScenarioResult:
         exit_code=completed.returncode,
         succeeded=succeeded,
         error_message=error_message,
+        stdout=stdout,
+        stderr=stderr,
     )
 
 
@@ -210,6 +214,69 @@ def write_report(root: Path, suite: str, results: Sequence[ScenarioResult]) -> P
     return report_path
 
 
+def write_failure_log(
+    root: Path, suite: str, results: Sequence[ScenarioResult], report_path: Path
+) -> Path:
+    log_dir = root / "reports" / "spec-audit" / "ch4" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now(timezone.utc)
+    timestamp_str = ts.strftime("%Y%m%dT%H%M%SZ")
+    log_path = log_dir / f"{suite}-{timestamp_str}.md"
+
+    total = len(results)
+    passed = sum(1 for r in results if r.succeeded)
+    failed = total - passed
+
+    lines = [
+        f"# Phase 4 {suite} 失敗ログ",
+        "",
+        f"- 生成時刻: {ts.strftime('%Y-%m-%d %H:%M:%SZ')}",
+        f"- レポート: {report_path}",
+        f"- 件数: {total} 件 / 成功 {passed} 件 / 失敗 {failed} 件",
+        "",
+        "## 失敗シナリオ詳細",
+        "",
+    ]
+    for res in results:
+        if res.succeeded:
+            continue
+        scenario = res.scenario
+        try:
+            rel_path = scenario.input_path.relative_to(root)
+        except ValueError:
+            rel_path = scenario.input_path
+        lines.extend(
+            [
+                f"### {scenario.scenario_id}",
+                "",
+                f"- ファイル: `{rel_path}`",
+                f"- 期待 Diagnostics: {format_codes(scenario.expected_codes)}",
+                f"- 実際 Diagnostics: {format_codes(res.actual_codes)}",
+                f"- Exit code: {res.exit_code}",
+                f"- 備考: {scenario.scenario_notes or scenario.resolution or '—'}",
+            ]
+        )
+        if res.error_message:
+            lines.append(f"- エラー: {res.error_message}")
+        lines.extend(
+            [
+                "",
+                "#### stdout",
+                "```",
+                res.stdout.strip() or "(empty)",
+                "```",
+                "",
+                "#### stderr",
+                "```",
+                res.stderr.strip() or "(empty)",
+                "```",
+                "",
+            ]
+        )
+    log_path.write_text("\n".join(lines), encoding="utf-8")
+    return log_path
+
+
 def main() -> None:
     args = parse_args()
     root: Path = args.root.resolve()
@@ -219,9 +286,11 @@ def main() -> None:
 
     failures = [res for res in results if not res.succeeded]
     if failures:
+        failure_log_path = write_failure_log(root, args.suite, results, report_path)
         summary_lines = [
             f"{args.suite}: {len(failures)} 件のシナリオが失敗しました。",
             f"レポート: {report_path}",
+            f"ログ: {failure_log_path}",
         ]
         for res in failures[:10]:
             summary_lines.append(
