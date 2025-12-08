@@ -45,6 +45,13 @@
    - `examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml`・`bnf-impldecl-duplicate-error.reml` を参考に、`trait` ヘッダ（型パラメータ、where 句）、`impl` ターゲット型、メソッドブロックをそれぞれ受理できるか確認するための parser-only テストを追加。  
    - `parser.syntax.expected_tokens` が `trait` / `impl` を候補に含むよう `ExpectedTokenCollector` を更新し、`CH1-IMPL-302` で `typeclass.impl.duplicate` 診断に到達できる状態を整える。
 
+#### 🔍 4.4 週 実施ログ（Trait/Impl / Match ガード）
+
+- `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend ../../../examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml` を 2026-02-14 に実行し、`CH1-TRAIT-301` が診断ゼロで通過することを確認。`phase4-scenario-matrix.csv` の該当行を `resolution=ok` / `spec_vs_impl_decision=ok` に更新した。
+- 同じコマンドで `bnf-impldecl-duplicate-error.reml` を解析したところ診断 0 件のままで、期待していた `typeclass.impl.duplicate` が出力されないことを再確認。Rust 実装側の型クラス辞書が重複 impl を検出できていないため、`CH1-IMPL-302` を `impl_fix` 判定へ切り替え、Typeck 実装に重複検査を戻すタスクを Phase B へ繰り越した。
+- `match` ガードケース `bnf-matchexpr-when-guard-ok.reml` を `cargo run --bin reml_frontend ...` で実行したところ、`parser.syntax.expected_tokens` / `typeck.aborted.ast_unavailable` が発火し `when` / `as` トークンを受理できないことが判明。Lexer には `KeywordWhen` が未登録で、`match_arm` もガード/エイリアス構文を解析していないため、`CH1-MATCH-003` も `impl_fix` へ更新し、Phase A で要素技術（新キーワードと AST への alias 追加）を補填するフォローアップを起票した。
+- 上記調査結果を `phase4-scenario-matrix.csv` に反映済みで、`reports/spec-audit/ch4/spec-core-dashboard.md` の失敗理由欄にも現状の CLI 出力（診断ゼロまたは `parser.syntax.expected_tokens`）を記録した。
+
 4. **Conductor/DSL, Streaming Parser の最小受理**（4.5 週）  
    - `conductor` ブロックや `run_stream` テストが構文エラーになる箇所を特定し、`docs/spec/1-5` の派生構文に合わせたノードを復活。  
    - `CH1-DSL-801`, `CH2-STREAM-301` を通すまで Parser を段階調整。
@@ -66,7 +73,7 @@
 - `compiler/rust/frontend/src/typeck/driver.rs` を拡張し、`ExprKind::Block` / `StmtKind::{Decl,Assign,Defer}` を追加解析できるようにした。`let`/`var` 束縛をスコープ毎に一般化し、`DeclKind::Var` で `type_annotation` が無い場合は `language.inference.value_restriction` を発火させる。  
 - `@pure` 関数が `perform` を呼び出した際に `effects.purity.violated` を生成する `FunctionContext` を追加し、`TypecheckViolation` に `PurityViolation` を新設した。`collect_perform_effects` もブロック/ラムダを辿るよう更新済み。  
 - `compiler/rust/frontend/tests/spec_core/mod.rs` に `CH1-INF-601/602`・`CH1-EFF-701` を対象とした typeck テストを追加し、`typeck.aborted.ast_unavailable` が発生しないことと新診断が出力されることを `cargo test -p reml_frontend --test spec_core` で確認した。  
-- ⚠️ `CH1-IMPL-302` は現状 Parser が `trait` / `impl` 構文を受理できず `parser.syntax.expected_tokens` で脱落するため、Typeck 層へ AST が渡らない。`examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml` を解析すると `parser.diagnostics` が 1 件返ることを確認済みで、Phase A の `impl` サポートが完了するまで本シナリオは pending とする。
+- ⚠️ `CH1-IMPL-302` は AST 解析までは通過するものの、タイプクラス辞書で重複 `impl` を拒否できず `typeclass.impl.duplicate` 診断が出ない状態。Phase B で Typeck 側に重複検査を復元し、CLI でも期待診断を観測できるようにするまで pending とする。
 
 5. **Core.Parse/Runtime 仕様のアクティブ化**（5.3 週）  
    - `CH2-PARSE-*` 用に `Parse.run` / `Parse.run_with_recovery` が CLI から呼び出せるよう `core::Prelude` の module import を整備。  
