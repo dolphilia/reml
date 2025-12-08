@@ -118,6 +118,27 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - Phase4 KPI に FFI 回路を組み込むため `phase4-scenario-matrix.csv` へ `FFI-CORE-PRELUDE-001` を追加し、`category=FFI` / `spec_chapter=chapter3.prelude` / `stage_requirement=StageRequirement::AtLeast(Beta)` として `core_iter_effects` スナップショットを追跡。`docs/plans/bootstrap-roadmap/assets/README.md` に `FFI` 行を追加し、同時に `docs/spec/0-2-glossary.md` へ「FFI/Core Prelude 回帰カテゴリー」を登録した。`resolution_notes` には `cargo check -p reml_runtime_ffi --features core_prelude` と `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_effects` の組み合わせを記録し、以降の再実行ログを集約できるようにした。
 - dual-write ランブック `docs/plans/rust-migration/1-3-dual-write-runbook.md` の前提条件へ「FFI/Core Prelude ハーネス確認」を追加し、`core_iter_*` テストを実行する前に `reml_runtime_ffi` capability shim を `cargo check` で保証する手順を明文化。`reports/spec-audit/ch4/spec-core-dashboard.md` に `FFI/Core Prelude` KPI セクションを新設して、`FFI-CORE-PRELUDE-001` の pass 率と参照コマンドをレポートに残す。長期的には `docs/notes/core-library-outline.md` の TODO に shim 廃止計画を追記し、Phase 5 で `reml_runtime` との直接依存へ移行することを記録した。
 
+### フェーズE: spec_core サンプル実行保証（新規）
+
+`docs/plans/bootstrap-roadmap/4-1-missing-examples-plan.md` に基づいて `examples/spec_core` の欠落シナリオが補完されたため、すべての `.reml` を Rust 実装で実行し、コード側の不備とコンパイラ側の回帰を切り分ける専用フェーズを追加する。
+
+1. **ハーネス更新と一括実行**（5.9 週）  
+   - `tooling/examples/run_examples.sh --suite spec-core` と `run_phase4_suite.py --suite spec-core` に `chapter1/control_flow`・`literals`・`lambda` など新設ディレクトリを登録し、`expected/spec_core/**` のゴールデン生成コマンドを README に追記する。  
+   - `cargo test -p reml_e2e -- --scenario spec-core` を nightly CI に追加し、`examples/spec_core/chapter1` から `chapter2` までの `.reml` が少なくとも 1 回は CLI で解析・型検査・実行されることを KPI にする。`reports/spec-audit/ch4/spec-core-dashboard.md` には「Missing Examples Closeout」セクションを設け、実行件数と成功率を記録する。
+
+2. **失敗時の切り分け手順**（5.9〜6.0 週）  
+   - `reports/spec-audit/ch4/logs/` に保存される `*.stdout` と `*.diagnostic.json` を、`phase4-scenario-matrix.csv` の `expected`・`diagnostic_keys` と突き合わせて自動判定する `scripts/triage_spec_core_failures.py`（新規）を作成。  
+   - 期待と異なる場合は (a) `.reml` サンプルや `expected/` が仕様と乖離している **Example Fix**、(b) Rust Frontend/Runtime の欠陥による **Compiler Fix**、(c) 仕様記述が足りない **Spec Fix** に分類し、`resolution` 列を `example_fix`/`impl_fix`/`spec_fix` で更新。分類根拠は `resolution_notes` に CLI コマンド・ログパスとともに記載する。
+
+3. **コード・コンパイラ修正フロー**（6.0 週以降継続）  
+   - Example Fix の場合は `.reml` と `expected/` を修正し、`docs/spec/1-5-formal-grammar-bnf.md` の該当規則への相互参照を確認。修正内容は `docs/plans/bootstrap-roadmap/4-1-missing-examples-plan.md` の完了ログへ追記し、再発防止策として `examples/spec_core/README.md` にスタイルガイドを追加する。  
+   - Compiler Fix の場合は本計画のフェーズ A〜D を参照し、対象コンポーネント（Parser/Typeck/Runtime/FFI）別に Issue を起票。再現手順・Affected Scenario ID・想定診断を `docs/notes/examples-regression-log.md` に追記する。  
+   - Spec Fix は `docs/spec/1-x`〜`3-x` の該当章へ脚注または本文追記し、`phase4-scenario-matrix.csv` の `spec_anchor` を更新する。必要に応じて `docs/spec/0-2-glossary.md` に用語を追記し、解釈のブレを防ぐ。
+
+4. **フォローアップとハンドオーバー**（継続）  
+   - `reports/spec-audit/ch4/logs/spec_core-*.md` を週次レビュー資料として整備し、`examples/spec_core` の pass 率を Phase 4 KPI に追加。`docs/plans/bootstrap-roadmap/4-4-field-regression-and-readiness-plan.md` へフィードバックし、Phase 5 Self-host へ移行する前に Example Fix/Compiler Fix/Spec Fix の残件を可視化する。  
+   - `docs/plans/rust-migration/1-3-dual-write-runbook.md` の検証チェックリストへ「spec_core full suite」のステップを追加し、Phase 3 の Rust Migration 計画と Phase 4 のサンプル整備が一体で動作するようにする。
+
 ## 成果物と KPI
 
 - `parser.syntax.expected_tokens` / `typeck.aborted.ast_unavailable` が Phase 4 の spec_core/practical スイートで発生しないこと（期待診断があるケースを除く）。  
