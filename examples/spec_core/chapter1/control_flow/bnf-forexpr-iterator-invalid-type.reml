@@ -1,0 +1,15 @@
+module Spec.Core.Chapter1.ControlFlow.ForIteratorTypeError
+
+use Core.Prelude
+
+// BNF: ForExpr（docs/spec/1-5-formal-grammar-bnf.md §4）
+// 整数をそのままイテレータ扱いしており、`IntoIterator` 契約を満たさない例。
+fn iterate_number() {
+  for value in 42 {
+    value
+  }
+}
+
+fn main() {
+  iterate_number()
+}

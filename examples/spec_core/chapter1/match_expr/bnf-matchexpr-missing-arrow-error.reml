@@ -1,0 +1,15 @@
+module Spec.Core.Chapter1.Match.MissingArrow
+
+use Core.Prelude
+
+// BNF: MatchExpr（docs/spec/1-5-formal-grammar-bnf.md §4）
+// `->` を欠落させて構文エラーを確認する。
+fn describe(state: Option<Str>) -> Str {
+  match state with
+    | Some(name) name
+    | None -> "none"
+}
+
+fn main() -> Str {
+  describe(Some("phase4"))
+}

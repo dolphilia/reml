@@ -1,0 +1,11 @@
+module Spec.Core.Chapter1.Let.MissingInitializer
+
+use Core.Prelude
+
+// BNF: ValDecl（docs/spec/1-5-formal-grammar-bnf.md §2）
+// `=` 以降を欠落させ、`parser.syntax.expected_tokens` を誘発する。
+let pending_value: Int
+
+fn main() -> Int {
+  pending_value
+}

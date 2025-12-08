@@ -1,0 +1,15 @@
+module Spec.Core.Chapter1.ControlFlow.WhileConditionTypeError
+
+use Core.Prelude
+
+// BNF: WhileExpr（docs/spec/1-5-formal-grammar-bnf.md §4）
+// Str を条件に使っており、Bool 以外は拒否される診断ケース。
+fn monitor(state_name: Str) {
+  while state_name {
+    ()
+  }
+}
+
+fn main() {
+  monitor(\"looping\")
+}

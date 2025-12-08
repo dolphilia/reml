@@ -1,0 +1,14 @@
+module Spec.Core.Chapter1.Literals.StringRawMultiline
+
+use Core.Prelude
+
+// BNF: Literal（docs/spec/1-5-formal-grammar-bnf.md §4）
+let raw_path = r"C:\\phase4\\migration"
+let multiline = """
+Phase4 bootstrap plan
+includes parser + runtime
+"""
+
+fn main() -> Str {
+  raw_path + " | " + multiline
+}

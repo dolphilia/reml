@@ -1,0 +1,17 @@
+module Spec.Core.Chapter1.ControlFlow.LoopUnreachable
+
+use Core.Prelude
+
+// BNF: LoopExpr（docs/spec/1-5-formal-grammar-bnf.md §4）
+// break 後に到達不能コードが続いていることを明示する診断用シナリオ。
+fn compute_once() -> Int {
+  loop {
+    break 10
+    let ghost = 20 // ← 解析では到達しない行として報告される想定
+    ghost
+  }
+}
+
+fn main() -> Int {
+  compute_once()
+}

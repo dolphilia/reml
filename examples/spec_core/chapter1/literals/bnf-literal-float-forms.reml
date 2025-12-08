@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.Literals.FloatForms
+
+use Core.Prelude
+
+// BNF: Literal（docs/spec/1-5-formal-grammar-bnf.md §4）
+let base = 3.141_592
+let sci = 1.25e-3
+let upper = 2E+2
+
+fn main() -> Float {
+  base + sci + upper
+}

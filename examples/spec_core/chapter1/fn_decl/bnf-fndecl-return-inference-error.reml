@@ -1,0 +1,13 @@
+module Spec.Core.Chapter1.FnDecl.ReturnInferenceError
+
+use Core.Prelude
+
+// BNF: FnDecl（docs/spec/1-5-formal-grammar-bnf.md §2）
+// 戻り値の型注釈を省略したまま分岐で Int / Str を混在させ、推論エラーを誘発する。
+fn mismatched(flag: Bool) {
+  if flag then 1 else "phase4"
+}
+
+fn main() {
+  mismatched(true)
+}

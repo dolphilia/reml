@@ -1,0 +1,18 @@
+module Spec.Core.Chapter1.ControlFlow.IfExprBlocks
+
+use Core.Prelude
+
+// BNF: IfExpr（docs/spec/1-5-formal-grammar-bnf.md §4）
+fn label_for(metric: Int) -> Str {
+  if metric > 50 then {
+    let prefix = "phase4"
+    prefix + "-stable"
+  } else {
+    let prefix = "phase4"
+    prefix + "-needs-attention"
+  }
+}
+
+fn main() -> Str {
+  label_for(72)
+}

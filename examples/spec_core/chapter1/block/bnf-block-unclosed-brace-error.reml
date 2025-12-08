@@ -1,0 +1,11 @@
+module Spec.Core.Chapter1.Block.UnclosedBrace
+
+use Core.Prelude
+
+// BNF: Block（docs/spec/1-5-formal-grammar-bnf.md §4）
+// 閉じ `}` を欠落させ、ブロック終端の構文エラーを再現する。
+fn invalid_block() -> Int {
+  {
+    let value = 1
+    value + 1
+// ← ここで `}` が必要
