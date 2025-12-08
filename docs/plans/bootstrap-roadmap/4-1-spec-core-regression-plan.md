@@ -40,7 +40,12 @@
    - `AttrList` がブロック式（`{ ... }`）や `fn` 前に付与された場合に落ちる箇所を修正し、`docs/spec/1-1-syntax.md §B.6` のサンプルを CLI で解析できるようにする。  
    - `CH1-ATTR-101/102`, `CH1-EFF-701` をターゲットに parser-only テストを追加。
 
-3. **Conductor/DSL, Streaming Parser の最小受理**（4.4 週）  
+3. **`trait` / `impl` 構文の復元と診断導線**（4.4 週）  
+   - `docs/spec/1-1-syntax.md §B.4` / `docs/spec/1-2-types-Inference.md §B` に記載された `trait` 宣言および `impl` 宣言を `parser/mod.rs` に再実装し、`DeclKind::Trait` / `DeclKind::Impl` が AST へ到達するようにする。  
+   - `examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml`・`bnf-impldecl-duplicate-error.reml` を参考に、`trait` ヘッダ（型パラメータ、where 句）、`impl` ターゲット型、メソッドブロックをそれぞれ受理できるか確認するための parser-only テストを追加。  
+   - `parser.syntax.expected_tokens` が `trait` / `impl` を候補に含むよう `ExpectedTokenCollector` を更新し、`CH1-IMPL-302` で `typeclass.impl.duplicate` 診断に到達できる状態を整える。
+
+4. **Conductor/DSL, Streaming Parser の最小受理**（4.5 週）  
    - `conductor` ブロックや `run_stream` テストが構文エラーになる箇所を特定し、`docs/spec/1-5` の派生構文に合わせたノードを復活。  
    - `CH1-DSL-801`, `CH2-STREAM-301` を通すまで Parser を段階調整。
 
