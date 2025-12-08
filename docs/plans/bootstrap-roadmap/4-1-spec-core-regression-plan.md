@@ -74,7 +74,7 @@
 - `compiler/rust/frontend/src/typeck/driver.rs` を拡張し、`ExprKind::Block` / `StmtKind::{Decl,Assign,Defer}` を追加解析できるようにした。`let`/`var` 束縛をスコープ毎に一般化し、`DeclKind::Var` で `type_annotation` が無い場合は `language.inference.value_restriction` を発火させる。  
 - `@pure` 関数が `perform` を呼び出した際に `effects.purity.violated` を生成する `FunctionContext` を追加し、`TypecheckViolation` に `PurityViolation` を新設した。`collect_perform_effects` もブロック/ラムダを辿るよう更新済み。  
 - `compiler/rust/frontend/tests/spec_core/mod.rs` に `CH1-INF-601/602`・`CH1-EFF-701` を対象とした typeck テストを追加し、`typeck.aborted.ast_unavailable` が発生しないことと新診断が出力されることを `cargo test -p reml_frontend --test spec_core` で確認した。  
-- ⚠️ `CH1-IMPL-302` は AST 解析までは通過するものの、タイプクラス辞書で重複 `impl` を拒否できず `typeclass.impl.duplicate` 診断が出ない状態。Phase B で Typeck 側に重複検査を復元し、CLI でも期待診断を観測できるようにするまで pending とする。
+- 2025-12-08 再検証: `compiler/rust/frontend` 直下で `cargo test --test spec_core` を実行し、`ch1_inf_601` / `ch1_inf_602` / `ch1_eff_701` / `ch1_impl_302` を含む 12 件の spec_core テストがすべて成功することを確認。`ch1_impl_302_reports_duplicate_impl_violation` は `typeclass.impl.duplicate` 診断を返し、Phase B フェーズ 4 で懸念していた重複 impl 拒否の pending フラグを解消した（`docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の当該行は `resolution=ok` のままで差分なし）。
 
 5. **Core.Parse/Runtime 仕様のアクティブ化**（5.3 週）  
    - `CH2-PARSE-*` 用に `Parse.run` / `Parse.run_with_recovery` が CLI から呼び出せるよう `core::Prelude` の module import を整備。  
