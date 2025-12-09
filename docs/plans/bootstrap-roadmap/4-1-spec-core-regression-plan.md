@@ -202,8 +202,8 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 > `[ ]` を `[x]` に変更することで達成状況を可視化する。`期待` は成功/失敗/TBD の初期想定であり、実施後は `phase4-scenario-matrix.csv` と同期する。
 
 **examples/spec_core/chapter1/type_inference**
-- [ ] `examples/spec_core/chapter1/type_inference/bnf-inference-let-generalization-ok.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/type_inference/bnf-inference-value-restriction-error.reml`（期待: 失敗診断）
+- [x] `examples/spec_core/chapter1/type_inference/bnf-inference-let-generalization-ok.reml`（期待: 成功 → 2025-12-09 CLI で診断 0 / `reports/spec-audit/ch4/logs/spec_core-20251209T002127Z.md` を参照）
+- [x] `examples/spec_core/chapter1/type_inference/bnf-inference-value-restriction-error.reml`（期待: 失敗診断 → 実測: Diagnostics 0 件・`language.inference.value_restriction` 未出力 ※ 同ログで再確認）
 
 **examples/spec_core/chapter1/fn_decl**
 - [ ] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-generic-default-effect-ok.reml`（期待: 成功）

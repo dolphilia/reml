@@ -690,6 +690,7 @@ fn expression_expected_tokens() -> Vec<ExpectedToken> {
         ET::keyword("if"),
         ET::keyword("loop"),
         ET::keyword("match"),
+        ET::keyword("fn"),
         ET::keyword("perform"),
         ET::keyword("return"),
         ET::keyword("self"),
@@ -1085,9 +1086,49 @@ fn module_parser<'src>(
                 },
             });
 
+        let lambda_body_expr = choice((block_expr.clone(), expr.clone())).boxed();
+        let lambda_param = ident_for_expr
+            .clone()
+            .then(
+                just(TokenKind::Colon)
+                    .ignore_then(type_parser_for_expr.clone())
+                    .or_not(),
+            )
+            .then(just(TokenKind::Assign).ignore_then(expr.clone()).or_not());
+
+        let lambda_params = lambda_param
+            .map(|((name, ty), default)| Param {
+                span: name.span,
+                name,
+                type_annotation: ty,
+                default,
+            })
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing()
+            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
+
+        let fn_lambda_expr = just(TokenKind::KeywordFn)
+            .ignore_then(lambda_params.clone())
+            .then(
+                just(TokenKind::Arrow)
+                    .ignore_then(type_parser_for_expr.clone())
+                    .or_not(),
+            )
+            .then_ignore(just(TokenKind::DoubleArrow))
+            .then(lambda_body_expr.clone())
+            .map_with_span(|((params, ret_type), body), span: Range<usize>| Expr {
+                span: range_to_span(span),
+                kind: ExprKind::Lambda {
+                    params,
+                    ret_type,
+                    body: Box::new(body),
+                },
+            });
+
         let atom = choice((
             block_expr.clone(),
             match_expr,
+            fn_lambda_expr,
             int_literal.clone(),
             bool_literal,
             string_literal,
@@ -1251,7 +1292,14 @@ fn module_parser<'src>(
                 Expr::assign(target, value, range_to_span(span))
             });
 
-        choice((if_expr, perform_expr, assignment_expr, block_expr, comparison)).boxed()
+        choice((
+            if_expr,
+            perform_expr,
+            assignment_expr,
+            block_expr,
+            comparison,
+        ))
+        .boxed()
     });
 
     let attribute = build_attribute_parser(expr.clone(), ident.clone());
@@ -2302,9 +2350,7 @@ fn parse_module_path(tokens: &[Token], start: usize) -> Option<(ModulePath, Span
 fn parse_module_path_segment(tokens: &[Token], start: usize) -> Option<(Ident, usize)> {
     let token = tokens.get(start)?;
     match token.kind {
-        TokenKind::Identifier | TokenKind::UpperIdentifier => {
-            parse_ident_with_index(tokens, start)
-        }
+        TokenKind::Identifier | TokenKind::UpperIdentifier => parse_ident_with_index(tokens, start),
         TokenKind::KeywordThen => {
             let name = token
                 .lexeme

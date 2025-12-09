@@ -210,6 +210,39 @@ fn ch1_match_003_accepts_guard_and_alias() {
 }
 
 #[test]
+fn ch1_inf_601_accepts_fn_lambda_in_let_binding() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/type_inference/bnf-inference-let-generalization-ok.reml",
+    );
+    let main_fn = module
+        .functions
+        .iter()
+        .find(|function| function.name.name == "main")
+        .expect("main function should exist");
+    let statements = match &main_fn.body.kind {
+        ExprKind::Block { statements, .. } => statements,
+        other => panic!("main body should be a block, got {:?}", other),
+    };
+    let lambda_expr = statements.iter().find_map(|stmt| match &stmt.kind {
+        StmtKind::Decl { decl } => match &decl.kind {
+            DeclKind::Let { pattern, value, .. } => match &pattern.kind {
+                PatternKind::Var(ident) if ident.name == "id" => Some(value),
+                _ => None,
+            },
+            _ => None,
+        },
+        _ => None,
+    });
+    match lambda_expr.and_then(|expr| match &expr.kind {
+        ExprKind::Lambda { .. } => Some(()),
+        _ => None,
+    }) {
+        Some(()) => {}
+        None => panic!("expected let id = fn (...) => ... to be parsed as a lambda expression"),
+    }
+}
+
+#[test]
 fn ch1_trait_decl_handles_generics_and_where_clause() {
     let module = parse_example_module(
         "examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml",
