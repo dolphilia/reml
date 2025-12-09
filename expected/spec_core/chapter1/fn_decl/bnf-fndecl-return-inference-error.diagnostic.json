@@ -1,0 +1,26 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "language.inference.return_conflict",
+      "message": "if 式の then/else の戻り値型が一致しません",
+      "notes": [
+        {
+          "message": "then: Int / else: Str"
+        }
+      ]
+    },
+    {
+      "severity": "error",
+      "code": "E7006",
+      "message": "条件式は Bool 型である必要があります",
+      "notes": [
+        {
+          "message": "この条件式の型は 't0 です"
+        }
+      ]
+    }
+  ]
+}

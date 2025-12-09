@@ -81,6 +81,12 @@
    - `compiler/rust/frontend/src/typeck/driver.rs` の `infer_if_expr`（`ExprKind::If` など）で、then/else の型解決を行った直後に `TypeMismatch` を生成するパスを追加し、`expected/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.diagnostic.json` と同等の `language.inference.return_conflict`（仮称）へマッピングする。  
    - `compiler/rust/frontend/tests/spec_core/mod.rs` へ `ch1_fn_103_reports_return_mismatch_before_condition_error`（仮）を追加し、`if` 条件が Bool でなくても戻り値不一致の診断が最初に出力されることを保証する。CLI では `reports/spec-audit/ch4/logs/` のログ ID を更新し、`phase4-scenario-matrix.csv` の `resolution_notes` を `impl_fix` → `ok` へ遷移させる。
 
+#### ✅ 5.2 週 実施ログ（Return inference conflict）
+
+- `compiler/rust/frontend/src/typeck/driver.rs` の `ExprKind::IfElse` 分岐を再構成し、then/else を推論した直後に `ConstraintSolverError` の結果から `language.inference.return_conflict` を生成する `TypecheckViolationKind::ReturnConflict` を追加。診断は Bool 条件チェックより先に `violations` へ積まれるため、`CH1-FN-103` の戻り値不一致が `E7006` よりも早く報告されるようになった。
+- `compiler/rust/frontend/tests/spec_core/mod.rs` に `ch1_fn_103_reports_return_mismatch_before_condition_error` を追加し、最初の診断コードが `language.inference.return_conflict` であること、`E7006` が存在する場合はその後方に並ぶことを検証できるようにした。`cargo test --manifest-path compiler/rust/frontend/Cargo.toml --test spec_core ch1_fn_103_reports_return_mismatch_before_condition_error` の実行は workspace メンバー未登録エラーで停止したため、環境復旧後に再実行する TODO を残した。
+- `expected/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.diagnostic.json` を新設し、`language.inference.return_conflict` → `E7006` の順で診断を固定。`docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` では `diagnostic_keys` を `["language.inference.return_conflict","E7006"]` に更新し、`resolution_notes` に CLI/テスト再現コマンドと workspace エラー（"current package believes it's in a workspace when it's not"）を記録した。
+
 6. **Core.Parse/Runtime 仕様のアクティブ化**（5.3 週）  
    - `CH2-PARSE-*` 用に `Parse.run` / `Parse.run_with_recovery` が CLI から呼び出せるよう `core::Prelude` の module import を整備。  
    - `CH3-RUNTIME-601`, `CH3-PLG-310` など Capability 関連は stub 実装で構文エラーを避け、診断 (`runtime.bridge.stage_mismatch` など) が出力できるようにする。

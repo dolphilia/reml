@@ -569,6 +569,34 @@ fn ch1_eff_701_reports_purity_violation() {
 }
 
 #[test]
+fn ch1_fn_103_reports_return_mismatch_before_condition_error() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    let first_code = report
+        .violations
+        .first()
+        .map(|violation| violation.code)
+        .expect("戻り値型診断が最初に出力されるはずです");
+    assert_eq!(
+        first_code,
+        "language.inference.return_conflict",
+        "戻り値型診断が先頭に並ぶ必要があります"
+    );
+    if let Some(index) = report
+        .violations
+        .iter()
+        .position(|violation| violation.code == "E7006")
+    {
+        assert!(
+            index > 0,
+            "Bool 条件診断は戻り値型診断より前へ出るべきではありません"
+        );
+    }
+}
+
+#[test]
 fn ch1_impl_302_reports_duplicate_impl_violation() {
     let module = parse_example_module(
         "examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml",

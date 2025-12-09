@@ -4,7 +4,9 @@ use once_cell::sync::Lazy;
 use serde::Serialize;
 
 use super::capability::{CapabilityDescriptor, EffectUsage};
-use super::constraint::{iterator, Constraint, ConstraintSolver, Substitution};
+use super::constraint::{
+    iterator, Constraint, ConstraintSolver, ConstraintSolverError, Substitution,
+};
 use super::env::{StageRequirement, TypeEnv, TypecheckConfig};
 use super::metrics::TypecheckMetrics;
 use super::scheme::Scheme;
@@ -287,6 +289,7 @@ pub struct TypecheckViolation {
 pub enum TypecheckViolationKind {
     ConditionLiteralBool,
     AstUnavailable,
+    ReturnConflict,
     ResidualLeak,
     StageMismatch,
     IteratorStageMismatch,
@@ -339,6 +342,30 @@ impl TypecheckViolation {
             notes: vec![ViolationNote::plain(format!(
                 "この条件式の型は {} です",
                 actual.label()
+            ))],
+            capability: None,
+            function,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn return_conflict(
+        span: Span,
+        function: Option<String>,
+        then_ty: Type,
+        else_ty: Type,
+    ) -> Self {
+        Self {
+            kind: TypecheckViolationKind::ReturnConflict,
+            code: "language.inference.return_conflict",
+            message: "if 式の then/else の戻り値型が一致しません".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "then: {} / else: {}",
+                then_ty.label(),
+                else_ty.label()
             ))],
             capability: None,
             function,
@@ -576,6 +603,7 @@ impl TypecheckViolation {
         match self.kind {
             TypecheckViolationKind::ConditionLiteralBool
             | TypecheckViolationKind::AstUnavailable
+            | TypecheckViolationKind::ReturnConflict
             | TypecheckViolationKind::ValueRestriction
             | TypecheckViolationKind::ImplDuplicate => "type",
             TypecheckViolationKind::ResidualLeak
@@ -827,7 +855,6 @@ fn infer_expr(
                 dict_refs,
                 context,
             );
-            check_bool_condition(condition.span(), &condition_result.ty, violations, context);
             let then_result = infer_expr(
                 then_branch,
                 env,
@@ -840,6 +867,7 @@ fn infer_expr(
                 dict_refs,
                 context,
             );
+            let has_explicit_else = else_branch.is_some();
             let synthetic_else = Expr::literal(
                 Literal {
                     value: LiteralKind::Unit,
@@ -866,7 +894,26 @@ fn infer_expr(
                 else_result.ty.clone(),
             ));
             metrics.record_unify_call();
-            let _ = solver.unify(then_result.ty.clone(), else_result.ty.clone());
+            let unify_error = solver
+                .unify(then_result.ty.clone(), else_result.ty.clone())
+                .err();
+            if let (true, Some(error)) = (has_explicit_else, unify_error) {
+                if let Some((left, right)) = match error {
+                    ConstraintSolverError::Mismatch(left, right) => Some((left, right)),
+                    ConstraintSolverError::Occurs(variable, ty) => {
+                        Some((Type::Var(variable), ty))
+                    }
+                    ConstraintSolverError::NotImplemented(_) => None,
+                } {
+                    violations.push(TypecheckViolation::return_conflict(
+                        expr.span(),
+                        context.name.map(|name| name.to_string()),
+                        left,
+                        right,
+                    ));
+                }
+            }
+            check_bool_condition(condition.span(), &condition_result.ty, violations, context);
             let ty = if then_result.ty == else_result.ty {
                 then_result.ty.clone()
             } else {
