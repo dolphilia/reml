@@ -535,6 +535,7 @@ fn parse_result_from_module(
 
     if let Some(module) = ast.as_ref() {
         collect_cfg_diagnostics(module, &run_config, &mut diagnostics);
+        collect_use_diagnostics(module, &mut diagnostics);
     }
 
     let farthest_error_offset = diagnostics
@@ -809,6 +810,55 @@ fn collect_cfg_diagnostics(
         evaluate_cfg_attributes(&function.attrs, diagnostics, &registry);
         inspect_cfg_expr(&function.body, diagnostics, &registry);
     }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum ModuleScope {
+    Root,
+    Nested,
+}
+
+fn module_scope_kind(header: Option<&ModuleHeader>) -> ModuleScope {
+    match header.map(|header| &header.path) {
+        Some(ModulePath::Relative { head, .. }) => match head {
+            RelativeHead::Self_ | RelativeHead::Super(_) => ModuleScope::Nested,
+            RelativeHead::PlainIdent(_) => ModuleScope::Root,
+        },
+        _ => ModuleScope::Root,
+    }
+}
+
+fn collect_use_diagnostics(module: &Module, diagnostics: &mut Vec<FrontendDiagnostic>) {
+    if module_scope_kind(module.header.as_ref()) == ModuleScope::Nested {
+        return;
+    }
+    for decl in &module.uses {
+        if use_tree_has_super(&decl.tree) {
+            diagnostics.push(build_invalid_super_diagnostic(decl));
+        }
+    }
+}
+
+fn use_tree_has_super(tree: &UseTree) -> bool {
+    match tree {
+        UseTree::Path { path, .. } | UseTree::Brace { path, .. } => {
+            matches!(path, ModulePath::Relative { head: RelativeHead::Super(_), .. })
+        }
+    }
+}
+
+fn build_invalid_super_diagnostic(decl: &UseDecl) -> FrontendDiagnostic {
+    let mut diagnostic = FrontendDiagnostic::new("ルートモジュールでは `super` を利用できません。")
+        .with_code("language.use.invalid_super")
+        .with_severity(DiagnosticSeverity::Error)
+        .with_domain(DiagnosticDomain::Parser)
+        .with_span(decl.span)
+        .with_recoverability(Recoverability::Fatal);
+    diagnostic.add_note(DiagnosticNote::new(
+        "language.use.invalid_super.note",
+        "`use ::Core.Prelude` など明示的なルート参照に書き換えてください。",
+    ));
+    diagnostic
 }
 
 fn inspect_cfg_expr(

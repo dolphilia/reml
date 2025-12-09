@@ -33,6 +33,28 @@ fn ch1_mod_003_accepts_module_and_use_prefix() {
 }
 
 #[test]
+fn ch1_mod_004_reports_invalid_super_use() {
+    let input_path = repo_root()
+        .join("examples/spec_core/chapter1/module_use/bnf-usedecl-super-root-invalid.reml");
+    let source = std::fs::read_to_string(&input_path)
+        .unwrap_or_else(|err| panic!("failed to read {}: {err}", input_path.display()));
+    let run_config = RunConfig::default();
+    let parser_options = ParserOptions::from_run_config(&run_config);
+    let result =
+        ParserDriver::parse_with_options_and_run_config(&source, parser_options, run_config);
+    let codes = result
+        .diagnostics
+        .iter()
+        .filter_map(|diag| diag.code.as_deref())
+        .collect::<Vec<_>>();
+    assert!(
+        codes.contains(&"language.use.invalid_super"),
+        "expected language.use.invalid_super, got {:?}",
+        codes
+    );
+}
+
+#[test]
 fn ch1_let_001_accepts_top_level_let_binding() {
     let module = parse_example_module(
         "examples/spec_core/chapter1/let_binding/bnf-valdecl-let-simple-ok.reml",
