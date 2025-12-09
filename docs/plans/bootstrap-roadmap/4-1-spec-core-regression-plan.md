@@ -197,6 +197,16 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
   - 仕様不足 → Spec Fix で `docs/spec/` への追記を実施。  
 - **ログ記録**: すべての判断は `resolution_notes` と `reports/spec-audit/ch4/logs/` に CLI コマンド付きで記録する。効率化のためのバッチ実行は禁止し、逐次ログを取る。
 
+#### 補足: Cargo ワークスペース衝突時の対処
+
+- `compiler/rust/frontend` を単体で `cargo test` / `cargo run` する際、リポジトリ直下の `Cargo.toml` が `[workspace]` を宣言しているため「current package believes it's in a workspace when it's not」というエラーが発生する。  
+- フェーズFでは、以下の一時リネーム手順で衝突を回避し、作業終了後に必ず復元する運用を採用する。  
+  1. `mv Cargo.toml Cargo.toml.ws`  
+  2. `cargo test --manifest-path compiler/rust/frontend/Cargo.toml <subcommand>` など目的のコマンドを実行  
+  3. `mv Cargo.toml.ws Cargo.toml`  
+- リネーム状態を放置しないよう、コマンド実行後に `git status` で `Cargo.toml` の位置を確認すること。  
+- 長期的な解決策（Phase5 引き継ぎ）として、ルート `Cargo.toml` の `workspace.members` に Rust frontend を追加する、もしくは `workspace.exclude`/空 `[workspace]` を用意して局所実行を許容する設計案を検討する。
+
 #### フェーズF 進捗トラッカー（初期状態: 未実施）
 
 > `[ ]` を `[x]` に変更することで達成状況を可視化する。`期待` は成功/失敗/TBD の初期想定であり、実施後は `phase4-scenario-matrix.csv` と同期する。
