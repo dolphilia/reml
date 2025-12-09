@@ -70,6 +70,30 @@ impl TypecheckDriver {
         let mut var_gen = TypeVarGen::default();
         let mut module_env = TypeEnv::new();
 
+        if !module.decls.is_empty() {
+            let mut module_decl_stats = FunctionStats::default();
+            let mut module_decl_constraints = Vec::new();
+            let module_context = FunctionContext {
+                name: None,
+                is_pure: false,
+            };
+            for decl in &module.decls {
+                infer_decl(
+                    decl,
+                    &mut module_env,
+                    &mut var_gen,
+                    &mut solver,
+                    &mut module_decl_constraints,
+                    &mut module_decl_stats,
+                    &mut metrics,
+                    &mut violations,
+                    &mut dict_ref_drafts,
+                    module_context,
+                );
+            }
+            all_constraints.extend(module_decl_constraints.drain(..));
+        }
+
         for function in &module.functions {
             metrics.record_function();
             let mut stats = FunctionStats::default();
@@ -1592,8 +1616,7 @@ fn visit_expr(expr: &Expr, visitor: &mut impl FnMut(&Expr)) {
         | ExprKind::Loop { body }
         | ExprKind::Unsafe { body }
         | ExprKind::Defer { body } => visit_expr(body, visitor),
-        ExprKind::Pipe { left, right }
-        | ExprKind::Binary { left, right, .. } => {
+        ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
             visit_expr(left, visitor);
             visit_expr(right, visitor);
         }
@@ -1603,8 +1626,7 @@ fn visit_expr(expr: &Expr, visitor: &mut impl FnMut(&Expr)) {
             visit_expr(inner, visitor);
         }
         ExprKind::Return { value: None } => {}
-        ExprKind::FieldAccess { target, .. }
-        | ExprKind::TupleAccess { target, .. } => {
+        ExprKind::FieldAccess { target, .. } | ExprKind::TupleAccess { target, .. } => {
             visit_expr(target, visitor);
         }
         ExprKind::Handle { handle } => {
@@ -1701,10 +1723,7 @@ fn module_path_matches_member(path: &ModulePath, module_name: &str, member_name:
                 return false;
             }
             head_name == module_name
-                && segments
-                    .last()
-                    .map(|segment| segment.name.as_str())
-                    == Some(member_name)
+                && segments.last().map(|segment| segment.name.as_str()) == Some(member_name)
         }
     }
 }

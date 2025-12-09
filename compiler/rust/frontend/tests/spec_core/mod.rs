@@ -538,6 +538,18 @@ fn ch1_inf_602_reports_value_restriction_violation() {
 }
 
 #[test]
+fn ch1_inf_602_module_example_emits_value_restriction() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/type_inference/bnf-inference-value-restriction-error.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "language.inference.value_restriction"),
+        "example module should emit language.inference.value_restriction at top-level"
+    );
+}
+
+#[test]
 fn ch1_eff_701_reports_purity_violation() {
     let perform = stmt_expr(make_perform("Console::log", literal_int(1)));
     let body = block_expr(vec![perform]);

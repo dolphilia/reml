@@ -203,7 +203,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 **examples/spec_core/chapter1/type_inference**
 - [x] `examples/spec_core/chapter1/type_inference/bnf-inference-let-generalization-ok.reml`（期待: 成功 → 2025-12-09 CLI で診断 0 / `reports/spec-audit/ch4/logs/spec_core-20251209T002127Z.md` を参照）
-- [x] `examples/spec_core/chapter1/type_inference/bnf-inference-value-restriction-error.reml`（期待: 失敗診断 → 実測: Diagnostics 0 件・`language.inference.value_restriction` 未出力 ※ 同ログで再確認）
+- [x] `examples/spec_core/chapter1/type_inference/bnf-inference-value-restriction-error.reml`（期待: 失敗診断 → 2025-12-09 CLI で `language.inference.value_restriction` を再取得 / `reports/spec-audit/ch4/logs/spec_core-20251209T003146Z.md` を参照）
 
 **examples/spec_core/chapter1/fn_decl**
 - [ ] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-generic-default-effect-ok.reml`（期待: 成功）
