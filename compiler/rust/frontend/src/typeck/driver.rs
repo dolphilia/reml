@@ -24,6 +24,31 @@ use crate::span::Span;
 /// メトリクスとサマリ情報のみを生成する。
 pub struct TypecheckDriver;
 
+#[derive(Default)]
+struct UnicodeShadowTracker {
+    seen: HashMap<String, Span>,
+}
+
+impl UnicodeShadowTracker {
+    fn observe_pattern(
+        &mut self,
+        pattern: &Pattern,
+        span: Span,
+        violations: &mut Vec<TypecheckViolation>,
+    ) {
+        if let Some(name) = pattern_binding_name(pattern) {
+            if name.is_ascii() {
+                return;
+            }
+            if self.seen.contains_key(&name) {
+                violations.push(TypecheckViolation::unicode_shadowing(span, &name));
+            } else {
+                self.seen.insert(name, span);
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 struct FunctionContext<'a> {
     name: Option<&'a str>,
@@ -71,6 +96,7 @@ impl TypecheckDriver {
         let mut solver = ConstraintSolver::new();
         let mut var_gen = TypeVarGen::default();
         let mut module_env = TypeEnv::new();
+        let mut unicode_shadow_tracker = UnicodeShadowTracker::default();
 
         if !module.decls.is_empty() {
             let mut module_decl_stats = FunctionStats::default();
@@ -90,6 +116,7 @@ impl TypecheckDriver {
                     &mut metrics,
                     &mut violations,
                     &mut dict_ref_drafts,
+                    Some(&mut unicode_shadow_tracker),
                     module_context,
                 );
             }
@@ -291,6 +318,7 @@ pub enum TypecheckViolationKind {
     ConditionLiteralBool,
     AstUnavailable,
     ReturnConflict,
+    UnicodeShadowing,
     ResidualLeak,
     StageMismatch,
     IteratorStageMismatch,
@@ -383,6 +411,24 @@ impl TypecheckViolation {
             span,
             notes: vec![ViolationNote::plain(note_message)],
             capability,
+            function: None,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn unicode_shadowing(span: Span, name: &str) -> Self {
+        Self {
+            kind: TypecheckViolationKind::UnicodeShadowing,
+            code: "language.shadowing.unicode",
+            message: "Unicode 識別子の再束縛は `let` セクションの警告ポリシーにより拒否されます。"
+                .to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "`{name}` を 1 回のみ束縛するか、別名に変更してください。"
+            ))],
+            capability: None,
             function: None,
             expected: None,
             iterator_stage: None,
@@ -600,6 +646,7 @@ impl TypecheckViolation {
             TypecheckViolationKind::ConditionLiteralBool
             | TypecheckViolationKind::AstUnavailable
             | TypecheckViolationKind::ReturnConflict
+            | TypecheckViolationKind::UnicodeShadowing
             | TypecheckViolationKind::ValueRestriction
             | TypecheckViolationKind::ImplDuplicate => "type",
             TypecheckViolationKind::ResidualLeak
@@ -1005,6 +1052,7 @@ fn infer_block(
                     metrics,
                     violations,
                     dict_refs,
+                    None,
                     context,
                 );
                 block_dict_refs.extend(stmt_refs);
@@ -1083,6 +1131,7 @@ fn infer_decl(
     metrics: &mut TypecheckMetrics,
     violations: &mut Vec<TypecheckViolation>,
     dict_refs: &mut Vec<DictRefDraft>,
+    unicode_tracker: Option<&mut UnicodeShadowTracker>,
     context: FunctionContext<'_>,
 ) -> Vec<typed::DictRefId> {
     match &decl.kind {
@@ -1090,19 +1139,24 @@ fn infer_decl(
             pattern,
             value,
             type_annotation: _,
-        } => infer_binding(
-            pattern,
-            value,
-            env,
-            var_gen,
-            solver,
-            constraints,
-            stats,
-            metrics,
-            violations,
-            dict_refs,
-            context,
-        ),
+        } => {
+            if let Some(tracker) = unicode_tracker {
+                tracker.observe_pattern(pattern, decl.span, violations);
+            }
+            infer_binding(
+                pattern,
+                value,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                context,
+            )
+        }
         DeclKind::Var {
             pattern,
             value,

@@ -369,8 +369,11 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         ParserDriver::parse_with_options_and_run_config(&source, parser_options, run_config)
     };
     trace_log(args, "parsing", "finish");
-    let typeck_report =
-        TypecheckDriver::infer_module(result.value.as_ref(), &args.typecheck_config);
+    let typeck_report = if result.value.is_some() {
+        TypecheckDriver::infer_module(result.value.as_ref(), &args.typecheck_config)
+    } else {
+        TypecheckReport::default()
+    };
     let flow_metrics = result
         .stream_flow_state
         .as_ref()

@@ -263,10 +263,10 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/type_decl/bnf-typedef-sum-recordpattern-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/type_decl/bnf-typedef-sum-recordpattern-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T145714Z.md で diagnostics=[] を確認）
 
 **examples/spec_core/chapter1/let_binding**
-- [ ] `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-pattern-tuple.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-shadow-unicode.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-simple-ok.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/let_binding/bnf-valdecl-missing-initializer-error.reml`（期待: 失敗診断）
+- [x] `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-pattern-tuple.reml`（期待: 成功 → 2026-02-18 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/let_binding/bnf-valdecl-let-pattern-tuple.reml` / diagnostics=[]）
+- [x] `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-shadow-unicode.reml`（期待: 失敗診断 → 2026-02-18 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/let_binding/bnf-valdecl-let-shadow-unicode.reml` / diagnostics=`language.shadowing.unicode`）
+- [x] `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-simple-ok.reml`（期待: 成功 → 2026-02-18 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/let_binding/bnf-valdecl-let-simple-ok.reml` / diagnostics=[]）
+- [x] `examples/spec_core/chapter1/let_binding/bnf-valdecl-missing-initializer-error.reml`（期待: 失敗診断 → 2026-02-18 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/let_binding/bnf-valdecl-missing-initializer-error.reml` / diagnostics=`parser.syntax.expected_tokens`）
 
 **examples/spec_core/chapter1/control_flow**
 - [ ] `examples/spec_core/chapter1/control_flow/bnf-ifexpr-missing-else-type-mismatch.reml`（期待: 失敗診断）

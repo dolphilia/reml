@@ -107,6 +107,23 @@ fn ch1_let_002_supports_tuple_pattern_bindings() {
 }
 
 #[test]
+fn ch1_let_003_reports_unicode_shadowing_violation() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/let_binding/bnf-valdecl-let-shadow-unicode.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "language.shadowing.unicode"),
+        "Unicode let shadowing should be rejected, got {:?}",
+        report
+            .violations
+            .iter()
+            .map(|violation| violation.code)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
 fn ch1_attr_102_reports_cfg_unsatisfied_branch() {
     let input_path = repo_root()
         .join("examples/spec_core/chapter1/attributes/bnf-attr-cfg-missing-flag-error.reml");
