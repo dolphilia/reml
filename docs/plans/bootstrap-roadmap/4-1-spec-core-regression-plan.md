@@ -76,7 +76,12 @@
 - `compiler/rust/frontend/tests/spec_core/mod.rs` に `CH1-INF-601/602`・`CH1-EFF-701` を対象とした typeck テストを追加し、`typeck.aborted.ast_unavailable` が発生しないことと新診断が出力されることを `cargo test -p reml_frontend --test spec_core` で確認した。  
 - 2025-12-08 再検証: `compiler/rust/frontend` 直下で `cargo test --test spec_core` を実行し、`ch1_inf_601` / `ch1_inf_602` / `ch1_eff_701` / `ch1_impl_302` を含む 12 件の spec_core テストがすべて成功することを確認。`ch1_impl_302_reports_duplicate_impl_violation` は `typeclass.impl.duplicate` 診断を返し、Phase B フェーズ 4 で懸念していた重複 impl 拒否の pending フラグを解消した（`docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の当該行は `resolution=ok` のままで差分なし）。
 
-5. **Core.Parse/Runtime 仕様のアクティブ化**（5.3 週）  
+5. **条件式より前に戻り値型の不一致を検出**（5.2 週）  
+   - `CH1-FN-103`（`bnf-fndecl-return-inference-error.reml`）の triage をフェーズBへ取り込み、`if` ブロックの各分岐で推論された戻り値型を比較した結果を Bool 条件チェックより優先して報告する。  
+   - `compiler/rust/frontend/src/typeck/driver.rs` の `infer_if_expr`（`ExprKind::If` など）で、then/else の型解決を行った直後に `TypeMismatch` を生成するパスを追加し、`expected/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.diagnostic.json` と同等の `language.inference.return_conflict`（仮称）へマッピングする。  
+   - `compiler/rust/frontend/tests/spec_core/mod.rs` へ `ch1_fn_103_reports_return_mismatch_before_condition_error`（仮）を追加し、`if` 条件が Bool でなくても戻り値不一致の診断が最初に出力されることを保証する。CLI では `reports/spec-audit/ch4/logs/` のログ ID を更新し、`phase4-scenario-matrix.csv` の `resolution_notes` を `impl_fix` → `ok` へ遷移させる。
+
+6. **Core.Parse/Runtime 仕様のアクティブ化**（5.3 週）  
    - `CH2-PARSE-*` 用に `Parse.run` / `Parse.run_with_recovery` が CLI から呼び出せるよう `core::Prelude` の module import を整備。  
    - `CH3-RUNTIME-601`, `CH3-PLG-310` など Capability 関連は stub 実装で構文エラーを避け、診断 (`runtime.bridge.stage_mismatch` など) が出力できるようにする。
 
