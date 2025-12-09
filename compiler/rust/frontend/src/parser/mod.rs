@@ -8,6 +8,7 @@ use reml_runtime::text::{LocaleId, UnicodeError};
 use serde::Serialize;
 use smallvec::SmallVec;
 use smol_str::SmolStr;
+use std::collections::HashSet;
 use std::ops::Range;
 
 pub mod api;
@@ -656,6 +657,20 @@ fn build_parse_error(span: Span, summary: &ExpectedTokensSummary) -> ParseError 
 }
 
 fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<FrontendDiagnostic>) {
+    let already_reported = diagnostics.iter().any(|diag| {
+        diag.code
+            .as_deref()
+            .map(|code| code == "effects.handler.missing_with")
+            .unwrap_or(false)
+            || diag
+                .codes
+                .iter()
+                .any(|code| code == "effects.handler.missing_with")
+    });
+    if already_reported {
+        return;
+    }
+
     fn record(expr: &Expr, diagnostics: &mut Vec<FrontendDiagnostic>) {
         if let ExprKind::Handle { handle } = &expr.kind {
             if !handle.with_keyword {
@@ -767,13 +782,14 @@ fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<Fro
 
 fn detect_handle_missing_with_tokens(tokens: &[Token]) -> Vec<FrontendDiagnostic> {
     let mut diags = Vec::new();
+    let mut emitted_spans: HashSet<Span> = HashSet::new();
     let mut pending_handle: Option<Span> = None;
     for token in tokens {
         match token.kind {
             TokenKind::KeywordHandle => pending_handle = Some(token.span),
             TokenKind::KeywordWith => pending_handle = None,
             TokenKind::KeywordHandler => {
-                if pending_handle.take().is_some() {
+                if pending_handle.take().is_some() && emitted_spans.insert(token.span) {
                     let mut diagnostic = FrontendDiagnostic::new(
                         "`handle expr with handler` 構文で `with` キーワードが欠落しています。",
                     )
@@ -1152,6 +1168,17 @@ fn module_parser<'src>(
                 )
             });
 
+        let unit_literal = just(TokenKind::LParen)
+            .ignore_then(just(TokenKind::RParen))
+            .map_with_span(|_, span: Range<usize>| {
+                Expr::literal(
+                    Literal {
+                        value: LiteralKind::Unit,
+                    },
+                    range_to_span(span),
+                )
+            });
+
         let paren_expr = expr
             .clone()
             .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
@@ -1408,6 +1435,7 @@ fn module_parser<'src>(
             array_literal,
             record_literal,
             tuple_literal,
+            unit_literal,
             ident_expr.clone(),
             paren_expr,
         ))

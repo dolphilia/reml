@@ -1,8 +1,10 @@
+use reml_frontend::diagnostic::FrontendDiagnostic;
 use reml_frontend::parser::ast::{
     Attribute, ConductorMonitorTarget, Decl, DeclKind, EffectCall, Expr, ExprKind, Function, Ident,
     ImplDecl, ImplItem, LiteralKind, Module, Param, Pattern, PatternKind, Stmt, StmtKind, TypeKind,
     UseTree, Visibility,
 };
+use reml_frontend::parser::ParserDriver;
 use reml_frontend::span::Span;
 use reml_frontend::typeck::{TypecheckConfig, TypecheckDriver, TypecheckReport};
 
@@ -210,6 +212,94 @@ fn ch1_match_003_accepts_guard_and_alias() {
 }
 
 #[test]
+fn ch1_effects_201_parses_handle_expr_perform_counter() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-perform-counter.reml",
+    );
+    let sum_pair = module
+        .functions
+        .iter()
+        .find(|function| function.name.name == "sum_pair")
+        .expect("sum_pair function should exist");
+    let statements = match &sum_pair.body.kind {
+        ExprKind::Block { statements, .. } => statements,
+        other => panic!("sum_pair body should be a block, got {:?}", other),
+    };
+    let perform_units: Vec<String> = statements
+        .iter()
+        .filter_map(|stmt| match &stmt.kind {
+            StmtKind::Decl { decl } => match &decl.kind {
+                DeclKind::Let { value, .. } => match &value.kind {
+                    ExprKind::PerformCall { call } => {
+                        match &call.argument.kind {
+                            ExprKind::Literal(literal) => match literal.value {
+                                LiteralKind::Unit => Some(call.effect.name.clone()),
+                                ref other => panic!(
+                                    "perform argument should be unit literal, got {:?}",
+                                    other
+                                ),
+                            },
+                            other => panic!(
+                                "perform argument should remain a literal expression, got {:?}",
+                                other
+                            ),
+                        }
+                    }
+                    _ => None,
+                },
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        perform_units.len(),
+        2,
+        "two perform calls should be captured in sum_pair"
+    );
+    assert!(
+        perform_units.iter().all(|effect| effect == "Counter::next"),
+        "perform targets should resolve to Counter::next: {:?}",
+        perform_units
+    );
+
+    let main_fn = module
+        .functions
+        .iter()
+        .find(|function| function.name.name == "main")
+        .expect("main function should exist");
+    let handle_present = match &main_fn.body.kind {
+        ExprKind::Block { statements, .. } => statements.iter().any(|stmt| match &stmt.kind {
+            StmtKind::Expr { expr } => matches!(expr.kind, ExprKind::Handle { .. }),
+            _ => false,
+        }),
+        other => panic!("main body should be a block, got {:?}", other),
+    };
+    assert!(
+        handle_present,
+        "handle expression should survive parsing inside fn main"
+    );
+}
+
+#[test]
+fn ch1_effects_missing_with_reports_single_diagnostic() {
+    let source_path = common::repo_root()
+        .join("examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-missing-with.reml");
+    let source =
+        std::fs::read_to_string(&source_path).expect("failed to read missing_with scenario");
+    let result = ParserDriver::parse(&source);
+    let missing_with_count = result
+        .diagnostics
+        .iter()
+        .filter(|diag| diag_has_code(diag, "effects.handler.missing_with"))
+        .count();
+    assert_eq!(
+        missing_with_count, 1,
+        "missing-with scenario should emit exactly one parser diagnostic"
+    );
+}
+
+#[test]
 fn ch1_inf_601_accepts_fn_lambda_in_let_binding() {
     let module = parse_example_module(
         "examples/spec_core/chapter1/type_inference/bnf-inference-let-generalization-ok.reml",
@@ -382,6 +472,10 @@ fn has_violation(report: &TypecheckReport, code: &str) -> bool {
         .violations
         .iter()
         .any(|violation| violation.code == code)
+}
+
+fn diag_has_code(diag: &FrontendDiagnostic, code: &str) -> bool {
+    diag.code.as_deref() == Some(code) || diag.codes.iter().any(|existing| existing == code)
 }
 
 fn dummy_span() -> Span {

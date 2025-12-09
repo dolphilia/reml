@@ -66,6 +66,7 @@ impl EffectUsage {
 pub struct CapabilityDescriptor {
     id: SmolStr,
     stage: StageId,
+    user_defined: bool,
 }
 
 impl CapabilityDescriptor {
@@ -75,6 +76,10 @@ impl CapabilityDescriptor {
 
     pub fn stage(&self) -> &StageId {
         &self.stage
+    }
+
+    pub fn is_user_defined(&self) -> bool {
+        self.user_defined
     }
 
     pub fn resolve(effect_name: &str) -> Self {
@@ -89,12 +94,13 @@ impl CapabilityDescriptor {
                 return Self::with_id(id);
             }
         }
-        // Fallback: use first segment of the identifier as capability.
+        // Fallback: use first segment of the identifier as capability, but treat it as
+        // user-defined and keep the runtime stage at `stable`.
         let fallback = normalized.split('.').next().unwrap_or(&normalized).trim();
         if fallback.is_empty() {
-            Self::with_id("unknown")
+            Self::with_user_defined_id("unknown")
         } else {
-            Self::with_id(fallback)
+            Self::with_user_defined_id(fallback)
         }
     }
 
@@ -106,6 +112,21 @@ impl CapabilityDescriptor {
         Self {
             id: SmolStr::new(id.to_ascii_lowercase()),
             stage,
+            user_defined: false,
+        }
+    }
+
+    fn with_user_defined_id(id: &str) -> Self {
+        let normalized = id.trim();
+        let label = if normalized.is_empty() {
+            "unknown".to_string()
+        } else {
+            normalized.to_ascii_lowercase()
+        };
+        Self {
+            id: SmolStr::new(label),
+            stage: StageId::stable(),
+            user_defined: true,
         }
     }
 }

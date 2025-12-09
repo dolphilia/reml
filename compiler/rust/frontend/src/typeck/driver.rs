@@ -1402,6 +1402,9 @@ fn detect_capability_violations(
     let mut violations = Vec::new();
     for usage in usages {
         let descriptor = CapabilityDescriptor::resolve(&usage.effect_name);
+        if descriptor.is_user_defined() {
+            continue;
+        }
         let descriptor_requirement = StageRequirement::AtLeast(descriptor.stage().clone());
         let required_stage =
             StageRequirement::merged_with(&descriptor_requirement, &capability_requirement);

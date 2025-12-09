@@ -232,8 +232,8 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-no-args-ok.reml`（期待: 成功 → 2025-12-09 CLI で診断 0 / log=reports/spec-audit/ch4/logs/spec_core-20251209T005935Z.md）
 
 **examples/spec_core/chapter1/effect_handlers**
-- [ ] `examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-perform-counter.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-missing-with.reml`（期待: 失敗診断）
+- [x] `examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-perform-counter.reml`（期待: 成功）
+- [x] `examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-missing-with.reml`（期待: 失敗診断）
 
 **examples/spec_core/chapter1/attributes**
 - [ ] `examples/spec_core/chapter1/attributes/bnf-attr-cfg-missing-flag-error.reml`（期待: 失敗診断）
