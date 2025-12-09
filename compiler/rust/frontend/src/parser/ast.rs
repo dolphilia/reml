@@ -243,10 +243,30 @@ pub struct ConductorDecl {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct EffectAnnotation {
+    pub tags: Vec<Ident>,
+    pub span: Span,
+}
+
+impl EffectAnnotation {
+    pub fn render(&self) -> String {
+        self.tags
+            .iter()
+            .map(|ident| ident.name.clone())
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct FunctionSignature {
     pub name: Ident,
+    pub generics: Vec<Ident>,
     pub params: Vec<Param>,
     pub ret_type: Option<TypeAnnot>,
+    pub where_clause: Vec<WherePredicate>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effect: Option<EffectAnnotation>,
     pub span: Span,
 }
 
@@ -296,6 +316,22 @@ pub enum WherePredicate {
     Trait {
         trait_ref: TraitRef,
     },
+}
+
+impl WherePredicate {
+    pub fn render(&self) -> String {
+        match self {
+            WherePredicate::TypeBound { target, bounds, .. } => {
+                let bounds = bounds
+                    .iter()
+                    .map(TraitRef::render)
+                    .collect::<Vec<_>>()
+                    .join(" + ");
+                format!("{}: {}", target.render(), bounds)
+            }
+            WherePredicate::Trait { trait_ref } => trait_ref.render(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -890,9 +926,13 @@ impl RelativeHead {
 #[derive(Debug, Clone, Serialize)]
 pub struct Function {
     pub name: Ident,
+    pub generics: Vec<Ident>,
     pub params: Vec<Param>,
     pub body: Expr,
     pub ret_type: Option<TypeAnnot>,
+    pub where_clause: Vec<WherePredicate>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effect: Option<EffectAnnotation>,
     pub span: Span,
     pub attrs: Vec<Attribute>,
 }
@@ -905,16 +945,48 @@ impl Function {
             .map(Param::render)
             .collect::<Vec<_>>()
             .join(", ");
+        let generics = if self.generics.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "<{}>",
+                self.generics
+                    .iter()
+                    .map(|ident| ident.name.clone())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            )
+        };
         let ret = self
             .ret_type
             .as_ref()
             .map(|ty| format!(" -> {}", ty.render()))
             .unwrap_or_default();
+        let where_clause = if self.where_clause.is_empty() {
+            String::new()
+        } else {
+            format!(
+                " where {}",
+                self.where_clause
+                    .iter()
+                    .map(WherePredicate::render)
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            )
+        };
+        let effect = self
+            .effect
+            .as_ref()
+            .map(|annot| format!(" !{{{}}}", annot.render()))
+            .unwrap_or_default();
         format!(
-            "fn {}({}){} = {}",
+            "fn {}{}({}){}{}{} = {}",
             self.name.name,
+            generics,
             params,
             ret,
+            where_clause,
+            effect,
             self.body.render()
         )
     }

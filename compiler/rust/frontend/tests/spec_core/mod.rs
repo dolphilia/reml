@@ -488,9 +488,12 @@ fn block_expr(statements: Vec<Stmt>) -> Expr {
 fn build_function(body: Expr, attrs: Vec<Attribute>) -> Function {
     Function {
         name: make_ident("sample"),
+        generics: Vec::new(),
         params: Vec::new(),
         body,
         ret_type: None,
+        where_clause: Vec::new(),
+        effect: None,
         span: dummy_span(),
         attrs,
     }

@@ -216,9 +216,9 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/type_inference/bnf-inference-value-restriction-error.reml`（期待: 失敗診断 → 2025-12-09 CLI で `language.inference.value_restriction` を再取得 / `reports/spec-audit/ch4/logs/spec_core-20251209T003146Z.md` を参照）
 
 **examples/spec_core/chapter1/fn_decl**
-- [ ] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-generic-default-effect-ok.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml`（期待: 失敗診断）
-- [ ] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-no-args-ok.reml`（期待: 成功）
+- [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-generic-default-effect-ok.reml`（期待: 成功 → 2025-12-09 CLI で診断 0 / log=reports/spec-audit/ch4/logs/spec_core-20251209T005935Z.md）
+- [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml`（期待: 失敗診断 → 2025-12-09 CLI で `E7006`（Bool 条件診断）を取得 / log=reports/spec-audit/ch4/logs/spec_core-20251209T005935Z.md / 戻り値型衝突の診断は未整備のまま）
+- [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-no-args-ok.reml`（期待: 成功 → 2025-12-09 CLI で診断 0 / log=reports/spec-audit/ch4/logs/spec_core-20251209T005935Z.md）
 
 **examples/spec_core/chapter1/effect_handlers**
 - [ ] `examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-perform-counter.reml`（期待: 成功）

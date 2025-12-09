@@ -45,11 +45,11 @@ use crate::unicode::{unicode_diagnostic_code, UnicodeDetail};
 use ast::{
     Attribute, ConductorArg, ConductorChannelRoute, ConductorDecl, ConductorDslDef,
     ConductorDslTail, ConductorEndpoint, ConductorExecutionBlock, ConductorMonitorTarget,
-    ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind, EffectDecl, Expr, ExprKind,
-    Function, FunctionSignature, HandlerDecl, Ident, ImplDecl, ImplItem, Literal, LiteralKind,
-    MatchArm, Module, ModuleHeader, ModulePath, Param, Pattern, PatternKind, RecordField,
-    RelativeHead, Stmt, StmtKind, TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind, UseDecl,
-    UseItem, UseTree, Visibility, WherePredicate,
+    ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind, EffectAnnotation, EffectDecl,
+    Expr, ExprKind, Function, FunctionSignature, HandlerDecl, Ident, ImplDecl, ImplItem, Literal,
+    LiteralKind, MatchArm, Module, ModuleHeader, ModulePath, Param, Pattern, PatternKind,
+    RecordField, RelativeHead, Stmt, StmtKind, TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind,
+    UseDecl, UseItem, UseTree, Visibility, WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -1372,22 +1372,52 @@ fn module_parser<'src>(
         .or_not()
         .map(|predicates| predicates.unwrap_or_default());
 
+    let effect_annotation = just(TokenKind::Not)
+        .ignore_then(
+            ident
+                .clone()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing()
+                .or_not()
+                .map(|tags| tags.unwrap_or_default())
+                .delimited_by(just(TokenKind::LBrace), just(TokenKind::RBrace)),
+        )
+        .map_with_span(|tags, span: Range<usize>| EffectAnnotation {
+            tags,
+            span: range_to_span(span),
+        });
+
     let fn_signature = just(TokenKind::KeywordFn)
         .map_with_span(move |_, span: Range<usize>| range_to_span(span))
         .then(ident.clone())
+        .then(parse_generics.clone())
         .then(params.clone())
         .then(
             just(TokenKind::Arrow)
                 .ignore_then(type_parser.clone())
                 .or_not(),
         )
+        .then(effect_annotation.clone().or_not())
+        .then(where_clause.clone())
+        .then(effect_annotation.clone().or_not())
         .map_with_span(
-            |(((fn_span, name), params), ret_type), span: Range<usize>| {
+            |(
+                (
+                    (((((fn_span, name), generics), params), ret_type), effect_before_where),
+                    where_clause,
+                ),
+                effect_after_where,
+            ),
+             span: Range<usize>| {
+                let effect = effect_after_where.or(effect_before_where);
                 let signature_span = range_to_span(span);
                 FunctionSignature {
                     name,
+                    generics,
                     params,
                     ret_type,
+                    where_clause,
+                    effect,
                     span: Span::new(fn_span.start.min(signature_span.start), signature_span.end),
                 }
             },
@@ -1455,28 +1485,26 @@ fn module_parser<'src>(
             .map_with_span(|stmts, span: Range<usize>| Expr::block(stmts, range_to_span(span)))
     };
 
-    let fn_core = just(TokenKind::KeywordFn)
-        .map_with_span(move |_, span: Range<usize>| range_to_span(span))
-        .then(ident.clone())
-        .then(params)
-        .then(
-            just(TokenKind::Arrow)
-                .ignore_then(type_parser.clone())
-                .or_not(),
-        )
-        .then(choice((
-            just(TokenKind::Assign).ignore_then(expr.clone()),
-            block_body_parser.clone(),
-        )))
-        .map(move |((((fn_span, name), params), ret_type), body)| {
-            let function_span = Span::new(fn_span.start.min(name.span.start), body.span().end);
+    let fn_body = choice((
+        just(TokenKind::Assign).ignore_then(expr.clone()),
+        block_body_parser.clone(),
+    ));
+
+    let fn_core = fn_signature
+        .clone()
+        .then(fn_body)
+        .map(move |(signature, body)| {
+            let function_span = Span::new(signature.span.start, body.span().end);
             record_streaming_success(&streaming_state_success, function_span);
             Function {
-                name,
-                params,
-                span: function_span,
+                name: signature.name.clone(),
+                generics: signature.generics.clone(),
+                params: signature.params.clone(),
                 body,
-                ret_type,
+                ret_type: signature.ret_type.clone(),
+                where_clause: signature.where_clause.clone(),
+                effect: signature.effect.clone(),
+                span: function_span,
                 attrs: Vec::new(),
             }
         });
