@@ -254,8 +254,8 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T123501Z.md）
 
 **examples/spec_core/chapter1/trait_impl**
-- [ ] `examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml`（期待: 失敗診断）
-- [ ] `examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml`（期待: 成功）
+- [x] `examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T130043Z.md で `typeclass.impl.duplicate` のみ出力されることを再確認）
+- [x] `examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml` / 同ログで診断 0 件を確認）
 
 **examples/spec_core/chapter1/type_decl**
 - [ ] `examples/spec_core/chapter1/type_decl/bnf-typedecl-alias-generic-ok.reml`（期待: 成功）
