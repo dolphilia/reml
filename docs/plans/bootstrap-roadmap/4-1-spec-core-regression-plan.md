@@ -236,8 +236,8 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-missing-with.reml`（期待: 失敗診断）
 
 **examples/spec_core/chapter1/attributes**
-- [ ] `examples/spec_core/chapter1/attributes/bnf-attr-cfg-missing-flag-error.reml`（期待: 失敗診断）
-- [ ] `examples/spec_core/chapter1/attributes/bnf-attr-cfg-let-gate-ok.reml`（期待: 成功）
+- [x] `examples/spec_core/chapter1/attributes/bnf-attr-cfg-missing-flag-error.reml`（期待: 失敗診断）
+- [x] `examples/spec_core/chapter1/attributes/bnf-attr-cfg-let-gate-ok.reml`（期待: 成功）
 
 **examples/spec_core/chapter1/module_use**
 - [ ] `examples/spec_core/chapter1/module_use/bnf-usedecl-super-root-invalid.reml`（期待: 失敗診断）

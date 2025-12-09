@@ -6,6 +6,7 @@ use chumsky::stream::Stream;
 use chumsky::Parser as ChumskyParser;
 use reml_runtime::text::{LocaleId, UnicodeError};
 use serde::Serialize;
+use serde_json::Value;
 use smallvec::SmallVec;
 use smol_str::SmolStr;
 use std::collections::HashSet;
@@ -44,11 +45,11 @@ use crate::streaming::{
 use crate::token::{Token, TokenKind};
 use crate::unicode::{unicode_diagnostic_code, UnicodeDetail};
 use ast::{
-    Attribute, ConductorArg, ConductorChannelRoute, ConductorDecl, ConductorDslDef,
+    Attribute, BinaryOp, ConductorArg, ConductorChannelRoute, ConductorDecl, ConductorDslDef,
     ConductorDslTail, ConductorEndpoint, ConductorExecutionBlock, ConductorMonitorTarget,
-    ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind, EffectAnnotation, EffectDecl,
-    Expr, ExprKind, Function, FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry, Ident,
-    ImplDecl, ImplItem, Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath,
+    ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind, EffectAnnotation, EffectCall,
+    EffectDecl, Expr, ExprKind, Function, FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry,
+    Ident, ImplDecl, ImplItem, Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath,
     OperationDecl, Param, Pattern, PatternKind, RecordField, RelativeHead, Stmt, StmtKind,
     TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind, UseDecl, UseItem, UseTree, Visibility,
     WherePredicate,
@@ -520,7 +521,7 @@ fn parse_result_from_module(
 ) -> ParseResult<Module> {
     let ParsedModule {
         tokens,
-        diagnostics,
+        mut diagnostics,
         recovered,
         ast,
         packrat_stats,
@@ -531,6 +532,10 @@ fn parse_result_from_module(
         stream_flow_state,
         trace_events,
     } = parsed;
+
+    if let Some(module) = ast.as_ref() {
+        collect_cfg_diagnostics(module, &run_config, &mut diagnostics);
+    }
 
     let farthest_error_offset = diagnostics
         .iter()
@@ -777,6 +782,254 @@ fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<Fro
             DeclKind::Let { value, .. } | DeclKind::Var { value, .. } => record(value, diagnostics),
             _ => {}
         }
+    }
+}
+
+fn collect_cfg_diagnostics(
+    module: &Module,
+    run_config: &RunConfig,
+    diagnostics: &mut Vec<FrontendDiagnostic>,
+) {
+    let registry = CfgTargetRegistry::from_run_config(run_config);
+    if registry.is_empty() {
+        return;
+    }
+    if let Some(header) = &module.header {
+        evaluate_cfg_attributes(&header.attrs, diagnostics, &registry);
+    }
+    for decl in &module.decls {
+        evaluate_cfg_attributes(&decl.attrs, diagnostics, &registry);
+    }
+    for effect in &module.effects {
+        for op in &effect.operations {
+            evaluate_cfg_attributes(&op.attrs, diagnostics, &registry);
+        }
+    }
+    for function in &module.functions {
+        evaluate_cfg_attributes(&function.attrs, diagnostics, &registry);
+        inspect_cfg_expr(&function.body, diagnostics, &registry);
+    }
+}
+
+fn inspect_cfg_expr(
+    expr: &Expr,
+    diagnostics: &mut Vec<FrontendDiagnostic>,
+    registry: &CfgTargetRegistry,
+) {
+    match &expr.kind {
+        ExprKind::Block { attrs, statements } => {
+            evaluate_cfg_attributes(attrs, diagnostics, registry);
+            for stmt in statements {
+                inspect_cfg_stmt(stmt, diagnostics, registry);
+            }
+        }
+        ExprKind::Lambda { body, .. }
+        | ExprKind::Loop { body }
+        | ExprKind::Unsafe { body }
+        | ExprKind::Defer { body }
+        | ExprKind::Return {
+            value: Some(body), ..
+        } => inspect_cfg_expr(body, diagnostics, registry),
+        ExprKind::Pipe { left, right }
+        | ExprKind::Binary { left, right, .. }
+        | ExprKind::Assign {
+            target: left,
+            value: right,
+        } => {
+            inspect_cfg_expr(left, diagnostics, registry);
+            inspect_cfg_expr(right, diagnostics, registry);
+        }
+        ExprKind::Unary { expr: inner, .. }
+        | ExprKind::Propagate { expr: inner }
+        | ExprKind::PerformCall {
+            call: EffectCall {
+                argument: inner, ..
+            },
+        }
+        | ExprKind::FieldAccess { target: inner, .. }
+        | ExprKind::TupleAccess { target: inner, .. }
+        | ExprKind::Index { target: inner, .. } => {
+            inspect_cfg_expr(inner, diagnostics, registry);
+        }
+        ExprKind::Call { callee, args } => {
+            inspect_cfg_expr(callee, diagnostics, registry);
+            for arg in args {
+                inspect_cfg_expr(arg, diagnostics, registry);
+            }
+        }
+        ExprKind::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            inspect_cfg_expr(condition, diagnostics, registry);
+            inspect_cfg_expr(then_branch, diagnostics, registry);
+            if let Some(else_branch) = else_branch {
+                inspect_cfg_expr(else_branch, diagnostics, registry);
+            }
+        }
+        ExprKind::Match { target, arms } => {
+            inspect_cfg_expr(target, diagnostics, registry);
+            for arm in arms {
+                inspect_cfg_expr(&arm.body, diagnostics, registry);
+                if let Some(guard) = &arm.guard {
+                    inspect_cfg_expr(guard, diagnostics, registry);
+                }
+            }
+        }
+        ExprKind::While { condition, body } => {
+            inspect_cfg_expr(condition, diagnostics, registry);
+            inspect_cfg_expr(body, diagnostics, registry);
+        }
+        ExprKind::For { start, end, .. } => {
+            inspect_cfg_expr(start, diagnostics, registry);
+            inspect_cfg_expr(end, diagnostics, registry);
+        }
+        ExprKind::Handle { handle } => {
+            inspect_cfg_expr(&handle.target, diagnostics, registry);
+            for entry in &handle.handler.entries {
+                if let HandlerEntry::Operation { attrs, body, .. } = entry {
+                    evaluate_cfg_attributes(attrs, diagnostics, registry);
+                    inspect_cfg_expr(body, diagnostics, registry);
+                }
+            }
+        }
+        ExprKind::Identifier(_)
+        | ExprKind::ModulePath(_)
+        | ExprKind::Literal(_)
+        | ExprKind::Return { value: None }
+        | ExprKind::Continue => {}
+    }
+}
+
+fn inspect_cfg_stmt(
+    stmt: &Stmt,
+    diagnostics: &mut Vec<FrontendDiagnostic>,
+    registry: &CfgTargetRegistry,
+) {
+    match &stmt.kind {
+        StmtKind::Decl { decl } => evaluate_cfg_attributes(&decl.attrs, diagnostics, registry),
+        StmtKind::Expr { expr } => inspect_cfg_expr(expr, diagnostics, registry),
+        StmtKind::Assign { target, value } => {
+            inspect_cfg_expr(target, diagnostics, registry);
+            inspect_cfg_expr(value, diagnostics, registry);
+        }
+        StmtKind::Defer { expr } => inspect_cfg_expr(expr, diagnostics, registry),
+    }
+}
+
+fn evaluate_cfg_attributes(
+    attrs: &[Attribute],
+    diagnostics: &mut Vec<FrontendDiagnostic>,
+    registry: &CfgTargetRegistry,
+) {
+    for attr in attrs {
+        if attr.name.name != "cfg" {
+            continue;
+        }
+        for expr in &attr.args {
+            if let Some(target_value) = extract_target_literal(expr) {
+                if !registry.is_allowed(&target_value) {
+                    diagnostics.push(build_cfg_target_diagnostic(attr, &target_value, registry));
+                }
+            }
+        }
+    }
+}
+
+fn extract_target_literal(expr: &Expr) -> Option<String> {
+    if let ExprKind::Binary {
+        operator,
+        left,
+        right,
+    } = &expr.kind
+    {
+        if matches!(operator, BinaryOp::Eq) && is_target_ident(left) {
+            return literal_string(right);
+        }
+    } else if let ExprKind::Assign { target, value } = &expr.kind {
+        if is_target_ident(target) {
+            return literal_string(value);
+        }
+    }
+    None
+}
+
+fn is_target_ident(expr: &Expr) -> bool {
+    matches!(&expr.kind, ExprKind::Identifier(ident) if ident.name == "target")
+}
+
+fn literal_string(expr: &Expr) -> Option<String> {
+    match &expr.kind {
+        ExprKind::Literal(Literal {
+            value: LiteralKind::String { value, .. },
+        }) => Some(value.clone()),
+        _ => None,
+    }
+}
+
+fn build_cfg_target_diagnostic(
+    attr: &Attribute,
+    value: &str,
+    registry: &CfgTargetRegistry,
+) -> FrontendDiagnostic {
+    let message = format!("未定義ターゲット `{value}` を参照する `@cfg` は評価できません。");
+    let mut diagnostic = FrontendDiagnostic::new(message)
+        .with_code("language.cfg.unsatisfied_branch")
+        .with_severity(DiagnosticSeverity::Error)
+        .with_domain(DiagnosticDomain::Parser)
+        .with_span(attr.span)
+        .with_recoverability(Recoverability::Fatal);
+    if let Some(example) = registry.example_label() {
+        let note_message =
+            format!("`target = \"{example}\"` などサポート済みのプロファイルを利用してください。");
+        diagnostic.add_note(DiagnosticNote::new("cfg.target.example", note_message));
+    }
+    diagnostic
+}
+
+struct CfgTargetRegistry {
+    allowed: HashSet<String>,
+}
+
+impl CfgTargetRegistry {
+    fn from_run_config(run_config: &RunConfig) -> Self {
+        let mut allowed = HashSet::new();
+        if let Some(target_ext) = run_config.extension("target") {
+            if let Some(profile_id) = target_ext.get("profile_id").and_then(Value::as_str) {
+                allowed.insert(profile_id.to_string());
+            }
+            if let Some(detected) = target_ext.get("detected") {
+                if let Some(profile_id) = detected.get("profile_id").and_then(Value::as_str) {
+                    allowed.insert(profile_id.to_string());
+                }
+            }
+            if let Some(extra) = target_ext.get("extra").and_then(Value::as_object) {
+                if let Some(value) = extra.get("target").and_then(Value::as_str) {
+                    allowed.insert(value.to_string());
+                }
+            }
+        }
+        allowed.insert("cli".to_string());
+        Self { allowed }
+    }
+
+    fn is_allowed(&self, requested: &str) -> bool {
+        let normalized = requested.to_ascii_lowercase();
+        self.allowed
+            .iter()
+            .any(|candidate| candidate.eq_ignore_ascii_case(&normalized))
+    }
+
+    fn is_empty(&self) -> bool {
+        self.allowed.is_empty()
+    }
+
+    fn example_label(&self) -> Option<String> {
+        if self.allowed.contains("cli") {
+            return Some("cli".to_string());
+        }
+        self.allowed.iter().next().cloned()
     }
 }
 

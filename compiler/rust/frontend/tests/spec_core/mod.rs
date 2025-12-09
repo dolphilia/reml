@@ -4,13 +4,13 @@ use reml_frontend::parser::ast::{
     ImplDecl, ImplItem, LiteralKind, Module, Param, Pattern, PatternKind, Stmt, StmtKind, TypeKind,
     UseTree, Visibility,
 };
-use reml_frontend::parser::ParserDriver;
+use reml_frontend::parser::{ParserDriver, ParserOptions, RunConfig};
 use reml_frontend::span::Span;
 use reml_frontend::typeck::{TypecheckConfig, TypecheckDriver, TypecheckReport};
 
 mod common;
 
-use common::parse_example_module;
+use common::{parse_example_module, repo_root};
 
 #[test]
 fn ch1_mod_003_accepts_module_and_use_prefix() {
@@ -81,6 +81,28 @@ fn ch1_let_002_supports_tuple_pattern_bindings() {
     assert!(
         tuple_binding_present,
         "expected sum_pair to contain a tuple-pattern let binding"
+    );
+}
+
+#[test]
+fn ch1_attr_102_reports_cfg_unsatisfied_branch() {
+    let input_path = repo_root()
+        .join("examples/spec_core/chapter1/attributes/bnf-attr-cfg-missing-flag-error.reml");
+    let source = std::fs::read_to_string(&input_path)
+        .unwrap_or_else(|err| panic!("failed to read {}: {err}", input_path.display()));
+    let run_config = RunConfig::default();
+    let parser_options = ParserOptions::from_run_config(&run_config);
+    let result =
+        ParserDriver::parse_with_options_and_run_config(&source, parser_options, run_config);
+    let codes = result
+        .diagnostics
+        .iter()
+        .filter_map(|diag| diag.code.as_deref())
+        .collect::<Vec<_>>();
+    assert!(
+        codes.contains(&"language.cfg.unsatisfied_branch"),
+        "expected language.cfg.unsatisfied_branch, got {:?}",
+        codes
     );
 }
 
@@ -230,21 +252,18 @@ fn ch1_effects_201_parses_handle_expr_perform_counter() {
         .filter_map(|stmt| match &stmt.kind {
             StmtKind::Decl { decl } => match &decl.kind {
                 DeclKind::Let { value, .. } => match &value.kind {
-                    ExprKind::PerformCall { call } => {
-                        match &call.argument.kind {
-                            ExprKind::Literal(literal) => match literal.value {
-                                LiteralKind::Unit => Some(call.effect.name.clone()),
-                                ref other => panic!(
-                                    "perform argument should be unit literal, got {:?}",
-                                    other
-                                ),
-                            },
-                            other => panic!(
-                                "perform argument should remain a literal expression, got {:?}",
-                                other
-                            ),
-                        }
-                    }
+                    ExprKind::PerformCall { call } => match &call.argument.kind {
+                        ExprKind::Literal(literal) => match literal.value {
+                            LiteralKind::Unit => Some(call.effect.name.clone()),
+                            ref other => {
+                                panic!("perform argument should be unit literal, got {:?}", other)
+                            }
+                        },
+                        other => panic!(
+                            "perform argument should remain a literal expression, got {:?}",
+                            other
+                        ),
+                    },
                     _ => None,
                 },
                 _ => None,
@@ -674,8 +693,7 @@ fn ch1_fn_103_reports_return_mismatch_before_condition_error() {
         .map(|violation| violation.code)
         .expect("戻り値型診断が最初に出力されるはずです");
     assert_eq!(
-        first_code,
-        "language.inference.return_conflict",
+        first_code, "language.inference.return_conflict",
         "戻り値型診断が先頭に並ぶ必要があります"
     );
     if let Some(index) = report

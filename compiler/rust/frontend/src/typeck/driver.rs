@@ -351,12 +351,7 @@ impl TypecheckViolation {
         }
     }
 
-    fn return_conflict(
-        span: Span,
-        function: Option<String>,
-        then_ty: Type,
-        else_ty: Type,
-    ) -> Self {
+    fn return_conflict(span: Span, function: Option<String>, then_ty: Type, else_ty: Type) -> Self {
         Self {
             kind: TypecheckViolationKind::ReturnConflict,
             code: "language.inference.return_conflict",
@@ -900,9 +895,7 @@ fn infer_expr(
             if let (true, Some(error)) = (has_explicit_else, unify_error) {
                 if let Some((left, right)) = match error {
                     ConstraintSolverError::Mismatch(left, right) => Some((left, right)),
-                    ConstraintSolverError::Occurs(variable, ty) => {
-                        Some((Type::Var(variable), ty))
-                    }
+                    ConstraintSolverError::Occurs(variable, ty) => Some((Type::Var(variable), ty)),
                     ConstraintSolverError::NotImplemented(_) => None,
                 } {
                     violations.push(TypecheckViolation::return_conflict(
