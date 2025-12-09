@@ -107,10 +107,11 @@ impl TypecheckDriver {
 
             for param in &function.params {
                 let ty = var_gen.fresh_type();
-                env.insert(param.name.name.clone(), Scheme::simple(ty.clone()));
+                let scheme = Scheme::simple(ty.clone());
+                bind_pattern_to_env(&param.pattern, &scheme, &mut env, &mut var_gen);
                 param_bindings.push(ParamBinding {
-                    name: param.name.name.clone(),
-                    span: param.name.span,
+                    display: param.pattern.render(),
+                    span: param.span,
                     ty,
                 });
             }
@@ -147,7 +148,7 @@ impl TypecheckDriver {
             let typed_params = param_bindings
                 .into_iter()
                 .map(|binding| typed::TypedParam {
-                    name: binding.name,
+                    name: binding.display,
                     span: binding.span,
                     ty: substitution.apply(&binding.ty).label(),
                 })
@@ -943,7 +944,8 @@ fn infer_expr(
             let mut param_types = Vec::new();
             for param in params {
                 let ty = var_gen.fresh_type();
-                lambda_env.insert(param.name.name.clone(), Scheme::simple(ty.clone()));
+                let scheme = Scheme::simple(ty.clone());
+                bind_pattern_to_env(&param.pattern, &scheme, &mut lambda_env, var_gen);
                 param_types.push(ty);
             }
             let body_result = infer_expr(
@@ -1158,16 +1160,46 @@ fn infer_binding(
     let substitution = solver.substitution().clone();
     let resolved_ty = substitution.apply(&value_result.ty);
     let scheme = generalize_type(env, resolved_ty.clone());
-    bind_pattern_to_env(pattern, &scheme, env);
+    bind_pattern_to_env(pattern, &scheme, env, var_gen);
     value_result.dict_ref_ids
 }
 
-fn bind_pattern_to_env(pattern: &Pattern, scheme: &Scheme, env: &mut TypeEnv) {
+fn bind_pattern_to_env(
+    pattern: &Pattern,
+    scheme: &Scheme,
+    env: &mut TypeEnv,
+    var_gen: &mut TypeVarGen,
+) {
     match &pattern.kind {
         PatternKind::Var(ident) => {
             env.insert(ident.name.clone(), scheme.clone());
         }
-        _ => {}
+        PatternKind::Tuple { elements } => {
+            for element in elements {
+                let element_scheme = Scheme::simple(var_gen.fresh_type());
+                bind_pattern_to_env(element, &element_scheme, env, var_gen);
+            }
+        }
+        PatternKind::Record { fields, .. } => {
+            for field in fields {
+                if let Some(value) = &field.value {
+                    let field_scheme = Scheme::simple(var_gen.fresh_type());
+                    bind_pattern_to_env(value, &field_scheme, env, var_gen);
+                } else {
+                    env.insert(field.key.name.clone(), Scheme::simple(var_gen.fresh_type()));
+                }
+            }
+        }
+        PatternKind::Constructor { args, .. } => {
+            for arg in args {
+                let arg_scheme = Scheme::simple(var_gen.fresh_type());
+                bind_pattern_to_env(arg, &arg_scheme, env, var_gen);
+            }
+        }
+        PatternKind::Guard { pattern: inner, .. } => {
+            bind_pattern_to_env(inner, scheme, env, var_gen);
+        }
+        PatternKind::Literal(_) | PatternKind::Wildcard => {}
     }
 }
 
@@ -1245,7 +1277,7 @@ struct DictRefDraft {
 }
 
 struct ParamBinding {
-    name: String,
+    display: String,
     span: Span,
     ty: Type,
 }

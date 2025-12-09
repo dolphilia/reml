@@ -842,7 +842,13 @@ fn collect_use_diagnostics(module: &Module, diagnostics: &mut Vec<FrontendDiagno
 fn use_tree_has_super(tree: &UseTree) -> bool {
     match tree {
         UseTree::Path { path, .. } | UseTree::Brace { path, .. } => {
-            matches!(path, ModulePath::Relative { head: RelativeHead::Super(_), .. })
+            matches!(
+                path,
+                ModulePath::Relative {
+                    head: RelativeHead::Super(_),
+                    ..
+                }
+            )
         }
     }
 }
@@ -1337,7 +1343,27 @@ fn module_parser<'src>(
                 annotation_kind: None,
             });
 
-        let atom = choice((tuple_type, record_type, app, simple));
+        let fn_type = just(TokenKind::KeywordFn)
+            .ignore_then(
+                ty.clone()
+                    .separated_by(just(TokenKind::Comma))
+                    .allow_trailing()
+                    .or_not()
+                    .map(|params| params.unwrap_or_default())
+                    .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen)),
+            )
+            .then_ignore(just(TokenKind::Arrow))
+            .then(ty.clone())
+            .map_with_span(|(params, ret_ty), span: Range<usize>| TypeAnnot {
+                span: range_to_span(span),
+                kind: TypeKind::Fn {
+                    params,
+                    ret: Box::new(ret_ty),
+                },
+                annotation_kind: None,
+            });
+
+        let atom = choice((fn_type, tuple_type, record_type, app, simple));
 
         atom.clone()
             .then(just(TokenKind::Arrow).ignore_then(ty.clone()).or_not())
@@ -1605,7 +1631,7 @@ fn module_parser<'src>(
                 },
             });
 
-        let handler_param = ident_for_expr
+        let handler_param = pattern_for_expr
             .clone()
             .then(
                 just(TokenKind::Colon)
@@ -1613,9 +1639,9 @@ fn module_parser<'src>(
                     .or_not(),
             )
             .then(just(TokenKind::Assign).ignore_then(expr.clone()).or_not())
-            .map(|((name, ty), default)| Param {
-                span: name.span,
-                name,
+            .map(|((pattern, ty), default)| Param {
+                span: pattern.span,
+                pattern,
                 type_annotation: ty,
                 default,
             });
@@ -1689,22 +1715,23 @@ fn module_parser<'src>(
             );
 
         let lambda_body_expr = choice((block_expr.clone(), expr.clone())).boxed();
-        let lambda_param = ident_for_expr
+        let lambda_param = pattern_for_expr
             .clone()
             .then(
                 just(TokenKind::Colon)
                     .ignore_then(type_parser_for_expr.clone())
                     .or_not(),
             )
-            .then(just(TokenKind::Assign).ignore_then(expr.clone()).or_not());
-
-        let lambda_params = lambda_param
-            .map(|((name, ty), default)| Param {
-                span: name.span,
-                name,
+            .then(just(TokenKind::Assign).ignore_then(expr.clone()).or_not())
+            .map(|((pattern, ty), default)| Param {
+                span: pattern.span,
+                pattern,
                 type_annotation: ty,
                 default,
-            })
+            });
+
+        let lambda_params = lambda_param
+            .clone()
             .separated_by(just(TokenKind::Comma))
             .allow_trailing()
             .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
@@ -1727,10 +1754,35 @@ fn module_parser<'src>(
                 },
             });
 
+        let bar_lambda_params = lambda_param
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing()
+            .or_not()
+            .map(|params| params.unwrap_or_default());
+
+        let bar_lambda_expr = just(TokenKind::Bar)
+            .ignore_then(bar_lambda_params)
+            .then_ignore(just(TokenKind::Bar))
+            .then(
+                just(TokenKind::Arrow)
+                    .ignore_then(type_parser_for_expr.clone())
+                    .or_not(),
+            )
+            .then(lambda_body_expr.clone())
+            .map_with_span(|((params, ret_type), body), span: Range<usize>| Expr {
+                span: range_to_span(span),
+                kind: ExprKind::Lambda {
+                    params,
+                    ret_type,
+                    body: Box::new(body),
+                },
+            });
+
         let atom = choice((
             block_expr.clone(),
             match_expr,
             handle_expr,
+            bar_lambda_expr,
             fn_lambda_expr,
             int_literal.clone(),
             bool_literal,
@@ -1921,7 +1973,7 @@ fn module_parser<'src>(
     let attribute = build_attribute_parser(expr.clone(), ident.clone());
     let attr_list = attribute.clone().repeated();
 
-    let param = ident
+    let param = pattern_for_block
         .clone()
         .then(
             just(TokenKind::Colon)
@@ -1931,9 +1983,9 @@ fn module_parser<'src>(
         .then(just(TokenKind::Assign).ignore_then(expr.clone()).or_not());
 
     let params = param
-        .map(|((name, ty), default)| Param {
-            span: name.span,
-            name,
+        .map(|((pattern, ty), default)| Param {
+            span: pattern.span,
+            pattern,
             type_annotation: ty,
             default,
         })

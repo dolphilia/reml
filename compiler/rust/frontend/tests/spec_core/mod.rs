@@ -581,7 +581,7 @@ fn stmt_expr(expr: Expr) -> Stmt {
 
 fn make_lambda(param: &str, body: Expr) -> Expr {
     let param = Param {
-        name: make_ident(param),
+        pattern: make_pattern(param),
         type_annotation: None,
         default: None,
         span: dummy_span(),

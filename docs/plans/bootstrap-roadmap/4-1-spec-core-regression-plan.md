@@ -250,8 +250,8 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/module_use/bnf-compilationunit-module-use-alias-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/module_use/bnf-compilationunit-module-use-alias-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T093700Z.md で診断 0 を確認）
 
 **examples/spec_core/chapter1/lambda**
-- [ ] `examples/spec_core/chapter1/lambda/bnf-lambda-arg-pattern.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml`（期待: 成功）
+- [x] `examples/spec_core/chapter1/lambda/bnf-lambda-arg-pattern.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/lambda/bnf-lambda-arg-pattern.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T123501Z.md）
+- [x] `examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T123501Z.md）
 
 **examples/spec_core/chapter1/trait_impl**
 - [ ] `examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml`（期待: 失敗診断）

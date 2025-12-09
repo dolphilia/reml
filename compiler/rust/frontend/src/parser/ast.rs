@@ -796,7 +796,7 @@ pub struct Pattern {
 }
 
 impl Pattern {
-    fn render(&self) -> String {
+    pub fn render(&self) -> String {
         match &self.kind {
             PatternKind::Literal(literal) => literal.render(),
             PatternKind::Var(ident) => ident.name.clone(),
@@ -1014,7 +1014,7 @@ impl Function {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Param {
-    pub name: Ident,
+    pub pattern: Pattern,
     pub type_annotation: Option<TypeAnnot>,
     pub default: Option<Expr>,
     pub span: Span,
@@ -1022,7 +1022,7 @@ pub struct Param {
 
 impl Param {
     fn render(&self) -> String {
-        let mut text = self.name.name.clone();
+        let mut text = self.pattern.render();
         if let Some(ty) = &self.type_annotation {
             text.push_str(&format!(": {}", ty.render()));
         }
