@@ -84,8 +84,8 @@
 #### ✅ 5.2 週 実施ログ（Return inference conflict）
 
 - `compiler/rust/frontend/src/typeck/driver.rs` の `ExprKind::IfElse` 分岐を再構成し、then/else を推論した直後に `ConstraintSolverError` の結果から `language.inference.return_conflict` を生成する `TypecheckViolationKind::ReturnConflict` を追加。診断は Bool 条件チェックより先に `violations` へ積まれるため、`CH1-FN-103` の戻り値不一致が `E7006` よりも早く報告されるようになった。
-- `compiler/rust/frontend/tests/spec_core/mod.rs` に `ch1_fn_103_reports_return_mismatch_before_condition_error` を追加し、最初の診断コードが `language.inference.return_conflict` であること、`E7006` が存在する場合はその後方に並ぶことを検証できるようにした。`cargo test --manifest-path compiler/rust/frontend/Cargo.toml --test spec_core ch1_fn_103_reports_return_mismatch_before_condition_error` の実行は workspace メンバー未登録エラーで停止したため、環境復旧後に再実行する TODO を残した。
-- `expected/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.diagnostic.json` を新設し、`language.inference.return_conflict` → `E7006` の順で診断を固定。`docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` では `diagnostic_keys` を `["language.inference.return_conflict","E7006"]` に更新し、`resolution_notes` に CLI/テスト再現コマンドと workspace エラー（"current package believes it's in a workspace when it's not"）を記録した。
+- `compiler/rust/frontend/tests/spec_core/mod.rs` に `ch1_fn_103_reports_return_mismatch_before_condition_error` を追加し、最初の診断コードが `language.inference.return_conflict` であること、`E7006` が存在する場合はその後方に並ぶことを検証できるようにした。`cargo test --manifest-path compiler/rust/frontend/Cargo.toml --test spec_core ch1_fn_103_reports_return_mismatch_before_condition_error` は workspace 競合を避けるためにルート `Cargo.toml` を一時退避（`mv Cargo.toml Cargo.toml.ws` → 実行 → `mv Cargo.toml.ws Cargo.toml`）したうえで 2026-02-18 に完走し、診断順序の回帰テスト化を確認した。
+- `expected/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.diagnostic.json` を新設し、`language.inference.return_conflict` → `E7006` の順で診断を固定。`docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` では `diagnostic_keys` を `["language.inference.return_conflict","E7006"]` に更新し、`resolution_notes` に CLI/テスト再現コマンドを記録した。CLI 実行は `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml` で再確認し、`language.inference.return_conflict` → `E7006` の 2 件が JSON と一致することを検証済み（戻り値 1 は期待動作）。
 
 6. **Core.Parse/Runtime 仕様のアクティブ化**（5.3 週）  
    - `CH2-PARSE-*` 用に `Parse.run` / `Parse.run_with_recovery` が CLI から呼び出せるよう `core::Prelude` の module import を整備。  
@@ -228,7 +228,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 **examples/spec_core/chapter1/fn_decl**
 - [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-generic-default-effect-ok.reml`（期待: 成功 → 2025-12-09 CLI で診断 0 / log=reports/spec-audit/ch4/logs/spec_core-20251209T005935Z.md）
-- [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml`（期待: 失敗診断 → 2025-12-09 CLI で `E7006`（Bool 条件診断）を取得 / log=reports/spec-audit/ch4/logs/spec_core-20251209T005935Z.md / 戻り値型衝突の診断は未整備のまま）
+- [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml`（期待: `language.inference.return_conflict` → `E7006` → 2026-02-18 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml` で診断順序を確認 / log=reports/spec-audit/ch4/logs/spec_core-20260218T041200Z.md / `cargo test --manifest-path compiler/rust/frontend/Cargo.toml --test spec_core ch1_fn_103_reports_return_mismatch_before_condition_error` でも順序を保証）
 - [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-no-args-ok.reml`（期待: 成功 → 2025-12-09 CLI で診断 0 / log=reports/spec-audit/ch4/logs/spec_core-20251209T005935Z.md）
 
 **examples/spec_core/chapter1/effect_handlers**
