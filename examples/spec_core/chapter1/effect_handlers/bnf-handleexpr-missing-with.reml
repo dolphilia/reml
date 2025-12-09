@@ -11,9 +11,14 @@ fn emit() {
   do Console.log("ping")
 }
 
-handle emit()
-  handler Console {
-    operation log(message, resume) {
-      resume(())
+fn main() {
+  handle emit()
+    handler Console {
+      operation log(message, resume) {
+        resume(())
+      }
+      return value {
+        value
+      }
     }
-  }
+}

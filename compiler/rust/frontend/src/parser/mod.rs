@@ -46,10 +46,11 @@ use ast::{
     Attribute, ConductorArg, ConductorChannelRoute, ConductorDecl, ConductorDslDef,
     ConductorDslTail, ConductorEndpoint, ConductorExecutionBlock, ConductorMonitorTarget,
     ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind, EffectAnnotation, EffectDecl,
-    Expr, ExprKind, Function, FunctionSignature, HandlerDecl, Ident, ImplDecl, ImplItem, Literal,
-    LiteralKind, MatchArm, Module, ModuleHeader, ModulePath, Param, Pattern, PatternKind,
-    RecordField, RelativeHead, Stmt, StmtKind, TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind,
-    UseDecl, UseItem, UseTree, Visibility, WherePredicate,
+    Expr, ExprKind, Function, FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry, Ident,
+    ImplDecl, ImplItem, Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath,
+    OperationDecl, Param, Pattern, PatternKind, RecordField, RelativeHead, Stmt, StmtKind,
+    TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind, UseDecl, UseItem, UseTree, Visibility,
+    WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -338,6 +339,9 @@ impl ParserDriver {
         diagnostics
             .extend(errors.into_iter().map(Self::error_to_diagnostic))
             .expect("lexer diagnostics must include severity/domain/code");
+        diagnostics
+            .extend(detect_handle_missing_with_tokens(&tokens).into_iter())
+            .expect("token diagnostics must include severity/domain/code");
 
         let (ast, parse_errors, legacy_error, trace_events) =
             parse_tokens(&tokens, source, &streaming_state);
@@ -365,6 +369,9 @@ impl ParserDriver {
                     diagnostic.set_span_trace(span_trace.clone());
                 }
             }
+        }
+        if let Some(module) = ast.as_ref() {
+            collect_effect_handler_diagnostics(module, &mut diagnostics);
         }
 
         (
@@ -648,6 +655,151 @@ fn build_parse_error(span: Span, summary: &ExpectedTokensSummary) -> ParseError 
     error
 }
 
+fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<FrontendDiagnostic>) {
+    fn record(expr: &Expr, diagnostics: &mut Vec<FrontendDiagnostic>) {
+        if let ExprKind::Handle { handle } = &expr.kind {
+            if !handle.with_keyword {
+                let mut diagnostic = FrontendDiagnostic::new(
+                    "`handle expr with handler` 構文で `with` キーワードが欠落しています。",
+                )
+                .with_severity(DiagnosticSeverity::Error)
+                .with_domain(DiagnosticDomain::Parser)
+                .with_code("effects.handler.missing_with")
+                .with_recoverability(Recoverability::Recoverable)
+                .with_span(handle.handler.span);
+                diagnostic.add_note(DiagnosticNote::new(
+                    "effects.handler.fix",
+                    "`handle emit() with handler Console { ... }` の形式へ修正してください。",
+                ));
+                diagnostics.push(diagnostic);
+            }
+            record(&handle.target, diagnostics);
+        }
+        match &expr.kind {
+            ExprKind::Literal(_) | ExprKind::Identifier(_) | ExprKind::ModulePath(_) => {}
+            ExprKind::Call { callee, args } => {
+                record(callee, diagnostics);
+                for arg in args {
+                    record(arg, diagnostics);
+                }
+            }
+            ExprKind::PerformCall { call } => record(&call.argument, diagnostics),
+            ExprKind::Lambda { body, .. }
+            | ExprKind::Loop { body }
+            | ExprKind::Unsafe { body }
+            | ExprKind::Defer { body } => record(body, diagnostics),
+            ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
+                record(left, diagnostics);
+                record(right, diagnostics);
+            }
+            ExprKind::Unary { expr: inner, .. }
+            | ExprKind::Propagate { expr: inner }
+            | ExprKind::Return { value: Some(inner) } => record(inner, diagnostics),
+            ExprKind::Return { value: None } | ExprKind::Continue => {}
+            ExprKind::FieldAccess { target, .. }
+            | ExprKind::TupleAccess { target, .. }
+            | ExprKind::Index { target, .. } => record(target, diagnostics),
+            ExprKind::IfElse {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                record(condition, diagnostics);
+                record(then_branch, diagnostics);
+                if let Some(branch) = else_branch {
+                    record(branch, diagnostics);
+                }
+            }
+            ExprKind::Match { target, arms } => {
+                record(target, diagnostics);
+                for arm in arms {
+                    if let Some(guard) = &arm.guard {
+                        record(guard, diagnostics);
+                    }
+                    record(&arm.body, diagnostics);
+                }
+            }
+            ExprKind::While { condition, body } => {
+                record(condition, diagnostics);
+                record(body, diagnostics);
+            }
+            ExprKind::For { start, end, .. } => {
+                record(start, diagnostics);
+                record(end, diagnostics);
+            }
+            ExprKind::Block { statements, .. } => {
+                for stmt in statements {
+                    match &stmt.kind {
+                        StmtKind::Decl { decl } => match &decl.kind {
+                            DeclKind::Let { value, .. } | DeclKind::Var { value, .. } => {
+                                record(value, diagnostics)
+                            }
+                            _ => {}
+                        },
+                        StmtKind::Expr { expr } | StmtKind::Defer { expr } => {
+                            record(expr, diagnostics)
+                        }
+                        StmtKind::Assign { target, value } => {
+                            record(target, diagnostics);
+                            record(value, diagnostics);
+                        }
+                    }
+                }
+            }
+            ExprKind::Assign { target, value } => {
+                record(target, diagnostics);
+                record(value, diagnostics);
+            }
+            ExprKind::Handle { .. } => {}
+        }
+    }
+
+    for function in &module.functions {
+        record(&function.body, diagnostics);
+    }
+    for decl in &module.decls {
+        match &decl.kind {
+            DeclKind::Let { value, .. } | DeclKind::Var { value, .. } => record(value, diagnostics),
+            _ => {}
+        }
+    }
+}
+
+fn detect_handle_missing_with_tokens(tokens: &[Token]) -> Vec<FrontendDiagnostic> {
+    let mut diags = Vec::new();
+    let mut pending_handle: Option<Span> = None;
+    for token in tokens {
+        match token.kind {
+            TokenKind::KeywordHandle => pending_handle = Some(token.span),
+            TokenKind::KeywordWith => pending_handle = None,
+            TokenKind::KeywordHandler => {
+                if pending_handle.take().is_some() {
+                    let mut diagnostic = FrontendDiagnostic::new(
+                        "`handle expr with handler` 構文で `with` キーワードが欠落しています。",
+                    )
+                    .with_severity(DiagnosticSeverity::Error)
+                    .with_domain(DiagnosticDomain::Parser)
+                    .with_code("effects.handler.missing_with")
+                    .with_recoverability(Recoverability::Recoverable)
+                    .with_span(token.span);
+                    diagnostic.add_note(DiagnosticNote::new(
+                        "effects.handler.fix",
+                        "`handle emit() with handler Console { ... }` の形式へ修正してください。",
+                    ));
+                    diags.push(diagnostic);
+                }
+            }
+            TokenKind::Semicolon
+            | TokenKind::RBrace
+            | TokenKind::KeywordFn
+            | TokenKind::KeywordLet
+            | TokenKind::KeywordVar => pending_handle = None,
+            _ => {}
+        }
+    }
+    diags
+}
+
 /// UnicodeError を ParseError へ正規化する。
 pub fn unicode_error_to_parse_error(
     span: Span,
@@ -866,7 +1018,44 @@ fn module_parser<'src>(
                 annotation_kind: None,
             });
 
-        choice((tuple_type, record_type, app, simple))
+        let atom = choice((tuple_type, record_type, app, simple));
+
+        atom.clone()
+            .then(just(TokenKind::Arrow).ignore_then(ty.clone()).or_not())
+            .map(|(left, ret_opt)| {
+                if let Some(ret_ty) = ret_opt {
+                    let span = Span::new(left.span.start, ret_ty.span.end);
+                    let left_span = left.span;
+                    let left_annotation_kind = left.annotation_kind;
+                    match left.kind {
+                        TypeKind::Tuple { elements } => TypeAnnot {
+                            span,
+                            kind: TypeKind::Fn {
+                                params: elements,
+                                ret: Box::new(ret_ty),
+                            },
+                            annotation_kind: None,
+                        },
+                        other_kind => {
+                            let param = TypeAnnot {
+                                span: left_span,
+                                kind: other_kind,
+                                annotation_kind: left_annotation_kind,
+                            };
+                            TypeAnnot {
+                                span,
+                                kind: TypeKind::Fn {
+                                    params: vec![param],
+                                    ret: Box::new(ret_ty),
+                                },
+                                annotation_kind: None,
+                            }
+                        }
+                    }
+                } else {
+                    left
+                }
+            })
     });
 
     let type_parser_for_expr = type_parser.clone();
@@ -1086,6 +1275,89 @@ fn module_parser<'src>(
                 },
             });
 
+        let handler_param = ident_for_expr
+            .clone()
+            .then(
+                just(TokenKind::Colon)
+                    .ignore_then(type_parser_for_expr.clone())
+                    .or_not(),
+            )
+            .then(just(TokenKind::Assign).ignore_then(expr.clone()).or_not())
+            .map(|((name, ty), default)| Param {
+                span: name.span,
+                name,
+                type_annotation: ty,
+                default,
+            });
+
+        let handler_param_list = handler_param
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing()
+            .or_not()
+            .map(|params| params.unwrap_or_default())
+            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
+
+        let handler_operation_entry = attr_list
+            .clone()
+            .then_ignore(just(TokenKind::KeywordOperation))
+            .then(ident_for_expr.clone())
+            .then(handler_param_list.clone())
+            .then(block_expr.clone())
+            .map_with_span(|(((attrs, name), params), body), span: Range<usize>| {
+                HandlerEntry::Operation {
+                    attrs,
+                    name,
+                    params,
+                    body,
+                    span: range_to_span(span),
+                }
+            });
+
+        let handler_return_entry = just(TokenKind::KeywordReturn)
+            .ignore_then(ident_for_expr.clone())
+            .then(block_expr.clone())
+            .map_with_span(
+                |(value_ident, body), span: Range<usize>| HandlerEntry::Return {
+                    value_ident,
+                    body,
+                    span: range_to_span(span),
+                },
+            );
+
+        let handler_literal = just(TokenKind::KeywordHandler)
+            .ignore_then(ident_for_expr.clone())
+            .then(
+                just(TokenKind::LBrace)
+                    .ignore_then(
+                        choice((handler_operation_entry, handler_return_entry))
+                            .repeated()
+                            .at_least(1),
+                    )
+                    .then_ignore(just(TokenKind::RBrace)),
+            )
+            .map_with_span(|(name, entries), span: Range<usize>| HandlerDecl {
+                name,
+                entries,
+                span: range_to_span(span),
+            });
+
+        let handle_expr = just(TokenKind::KeywordHandle)
+            .ignore_then(expr.clone())
+            .then(just(TokenKind::KeywordWith).to(true).or_not())
+            .then(handler_literal.clone())
+            .map_with_span(
+                |((target, with_present), handler), span: Range<usize>| Expr {
+                    span: range_to_span(span),
+                    kind: ExprKind::Handle {
+                        handle: HandleExpr {
+                            target: Box::new(target),
+                            handler,
+                            with_keyword: with_present.unwrap_or(false),
+                        },
+                    },
+                },
+            );
+
         let lambda_body_expr = choice((block_expr.clone(), expr.clone())).boxed();
         let lambda_param = ident_for_expr
             .clone()
@@ -1128,6 +1400,7 @@ fn module_parser<'src>(
         let atom = choice((
             block_expr.clone(),
             match_expr,
+            handle_expr,
             fn_lambda_expr,
             int_literal.clone(),
             bool_literal,
@@ -1284,6 +1557,17 @@ fn module_parser<'src>(
                 Expr::perform(effect, argument, span)
             });
 
+        let do_expr = just(TokenKind::KeywordDo)
+            .map_with_span(move |_, span: Range<usize>| range_to_span(span))
+            .then(qualified_ident.clone())
+            .then(effect_args.clone())
+            .map(|((do_span, effect), (args, args_span))| {
+                let argument = build_effect_argument_expr(args, args_span);
+                let effect_span = effect.span;
+                let span = span_union(do_span, span_union(effect_span, args_span));
+                Expr::perform(effect, argument, span)
+            });
+
         let assignment_expr = ident_expr
             .clone()
             .then_ignore(just(TokenKind::Assign))
@@ -1295,6 +1579,7 @@ fn module_parser<'src>(
         choice((
             if_expr,
             perform_expr,
+            do_expr,
             assignment_expr,
             block_expr,
             comparison,
@@ -1830,14 +2115,39 @@ fn module_parser<'src>(
             }
         });
 
-    let effect_decl = just(TokenKind::KeywordEffect)
-        .map_with_span(move |_, span: Range<usize>| range_to_span(span))
+    let effect_operation = attr_list
+        .clone()
+        .then_ignore(just(TokenKind::KeywordOperation))
         .then(ident.clone())
-        .map(|(effect_span, name)| EffectDecl {
-            span: Span::new(effect_span.start.min(name.span.start), name.span.end),
+        .then(
+            just(TokenKind::Colon)
+                .ignore_then(type_parser.clone())
+                .or_not(),
+        )
+        .map_with_span(
+            |((attrs, name), signature), span: Range<usize>| OperationDecl {
+                attrs,
+                name,
+                signature,
+                span: range_to_span(span),
+            },
+        );
+
+    let effect_body = effect_operation
+        .repeated()
+        .at_least(1)
+        .delimited_by(just(TokenKind::LBrace), just(TokenKind::RBrace));
+
+    let effect_decl = just(TokenKind::KeywordEffect)
+        .ignore_then(ident.clone())
+        .then_ignore(just(TokenKind::Colon))
+        .then(ident.clone())
+        .then(effect_body.clone())
+        .map_with_span(|((name, tag), operations), span: Range<usize>| EffectDecl {
+            span: range_to_span(span.clone()),
             name,
-            tag: None,
-            operations: Vec::new(),
+            tag: Some(tag),
+            operations,
         });
 
     #[derive(Clone)]
@@ -2083,11 +2393,7 @@ fn record_expr_trace_events(expr: &Expr, events: &mut Vec<ParserTraceEvent>) {
             record_expr_trace_events(end, events);
         }
         ExprKind::Handle { handle } => {
-            let handler = HandlerDecl {
-                name: handle.handler.clone(),
-                span: expr.span,
-            };
-            events.push(ParserTraceEvent::handler(&handler));
+            events.push(ParserTraceEvent::handler(&handle.handler));
             record_expr_trace_events(&handle.target, events);
         }
         ExprKind::Continue => {}

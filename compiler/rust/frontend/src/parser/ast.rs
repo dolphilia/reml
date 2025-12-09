@@ -145,6 +145,7 @@ pub struct EffectDecl {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct OperationDecl {
+    pub attrs: Vec<Attribute>,
     pub name: Ident,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signature: Option<TypeAnnot>,
@@ -154,7 +155,25 @@ pub struct OperationDecl {
 #[derive(Debug, Clone, Serialize)]
 pub struct HandlerDecl {
     pub name: Ident,
+    pub entries: Vec<HandlerEntry>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum HandlerEntry {
+    Operation {
+        attrs: Vec<Attribute>,
+        name: Ident,
+        params: Vec<Param>,
+        body: Expr,
+        span: Span,
+    },
+    Return {
+        value_ident: Ident,
+        body: Expr,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -651,7 +670,8 @@ pub struct MatchArm {
 #[derive(Debug, Clone, Serialize)]
 pub struct HandleExpr {
     pub target: Box<Expr>,
-    pub handler: Ident,
+    pub handler: HandlerDecl,
+    pub with_keyword: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
