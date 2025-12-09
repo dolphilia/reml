@@ -258,9 +258,9 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml` / 同ログで診断 0 件を確認）
 
 **examples/spec_core/chapter1/type_decl**
-- [ ] `examples/spec_core/chapter1/type_decl/bnf-typedecl-alias-generic-ok.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/type_decl/bnf-typedecl-new-struct-ok.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/type_decl/bnf-typedef-sum-recordpattern-ok.reml`（期待: 成功）
+- [x] `examples/spec_core/chapter1/type_decl/bnf-typedecl-alias-generic-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/type_decl/bnf-typedecl-alias-generic-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T145714Z.md で diagnostics=[] を確認）
+- [x] `examples/spec_core/chapter1/type_decl/bnf-typedecl-new-struct-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/type_decl/bnf-typedecl-new-struct-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T145714Z.md で diagnostics=[] を確認）
+- [x] `examples/spec_core/chapter1/type_decl/bnf-typedef-sum-recordpattern-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/type_decl/bnf-typedef-sum-recordpattern-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T145714Z.md で diagnostics=[] を確認）
 
 **examples/spec_core/chapter1/let_binding**
 - [ ] `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-pattern-tuple.reml`（期待: 成功）

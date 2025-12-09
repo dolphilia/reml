@@ -236,6 +236,7 @@ pub enum DeclKind {
     },
     Type {
         name: Ident,
+        generics: Vec<Ident>,
         span: Span,
     },
     Trait(TraitDecl),
