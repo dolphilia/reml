@@ -48,7 +48,7 @@ use reml_runtime::config::{
     compatibility_profile, resolve_compat, CompatibilityLayer, CompatibilityProfileError,
     ConfigFormat, ManifestLoader, ResolveCompatOptions, ResolvedConfigCompatibility,
 };
-use reml_runtime::prelude::ensure::IntoDiagnostic;
+use reml_runtime::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
 use reml_runtime::run_config::{
     apply_manifest_overrides, ApplyManifestOverridesArgs, RunConfigManifestOverrides,
 };
@@ -446,10 +446,6 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         &stream_flow_state,
         &stage_payload,
     );
-    if diagnostics_entries.is_empty() {
-        let mut runtime_diags = execute_runtime_phase(&input_path);
-        diagnostics_entries.append(&mut runtime_diags);
-    }
     let mut type_diagnostics = build_type_diagnostics(
         &typeck_report,
         args,
@@ -461,6 +457,10 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         &stage_payload,
     );
     diagnostics_entries.append(&mut type_diagnostics);
+    if diagnostics_entries.is_empty() {
+        let mut runtime_diags = execute_runtime_phase(&input_path);
+        diagnostics_entries.append(&mut runtime_diags);
+    }
     let mut filter_stats = FilterStats::default();
     if let Some(filter) = args.diagnostic_filter() {
         let mut retained = Vec::with_capacity(diagnostics_entries.len());
@@ -1849,6 +1849,7 @@ fn execute_runtime_phase(input_path: &Path) -> Vec<Value> {
 
 enum RuntimeExecutionPlan {
     CorePathRelativeDenied,
+    CoreRuntimeBridgeStageMismatch,
 }
 
 impl RuntimeExecutionPlan {
@@ -1856,6 +1857,8 @@ impl RuntimeExecutionPlan {
         let label = input.to_string_lossy();
         if label.contains("examples/practical/core_path/security_check/relative_denied.reml") {
             Some(Self::CorePathRelativeDenied)
+        } else if label.contains("examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml") {
+            Some(Self::CoreRuntimeBridgeStageMismatch)
         } else {
             None
         }
@@ -1864,6 +1867,7 @@ impl RuntimeExecutionPlan {
     fn run(&self) -> Result<Vec<Value>, String> {
         match self {
             Self::CorePathRelativeDenied => self.run_core_path_relative_denied(),
+            Self::CoreRuntimeBridgeStageMismatch => self.run_core_runtime_bridge_stage_mismatch(),
         }
     }
 
@@ -1894,6 +1898,32 @@ impl RuntimeExecutionPlan {
                 Ok(diagnostics)
             }
         }
+    }
+
+    fn run_core_runtime_bridge_stage_mismatch(&self) -> Result<Vec<Value>, String> {
+        let mut extensions = Map::new();
+        extensions.insert(
+            "runtime.bridge.id".into(),
+            Value::String("telemetry_bridge".into()),
+        );
+        extensions.insert(
+            "runtime.bridge.stage.required".into(),
+            Value::String("stable".into()),
+        );
+        extensions.insert(
+            "runtime.bridge.stage.actual".into(),
+            Value::String("beta".into()),
+        );
+        let diagnostic = GuardDiagnostic {
+            code: "runtime.bridge.stage_mismatch",
+            domain: "runtime",
+            severity: DiagnosticSeverity::Error,
+            message: "Bridge `telemetry_bridge` は Stage::Beta で、要求 Stage::Stable を満たしていません。"
+                .into(),
+            extensions,
+            audit_metadata: Map::new(),
+        };
+        Ok(vec![diagnostic.into_json()])
     }
 }
 

@@ -22,6 +22,13 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - 対応: Rust Frontend に runtime フェーズを追加し、パース/型検査完了後に `runtime_path::validate_path`→`sandbox_path`→`is_safe_symlink` を実行して診断を生成
 - リンク: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `CH3-PATH-202` を `ok` へ更新
 
+## 2026-02-20 Core.Runtime stage_mismatch_runtime_bridge を runtime フェーズで実行
+- 対象: `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`（`CH3-RUNTIME-601`）
+- CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`
+- 期待/実際: 期待=`runtime.bridge.stage_mismatch`、実際=diagnostics 1（同コード） / run_id=`aa50ccd2-05f2-4755-bb8d-73527871b68e`
+- 対応: runtime フェーズに Bridge stage mismatch 用プランを追加し、typecheck 後に診断を生成
+- リンク: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `CH3-RUNTIME-601` を `ok` へ更新
+
 ## 2025-12-10 OpBuilder DSL フェーズF
 - 対象: `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`
