@@ -43,6 +43,11 @@
 - M4 exit 判定では、`phase4-readiness.md` に署名（PM/Tech Lead）が行われ、`docs/plans/bootstrap-roadmap/6-0-phase6-migration.md` に Phase 4 成果のリンクを追加する（別タスク）。
 - 承認後、`phase4-readiness.md` を Phase 5 キックオフの必須資料として `reports/spec-audit/ch4/` に保存し、`docs-migrations.log` に記録。
 
+### 5. OpBuilder DSL フォローアップ（Self-host 連携）
+- `docs/plans/bootstrap-roadmap/4-1-opbuilder-dsl-plan.md` フェーズ B〜D の成果（Rust フロントエンド実装・診断ゴールデン・`phase4-scenario-matrix.csv` `CH2-OP-401` 緑化）を前提に、Self-host パイプラインで DSL シナリオを単独実行するジョブを追加する。`examples/spec_core/chapter2/op_builder/*.reml` を最小ケースとして組み込み、`reports/spec-audit/ch4/practical-bundle-*.md` に Run ID と CLI コマンドを残す。
+- Self-host での実行結果は `phase4-readiness.md` の `Self-host インプット` 節に Pass/Fail と `core.parse.opbuilder.*` 診断の一致状況を追記し、差分が出た場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に `PRACTICAL-OpBuilder-*` を登録する。
+- 判定の根拠・設計判断は `docs/notes/opbuilder-dsl-decisions.md` にリンクし、Phase 5 以降で DSL を Stage 管理／Capability 監査に組み込む際の参照点とする。
+
 ## リスクとフォローアップ
 - **シナリオ網羅率未達**: 85% 未満の場合は `phase4-readiness.md` に残課題を明記し、`docs/plans/bootstrap-roadmap/0-4-risk-handling.md` のエスカレーション基準に従って Phase 5 着手可否を判断。
 - **レグレッション処理遅延**: `impl_fix` が 2 週以上滞留した場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ優先度 `critical` で登録し、Phase 3 の該当章または Rust 実装チームへ通知。
