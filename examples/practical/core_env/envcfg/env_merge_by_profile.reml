@@ -5,11 +5,11 @@ use Core.Env
 fn main() -> Str {
   let base = Env.Profile {
     name = "default",
-    values = { "API_URL" = "https://prod" }
+    values = { "API_URL": "https://prod" }
   }
   let cli = Env.Profile {
     name = "cli",
-    values = { "API_URL" = "https://cli.local" }
+    values = { "API_URL": "https://cli.local" }
   }
   let merged = Env.merge_profiles([base, cli], target = "cli")
   merged.values["API_URL"]

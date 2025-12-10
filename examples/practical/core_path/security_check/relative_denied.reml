@@ -1,37 +1,50 @@
 module Examples.Practical.CorePath.SecurityCheck
 
-use Core;
-use Core.Path;
-use Core.Diagnostics;
+use Core
+use Core.Path
+use Core.Diagnostics
 
-struct SecurityReport {
+type SecurityReport = new {
   requested: Path,
   sandboxed: Path,
   is_symlink: Bool,
 }
 
-fn ensure_workspace_path(raw: Str, root: Path, policy: SecurityPolicy) -> Result<SecurityReport, Diagnostic> =
-  let requested = path(raw)?;
-  let normalized = normalize(requested.clone());
+fn ensure_workspace_path(raw: Str, root: Path, policy: SecurityPolicy) -> Result<SecurityReport, Diagnostic> {
+  match path(raw) with
+    Ok(requested) -> {
+      let normalized = normalize(requested.clone())
 
-  validate_path(normalized.clone(), policy)
-    .map_err(|err| err.into_diagnostic())?;
+      match validate_path(normalized.clone(), policy) with
+        Ok(_) -> {
+          match sandbox_path(normalized.clone(), root) with
+            Ok(sandboxed) -> {
+              match is_safe_symlink(sandboxed.clone()) with
+                Ok(flag) -> Ok(SecurityReport({
+                  requested: normalized,
+                  sandboxed,
+                  is_symlink: flag,
+                }))
+                Err(io_err) -> Err(io_err.into_diagnostic())
+              }
+            }
+            Err(err) -> Err(err.into_diagnostic())
+          }
+        }
+        Err(err) -> Err(err.into_diagnostic())
+      }
+    }
+    Err(err) -> Err(err.into_diagnostic())
+}
 
-  let sandboxed = sandbox_path(normalized.clone(), root)
-    .map_err(|err| err.into_diagnostic())?;
-
-  let is_symlink =
-    match is_safe_symlink(sandboxed.clone()) {
-      Ok(flag) => flag,
-      Err(io_err) => return Err(io_err.into_diagnostic()),
-    };
-
-  Ok({
-    requested: normalized,
-    sandboxed,
-    is_symlink,
-  })
-
-fn main() -> Result<SecurityReport, Diagnostic> =
-  let policy = SecurityPolicy::workspace_only(path("/srv/app")?);
-  ensure_workspace_path("../secret.txt", path("/srv/app/tmp")?, policy)
+fn main() -> Result<SecurityReport, Diagnostic> {
+  match path("/srv/app") with
+    Ok(policy_root) -> {
+      let policy = SecurityPolicy::workspace_only(policy_root)
+      match path("/srv/app/tmp") with
+        Ok(sandbox_root) -> ensure_workspace_path("../secret.txt", sandbox_root, policy)
+        Err(err) -> Err(err.into_diagnostic())
+      }
+    }
+    Err(err) -> Err(err.into_diagnostic())
+}

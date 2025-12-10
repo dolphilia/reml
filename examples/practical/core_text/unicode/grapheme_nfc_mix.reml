@@ -3,11 +3,10 @@ module Examples.Practical.CoreText.Unicode.GraphemeNfc
 use Core.Text
 
 fn normalize_sample(text: Str) -> Str {
-  text
-    |> Text.normalize(:nfc)
-    |> Text.graphemes()
-    |> Text.count()
-    |> Int.to_string()
+  let normalized = Text.normalize(text, :nfc)
+  let graphemes = Text.graphemes(normalized)
+  let count = Text.count(graphemes)
+  Int.to_string(count)
 }
 
 fn main() -> Str {
