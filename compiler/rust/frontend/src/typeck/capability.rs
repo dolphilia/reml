@@ -83,20 +83,37 @@ impl CapabilityDescriptor {
     }
 
     pub fn resolve(effect_name: &str) -> Self {
-        let normalized = effect_name.trim().to_ascii_lowercase();
+        let trimmed = effect_name.trim();
+        if trimmed.is_empty() {
+            return Self::with_user_defined_id("unknown");
+        }
+        let normalized = trimmed.trim_start_matches(':').to_ascii_lowercase();
+        let has_console_segment = normalized.contains("::")
+            && normalized
+                .split("::")
+                .filter(|segment| !segment.is_empty())
+                .any(|segment| segment == "console");
+        if has_console_segment {
+            return Self::with_stage(&normalized, StageId::beta());
+        }
+        let normalized_pattern = normalized.replace("::", ".");
         for pattern in CAPABILITY_PATTERNS {
-            if normalized.starts_with(pattern.prefix) {
+            if normalized_pattern.starts_with(pattern.prefix) {
                 return Self::with_id(pattern.id);
             }
         }
         for (key, id) in SPECIAL_CAPABILITIES {
-            if normalized == *key {
+            if normalized_pattern == *key {
                 return Self::with_id(id);
             }
         }
         // Fallback: use first segment of the identifier as capability, but treat it as
         // user-defined and keep the runtime stage at `stable`.
-        let fallback = normalized.split('.').next().unwrap_or(&normalized).trim();
+        let fallback = normalized_pattern
+            .split('.')
+            .next()
+            .unwrap_or_else(|| normalized_pattern.as_str())
+            .trim();
         if fallback.is_empty() {
             Self::with_user_defined_id("unknown")
         } else {
@@ -109,6 +126,10 @@ impl CapabilityDescriptor {
             "panic" | "unsafe" | "ffi" | "runtime" => StageId::experimental(),
             _ => StageId::beta(),
         };
+        Self::with_stage(id, stage)
+    }
+
+    fn with_stage(id: &str, stage: StageId) -> Self {
         Self {
             id: SmolStr::new(id.to_ascii_lowercase()),
             stage,

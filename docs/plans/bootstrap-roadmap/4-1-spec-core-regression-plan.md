@@ -290,9 +290,9 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml`（期待: 成功 → 2025-12-10 Parser の PatternKind::Literal を match arm から参照できるよう拡張し `tests/spec_core::ch1_match_002_accepts_tuple_literal_pattern` で回帰テスト化。CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251210T073321Z.md）
 
 **examples/spec_core/chapter1/effects・conductor・block**
-- [ ] `examples/spec_core/chapter1/effects/bnf-attr-pure-perform-error.reml`（期待: 失敗診断）
-- [ ] `examples/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/block/bnf-block-unclosed-brace-error.reml`（期待: 失敗診断）
+- [x] `examples/spec_core/chapter1/effects/bnf-attr-pure-perform-error.reml`（期待: 失敗診断 → CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/effects/bnf-attr-pure-perform-error.reml` / log=`reports/spec-audit/ch4/logs/spec_core-20251210T075036Z.md` / `effects.purity.violated`, `effects.contract.stage_mismatch` の 2 診断を再取得。`compiler/rust/frontend/src/typeck/capability.rs` で `Console.*` を Capability Registry に再登録し Stage mismatch を復元。)
+- [x] `examples/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.reml`（期待: 成功 → CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.reml` / log=`reports/spec-audit/ch4/logs/spec_core-20251210T075036Z.md` / diagnostics=[] / stdout=`expected/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.stdout` で確認。)
+- [x] `examples/spec_core/chapter1/block/bnf-block-unclosed-brace-error.reml`（期待: 失敗診断 → CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/block/bnf-block-unclosed-brace-error.reml` / log=`reports/spec-audit/ch4/logs/spec_core-20251210T075036Z.md` / diagnostics=`parser.syntax.expected_tokens` / `expected/spec_core/chapter1/block/bnf-block-unclosed-brace-error.diagnostic.json` を新規作成。)
 
 **examples/spec_core/chapter2**
 - [ ] `examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml`（期待: 成功）
