@@ -5,10 +5,10 @@
     {
       "severity": "error",
       "code": "core.parse.opbuilder.level_conflict",
-      "message": "優先度 5 に複数の fixity (`infix_left` と `infix_right`) が登録されました。",
+      "message": "優先度 5 に複数の fixity (`:infix_left` と `:infix_right`) が登録されました。",
       "notes": [
         {
-          "message": "各レベルにつき 1 種類の fixity のみを指定してください。"
+          "message": "各レベルにつき 1 種類の fixity のみを指定してください。`builder.level(priority, :fixity, [...])` は `priority` ごとに単一の fixity を要求します。"
         }
       ]
     }

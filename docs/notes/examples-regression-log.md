@@ -14,3 +14,11 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - ゴールデン: `expected/practical/core_io/file_copy/{canonical.stdout,canonical.audit.jsonl}`, `expected/practical/core_path/security_check/relative_denied.diagnostic.json`
 - 実行コマンド: `tooling/examples/run_examples.sh --suite practical --scenario core_io|core_path`
 - 備考: Phase4 シナリオマトリクス (`phase4-scenario-matrix.csv`) の ID `CH3-IO-101` / `CH3-PATH-202` とリンク
+
+## 2025-12-10 OpBuilder DSL フェーズF
+- 対象: `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`
+- CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`
+- 期待/実際 Diagnostics: `core.parse.opbuilder.level_conflict`（Exit code 1, 診断想定）
+- ゴールデン: `expected/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.diagnostic.json`
+- ログ: `reports/spec-audit/ch4/logs/spec_core-20251210T125022Z.md`
+- 備考: DSL fixity シンボル（`:infix_left` / `:infix_right`）を再受理し、`phase4-scenario-matrix.csv` の `CH2-OP-401` を `resolution=ok` へ更新。

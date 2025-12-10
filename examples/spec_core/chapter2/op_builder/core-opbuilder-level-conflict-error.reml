@@ -6,5 +6,6 @@ fn main() -> Str {
   let builder = OpBuilder.new()
   builder.level(5, :infix_left, ["+"])
   builder.level(5, :infix_right, ["++"])
+  builder.build()
   "op-builder-conflict"
 }
