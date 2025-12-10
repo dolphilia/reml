@@ -143,6 +143,23 @@ ConductorMonitoringSpec ::= "with" ModulePath
 
 `conductor` ブロックにおけるセクション構成や監査要件は [1.1 構文 B.8](1-1-syntax.md#b8-dsl制御ブロック-conductor) および [guides/conductor-pattern.md](../guides/conductor-pattern.md) を参照してください。
 
+### 2.1 OpBuilder DSL
+
+```
+OpBuilderLevelCall ::= Ident "." "level" "(" IntLiteral "," FixitySymbol "," SymbolList ")"
+SymbolList         ::= "[" SymbolToken { "," SymbolToken } [","] "]"
+SymbolToken        ::= StringLiteral
+
+FixitySymbol       ::= ":prefix"
+                     | ":postfix"
+                     | ":infix_left"
+                     | ":infix_right"
+                     | ":infix_nonassoc"
+                     | ":ternary"
+```
+
+DSL と `FixitySymbol` の意味論は [2.4 演算子優先度ビルダー](2-4-op-builder.md#b-使い方api-と-dsl) に記載されている。
+
 ---
 
 ## 3. 文とブロック

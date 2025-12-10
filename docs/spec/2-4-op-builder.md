@@ -56,7 +56,7 @@ PrecedenceBuilder<A>.build() -> Parser<A>
 
 ---
 
-## B. 使い方（例）
+## B. 使い方（API と DSL）
 
 ```reml
 let sc     = Lex.spaceOrTabsOrNewlines |> Lex.skipMany
@@ -100,6 +100,38 @@ let expr: Parser<i64> =
     })
     .build()
 ```
+
+### B-1. DSL 例（`OpBuilder.new`）
+
+`Core.Parse.OpBuilder` には `precedence` API と同じ構造をより宣言的に書ける DSL が付属する。DSL では `builder.level(<priority>, :fixity, ["token", ...])` のように優先度と結合方向をまとめて記述でき、内部的には `precedence` API へ変換される。
+
+```reml
+use Core.Parse.OpBuilder
+
+fn build_expr_parser(atom: Parser<Int>) -> Parser<Int> {
+  let builder = OpBuilder.new()
+  builder.level(90, :prefix, ["-"])
+  builder.level(80, :infix_right, ["^"])
+  builder.level(70, :infix_left, ["*", "/"])
+  builder.level(60, :infix_left, ["+", "-"])
+  builder.level(50, :infix_nonassoc, ["<", "<=", ">", ">="])
+  builder.level(40, :ternary, ["?", ":"])
+  builder.build(atom)
+}
+```
+
+`FixitySymbol`（`:prefix` など）は [1-5 形式文法 §2.1](1-5-formal-grammar-bnf.md#21-opbuilder-dsl) でトークンとして定義される。DSL 記法と `precedence` API の対応は次の通りで、いずれも同じ優先度テーブルを生成する。
+
+| DSL 記法 | `precedence` API での相当メソッド | 効果 |
+| --- | --- | --- |
+| `:prefix` | `lvl.prefix` | 右結合の単項演算子 |
+| `:postfix` | `lvl.postfix` | 直前の値へ繰り返し適用 |
+| `:infix_left` | `lvl.infixl` | 左結合の二項演算子 |
+| `:infix_right` | `lvl.infixr` | 右結合の二項演算子 |
+| `:infix_nonassoc` | `lvl.infixn` | 連鎖禁止（二重に書くとエラー） |
+| `:ternary` | `lvl.ternary` | `head`/`mid` トークンと `build` クロージャを登録 |
+
+DSL ではトークン配列（`["+", "-"]` 等）を `symbol` パーサへ自動変換し、`builder.level` ごとに `Lex.space` を共有する。`fixity` とトークンの組み合わせが DSL 側で判定されるため、仕様どおりでない宣言（例: 同一レベルに `:infix_left` と `:infix_right` を同居）を行うと `core.parse.opbuilder.level_conflict` 診断が発生する。
 
 ---
 
@@ -158,6 +190,9 @@ fn op_str<A>(space: Parser<()>, s: Str, f: any) -> Parser<typeof f>
 ## F. エラー設計（2.5 と整合）
 
 * **期待集合**：演算子位置では `expected = {"operator '<op>'", "…", operand_label}` を組む。
+* **DSL 固有の診断**：
+  * `core.parse.opbuilder.level_conflict`: 同じレベルに複数の fixity を混在させた場合に発生。`builder.level` の定義順と fixity シンボルを提示する。
+  * `core.parse.opbuilder.fixity_missing`: レベルにトークンを登録しなかった、または `:ternary` の `["?",":"]` が揃っていないときに報告する。
 * **欠落オペランド**：
 
   ```

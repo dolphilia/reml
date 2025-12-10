@@ -39,7 +39,8 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **`Diagnostic`**: エラーや警告を構造化して保持する報告単位。[2-5 エラーハンドリング](2-5-error.md) と [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) でメッセージ整形と監査連携が規定される。
 - **Pratt パーサー**: 演算子の結合力を binding power で管理し、前置/中置/後置演算子を宣言的に処理する手法。Reml の `precedence` ビルダーは Pratt 法と連鎖畳み込みのハイブリッド実装を採用し、[2-4 演算子優先度ビルダー](2-4-op-builder.md) に設計理由が記載される。
 - **結合力 (Binding Power)**: Pratt パーサーが演算子の優先順位を比較するために用いる数値。高い binding power を持つ演算子ほど強く右項を結び付け、[2-4 演算子優先度ビルダー](2-4-op-builder.md) でレベル順に調整される。
-- **Fixity（結合方向）**: 演算子が左結合 (`infixl`)、右結合 (`infixr`)、非結合 (`infixn`) などどのように束縛されるかを表す属性。[2-4 演算子優先度ビルダー](2-4-op-builder.md) の `level` 宣言で指定する。
+- **Fixity（結合方向）**: 演算子が左結合 (`infixl`)、右結合 (`infixr`)、非結合 (`infixn`) などどのように束縛されるかを表す属性。DSL では `:infix_left` / `:infix_right` / `:infix_nonassoc` / `:prefix` / `:postfix` / `:ternary` のような Fixity シンボルで記述し、[1-5 形式文法 §2.1](1-5-formal-grammar-bnf.md#21-opbuilder-dsl) でトークンが定義される。[2-4 演算子優先度ビルダー](2-4-op-builder.md) の `level` 宣言で実際の挙動が指定される。
+- **OpBuilder DSL**: `Core.Parse.OpBuilder` が提供する宣言的な優先度テーブル記法。`builder.level(priority, :fixity, ["token", ...])` で複数演算子と結合方向をまとめて定義し、内部で `precedence` API と同じ AST を構築する。`FixitySymbol` の構文は [1-5 形式文法 §2.1](1-5-formal-grammar-bnf.md#21-opbuilder-dsl) に、意味論は [2-4 演算子優先度ビルダー](2-4-op-builder.md#b-使い方api-と-dsl) に記載される。
 - **seed-growing 左再帰**: Packrat メモ化と組み合わせて左再帰規則を安全に展開する手法。`RunConfig.left_recursion="auto"` が必要に応じて適用し、[2-6 実行戦略](2-6-execution-strategy.md#c-メモ化packratと左再帰) に挙動が説明される。
 
 ## Unicode とテキスト処理
