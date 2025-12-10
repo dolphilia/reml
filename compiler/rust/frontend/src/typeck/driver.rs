@@ -14,8 +14,8 @@ use super::types::{BuiltinType, Type, TypeVarGen};
 use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
-    BinaryOp, Decl, DeclKind, Expr, ExprKind, Function, Ident, Literal, LiteralKind, Module,
-    ModulePath, Pattern, PatternKind, RelativeHead, Stmt, StmtKind,
+    BinaryOp, Decl, DeclKind, Expr, ExprKind, FixityKind, Function, HandlerEntry, Ident, Literal,
+    LiteralKind, Module, ModulePath, Pattern, PatternKind, RelativeHead, Stmt, StmtKind,
 };
 use crate::semantics::typed;
 use crate::span::Span;
@@ -97,6 +97,8 @@ impl TypecheckDriver {
         let mut var_gen = TypeVarGen::default();
         let mut module_env = TypeEnv::new();
         let mut unicode_shadow_tracker = UnicodeShadowTracker::default();
+
+        collect_opbuilder_violations(module, &mut violations);
 
         if !module.decls.is_empty() {
             let mut module_decl_stats = FunctionStats::default();
@@ -331,6 +333,8 @@ pub enum TypecheckViolationKind {
     RuntimeBridgeStageMismatch,
     IteratorExpected,
     ControlFlowUnreachable,
+    OpBuilderLevelConflict,
+    OpBuilderFixityMissing,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -664,6 +668,55 @@ impl TypecheckViolation {
         }
     }
 
+    fn opbuilder_level_conflict(
+        span: Span,
+        priority: i64,
+        existing: FixityKind,
+        next: FixityKind,
+    ) -> Self {
+        let message = format!(
+            "優先度 {priority} に複数の fixity (`{}` と `{}`) が登録されました。",
+            existing.label(),
+            next.label()
+        );
+        Self {
+            kind: TypecheckViolationKind::OpBuilderLevelConflict,
+            code: "core.parse.opbuilder.level_conflict",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "各レベルにつき 1 種類の fixity のみを指定してください。",
+            )],
+            capability: None,
+            function: None,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn opbuilder_fixity_missing(span: Span, fixity: FixityKind, reason: impl Into<String>) -> Self {
+        let message = format!(
+            "`{}` fixity のトークン定義が無効です: {}",
+            fixity.keyword(),
+            reason.into()
+        );
+        Self {
+            kind: TypecheckViolationKind::OpBuilderFixityMissing,
+            code: "core.parse.opbuilder.fixity_missing",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "`builder.level(priority, :fixity, [\"token\"])` の形式でトークンを指定してください。",
+            )],
+            capability: None,
+            function: None,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
     fn ast_unavailable() -> Self {
         Self {
             kind: TypecheckViolationKind::AstUnavailable,
@@ -695,7 +748,9 @@ impl TypecheckViolation {
             | TypecheckViolationKind::StageMismatch
             | TypecheckViolationKind::IteratorStageMismatch
             | TypecheckViolationKind::PurityViolation => "effects",
-            TypecheckViolationKind::CoreParseRecoverBranch => "parser",
+            TypecheckViolationKind::CoreParseRecoverBranch
+            | TypecheckViolationKind::OpBuilderLevelConflict
+            | TypecheckViolationKind::OpBuilderFixityMissing => "parser",
             TypecheckViolationKind::RuntimeBridgeStageMismatch => "runtime",
         }
     }
@@ -715,6 +770,307 @@ struct FunctionStats {
     typed_exprs: usize,
     constraints: usize,
     unresolved_identifiers: usize,
+}
+
+fn collect_opbuilder_violations(module: &Module, violations: &mut Vec<TypecheckViolation>) {
+    for decl in &module.decls {
+        let mut tracker = OpBuilderTracker::new(None);
+        visit_decl_for_opbuilder(decl, &mut tracker, violations);
+    }
+    for function in &module.functions {
+        let mut tracker = OpBuilderTracker::new(Some(function.name.name.as_str()));
+        visit_expr_for_opbuilder(&function.body, &mut tracker, violations);
+    }
+}
+
+#[derive(Default)]
+struct OpBuilderTracker {
+    scope: String,
+    builders: HashMap<String, HashMap<i64, FixityKind>>,
+}
+
+impl OpBuilderTracker {
+    fn new(scope: Option<&str>) -> Self {
+        Self {
+            scope: scope.unwrap_or("<module>").to_string(),
+            builders: HashMap::new(),
+        }
+    }
+
+    fn record_level_call(
+        &mut self,
+        builder: String,
+        priority: i64,
+        fixity: FixityKind,
+        span: Span,
+        violations: &mut Vec<TypecheckViolation>,
+    ) {
+        let key = format!("{}::{}", self.scope, builder);
+        let entry = self.builders.entry(key).or_default();
+        if let Some(existing) = entry.get(&priority).copied() {
+            if existing != fixity {
+                violations.push(TypecheckViolation::opbuilder_level_conflict(
+                    span, priority, existing, fixity,
+                ));
+            }
+        } else {
+            entry.insert(priority, fixity);
+        }
+    }
+}
+
+fn visit_decl_for_opbuilder(
+    decl: &Decl,
+    tracker: &mut OpBuilderTracker,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    match &decl.kind {
+        DeclKind::Let { value, .. } | DeclKind::Var { value, .. } => {
+            visit_expr_for_opbuilder(value, tracker, violations);
+        }
+        DeclKind::Effect(effect) => {
+            for op in &effect.operations {
+                for attr in &op.attrs {
+                    for arg in &attr.args {
+                        visit_expr_for_opbuilder(arg, tracker, violations);
+                    }
+                }
+            }
+        }
+        DeclKind::Conductor(conductor) => {
+            if let Some(exec) = &conductor.execution {
+                visit_expr_for_opbuilder(&exec.body, tracker, violations);
+            }
+            if let Some(monitor) = &conductor.monitoring {
+                visit_expr_for_opbuilder(&monitor.body, tracker, violations);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn visit_stmt_for_opbuilder(
+    stmt: &Stmt,
+    tracker: &mut OpBuilderTracker,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    match &stmt.kind {
+        StmtKind::Decl { decl } => visit_decl_for_opbuilder(decl, tracker, violations),
+        StmtKind::Expr { expr } | StmtKind::Defer { expr } => {
+            visit_expr_for_opbuilder(expr, tracker, violations)
+        }
+        StmtKind::Assign { target, value } => {
+            visit_expr_for_opbuilder(target, tracker, violations);
+            visit_expr_for_opbuilder(value, tracker, violations);
+        }
+    }
+}
+
+fn visit_literal_for_opbuilder(
+    literal: &Literal,
+    tracker: &mut OpBuilderTracker,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    match &literal.value {
+        LiteralKind::Tuple { elements } | LiteralKind::Array { elements } => {
+            for element in elements {
+                visit_expr_for_opbuilder(element, tracker, violations);
+            }
+        }
+        LiteralKind::Record { fields } => {
+            for field in fields {
+                visit_expr_for_opbuilder(&field.value, tracker, violations);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn visit_expr_for_opbuilder(
+    expr: &Expr,
+    tracker: &mut OpBuilderTracker,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    if let Some(call) = extract_opbuilder_call(expr) {
+        if let Err(reason) = validate_opbuilder_tokens(call.tokens_expr, call.fixity) {
+            violations.push(TypecheckViolation::opbuilder_fixity_missing(
+                call.tokens_expr.span(),
+                call.fixity,
+                reason,
+            ));
+        } else {
+            tracker.record_level_call(
+                call.builder_key,
+                call.priority,
+                call.fixity,
+                call.span,
+                violations,
+            );
+        }
+    }
+
+    match &expr.kind {
+        ExprKind::Literal(literal) => visit_literal_for_opbuilder(literal, tracker, violations),
+        ExprKind::FixityLiteral(_) | ExprKind::Identifier(_) | ExprKind::ModulePath(_) => {}
+        ExprKind::Call { callee, args } => {
+            visit_expr_for_opbuilder(callee, tracker, violations);
+            for arg in args {
+                visit_expr_for_opbuilder(arg, tracker, violations);
+            }
+        }
+        ExprKind::PerformCall { call } => {
+            visit_expr_for_opbuilder(&call.argument, tracker, violations);
+        }
+        ExprKind::Lambda { body, .. } => visit_expr_for_opbuilder(body, tracker, violations),
+        ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
+            visit_expr_for_opbuilder(left, tracker, violations);
+            visit_expr_for_opbuilder(right, tracker, violations);
+        }
+        ExprKind::Unary { expr: body, .. }
+        | ExprKind::Propagate { expr: body }
+        | ExprKind::Loop { body }
+        | ExprKind::Defer { body }
+        | ExprKind::Assign { value: body, .. } => visit_expr_for_opbuilder(body, tracker, violations),
+        ExprKind::FieldAccess { target, .. }
+        | ExprKind::TupleAccess { target, .. } => visit_expr_for_opbuilder(target, tracker, violations),
+        ExprKind::Index { target, index } => {
+            visit_expr_for_opbuilder(target, tracker, violations);
+            visit_expr_for_opbuilder(index, tracker, violations);
+        }
+        ExprKind::Return { value } | ExprKind::Break { value } => {
+            if let Some(value) = value {
+                visit_expr_for_opbuilder(value, tracker, violations);
+            }
+        }
+        ExprKind::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            visit_expr_for_opbuilder(condition, tracker, violations);
+            visit_expr_for_opbuilder(then_branch, tracker, violations);
+            if let Some(else_branch) = else_branch {
+                visit_expr_for_opbuilder(else_branch, tracker, violations);
+            }
+        }
+        ExprKind::Match { target, arms } => {
+            visit_expr_for_opbuilder(target, tracker, violations);
+            for arm in arms {
+                if let Some(guard) = &arm.guard {
+                    visit_expr_for_opbuilder(guard, tracker, violations);
+                }
+                visit_expr_for_opbuilder(&arm.body, tracker, violations);
+            }
+        }
+        ExprKind::While { condition, body } => {
+            visit_expr_for_opbuilder(condition, tracker, violations);
+            visit_expr_for_opbuilder(body, tracker, violations);
+        }
+        ExprKind::For { start, end, .. } => {
+            visit_expr_for_opbuilder(start, tracker, violations);
+            visit_expr_for_opbuilder(end, tracker, violations);
+        }
+        ExprKind::Handle { handle } => {
+            visit_expr_for_opbuilder(&handle.target, tracker, violations);
+            for entry in &handle.handler.entries {
+                match entry {
+                    HandlerEntry::Operation { body, .. } | HandlerEntry::Return { body, .. } => {
+                        visit_expr_for_opbuilder(body, tracker, violations)
+                    }
+                }
+            }
+        }
+        ExprKind::Block { statements, .. } => {
+            for stmt in statements {
+                visit_stmt_for_opbuilder(stmt, tracker, violations);
+            }
+        }
+        ExprKind::Unsafe { body } => visit_expr_for_opbuilder(body, tracker, violations),
+        ExprKind::Continue => {}
+    }
+}
+
+struct OpBuilderCall<'a> {
+    builder_key: String,
+    priority: i64,
+    fixity: FixityKind,
+    span: Span,
+    tokens_expr: &'a Expr,
+}
+
+fn extract_opbuilder_call(expr: &Expr) -> Option<OpBuilderCall<'_>> {
+    if let ExprKind::Call { callee, args } = &expr.kind {
+        if args.len() < 3 {
+            return None;
+        }
+        if let ExprKind::FieldAccess { target, field } = &callee.kind {
+            if field.name != "level" {
+                return None;
+            }
+            let builder_key = render_opbuilder_target(target)?;
+            let priority = extract_priority(&args[0])?;
+            let fixity = match args[1].kind {
+                ExprKind::FixityLiteral(kind) => kind,
+                _ => return None,
+            };
+            return Some(OpBuilderCall {
+                builder_key,
+                priority,
+                fixity,
+                span: expr.span(),
+                tokens_expr: &args[2],
+            });
+        }
+    }
+    None
+}
+
+fn render_opbuilder_target(expr: &Expr) -> Option<String> {
+    match &expr.kind {
+        ExprKind::Identifier(ident) => Some(ident.name.clone()),
+        ExprKind::FieldAccess { target, field } => render_opbuilder_target(target)
+            .map(|base| format!("{base}.{}", field.name)),
+        ExprKind::ModulePath(path) => Some(path.render()),
+        _ => None,
+    }
+}
+
+fn extract_priority(expr: &Expr) -> Option<i64> {
+    match &expr.kind {
+        ExprKind::Literal(Literal {
+            value: LiteralKind::Int { value, .. },
+        }) => Some(*value),
+        _ => None,
+    }
+}
+
+fn validate_opbuilder_tokens(expr: &Expr, fixity: FixityKind) -> Result<(), String> {
+    match &expr.kind {
+        ExprKind::Literal(Literal {
+            value: LiteralKind::Array { elements },
+        }) => {
+            if elements.is_empty() {
+                return Err("トークン配列が空です".to_string());
+            }
+            if fixity == FixityKind::Ternary && elements.len() < 2 {
+                return Err("`:ternary` には head/mid の 2 トークンが必要です".to_string());
+            }
+            for element in elements {
+                match &element.kind {
+                    ExprKind::Literal(Literal {
+                        value: LiteralKind::String { .. },
+                    }) => {}
+                    _ => {
+                        return Err(
+                            "レベルのトークンは文字列リテラルで指定してください".to_string()
+                        )
+                    }
+                }
+            }
+            Ok(())
+        }
+        _ => Err("レベルのトークンは配列リテラルで指定してください".to_string()),
+    }
 }
 
 #[derive(Default)]
@@ -2019,7 +2375,7 @@ fn visit_expr(expr: &Expr, visitor: &mut impl FnMut(&Expr)) {
     visitor(expr);
     match &expr.kind {
         ExprKind::Literal(literal) => visit_literal(literal, visitor),
-        ExprKind::Identifier(_) | ExprKind::ModulePath(_) | ExprKind::Continue => {}
+        ExprKind::FixityLiteral(_) | ExprKind::Identifier(_) | ExprKind::ModulePath(_) | ExprKind::Continue => {}
         ExprKind::Call { callee, args } => {
             visit_expr(callee, visitor);
             for arg in args {

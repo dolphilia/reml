@@ -87,6 +87,12 @@ pub enum TokenKind {
     KeywordFalse,
     KeywordBreak,
     KeywordContinue,
+    FixityPrefix,
+    FixityPostfix,
+    FixityInfixLeft,
+    FixityInfixRight,
+    FixityInfixNonassoc,
+    FixityTernary,
 
     PipeForward,
     ChannelPipe,
@@ -180,6 +186,12 @@ impl TokenKind {
             KeywordFalse => "false",
             KeywordBreak => "break",
             KeywordContinue => "continue",
+            FixityPrefix => ":prefix",
+            FixityPostfix => ":postfix",
+            FixityInfixLeft => ":infix_left",
+            FixityInfixRight => ":infix_right",
+            FixityInfixNonassoc => ":infix_nonassoc",
+            FixityTernary => ":ternary",
             _ => return None,
         };
         Some(keyword)

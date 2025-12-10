@@ -208,6 +208,18 @@ enum RawToken {
     Comma,
     #[token(";")]
     Semicolon,
+    #[token(":prefix")]
+    FixityPrefix,
+    #[token(":postfix")]
+    FixityPostfix,
+    #[token(":infix_left")]
+    FixityInfixLeft,
+    #[token(":infix_right")]
+    FixityInfixRight,
+    #[token(":infix_nonassoc")]
+    FixityInfixNonassoc,
+    #[token(":ternary")]
+    FixityTernary,
     #[token(":")]
     Colon,
     #[token("@")]
@@ -600,6 +612,33 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             Ok(RawToken::Dot) => tokens.push(Token::new(TokenKind::Dot, span)),
             Ok(RawToken::Comma) => tokens.push(Token::new(TokenKind::Comma, span)),
             Ok(RawToken::Semicolon) => tokens.push(Token::new(TokenKind::Semicolon, span)),
+            Ok(RawToken::FixityPrefix) => {
+                push_keyword(&mut tokens, span, TokenKind::FixityPrefix, ":prefix")
+            }
+            Ok(RawToken::FixityPostfix) => {
+                push_keyword(&mut tokens, span, TokenKind::FixityPostfix, ":postfix")
+            }
+            Ok(RawToken::FixityInfixLeft) => push_keyword(
+                &mut tokens,
+                span,
+                TokenKind::FixityInfixLeft,
+                ":infix_left",
+            ),
+            Ok(RawToken::FixityInfixRight) => push_keyword(
+                &mut tokens,
+                span,
+                TokenKind::FixityInfixRight,
+                ":infix_right",
+            ),
+            Ok(RawToken::FixityInfixNonassoc) => push_keyword(
+                &mut tokens,
+                span,
+                TokenKind::FixityInfixNonassoc,
+                ":infix_nonassoc",
+            ),
+            Ok(RawToken::FixityTernary) => {
+                push_keyword(&mut tokens, span, TokenKind::FixityTernary, ":ternary")
+            }
             Ok(RawToken::Colon) => tokens.push(Token::new(TokenKind::Colon, span)),
             Ok(RawToken::ColonAssign) => tokens.push(Token::new(TokenKind::ColonAssign, span)),
             Ok(RawToken::At) => tokens.push(Token::new(TokenKind::At, span)),

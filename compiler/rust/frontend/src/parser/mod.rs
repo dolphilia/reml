@@ -48,11 +48,11 @@ use ast::{
     Attribute, BinaryOp, ConductorArg, ConductorChannelRoute, ConductorDecl, ConductorDslDef,
     ConductorDslTail, ConductorEndpoint, ConductorExecutionBlock, ConductorMonitorTarget,
     ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind, EffectAnnotation, EffectCall,
-    EffectDecl, Expr, ExprKind, Function, FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry,
-    Ident, ImplDecl, ImplItem, IntBase, Literal, LiteralKind, MatchArm, Module, ModuleHeader,
-    ModulePath, OperationDecl, Param, Pattern, PatternKind, PatternRecordField, RecordField,
-    RelativeHead, Stmt, StmtKind, StringKind, TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind,
-    UseDecl, UseItem, UseTree, Visibility, WherePredicate,
+    EffectDecl, Expr, ExprKind, FixityKind, Function, FunctionSignature, HandleExpr, HandlerDecl,
+    HandlerEntry, Ident, ImplDecl, ImplItem, IntBase, Literal, LiteralKind, MatchArm, Module,
+    ModuleHeader, ModulePath, OperationDecl, Param, Pattern, PatternKind, PatternRecordField,
+    RecordField, RelativeHead, Stmt, StmtKind, StringKind, TraitDecl, TraitItem, TraitRef,
+    TypeAnnot, TypeKind, UseDecl, UseItem, UseTree, Visibility, WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -697,7 +697,7 @@ fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<Fro
             record(&handle.target, diagnostics);
         }
         match &expr.kind {
-            ExprKind::Literal(_) | ExprKind::Identifier(_) | ExprKind::ModulePath(_) => {}
+            ExprKind::Literal(_) | ExprKind::FixityLiteral(_) | ExprKind::Identifier(_) | ExprKind::ModulePath(_) => {}
             ExprKind::Call { callee, args } => {
                 record(callee, diagnostics);
                 for arg in args {
@@ -958,6 +958,7 @@ fn inspect_cfg_expr(
         ExprKind::Identifier(_)
         | ExprKind::ModulePath(_)
         | ExprKind::Literal(_)
+        | ExprKind::FixityLiteral(_)
         | ExprKind::Break { value: None }
         | ExprKind::Return { value: None }
         | ExprKind::Continue => {}
@@ -1625,6 +1626,16 @@ fn module_parser<'src>(
                 Expr::string(unescaped, range_to_span(span))
             });
 
+        let fixity_literal = choice((
+            just(TokenKind::FixityPrefix).to(FixityKind::Prefix),
+            just(TokenKind::FixityPostfix).to(FixityKind::Postfix),
+            just(TokenKind::FixityInfixLeft).to(FixityKind::InfixLeft),
+            just(TokenKind::FixityInfixRight).to(FixityKind::InfixRight),
+            just(TokenKind::FixityInfixNonassoc).to(FixityKind::InfixNonassoc),
+            just(TokenKind::FixityTernary).to(FixityKind::Ternary),
+        ))
+        .map_with_span(|kind, span: Range<usize>| Expr::fixity(kind, range_to_span(span)));
+
         let tuple_literal = expr
             .clone()
             .separated_by(just(TokenKind::Comma))
@@ -1980,6 +1991,7 @@ fn module_parser<'src>(
             float_literal.clone(),
             bool_literal,
             string_literal,
+             fixity_literal,
             array_literal,
             record_literal,
             tuple_literal,
@@ -2946,6 +2958,7 @@ fn record_expr_trace_events(expr: &Expr, events: &mut Vec<ParserTraceEvent>) {
     }
     match &expr.kind {
         ExprKind::Literal(literal) => record_literal_trace_events(literal, events),
+        ExprKind::FixityLiteral(_) => {}
         ExprKind::Identifier(_) | ExprKind::ModulePath(_) => {}
         ExprKind::Call { callee, args } => {
             record_expr_trace_events(callee, events);
@@ -3062,6 +3075,7 @@ fn record_literal_trace_events(literal: &Literal, events: &mut Vec<ParserTraceEv
 fn expr_trace_kind(expr: &Expr) -> &'static str {
     match &expr.kind {
         ExprKind::Literal(_) => "literal",
+        ExprKind::FixityLiteral(_) => "fixity",
         ExprKind::Identifier(_) => "identifier",
         ExprKind::ModulePath(_) => "module-path",
         ExprKind::Call { .. } => "call",

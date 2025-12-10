@@ -218,6 +218,23 @@ fn ch1_dsl_801_parses_conductor_sections() {
 }
 
 #[test]
+fn ch2_op_401_reports_opbuilder_level_conflict() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "core.parse.opbuilder.level_conflict"),
+        "expected core.parse.opbuilder.level_conflict, got {:?}",
+        report
+            .violations
+            .iter()
+            .map(|violation| violation.code)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
 fn ch2_stream_301_parses_streaming_example() {
     let module = parse_example_module(
         "examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml",
@@ -555,6 +572,7 @@ fn expr_contains_array(expr: &Expr) -> bool {
             }
             _ => false,
         },
+        ExprKind::FixityLiteral(_) | ExprKind::Identifier(_) | ExprKind::ModulePath(_) | ExprKind::Continue => false,
         ExprKind::Call { callee, args } => {
             expr_contains_array(callee) || args.iter().any(expr_contains_array)
         }

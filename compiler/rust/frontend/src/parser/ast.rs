@@ -135,6 +135,39 @@ impl UseItem {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum FixityKind {
+    Prefix,
+    Postfix,
+    InfixLeft,
+    InfixRight,
+    InfixNonassoc,
+    Ternary,
+}
+
+impl FixityKind {
+    pub fn label(&self) -> &'static str {
+        match self {
+            FixityKind::Prefix => "prefix",
+            FixityKind::Postfix => "postfix",
+            FixityKind::InfixLeft => "infix_left",
+            FixityKind::InfixRight => "infix_right",
+            FixityKind::InfixNonassoc => "infix_nonassoc",
+            FixityKind::Ternary => "ternary",
+        }
+    }
+
+    pub fn keyword(&self) -> &'static str {
+        match self {
+            FixityKind::Prefix => ":prefix",
+            FixityKind::Postfix => ":postfix",
+            FixityKind::InfixLeft => ":infix_left",
+            FixityKind::InfixRight => ":infix_right",
+            FixityKind::InfixNonassoc => ":infix_nonassoc",
+            FixityKind::Ternary => ":ternary",
+        }
+    }
+}
 #[derive(Debug, Clone, Serialize)]
 pub struct EffectDecl {
     pub name: Ident,
@@ -483,6 +516,7 @@ pub struct Expr {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ExprKind {
     Literal(Literal),
+    FixityLiteral(FixityKind),
     Identifier(Ident),
     ModulePath(ModulePath),
     Call {
@@ -1142,6 +1176,13 @@ impl Expr {
         Self {
             span,
             kind: ExprKind::Literal(literal),
+        }
+    }
+
+    pub fn fixity(kind: FixityKind, span: Span) -> Self {
+        Self {
+            span,
+            kind: ExprKind::FixityLiteral(kind),
         }
     }
 
