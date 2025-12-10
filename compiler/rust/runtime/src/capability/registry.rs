@@ -1,3 +1,5 @@
+#[cfg(test)]
+use std::sync::Mutex;
 use std::{
     collections::{HashMap, HashSet},
     ops::{Deref, DerefMut},
@@ -13,7 +15,9 @@ use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use super::{
     audit::{AuditCapability, AuditCapabilityMetadata},
     collections::{CollectionsCapability, CollectionsCapabilityMetadata},
-    contract::{CapabilityContractSpan, ConductorCapabilityContract, ConductorCapabilityRequirement},
+    contract::{
+        CapabilityContractSpan, ConductorCapabilityContract, ConductorCapabilityRequirement,
+    },
     descriptor::{CapabilityDescriptor, CapabilityId, CapabilityProvider, EffectTag},
     handle::CapabilityHandle,
     io::{IoAdapterKind, IoCapability, IoCapabilityMetadata, IoOperationKind},
@@ -23,13 +27,18 @@ use super::{
     security::{SecurityCapability, SecurityCapabilityMetadata, SecurityPolicyKind},
 };
 use crate::{
-    config::manifest::{ManifestCapabilities, ManifestCapabilityError},
     audit::{AuditEnvelope, AuditEvent, AuditEventKind},
+    config::manifest::{ManifestCapabilities, ManifestCapabilityError},
     stage::{StageId, StageRequirement},
 };
 
 static REGISTRY: Lazy<RwLock<Option<&'static CapabilityRegistry>>> =
     Lazy::new(|| RwLock::new(None));
+#[cfg(test)]
+static LEAKED_FOR_TESTS: Lazy<Mutex<Vec<Box<CapabilityRegistry>>>> =
+    Lazy::new(|| Mutex::new(Vec::new()));
+#[cfg(test)]
+static REGISTRY_TEST_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 const CAPABILITY_SCHEMA_VERSION: &str = "3.0.0-alpha";
 
 /// Capability を検証するためのレジストリ。
@@ -42,6 +51,8 @@ pub struct CapabilityRegistry {
 impl CapabilityRegistry {
     /// シングルトンのレジストリを取得する。
     pub fn registry() -> &'static Self {
+        #[cfg(test)]
+        let _test_guard = REGISTRY_TEST_LOCK.lock().unwrap();
         if let Some(instance) = Self::try_get_cached(REGISTRY.read().unwrap()) {
             return instance;
         }
@@ -83,13 +94,9 @@ impl CapabilityRegistry {
             return Err(CapabilityError::already_registered(capability_id));
         }
         entries.ordered_keys.push(capability_id.clone());
-        entries.entries.insert(
-            capability_id,
-            CapabilityEntry {
-                descriptor,
-                handle,
-            },
-        );
+        entries
+            .entries
+            .insert(capability_id, CapabilityEntry { descriptor, handle });
         Ok(())
     }
 
@@ -331,10 +338,9 @@ impl CapabilityRegistry {
         contract: ConductorCapabilityContract,
     ) -> Result<(), CapabilityError> {
         let manifest_bundle = if let Some(path) = contract.manifest_path.as_ref() {
-            let manifest_caps =
-                ManifestCapabilities::load(path).map_err(|source| {
-                    CapabilityError::manifest_load_failure(Some(path.clone()), source)
-                })?;
+            let manifest_caps = ManifestCapabilities::load(path).map_err(|source| {
+                CapabilityError::manifest_load_failure(Some(path.clone()), source)
+            })?;
             Some((path.clone(), manifest_caps))
         } else {
             None
@@ -413,10 +419,7 @@ impl CapabilityRegistry {
             ),
         );
         let required_caps = Value::Array(vec![Value::String(capability.to_string())]);
-        metadata.insert(
-            "effect.required_capabilities".into(),
-            required_caps.clone(),
-        );
+        metadata.insert("effect.required_capabilities".into(), required_caps.clone());
         metadata.insert(
             "effect.stage.required_capabilities".into(),
             required_caps.clone(),
@@ -473,16 +476,15 @@ impl CapabilityRegistry {
                     "capability.error.message".into(),
                     Value::String(error.detail().into()),
                 );
-                if let CapabilityError::EffectScopeMismatch { missing_effects, .. } = error {
+                if let CapabilityError::EffectScopeMismatch {
+                    missing_effects, ..
+                } = error
+                {
                     if !missing_effects.is_empty() {
                         metadata.insert(
                             "effect.missing_effects".into(),
                             Value::Array(
-                                missing_effects
-                                    .iter()
-                                    .cloned()
-                                    .map(Value::String)
-                                    .collect(),
+                                missing_effects.iter().cloned().map(Value::String).collect(),
                             ),
                         );
                     }
@@ -690,12 +692,7 @@ fn builtin_capabilities() -> Vec<CapabilityHandle> {
 }
 
 fn descriptor(id: &'static str, stage: StageId, effects: &[&str]) -> CapabilityDescriptor {
-    CapabilityDescriptor::new(
-        id,
-        stage,
-        effects.iter().copied(),
-        CapabilityProvider::Core,
-    )
+    CapabilityDescriptor::new(id, stage, effects.iter().copied(), CapabilityProvider::Core)
 }
 
 fn io_capability(
@@ -727,7 +724,10 @@ fn security_capability(id: &'static str, stage: StageId, effects: &[&str]) -> Ca
     CapabilityHandle::Security(SecurityCapability::new(
         descriptor(id, stage, effects),
         SecurityCapabilityMetadata {
-            policies: vec![SecurityPolicyKind::FsSandbox, SecurityPolicyKind::ManifestContract],
+            policies: vec![
+                SecurityPolicyKind::FsSandbox,
+                SecurityPolicyKind::ManifestContract,
+            ],
             enforces_path_sandbox: true,
             tracks_manifest: true,
         },
@@ -775,10 +775,7 @@ fn collections_ref_capability() -> CapabilityHandle {
             &["mem", "mut", "rc"],
         ),
         CollectionsCapabilityMetadata {
-            collector_effects: vec![
-                "collector.effect.rc".into(),
-                "collector.effect.mut".into(),
-            ],
+            collector_effects: vec!["collector.effect.rc".into(), "collector.effect.mut".into()],
             tracks_mutation: true,
             tracks_reference_count: true,
         },
@@ -967,9 +964,9 @@ impl CapabilityError {
 
     pub fn missing_effects(&self) -> Option<&[String]> {
         match self {
-            CapabilityError::EffectScopeMismatch { missing_effects, .. } => {
-                Some(missing_effects.as_slice())
-            }
+            CapabilityError::EffectScopeMismatch {
+                missing_effects, ..
+            } => Some(missing_effects.as_slice()),
             _ => None,
         }
     }
@@ -1019,11 +1016,22 @@ where
 }
 
 pub fn reset_for_tests() {
+    #[cfg(test)]
+    let _test_guard = REGISTRY_TEST_LOCK.lock().unwrap();
     if let Some(instance) = REGISTRY.write().unwrap().take() {
         unsafe {
-            drop(Box::from_raw(
-                instance as *const CapabilityRegistry as *mut CapabilityRegistry,
-            ));
+            #[cfg(test)]
+            {
+                LEAKED_FOR_TESTS.lock().unwrap().push(Box::from_raw(
+                    instance as *const CapabilityRegistry as *mut CapabilityRegistry,
+                ));
+            }
+            #[cfg(not(test))]
+            {
+                drop(Box::from_raw(
+                    instance as *const CapabilityRegistry as *mut CapabilityRegistry,
+                ));
+            }
         }
     }
 }

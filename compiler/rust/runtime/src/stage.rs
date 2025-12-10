@@ -8,6 +8,7 @@ use std::{fmt, str::FromStr};
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
 )]
+#[serde(rename_all = "lowercase")]
 pub enum StageId {
     Experimental,
     Alpha,
@@ -41,9 +42,7 @@ impl FromStr for StageId {
             "alpha" => Ok(StageId::Alpha),
             "beta" => Ok(StageId::Beta),
             "stable" => Ok(StageId::Stable),
-            other => Err(StageParseError::new(format!(
-                "unknown StageId '{other}'"
-            ))),
+            other => Err(StageParseError::new(format!("unknown StageId '{other}'"))),
         }
     }
 }

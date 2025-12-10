@@ -1,6 +1,6 @@
 use insta::assert_yaml_snapshot;
-use reml_runtime::config::OptimizeLevel;
 use reml_runtime::capability::contract::CapabilityContractSpan;
+use reml_runtime::config::OptimizeLevel;
 use reml_runtime::config::{
     manifest::{
         BuildProfile, CapabilityId, DslCategory, DslEntry, DslExportRef, DslExportSignature,
@@ -180,11 +180,11 @@ fn conductor_capability_contract_round_trip() {
     );
     let requirement = &contract.requirements[0];
     assert_eq!(requirement.id, "console");
+    assert_eq!(requirement.stage, StageRequirement::AtLeast(StageId::Beta));
     assert_eq!(
-        requirement.stage,
-        StageRequirement::AtLeast(StageId::Beta)
+        requirement.declared_effects,
+        vec!["console", "console.effect"]
     );
-    assert_eq!(requirement.declared_effects, vec!["console", "console.effect"]);
     let span = requirement
         .source_span
         .as_ref()

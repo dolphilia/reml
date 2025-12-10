@@ -6,9 +6,10 @@ use serde::{Deserialize, Serialize};
 use super::{
     actor::ActorCapability, async_runtime::AsyncCapability, audit::AuditCapability,
     collections::CollectionsCapability, gc::GcCapability, hardware::HardwareCapability,
-    io::IoCapability, memory::MemoryCapability, metrics::MetricsCapability, plugin::PluginCapability,
-    process::ProcessCapability, realtime::RealtimeCapability, security::SecurityCapability,
-    signal::SignalCapability, system::SystemCapability, CapabilityDescriptor,
+    io::IoCapability, memory::MemoryCapability, metrics::MetricsCapability,
+    plugin::PluginCapability, process::ProcessCapability, realtime::RealtimeCapability,
+    security::SecurityCapability, signal::SignalCapability, system::SystemCapability,
+    CapabilityDescriptor,
 };
 
 /// Capability ごとの型付きハンドル。

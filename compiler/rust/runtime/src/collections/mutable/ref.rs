@@ -12,12 +12,12 @@ use once_cell::sync::OnceCell;
 
 #[cfg(feature = "core_prelude")]
 use crate::core_prelude::iter::{EffectLabels, EffectSet};
+#[cfg(not(feature = "core_prelude"))]
+use crate::prelude::iter::{EffectLabels, EffectSet};
 use crate::{
     capability::registry::{CapabilityError, CapabilityRegistry},
     stage::{StageId, StageRequirement},
 };
-#[cfg(not(feature = "core_prelude"))]
-use crate::prelude::iter::{EffectLabels, EffectSet};
 
 const CORE_COLLECTIONS_REF_CAPABILITY: &str = "core.collections.ref";
 const REF_STAGE_REQUIREMENT: StageRequirement = StageRequirement::Exact(StageId::Stable);
@@ -42,7 +42,9 @@ fn ensure_ref_capability_stage() -> Result<StageId, CapabilityError> {
 }
 
 fn ensure_ref_capability() -> Result<(), BorrowError> {
-    ensure_ref_capability_stage().map(|_| ()).map_err(Into::into)
+    ensure_ref_capability_stage()
+        .map(|_| ())
+        .map_err(Into::into)
 }
 
 struct RefInner<T> {
@@ -202,8 +204,7 @@ pub struct EffectfulRef<T> {
 impl<T> EffectfulRef<T> {
     /// 新しいハンドルを構築する。
     pub fn new(value: T) -> Self {
-        Self::try_new(value)
-            .expect("core.collections.ref capability verification failed")
+        Self::try_new(value).expect("core.collections.ref capability verification failed")
     }
 
     /// Capability を検証したうえで新しいハンドルを構築する。

@@ -407,16 +407,22 @@ fn encode_effect_labels(labels: EffectLabels) -> Map<String, Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stage::{StageId, StageRequirement};
+    use crate::{
+        runtime::bridge::RuntimeBridgeRegistry,
+        stage::{StageId, StageRequirement},
+    };
 
     #[test]
     fn audit_metadata_carries_bridge_stage_details() {
+        let _guard = RuntimeBridgeRegistry::test_lock().lock().unwrap();
+        const CAP: &str = "io.fs.error_test";
+        RuntimeBridgeRegistry::global().clear();
         super::super::record_bridge_stage_probe(
-            "io.fs.read",
+            CAP,
             StageRequirement::Exact(StageId::Stable),
             StageId::Stable,
         );
-        let ctx = IoContext::new("with_reader").with_capability("io.fs.read");
+        let ctx = IoContext::new("with_reader").with_capability(CAP);
         let diag = IoError::new(IoErrorKind::PermissionDenied, "denied")
             .with_context(ctx)
             .into_diagnostic();
@@ -430,7 +436,7 @@ mod tests {
             diag.audit_metadata
                 .get("bridge.capability")
                 .and_then(Value::as_str),
-            Some("io.fs.read")
+            Some(CAP)
         );
     }
 }

@@ -13,6 +13,7 @@ pub mod diagnostics;
 pub mod io;
 #[cfg(feature = "core_numeric")]
 pub mod numeric;
+pub mod parse;
 pub mod path;
 pub mod prelude;
 pub mod run_config;

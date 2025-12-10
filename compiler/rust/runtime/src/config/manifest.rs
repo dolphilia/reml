@@ -198,12 +198,12 @@ pub struct RunCapabilityEntry {
 
 impl RunCapabilityEntry {
     fn to_requirement(&self) -> Result<ConductorCapabilityRequirement, ManifestCapabilityError> {
-        let stage_label = self
-            .stage
-            .as_deref()
-            .ok_or_else(|| ManifestCapabilityError::MissingStage {
-                capability: self.id.0.clone(),
-            })?;
+        let stage_label =
+            self.stage
+                .as_deref()
+                .ok_or_else(|| ManifestCapabilityError::MissingStage {
+                    capability: self.id.0.clone(),
+                })?;
         let stage = StageRequirement::from_str(stage_label).map_err(|source| {
             ManifestCapabilityError::InvalidStage {
                 capability: self.id.0.clone(),
@@ -238,9 +238,7 @@ impl RunCapabilityEntry {
 pub enum ManifestCapabilityError {
     #[error("Capability `{capability}` の stage が指定されていません")]
     MissingStage { capability: String },
-    #[error(
-        "Capability `{capability}` の stage `{value}` を解析できません: {source}"
-    )]
+    #[error("Capability `{capability}` の stage `{value}` を解析できません: {source}")]
     InvalidStage {
         capability: String,
         value: String,
@@ -325,8 +323,7 @@ impl ManifestCapabilities {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ManifestCapabilityError> {
         let manifest_path = path.as_ref();
         let body = fs::read_to_string(manifest_path)?;
-        let manifest = Manifest::parse_toml(&body)?
-            .with_manifest_path(manifest_path.to_path_buf());
+        let manifest = Manifest::parse_toml(&body)?.with_manifest_path(manifest_path.to_path_buf());
         Self::from_manifest(&manifest)
     }
 

@@ -384,6 +384,17 @@ let diagnostic = Diag.from_parse_error(
 
 このプリセットにより、外部 DSL や設定ファイルのブリッジでも `parse.input_name`・`parse.expected_overview` などの必須情報が欠落しなくなり、0-1 §2.2 の指標（行列表示・期待値提示・修正候補）を満たした診断を安定的に生成できる。監査ポリシーはこれらキーを用いて失敗傾向やロケールの逸脱を集計する。
 
+##### OpBuilder DSL 向け診断
+
+`builder.level(priority, :fixity, ["token"])` を利用する OpBuilder DSL では、Rust Typeck/Runtime が次の診断コードを出力する。Parser/Lexer が DSL 構文を受理した後、`TypecheckDriver::collect_opbuilder_violations` が AST を走査して矛盾を検出し、診断を CLI/LSP へ渡す。Runtime 側は `RuntimeBridgeRegistry` 同様に監査メタデータへ `bridge.stage.*` を記録する。
+
+| `Diagnostic.code` | 既定 Severity | 発生条件 | 監査メタデータ |
+| --- | --- | --- | --- |
+| `core.parse.opbuilder.level_conflict` | Error | 同じ `priority` レベルに複数の fixity（`:infix_left` 等）が登録された。Typeck は AST を追跡し、最初の fixity と次の fixity を比較して衝突を報告する。 | `AuditEnvelope.metadata["parser.opbuilder.priority"] = priority`, `parser.opbuilder.fixity.existing`, `parser.opbuilder.fixity.next` |
+| `core.parse.opbuilder.fixity_missing` | Error | DSL レベル宣言でトークン配列が空、`:ternary` の head/mid が不足、または文字列以外のトークンが指定された。Typeck の `validate_opbuilder_tokens` が検証し、Runtime の `OpBuilder` も同じ制約で `OpBuilderErrorKind::EmptyTokenList` 等を返す。 | `AuditEnvelope.metadata["parser.opbuilder.fixity"] = ":prefix" など`, `parser.opbuilder.reason`（`"empty_tokens"` など） |
+
+これらの診断は `Diagnostic.domain = Parser` を既定とし、`docs/spec/2-4-op-builder.md` §F のエラー設計と整合する。`expected` フィールドは存在しないが、`notes` に「各レベルにつき 1 種類の fixity のみを指定してください」「`:ternary` には head/mid の 2 トークンが必要です」といった修正方針を記録する。CLI/LSP では `priority` と fixity シンボルを強調表示し、`OpBuilder` から生成された CLI ログ（`examples/spec_core/chapter2/op_builder/*.diagnostic.json`）と一致することを保証する。
+
 #### 2.4.2 効果診断メッセージ (Effect Domain) {#diagnostic-effect}
 
 > 1-3-effects-safety.md §I.5 と 3-8-core-runtime-capability.md §1.2 で定義した効果行整列・Stage/Capability 検査を `Diagnostic` と監査ログに落とし込むための共通仕様。

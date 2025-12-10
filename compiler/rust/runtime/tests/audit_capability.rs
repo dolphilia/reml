@@ -1,11 +1,13 @@
-use std::{fs, path::PathBuf};
-
+use once_cell::sync::Lazy;
 use reml_runtime::{
     audit::AuditEvent,
     capability::registry::{self, CapabilityRegistry},
     stage::{StageId, StageRequirement},
 };
 use serde_json::Value;
+use std::{fs, path::PathBuf, sync::Mutex};
+
+static CAPABILITY_TEST_GUARD: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 fn setup_registry() -> &'static CapabilityRegistry {
     registry::reset_for_tests();
@@ -14,6 +16,7 @@ fn setup_registry() -> &'static CapabilityRegistry {
 
 #[test]
 fn capability_check_success_event_contains_required_metadata() {
+    let _guard = CAPABILITY_TEST_GUARD.lock().unwrap();
     let registry = setup_registry();
     let required_effects = vec!["io".to_string()];
     registry
@@ -28,9 +31,7 @@ fn capability_check_success_event_contains_required_metadata() {
     event.validate().expect("metadata must satisfy schema");
     let metadata = &event.envelope.metadata;
     assert_eq!(
-        metadata
-            .get("capability.result")
-            .and_then(Value::as_str),
+        metadata.get("capability.result").and_then(Value::as_str),
         Some("success")
     );
     assert_eq!(
@@ -45,6 +46,7 @@ fn capability_check_success_event_contains_required_metadata() {
 
 #[test]
 fn capability_check_stage_violation_is_recorded() {
+    let _guard = CAPABILITY_TEST_GUARD.lock().unwrap();
     let registry = setup_registry();
     let error = registry
         .verify_capability(
@@ -59,9 +61,7 @@ fn capability_check_stage_violation_is_recorded() {
     event.validate().expect("metadata must satisfy schema");
     let metadata = &event.envelope.metadata;
     assert_eq!(
-        metadata
-            .get("capability.result")
-            .and_then(Value::as_str),
+        metadata.get("capability.result").and_then(Value::as_str),
         Some("error")
     );
     assert_eq!(
@@ -85,8 +85,8 @@ fn assert_matches_golden(event: &AuditEvent, golden_name: &str) {
     normalized.timestamp = "1970-01-01T00:00:00Z".into();
     let json = serde_json::to_string(&normalized).expect("serialize capability audit log");
     let path = golden_path(golden_name);
-    let expected = fs::read_to_string(&path)
-        .unwrap_or_else(|err| panic!("missing golden {:?}: {err}", path));
+    let expected =
+        fs::read_to_string(&path).unwrap_or_else(|err| panic!("missing golden {:?}: {err}", path));
     assert_eq!(
         json, expected,
         "capability audit event differed from golden {:?}",

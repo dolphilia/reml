@@ -20,7 +20,11 @@ fn verify_capability_succeeds_with_matching_stage_and_effects() {
     reset_for_tests();
     let registry = CapabilityRegistry::registry();
     registry
-        .register(sample_handle("sample.io.audit", StageId::Stable, &["audit"]))
+        .register(sample_handle(
+            "sample.io.audit",
+            StageId::Stable,
+            &["audit"],
+        ))
         .expect("registration should succeed");
     let required_effects = vec!["audit".to_string()];
     let handle = registry
@@ -69,7 +73,11 @@ fn verify_capability_reports_effect_scope_mismatch() {
     reset_for_tests();
     let registry = CapabilityRegistry::registry();
     registry
-        .register(sample_handle("sample.io.partial", StageId::Stable, &["audit"]))
+        .register(sample_handle(
+            "sample.io.partial",
+            StageId::Stable,
+            &["audit"],
+        ))
         .expect("registration should succeed");
     let err = registry
         .verify_capability(

@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use reml_runtime::{
     capability::{
         io::{IoCapability, IoCapabilityMetadata},
@@ -6,6 +7,9 @@ use reml_runtime::{
     },
     StageId,
 };
+use std::sync::Mutex;
+
+static CAPABILITY_TEST_GUARD: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 use static_assertions::assert_impl_all;
 
 #[test]
@@ -19,6 +23,7 @@ fn capability_registry_traits() {
 
 #[test]
 fn register_and_retrieve_capability() {
+    let _guard = CAPABILITY_TEST_GUARD.lock().unwrap();
     reset_for_tests();
     let registry = CapabilityRegistry::registry();
     let base_len = registry.describe_all().len();
@@ -43,6 +48,7 @@ fn register_and_retrieve_capability() {
 
 #[test]
 fn duplicate_registration_is_rejected() {
+    let _guard = CAPABILITY_TEST_GUARD.lock().unwrap();
     reset_for_tests();
     let registry = CapabilityRegistry::registry();
     registry
@@ -57,6 +63,7 @@ fn duplicate_registration_is_rejected() {
 
 #[test]
 fn missing_capability_reports_unknown_error() {
+    let _guard = CAPABILITY_TEST_GUARD.lock().unwrap();
     reset_for_tests();
     let registry = CapabilityRegistry::registry();
     let err = registry
