@@ -20,11 +20,14 @@ fn ensure_workspace_path(raw: Str, root: Path, policy: SecurityPolicy) -> Result
           match sandbox_path(normalized.clone(), root) with
             Ok(sandboxed) -> {
               match is_safe_symlink(sandboxed.clone()) with
-                Ok(flag) -> Ok(SecurityReport({
-                  requested: normalized,
-                  sandboxed,
-                  is_symlink: flag,
-                }))
+                Ok(flag) -> {
+                  let report = SecurityReport({
+                    requested: normalized,
+                    sandboxed,
+                    is_symlink: flag,
+                  })
+                  Ok(report)
+                }
                 Err(io_err) -> Err(io_err.into_diagnostic())
               }
             }
