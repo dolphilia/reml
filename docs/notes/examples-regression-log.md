@@ -29,6 +29,12 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - 対応: runtime フェーズに Bridge stage mismatch 用プランを追加し、typecheck 後に診断を生成
 - リンク: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `CH3-RUNTIME-601` を `ok` へ更新
 
+## 2025-12-10 CH3-PATH-202 runtime フェーズF 再実行
+- CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_path/security_check/relative_denied.reml`
+- 期待/実際: 期待=`core.path.security.invalid`（relative_path_denied）、実際=diagnostics 1（同コード、run_id=`59e7be86-650c-406e-b865-a9a0a625c767`）
+- ログ: `reports/spec-audit/ch4/logs/practical-20251210T205757Z.md`
+- 備考: runtime フェーズの `validate_path`→`sandbox_path`→`is_safe_symlink` 経路で `security.reason=relative_path_denied` を確認し、PhaseF practical チェックリストを更新。
+
 ## 2025-12-10 OpBuilder DSL フェーズF
 - 対象: `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`

@@ -312,7 +312,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml` で diagnostics=[] / stdout=`expected/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.stdout` / 同ログ参照）
 
 **examples/practical**
-- [ ] `examples/practical/core_path/security_check/relative_denied.reml`（期待: 成功/フォールバック診断）
+- [x] `examples/practical/core_path/security_check/relative_denied.reml`（期待: 診断あり → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_path/security_check/relative_denied.reml` / log=`reports/spec-audit/ch4/logs/practical-20251210T205757Z.md` / diagnostics=`core.path.security.invalid`（reason=relative_path_denied、run_id=59e7be86-650c-406e-b865-a9a0a625c767））
 - [ ] `examples/practical/core_config/audit_bridge/audit_bridge.reml`（期待: 成功）
 - [ ] `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`（期待: 失敗診断）
 - [ ] `examples/practical/core_io/file_copy/canonical.reml`（期待: 成功）
