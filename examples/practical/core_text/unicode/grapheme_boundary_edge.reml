@@ -4,6 +4,6 @@ use Core.Text
 
 fn main() -> Str {
   let sample = "e\u0301"  // 分解形
-  Text.graphemes(sample[0..1])
+  Text.graphemes(Text.slice_graphemes(sample, 0..1))
   "boundary"
 }
