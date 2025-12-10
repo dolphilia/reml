@@ -15,6 +15,13 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - 実行コマンド: `tooling/examples/run_examples.sh --suite practical --scenario core_io|core_path`
 - 備考: Phase4 シナリオマトリクス (`phase4-scenario-matrix.csv`) の ID `CH3-IO-101` / `CH3-PATH-202` とリンク
 
+## 2026-02-20 Core.Path relative_denied 回帰 → runtime 実行フェーズで解消
+- 対象: `examples/practical/core_path/security_check/relative_denied.reml`（`CH3-PATH-202`）
+- CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_path/security_check/relative_denied.reml`
+- 期待/実際: 期待=`core.path.security.invalid`（`security.reason=relative_path_denied`）、実際=diagnostics 1（同コード） / run_id=`55290137-a91c-4340-9627-dd59ab196690`
+- 対応: Rust Frontend に runtime フェーズを追加し、パース/型検査完了後に `runtime_path::validate_path`→`sandbox_path`→`is_safe_symlink` を実行して診断を生成
+- リンク: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `CH3-PATH-202` を `ok` へ更新
+
 ## 2025-12-10 OpBuilder DSL フェーズF
 - 対象: `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`

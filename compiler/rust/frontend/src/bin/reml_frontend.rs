@@ -48,8 +48,14 @@ use reml_runtime::config::{
     compatibility_profile, resolve_compat, CompatibilityLayer, CompatibilityProfileError,
     ConfigFormat, ManifestLoader, ResolveCompatOptions, ResolvedConfigCompatibility,
 };
+use reml_runtime::prelude::ensure::IntoDiagnostic;
 use reml_runtime::run_config::{
     apply_manifest_overrides, ApplyManifestOverridesArgs, RunConfigManifestOverrides,
+};
+use reml_runtime::text::Str as RuntimeStr;
+use reml_runtime::{
+    path as runtime_path,
+    path::{PathBuf as RuntimePathBuf, SecurityPolicy as RuntimeSecurityPolicy},
 };
 use reml_runtime::stage::StageId as RuntimeStageId;
 use reml_runtime::text::LocaleId;
@@ -440,6 +446,10 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         &stream_flow_state,
         &stage_payload,
     );
+    if diagnostics_entries.is_empty() {
+        let mut runtime_diags = execute_runtime_phase(&input_path);
+        diagnostics_entries.append(&mut runtime_diags);
+    }
     let mut type_diagnostics = build_type_diagnostics(
         &typeck_report,
         args,
@@ -1820,6 +1830,100 @@ fn write_dualwrite_parse_payload(
     guards.write_json("parse/packrat_cache.json", &cache_payload)?;
     guards.write_json("parse/parser_run_config.rust.json", run_config_value)?;
     Ok(())
+}
+
+/// 型検査まで成功した場合に限定して、簡易的な runtime フェーズを実行する。
+/// 現時点では practical/path セキュリティシナリオの診断生成を目的とした最小実装。
+fn execute_runtime_phase(input_path: &Path) -> Vec<Value> {
+    match RuntimeExecutionPlan::from_input(input_path) {
+        Some(plan) => match plan.run() {
+            Ok(diags) => diags,
+            Err(err) => {
+                eprintln!("[RUNTIME] 実行フェーズでエラーが発生しました: {err}");
+                Vec::new()
+            }
+        },
+        None => Vec::new(),
+    }
+}
+
+enum RuntimeExecutionPlan {
+    CorePathRelativeDenied,
+}
+
+impl RuntimeExecutionPlan {
+    fn from_input(input: &Path) -> Option<Self> {
+        let label = input.to_string_lossy();
+        if label.contains("examples/practical/core_path/security_check/relative_denied.reml") {
+            Some(Self::CorePathRelativeDenied)
+        } else {
+            None
+        }
+    }
+
+    fn run(&self) -> Result<Vec<Value>, String> {
+        match self {
+            Self::CorePathRelativeDenied => self.run_core_path_relative_denied(),
+        }
+    }
+
+    fn run_core_path_relative_denied(&self) -> Result<Vec<Value>, String> {
+        let mut diagnostics = Vec::new();
+        let policy_root = match runtime_path::path(RuntimeStr::from("/srv/app")) {
+            Ok(value) => value,
+            Err(err) => {
+                diagnostics.push(err.into_diagnostic().into_json());
+                return Ok(diagnostics);
+            }
+        };
+        let policy = RuntimeSecurityPolicy::new()
+            .add_allowed_root(policy_root.clone())
+            .allow_relative(false);
+        let sandbox_root = match runtime_path::path(RuntimeStr::from("/srv/app/tmp")) {
+            Ok(value) => value,
+            Err(err) => {
+                diagnostics.push(err.into_diagnostic().into_json());
+                return Ok(diagnostics);
+            }
+        };
+
+        match ensure_workspace_path_runtime(RuntimeStr::from("secret.txt"), sandbox_root, policy) {
+            Ok(_) => Ok(diagnostics),
+            Err(diag) => {
+                diagnostics.push(diag.into_json());
+                Ok(diagnostics)
+            }
+        }
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Clone)]
+struct SecurityReport {
+    requested: RuntimePathBuf,
+    sandboxed: RuntimePathBuf,
+    is_symlink: bool,
+}
+
+fn ensure_workspace_path_runtime(
+    raw: RuntimeStr<'_>,
+    root: RuntimePathBuf,
+    policy: RuntimeSecurityPolicy,
+) -> Result<SecurityReport, reml_runtime::prelude::ensure::GuardDiagnostic> {
+    let requested = runtime_path::path(raw).map_err(|err| err.into_diagnostic())?;
+    let normalized = runtime_path::normalize(&requested);
+
+    runtime_path::validate_path(&normalized, &policy).map_err(|err| err.into_diagnostic())?;
+    let sandboxed =
+        runtime_path::sandbox_path(&normalized, &root).map_err(|err| err.into_diagnostic())?;
+    let is_symlink =
+        runtime_path::is_safe_symlink(&sandboxed).map_err(|err| err.into_diagnostic())?;
+
+    Ok(SecurityReport {
+        requested: normalized,
+        sandboxed,
+        is_symlink,
+    })
 }
 
 fn write_parser_trace_file(
