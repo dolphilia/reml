@@ -125,9 +125,8 @@ fn ch1_let_003_reports_unicode_shadowing_violation() {
 
 #[test]
 fn ch1_lit_202_parses_float_literal_forms() {
-    let module = parse_example_module(
-        "examples/spec_core/chapter1/literals/bnf-literal-float-forms.reml",
-    );
+    let module =
+        parse_example_module("examples/spec_core/chapter1/literals/bnf-literal-float-forms.reml");
     let mut raws = Vec::new();
     for decl in &module.decls {
         if let DeclKind::Let { value, .. } = &decl.kind {
@@ -251,6 +250,62 @@ fn ch2_stream_301_parses_streaming_example() {
         expr_contains_array(&main_fn.body),
         "stream chunks array literal should survive parsing"
     );
+}
+
+#[test]
+fn ch1_match_002_accepts_tuple_literal_pattern() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml",
+    );
+    let describe_fn = module
+        .functions
+        .iter()
+        .find(|function| function.name.name == "describe")
+        .expect("describe function should exist");
+    let match_expr = match &describe_fn.body.kind {
+        ExprKind::Block { statements, .. } => statements
+            .iter()
+            .find_map(|stmt| match &stmt.kind {
+                StmtKind::Expr { expr } => Some(expr),
+                _ => None,
+            })
+            .expect("match expression should exist in describe body"),
+        other => panic!("expected describe body to be a block, got {:?}", other),
+    };
+    match &match_expr.kind {
+        ExprKind::Match { arms, .. } => {
+            let tuple_arm = arms
+                .first()
+                .expect("tuple match should contain at least one arm");
+            match &tuple_arm.pattern.kind {
+                PatternKind::Tuple { elements } => {
+                    assert_eq!(
+                        elements.len(),
+                        2,
+                        "tuple pattern should contain two elements"
+                    );
+                    match &elements[0].kind {
+                        PatternKind::Literal(literal) => match &literal.value {
+                            LiteralKind::Int { value, .. } => {
+                                assert_eq!(*value, 0, "first element should be literal 0")
+                            }
+                            other => panic!("expected int literal in tuple pattern, got {other:?}"),
+                        },
+                        other => panic!("expected literal pattern, got {other:?}"),
+                    }
+                    match &elements[1].kind {
+                        PatternKind::Var(ident) => assert_eq!(
+                            ident.name, "y",
+                            "second element should bind the `y` identifier"
+                        ),
+                        other => panic!("expected identifier binding, got {other:?}"),
+                    }
+                }
+                other => panic!("expected tuple pattern, got {:?}", other),
+            }
+        }
+        other => panic!("expected match expression, got {:?}", other),
+    }
 }
 
 #[test]

@@ -49,10 +49,10 @@ use ast::{
     ConductorDslTail, ConductorEndpoint, ConductorExecutionBlock, ConductorMonitorTarget,
     ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind, EffectAnnotation, EffectCall,
     EffectDecl, Expr, ExprKind, Function, FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry,
-    Ident, ImplDecl, ImplItem, Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath,
-    OperationDecl, Param, Pattern, PatternKind, PatternRecordField, RecordField, RelativeHead,
-    Stmt, StmtKind, TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind, UseDecl, UseItem, UseTree,
-    Visibility, WherePredicate,
+    Ident, ImplDecl, ImplItem, IntBase, Literal, LiteralKind, MatchArm, Module, ModuleHeader,
+    ModulePath, OperationDecl, Param, Pattern, PatternKind, PatternRecordField, RecordField,
+    RelativeHead, Stmt, StmtKind, StringKind, TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind,
+    UseDecl, UseItem, UseTree, Visibility, WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -1425,6 +1425,90 @@ fn module_parser<'src>(
             Rest,
         }
 
+        let bool_literal_pattern = choice((
+            just(TokenKind::KeywordTrue).map_with_span(|_, span: Range<usize>| Pattern {
+                span: range_to_span(span),
+                kind: PatternKind::Literal(Literal {
+                    value: LiteralKind::Bool { value: true },
+                }),
+            }),
+            just(TokenKind::KeywordFalse).map_with_span(|_, span: Range<usize>| Pattern {
+                span: range_to_span(span),
+                kind: PatternKind::Literal(Literal {
+                    value: LiteralKind::Bool { value: false },
+                }),
+            }),
+        ));
+
+        let int_literal_pattern =
+            just(TokenKind::IntLiteral).map_with_span(|_, span: Range<usize>| {
+                let slice = &source[span.start..span.end];
+                let value = slice.parse::<i64>().unwrap_or_default();
+                Pattern {
+                    span: range_to_span(span),
+                    kind: PatternKind::Literal(Literal {
+                        value: LiteralKind::Int {
+                            value,
+                            raw: slice.to_string(),
+                            base: IntBase::Base10,
+                        },
+                    }),
+                }
+            });
+
+        let float_literal_pattern =
+            just(TokenKind::FloatLiteral).map_with_span(|_, span: Range<usize>| {
+                let slice = &source[span.start..span.end];
+                Pattern {
+                    span: range_to_span(span),
+                    kind: PatternKind::Literal(Literal {
+                        value: LiteralKind::Float {
+                            raw: slice.to_string(),
+                        },
+                    }),
+                }
+            });
+
+        let string_literal_pattern =
+            just(TokenKind::StringLiteral).map_with_span(|_, span: Range<usize>| {
+                let slice = &source[span.start..span.end];
+                let value =
+                    if slice.starts_with("\\\"") && slice.ends_with("\\\"") && slice.len() >= 4 {
+                        &slice[2..slice.len() - 2]
+                    } else if slice.starts_with('"') && slice.ends_with('"') && slice.len() >= 2 {
+                        &slice[1..slice.len() - 1]
+                    } else {
+                        slice
+                    };
+                let unescaped = value.replace("\\\"", "\"");
+                Pattern {
+                    span: range_to_span(span),
+                    kind: PatternKind::Literal(Literal {
+                        value: LiteralKind::String {
+                            value: unescaped,
+                            string_kind: StringKind::Normal,
+                        },
+                    }),
+                }
+            });
+
+        let unit_literal_pattern = just(TokenKind::LParen)
+            .ignore_then(just(TokenKind::RParen))
+            .map_with_span(|_, span: Range<usize>| Pattern {
+                span: range_to_span(span),
+                kind: PatternKind::Literal(Literal {
+                    value: LiteralKind::Unit,
+                }),
+            });
+
+        let literal_pattern = choice((
+            bool_literal_pattern,
+            int_literal_pattern,
+            float_literal_pattern,
+            string_literal_pattern,
+            unit_literal_pattern,
+        ));
+
         let tuple_pattern = pat
             .clone()
             .separated_by(just(TokenKind::Comma))
@@ -1501,6 +1585,7 @@ fn module_parser<'src>(
             record_pattern,
             pattern_var.clone(),
             pattern_ctor,
+            literal_pattern,
             wildcard_pattern,
         ))
     });

@@ -284,10 +284,10 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251210T065012Z.md / diagnostics=[] / stdout=expected/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.stdout）
 
 **examples/spec_core/chapter1/match_expr**
-- [ ] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-option-canonical.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-missing-arrow-error.reml`（期待: 失敗診断）
-- [ ] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml`（期待: 成功）
+- [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml`（期待: 成功 → 2025-12-10 CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml` で診断 0 / log=reports/spec-audit/ch4/logs/spec_core-20251210T073321Z.md）
+- [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-option-canonical.reml`（期待: 成功 → 2025-12-10 CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-option-canonical.reml` / diagnostics=[] / 同ログ参照）
+- [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-missing-arrow-error.reml`（期待: 失敗診断 → 2025-12-10 CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-missing-arrow-error.reml` / diagnostics=`parser.syntax.expected_tokens` のみ / log=reports/spec-audit/ch4/logs/spec_core-20251210T073321Z.md / expected diagnostic JSON を新規作成）
+- [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml`（期待: 成功 → 2025-12-10 Parser の PatternKind::Literal を match arm から参照できるよう拡張し `tests/spec_core::ch1_match_002_accepts_tuple_literal_pattern` で回帰テスト化。CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251210T073321Z.md）
 
 **examples/spec_core/chapter1/effects・conductor・block**
 - [ ] `examples/spec_core/chapter1/effects/bnf-attr-pure-perform-error.reml`（期待: 失敗診断）
