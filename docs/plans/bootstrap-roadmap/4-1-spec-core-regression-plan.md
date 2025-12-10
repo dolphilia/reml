@@ -279,9 +279,9 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-invalid-type.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-invalid-type.reml` / 同 log で `language.iterator.expected` を確認）
 
 **examples/spec_core/chapter1/literals**
-- [ ] `examples/spec_core/chapter1/literals/bnf-literal-int-boundary-max.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/literals/bnf-literal-float-forms.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.reml`（期待: 成功）
+- [x] `examples/spec_core/chapter1/literals/bnf-literal-int-boundary-max.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/literals/bnf-literal-int-boundary-max.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251210T065012Z.md / diagnostics=[] / stdout=expected/spec_core/chapter1/literals/bnf-literal-int-boundary-max.stdout）
+- [x] `examples/spec_core/chapter1/literals/bnf-literal-float-forms.reml`（期待: 成功 → 2025-12-10 parser/mod.rs に FloatLiteral / Expr::float を復元し tests/spec_core::ch1_lit_202_parses_float_literal_forms を追加。CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/literals/bnf-literal-float-forms.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251210T065012Z.md / diagnostics=[] / stdout=expected/spec_core/chapter1/literals/bnf-literal-float-forms.stdout）
+- [x] `examples/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251210T065012Z.md / diagnostics=[] / stdout=expected/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.stdout）
 
 **examples/spec_core/chapter1/match_expr**
 - [ ] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml`（期待: 成功）

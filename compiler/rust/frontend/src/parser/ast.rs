@@ -1158,6 +1158,15 @@ impl Expr {
         )
     }
 
+    pub fn float(raw: impl Into<String>, span: Span) -> Self {
+        Self::literal(
+            Literal {
+                value: LiteralKind::Float { raw: raw.into() },
+            },
+            span,
+        )
+    }
+
     pub fn bool(value: bool, span: Span) -> Self {
         Self::literal(
             Literal {

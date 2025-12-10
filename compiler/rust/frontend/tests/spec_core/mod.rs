@@ -124,6 +124,30 @@ fn ch1_let_003_reports_unicode_shadowing_violation() {
 }
 
 #[test]
+fn ch1_lit_202_parses_float_literal_forms() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/literals/bnf-literal-float-forms.reml",
+    );
+    let mut raws = Vec::new();
+    for decl in &module.decls {
+        if let DeclKind::Let { value, .. } = &decl.kind {
+            if let ExprKind::Literal(literal) = &value.kind {
+                if let LiteralKind::Float { raw } = &literal.value {
+                    raws.push(raw.clone());
+                }
+            }
+        }
+    }
+    assert!(
+        raws.contains(&"3.141_592".to_string())
+            && raws.contains(&"1.25e-3".to_string())
+            && raws.contains(&"2E+2".to_string()),
+        "expected float literals to be preserved, got {:?}",
+        raws
+    );
+}
+
+#[test]
 fn ch1_attr_102_reports_cfg_unsatisfied_branch() {
     let input_path = repo_root()
         .join("examples/spec_core/chapter1/attributes/bnf-attr-cfg-missing-flag-error.reml");

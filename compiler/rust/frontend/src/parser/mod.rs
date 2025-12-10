@@ -1519,6 +1519,11 @@ fn module_parser<'src>(
             just(TokenKind::KeywordFalse)
                 .map_with_span(move |_, span: Range<usize>| Expr::bool(false, range_to_span(span))),
         ));
+        let float_literal =
+            just(TokenKind::FloatLiteral).map_with_span(move |_, span: Range<usize>| {
+                let slice = &source[span.start..span.end];
+                Expr::float(slice.to_string(), range_to_span(span))
+            });
 
         let string_literal =
             just(TokenKind::StringLiteral).map_with_span(move |_, span: Range<usize>| {
@@ -1887,6 +1892,7 @@ fn module_parser<'src>(
             bar_lambda_expr,
             fn_lambda_expr,
             int_literal.clone(),
+            float_literal.clone(),
             bool_literal,
             string_literal,
             array_literal,
