@@ -295,10 +295,10 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/block/bnf-block-unclosed-brace-error.reml`（期待: 失敗診断 → CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/block/bnf-block-unclosed-brace-error.reml` / log=`reports/spec-audit/ch4/logs/spec_core-20251210T075036Z.md` / diagnostics=`parser.syntax.expected_tokens` / `expected/spec_core/chapter1/block/bnf-block-unclosed-brace-error.diagnostic.json` を新規作成。)
 
 **examples/spec_core/chapter2**
-- [ ] `examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml`（期待: 失敗診断）
-- [ ] `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`（期待: 失敗診断）
-- [ ] `examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml`（期待: 成功）
+- [x] `examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml` で diagnostics=[] / stdout=`expected/spec_core/chapter2/parser_core/core-parse-or-commit-ok.stdout` / log=reports/spec-audit/ch4/logs/spec_core-20251210T081000Z.md）
+- [x] `examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml`（期待: 失敗診断 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml` で `core.parse.recover.branch` の単一診断を再取得 / log=reports/spec-audit/ch4/logs/spec_core-20251210T081000Z.md）
+- [ ] `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`（期待: 失敗診断 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml` は `parser.syntax.expected_tokens` のまま / docs/spec/2-4-op-builder.md では `precedence(...).level(|lvl| ...)` DSL のみ規定されており `OpBuilder.level(5, :infix_left, ...)` は未定義のため spec_fix を継続（log=reports/spec-audit/ch4/logs/spec_core-20251210T081000Z.md））
+- [x] `examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml` で diagnostics=[] / stdout=`expected/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.stdout` / 同ログ参照）
 
 **examples/practical**
 - [ ] `examples/practical/core_path/security_check/relative_denied.reml`（期待: 成功/フォールバック診断）
