@@ -14,8 +14,8 @@ use super::types::{BuiltinType, Type, TypeVarGen};
 use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
-    Decl, DeclKind, Expr, ExprKind, Function, Ident, Literal, LiteralKind, Module, ModulePath,
-    Pattern, PatternKind, RelativeHead, Stmt, StmtKind,
+    BinaryOp, Decl, DeclKind, Expr, ExprKind, Function, Ident, Literal, LiteralKind, Module,
+    ModulePath, Pattern, PatternKind, RelativeHead, Stmt, StmtKind,
 };
 use crate::semantics::typed;
 use crate::span::Span;
@@ -105,6 +105,7 @@ impl TypecheckDriver {
                 name: None,
                 is_pure: false,
             };
+            let mut module_loop_context = LoopContextStack::default();
             for decl in &module.decls {
                 infer_decl(
                     decl,
@@ -118,6 +119,7 @@ impl TypecheckDriver {
                     &mut dict_ref_drafts,
                     Some(&mut unicode_shadow_tracker),
                     module_context,
+                    &mut module_loop_context,
                 );
             }
             all_constraints.extend(module_decl_constraints.drain(..));
@@ -327,6 +329,8 @@ pub enum TypecheckViolationKind {
     ImplDuplicate,
     CoreParseRecoverBranch,
     RuntimeBridgeStageMismatch,
+    IteratorExpected,
+    ControlFlowUnreachable,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -531,6 +535,42 @@ impl TypecheckViolation {
         }
     }
 
+    fn for_iterator_expected(span: Span, actual: Type) -> Self {
+        Self {
+            kind: TypecheckViolationKind::IteratorExpected,
+            code: "language.iterator.expected",
+            message: "for 式の `in` 右辺は Array<T> などのイテレータである必要があります"
+                .to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "実際の型: {}",
+                actual.label()
+            ))],
+            capability: None,
+            function: None,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn control_flow_unreachable(span: Span) -> Self {
+        Self {
+            kind: TypecheckViolationKind::ControlFlowUnreachable,
+            code: "language.control_flow.unreachable",
+            message: "このコードには制御フロー上到達できません".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "`return` や `break` の後に続くコードを削除するか、条件分岐を見直してください。",
+            )],
+            capability: None,
+            function: None,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
     fn purity_violation(span: Span, function: Option<String>, effect: String) -> Self {
         let message = match function.as_ref() {
             Some(name) => {
@@ -648,7 +688,9 @@ impl TypecheckViolation {
             | TypecheckViolationKind::ReturnConflict
             | TypecheckViolationKind::UnicodeShadowing
             | TypecheckViolationKind::ValueRestriction
-            | TypecheckViolationKind::ImplDuplicate => "type",
+            | TypecheckViolationKind::ImplDuplicate
+            | TypecheckViolationKind::IteratorExpected
+            | TypecheckViolationKind::ControlFlowUnreachable => "type",
             TypecheckViolationKind::ResidualLeak
             | TypecheckViolationKind::StageMismatch
             | TypecheckViolationKind::IteratorStageMismatch
@@ -675,6 +717,33 @@ struct FunctionStats {
     unresolved_identifiers: usize,
 }
 
+#[derive(Default)]
+struct LoopContextStack {
+    frames: Vec<LoopFrame>,
+}
+
+struct LoopFrame {
+    result_ty: Type,
+    has_result: bool,
+}
+
+impl LoopContextStack {
+    fn push(&mut self, result_ty: Type) {
+        self.frames.push(LoopFrame {
+            result_ty,
+            has_result: false,
+        });
+    }
+
+    fn pop(&mut self) -> Option<LoopFrame> {
+        self.frames.pop()
+    }
+
+    fn current_mut(&mut self) -> Option<&mut LoopFrame> {
+        self.frames.last_mut()
+    }
+}
+
 fn infer_function(
     function: &Function,
     env: &mut TypeEnv,
@@ -687,6 +756,7 @@ fn infer_function(
     dict_refs: &mut Vec<DictRefDraft>,
     context: FunctionContext<'_>,
 ) -> TypedExprDraft {
+    let mut loop_context = LoopContextStack::default();
     infer_expr(
         &function.body,
         env,
@@ -697,6 +767,7 @@ fn infer_function(
         metrics,
         violations,
         dict_refs,
+        &mut loop_context,
         context,
     )
 }
@@ -711,6 +782,7 @@ fn infer_expr(
     metrics: &mut TypecheckMetrics,
     violations: &mut Vec<TypecheckViolation>,
     dict_refs: &mut Vec<DictRefDraft>,
+    loop_context: &mut LoopContextStack,
     context: FunctionContext<'_>,
 ) -> TypedExprDraft {
     stats.typed_exprs += 1;
@@ -762,6 +834,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
+                loop_context,
                 context,
             );
             let right_result = infer_expr(
@@ -774,6 +847,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
+                loop_context,
                 context,
             );
             stats.constraints += 1;
@@ -784,7 +858,33 @@ fn infer_expr(
             ));
             metrics.record_unify_call();
             let _ = solver.unify(left_result.ty.clone(), right_result.ty.clone());
-            let ty = combine_numeric_types(&left_result.ty, &right_result.ty);
+            if matches!(operator, BinaryOp::And | BinaryOp::Or) {
+                let bool_ty = Type::builtin(BuiltinType::Bool);
+                stats.constraints += 2;
+                metrics.record_constraint("binary.logical");
+                constraints.push(Constraint::equal(left_result.ty.clone(), bool_ty.clone()));
+                constraints.push(Constraint::equal(right_result.ty.clone(), bool_ty.clone()));
+                metrics.record_unify_call();
+                let _ = solver.unify(left_result.ty.clone(), bool_ty.clone());
+                metrics.record_unify_call();
+                let _ = solver.unify(right_result.ty.clone(), bool_ty);
+            }
+            let ty = match operator {
+                BinaryOp::Add
+                | BinaryOp::Sub
+                | BinaryOp::Mul
+                | BinaryOp::Div
+                | BinaryOp::Mod
+                | BinaryOp::Pow => combine_numeric_types(&left_result.ty, &right_result.ty),
+                BinaryOp::And | BinaryOp::Or => Type::builtin(BuiltinType::Bool),
+                BinaryOp::Eq
+                | BinaryOp::Ne
+                | BinaryOp::Lt
+                | BinaryOp::Le
+                | BinaryOp::Gt
+                | BinaryOp::Ge => Type::builtin(BuiltinType::Bool),
+                _ => combine_numeric_types(&left_result.ty, &right_result.ty),
+            };
             make_typed(
                 expr,
                 TypedExprKindDraft::Binary {
@@ -810,6 +910,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
+                loop_context,
                 context,
             );
             let typed_args = args
@@ -825,6 +926,7 @@ fn infer_expr(
                         metrics,
                         violations,
                         dict_refs,
+                        loop_context,
                         context,
                     )
                 })
@@ -850,6 +952,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
+                loop_context,
                 context,
             );
             constraints.push(Constraint::has_capability(
@@ -881,6 +984,73 @@ fn infer_expr(
                 vec![dict_ref_id],
             )
         }
+        ExprKind::Loop { body } => {
+            let loop_ty = var_gen.fresh_type();
+            loop_context.push(loop_ty.clone());
+            let body_result = infer_expr(
+                body,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            let frame = loop_context.pop().unwrap_or(LoopFrame {
+                result_ty: loop_ty.clone(),
+                has_result: false,
+            });
+            let ty = if frame.has_result {
+                solver.substitution().apply(&frame.result_ty)
+            } else {
+                Type::builtin(BuiltinType::Unknown)
+            };
+            make_typed(
+                expr,
+                TypedExprKindDraft::Unknown,
+                ty,
+                body_result.dict_ref_ids,
+            )
+        }
+        ExprKind::Break { value } => {
+            let mut dict_ids = Vec::new();
+            let mut break_ty = Type::builtin(BuiltinType::Unit);
+            if let Some(break_expr) = value.as_deref() {
+                let value_result = infer_expr(
+                    break_expr,
+                    env,
+                    var_gen,
+                    solver,
+                    constraints,
+                    stats,
+                    metrics,
+                    violations,
+                    dict_refs,
+                    loop_context,
+                    context,
+                );
+                break_ty = value_result.ty.clone();
+                dict_ids.extend(value_result.dict_ref_ids);
+            }
+            if let Some(frame) = loop_context.current_mut() {
+                stats.constraints += 1;
+                metrics.record_constraint("loop.break");
+                constraints.push(Constraint::equal(frame.result_ty.clone(), break_ty.clone()));
+                metrics.record_unify_call();
+                let _ = solver.unify(frame.result_ty.clone(), break_ty);
+                frame.has_result = true;
+            }
+            make_typed(
+                expr,
+                TypedExprKindDraft::Unknown,
+                Type::builtin(BuiltinType::Unknown),
+                dict_ids,
+            )
+        }
         ExprKind::IfElse {
             condition,
             then_branch,
@@ -896,6 +1066,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
+                loop_context,
                 context,
             );
             let then_result = infer_expr(
@@ -908,6 +1079,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
+                loop_context,
                 context,
             );
             let has_explicit_else = else_branch.is_some();
@@ -928,6 +1100,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
+                loop_context,
                 context,
             );
             stats.constraints += 1;
@@ -971,6 +1144,98 @@ fn infer_expr(
                 Vec::new(),
             )
         }
+        ExprKind::While { condition, body } => {
+            let condition_result = infer_expr(
+                condition,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            check_bool_condition(condition.span(), &condition_result.ty, violations, context);
+            let body_result = infer_expr(
+                body,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            let mut dicts = condition_result.dict_ref_ids;
+            dicts.extend(body_result.dict_ref_ids);
+            make_typed(
+                expr,
+                TypedExprKindDraft::Unknown,
+                Type::builtin(BuiltinType::Unknown),
+                dicts,
+            )
+        }
+        ExprKind::For {
+            pattern,
+            start,
+            end,
+        } => {
+            let start_result = infer_expr(
+                start,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            let element_ty = var_gen.fresh_type();
+            let array_ty = Type::app("Array", vec![element_ty.clone()]);
+            stats.constraints += 1;
+            metrics.record_constraint("for.iterator");
+            constraints.push(Constraint::equal(start_result.ty.clone(), array_ty.clone()));
+            metrics.record_unify_call();
+            if let Err(_) = solver.unify(start_result.ty.clone(), array_ty.clone()) {
+                violations.push(TypecheckViolation::for_iterator_expected(
+                    start.span(),
+                    start_result.ty.clone(),
+                ));
+            }
+            let mut loop_env = env.enter_scope();
+            let element_scheme = Scheme::simple(solver.substitution().apply(&element_ty.clone()));
+            bind_pattern_to_env(pattern, &element_scheme, &mut loop_env, var_gen);
+            let body_result = infer_expr(
+                end,
+                &mut loop_env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            let mut dicts = start_result.dict_ref_ids;
+            dicts.extend(body_result.dict_ref_ids);
+            make_typed(
+                expr,
+                TypedExprKindDraft::Unknown,
+                Type::builtin(BuiltinType::Unknown),
+                dicts,
+            )
+        }
         ExprKind::Block { statements, .. } => {
             let (block_ty, block_dict_refs) = infer_block(
                 statements,
@@ -983,6 +1248,7 @@ fn infer_expr(
                 violations,
                 dict_refs,
                 context,
+                loop_context,
             );
             make_typed(expr, TypedExprKindDraft::Unknown, block_ty, block_dict_refs)
         }
@@ -1005,6 +1271,7 @@ fn infer_expr(
                 metrics,
                 violations,
                 dict_refs,
+                loop_context,
                 context,
             );
             let lambda_ty = Type::arrow(param_types, body_result.ty.clone());
@@ -1035,11 +1302,16 @@ fn infer_block(
     violations: &mut Vec<TypecheckViolation>,
     dict_refs: &mut Vec<DictRefDraft>,
     context: FunctionContext<'_>,
+    loop_context: &mut LoopContextStack,
 ) -> (Type, Vec<typed::DictRefId>) {
     let mut block_env = parent_env.enter_scope();
     let mut last_ty = Type::builtin(BuiltinType::Unknown);
     let mut block_dict_refs = Vec::new();
+    let mut terminated = false;
     for stmt in statements {
+        if terminated {
+            violations.push(TypecheckViolation::control_flow_unreachable(stmt.span));
+        }
         match &stmt.kind {
             StmtKind::Decl { decl } => {
                 let stmt_refs = infer_decl(
@@ -1054,6 +1326,7 @@ fn infer_block(
                     dict_refs,
                     None,
                     context,
+                    loop_context,
                 );
                 block_dict_refs.extend(stmt_refs);
             }
@@ -1068,10 +1341,14 @@ fn infer_block(
                     metrics,
                     violations,
                     dict_refs,
+                    loop_context,
                     context,
                 );
                 last_ty = expr_result.ty.clone();
                 block_dict_refs.extend(expr_result.dict_ref_ids);
+                if matches!(expr.kind, ExprKind::Return { .. } | ExprKind::Break { .. }) {
+                    terminated = true;
+                }
             }
             StmtKind::Assign { target, value } => {
                 let target_result = infer_expr(
@@ -1084,6 +1361,7 @@ fn infer_block(
                     metrics,
                     violations,
                     dict_refs,
+                    loop_context,
                     context,
                 );
                 block_dict_refs.extend(target_result.dict_ref_ids);
@@ -1097,6 +1375,7 @@ fn infer_block(
                     metrics,
                     violations,
                     dict_refs,
+                    loop_context,
                     context,
                 );
                 block_dict_refs.extend(value_result.dict_ref_ids);
@@ -1112,6 +1391,7 @@ fn infer_block(
                     metrics,
                     violations,
                     dict_refs,
+                    loop_context,
                     context,
                 );
                 block_dict_refs.extend(defer_result.dict_ref_ids);
@@ -1133,6 +1413,7 @@ fn infer_decl(
     dict_refs: &mut Vec<DictRefDraft>,
     unicode_tracker: Option<&mut UnicodeShadowTracker>,
     context: FunctionContext<'_>,
+    loop_context: &mut LoopContextStack,
 ) -> Vec<typed::DictRefId> {
     match &decl.kind {
         DeclKind::Let {
@@ -1155,6 +1436,7 @@ fn infer_decl(
                 violations,
                 dict_refs,
                 context,
+                loop_context,
             )
         }
         DeclKind::Var {
@@ -1174,6 +1456,7 @@ fn infer_decl(
                 violations,
                 dict_refs,
                 context,
+                loop_context,
             );
             if type_annotation.is_none() {
                 if let Some(name) = pattern_binding_name(pattern) {
@@ -1198,6 +1481,7 @@ fn infer_binding(
     violations: &mut Vec<TypecheckViolation>,
     dict_refs: &mut Vec<DictRefDraft>,
     context: FunctionContext<'_>,
+    loop_context: &mut LoopContextStack,
 ) -> Vec<typed::DictRefId> {
     let value_result = infer_expr(
         value,
@@ -1209,6 +1493,7 @@ fn infer_binding(
         metrics,
         violations,
         dict_refs,
+        loop_context,
         context,
     );
     let substitution = solver.substitution().clone();
@@ -1272,6 +1557,9 @@ fn type_for_literal(literal: &Literal) -> Type {
         Literal {
             value: LiteralKind::Bool { .. },
         } => Type::builtin(BuiltinType::Bool),
+        Literal {
+            value: LiteralKind::Unit,
+        } => Type::builtin(BuiltinType::Unit),
         _ => Type::builtin(BuiltinType::Unknown),
     }
 }
@@ -1753,6 +2041,11 @@ fn visit_expr(expr: &Expr, visitor: &mut impl FnMut(&Expr)) {
         | ExprKind::Propagate { expr: inner }
         | ExprKind::Return { value: Some(inner) } => {
             visit_expr(inner, visitor);
+        }
+        ExprKind::Break { value } => {
+            if let Some(inner) = value {
+                visit_expr(inner, visitor);
+            }
         }
         ExprKind::Return { value: None } => {}
         ExprKind::FieldAccess { target, .. } | ExprKind::TupleAccess { target, .. } => {

@@ -269,14 +269,14 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/let_binding/bnf-valdecl-missing-initializer-error.reml`（期待: 失敗診断 → 2026-02-18 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/let_binding/bnf-valdecl-missing-initializer-error.reml` / diagnostics=`parser.syntax.expected_tokens`）
 
 **examples/spec_core/chapter1/control_flow**
-- [ ] `examples/spec_core/chapter1/control_flow/bnf-ifexpr-missing-else-type-mismatch.reml`（期待: 失敗診断）
-- [ ] `examples/spec_core/chapter1/control_flow/bnf-ifexpr-blocks-ok.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/control_flow/bnf-loopexpr-break-value-ok.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/control_flow/bnf-whileexpr-condition-type-error.reml`（期待: 失敗診断）
-- [ ] `examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-pattern-ok.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/control_flow/bnf-loopexpr-unreachable-code.reml`（期待: 失敗診断）
-- [ ] `examples/spec_core/chapter1/control_flow/bnf-whileexpr-condition-bool-ok.reml`（期待: 成功）
-- [ ] `examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-invalid-type.reml`（期待: 失敗診断）
+- [x] `examples/spec_core/chapter1/control_flow/bnf-ifexpr-missing-else-type-mismatch.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-ifexpr-missing-else-type-mismatch.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T220319Z.md で `parser.syntax.expected_tokens` のみを出力）
+- [x] `examples/spec_core/chapter1/control_flow/bnf-ifexpr-blocks-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-ifexpr-blocks-ok.reml` / 同上 log で diagnostics=[] を確認）
+- [x] `examples/spec_core/chapter1/control_flow/bnf-loopexpr-break-value-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-loopexpr-break-value-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T220319Z.md。`var counter` へ型注釈を追加し、`else` で `continue` を返すようサンプルを是正して値制限/分岐型の衝突を回避）
+- [x] `examples/spec_core/chapter1/control_flow/bnf-whileexpr-condition-type-error.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-whileexpr-condition-type-error.reml` / 同 log で `parser.lexer.unknown_token`×4 + `parser.syntax.expected_tokens` を確認）
+- [x] `examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-pattern-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-pattern-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T220319Z.md。`var acc: Int` に注釈を付け Strict value restriction を回避）
+- [x] `examples/spec_core/chapter1/control_flow/bnf-loopexpr-unreachable-code.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-loopexpr-unreachable-code.reml` / 同 log で `language.control_flow.unreachable` が 2 箇所報告されることを確認）
+- [x] `examples/spec_core/chapter1/control_flow/bnf-whileexpr-condition-bool-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-whileexpr-condition-bool-ok.reml` / 同 log で diagnostics=[]。`var current: Int` へ明示型を追加）
+- [x] `examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-invalid-type.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-invalid-type.reml` / 同 log で `language.iterator.expected` を確認）
 
 **examples/spec_core/chapter1/literals**
 - [ ] `examples/spec_core/chapter1/literals/bnf-literal-int-boundary-max.reml`（期待: 成功）

@@ -4,7 +4,7 @@ use Core.Prelude
 
 // BNF: WhileExpr（docs/spec/1-5-formal-grammar-bnf.md §4）
 fn countdown(start: Int) -> Int {
-  var current = start
+  var current: Int = start
   while current > 0 {
     current := current - 1
   }

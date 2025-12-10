@@ -716,6 +716,11 @@ fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<Fro
             ExprKind::Unary { expr: inner, .. }
             | ExprKind::Propagate { expr: inner }
             | ExprKind::Return { value: Some(inner) } => record(inner, diagnostics),
+            ExprKind::Break { value } => {
+                if let Some(inner) = value {
+                    record(inner, diagnostics);
+                }
+            }
             ExprKind::Return { value: None } | ExprKind::Continue => {}
             ExprKind::FieldAccess { target, .. }
             | ExprKind::TupleAccess { target, .. }
@@ -953,8 +958,12 @@ fn inspect_cfg_expr(
         ExprKind::Identifier(_)
         | ExprKind::ModulePath(_)
         | ExprKind::Literal(_)
+        | ExprKind::Break { value: None }
         | ExprKind::Return { value: None }
         | ExprKind::Continue => {}
+        ExprKind::Break { value: Some(inner) } => {
+            inspect_cfg_expr(inner, diagnostics, registry);
+        }
     }
 }
 
@@ -1675,6 +1684,55 @@ fn module_parser<'src>(
                 },
             });
 
+        let continue_expr =
+            just(TokenKind::KeywordContinue).map_with_span(|_, span: Range<usize>| Expr {
+                span: range_to_span(span),
+                kind: ExprKind::Continue,
+            });
+
+        let break_expr = just(TokenKind::KeywordBreak)
+            .ignore_then(expr.clone().or_not())
+            .map_with_span(|value, span: Range<usize>| Expr {
+                span: range_to_span(span),
+                kind: ExprKind::Break {
+                    value: value.map(|inner| Box::new(inner)),
+                },
+            });
+
+        let loop_expr = just(TokenKind::KeywordLoop)
+            .ignore_then(expr.clone())
+            .map_with_span(|body, span: Range<usize>| Expr {
+                span: range_to_span(span),
+                kind: ExprKind::Loop {
+                    body: Box::new(body),
+                },
+            });
+
+        let while_expr = just(TokenKind::KeywordWhile)
+            .ignore_then(expr.clone())
+            .then(expr.clone())
+            .map_with_span(|(condition, body), span: Range<usize>| Expr {
+                span: range_to_span(span),
+                kind: ExprKind::While {
+                    condition: Box::new(condition),
+                    body: Box::new(body),
+                },
+            });
+
+        let for_expr = just(TokenKind::KeywordFor)
+            .ignore_then(pattern_for_expr.clone())
+            .then_ignore(just(TokenKind::KeywordIn))
+            .then(expr.clone())
+            .then(expr.clone())
+            .map_with_span(|((pattern, iterator), body), span: Range<usize>| Expr {
+                span: range_to_span(span),
+                kind: ExprKind::For {
+                    pattern,
+                    start: Box::new(iterator),
+                    end: Box::new(body),
+                },
+            });
+
         let handler_param = pattern_for_expr
             .clone()
             .then(
@@ -2005,6 +2063,11 @@ fn module_parser<'src>(
 
         choice((
             if_expr,
+            while_expr,
+            for_expr,
+            loop_expr,
+            break_expr,
+            continue_expr,
             perform_expr,
             do_expr,
             assignment_expr,
@@ -2176,10 +2239,7 @@ fn module_parser<'src>(
         .delimited_by(just(TokenKind::LBrace), just(TokenKind::RBrace))
         .map(|_| ());
 
-    let sum_variant_arg = choice((
-        record_decl_body.clone(),
-        type_parser.clone().map(|_| ()),
-    ));
+    let sum_variant_arg = choice((record_decl_body.clone(), type_parser.clone().map(|_| ())));
 
     let sum_variant_args = sum_variant_arg
         .separated_by(just(TokenKind::Comma))
@@ -2868,6 +2928,11 @@ fn record_expr_trace_events(expr: &Expr, events: &mut Vec<ParserTraceEvent>) {
             events.push(ParserTraceEvent::handler(&handle.handler));
             record_expr_trace_events(&handle.target, events);
         }
+        ExprKind::Break { value } => {
+            if let Some(inner) = value {
+                record_expr_trace_events(inner, events);
+            }
+        }
         ExprKind::Continue => {}
         ExprKind::Block { statements, .. } => {
             for stmt in statements {
@@ -2924,6 +2989,7 @@ fn expr_trace_kind(expr: &Expr) -> &'static str {
         ExprKind::For { .. } => "for",
         ExprKind::Loop { .. } => "loop",
         ExprKind::Handle { .. } => "handle",
+        ExprKind::Break { .. } => "break",
         ExprKind::Continue => "continue",
         ExprKind::Block { .. } => "block",
         ExprKind::Unsafe { .. } => "unsafe",

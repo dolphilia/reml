@@ -521,6 +521,9 @@ fn expr_contains_array(expr: &Expr) -> bool {
         ExprKind::Assign { target, value } => {
             expr_contains_array(target) || expr_contains_array(value)
         }
+        ExprKind::Break { value } => value
+            .as_ref()
+            .map_or(false, |expr| expr_contains_array(expr)),
         ExprKind::Identifier(_) | ExprKind::ModulePath(_) | ExprKind::Continue => false,
     }
 }

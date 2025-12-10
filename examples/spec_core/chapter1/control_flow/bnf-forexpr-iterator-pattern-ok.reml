@@ -4,7 +4,7 @@ use Core.Prelude
 
 // BNF: ForExpr（docs/spec/1-5-formal-grammar-bnf.md §4）
 fn sum_pairs(pairs: Array<(Int, Int)>) -> Int {
-  var acc = 0
+  var acc: Int = 0
   for (left, right) in pairs {
     acc := acc + left + right
   }

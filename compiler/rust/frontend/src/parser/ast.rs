@@ -546,6 +546,9 @@ pub enum ExprKind {
     Loop {
         body: Box<Expr>,
     },
+    Break {
+        value: Option<Box<Expr>>,
+    },
     Handle {
         handle: HandleExpr,
     },
@@ -1316,6 +1319,13 @@ impl Expr {
             ExprKind::Assign { target, value } => {
                 format!("assign({} := {})", target.render(), value.render())
             }
+            ExprKind::Break { value } => format!(
+                "break {}",
+                value
+                    .as_ref()
+                    .map(|expr| expr.render())
+                    .unwrap_or_else(|| "unit".to_string())
+            ),
             ExprKind::Continue => "continue".to_string(),
             other => format!("expr({:?})", other),
         }
