@@ -457,7 +457,7 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         &stage_payload,
     );
     diagnostics_entries.append(&mut type_diagnostics);
-    if diagnostics_entries.is_empty() {
+    if diagnostics_entries.is_empty() && args.runtime_phase_enabled {
         let mut runtime_diags = execute_runtime_phase(&input_path);
         diagnostics_entries.append(&mut runtime_diags);
     }
@@ -661,6 +661,7 @@ struct CliArgs {
     show_stage_context: bool,
     #[allow(dead_code)]
     diagnostics_stream: bool,
+    runtime_phase_enabled: bool,
     target_cfg_extension: Value,
     run_config: RunSettings,
     stream_config: StreamSettings,
@@ -1255,6 +1256,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut emit_audit = false;
     let mut show_stage_context = false;
     let mut diagnostics_stream = false;
+    let mut runtime_phase_enabled = true;
     let mut output_format = OutputFormat::default();
     let mut run_config = RunSettings::default();
     let mut stream_config = StreamSettings::default();
@@ -1279,6 +1281,13 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
             "--emit-audit" | "--emit-audit-log" => emit_audit = true,
             "--show-stage-context" => show_stage_context = true,
             "--diagnostics-stream" => diagnostics_stream = true,
+            "--runtime-phase" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--runtime-phase は on/off の値を伴う必要があります")?;
+                runtime_phase_enabled = parse_on_off(&value)?;
+            }
+            "--no-runtime-phase" => runtime_phase_enabled = false,
             "--emit-ast" => {
                 let path = args
                     .next()
@@ -1708,6 +1717,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         config_path,
         manifest_path,
         telemetry_requests,
+        runtime_phase_enabled,
     })
 }
 
@@ -1734,6 +1744,8 @@ fn print_help(program_name: &str) {
   --trace-output <PATH>          Parser TraceEvent を Markdown で保存
   --lex-profile ascii|unicode    識別子プロファイルの切替
   --lex-locale <Bcp47>          識別子正規化で使用するロケール ID
+  --runtime-phase on|off         パース/型検査後の簡易 runtime 実行フェーズを有効/無効化（既定: on）
+  --no-runtime-phase             上記のショートカット（off）
   --packrat / --no-packrat       Packrat キャッシュを有効/無効化
   --streaming / --no-streaming   Streaming Runner の有無を切替
   --effect-stage <STAGE>         Stage 要件を指定

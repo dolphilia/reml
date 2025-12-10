@@ -200,6 +200,15 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
    - 修正後は必ず同じ CLI コマンドで再実行し、期待結果を確認のうえチェックボックスを `[x]` 化する。  
    - `reports/spec-audit/ch4/spec-core-dashboard.md` と `practical-suite-index.md` の KPI を更新し、`phase4-scenario-matrix.csv` の `resolution_notes` に参照ログ/コマンドを残す。
 
+### フェーズF 補足（runtime 実行フェーズの有効化条件）
+
+- Rust Frontend は **パース/型検査で診断が 0 件の場合のみ** 簡易 runtime フェーズを実行し、実行時診断を期待する practical シナリオを補完する。  
+- CLI オプション: `--runtime-phase on|off`（既定: on）または `--no-runtime-phase` で明示的に無効化可能。  
+- 現行登録プラン（2026-02-20 時点）  
+  - `examples/practical/core_path/security_check/relative_denied.reml`: `validate_path` → `sandbox_path` → `is_safe_symlink` を呼び出し `core.path.security.invalid` を生成。  
+  - `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`: Bridge Stage mismatch を模擬し `runtime.bridge.stage_mismatch` を生成。  
+- 上記以外のシナリオには影響しない設計（診断が存在するケースでは runtime フェーズは走らない）。今後 practical 例を追加する際は runtime フェーズへの登録要否も合わせて検討する。
+
 5. **完了判定**  
    - すべてのチェックボックスが `[x]` になり、`run_phase4_suite.py --suite spec_core --allow-failures=0` / `--suite practical` がともに成功した時点で Phase 5 へ引き継ぐ。  
    - フォローアップは `docs/plans/bootstrap-roadmap/4-4-field-regression-and-readiness-plan.md` にまとめ、Self-host 準備タスクへフィードバックする。
