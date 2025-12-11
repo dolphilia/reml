@@ -348,7 +348,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/core_io/file_copy.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_io/file_copy.reml` / diagnostics=[] / run_id=`a1e8bcf6-2f9b-48a5-93db-0942866f339f` / log=reports/spec-audit/ch4/logs/core-examples-20251211T145428Z.md。`fn copy_file` をブロック式に変更し `CopyReport` フィールドを `=` 代入に統一して Parser エラーを解消）
 
 **examples/ffi**
-- [ ] `examples/ffi/macos/ffi_dispatch_async.reml`（期待: 成功）
+- [x] `examples/ffi/macos/ffi_dispatch_async.reml`（期待: 成功 → 2025-12-12 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/ffi/macos/ffi_dispatch_async.reml` / diagnostics=[] / run_id=41f3ed0b-d401-4ca9-9a6b-4bb1786d48d1）
 - [ ] `examples/ffi/macos/ffi_malloc_arm64.reml`（期待: 成功）
 - [ ] `examples/ffi/windows/ownership_transfer.reml`（期待: 成功）
 - [ ] `examples/ffi/windows/struct_passing.reml`（期待: 成功）

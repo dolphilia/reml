@@ -243,7 +243,7 @@ impl Decl {
                 label.push_str(&impl_decl.target.render());
                 label
             }
-            DeclKind::Extern { name, .. } => format!("extern {}", name.name),
+            DeclKind::Extern { abi, .. } => format!("extern \"{abi}\" ..."),
             DeclKind::Handler(handler) => format!("handler {}", handler.name.name),
             DeclKind::Conductor(decl) => format!("conductor {}", decl.name.name),
         }
@@ -275,12 +275,21 @@ pub enum DeclKind {
     Trait(TraitDecl),
     Impl(ImplDecl),
     Extern {
-        name: Ident,
+        abi: String,
+        functions: Vec<ExternItem>,
         span: Span,
     },
     Effect(EffectDecl),
     Handler(HandlerDecl),
     Conductor(ConductorDecl),
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ExternItem {
+    pub attrs: Vec<Attribute>,
+    pub visibility: Visibility,
+    pub signature: FunctionSignature,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -984,6 +993,7 @@ impl RelativeHead {
 #[derive(Debug, Clone, Serialize)]
 pub struct Function {
     pub name: Ident,
+    pub visibility: Visibility,
     pub generics: Vec<Ident>,
     pub params: Vec<Param>,
     pub body: Expr,
@@ -1037,8 +1047,12 @@ impl Function {
             .as_ref()
             .map(|annot| format!(" !{{{}}}", annot.render()))
             .unwrap_or_default();
+        let visibility = match self.visibility {
+            Visibility::Public => "pub ",
+            Visibility::Private => "",
+        };
         format!(
-            "fn {}{}({}){}{}{} = {}",
+            "{visibility}fn {}{}({}){}{}{} = {}",
             self.name.name,
             generics,
             params,

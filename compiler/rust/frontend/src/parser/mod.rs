@@ -48,11 +48,11 @@ use ast::{
     Attribute, BinaryOp, ConductorArg, ConductorChannelRoute, ConductorDecl, ConductorDslDef,
     ConductorDslTail, ConductorEndpoint, ConductorExecutionBlock, ConductorMonitorTarget,
     ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind, EffectAnnotation, EffectCall,
-    EffectDecl, Expr, ExprKind, FixityKind, Function, FunctionSignature, HandleExpr, HandlerDecl,
-    HandlerEntry, Ident, ImplDecl, ImplItem, IntBase, Literal, LiteralKind, MatchArm, Module,
-    ModuleHeader, ModulePath, OperationDecl, Param, Pattern, PatternKind, PatternRecordField,
-    RecordField, RelativeHead, Stmt, StmtKind, StringKind, TraitDecl, TraitItem, TraitRef,
-    TypeAnnot, TypeKind, UseDecl, UseItem, UseTree, Visibility, WherePredicate,
+    EffectDecl, ExternItem, Expr, ExprKind, FixityKind, Function, FunctionSignature, HandleExpr,
+    HandlerDecl, HandlerEntry, Ident, ImplDecl, ImplItem, IntBase, Literal, LiteralKind, MatchArm,
+    Module, ModuleHeader, ModulePath, OperationDecl, Param, Pattern, PatternKind,
+    PatternRecordField, RecordField, RelativeHead, Stmt, StmtKind, StringKind, TraitDecl,
+    TraitItem, TraitRef, TypeAnnot, TypeKind, UseDecl, UseItem, UseTree, Visibility, WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -512,6 +512,18 @@ fn parse_tokens(
 
 fn convert_range(range: Range<usize>) -> Span {
     Span::new(range.start as u32, range.end as u32)
+}
+
+fn parse_string_literal_value(source: &str, span: Range<usize>) -> String {
+    let slice = &source[span.start..span.end];
+    let value = if slice.starts_with("\\\"") && slice.ends_with("\\\"") && slice.len() >= 4 {
+        &slice[2..slice.len() - 2]
+    } else if slice.starts_with('"') && slice.ends_with('"') && slice.len() >= 2 {
+        &slice[1..slice.len() - 1]
+    } else {
+        slice
+    };
+    value.replace("\\\"", "\"")
 }
 
 fn parse_result_from_module(
@@ -1613,16 +1625,7 @@ fn module_parser<'src>(
 
         let string_literal =
             just(TokenKind::StringLiteral).map_with_span(move |_, span: Range<usize>| {
-                let slice = &source[span.start..span.end];
-                let value =
-                    if slice.starts_with("\\\"") && slice.ends_with("\\\"") && slice.len() >= 4 {
-                        &slice[2..slice.len() - 2]
-                    } else if slice.starts_with('"') && slice.ends_with('"') && slice.len() >= 2 {
-                        &slice[1..slice.len() - 1]
-                    } else {
-                        slice
-                    };
-                let unescaped = value.replace("\\\"", "\"");
+                let unescaped = parse_string_literal_value(source, span.clone());
                 Expr::string(unescaped, range_to_span(span))
             });
 
@@ -2224,6 +2227,10 @@ fn module_parser<'src>(
 
     let attribute = build_attribute_parser(expr.clone(), ident.clone());
     let attr_list = attribute.clone().repeated();
+    let visibility = just(TokenKind::KeywordPub)
+        .to(Visibility::Public)
+        .or_not()
+        .map(|vis| vis.unwrap_or(Visibility::Private));
 
     let param = pattern_for_block
         .clone()
@@ -2343,6 +2350,10 @@ fn module_parser<'src>(
             },
         );
 
+    let abi_literal = just(TokenKind::StringLiteral).map_with_span(move |_, span: Range<usize>| {
+        parse_string_literal_value(source, span)
+    });
+
     let let_decl_raw = build_let_decl_parser(pattern.clone(), type_parser.clone(), expr.clone());
     let let_decl = attr_list
         .clone()
@@ -2456,14 +2467,16 @@ fn module_parser<'src>(
         block_body_parser.clone(),
     ));
 
-    let fn_core = fn_signature
+    let fn_core = visibility
         .clone()
+        .then(fn_signature.clone())
         .then(fn_body)
-        .map(move |(signature, body)| {
+        .map(move |((visibility, signature), body)| {
             let function_span = Span::new(signature.span.start, body.span().end);
             record_streaming_success(&streaming_state_success, function_span);
             Function {
                 name: signature.name.clone(),
+                visibility,
                 generics: signature.generics.clone(),
                 params: signature.params.clone(),
                 body,
@@ -2483,6 +2496,51 @@ fn module_parser<'src>(
                 function.attrs = attrs;
             }
             function
+        });
+
+    let extern_fn_decl = attr_list
+        .clone()
+        .then(visibility.clone())
+        .then(fn_signature.clone())
+        .then_ignore(just(TokenKind::Semicolon))
+        .map_with_span(|((attrs, visibility), signature), span: Range<usize>| ExternItem {
+            attrs,
+            visibility,
+            signature,
+            span: range_to_span(span),
+        });
+
+    let extern_block = extern_fn_decl
+        .clone()
+        .repeated()
+        .at_least(1)
+        .delimited_by(just(TokenKind::LBrace), just(TokenKind::RBrace));
+
+    let extern_decl_raw = just(TokenKind::KeywordExtern)
+        .ignore_then(abi_literal.clone())
+        .then(choice((
+            extern_block.clone(),
+            extern_fn_decl.clone().map(|item| vec![item]),
+        )))
+        .map_with_span(|(abi, functions), span: Range<usize>| Decl {
+            attrs: Vec::new(),
+            visibility: Visibility::Private,
+            span: range_to_span(span.clone()),
+            kind: DeclKind::Extern {
+                abi,
+                functions,
+                span: range_to_span(span),
+            },
+        });
+
+    let extern_decl = attr_list
+        .clone()
+        .then(extern_decl_raw.clone())
+        .map(|(attrs, mut decl)| {
+            if !attrs.is_empty() {
+                decl.attrs = attrs;
+            }
+            decl
         });
 
     let trait_item_body = choice((
@@ -2843,6 +2901,7 @@ fn module_parser<'src>(
         trait_decl.clone().map(ModuleItem::Decl),
         impl_decl.clone().map(ModuleItem::Decl),
         type_decl.clone().map(ModuleItem::Decl),
+        extern_decl.clone().map(ModuleItem::Decl),
         let_decl.clone().map(ModuleItem::Decl),
         var_decl.clone().map(ModuleItem::Decl),
         conductor_decl.clone().map(ModuleItem::Decl),
