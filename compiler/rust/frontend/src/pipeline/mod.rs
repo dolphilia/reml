@@ -1,4 +1,7 @@
-use crate::diagnostic::formatter::{self, AUDIT_POLICY_VERSION};
+use crate::diagnostic::{
+    effects::StageAuditPayload,
+    formatter::{self, AUDIT_POLICY_VERSION},
+};
 use reml_runtime::{
     audit::{AuditEnvelope, AuditEvent, AuditEventKind},
     config::{ConfigCompatibilitySource, ResolvedConfigCompatibility},
@@ -50,12 +53,13 @@ impl PipelineDescriptor {
         }
     }
 
-    fn base_metadata(&self, timestamp: &str) -> Map<String, Value> {
+    fn base_metadata(&self, timestamp: &str, stage: Option<&StageAuditPayload>) -> Map<String, Value> {
         let mut metadata = Map::new();
         metadata.insert("schema.version".to_string(), json!(self.schema_version));
         metadata.insert("pipeline.id".to_string(), json!(self.pipeline_id()));
         metadata.insert("pipeline.dsl_id".to_string(), json!(self.pipeline_dsl_id()));
         metadata.insert("pipeline.node".to_string(), json!(self.pipeline_node()));
+        metadata.insert("scenario.id".to_string(), json!(self.pipeline_dsl_id()));
         metadata.insert("timestamp".to_string(), json!(timestamp));
         metadata.insert("cli.input".to_string(), json!(self.input_label.clone()));
         metadata.insert("cli.run_id".to_string(), json!(self.run_id.to_string()));
@@ -71,6 +75,19 @@ impl PipelineDescriptor {
             "audit.policy.version".to_string(),
             json!(AUDIT_POLICY_VERSION),
         );
+        if let Some(payload) = stage {
+            if payload.primary_capability().is_some() {
+                payload.apply_audit_metadata(&mut metadata);
+            } else {
+                let required = payload
+                    .required_stage_label()
+                    .unwrap_or(DEFAULT_CAPABILITY);
+                let actual = payload.actual_stage_label().unwrap_or(required);
+                metadata.insert("effect.capability".to_string(), json!(DEFAULT_CAPABILITY));
+                metadata.insert("effect.stage.required".to_string(), json!(required));
+                metadata.insert("effect.stage.actual".to_string(), json!(actual));
+            }
+        }
         metadata
     }
 
@@ -159,9 +176,13 @@ impl<W: Write> AuditEmitter<W> {
         }
     }
 
-    pub fn pipeline_started(&mut self, descriptor: &PipelineDescriptor) -> io::Result<()> {
+    pub fn pipeline_started(
+        &mut self,
+        descriptor: &PipelineDescriptor,
+        stage: Option<&StageAuditPayload>,
+    ) -> io::Result<()> {
         let timestamp = formatter::current_timestamp();
-        let metadata = descriptor.base_metadata(&timestamp);
+        let metadata = descriptor.base_metadata(&timestamp, stage);
         self.emit_event(AuditEventKind::PipelineStarted, metadata, timestamp)
     }
 
@@ -169,9 +190,10 @@ impl<W: Write> AuditEmitter<W> {
         &mut self,
         descriptor: &PipelineDescriptor,
         outcome: &PipelineOutcome,
+        stage: Option<&StageAuditPayload>,
     ) -> io::Result<()> {
         let timestamp = formatter::current_timestamp();
-        let mut metadata = descriptor.base_metadata(&timestamp);
+        let mut metadata = descriptor.base_metadata(&timestamp, stage);
         metadata.insert(
             "pipeline.outcome".to_string(),
             json!(outcome.outcome_label.clone()),
@@ -195,9 +217,10 @@ impl<W: Write> AuditEmitter<W> {
         &mut self,
         descriptor: &PipelineDescriptor,
         failure: &PipelineFailure,
+        stage: Option<&StageAuditPayload>,
     ) -> io::Result<()> {
         let timestamp = formatter::current_timestamp();
-        let mut metadata = descriptor.base_metadata(&timestamp);
+        let mut metadata = descriptor.base_metadata(&timestamp, stage);
         metadata.insert("pipeline.outcome".to_string(), json!("failure"));
         metadata.insert("error.code".to_string(), json!(failure.code.clone()));
         metadata.insert("error.message".to_string(), json!(failure.message.clone()));
@@ -217,7 +240,7 @@ impl<W: Write> AuditEmitter<W> {
             return Ok(());
         }
         let timestamp = formatter::current_timestamp();
-        let mut metadata = descriptor.base_metadata(&timestamp);
+        let mut metadata = descriptor.base_metadata(&timestamp, None);
         metadata.insert("config.source".to_string(), json!(resolved.source.as_str()));
         metadata.insert("config.format".to_string(), json!(resolved.format.as_str()));
         let profile = resolved

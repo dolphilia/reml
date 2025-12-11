@@ -1,0 +1,149 @@
+warning: unused import: `self`
+ --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/config/collection_diff.rs:5:33
+  |
+5 |     collections::audit_bridge::{self, AuditBridgeError, ChangeSet, ChangeSetKind},
+  |                                 ^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `mem`
+  --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/config/mod.rs:36:13
+   |
+36 |     fs, io, mem,
+   |             ^^^
+
+warning: unused imports: `CollectorEffectMarkers`, `CollectorKind`, `CollectorStageProfile`, `NumericCollector`
+  --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/prelude/iter/mod.rs:21:67
+   |
+21 |     CollectError, CollectOutcome, Collector, CollectorAuditTrail, CollectorEffectMarkers,
+   |                                                                   ^^^^^^^^^^^^^^^^^^^^^^
+22 |     CollectorKind, CollectorStageProfile, List, ListCollector, Map, MapCollector, NumericCollector,
+   |     ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^                                          ^^^^^^^^^^^^^^^^
+
+warning: unreachable pattern
+   --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/parse/op_builder.rs:175:13
+    |
+175 |             (FixitySymbol::Ternary, OperatorCollection::Operators(_))
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unreachable_patterns)]` on by default
+
+warning: variable does not need to be mutable
+   --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/data/schema.rs:116:23
+    |
+116 |     pub fn field_with(mut self, builder: FieldBuilder) -> Self {
+    |                       ----^^^^
+    |                       |
+    |                       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: variable does not need to be mutable
+  --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/prelude/collectors/table.rs:93:13
+   |
+93 |         let mut collector = Self::new();
+   |             ----^^^^^^^^^
+   |             |
+   |             help: remove this `mut`
+
+warning: method `descriptor_for` is never used
+   --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/capability/registry.rs:367:8
+    |
+367 |     fn descriptor_for(&self, capability: &str) -> Option<CapabilityDescriptor> {
+    |        ^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: method `is_empty` is never used
+  --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/io/buffer.rs:45:12
+   |
+45 |     pub fn is_empty(&self) -> bool {
+   |            ^^^^^^^^
+
+warning: function `record_security_event` is never used
+  --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/io/effects.rs:59:15
+   |
+59 | pub(crate) fn record_security_event() {
+   |               ^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `handle_guard` is never read
+  --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/io/file.rs:22:5
+   |
+19 | pub struct File {
+   |            ---- field in this struct
+...
+22 |     handle_guard: FileHandleGuard,
+   |     ^^^^^^^^^^^^
+   |
+   = note: `File` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: method `as_std` is never used
+   --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/io/file.rs:128:19
+    |
+128 |     pub(crate) fn as_std(&self) -> &std::fs::File {
+    |                   ^^^^^^
+
+warning: method `operation_context` is never used
+   --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/io/file.rs:132:8
+    |
+132 |     fn operation_context(&self, operation: &'static str, capability: &'static str) -> IoContext {
+    |        ^^^^^^^^^^^^^^^^^
+
+warning: field `tracker` is never read
+   --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/io/scope.rs:137:5
+    |
+135 | pub struct TempDirGuard {
+    |            ------------ field in this struct
+136 |     path: PathBuf,
+137 |     tracker: ResourceGuard,
+    |     ^^^^^^^
+    |
+    = note: `TempDirGuard` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: field `tracker` is never read
+   --> /Users/dolphilia/github/kestrel/compiler/rust/runtime/src/io/scope.rs:162:5
+    |
+161 | pub(crate) struct FileHandleGuard {
+    |                   --------------- field in this struct
+162 |     tracker: ResourceGuard,
+    |     ^^^^^^^
+    |
+    = note: `FileHandleGuard` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: variable does not need to be mutable
+   --> src/parser/mod.rs:467:9
+    |
+467 |     let mut prefix = parse_top_level_prefix(tokens);
+    |         ----^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: method `ast_render` is never used
+   --> src/parser/mod.rs:594:19
+    |
+594 |     pub(crate) fn ast_render(&self) -> Option<String> {
+    |                   ^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: associated function `none` is never used
+   --> src/typeck/telemetry.rs:317:8
+    |
+317 |     fn none() -> Self {
+    |        ^^^^
+
+warning: field `manifest_path` is never read
+   --> src/bin/reml_frontend.rs:678:5
+    |
+644 | struct CliArgs {
+    |        ------- field in this struct
+...
+678 |     manifest_path: Option<PathBuf>,
+    |     ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+{"timestamp":"-4657-11-04T08:59:07Z","envelope":{"audit_id":"4d7c4d12-55d6-4cf2-b0d6-d338e956f2ff","capability":"core.diagnostics","metadata":{"audit.channel":"cli","audit.policy.version":"rust.poc.audit.v1","cli.command":"Check","cli.command_line":"compiler/rust/frontend/target/debug/reml_frontend --emit-audit --output json examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml","cli.input":"examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml","cli.phase":"Reporting","cli.program":"compiler/rust/frontend/target/debug/reml_frontend","cli.run_id":"ae1f942b-b243-4653-936a-1cd1bb803300","effect.capability":"core.diagnostics","effect.stage.actual":"at_least:stable","effect.stage.required":"at_least:beta","event.kind":"pipeline_started","pipeline.dsl_id":"stage_tag_capture","pipeline.id":"dsl://examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml","pipeline.node":"stage_tag_capture.reml","scenario.id":"stage_tag_capture","schema.version":"3.0.0-alpha","timestamp":"-4657-11-04T08:59:07Z"}}}
+{"timestamp":"-4657-11-04T08:59:07Z","envelope":{"audit_id":"4b6864d1-5404-45ad-b85d-bdff14db4d8e","capability":"core.diagnostics","metadata":{"audit.channel":"cli","audit.policy.version":"rust.poc.audit.v1","cli.command":"Check","cli.command_line":"compiler/rust/frontend/target/debug/reml_frontend --emit-audit --output json examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml","cli.input":"examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml","cli.phase":"Reporting","cli.program":"compiler/rust/frontend/target/debug/reml_frontend","cli.run_id":"ae1f942b-b243-4653-936a-1cd1bb803300","effect.capability":"core.diagnostics","effect.stage.actual":"at_least:stable","effect.stage.required":"at_least:beta","event.kind":"pipeline_completed","pipeline.count":1,"pipeline.diagnostics":0,"pipeline.dsl_id":"stage_tag_capture","pipeline.exit_code":"success","pipeline.id":"dsl://examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml","pipeline.node":"stage_tag_capture.reml","pipeline.outcome":"success","scenario.id":"stage_tag_capture","schema.version":"3.0.0-alpha","timestamp":"-4657-11-04T08:59:07Z"}}}

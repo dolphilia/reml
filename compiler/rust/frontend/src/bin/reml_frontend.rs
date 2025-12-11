@@ -77,6 +77,7 @@ struct CliRunResult {
     exit_code: CliExitCode,
     input_path: PathBuf,
     diagnostic_count: usize,
+    stage_payload: StageAuditPayload,
 }
 
 #[derive(Default)]
@@ -290,6 +291,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let args = parse_args()?;
     let cli_command = args.cli_command();
+    let stage_payload_seed =
+        StageAuditPayload::new(&args.typecheck_config.effect_context, &args.runtime_capabilities, None);
     let mut audit_emitter = AuditEmitter::stderr(args.emit_audit);
     let resolved_cli_compat = args.run_config.resolved_config_compat();
     let descriptor = PipelineDescriptor::new(
@@ -301,7 +304,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         cli_command,
         SCHEMA_VERSION,
     );
-    if let Err(err) = audit_emitter.pipeline_started(&descriptor) {
+    if let Err(err) = audit_emitter.pipeline_started(&descriptor, Some(&stage_payload_seed)) {
         eprintln!("[AUDIT] pipeline_started の書き出しに失敗しました: {err}");
     }
     if let Err(err) = audit_emitter.config_compat_changed(&descriptor, &resolved_cli_compat) {
@@ -312,7 +315,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(result) => {
             let outcome =
                 PipelineOutcome::success(1, result.diagnostic_count, result.exit_code.label());
-            if let Err(err) = audit_emitter.pipeline_completed(&descriptor, &outcome) {
+            if let Err(err) =
+                audit_emitter.pipeline_completed(&descriptor, &outcome, Some(&result.stage_payload))
+            {
                 eprintln!("[AUDIT] pipeline_completed の書き出しに失敗しました: {err}");
             }
             emit_cli_output(args.output_format, &result.envelope, &result.input_path)?;
@@ -320,7 +325,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(err) => {
             let failure = PipelineFailure::new("cli.pipeline.failure", err.to_string(), "error");
-            if let Err(audit_err) = audit_emitter.pipeline_failed(&descriptor, &failure) {
+            if let Err(audit_err) =
+                audit_emitter.pipeline_failed(&descriptor, &failure, Some(&stage_payload_seed))
+            {
                 eprintln!("[AUDIT] pipeline_failed の書き出しに失敗しました: {audit_err}");
             }
             Err(err)
@@ -560,6 +567,7 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         exit_code,
         input_path,
         diagnostic_count,
+        stage_payload: stage_payload.clone(),
     })
 }
 

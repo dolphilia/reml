@@ -229,6 +229,14 @@ impl StageAuditPayload {
     pub fn extend_stage_trace(&mut self, extra: &[StageTraceStep]) {
         self.stage_trace.extend(extra.iter().cloned());
     }
+
+    pub fn required_stage_label(&self) -> Option<&str> {
+        self.required_stage.as_deref()
+    }
+
+    pub fn actual_stage_label(&self) -> Option<&str> {
+        self.actual_stage.as_deref()
+    }
 }
 
 fn collect_capability_metadata(capabilities: &[RuntimeCapability]) -> Vec<CapabilityMetadataEntry> {
