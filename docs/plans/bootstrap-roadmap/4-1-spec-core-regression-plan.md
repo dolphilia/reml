@@ -336,7 +336,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 **examples/core_path / core_config / cli / core_io / core-collections / string_literal**
 - [x] `examples/core_path/security_check.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_path/security_check.reml` / run_id=`a55948c8-3a09-4a0e-8e3d-ab91f0f9eb51` / log=reports/spec-audit/ch4/logs/core_path-20251211T092454Z.md。`struct` トップレベルを `type ... = new {...}` へ是正し、`map_err(...)?` で symlink チェックの回収経路を統一）
-- [ ] `examples/core_config/cli/dsl/sample.reml`（期待: 成功）
+- [x] `examples/core_config/cli/dsl/sample.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_config/cli/dsl/sample.reml` / diagnostics=[] / run_id=`d8ffcb77-98f3-4b89-b10a-7c4fad72727d` / log=reports/spec-audit/ch4/logs/core_config-20251211T093350Z.md。Effect 宣言に `operation` を追加し、`ensure` の遅延診断クロージャを `| |` 形式へ修正して BNF と整合）
 - [ ] `examples/core_config/dsl/telemetry_bridge.reml`（期待: 成功）
 - [ ] `examples/core_config/dsl/audit_bridge.reml`（期待: 成功）
 - [ ] `examples/cli/type_error.reml`（期待: 失敗診断）

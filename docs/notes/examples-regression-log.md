@@ -22,6 +22,13 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - ログ: `reports/spec-audit/ch4/logs/core_path-20251211T092454Z.md`
 - 対応: Example Fix としてトップレベルを `struct` から `type ... = new { ... }` へ移行し、`is_safe_symlink` のエラー経路を `map_err(...)?` で統一。フェーズF チェックリストを `[x]` 化。
 
+## 2025-12-11 Core.Config CLI DSL フェーズF
+- 対象: `examples/core_config/cli/dsl/sample.reml`（EX-CORE-CONFIG-CLI-001 暫定）
+- CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_config/cli/dsl/sample.reml`
+- 期待/実際: 期待=diagnostics `[]`、実際=diagnostics `[]` / run_id=`d8ffcb77-98f3-4b89-b10a-7c4fad72727d`
+- ログ: `reports/spec-audit/ch4/logs/core_config-20251211T093350Z.md`
+- 対応: Effect 宣言に `operation` を追加し、`ensure` の遅延診断クロージャを `| | diagnostic(...)` 形式へ修正して BNF (`OperationDecl+`) と整合。Parser の `parser.syntax.expected_tokens` を解消し、フェーズF チェックリストを `[x]` 化。
+
 ## 2025-12-11 Core.IO canonical フェーズF 回帰修正
 - 対象: `examples/practical/core_io/file_copy/canonical.reml`（`CH3-IO-101` / `CH3-IO-201`）
 - CLI: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_io/file_copy/canonical.reml`
