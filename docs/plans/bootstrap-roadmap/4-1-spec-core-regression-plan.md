@@ -384,7 +384,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [ ] `examples/language-impl-comparison/reml/mini_lisp_combinator.reml`（期待: 成功）
 
 **examples/core-text / core_diagnostics**
-- [ ] `examples/core-text/text_unicode.reml`（期待: 成功）
+- [x] `examples/core-text/text_unicode.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- examples/core-text/text_unicode.reml` / diagnostics=[] / run_id=`a9eb0839-1c6c-44c4-b9fe-3d448200af09` / log=reports/spec-audit/ch4/logs/core-text-20251211T222317Z.md。DocComment 正規化と Emoji トークンを簡素化し、パイプラインをブロック式に統一）
 - [ ] `examples/core_diagnostics/pipeline_branch.reml`（期待: 成功）
 - [ ] `examples/core_diagnostics/pipeline_success.reml`（期待: 成功）
 - [ ] `examples/core_diagnostics/constraint_graph/simple_chain.reml`（期待: 成功）
