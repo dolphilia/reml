@@ -36,6 +36,14 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - 対応: grapheme 境界安全な `Text.slice_graphemes` を使っており、診断なしが正しいため Example Fix として expected を空診断に更新。`phase4-scenario-matrix.csv` の `CH3-TEXT-402` を `ok` / `example_fix` へ変更し、PhaseF チェックリストも `[x]` 化。
 - ログ: `reports/spec-audit/ch4/logs/practical-20251211T082727Z.md`
 
+## 2025-12-11 Core.Text grapheme_nfc_mix フェーズF 実行
+- 対象: `examples/practical/core_text/unicode/grapheme_nfc_mix.reml`（`CH3-TEXT-401`）
+- CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_text/unicode/grapheme_nfc_mix.reml`
+- 期待/実際: 期待=diagnostics `[]`、実際=diagnostics `[]` / run_id=`250a3b7c-b790-422f-9b30-e654d2343265`
+- stdout: ゴールデン `expected/practical/core_text/unicode/grapheme_nfc_mix.stdout`（`graphemes=2`、runtime_phase=none / artifact=null）
+- ログ: `reports/spec-audit/ch4/logs/practical-20251211T083527Z.md`
+- 備考: PhaseF チェックリストと `phase4-scenario-matrix.csv` を `resolution=ok`・`spec_vs_impl_decision=ok` へ更新。runtime フェーズ対象外だが parse/typeck は成功。
+
 ## 2026-02-20 Core.Path relative_denied 回帰 → runtime 実行フェーズで解消
 - 対象: `examples/practical/core_path/security_check/relative_denied.reml`（`CH3-PATH-202`）
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_path/security_check/relative_denied.reml`
