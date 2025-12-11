@@ -2157,6 +2157,21 @@ fn module_parser<'src>(
                 })
             });
 
+        let pipe_expr = comparison
+            .clone()
+            .then(
+                just(TokenKind::PipeForward)
+                    .to("|>")
+                    .then(comparison.clone())
+                    .repeated(),
+            )
+            .map(|(first, rest)| {
+                rest.into_iter().fold(first, |lhs, (_op, rhs)| {
+                    let span = span_union(lhs.span(), rhs.span());
+                    Expr::pipe(lhs, rhs, span)
+                })
+            });
+
         let if_expr = just(TokenKind::KeywordIf)
             .map_with_span(move |_, span: Range<usize>| range_to_span(span))
             .then(expr.clone())
@@ -2220,7 +2235,7 @@ fn module_parser<'src>(
             do_expr,
             assignment_expr,
             block_expr,
-            comparison,
+            pipe_expr,
         ))
         .boxed()
     });

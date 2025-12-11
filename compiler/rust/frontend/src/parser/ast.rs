@@ -1272,6 +1272,16 @@ impl Expr {
         }
     }
 
+    pub fn pipe(left: Expr, right: Expr, span: Span) -> Self {
+        Self {
+            span,
+            kind: ExprKind::Pipe {
+                left: Box::new(left),
+                right: Box::new(right),
+            },
+        }
+    }
+
     pub fn if_else(condition: Expr, then_branch: Expr, else_branch: Expr, span: Span) -> Self {
         Self {
             span,

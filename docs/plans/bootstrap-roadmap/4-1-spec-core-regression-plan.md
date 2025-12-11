@@ -355,6 +355,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [ ] `examples/ffi/windows/messagebox.reml`（期待: 成功）
 
 **examples/language-impl-comparison/reml**
+- [x] `examples/language-impl-comparison/reml/pipeline_operator_demo.reml`（期待: 成功 → 2025-12-12 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output human examples/language-impl-comparison/reml/pipeline_operator_demo.reml` / diagnostics=[]。Parser に `|>` パイプ演算子の左結合最弱優先度を実装し、パイプ演算サンプルが通過することを確認）
 - [x] `examples/language-impl-comparison/reml/audit_pipeline_integration.reml`（期待: 成功 → 2025-12-12 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output human examples/language-impl-comparison/reml/audit_pipeline_integration.reml` / diagnostics=[]。record literal を `TypeName({ ... })` 形式へ統一し、`if` 分岐の戻り値型衝突を `()` 明示で解消）
 - [ ] `examples/language-impl-comparison/reml/basic_interpreter.reml`（期待: 成功）
 - [ ] `examples/language-impl-comparison/reml/conductor_data_pipeline.reml`（期待: 成功）
