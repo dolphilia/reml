@@ -29,6 +29,13 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - ログ: `reports/spec-audit/ch4/logs/practical-20251211T014101Z.md`
 - 備考: runtime フェーズ有効化後の診断生成が想定どおりであることを再確認し、PhaseF チェックリストを更新。
 
+## 2025-12-11 Core.Text grapheme_boundary_edge フェーズF 是正
+- 対象: `examples/practical/core_text/unicode/grapheme_boundary_edge.reml`（`CH3-TEXT-402`）
+- CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_text/unicode/grapheme_boundary_edge.reml`
+- 期待/実際: 期待=diagnostics `[]`（segment_mismatch 期待を削除）、実際=diagnostics `[]` / run_id=`c39eec0c-e343-42da-913a-2cec905343bb`
+- 対応: grapheme 境界安全な `Text.slice_graphemes` を使っており、診断なしが正しいため Example Fix として expected を空診断に更新。`phase4-scenario-matrix.csv` の `CH3-TEXT-402` を `ok` / `example_fix` へ変更し、PhaseF チェックリストも `[x]` 化。
+- ログ: `reports/spec-audit/ch4/logs/practical-20251211T082727Z.md`
+
 ## 2026-02-20 Core.Path relative_denied 回帰 → runtime 実行フェーズで解消
 - 対象: `examples/practical/core_path/security_check/relative_denied.reml`（`CH3-PATH-202`）
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_path/security_check/relative_denied.reml`
