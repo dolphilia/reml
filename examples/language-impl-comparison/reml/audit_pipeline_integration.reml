@@ -10,6 +10,7 @@ use ::Core.Collection.Map as Map
 use ::Core.IO as IO
 use ::Core.Text.String as Str
 use ::Core.Config as Config
+use ::Core.Json as Json
 
 /// 監査対応パイプライン: Conductor/Capability/監査イベントの複合運用を再現
 ///
@@ -51,6 +52,8 @@ type PipelineMetrics = {
   backpressure_events: Int,
 }
 
+type AuditEnvelope = Diag.AuditEnvelope
+
 /// ============================================================================
 /// 2. 監査イベント発行ユーティリティ
 /// ============================================================================
@@ -61,28 +64,36 @@ fn emit_pipeline_started(
   pipeline_id: Str,
   node_id: Str
 ) -> Result<(), Diag.AuditError>  // effect {audit}
-  = do {
-    let event = Diag.AuditEvent.PipelineStarted;
-    let envelope = Diag.AuditEnvelope {
-      audit_id: Some(Diag.new_uuid()),
-      change_set: None,
-      capability: None,
-      metadata: Map.from_list([
-        ("pipeline.id", Json.String(pipeline_id)),
-        ("pipeline.node", Json.String(node_id)),
-        ("timestamp", Json.Number(current_timestamp())),
-      ]),
-    };
+{
+  let envelope = AuditEnvelope({
+    audit_id = Some(Diag.new_uuid()),
+    change_set = None,
+    capability = None,
+    metadata = Map.from_list([
+      ("pipeline.id", Json.String(pipeline_id)),
+      ("pipeline.node", Json.String(node_id)),
+      ("timestamp", Json.Number(current_timestamp())),
+    ]),
+  });
 
-    let diagnostic = Diag.diagnostic("Pipeline started")
-      |> Diag.with_severity(Diag.Severity.Info)
-      |> Diag.with_domain(Diag.DiagnosticDomain.Runtime)
-      |> Diag.with_code("audit.pipeline.started")
-      |> Diag.attach_audit(envelope)
-      |> Diag.finish();
+  let diagnostic = Diag.finish(
+    Diag.attach_audit(
+      Diag.with_code(
+        Diag.with_domain(
+          Diag.with_severity(
+            Diag.diagnostic("Pipeline started"),
+            Diag.Severity.Info
+          ),
+          Diag.DiagnosticDomain.Runtime
+        ),
+        "audit.pipeline.started"
+      ),
+      envelope
+    )
+  );
 
-    Diag.emit(diagnostic, Diag.console_audit_sink)
-  }
+  Diag.emit(diagnostic, Diag.console_audit_sink)
+}
 
 /// パイプライン完了イベントを発行
 /// 効果: {audit}
@@ -90,28 +101,37 @@ fn emit_pipeline_completed(
   pipeline_id: Str,
   count: Int
 ) -> Result<(), Diag.AuditError>  // effect {audit}
-  = do {
-    let envelope = Diag.AuditEnvelope {
-      audit_id: Some(Diag.new_uuid()),
-      change_set: None,
-      capability: None,
-      metadata: Map.from_list([
-        ("pipeline.id", Json.String(pipeline_id)),
-        ("pipeline.outcome", Json.String("success")),
-        ("pipeline.count", Json.Number(count)),
-        ("timestamp", Json.Number(current_timestamp())),
-      ]),
-    };
+{
+  let envelope = AuditEnvelope({
+    audit_id = Some(Diag.new_uuid()),
+    change_set = None,
+    capability = None,
+    metadata = Map.from_list([
+      ("pipeline.id", Json.String(pipeline_id)),
+      ("pipeline.outcome", Json.String("success")),
+      ("pipeline.count", Json.Number(count)),
+      ("timestamp", Json.Number(current_timestamp())),
+    ]),
+  });
 
-    let diagnostic = Diag.diagnostic("Pipeline completed successfully")
-      |> Diag.with_severity(Diag.Severity.Info)
-      |> Diag.with_domain(Diag.DiagnosticDomain.Runtime)
-      |> Diag.with_code("audit.pipeline.completed")
-      |> Diag.attach_audit(envelope)
-      |> Diag.finish();
+  let diagnostic = Diag.finish(
+    Diag.attach_audit(
+      Diag.with_code(
+        Diag.with_domain(
+          Diag.with_severity(
+            Diag.diagnostic("Pipeline completed successfully"),
+            Diag.Severity.Info
+          ),
+          Diag.DiagnosticDomain.Runtime
+        ),
+        "audit.pipeline.completed"
+      ),
+      envelope
+    )
+  );
 
-    Diag.emit(diagnostic, Diag.console_audit_sink)
-  }
+  Diag.emit(diagnostic, Diag.console_audit_sink)
+}
 
 /// パイプライン失敗イベントを発行
 /// 効果: {audit}
@@ -120,29 +140,38 @@ fn emit_pipeline_failed(
   error_code: Str,
   error_message: Str
 ) -> Result<(), Diag.AuditError>  // effect {audit}
-  = do {
-    let envelope = Diag.AuditEnvelope {
-      audit_id: Some(Diag.new_uuid()),
-      change_set: None,
-      capability: None,
-      metadata: Map.from_list([
-        ("pipeline.id", Json.String(pipeline_id)),
-        ("error.code", Json.String(error_code)),
-        ("error.message", Json.String(error_message)),
-        ("error.severity", Json.String("Error")),
-        ("timestamp", Json.Number(current_timestamp())),
-      ]),
-    };
+{
+  let envelope = AuditEnvelope({
+    audit_id = Some(Diag.new_uuid()),
+    change_set = None,
+    capability = None,
+    metadata = Map.from_list([
+      ("pipeline.id", Json.String(pipeline_id)),
+      ("error.code", Json.String(error_code)),
+      ("error.message", Json.String(error_message)),
+      ("error.severity", Json.String("Error")),
+      ("timestamp", Json.Number(current_timestamp())),
+    ]),
+  });
 
-    let diagnostic = Diag.diagnostic(error_message)
-      |> Diag.with_severity(Diag.Severity.Error)
-      |> Diag.with_domain(Diag.DiagnosticDomain.Runtime)
-      |> Diag.with_code(error_code)
-      |> Diag.attach_audit(envelope)
-      |> Diag.finish();
+  let diagnostic = Diag.finish(
+    Diag.attach_audit(
+      Diag.with_code(
+        Diag.with_domain(
+          Diag.with_severity(
+            Diag.diagnostic(error_message),
+            Diag.Severity.Error
+          ),
+          Diag.DiagnosticDomain.Runtime
+        ),
+        error_code
+      ),
+      envelope
+    )
+  );
 
-    Diag.emit(diagnostic, Diag.console_audit_sink)
-  }
+  Diag.emit(diagnostic, Diag.console_audit_sink)
+}
 
 /// Capability 不一致イベントを発行
 /// 効果: {audit}
@@ -151,30 +180,39 @@ fn emit_capability_mismatch(
   expected_stage: Runtime.StageId,
   actual_stage: Runtime.StageId
 ) -> Result<(), Diag.AuditError>  // effect {audit}
-  = do {
-    let envelope = Diag.AuditEnvelope {
-      audit_id: Some(Diag.new_uuid()),
-      change_set: None,
-      capability: Some(capability_id),
-      metadata: Map.from_list([
-        ("capability.id", Json.String(capability_id)),
-        ("capability.expected_stage", Json.String(stage_to_string(expected_stage))),
-        ("capability.actual_stage", Json.String(stage_to_string(actual_stage))),
-        ("timestamp", Json.Number(current_timestamp())),
-      ]),
-    };
+{
+  let envelope = AuditEnvelope({
+    audit_id = Some(Diag.new_uuid()),
+    change_set = None,
+    capability = Some(capability_id),
+    metadata = Map.from_list([
+      ("capability.id", Json.String(capability_id)),
+      ("capability.expected_stage", Json.String(stage_to_string(expected_stage))),
+      ("capability.actual_stage", Json.String(stage_to_string(actual_stage))),
+      ("timestamp", Json.Number(current_timestamp())),
+    ]),
+  });
 
-    let diagnostic = Diag.diagnostic(
-        Str.concat("Capability stage mismatch: ", capability_id)
-      )
-      |> Diag.with_severity(Diag.Severity.Error)
-      |> Diag.with_domain(Diag.DiagnosticDomain.Effect)
-      |> Diag.with_code("effects.contract.stage_mismatch")
-      |> Diag.attach_audit(envelope)
-      |> Diag.finish();
+  let diagnostic = Diag.finish(
+    Diag.attach_audit(
+      Diag.with_code(
+        Diag.with_domain(
+          Diag.with_severity(
+            Diag.diagnostic(
+              Str.concat("Capability stage mismatch: ", capability_id)
+            ),
+            Diag.Severity.Error
+          ),
+          Diag.DiagnosticDomain.Effect
+        ),
+        "effects.contract.stage_mismatch"
+      ),
+      envelope
+    )
+  );
 
-    Diag.emit(diagnostic, Diag.console_audit_sink)
-  }
+  Diag.emit(diagnostic, Diag.console_audit_sink)
+}
 
 /// ============================================================================
 /// 3. Capability 検証と Stage チェック
@@ -185,55 +223,58 @@ fn emit_capability_mismatch(
 fn verify_pipeline_capabilities(
   required_capabilities: List<(Str, Runtime.StageRequirement)>
 ) -> Result<(), Str>  // effect {runtime, audit}
-  = do {
-    let registry = Runtime.registry();
+{
+  List.for_each(required_capabilities, |capability_entry| {
+    let (cap_id, stage_req) = capability_entry;
 
-    List.for_each(required_capabilities, |(cap_id, stage_req)| {
-      match Runtime.verify_capability_stage(cap_id, stage_req) {
-        | Ok(handle) -> {
-          IO.println(Str.concat("✓ Capability verified: ", cap_id));
-          Ok(())
-        }
-        | Err(Runtime.CapabilityError {
-          capability_id,
-          actual_stage,
-          capability_metadata
-        }) -> {
-          // 実際の Stage 情報をエラーから取得（仮置き値を排除）
-          let expected_stage = match stage_req {
-            | Runtime.StageRequirement.Exact(stage) -> stage
-            | Runtime.StageRequirement.AtLeast(stage) -> stage
-          };
+    match Runtime.verify_capability_stage(cap_id, stage_req) with
+    | Ok(_) -> {
+      IO.println(Str.concat("✓ Capability verified: ", cap_id));
+      Ok(())
+    }
+    | Err(err) -> {
+      // 実際の Stage 情報をエラーから取得（仮置き値を排除）
+      let expected_stage = match stage_req with
+        | Runtime.StageRequirement.Exact(stage) -> stage
+        | Runtime.StageRequirement.AtLeast(stage) -> stage;
 
-          // メタデータを診断に含める
-          let diagnostic = Diag.diagnostic(
-              Str.concat("Capability stage mismatch: ", capability_id)
-            )
-            |> Diag.with_severity(Diag.Severity.Error)
-            |> Diag.with_domain(Diag.DiagnosticDomain.Effect)
-            |> Diag.with_code("effects.contract.stage_mismatch")
-            |> Diag.attach_audit(Diag.AuditEnvelope {
-              audit_id: Some(Diag.new_uuid()),
-              change_set: None,
-              capability: Some(capability_id),
-              metadata: Map.from_list([
-                ("capability.id", Json.String(capability_id)),
-                ("capability.expected_stage", Json.String(stage_to_string(expected_stage))),
-                ("capability.actual_stage", Json.String(stage_to_string(actual_stage))),
-                ("capability.metadata", capability_metadata),
-                ("timestamp", Json.Number(current_timestamp())),
-              ]),
-            })
-            |> Diag.finish();
+      // メタデータを診断に含める
+      let diagnostic_base = Diag.diagnostic(
+        Str.concat("Capability stage mismatch: ", err.capability_id)
+      );
+      let diagnostic_with_meta = Diag.with_severity(
+        diagnostic_base,
+        Diag.Severity.Error
+      );
+      let diagnostic_with_domain = Diag.with_domain(
+        diagnostic_with_meta,
+        Diag.DiagnosticDomain.Effect
+      );
+      let diagnostic_coded = Diag.with_code(
+        diagnostic_with_domain,
+        "effects.contract.stage_mismatch"
+      );
+      let audit_envelope = AuditEnvelope({
+        audit_id = Some(Diag.new_uuid()),
+        change_set = None,
+        capability = Some(err.capability_id),
+        metadata = Map.from_list([
+          ("capability.id", Json.String(err.capability_id)),
+          ("capability.expected_stage", Json.String(stage_to_string(expected_stage))),
+          ("capability.actual_stage", Json.String(stage_to_string(err.actual_stage))),
+          ("capability.metadata", err.capability_metadata),
+          ("timestamp", Json.Number(current_timestamp())),
+        ]),
+      });
+      let diagnostic = Diag.finish(Diag.attach_audit(diagnostic_coded, audit_envelope));
 
-          Diag.emit(diagnostic, Diag.console_audit_sink)?;
-          Err(Str.concat("Capability verification failed: ", cap_id))
-        }
-      }
-    })?;
+      Diag.emit(diagnostic, Diag.console_audit_sink)?;
+      Err(Str.concat("Capability verification failed: ", cap_id))
+    }
+  })?;
 
-    Ok(())
-  }
+  Ok(())
+}
 
 /// ============================================================================
 /// 4. リソース制限と監視メトリクス
@@ -244,26 +285,26 @@ fn verify_pipeline_capabilities(
 fn setup_resource_limits_and_metrics(
   pipeline_id: Str
 ) -> Result<(Runtime.ExecutionMetricsScope, Async.ResourceLimitSet), Str>  // effect {runtime}
-  = do {
-    // パイプライン単位の ExecutionMetricsScope を作成
-    let metrics_scope = Runtime.create_execution_metrics_scope(pipeline_id)?;
+{
+  // パイプライン単位の ExecutionMetricsScope を作成
+  let metrics_scope = Runtime.create_execution_metrics_scope(pipeline_id)?;
 
-    // リソース制限の設定
-    let limits = Async.ResourceLimitSet.new(
-      memory: Some(Resource.MemoryLimit.from_mb(256)),
-      cpu: Some(Resource.CpuQuota.from_ratio(0.75))
-    );
+  // リソース制限の設定
+  let limits = Async.ResourceLimitSet.new(
+    Some(Resource.MemoryLimit.from_mb(256)),
+    Some(Resource.CpuQuota.from_ratio(0.75))
+  );
 
-    // ExecutionPlan にリソース制限を連動
-    Runtime.link_resource_limits(metrics_scope, limits)?;
+  // ExecutionPlan にリソース制限を連動
+  Runtime.link_resource_limits(metrics_scope, limits)?;
 
-    IO.println("Resource limits configured:");
-    IO.println(Str.concat("  Memory: 256MB"));
-    IO.println(Str.concat("  CPU: 75%"));
-    IO.println(Str.concat("  Metrics scope: ", pipeline_id));
+  IO.println("Resource limits configured:");
+  IO.println(Str.concat("  Memory: 256MB"));
+  IO.println(Str.concat("  CPU: 75%"));
+  IO.println(Str.concat("  Metrics scope: ", pipeline_id));
 
-    Ok((metrics_scope, limits))
-  }
+  Ok((metrics_scope, limits))
+}
 
 /// バックプレッシャーイベントを記録
 /// 効果: {trace, audit}
@@ -272,15 +313,15 @@ fn record_backpressure_event(
   channel_id: Str,
   queue_depth: Int
 ) -> ()  // effect {trace, audit}
-  = do {
-    // ExecutionMetricsScope 経由でバックプレッシャーを記録
-    Runtime.observe_backpressure(scope, channel_id, queue_depth);
+{
+  // ExecutionMetricsScope 経由でバックプレッシャーを記録
+  Runtime.observe_backpressure(scope, channel_id, queue_depth);
 
-    IO.println(Str.concat(
-      "⚠ Backpressure detected on channel ",
-      Str.concat(channel_id, Str.concat(": queue depth = ", Str.from_int(queue_depth)))
-    ));
-  }
+  IO.println(Str.concat(
+    "⚠ Backpressure detected on channel ",
+    Str.concat(channel_id, Str.concat(": queue depth = ", Str.from_int(queue_depth)))
+  ));
+}
 
 /// ============================================================================
 /// 5. チャネルメトリクス監視
@@ -293,59 +334,71 @@ fn monitor_channel_metrics(
   channel_id: Str,
   scope: Runtime.ExecutionMetricsScope
 ) -> Result<Async.ChannelMetricsHandle, Async.AsyncError>  // effect {io.async}
-  = do {
-    // ExecutionMetricsScope を共有してチャネルメトリクスを登録
-    let opts = Async.ChannelMetricOptions {
-      collect_dropped_messages: true,
-      collect_latency: true,
-      collect_throughput: true,
-    };
+{
+  // ExecutionMetricsScope を共有してチャネルメトリクスを登録
+  let opts = Async.ChannelMetricOptions({
+    collect_dropped_messages = true,
+    collect_latency = true,
+    collect_throughput = true,
+  });
 
-    let metrics = Async.channel_metrics_with_scope(receiver, scope, channel_id, opts)?;
+  let metrics = Async.channel_metrics_with_scope(receiver, scope, channel_id, opts)?;
 
-    IO.println(Str.concat("✓ Channel metrics enabled for: ", channel_id));
+  IO.println(Str.concat("✓ Channel metrics enabled for: ", channel_id));
 
-    Ok(metrics)
-  }
+  Ok(metrics)
+}
 
 /// チャネルメトリクスのスナップショットを取得して診断
 /// 効果: {io.async, audit}
 fn check_channel_health(
-  handle: Async.ChannelMetricsHandle,
+  metrics_handle: Async.ChannelMetricsHandle,
   channel_id: Str,
   high_watermark: Int
 ) -> Result<(), Async.AsyncError>  // effect {io.async, audit}
-  = do {
-    let sample = Async.snapshot_channel_metrics(handle)?;
+{
+  let sample = Async.snapshot_channel_metrics(metrics_handle)?;
 
-    IO.println(Str.concat("Channel ", Str.concat(channel_id, " metrics:")));
-    IO.println(Str.concat("  Queue depth: ", Str.from_int(sample.queue_depth)));
-    IO.println(Str.concat("  Dropped messages: ", Str.from_int(sample.dropped_messages)));
-    IO.println(Str.concat("  Throughput: ", Str.from_float(sample.throughput_per_sec)));
+  IO.println(Str.concat("Channel ", Str.concat(channel_id, " metrics:")));
+  IO.println(Str.concat("  Queue depth: ", Str.from_int(sample.queue_depth)));
+  IO.println(Str.concat("  Dropped messages: ", Str.from_int(sample.dropped_messages)));
+  IO.println(Str.concat("  Throughput: ", Str.from_float(sample.throughput_per_sec)));
 
-    // 高水位チェック
-    if sample.queue_depth > high_watermark {
-      let diagnostic = Diag.diagnostic("Channel queue depth exceeds high watermark")
-        |> Diag.with_severity(Diag.Severity.Warning)
-        |> Diag.with_domain(Diag.DiagnosticDomain.Async)
-        |> Diag.with_code("async.channel.backpressure")
-        |> Diag.attach_audit(Diag.AuditEnvelope {
-          audit_id: Some(Diag.new_uuid()),
-          change_set: None,
-          capability: None,
-          metadata: Map.from_list([
+  // 高水位チェック
+  if sample.queue_depth > high_watermark then {
+    let diagnostic = Diag.finish(
+      Diag.attach_audit(
+        Diag.with_code(
+          Diag.with_domain(
+            Diag.with_severity(
+              Diag.diagnostic("Channel queue depth exceeds high watermark"),
+              Diag.Severity.Warning
+            ),
+            Diag.DiagnosticDomain.Async
+          ),
+          "async.channel.backpressure"
+        ),
+        AuditEnvelope({
+          audit_id = Some(Diag.new_uuid()),
+          change_set = None,
+          capability = None,
+          metadata = Map.from_list([
             ("channel_id", Json.String(channel_id)),
             ("queue_depth", Json.Number(sample.queue_depth)),
             ("high_watermark", Json.Number(high_watermark)),
           ]),
         })
-        |> Diag.finish();
+      )
+    );
 
-      Diag.emit(diagnostic, Diag.console_audit_sink)?;
-    }
-
-    Ok(())
+    Diag.emit(diagnostic, Diag.console_audit_sink)?;
+    ()
+  } else {
+    ()
   }
+
+  Ok(())
+}
 
 /// ============================================================================
 /// 6. 設定互換性の動的変更と監査
@@ -357,39 +410,48 @@ fn update_compatibility_mode(
   old_compat: Config.ConfigCompatibility,
   new_compat: Config.ConfigCompatibility
 ) -> Result<(), Diag.AuditError>  // effect {config, audit}
-  = do {
-    // 変更差分を記録
-    let change_set = Config.diff_compatibility(old_compat, new_compat);
+{
+  // 変更差分を記録
+  let change_set = Config.diff_compatibility(old_compat, new_compat);
 
-    let envelope = Diag.AuditEnvelope {
-      audit_id: Some(Diag.new_uuid()),
-      change_set: Some(Json.Object(change_set)),
-      capability: None,
-      metadata: Map.from_list([
-        ("config.source", Json.String("Runtime")),
-        ("config.format", Json.String(old_compat.format)),
-        ("config.profile", Json.String(old_compat.profile)),
-        ("config.compatibility", Json.String(new_compat.profile)),
-        ("timestamp", Json.Number(current_timestamp())),
-      ]),
-    };
+  let envelope = AuditEnvelope({
+    audit_id = Some(Diag.new_uuid()),
+    change_set = Some(Json.Object(change_set)),
+    capability = None,
+    metadata = Map.from_list([
+      ("config.source", Json.String("Runtime")),
+      ("config.format", Json.String(old_compat.format)),
+      ("config.profile", Json.String(old_compat.profile)),
+      ("config.compatibility", Json.String(new_compat.profile)),
+      ("timestamp", Json.Number(current_timestamp())),
+    ]),
+  });
 
-    let diagnostic = Diag.diagnostic("Configuration compatibility mode changed")
-      |> Diag.with_severity(Diag.Severity.Warning)
-      |> Diag.with_domain(Diag.DiagnosticDomain.Config)
-      |> Diag.with_code("config.compat.changed")
-      |> Diag.attach_audit(envelope)
-      |> Diag.finish();
+  let diagnostic = Diag.finish(
+    Diag.attach_audit(
+      Diag.with_code(
+        Diag.with_domain(
+          Diag.with_severity(
+            Diag.diagnostic("Configuration compatibility mode changed"),
+            Diag.Severity.Warning
+          ),
+          Diag.DiagnosticDomain.Config
+        ),
+        "config.compat.changed"
+      ),
+      envelope
+    )
+  );
 
-    Diag.emit(diagnostic, Diag.console_audit_sink)?;
+  Diag.emit(diagnostic, Diag.console_audit_sink)?;
 
-    IO.println(Str.concat(
-      "Configuration compatibility updated: ",
-      Str.concat(old_compat.profile, Str.concat(" → ", new_compat.profile))
-    ));
+  IO.println(Str.concat(
+    "Configuration compatibility updated: ",
+    Str.concat(old_compat.profile, Str.concat(" → ", new_compat.profile))
+  ));
 
-    Ok(())
-  }
+  Ok(())
+}
 
 /// ============================================================================
 /// 7. パイプライン実行: 正常系
@@ -401,39 +463,39 @@ fn run_pipeline_normal(
   inputs: List<PipelineInput>,
   pipeline_id: Str
 ) -> Result<List<PipelineOutput>, Str>  // effect {io.async, audit, runtime}
-  = do {
-    emit_pipeline_started(pipeline_id, "normal_flow")?;
+{
+  emit_pipeline_started(pipeline_id, "normal_flow")?;
 
-    // Capability 検証
-    verify_pipeline_capabilities([
-      ("io.async", Runtime.StageRequirement.AtLeast(Runtime.StageId.Stable)),
-      ("audit", Runtime.StageRequirement.AtLeast(Runtime.StageId.Stable)),
-    ])?;
+  // Capability 検証
+  verify_pipeline_capabilities([
+    ("io.async", Runtime.StageRequirement.AtLeast(Runtime.StageId.Stable)),
+    ("audit", Runtime.StageRequirement.AtLeast(Runtime.StageId.Stable)),
+  ])?;
 
-    // メトリクス設定とリソース制限
-    let (metrics_scope, limits) = setup_resource_limits_and_metrics(pipeline_id)?;
+  // メトリクス設定とリソース制限
+  let (metrics_scope, _limits) = setup_resource_limits_and_metrics(pipeline_id)?;
 
-    // チャネル作成
-    let (sender, receiver) = Async.create_channel(100, Async.Codec.json())?;
-    let channel_metrics = monitor_channel_metrics(receiver, "input_channel", metrics_scope)?;
+  // チャネル作成
+  let (_sender, receiver) = Async.create_channel(100, Async.Codec.json())?;
+  let channel_metrics = monitor_channel_metrics(receiver, "input_channel", metrics_scope)?;
 
-    // データ処理
-    let outputs = List.map(inputs, |input| {
-      PipelineOutput {
-        id: input.id,
-        result: Str.concat("Processed: ", input.data),
-        processed_at: current_timestamp(),
-      }
-    });
+  // データ処理
+  let outputs = List.map(inputs, |input| {
+    PipelineOutput({
+      id = input.id,
+      result = Str.concat("Processed: ", input.data),
+      processed_at = current_timestamp(),
+    })
+  });
 
-    // チャネルヘルスチェック
-    check_channel_health(channel_metrics, "input_channel", 80)?;
+  // チャネルヘルスチェック
+  check_channel_health(channel_metrics, "input_channel", 80)?;
 
-    // 完了イベント発行
-    emit_pipeline_completed(pipeline_id, List.length(outputs))?;
+  // 完了イベント発行
+  emit_pipeline_completed(pipeline_id, List.length(outputs))?;
 
-    Ok(outputs)
-  }
+  Ok(outputs)
+}
 
 /// ============================================================================
 /// 8. パイプライン実行: 異常系（タイムアウト）
@@ -442,61 +504,72 @@ fn run_pipeline_normal(
 /// パイプラインを実行（タイムアウト異常系）
 /// 効果: {io.async, audit, runtime}
 fn run_pipeline_timeout(
-  inputs: List<PipelineInput>,
+  _inputs: List<PipelineInput>,
   pipeline_id: Str,
   timeout_ms: Int
 ) -> Result<List<PipelineOutput>, Str>  // effect {io.async, audit, runtime}
-  = do {
-    emit_pipeline_started(pipeline_id, "timeout_test")?;
+{
+  emit_pipeline_started(pipeline_id, "timeout_test")?;
 
-    // タイムアウト付き実行をシミュレート
-    let future = Async.timeout(
-      Async.sleep_async(Duration.from_millis(timeout_ms + 100)),
-      Duration.from_millis(timeout_ms)
+  // タイムアウト付き実行をシミュレート
+  let future = Async.timeout(
+    Async.sleep_async(Duration.from_millis(timeout_ms + 100)),
+    Duration.from_millis(timeout_ms)
+  );
+
+  match Async.block_on(future) with
+  | Ok(_) -> {
+    emit_pipeline_completed(pipeline_id, 0)?;
+    Ok([])
+  }
+  | Err(Async.AsyncError.Timeout(timeout_info)) -> {
+    // TimeoutInfo メタデータを含めた診断生成
+    let diagnostic = Diag.finish(
+      Diag.attach_audit(
+        Diag.with_code(
+          Diag.with_domain(
+            Diag.with_severity(
+              Diag.diagnostic(
+                Str.concat(
+                  "Pipeline timed out after ",
+                  Str.concat(Str.from_int(timeout_ms), "ms")
+                )
+              ),
+              Diag.Severity.Error
+            ),
+            Diag.DiagnosticDomain.Async
+          ),
+          "async.timeout"
+        ),
+        AuditEnvelope({
+          audit_id = Some(Diag.new_uuid()),
+          change_set = None,
+          capability = None,
+          metadata = Map.from_list([
+            ("pipeline.id", Json.String(pipeline_id)),
+            ("timeout.duration_ms", Json.Number(timeout_ms)),
+            ("timeout.elapsed_ms", Json.Number(timeout_info.elapsed_ms)),
+            ("timeout.context", Json.String(timeout_info.context)),
+            ("timestamp", Json.Number(current_timestamp())),
+          ]),
+        })
+      )
     );
 
-    match Async.block_on(future) {
-      | Ok(_) -> {
-        emit_pipeline_completed(pipeline_id, 0)?;
-        Ok([])
-      }
-      | Err(Async.AsyncError.Timeout(timeout_info)) -> {
-        // TimeoutInfo メタデータを含めた診断生成
-        let diagnostic = Diag.diagnostic(
-            Str.concat("Pipeline timed out after ", Str.concat(Str.from_int(timeout_ms), "ms"))
-          )
-          |> Diag.with_severity(Diag.Severity.Error)
-          |> Diag.with_domain(Diag.DiagnosticDomain.Async)
-          |> Diag.with_code("async.timeout")
-          |> Diag.attach_audit(Diag.AuditEnvelope {
-            audit_id: Some(Diag.new_uuid()),
-            change_set: None,
-            capability: None,
-            metadata: Map.from_list([
-              ("pipeline.id", Json.String(pipeline_id)),
-              ("timeout.duration_ms", Json.Number(timeout_ms)),
-              ("timeout.elapsed_ms", Json.Number(timeout_info.elapsed_ms)),
-              ("timeout.context", Json.String(timeout_info.context)),
-              ("timestamp", Json.Number(current_timestamp())),
-            ]),
-          })
-          |> Diag.finish();
+    Diag.emit(diagnostic, Diag.console_audit_sink)?;
 
-        Diag.emit(diagnostic, Diag.console_audit_sink)?;
-
-        emit_pipeline_failed(
-          pipeline_id,
-          "async.timeout",
-          Str.concat("Pipeline timed out after ", Str.concat(Str.from_int(timeout_ms), "ms"))
-        )?;
-        Err("Timeout")
-      }
-      | Err(err) -> {
-        emit_pipeline_failed(pipeline_id, "async.error", err.message)?;
-        Err(err.message)
-      }
-    }
+    emit_pipeline_failed(
+      pipeline_id,
+      "async.timeout",
+      Str.concat("Pipeline timed out after ", Str.concat(Str.from_int(timeout_ms), "ms"))
+    )?;
+    Err("Timeout")
   }
+  | Err(err) -> {
+    emit_pipeline_failed(pipeline_id, "async.error", err.message)?;
+    Err(err.message)
+  }
+}
 
 /// ============================================================================
 /// 9. パイプライン実行: 異常系（Capability不足）
@@ -507,24 +580,23 @@ fn run_pipeline_timeout(
 fn run_pipeline_capability_missing(
   pipeline_id: Str
 ) -> Result<(), Str>  // effect {audit, runtime}
-  = do {
-    emit_pipeline_started(pipeline_id, "capability_missing_test")?;
+{
+  emit_pipeline_started(pipeline_id, "capability_missing_test")?;
 
-    // 存在しない Capability を要求
-    match verify_pipeline_capabilities([
-      ("io.async", Runtime.StageRequirement.AtLeast(Runtime.StageId.Stable)),
-      ("nonexistent.capability", Runtime.StageRequirement.Exact(Runtime.StageId.Stable)),
-    ]) {
-      | Ok(_) -> {
-        emit_pipeline_completed(pipeline_id, 0)?;
-        Ok(())
-      }
-      | Err(err) -> {
-        emit_pipeline_failed(pipeline_id, "capability.missing", err)?;
-        Err(err)
-      }
-    }
+  // 存在しない Capability を要求
+  match verify_pipeline_capabilities([
+    ("io.async", Runtime.StageRequirement.AtLeast(Runtime.StageId.Stable)),
+    ("nonexistent.capability", Runtime.StageRequirement.Exact(Runtime.StageId.Stable)),
+  ]) with
+  | Ok(_) -> {
+    emit_pipeline_completed(pipeline_id, 0)?;
+    Ok(())
   }
+  | Err(err) -> {
+    emit_pipeline_failed(pipeline_id, "capability.missing", err)?;
+    Err(err)
+  }
+}
 
 /// ============================================================================
 /// 10. パイプライン実行: リソース制限超過
@@ -533,45 +605,54 @@ fn run_pipeline_capability_missing(
 /// パイプラインを実行（リソース制限超過異常系）
 /// 効果: {io.async, audit, runtime}
 fn run_pipeline_resource_exceeded(
-  inputs: List<PipelineInput>,
+  _inputs: List<PipelineInput>,
   pipeline_id: Str
 ) -> Result<(), Str>  // effect {io.async, audit, runtime}
-  = do {
-    emit_pipeline_started(pipeline_id, "resource_exceeded_test")?;
+{
+  emit_pipeline_started(pipeline_id, "resource_exceeded_test")?;
 
-    // 意図的に小さいリソース制限を設定
-    let limits = Async.ResourceLimitSet.new(
-      memory: Some(Resource.MemoryLimit.from_kb(1)),  // 1KB - 非常に小さい
-      cpu: Some(Resource.CpuQuota.from_ratio(0.01))   // 1% - 非常に小さい
-    );
+  // 意図的に小さいリソース制限を設定
+  let _limits = Async.ResourceLimitSet.new(
+    Some(Resource.MemoryLimit.from_kb(1)),  // 1KB - 非常に小さい
+    Some(Resource.CpuQuota.from_ratio(0.01))   // 1% - 非常に小さい
+  );
 
-    // リソース制限超過を検出
-    let diagnostic = Diag.diagnostic("Resource limit exceeded")
-      |> Diag.with_severity(Diag.Severity.Error)
-      |> Diag.with_domain(Diag.DiagnosticDomain.Runtime)
-      |> Diag.with_code("runtime.resource.exceeded")
-      |> Diag.attach_audit(Diag.AuditEnvelope {
-        audit_id: Some(Diag.new_uuid()),
-        change_set: None,
-        capability: None,
-        metadata: Map.from_list([
+  // リソース制限超過を検出
+  let diagnostic = Diag.finish(
+    Diag.attach_audit(
+      Diag.with_code(
+        Diag.with_domain(
+          Diag.with_severity(
+            Diag.diagnostic("Resource limit exceeded"),
+            Diag.Severity.Error
+          ),
+          Diag.DiagnosticDomain.Runtime
+        ),
+        "runtime.resource.exceeded"
+      ),
+      AuditEnvelope({
+        audit_id = Some(Diag.new_uuid()),
+        change_set = None,
+        capability = None,
+        metadata = Map.from_list([
           ("pipeline.id", Json.String(pipeline_id)),
           ("resource.memory.limit", Json.String("1KB")),
           ("resource.cpu.limit", Json.String("1%")),
         ]),
       })
-      |> Diag.finish();
+    )
+  );
 
-    Diag.emit(diagnostic, Diag.console_audit_sink)?;
+  Diag.emit(diagnostic, Diag.console_audit_sink)?;
 
-    emit_pipeline_failed(
-      pipeline_id,
-      "runtime.resource.exceeded",
-      "Memory or CPU limit exceeded"
-    )?;
+  emit_pipeline_failed(
+    pipeline_id,
+    "runtime.resource.exceeded",
+    "Memory or CPU limit exceeded"
+  )?;
 
-    Err("Resource limit exceeded")
-  }
+  Err("Resource limit exceeded")
+}
 
 /// ============================================================================
 /// 11. メイン実行フロー
@@ -580,69 +661,63 @@ fn run_pipeline_resource_exceeded(
 /// 全パターンを実行してテスト
 /// 効果: {io.async, audit, runtime, config}
 pub fn main() -> Result<(), Str>  // effect {io.async, audit, runtime, config}
-  = do {
-    IO.println("=== 監査対応パイプライン統合テスト ===");
-    IO.println("");
+{
+  IO.println("=== 監査対応パイプライン統合テスト ===");
+  IO.println("");
 
-    // テストデータ
-    let inputs = List.range(0, 10)
-      |> List.map(|i| PipelineInput {
-        id: i,
-        data: Str.concat("data_", Str.from_int(i)),
-        priority: i % 3,
-      });
+  // テストデータ
+  let inputs = List.map(List.range(0, 10), |i| PipelineInput({
+    id = i,
+    data = Str.concat("data_", Str.from_int(i)),
+    priority = i % 3,
+  }));
 
-    // 1. 正常系
-    IO.println("--- Test 1: 正常系パイプライン実行 ---");
-    match run_pipeline_normal(inputs, "pipeline_normal") {
-      | Ok(outputs) -> {
-        IO.println(Str.concat("✓ 正常完了: ", Str.concat(Str.from_int(List.length(outputs)), "件処理")));
-      }
-      | Err(err) -> IO.println(Str.concat("✗ エラー: ", err))
-    }
-    IO.println("");
-
-    // 2. タイムアウト異常系
-    IO.println("--- Test 2: タイムアウト異常系 ---");
-    match run_pipeline_timeout(inputs, "pipeline_timeout", 100) {
-      | Ok(_) -> IO.println("✗ 想定外の成功")
-      | Err(err) -> IO.println(Str.concat("✓ 期待通りエラー: ", err))
-    }
-    IO.println("");
-
-    // 3. Capability不足異常系
-    IO.println("--- Test 3: Capability不足異常系 ---");
-    match run_pipeline_capability_missing("pipeline_capability_missing") {
-      | Ok(_) -> IO.println("✗ 想定外の成功")
-      | Err(err) -> IO.println(Str.concat("✓ 期待通りエラー: ", err))
-    }
-    IO.println("");
-
-    // 4. リソース制限超過異常系
-    IO.println("--- Test 4: リソース制限超過異常系 ---");
-    match run_pipeline_resource_exceeded(inputs, "pipeline_resource_exceeded") {
-      | Ok(_) -> IO.println("✗ 想定外の成功")
-      | Err(err) -> IO.println(Str.concat("✓ 期待通りエラー: ", err))
-    }
-    IO.println("");
-
-    // 5. 設定互換性変更テスト
-    IO.println("--- Test 5: 設定互換性動的変更 ---");
-    let old_compat = Config.ConfigCompatibility.default();
-    let new_compat = Config.ConfigCompatibility {
-      format: "json5",
-      profile: "strict",
-      extensions: Map.from_list([("allow_comments", Json.Bool(true))]),
-    };
-    match update_compatibility_mode(old_compat, new_compat) {
-      | Ok(_) -> IO.println("✓ 設定変更完了")
-      | Err(err) -> IO.println(Str.concat("✗ エラー: ", Str.from_audit_error(err)))
-    }
-    IO.println("");
-
-    IO.println("=== 全テスト完了 ===");
-    Ok(())
+  // 1. 正常系
+  IO.println("--- Test 1: 正常系パイプライン実行 ---");
+  match run_pipeline_normal(inputs, "pipeline_normal") with
+  | Ok(outputs) -> {
+    IO.println(Str.concat("✓ 正常完了: ", Str.concat(Str.from_int(List.length(outputs)), "件処理")));
   }
+  | Err(err) -> IO.println(Str.concat("✗ エラー: ", err))
+  IO.println("");
+
+  // 2. タイムアウト異常系
+  IO.println("--- Test 2: タイムアウト異常系 ---");
+  match run_pipeline_timeout(inputs, "pipeline_timeout", 100) with
+  | Ok(_) -> IO.println("✗ 想定外の成功")
+  | Err(err) -> IO.println(Str.concat("✓ 期待通りエラー: ", err))
+  IO.println("");
+
+  // 3. Capability不足異常系
+  IO.println("--- Test 3: Capability不足異常系 ---");
+  match run_pipeline_capability_missing("pipeline_capability_missing") with
+  | Ok(_) -> IO.println("✗ 想定外の成功")
+  | Err(err) -> IO.println(Str.concat("✓ 期待通りエラー: ", err))
+  IO.println("");
+
+  // 4. リソース制限超過異常系
+  IO.println("--- Test 4: リソース制限超過異常系 ---");
+  match run_pipeline_resource_exceeded(inputs, "pipeline_resource_exceeded") with
+  | Ok(_) -> IO.println("✗ 想定外の成功")
+  | Err(err) -> IO.println(Str.concat("✓ 期待通りエラー: ", err))
+  IO.println("");
+
+  // 5. 設定互換性変更テスト
+  IO.println("--- Test 5: 設定互換性動的変更 ---");
+  let old_compat = Config.ConfigCompatibility.default();
+  let new_compat = Config.ConfigCompatibility({
+    format = "json5",
+    profile = "strict",
+    extensions = Map.from_list([("allow_comments", Json.Bool(true))]),
+  });
+  match update_compatibility_mode(old_compat, new_compat) with
+  | Ok(_) -> IO.println("✓ 設定変更完了")
+  | Err(err) -> IO.println(Str.concat("✗ エラー: ", Str.from_audit_error(err)))
+  IO.println("");
+
+  IO.println("=== 全テスト完了 ===");
+  Ok(())
+}
 
 /// ============================================================================
 /// ユーティリティ関数
@@ -652,8 +727,7 @@ fn current_timestamp() -> Int  // @pure
   = 1704067200  // 2024-01-01 00:00:00 UTC (仮想値)
 
 fn stage_to_string(stage: Runtime.StageId) -> Str  // @pure
-  = match stage {
+  = match stage with
     | Runtime.StageId.Experimental -> "Experimental"
     | Runtime.StageId.Beta -> "Beta"
     | Runtime.StageId.Stable -> "Stable"
-  }
