@@ -586,6 +586,7 @@ let xs = [1, 2, 3]
 
 * アクセス：`t.0`, `p.x`, `xs[2]`
 * 末尾カンマ許可：`(a, b,)`, `{x:1, y:2,}`
+* レコードフィールドは `key: expr` と `key = expr` を等価に扱い、`{ x, y = rhs }` のように値を省略した場合は `x: x` へデシュガされる（punning）。プロパティ順序は不問。
 
 ### E.2 代数的データ型（ADT）
 
@@ -805,7 +806,8 @@ Primary        ::= Literal
 
 TupleLiteral   ::= "(" Expr "," Expr { "," Expr } [","] ")"
 RecordLiteral  ::= "{" FieldInit { "," FieldInit } [","] "}"
-FieldInit      ::= Ident ":" Expr
+FieldInit      ::= Ident [ (":" | "=") Expr ]
+                // `key = expr` は `key: expr` と同義、`key` 単独は `key: key` にデシュガ
 ArrayLiteral   ::= "[" Expr { "," Expr } [","] "]"
 
 IfExpr         ::= "if" Expr "then" Expr ["else" Expr]
