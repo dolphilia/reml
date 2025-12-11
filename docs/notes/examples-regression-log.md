@@ -29,6 +29,13 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - ログ: `reports/spec-audit/ch4/logs/core_config-20251211T093350Z.md`
 - 対応: Effect 宣言に `operation` を追加し、`ensure` の遅延診断クロージャを `| | diagnostic(...)` 形式へ修正して BNF (`OperationDecl+`) と整合。Parser の `parser.syntax.expected_tokens` を解消し、フェーズF チェックリストを `[x]` 化。
 
+## 2025-12-11 Core.Config Telemetry DSL フェーズF
+- 対象: `examples/core_config/dsl/telemetry_bridge.reml`（EX-CORE-CONFIG-DSL-002 暫定）
+- CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_config/dsl/telemetry_bridge.reml`
+- 期待/実際: 期待=diagnostics `[]`、実際=diagnostics `[]` / run_id=`7f1bb8a3-f84a-43dc-99a7-97ca218ecf90`
+- ログ: `reports/spec-audit/ch4/logs/core_config-20251211T093648Z.md`
+- 備考: docs/guides 向け Telemetry DSL プレースホルダが Parser/Typeck を通過することを確認し、フェーズF チェックリストを `[x]` 化。
+
 ## 2025-12-11 Core.IO canonical フェーズF 回帰修正
 - 対象: `examples/practical/core_io/file_copy/canonical.reml`（`CH3-IO-101` / `CH3-IO-201`）
 - CLI: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_io/file_copy/canonical.reml`
