@@ -321,6 +321,19 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml` / diagnostics=[] / run_id=ae1f942b-b243-4653-936a-1cd1bb803300 / log=`reports/spec-audit/ch4/logs/practical-20251211T085850Z.md` / audit_log=`reports/spec-audit/ch4/logs/practical-20251211T085850Z.audit.jsonl` は pipeline_started/completed に `scenario.id` と `effect.stage.required/actual` を付与。`expected/practical/core_diagnostics/audit_envelope/stage_tag_capture.audit.jsonl` の schema 整備は継続検討）
 - [ ] `examples/practical/core_env/envcfg/env_merge_by_profile.reml`（期待: 成功）
 
+#### 監査ログ検証メモ（PhaseF 補足）
+
+- 監査出力を確認したい場合は `--emit-audit` を付けて CLI を再実行する。例:  
+  `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --emit-audit --output json examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml 2> reports/spec-audit/ch4/logs/practical-<ts>.audit.jsonl`
+- `AuditEnvelope.metadata` に最低限含まれるべきキー  
+  - `scenario.id`（`pipeline.dsl_id` を反映）  
+  - `effect.capability` / `effect.stage.required` / `effect.stage.actual`（StageAuditPayload から転写。primary_capability が無い場合でも `core.diagnostics` で補完）  
+  - `pipeline.*` / `cli.*` / `audit.*`（既定のパイプライン識別子一式）
+- expected ファイルとの比較手順  
+  1. `expected/practical/core_diagnostics/audit_envelope/stage_tag_capture.audit.jsonl` を開き、上記キーが揃っているか確認する。  
+  2. `reports/spec-audit/ch4/logs/practical-<ts>.audit.jsonl` の `pipeline_started` / `pipeline_completed` を diff し、`scenario.id` と `effect.stage.*` が一致していれば pass。  
+  3. キー欠落や Stage 値の不一致を見つけた場合は、`StageAuditPayload` / `pipeline::base_metadata` の補完ロジックを優先的に調査し、マトリクス `resolution_notes` に実行コマンドとログパスを記録する。
+
 **examples/core_path / core_config / cli / core_io / core-collections / string_literal**
 - [ ] `examples/core_path/security_check.reml`（期待: 成功）
 - [ ] `examples/core_config/cli/dsl/sample.reml`（期待: 成功）
