@@ -199,7 +199,7 @@ fn emit_capability_mismatch(
         Diag.with_domain(
           Diag.with_severity(
             Diag.diagnostic(
-              Str.concat("Capability stage mismatch: ", capability_id)
+              "Capability stage mismatch: " |> Str.concat(capability_id)
             ),
             Diag.Severity.Error
           ),
@@ -229,7 +229,7 @@ fn verify_pipeline_capabilities(
 
     match Runtime.verify_capability_stage(cap_id, stage_req) with
     | Ok(_) -> {
-      IO.println(Str.concat("✓ Capability verified: ", cap_id));
+      IO.println("✓ Capability verified: " |> Str.concat(cap_id));
       Ok(())
     }
     | Err(err) -> {
@@ -240,7 +240,7 @@ fn verify_pipeline_capabilities(
 
       // メタデータを診断に含める
       let diagnostic_base = Diag.diagnostic(
-        Str.concat("Capability stage mismatch: ", err.capability_id)
+        "Capability stage mismatch: " |> Str.concat(err.capability_id)
       );
       let diagnostic_with_meta = Diag.with_severity(
         diagnostic_base,
@@ -269,7 +269,7 @@ fn verify_pipeline_capabilities(
       let diagnostic = Diag.finish(Diag.attach_audit(diagnostic_coded, audit_envelope));
 
       Diag.emit(diagnostic, Diag.console_audit_sink)?;
-      Err(Str.concat("Capability verification failed: ", cap_id))
+      Err("Capability verification failed: " |> Str.concat(cap_id))
     }
   })?;
 
@@ -299,9 +299,9 @@ fn setup_resource_limits_and_metrics(
   Runtime.link_resource_limits(metrics_scope, limits)?;
 
   IO.println("Resource limits configured:");
-  IO.println(Str.concat("  Memory: 256MB"));
-  IO.println(Str.concat("  CPU: 75%"));
-  IO.println(Str.concat("  Metrics scope: ", pipeline_id));
+  IO.println("  Memory: 256MB");
+  IO.println("  CPU: 75%");
+  IO.println("  Metrics scope: " |> Str.concat(pipeline_id));
 
   Ok((metrics_scope, limits))
 }
@@ -317,10 +317,11 @@ fn record_backpressure_event(
   // ExecutionMetricsScope 経由でバックプレッシャーを記録
   Runtime.observe_backpressure(scope, channel_id, queue_depth);
 
-  IO.println(Str.concat(
-    "⚠ Backpressure detected on channel ",
-    Str.concat(channel_id, Str.concat(": queue depth = ", Str.from_int(queue_depth)))
-  ));
+  IO.println("⚠ Backpressure detected on channel "
+    |> Str.concat(channel_id)
+    |> Str.concat(": queue depth = ")
+    |> Str.concat(Str.from_int(queue_depth))
+  );
 }
 
 /// ============================================================================
@@ -344,7 +345,7 @@ fn monitor_channel_metrics(
 
   let metrics = Async.channel_metrics_with_scope(receiver, scope, channel_id, opts)?;
 
-  IO.println(Str.concat("✓ Channel metrics enabled for: ", channel_id));
+  IO.println("✓ Channel metrics enabled for: " |> Str.concat(channel_id));
 
   Ok(metrics)
 }
@@ -359,10 +360,10 @@ fn check_channel_health(
 {
   let sample = Async.snapshot_channel_metrics(metrics_handle)?;
 
-  IO.println(Str.concat("Channel ", Str.concat(channel_id, " metrics:")));
-  IO.println(Str.concat("  Queue depth: ", Str.from_int(sample.queue_depth)));
-  IO.println(Str.concat("  Dropped messages: ", Str.from_int(sample.dropped_messages)));
-  IO.println(Str.concat("  Throughput: ", Str.from_float(sample.throughput_per_sec)));
+  IO.println("Channel " |> Str.concat(channel_id) |> Str.concat(" metrics:"));
+  IO.println("  Queue depth: " |> Str.concat(Str.from_int(sample.queue_depth)));
+  IO.println("  Dropped messages: " |> Str.concat(Str.from_int(sample.dropped_messages)));
+  IO.println("  Throughput: " |> Str.concat(Str.from_float(sample.throughput_per_sec)));
 
   // 高水位チェック
   if sample.queue_depth > high_watermark then {
@@ -445,10 +446,13 @@ fn update_compatibility_mode(
 
   Diag.emit(diagnostic, Diag.console_audit_sink)?;
 
-  IO.println(Str.concat(
-    "Configuration compatibility updated: ",
-    Str.concat(old_compat.profile, Str.concat(" → ", new_compat.profile))
-  ));
+  IO.println("Configuration compatibility updated: "
+    |> Str.concat(
+      old_compat.profile
+        |> Str.concat(" → ")
+        |> Str.concat(new_compat.profile)
+    )
+  );
 
   Ok(())
 }
@@ -483,7 +487,8 @@ fn run_pipeline_normal(
   let outputs = List.map(inputs, |input| {
     PipelineOutput({
       id = input.id,
-      result = Str.concat("Processed: ", input.data),
+      result = "Processed: "
+        |> Str.concat(input.data),
       processed_at = current_timestamp(),
     })
   });
@@ -526,20 +531,17 @@ fn run_pipeline_timeout(
     // TimeoutInfo メタデータを含めた診断生成
     let diagnostic = Diag.finish(
       Diag.attach_audit(
-        Diag.with_code(
-          Diag.with_domain(
-            Diag.with_severity(
-              Diag.diagnostic(
-                Str.concat(
-                  "Pipeline timed out after ",
-                  Str.concat(Str.from_int(timeout_ms), "ms")
-                )
-              ),
-              Diag.Severity.Error
+      Diag.with_code(
+        Diag.with_domain(
+          Diag.with_severity(
+            Diag.diagnostic("Pipeline timed out after "
+              |> Str.concat(timeout_ms |> Str.from_int |> Str.concat("ms"))
             ),
-            Diag.DiagnosticDomain.Async
+            Diag.Severity.Error
           ),
-          "async.timeout"
+          Diag.DiagnosticDomain.Async
+        ),
+        "async.timeout"
         ),
         AuditEnvelope({
           audit_id = Some(Diag.new_uuid()),
@@ -558,11 +560,13 @@ fn run_pipeline_timeout(
 
     Diag.emit(diagnostic, Diag.console_audit_sink)?;
 
-    emit_pipeline_failed(
-      pipeline_id,
-      "async.timeout",
-      Str.concat("Pipeline timed out after ", Str.concat(Str.from_int(timeout_ms), "ms"))
-    )?;
+  emit_pipeline_failed(
+    pipeline_id,
+    "async.timeout",
+    "Pipeline timed out after "
+      |> Str.concat(Str.from_int(timeout_ms))
+      |> Str.concat("ms")
+  )?;
     Err("Timeout")
   }
   | Err(err) -> {
@@ -668,7 +672,7 @@ pub fn main() -> Result<(), Str>  // effect {io.async, audit, runtime, config}
   // テストデータ
   let inputs = List.map(List.range(0, 10), |i| PipelineInput({
     id = i,
-    data = Str.concat("data_", Str.from_int(i)),
+    data = "data_" |> Str.concat(Str.from_int(i)),
     priority = i % 3,
   }));
 
@@ -676,30 +680,33 @@ pub fn main() -> Result<(), Str>  // effect {io.async, audit, runtime, config}
   IO.println("--- Test 1: 正常系パイプライン実行 ---");
   match run_pipeline_normal(inputs, "pipeline_normal") with
   | Ok(outputs) -> {
-    IO.println(Str.concat("✓ 正常完了: ", Str.concat(Str.from_int(List.length(outputs)), "件処理")));
+    IO.println("✓ 正常完了: "
+      |> Str.concat(Str.from_int(List.length(outputs)))
+      |> Str.concat("件処理")
+    );
   }
-  | Err(err) -> IO.println(Str.concat("✗ エラー: ", err))
+  | Err(err) -> IO.println("✗ エラー: " |> Str.concat(err))
   IO.println("");
 
   // 2. タイムアウト異常系
   IO.println("--- Test 2: タイムアウト異常系 ---");
   match run_pipeline_timeout(inputs, "pipeline_timeout", 100) with
   | Ok(_) -> IO.println("✗ 想定外の成功")
-  | Err(err) -> IO.println(Str.concat("✓ 期待通りエラー: ", err))
+  | Err(err) -> IO.println("✓ 期待通りエラー: " |> Str.concat(err))
   IO.println("");
 
   // 3. Capability不足異常系
   IO.println("--- Test 3: Capability不足異常系 ---");
   match run_pipeline_capability_missing("pipeline_capability_missing") with
   | Ok(_) -> IO.println("✗ 想定外の成功")
-  | Err(err) -> IO.println(Str.concat("✓ 期待通りエラー: ", err))
+  | Err(err) -> IO.println("✓ 期待通りエラー: " |> Str.concat(err))
   IO.println("");
 
   // 4. リソース制限超過異常系
   IO.println("--- Test 4: リソース制限超過異常系 ---");
   match run_pipeline_resource_exceeded(inputs, "pipeline_resource_exceeded") with
   | Ok(_) -> IO.println("✗ 想定外の成功")
-  | Err(err) -> IO.println(Str.concat("✓ 期待通りエラー: ", err))
+  | Err(err) -> IO.println("✓ 期待通りエラー: " |> Str.concat(err))
   IO.println("");
 
   // 5. 設定互換性変更テスト
@@ -712,7 +719,7 @@ pub fn main() -> Result<(), Str>  // effect {io.async, audit, runtime, config}
   });
   match update_compatibility_mode(old_compat, new_compat) with
   | Ok(_) -> IO.println("✓ 設定変更完了")
-  | Err(err) -> IO.println(Str.concat("✗ エラー: ", Str.from_audit_error(err)))
+  | Err(err) -> IO.println("✗ エラー: " |> Str.concat(Str.from_audit_error(err)))
   IO.println("");
 
   IO.println("=== 全テスト完了 ===");
