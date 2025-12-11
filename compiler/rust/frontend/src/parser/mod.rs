@@ -1680,24 +1680,28 @@ fn module_parser<'src>(
                 )
             });
 
-        let record_literal_field = ident_for_expr
+        let record_literal_field = ident
             .clone()
-            .then_ignore(just(TokenKind::Assign))
-            .then(expr.clone());
+            .then(
+                just(TokenKind::Assign)
+                    .or(just(TokenKind::Colon))
+                    .ignore_then(expr.clone())
+                    .or_not(),
+            )
+            .map(|(key, value)| {
+                let value = value.unwrap_or_else(|| Expr::identifier(key.clone()));
+                RecordField { key, value }
+            });
 
         let record_literal = record_literal_field
             .separated_by(just(TokenKind::Comma))
             .allow_trailing()
             .delimited_by(just(TokenKind::LBrace), just(TokenKind::RBrace))
             .map_with_span(|fields, span: Range<usize>| {
-                let mapped_fields = fields
-                    .into_iter()
-                    .map(|(key, value)| RecordField { key, value })
-                    .collect::<Vec<_>>();
                 Expr::literal(
                     Literal {
                         value: LiteralKind::Record {
-                            fields: mapped_fields,
+                            fields,
                         },
                     },
                     range_to_span(span),
@@ -2438,7 +2442,11 @@ fn module_parser<'src>(
             ident.clone().map(Expr::identifier),
         );
         just(TokenKind::LBrace)
-            .ignore_then(stmt.repeated())
+            .ignore_then(
+                stmt.clone()
+                    .then_ignore(just(TokenKind::Semicolon).repeated())
+                    .repeated(),
+            )
             .then_ignore(just(TokenKind::RBrace))
             .map_with_span(|stmts, span: Range<usize>| Expr::block(stmts, range_to_span(span)))
     };

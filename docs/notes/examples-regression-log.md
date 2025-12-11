@@ -15,6 +15,13 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - 実行コマンド: `tooling/examples/run_examples.sh --suite practical --scenario core_io|core_path`
 - 備考: Phase4 シナリオマトリクス (`phase4-scenario-matrix.csv`) の ID `CH3-IO-101` / `CH3-PATH-202` とリンク
 
+## 2025-12-11 Core.IO canonical フェーズF 回帰修正
+- 対象: `examples/practical/core_io/file_copy/canonical.reml`（`CH3-IO-101` / `CH3-IO-201`）
+- CLI: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_io/file_copy/canonical.reml`
+- 期待/実際: 期待=成功、実際=diagnostics 0（run_id=`a1d9dcac-0505-4981-b5c8-5fe996ff28dd`）。`canonical.stdout` / `canonical.audit.jsonl` ゴールデンと整合。
+- 対応: Parser を修正し (1) ブロック内ステートメントのセミコロンを任意化、(2) レコードリテラルで `:` / `=` / フィールド省略（punning）を受理できるように変更。これにより `CopyReport({...})` の省略フィールド `bytes` が受理され practical 実行が再開。
+- リンク: `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` フェーズF チェックリストを `[x]` 化。`phase4-scenario-matrix.csv` の `CH3-IO-101/201` は `resolution=ok` 維持。
+
 ## 2025-12-11 Core.Runtime stage_mismatch_runtime_bridge フェーズF 再実行
 - 対象: `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`（`CH3-RUNTIME-601`）
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`
