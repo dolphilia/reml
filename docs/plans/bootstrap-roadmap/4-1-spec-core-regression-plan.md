@@ -386,7 +386,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 **examples/core-text / core_diagnostics**
 - [x] `examples/core-text/text_unicode.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- examples/core-text/text_unicode.reml` / diagnostics=[] / run_id=`a9eb0839-1c6c-44c4-b9fe-3d448200af09` / log=reports/spec-audit/ch4/logs/core-text-20251211T222317Z.md。DocComment 正規化と Emoji トークンを簡素化し、パイプラインをブロック式に統一）
 - [x] `examples/core_diagnostics/pipeline_branch.reml`（期待: `effects.contract.stage_mismatch` → CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json --emit-audit-log examples/core_diagnostics/pipeline_branch.reml` / diagnostics=`effects.contract.stage_mismatch` のみ / expected=`examples/core_diagnostics/pipeline_branch.expected.{diagnostic.json,audit.jsonl}` を更新し Stage mismatch ゴールデンを再取得）
-- [ ] `examples/core_diagnostics/pipeline_success.reml`（期待: 成功）
+- [x] `examples/core_diagnostics/pipeline_success.reml`（期待: 成功 → 2025-12-12 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json --emit-audit-log examples/core_diagnostics/pipeline_success.reml` / diagnostics=[] / run_id=`ee557b05-0d8b-4548-8a24-6708047792e7` / expected=`examples/core_diagnostics/pipeline_success.expected.{diagnostic.json,audit.jsonl}` を更新）
 - [ ] `examples/core_diagnostics/constraint_graph/simple_chain.reml`（期待: 成功）
 
 > リストに含まれない新規 `.reml` を追加した場合は、本計画と `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の両方へ同時追加し、週次レビューで差異が無いことを確認する。
