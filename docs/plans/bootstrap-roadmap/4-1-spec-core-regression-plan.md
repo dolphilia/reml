@@ -335,7 +335,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
   3. キー欠落や Stage 値の不一致を見つけた場合は、`StageAuditPayload` / `pipeline::base_metadata` の補完ロジックを優先的に調査し、マトリクス `resolution_notes` に実行コマンドとログパスを記録する。
 
 **examples/core_path / core_config / cli / core_io / core-collections / string_literal**
-- [ ] `examples/core_path/security_check.reml`（期待: 成功）
+- [x] `examples/core_path/security_check.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_path/security_check.reml` / run_id=`a55948c8-3a09-4a0e-8e3d-ab91f0f9eb51` / log=reports/spec-audit/ch4/logs/core_path-20251211T092454Z.md。`struct` トップレベルを `type ... = new {...}` へ是正し、`map_err(...)?` で symlink チェックの回収経路を統一）
 - [ ] `examples/core_config/cli/dsl/sample.reml`（期待: 成功）
 - [ ] `examples/core_config/dsl/telemetry_bridge.reml`（期待: 成功）
 - [ ] `examples/core_config/dsl/audit_bridge.reml`（期待: 成功）

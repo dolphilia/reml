@@ -15,6 +15,13 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - 実行コマンド: `tooling/examples/run_examples.sh --suite practical --scenario core_io|core_path`
 - 備考: Phase4 シナリオマトリクス (`phase4-scenario-matrix.csv`) の ID `CH3-IO-101` / `CH3-PATH-202` とリンク
 
+## 2025-12-11 Core.Path security_check（examples suite）
+- 対象: `examples/core_path/security_check.reml`（EX-CORE-PATH-001 暫定）
+- CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_path/security_check.reml`
+- 期待/実際: 期待=diagnostics `[]`、実際=diagnostics `[]` / run_id=`a55948c8-3a09-4a0e-8e3d-ab91f0f9eb51`
+- ログ: `reports/spec-audit/ch4/logs/core_path-20251211T092454Z.md`
+- 対応: Example Fix としてトップレベルを `struct` から `type ... = new { ... }` へ移行し、`is_safe_symlink` のエラー経路を `map_err(...)?` で統一。フェーズF チェックリストを `[x]` 化。
+
 ## 2025-12-11 Core.IO canonical フェーズF 回帰修正
 - 対象: `examples/practical/core_io/file_copy/canonical.reml`（`CH3-IO-101` / `CH3-IO-201`）
 - CLI: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_io/file_copy/canonical.reml`
