@@ -343,9 +343,9 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/cli/emit_suite.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/cli/emit_suite.reml` / diagnostics=[] / run_id=`c063a9f9-37d0-4db2-8ed2-7f2eafd2d536` / log=reports/spec-audit/ch4/logs/cli-20251211T094708Z.md。`use Core.Prelude` 追加と `flag == true` 明示で Bool 判定を通過）
 - [x] `examples/cli/trace_sample.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/cli/trace_sample.reml` / diagnostics=[] / run_id=`416b5f64-6a4f-4bd5-b1e7-83c57cc40f51` / log=reports/spec-audit/ch4/logs/cli-20251211T094708Z.md。関数本体をブロック式に修正し `let` 連鎖を通過）
 - [x] `examples/cli/add.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/cli/add.reml` / diagnostics=[] / run_id=`dbf889a6-4841-4b58-a1b9-9f453143bd3a` / log=reports/spec-audit/ch4/logs/cli-20251211T094708Z.md。`main` をブロック式に揃えて Parser/Typeck 通過を確認）
-- [ ] `examples/core-collections/usage.reml`（期待: 成功）
-- [ ] `examples/string_literal.reml`（期待: 成功）
-- [ ] `examples/core_io/file_copy.reml`（期待: 成功）
+- [x] `examples/core-collections/usage.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core-collections/usage.reml` / diagnostics=[] / run_id=`341f9325-3490-43d5-bf70-40cf9303dad1` / log=reports/spec-audit/ch4/logs/core-examples-20251211T145428Z.md。`Map` 連鎖への置換とブロック式統一で Parser/Typeck を通過）
+- [x] `examples/string_literal.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/string_literal.reml` / diagnostics=[] / run_id=`60259b9b-98e0-4f5f-a687-3bb336c16481` / log=reports/spec-audit/ch4/logs/core-examples-20251211T145428Z.md。仕様どおりの単純文字列リテラルで回帰なしを確認）
+- [x] `examples/core_io/file_copy.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_io/file_copy.reml` / diagnostics=[] / run_id=`a1e8bcf6-2f9b-48a5-93db-0942866f339f` / log=reports/spec-audit/ch4/logs/core-examples-20251211T145428Z.md。`fn copy_file` をブロック式に変更し `CopyReport` フィールドを `=` 代入に統一して Parser エラーを解消）
 
 **examples/ffi**
 - [ ] `examples/ffi/macos/ffi_dispatch_async.reml`（期待: 成功）

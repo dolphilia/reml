@@ -4,7 +4,7 @@ use Core.Path;
 use Core.Numeric;
 use Core.Diagnostics;
 
-struct CopyReport {
+type CopyReport = new {
   src: Path,
   dst: Path,
   bytes: u64,
@@ -12,6 +12,7 @@ struct CopyReport {
 }
 
 fn copy_file(src: Str, dst: Str, audit: AuditSink) -> Result<CopyReport, Diagnostic> =
+{
   let src_path = path(src)?;
   let dst_path = path(dst)?;
 
@@ -37,9 +38,12 @@ fn copy_file(src: Str, dst: Str, audit: AuditSink) -> Result<CopyReport, Diagnos
     audit,
   )?;
 
-  Ok({
-    src: src_path,
-    dst: sandboxed_dst,
-    bytes,
-    elapsed_ms: elapsed.as_milliseconds(),
-  })
+  Ok(
+    CopyReport({
+      src = src_path,
+      dst = sandboxed_dst,
+      bytes = bytes,
+      elapsed_ms = elapsed.as_milliseconds(),
+    }),
+  )
+}
