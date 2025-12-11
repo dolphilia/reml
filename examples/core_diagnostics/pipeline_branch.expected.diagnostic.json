@@ -1,11 +1,11 @@
 {
   "command": "Check",
   "phase": "Reporting",
-  "run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
+  "run_id": "12241da6-2216-4441-9d37-3f54d3e84404",
   "diagnostics": [
     {
       "audit": {
-        "audit_id": "b1a2768b-a4fb-5542-9a31-78fbd8039747",
+        "audit_id": "e427f383-a87e-5226-8a6d-1ee01922c0b1",
         "change_set": {
           "items": [
             {
@@ -26,7 +26,7 @@
           ],
           "origin": "cli",
           "policy": "rust.poc.audit.v1",
-          "run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
+          "run_id": "12241da6-2216-4441-9d37-3f54d3e84404",
           "source": {
             "args": [
               "--output",
@@ -39,26 +39,26 @@
           }
         },
         "metadata": {
-          "audit.build_id": "46571030T071408Z",
+          "audit.build_id": "46571104T223544Z",
           "audit.channel": "cli",
-          "audit.id.label": "cli/46571030T071408Z#0",
-          "audit.id.uuid": "b1a2768b-a4fb-5542-9a31-78fbd8039747",
+          "audit.id.label": "cli/46571104T223544Z#0",
+          "audit.id.uuid": "e427f383-a87e-5226-8a6d-1ee01922c0b1",
           "audit.policy.version": "rust.poc.audit.v1",
           "audit.sequence": 0,
           "audit.source.workspace": ".",
-          "audit.timestamp": "-4657-10-30T07:14:08Z",
+          "audit.timestamp": "-4657-11-04T22:35:44Z",
           "bridge.stage.actual_capabilities": [],
           "bridge.stage.required_capabilities": [],
           "capability.actual_stage": "at_least:stable",
           "capability.expected_stage": "at_least:beta",
-          "capability.id": "console",
+          "capability.id": "console::log",
           "capability.ids": [],
           "capability.mismatch": {
             "actual": "at_least:stable",
             "expected": "at_least:beta"
           },
           "capability.providers": [],
-          "cli.audit_id": "cli/46571030T071408Z#0",
+          "cli.audit_id": "cli/46571104T223544Z#0",
           "cli.change_set": {
             "items": [
               {
@@ -79,7 +79,7 @@
             ],
             "origin": "cli",
             "policy": "rust.poc.audit.v1",
-            "run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
+            "run_id": "12241da6-2216-4441-9d37-3f54d3e84404",
             "source": {
               "args": [
                 "--output",
@@ -94,9 +94,9 @@
           "cli.command": "Check",
           "cli.phase": "Reporting",
           "cli.program": "target/debug/reml_frontend",
-          "cli.run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
+          "cli.run_id": "12241da6-2216-4441-9d37-3f54d3e84404",
           "effect.actual_capabilities": [],
-          "effect.capability": "console",
+          "effect.capability": "console::log",
           "effect.required_capabilities": [],
           "effect.stage.actual": "at_least:stable",
           "effect.stage.actual_capabilities": [],
@@ -367,26 +367,26 @@
         }
       },
       "audit_metadata": {
-        "audit.build_id": "46571030T071408Z",
+        "audit.build_id": "46571104T223544Z",
         "audit.channel": "cli",
-        "audit.id.label": "cli/46571030T071408Z#0",
-        "audit.id.uuid": "b1a2768b-a4fb-5542-9a31-78fbd8039747",
+        "audit.id.label": "cli/46571104T223544Z#0",
+        "audit.id.uuid": "e427f383-a87e-5226-8a6d-1ee01922c0b1",
         "audit.policy.version": "rust.poc.audit.v1",
         "audit.sequence": 0,
         "audit.source.workspace": ".",
-        "audit.timestamp": "-4657-10-30T07:14:08Z",
+        "audit.timestamp": "-4657-11-04T22:35:44Z",
         "bridge.stage.actual_capabilities": [],
         "bridge.stage.required_capabilities": [],
         "capability.actual_stage": "at_least:stable",
         "capability.expected_stage": "at_least:beta",
-        "capability.id": "console",
+        "capability.id": "console::log",
         "capability.ids": [],
         "capability.mismatch": {
           "actual": "at_least:stable",
           "expected": "at_least:beta"
         },
         "capability.providers": [],
-        "cli.audit_id": "cli/46571030T071408Z#0",
+        "cli.audit_id": "cli/46571104T223544Z#0",
         "cli.change_set": {
           "items": [
             {
@@ -407,7 +407,7 @@
           ],
           "origin": "cli",
           "policy": "rust.poc.audit.v1",
-          "run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
+          "run_id": "12241da6-2216-4441-9d37-3f54d3e84404",
           "source": {
             "args": [
               "--output",
@@ -422,9 +422,9 @@
         "cli.command": "Check",
         "cli.phase": "Reporting",
         "cli.program": "target/debug/reml_frontend",
-        "cli.run_id": "80b0d934-6b51-4718-9fc4-dcff8c57b849",
+        "cli.run_id": "12241da6-2216-4441-9d37-3f54d3e84404",
         "effect.actual_capabilities": [],
-        "effect.capability": "console",
+        "effect.capability": "console::log",
         "effect.required_capabilities": [],
         "effect.stage.actual": "at_least:stable",
         "effect.stage.actual_capabilities": [],
@@ -837,11 +837,11 @@
           "codes": [
             "effects.contract.stage_mismatch"
           ],
-          "timestamp": "-4657-10-30T07:14:08Z"
+          "timestamp": "-4657-11-04T22:35:44Z"
         },
         "effect.actual_capabilities": [],
         "effect.capabilities": [],
-        "effect.capability": "console",
+        "effect.capability": "console::log",
         "effect.required_capabilities": [],
         "effect.stage.actual": "at_least:stable",
         "effect.stage.actual_capabilities": [],
@@ -849,11 +849,11 @@
         "effect.stage.required_capabilities": [],
         "effects": {
           "capabilities": [],
-          "capability": "console",
+          "capability": "console::log",
           "stage": {
             "actual": "at_least:stable",
             "actual_capabilities": [],
-            "capability": "console",
+            "capability": "console::log",
             "mismatch": {
               "actual": "at_least:stable",
               "expected": "at_least:beta"
@@ -1099,12 +1099,12 @@
       "hints": [],
       "location": {
         "column": 3,
-        "endColumn": 24,
+        "endColumn": 41,
         "endLine": 11,
         "file": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
         "line": 11
       },
-      "message": "`console` を呼び出すにはステージ `at_least:beta` が必要ですが、実行時ステージ `at_least:stable` では許可されていません",
+      "message": "`console::log` を呼び出すにはステージ `at_least:beta` が必要ですが、実行時ステージ `at_least:stable` では許可されていません",
       "notes": [
         {
           "label": null,
@@ -1113,16 +1113,16 @@
         }
       ],
       "primary": {
-        "end_col": 24,
+        "end_col": 41,
         "end_line": 11,
         "file": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
         "highlight": {
-          "column_end": 24,
+          "column_end": 41,
           "column_start": 3,
-          "highlight_text": "perform Console value",
-          "indicator": "  ~~~~~~~~~~~~~~~~~~~~~",
+          "highlight_text": "perform Console.log(value.to_string())",
+          "indicator": "  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
           "line": 11,
-          "line_text": "  perform Console value"
+          "line_text": "  perform Console.log(value.to_string())"
         },
         "start_col": 3,
         "start_line": 11
@@ -1132,15 +1132,15 @@
       "secondary": [],
       "severity": "error",
       "severity_hint": null,
-      "timestamp": "-4657-10-30T07:14:08Z"
+      "timestamp": "-4657-11-04T22:35:44Z"
     }
   ],
   "summary": {
     "inputs": [
       "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
     ],
-    "started_at": "-4657-10-30T07:14:08Z",
-    "finished_at": "-4657-10-30T07:14:08Z",
+    "started_at": "-4657-11-04T22:35:44Z",
+    "finished_at": "-4657-11-04T22:35:44Z",
     "artifact": null,
     "stats": {
       "cli_command": "target/debug/reml_frontend --output json --emit-audit-log /Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
@@ -1169,7 +1169,7 @@
               }
             },
             "parser_id": 2,
-            "range_end": 292,
+            "range_end": 300,
             "range_start": 236
           },
           {
@@ -1188,22 +1188,60 @@
               }
             },
             "parser_id": 2,
-            "range_end": 358,
-            "range_start": 294
+            "range_end": 383,
+            "range_start": 302
+          },
+          {
+            "entry": {
+              "approx_bytes": 118,
+              "expectations": [],
+              "sample_tokens": [
+                {
+                  "kind": "Success",
+                  "lexeme": "function"
+                }
+              ],
+              "summary": {
+                "alternatives": [],
+                "humanized": "success"
+              }
+            },
+            "parser_id": 2,
+            "range_end": 520,
+            "range_start": 385
+          },
+          {
+            "entry": {
+              "approx_bytes": 118,
+              "expectations": [],
+              "sample_tokens": [
+                {
+                  "kind": "Success",
+                  "lexeme": "function"
+                }
+              ],
+              "summary": {
+                "alternatives": [],
+                "humanized": "success"
+              }
+            },
+            "parser_id": 2,
+            "range_end": 562,
+            "range_start": 522
           }
         ],
         "packrat_snapshot": {
-          "approx_bytes": 236,
-          "entries": 2
+          "approx_bytes": 472,
+          "entries": 4
         },
         "packrat_stats": {
-          "approx_bytes": 236,
+          "approx_bytes": 472,
           "budget_drops": 0,
-          "entries": 2,
+          "entries": 4,
           "evictions": 0,
-          "hits": 4,
+          "hits": 8,
           "pruned": 0,
-          "queries": 6
+          "queries": 12
         },
         "recovered": false,
         "span_trace": [],
@@ -1221,7 +1259,7 @@
             "event_kind": "expr_enter",
             "label": "block",
             "span": {
-              "end": 292,
+              "end": 300,
               "start": 265
             },
             "trace_id": "syntax:expr::block"
@@ -1230,13 +1268,22 @@
             "event_kind": "expr_enter",
             "label": "if",
             "span": {
-              "end": 290,
+              "end": 298,
               "start": 269
             },
             "trace_id": "syntax:expr::if"
           },
           {
             "event_kind": "expr_enter",
+            "label": "binary",
+            "span": {
+              "end": 284,
+              "start": 272
+            },
+            "trace_id": "syntax:expr::binary"
+          },
+          {
+            "event_kind": "expr_enter",
             "label": "identifier",
             "span": {
               "end": 276,
@@ -1257,8 +1304,8 @@
             "event_kind": "expr_enter",
             "label": "literal",
             "span": {
-              "end": 283,
-              "start": 282
+              "end": 284,
+              "start": 280
             },
             "trace_id": "syntax:expr::literal"
           },
@@ -1266,8 +1313,35 @@
             "event_kind": "expr_leave",
             "label": "literal",
             "span": {
-              "end": 283,
-              "start": 282
+              "end": 284,
+              "start": 280
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "binary",
+            "span": {
+              "end": 284,
+              "start": 272
+            },
+            "trace_id": "syntax:expr::binary"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "literal",
+            "span": {
+              "end": 291,
+              "start": 290
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "literal",
+            "span": {
+              "end": 291,
+              "start": 290
             },
             "trace_id": "syntax:expr::literal"
           },
@@ -1275,8 +1349,8 @@
             "event_kind": "expr_enter",
             "label": "literal",
             "span": {
-              "end": 290,
-              "start": 289
+              "end": 298,
+              "start": 297
             },
             "trace_id": "syntax:expr::literal"
           },
@@ -1284,8 +1358,8 @@
             "event_kind": "expr_leave",
             "label": "literal",
             "span": {
-              "end": 290,
-              "start": 289
+              "end": 298,
+              "start": 297
             },
             "trace_id": "syntax:expr::literal"
           },
@@ -1293,7 +1367,7 @@
             "event_kind": "expr_leave",
             "label": "if",
             "span": {
-              "end": 290,
+              "end": 298,
               "start": 269
             },
             "trace_id": "syntax:expr::if"
@@ -1302,7 +1376,7 @@
             "event_kind": "expr_leave",
             "label": "block",
             "span": {
-              "end": 292,
+              "end": 300,
               "start": 265
             },
             "trace_id": "syntax:expr::block"
@@ -1311,26 +1385,44 @@
             "event_kind": "expr_enter",
             "label": "perform",
             "span": {
-              "end": 358,
-              "start": 337
+              "end": 383,
+              "start": 345
             },
             "trace_id": "syntax:expr::perform"
           },
           {
             "event_kind": "effect_enter",
-            "label": "Console",
+            "label": "Console::log",
             "span": {
-              "end": 358,
-              "start": 337
+              "end": 383,
+              "start": 345
             },
             "trace_id": "syntax:effect::perform"
           },
           {
             "event_kind": "expr_enter",
+            "label": "call",
+            "span": {
+              "end": 382,
+              "start": 365
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "field-access",
+            "span": {
+              "end": 380,
+              "start": 365
+            },
+            "trace_id": "syntax:expr::field-access"
+          },
+          {
+            "event_kind": "expr_enter",
             "label": "identifier",
             "span": {
-              "end": 358,
-              "start": 353
+              "end": 370,
+              "start": 365
             },
             "trace_id": "syntax:expr::identifier"
           },
@@ -1338,17 +1430,35 @@
             "event_kind": "expr_leave",
             "label": "identifier",
             "span": {
-              "end": 358,
-              "start": 353
+              "end": 370,
+              "start": 365
             },
             "trace_id": "syntax:expr::identifier"
           },
           {
-            "event_kind": "effect_exit",
-            "label": "Console",
+            "event_kind": "expr_leave",
+            "label": "field-access",
             "span": {
-              "end": 358,
-              "start": 337
+              "end": 380,
+              "start": 365
+            },
+            "trace_id": "syntax:expr::field-access"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "call",
+            "span": {
+              "end": 382,
+              "start": 365
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "effect_exit",
+            "label": "Console::log",
+            "span": {
+              "end": 383,
+              "start": 345
             },
             "trace_id": "syntax:effect::perform"
           },
@@ -1356,10 +1466,316 @@
             "event_kind": "expr_leave",
             "label": "perform",
             "span": {
-              "end": 358,
-              "start": 337
+              "end": 383,
+              "start": 345
             },
             "trace_id": "syntax:expr::perform"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "block",
+            "span": {
+              "end": 520,
+              "start": 423
+            },
+            "trace_id": "syntax:expr::block"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "let",
+            "span": {
+              "end": 440,
+              "start": 427
+            },
+            "trace_id": "syntax:expr::let"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "literal",
+            "span": {
+              "end": 440,
+              "start": 438
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "literal",
+            "span": {
+              "end": 440,
+              "start": 438
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "let",
+            "span": {
+              "end": 440,
+              "start": 427
+            },
+            "trace_id": "syntax:expr::let"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "let",
+            "span": {
+              "end": 468,
+              "start": 444
+            },
+            "trace_id": "syntax:expr::let"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "call",
+            "span": {
+              "end": 468,
+              "start": 456
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 462,
+              "start": 456
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 462,
+              "start": 456
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 467,
+              "start": 463
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 467,
+              "start": 463
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "call",
+            "span": {
+              "end": 468,
+              "start": 456
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "let",
+            "span": {
+              "end": 468,
+              "start": 444
+            },
+            "trace_id": "syntax:expr::let"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "let",
+            "span": {
+              "end": 502,
+              "start": 472
+            },
+            "trace_id": "syntax:expr::let"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "call",
+            "span": {
+              "end": 502,
+              "start": 480
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 495,
+              "start": 480
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 495,
+              "start": 480
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 501,
+              "start": 496
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 501,
+              "start": 496
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "call",
+            "span": {
+              "end": 502,
+              "start": 480
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "let",
+            "span": {
+              "end": 502,
+              "start": 472
+            },
+            "trace_id": "syntax:expr::let"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "binary",
+            "span": {
+              "end": 518,
+              "start": 506
+            },
+            "trace_id": "syntax:expr::binary"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 510,
+              "start": 506
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 510,
+              "start": 506
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 518,
+              "start": 513
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 518,
+              "start": 513
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "binary",
+            "span": {
+              "end": 518,
+              "start": 506
+            },
+            "trace_id": "syntax:expr::binary"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "block",
+            "span": {
+              "end": 520,
+              "start": 423
+            },
+            "trace_id": "syntax:expr::block"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "call",
+            "span": {
+              "end": 562,
+              "start": 541
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 556,
+              "start": 541
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 556,
+              "start": 541
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "literal",
+            "span": {
+              "end": 561,
+              "start": 557
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "literal",
+            "span": {
+              "end": 561,
+              "start": 557
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "call",
+            "span": {
+              "end": 562,
+              "start": 541
+            },
+            "trace_id": "syntax:expr::call"
           }
         ]
       },
@@ -1475,13 +1891,13 @@
         },
         "last_reason": null,
         "packrat": {
-          "approx_bytes": 236,
+          "approx_bytes": 472,
           "budget_drops": 0,
-          "entries": 2,
+          "entries": 4,
           "evictions": 0,
-          "hits": 4,
+          "hits": 8,
           "pruned": 0,
-          "queries": 6
+          "queries": 12
         },
         "packrat_enabled": true,
         "span_trace": {

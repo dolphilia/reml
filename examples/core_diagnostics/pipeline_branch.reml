@@ -4,18 +4,17 @@
 use Core;
 
 fn choose(flag: Bool) -> Int {
-  if flag then 1 else 2
+  if flag == true then 1 else 2
 }
 
 fn trigger_console(value: Int) -> Unit =
-  perform Console value
+  perform Console.log(value.to_string())
 
-fn pipeline_branch(flag: Bool) -> Int =
-  do {
-    let base = 10;
-    let delta = choose(flag);
-    let _ = trigger_console(delta);
-    base + delta
-  }
+fn pipeline_branch(flag: Bool) -> Int {
+  let base = 10;
+  let delta = choose(flag);
+  let _ = trigger_console(delta);
+  base + delta
+}
 
 fn main() -> Int = pipeline_branch(true)
