@@ -1711,8 +1711,12 @@ fn module_parser<'src>(
             ident_expr.clone(),
         );
 
+        let stmt_with_sep = stmt
+            .clone()
+            .then_ignore(just(TokenKind::Semicolon).repeated());
+
         let raw_block = just(TokenKind::LBrace)
-            .ignore_then(stmt.repeated())
+            .ignore_then(stmt_with_sep.clone().repeated())
             .then_ignore(just(TokenKind::RBrace))
             .map_with_span(|stmts, span: Range<usize>| (stmts, range_to_span(span)));
 
@@ -2034,7 +2038,7 @@ fn module_parser<'src>(
             }),
         ));
 
-        let call = atom
+        let call_core = atom
             .clone()
             .then(postfix.repeated())
             .map(|(base, postfixes)| {
@@ -2048,13 +2052,32 @@ fn module_parser<'src>(
                                 });
                             Expr::call(acc, args, call_span)
                         }
-                        Postfix::Field(field, span) => {
-                            let combined = span_union(acc.span(), span);
-                            Expr::field_access(acc, field, combined)
-                        }
+                    Postfix::Field(field, span) => {
+                        let combined = span_union(acc.span(), span);
+                        Expr::field_access(acc, field, combined)
+                    }
                     })
             })
             .boxed();
+
+        let call = call_core
+            .clone()
+            .then(
+                just(TokenKind::Question)
+                    .map_with_span(|_, span: Range<usize>| range_to_span(span))
+                    .repeated(),
+            )
+            .map(|(base, propagations)| {
+                propagations.into_iter().fold(base, |acc, span| {
+                    let combined = span_union(acc.span(), span);
+                    Expr {
+                        span: combined,
+                        kind: ExprKind::Propagate {
+                            expr: Box::new(acc),
+                        },
+                    }
+                })
+            });
 
         let multiplicative = call
             .clone()
@@ -2091,7 +2114,22 @@ fn module_parser<'src>(
                 })
             });
 
-        let comparison = additive
+        let range_expr = additive
+            .clone()
+            .then(
+                just(TokenKind::DotDot)
+                    .to("..")
+                    .then(additive.clone())
+                    .repeated(),
+            )
+            .map(|(first, rest)| {
+                rest.into_iter().fold(first, |lhs, (_op, rhs)| {
+                    let span = span_union(lhs.span(), rhs.span());
+                    Expr::binary("..", lhs, rhs, span)
+                })
+            });
+
+        let comparison = range_expr
             .clone()
             .then(
                 choice((
@@ -2102,7 +2140,7 @@ fn module_parser<'src>(
                     just(TokenKind::EqEq).to("=="),
                     just(TokenKind::NotEqual).to("!="),
                 ))
-                .then(additive.clone())
+                .then(range_expr.clone())
                 .repeated(),
             )
             .map(|(first, rest)| {
