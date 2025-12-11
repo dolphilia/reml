@@ -1,6 +1,6 @@
 {
   "schema_version": "3.0.0-alpha",
-  "generated_at": "-4657-10-26T13:27:49Z",
+  "generated_at": "-4657-11-04T22:44:51Z",
   "input": "examples/core_diagnostics/constraint_graph/simple_chain.reml",
   "functions": [
     {
@@ -19,28 +19,36 @@
       "param_types": [
         "'t2",
         "'t3",
-        "'t4"
+        "Unknown"
       ],
       "return_type": "Unknown",
-      "typed_exprs": 4,
+      "typed_exprs": 6,
+      "constraints": 2,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "main",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 5,
       "constraints": 1,
       "unresolved_identifiers": 0
     }
   ],
   "metrics": {
-    "typed_functions": 2,
-    "typed_exprs": 7,
-    "constraints_total": 2,
+    "typed_functions": 3,
+    "typed_exprs": 14,
+    "constraints_total": 4,
     "constraint_breakdown": {
-      "binary.operands": 1,
-      "call.arity": 1
+      "binary.operands": 2,
+      "call.arity": 2
     },
     "unresolved_identifiers": 0,
-    "call_sites": 1,
-    "binary_expressions": 1,
-    "unify_calls": 1,
-    "ast_nodes": 7,
-    "token_count": 31
+    "call_sites": 2,
+    "binary_expressions": 2,
+    "unify_calls": 2,
+    "ast_nodes": 14,
+    "token_count": 90
   },
   "graph": {
     "nodes": [
@@ -53,6 +61,16 @@
         "id": 1,
         "label": "'t1",
         "kind": "type"
+      },
+      {
+        "id": 2,
+        "label": "Unknown",
+        "kind": "type"
+      },
+      {
+        "id": 3,
+        "label": "'t4",
+        "kind": "type"
       }
     ],
     "edges": [
@@ -60,11 +78,16 @@
         "from": 0,
         "to": 1,
         "kind": "equal"
+      },
+      {
+        "from": 2,
+        "to": 3,
+        "kind": "equal"
       }
     ],
     "export_dot": "examples/core_diagnostics/output/simple_chain-constraint_graph.dot",
-    "node_count": 2,
-    "edge_count": 1
+    "node_count": 4,
+    "edge_count": 2
   },
   "resolutions": []
 }
