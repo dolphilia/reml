@@ -15,6 +15,13 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - 実行コマンド: `tooling/examples/run_examples.sh --suite practical --scenario core_io|core_path`
 - 備考: Phase4 シナリオマトリクス (`phase4-scenario-matrix.csv`) の ID `CH3-IO-101` / `CH3-PATH-202` とリンク
 
+## 2025-12-11 Core.Runtime stage_mismatch_runtime_bridge フェーズF 再実行
+- 対象: `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`（`CH3-RUNTIME-601`）
+- CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`
+- 期待/実際: 期待=`runtime.bridge.stage_mismatch`、実際=diagnostics 1（同コード、run_id=`d91aebaa-d239-4443-adcd-01249a5aa85a`）
+- ログ: `reports/spec-audit/ch4/logs/practical-20251211T014101Z.md`
+- 備考: runtime フェーズ有効化後の診断生成が想定どおりであることを再確認し、PhaseF チェックリストを更新。
+
 ## 2026-02-20 Core.Path relative_denied 回帰 → runtime 実行フェーズで解消
 - 対象: `examples/practical/core_path/security_check/relative_denied.reml`（`CH3-PATH-202`）
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_path/security_check/relative_denied.reml`
