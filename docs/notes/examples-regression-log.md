@@ -44,6 +44,13 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - ログ: `reports/spec-audit/ch4/logs/practical-20251211T083527Z.md`
 - 備考: PhaseF チェックリストと `phase4-scenario-matrix.csv` を `resolution=ok`・`spec_vs_impl_decision=ok` へ更新。runtime フェーズ対象外だが parse/typeck は成功。
 
+## 2025-12-11 Core.Env env_merge_by_profile フェーズF 実行
+- 対象: `examples/practical/core_env/envcfg/env_merge_by_profile.reml`（`CH3-ENV-701`）
+- CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_env/envcfg/env_merge_by_profile.reml`
+- 期待/実際: 期待=diagnostics `[]` / stdout=`expected/practical/core_env/envcfg/env_merge_by_profile.stdout`（`https://cli.local`）、実際=diagnostics `[]`（run_id=`2f9ecb5d-3d75-4ba4-92f2-7233b6b00b5b`）
+- ログ: `reports/spec-audit/ch4/logs/practical-20251211T091650Z.md`
+- 備考: env プロファイル merge の runtime フェーズが診断なしで完了することを確認し、PhaseF チェックリストと `phase4-scenario-matrix.csv` を `resolution=ok` / `spec_vs_impl_decision=ok` へ更新。
+
 ## 2026-02-20 Core.Path relative_denied 回帰 → runtime 実行フェーズで解消
 - 対象: `examples/practical/core_path/security_check/relative_denied.reml`（`CH3-PATH-202`）
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_path/security_check/relative_denied.reml`
