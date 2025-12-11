@@ -313,7 +313,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 **examples/practical**
 - [x] `examples/practical/core_path/security_check/relative_denied.reml`（期待: 診断あり → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_path/security_check/relative_denied.reml` / log=`reports/spec-audit/ch4/logs/practical-20251210T205757Z.md` / diagnostics=`core.path.security.invalid`（reason=relative_path_denied、run_id=59e7be86-650c-406e-b865-a9a0a625c767））
-- [ ] `examples/practical/core_config/audit_bridge/audit_bridge.reml`（期待: 成功）
+- [x] `examples/practical/core_config/audit_bridge/audit_bridge.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_config/audit_bridge/audit_bridge.reml` / log=`reports/spec-audit/ch4/logs/practical-20251211T013915Z.md` / diagnostics=[] / run_id=3febd846-c037-4a6b-ab44-6c98fdc5742e）
 - [ ] `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`（期待: 失敗診断）
 - [ ] `examples/practical/core_io/file_copy/canonical.reml`（期待: 成功）
 - [ ] `examples/practical/core_text/unicode/grapheme_boundary_edge.reml`（期待: 成功）
