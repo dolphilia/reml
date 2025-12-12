@@ -2,43 +2,47 @@ module samples.language_impl_comparison.pl0
 
 use ::Core.Collection.List as List
 use ::Core.Collection.Map as Map
-use ::Core.Prelude.Result::{self, Result}
-use ::Core.Text::{self, Text}
+use ::Core.Text.String as Str
+use ::Core.Prelude.Box as Box
 
 /// PL/0 風サブセットの抽象構文木。
 type Stmt =
-  | Assign { name: Text, expr: Expr }
-  | While { cond: Expr, body: List<Stmt> }
-  | Write { expr: Expr }
+  | Assign({ name: Str, expr: Expr })
+  | While({ cond: Expr, body: List<Stmt> })
+  | Write({ expr: Expr })
 
 /// 式は 4 則演算のみ対応する。
 type Expr =
   | Number(i64)
-  | Var(Text)
-  | Binary { op: Op, lhs: Box<Expr>, rhs: Box<Expr> }
+  | Var(Str)
+  | Binary({ op: Op, lhs: Box<Expr>, rhs: Box<Expr> })
 
-type Op = Add | Sub | Mul | Div
+type Op =
+  | Add
+  | Sub
+  | Mul
+  | Div
 
-type Runtime = { vars: Map<Text, i64>, output: List<i64> }
+type Runtime = { vars: Map<Str, i64>, output: List<i64> }
 
-type ParseError = { message: Text }
+type ParseError = { message: Str }
 
-type ExecError = { reason: Text }
+type ExecError = { reason: Str }
 
-fn parse_program(source: Text) -> Result<List<Stmt>, ParseError> {
+fn parse_program(source: Str) -> Result<List<Stmt>, ParseError> {
   // 実装のシンプルさを優先し、ここではあらかじめトークン済みと仮定した疑似実装を示す。
   Result.ok([
-    Assign { name: "x", expr: Number(1) },
-    While {
+    Assign({ name: "x", expr: Number(1) }),
+    While({
       cond: Var("x"),
       body: [
-        Write { expr: Var("x") },
-        Assign {
+        Write({ expr: Var("x") }),
+        Assign({
           name: "x",
-          expr: Binary { op: Sub, lhs: Box.of(Var("x")), rhs: Box.of(Number(1)) },
-        },
+          expr: Binary({ op: Sub, lhs: Box.of(Var("x")), rhs: Box.of(Number(1)) }),
+        }),
       ],
-    },
+    }),
   ])
 }
 
@@ -53,48 +57,55 @@ fn exec(program: List<Stmt>) -> Result<Runtime, ExecError> {
 
 fn exec_stmt(stmt: Stmt, runtime: Runtime) -> Result<Runtime, ExecError> {
   match stmt with
-  | Assign { name, expr } ->
+  | Assign({ name, expr }) -> {
     let (value, vars) = eval_expr(expr, runtime.vars)?
     Result.ok({ vars, output: runtime.output })
-  | While { cond, body } -> exec_while(cond, body, runtime)
-  | Write { expr } ->
+  }
+  | While({ cond, body }) -> exec_while(cond, body, runtime)
+  | Write({ expr }) -> {
     let (value, vars) = eval_expr(expr, runtime.vars)?
     Result.ok({ vars, output: List.push_back(runtime.output, value) })
+  }
+  end
 }
 
 fn exec_while(cond: Expr, body: List<Stmt>, runtime: Runtime) -> Result<Runtime, ExecError> {
-  var current = runtime
-  loop {
-    let (value, vars) = eval_expr(cond, current.vars)?
-    if value == 0 {
-      return Result.ok({ vars, output: current.output })
-    }
-    let start = { vars, output: current.output }
+  let (value, vars) = eval_expr(cond, runtime.vars)?
+  if value == 0 then {
+    Result.ok({ vars, output: runtime.output })
+  } else {
+    let start = { vars, output: runtime.output }
     let next_state = List.fold(body, Result.ok(start), |acc_res, stmt| {
       match acc_res with
       | Err(err) -> Result.err(err)
       | Ok(state) -> exec_stmt(stmt, state)
       end
     })?
-    current = next_state
+    exec_while(cond, body, next_state)
   }
 }
 
-fn eval_expr(expr: Expr, vars: Map<Text, i64>) -> Result<(i64, Map<Text, i64>), ExecError> {
+fn eval_expr(expr: Expr, vars: Map<Str, i64>) -> Result<(i64, Map<Str, i64>), ExecError> {
   match expr with
   | Number(n) -> Result.ok((n, vars))
   | Var(name) ->
-    let value = Map.get(vars, name).ok_or(|| { reason: format("未定義変数: {name}") })?
-    Result.ok((value, vars))
-  | Binary { op, lhs, rhs } ->
-    let (l, vars_after_lhs) = eval_expr(*lhs, vars)?
-    let (r, vars_after_rhs) = eval_expr(*rhs, vars_after_lhs)?
-    let result = match op with
+    match Map.get(vars, name) with
+    | Some(value) -> Result.ok((value, vars))
+    | None -> Result.err({ reason: format("未定義変数: {name}") })
+    end
+  | Binary(bin) ->
+    let (l, vars_after_lhs) = eval_expr(*bin.lhs, vars)?
+    let (r, vars_after_rhs) = eval_expr(*bin.rhs, vars_after_lhs)?
+    let result = match bin.op with
       | Add -> l + r
       | Sub -> l - r
       | Mul -> l * r
-      | Div -> if r == 0 { return Result.err({ reason: "0 で割ることはできません" }) } else { l / r }
+      | Div -> {
+        if r == 0 { return Result.err({ reason: "0 で割ることはできません" }) }
+        l / r
+      }
     Result.ok((result, vars_after_rhs))
+  end
 }
 
 fn initial_runtime() -> Runtime = { vars: Map.empty(), output: List.empty() }
