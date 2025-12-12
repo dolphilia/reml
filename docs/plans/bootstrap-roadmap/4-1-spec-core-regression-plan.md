@@ -176,6 +176,11 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - `compiler/rust/frontend/tests/spec_core/mod.rs::ch1_mod_004_reports_invalid_super_use` を新設し、`ParseDriver` 経由で `language.use.invalid_super` が常に出力されることを固定。`docs/spec/1-1-syntax.md §B.1` に「ルートモジュールでは `super` を利用できない」旨を追記し、仕様との整合を明文化した。
 - `phase4-scenario-matrix.csv` の `CH1-MOD-003/004` を `resolution=ok` へ更新し、`resolution_notes` に 2025-12-09 の CLI コマンドとログパス（`reports/spec-audit/ch4/logs/spec_core-20251209T093700Z.md`）を記録。`reports/spec-audit/ch4/spec-core-dashboard.md` と PhaseF トラッカーも同期し、`module_use` ディレクトリの 2 ケースが `[x]` になった。
 
+#### ✅ 6.3 週 実施ログ（MatchExpr サンプル拡充）
+
+- `examples/spec_core/chapter1/match_expr/` に MatchAlias + RecordPattern の受理例（`bnf-matchexpr-alias-record-ok.reml`）と、Result ベースのガード分岐例（`bnf-matchexpr-result-guard-else-ok.reml`）を追加し、Chapter1 の `match` バリエーションを補完。`docs/spec/1-5-formal-grammar-bnf.md` §4 のガード/alias 順序と §5 のレコードパターン整合を確認済み。
+- alias は MatchArm 全体への `as` 付与が必要なため `Some({ x, y }) as point` へ修正し、CLI 実行で診断 0 を確認。`expected/spec_core/chapter1/match_expr/bnf-matchexpr-*.stdout` を取得済み（`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json ...`）。`phase4-scenario-matrix.csv` への行追加は次回レビューで実施。
+
 ### フェーズF: 全 `.reml` 逐次実行・完全是正（新規）
 
 `examples/` 配下にあるすべての `.reml` を 1 ファイルずつ愚直に実行し、期待した成功/失敗へ確実に到達させるフェーズ。効率よりも完遂を優先し、実行ログと仕様照合結果を `phase4-scenario-matrix.csv`・`reports/spec-audit/ch4/*.md`・`docs/notes/examples-regression-log.md` に逐次反映する。
@@ -299,6 +304,8 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-option-canonical.reml`（期待: 成功 → 2025-12-10 CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-option-canonical.reml` / diagnostics=[] / 同ログ参照）
 - [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-missing-arrow-error.reml`（期待: 失敗診断 → 2025-12-10 CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-missing-arrow-error.reml` / diagnostics=`parser.syntax.expected_tokens` のみ / log=reports/spec-audit/ch4/logs/spec_core-20251210T073321Z.md / expected diagnostic JSON を新規作成）
 - [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml`（期待: 成功 → 2025-12-10 Parser の PatternKind::Literal を match arm から参照できるよう拡張し `tests/spec_core::ch1_match_002_accepts_tuple_literal_pattern` で回帰テスト化。CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251210T073321Z.md）
+- [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-alias-record-ok.reml`（期待: 成功 → 2025-12-12 CLI= `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-alias-record-ok.reml` / diagnostics=[] / stdout=`expected/spec_core/chapter1/match_expr/bnf-matchexpr-alias-record-ok.stdout`）
+- [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-result-guard-else-ok.reml`（期待: 成功 → 2025-12-12 CLI= `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-result-guard-else-ok.reml` / diagnostics=[] / stdout=`expected/spec_core/chapter1/match_expr/bnf-matchexpr-result-guard-else-ok.stdout`）
 
 **examples/spec_core/chapter1/effects・conductor・block**
 - [x] `examples/spec_core/chapter1/effects/bnf-attr-pure-perform-error.reml`（期待: 失敗診断 → CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/effects/bnf-attr-pure-perform-error.reml` / log=`reports/spec-audit/ch4/logs/spec_core-20251210T075036Z.md` / `effects.purity.violated`, `effects.contract.stage_mismatch` の 2 診断を再取得。`compiler/rust/frontend/src/typeck/capability.rs` で `Console.*` を Capability Registry に再登録し Stage mismatch を復元。)

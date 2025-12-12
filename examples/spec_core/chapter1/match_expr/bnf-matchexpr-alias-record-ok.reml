@@ -1,0 +1,18 @@
+module Spec.Core.Chapter1.Match.AliasRecord
+
+use Core.Prelude
+
+// BNF: MatchExpr + MatchAlias + RecordPattern（docs/spec/1-5-formal-grammar-bnf.md §4, §5）
+// レコードを分解しつつ alias で全体を参照する例
+type Point = { x: Int, y: Int }
+
+fn describe(target: Option<Point>) -> Str {
+  match target with
+    Some({ x, y }) as point ->
+      format("point(%d,%d) len=%d", [point.x, point.y, x + y])
+    None -> "none"
+}
+
+fn main() -> Str {
+  describe(Some({ x = 4, y = 9 }))
+}
