@@ -1,5 +1,6 @@
 use crate::run_config::RunConfig;
 use crate::text::Str;
+use serde_json::Value;
 use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
@@ -181,6 +182,55 @@ impl IdentifierProfile {
             })
             .unwrap_or(IdentifierProfile::Unicode)
     }
+}
+
+fn decode_lex_space(run_config: &RunConfig) -> Option<Parser<()>> {
+    let lex = run_config.extensions.get("lex")?;
+    let ascii_only = lex
+        .get("profile")
+        .and_then(Value::as_str)
+        .map(|label| label == "ascii-compat")
+        .unwrap_or(false);
+    let parser_id = lex
+        .get("space_id")
+        .and_then(Value::as_u64)
+        .map(|raw| ParserId::from_raw(raw as u32))
+        .unwrap_or_else(ParserId::fresh);
+    let space = Parser::with_id(parser_id, move |state| {
+        let start = state.input().clone();
+        let mut last = None;
+        for (idx, ch) in start.remaining().char_indices() {
+            let is_ws = if ascii_only {
+                ch.is_ascii_whitespace()
+            } else {
+                ch.is_whitespace()
+            };
+            if is_ws {
+                last = Some(idx + ch.len_utf8());
+            } else {
+                break;
+            }
+        }
+
+        if let Some(boundary) = last {
+            let rest = start.advance(boundary);
+            state.set_input(rest.clone());
+            Reply::Ok {
+                value: (),
+                span: span_from_inputs(&start, &rest),
+                consumed: true,
+                rest,
+            }
+        } else {
+            Reply::Ok {
+                value: (),
+                span: empty_span(&start),
+                consumed: false,
+                rest: start,
+            }
+        }
+    });
+    Some(space)
 }
 
 /// パースエラーの骨組み。
@@ -1851,12 +1901,13 @@ pub struct ParseState {
 impl ParseState {
     pub fn new(source: &str, run_config: RunConfig) -> Self {
         let identifier_profile = IdentifierProfile::from_run_config(&run_config);
+        let space = decode_lex_space(&run_config);
         Self {
             input: Input::new(source),
             run_config,
             memo: MemoTable::new(),
             recovered: false,
-            space: None, // TODO: extensions["lex"] 由来の空白プロファイルをここで反映する。
+            space,
             identifier_profile,
         }
     }
