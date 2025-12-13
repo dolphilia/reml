@@ -1459,7 +1459,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
     pub fn chainl1<F>(self, op: Parser<F>) -> Parser<T>
     where
         T: Clone,
-        F: Fn(T, T) -> T + Send + Sync + 'static,
+        F: Clone + Fn(T, T) -> T + Send + Sync + 'static,
     {
         Parser::new(move |state| {
             let start_input = state.input().clone();
@@ -1546,7 +1546,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
     pub fn chainr1<F>(self, op: Parser<F>) -> Parser<T>
     where
         T: Clone,
-        F: Fn(T, T) -> T + Send + Sync + 'static,
+        F: Clone + Fn(T, T) -> T + Send + Sync + 'static,
     {
         Parser::new(move |state| {
             let start_input = state.input().clone();
@@ -2011,7 +2011,7 @@ where
 pub fn chainl1<T, F>(term: Parser<T>, op: Parser<F>) -> Parser<T>
 where
     T: Clone + Send + Sync + 'static,
-    F: Fn(T, T) -> T + Send + Sync + 'static,
+    F: Clone + Fn(T, T) -> T + Send + Sync + 'static,
 {
     term.chainl1(op)
 }
@@ -2020,7 +2020,7 @@ where
 pub fn chainr1<T, F>(term: Parser<T>, op: Parser<F>) -> Parser<T>
 where
     T: Clone + Send + Sync + 'static,
-    F: Fn(T, T) -> T + Send + Sync + 'static,
+    F: Clone + Fn(T, T) -> T + Send + Sync + 'static,
 {
     term.chainr1(op)
 }
@@ -2084,14 +2084,14 @@ impl ParseState {
         std::mem::take(&mut self.diagnostics)
     }
 
-    pub fn memo_get<T: Clone + 'static>(&self, key: MemoKey) -> Option<Reply<T>> {
+    pub fn memo_get<T: Clone + Send + Sync + 'static>(&self, key: MemoKey) -> Option<Reply<T>> {
         self.memo
             .get(&key)
             .and_then(|entry| entry.downcast_ref::<MemoizedReply<T>>())
             .map(MemoizedReply::clone_reply)
     }
 
-    pub fn memo_put<T: Clone + 'static>(&mut self, key: MemoKey, reply: &Reply<T>) {
+    pub fn memo_put<T: Clone + Send + Sync + 'static>(&mut self, key: MemoKey, reply: &Reply<T>) {
         self.memo
             .insert(key, Box::new(MemoizedReply { reply: reply.clone() }));
     }

@@ -1,4 +1,4 @@
-use reml_runtime::parse::{ok, run, ParseError, Parser, Reply, Span};
+use reml_runtime::parse::{cut_here, ok, position, run, ParseError, Parser, Reply, Span};
 use reml_runtime::run_config::RunConfig;
 
 fn tag(expected: &'static str) -> Parser<&'static str> {
@@ -55,6 +55,39 @@ fn empty_success() -> Parser<()> {
     })
 }
 
+fn non_consuming_fail(msg: &'static str) -> Parser<()> {
+    Parser::new(move |state| {
+        let input = state.input().clone();
+        Reply::Err {
+            error: ParseError::new(msg, input.position()),
+            consumed: false,
+            committed: false,
+        }
+    })
+}
+
+fn digit() -> Parser<i32> {
+    Parser::new(|state| {
+        let input = state.input().clone();
+        match input.remaining().chars().next() {
+            Some(ch) if ch.is_ascii_digit() => {
+                let rest = input.advance(ch.len_utf8());
+                Reply::Ok {
+                    value: ch.to_digit(10).unwrap() as i32,
+                    span: input.span_to(&rest),
+                    consumed: true,
+                    rest,
+                }
+            }
+            _ => Reply::Err {
+                error: ParseError::new("digit で不一致", input.position()),
+                consumed: false,
+                committed: false,
+            },
+        }
+    })
+}
+
 #[test]
 fn or_short_circuits_after_consumed_error() {
     let parser = consume_then_fail("left").or(ok(()));
@@ -76,6 +109,33 @@ fn attempt_rewinds_consumption_for_alternatives() {
 }
 
 #[test]
+fn cut_blocks_fallback_even_when_empty() {
+    let parser = non_consuming_fail("hard stop").cut().or(ok(()));
+    let result = run(&parser, "", &RunConfig::default());
+    assert!(result.value.is_none(), "commit 付きの失敗は or で巻き取らない");
+    assert_eq!(
+        result
+            .diagnostics
+            .first()
+            .map(|d| d.message.as_str())
+            .unwrap_or(""),
+        "hard stop"
+    );
+}
+
+#[test]
+fn cut_here_inserts_zero_width_consumption() {
+    let parser = cut_here()
+        .skip_r(non_consuming_fail("after cut_here"))
+        .or(ok(()));
+    let result = run(&parser, "", &RunConfig::default());
+    assert!(
+        result.value.is_none(),
+        "cut_here のゼロ幅消費後の失敗は or で巻き戻らない"
+    );
+}
+
+#[test]
 fn many_reports_empty_success_body() {
     let parser = empty_success().many();
     let result = run(&parser, "", &RunConfig::default());
@@ -88,4 +148,58 @@ fn many_reports_empty_success_body() {
             .unwrap_or(""),
         "繰り返し本体が空成功しました"
     );
+}
+
+#[test]
+fn chainl1_is_left_associative() {
+    let parser = digit().chainl1(tag("-").map(|_| |l: i32, r: i32| l - r));
+    let cfg = RunConfig {
+        require_eof: true,
+        ..RunConfig::default()
+    };
+    let result = run(&parser, "6-2-1", &cfg);
+    assert_eq!(result.value, Some(3));
+}
+
+#[test]
+fn chainr1_is_right_associative() {
+    let parser = digit().chainr1(tag("^").map(|_| |l: i32, r: i32| l.pow(r as u32)));
+    let cfg = RunConfig {
+        require_eof: true,
+        ..RunConfig::default()
+    };
+    let result = run(&parser, "2^3^2", &cfg);
+    assert_eq!(result.value, Some(512));
+}
+
+#[test]
+fn recover_syncs_and_keeps_diagnostic() {
+    let parser = consume_then_fail("recover me").recover(tag("\n").map(|_| ()), ());
+    let result = run(&parser, "oops\nrest", &RunConfig::default());
+    assert_eq!(result.value, Some(()));
+    assert!(result.recovered, "recover フラグが立つはず");
+    assert_eq!(result.diagnostics.len(), 1);
+    assert_eq!(result.diagnostics[0].message, "recover me");
+    let span = result.span.expect("recover 成功時は span が付与される");
+    assert_eq!(span.start.line, 1);
+    assert_eq!(span.end.line, 2);
+}
+
+#[test]
+fn spanned_and_position_report_offsets() {
+    let parser = position()
+        .then(tag("hi").spanned())
+        .then(position())
+        .map(|((start, (_, mid)), end)| (start, mid, end));
+    let cfg = RunConfig {
+        require_eof: true,
+        ..RunConfig::default()
+    };
+    let result = run(&parser, "hi", &cfg);
+    let (start, mid, end) = result.value.expect("値が返るはず");
+    assert_eq!(start.start.line, 1);
+    assert_eq!(start.start.column, 1);
+    assert_eq!(mid.start.column, 1);
+    assert_eq!(mid.end.column, 3);
+    assert_eq!(end.start.column, 3);
 }
