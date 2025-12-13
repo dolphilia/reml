@@ -61,6 +61,12 @@
 - Packrat メモ化を導入し、`ParserId` をキーに `RunConfig` で ON/OFF 切替。性能退行を避けるため単体ベンチ or マイクロテストを用意。  
 - CLI への統合パス（`reml_frontend`）で `Core.Parse` 診断を既存メッセージと合流させるための橋渡し関数を追加（ファイル配置は後続フェーズで決定）。
 
+#### Phase 4 実装補足（Rust ランタイム反映済み）
+- `ParseError` に `expected_tokens` と GuardDiagnostic 変換を追加し、`parser.syntax.expected_tokens` 互換の拡張として CLI/LSP へ橋渡しできるようにした。`parse_result_to_guard_diagnostics` / `parse_errors_to_guard_diagnostics` を `parse::combinator` で提供。  
+- `recover` 失敗時の診断を `ParseState` に蓄積し、`run` が結果へ統合する。`recovered` フラグも `ParseResult` に伝搬。  
+- Packrat は `ParserId` + バイトオフセットでメモ化し、Reply をクローンして保持する実装。これに伴い `Parser<T>` は `T: Clone` 前提となるため、非 Clone 値を返すパーサーは構築不可（必要ならラップ型で対応）。  
+- `eof` / `symbol` / `keyword` のエラーに期待トークンを付加し、期待集合生成の欠落を補正した。
+
 ### Phase 5: 例・回帰テスト
 - 単体テスト: `compiler/rust/runtime/tests/parse_combinator.rs` を新設。以下を含める:  
   - `or` の短絡（左が consumed/committed の場合は右を試さない）  
