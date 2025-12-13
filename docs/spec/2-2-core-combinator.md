@@ -3,7 +3,7 @@
 > 目的：**小さく強い核**で、書きやすさ・読みやすさ・高品質エラー・実用性能（ゼロコピー／Packrat／左再帰）を同時に満たす。
 > 前提：2.1 の型と実行意味（`Reply{consumed, committed}`）に準拠。**Unicode 前提**。
 > 方針：\*\*最小公理系（12-15個）**を厳選し、残りは**派生（derived）\*\*として提供。
-> 実装状況：Phase 2-5 Step6 で OCaml 実装の `Core_parse` モジュールが `rule`/`label`/`cut` と Packrat 指標を公開し、仕様上のコアコンビネーターと診断メタデータが同期された。[^core-parse-progress-ocaml]
+> 実装状況：Phase 2-5 Step6 で OCaml 実装の `Core_parse` モジュールが `rule`/`label`/`cut` と Packrat 指標を公開し、仕様上のコアコンビネーターと診断メタデータが同期された。Rust ランタイムは 4.1 期でバッチ版コンビネーター（`Parser<T>` / `Reply` / Packrat / 期待集合生成）を導入済みだが、Lex プロファイル共有・Streaming/Plugin 連携は未完である。[^core-parse-progress-ocaml][^core-parse-progress-rust]
 
 ---
 
@@ -356,3 +356,4 @@ register_plugin(ParserPlugin {
 > `Core.Parse.Plugin.Recoverable` トレイトは、回復可能なパーサが `recover` や `atomic` を使用する際の補助契約を提供する。コア API だけを利用する場合は意識する必要はない。
 
 [^core-parse-progress-ocaml]: `docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-003-proposal.md` Step6 実施記録および `docs/plans/bootstrap-roadmap/2-5-review-log.md` 2025-12-24 エントリを参照。API 変更履歴は `docs/notes/core-parse-api-evolution.md` Phase 2-5 Step6 セクションに整理されている。
+[^core-parse-progress-rust]: Rust ランタイムは `compiler/rust/runtime/src/parse/combinator.rs` で `Parser<T>` / `Reply` / Packrat メモ化 / 期待集合生成を実装し、`examples/language-impl-comparison/reml/basic_interpreter_combinator.reml` などバッチ系サンプルを CLI で実行できる状態にある。一方で `RunConfig.extensions["lex"]` の詳細プロファイル共有や `Core.Parse.Streaming`・`Core.Parse.Plugin` 連携は未着手であり、`docs/notes/core-parse-api-evolution.md#todo-rust-lex-streaming-plugin` にフォローアップ TODO を記録している。

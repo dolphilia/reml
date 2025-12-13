@@ -2,6 +2,12 @@
 
 Reml プラグイン（DSL テンプレート、ネイティブ UI、通知、監視ツールなど）を開発・配布するための基本手順をまとめます。Phase 3 のポータビリティ拡張に合わせ、ターゲット差異への配慮と監査ポリシー遵守を重視してください。
 
+## Rust 実装対応状況
+
+- Rust フロントエンド/ランタイムは 4.1 フェーズで `Core.Parse` コンビネーター層を導入済みだが、`Core.Parse.Plugin` の Capability 連携や Lex プロファイル共有、Streaming Runner との統合は未実装。プラグイン側の RunConfig 拡張を Rust CLI/LSP に反映するブリッジは今後の追補となる。
+- Manifest (`reml.toml`) と DSL 署名同期は Rust 版でも動作するものの、パーサープラグイン登録 API（`register_parser` + Capability 公開）は OCaml 実装が唯一の参照実装。Rust で動作確認する場合はバッチ実行のみを想定し、Streaming/Recover の挙動差分を `docs/notes/core-parse-api-evolution.md#todo-rust-lex-streaming-plugin` へ記録しておく。
+- Capability/Stage 監査メタデータは Rust でも生成されるが、`with_capabilities` などプラグイン側の糖衣が欠けている点に注意。必要な場合は CLI から `RunConfig.extensions["effects"]` を直接指定して暫定対応する。
+
 ## 1. プロジェクト構成
 
 ```

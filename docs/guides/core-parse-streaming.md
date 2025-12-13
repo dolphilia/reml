@@ -3,6 +3,12 @@
 > 目的：仕様章 [2.7 Core.Parse.Streaming](../spec/2-7-core-parse-streaming.md) で定義された API に基づき、実務でのチャンク処理・継続再開・監査連携の運用パターンを整理する。
 > 注意：ランナー API や型定義の公式仕様は 2.7 に移管済み。本ガイドでは実装・運用時の補足ノート、ベストプラクティス、チェックリストに焦点を当てる。
 
+## Rust 実装対応状況
+
+- 4.1 フェーズ時点の Rust ランタイムはバッチ用 `Parser<T>` コンビネーターと Packrat を実装済みだが、`run_stream` / `resume` を含む Streaming Runner は未提供。CLI/LSP からは OCaml 実装のみがストリーミング経路を提供している。
+- `RunConfig.extensions["lex"]` のプロファイル共有や `Core.Parse.Plugin` 連携も未実装のため、Rust 版では字句トリビアや Capability をストリーミング経路に反映できない。Lex プロファイルや recover 同期トークンを Rust へ橋渡しする手順は `docs/notes/core-parse-api-evolution.md#todo-rust-lex-streaming-plugin` に TODO として記録している。
+- Rust でストリーミングを試す場合は既存のバッチ Runner をチャンク単位で呼び直す暫定策しかなく、Packrat 共有やバックプレッシャ計測が欠落することに留意する。
+
 ## 1. ランナー API
 
 *仕様参照: [2-7 §A](../spec/2-7-core-parse-streaming.md#a-ランナー-api)*

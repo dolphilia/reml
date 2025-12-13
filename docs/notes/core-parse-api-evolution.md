@@ -169,6 +169,12 @@ end
 - リポジトリ索引として `README.md` と `docs/plans/bootstrap-roadmap/2-5-proposals/README.md` を更新し、PARSER-003 の進捗が一目で把握できるようリンクとタイムスタンプを追加。`docs/plans/bootstrap-roadmap/2-5-review-log.md` 2025-12-24 エントリに作業ログを記録。  
 - テレメトリ統合と Menhir 置換方針は未決定のため、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に TODO を移送。Packrat 指標と `parser.core.rule.*` メタデータを活用した監査強化を Phase 2-7 で評価する。
 
+## TODO: Rust Lex/Streaming/Plugin 連携 {#todo-rust-lex-streaming-plugin}
+
+- Rust ランタイムには `Parser<T>` / Packrat / 期待集合生成が導入されたが、`RunConfig.extensions["lex"]` プロファイルの共有やコメント/トリビア消費、`Core.Parse.Streaming` / `Core.Parse.Plugin` との橋渡しは未実装。4.1 Core.Parse 計画 Phase 6 のフォローアップとして、Lex ブリッジと Plugin Capability 連携の設計案を立案する。  
+- `docs/guides/core-parse-streaming.md` と `docs/guides/plugin-authoring.md` に暫定の非対応メモを追加済み。実装着手後は同ガイドと `docs/spec/2-0-parser-api-overview.md` / `2-2-core-combinator.md` の脚注を更新し、RunConfig 共有キーや診断メタデータの差分を明文化する。  
+- Streaming Runner の PoC を Rust で復元する際は、Packrat キャッシュ共有と `Recover` 同期トークンが欠落しないかを micro テストで検証し、欠落箇所を `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan.md` へ逆流させる。
+
 ---
 
 [^parser003-step1]: `docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-003-proposal.md` Step1 実施記録。Menhir 規則と 15 コアコンビネーターの対応表・欠落メタデータを整理。
