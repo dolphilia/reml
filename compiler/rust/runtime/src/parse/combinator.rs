@@ -155,9 +155,32 @@ fn parser_id_from_name(name: &str) -> ParserId {
 }
 
 /// 簡易的な識別子継続文字の判定。
-fn is_ident_continue(ch: char) -> bool {
-    // TODO: `Core.Parse.Lex` の識別子プロファイルを参照する（extensions["lex"]）。
-    ch == '_' || ch.is_alphanumeric()
+fn is_ident_continue(ch: char, profile: IdentifierProfile) -> bool {
+    match profile {
+        IdentifierProfile::Unicode => ch == '_' || ch.is_alphanumeric(),
+        IdentifierProfile::AsciiCompat => ch == '_' || ch.is_ascii_alphanumeric(),
+    }
+}
+
+/// `RunConfig.extensions["lex"].identifier_profile` から派生した識別子プロファイル。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IdentifierProfile {
+    Unicode,
+    AsciiCompat,
+}
+
+impl IdentifierProfile {
+    fn from_run_config(cfg: &RunConfig) -> Self {
+        cfg.extensions
+            .get("lex")
+            .and_then(|ext| ext.get("identifier_profile"))
+            .and_then(|value| value.as_str())
+            .map(|label| match label {
+                "ascii-compat" => IdentifierProfile::AsciiCompat,
+                _ => IdentifierProfile::Unicode,
+            })
+            .unwrap_or(IdentifierProfile::Unicode)
+    }
 }
 
 /// パースエラーの骨組み。
@@ -1742,7 +1765,7 @@ where
             if remaining.starts_with(&kw) {
                 let rest = start_input.advance(kw.len());
                 if let Some(ch) = rest.remaining().chars().next() {
-                    if is_ident_continue(ch) {
+                    if is_ident_continue(ch, state.identifier_profile()) {
                         state.set_input(start_input);
                         return Reply::Err {
                             error: ParseError::new(
@@ -1822,16 +1845,19 @@ pub struct ParseState {
     pub memo: MemoTable,
     pub recovered: bool,
     space: Option<Parser<()>>,
+    identifier_profile: IdentifierProfile,
 }
 
 impl ParseState {
     pub fn new(source: &str, run_config: RunConfig) -> Self {
+        let identifier_profile = IdentifierProfile::from_run_config(&run_config);
         Self {
             input: Input::new(source),
             run_config,
             memo: MemoTable::new(),
             recovered: false,
             space: None, // TODO: extensions["lex"] 由来の空白プロファイルをここで反映する。
+            identifier_profile,
         }
     }
 
@@ -1849,6 +1875,10 @@ impl ParseState {
 
     pub fn set_space(&mut self, space: Option<Parser<()>>) {
         self.space = space;
+    }
+
+    pub fn identifier_profile(&self) -> IdentifierProfile {
+        self.identifier_profile
     }
 
     pub fn packrat_enabled(&self) -> bool {
