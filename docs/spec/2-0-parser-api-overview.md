@@ -13,3 +13,6 @@
 - [2.5 エラーハンドリング](2-5-error.md): 期待集合や `cut` の効果、翻訳可能な診断モデル、`recover` 戦略などエラー生成・表示ポリシーを定義し、`Core.Text.display_width` を利用して `ParseState` と `Diagnostic` の列情報を同期させる手順を整備します。
 - [2.6 実行戦略](2-6-execution-strategy.md): トランポリンによる末尾最適化、Packrat/左再帰対応、計測とターゲット適応を含むランナー設計をまとめます。
 - [2.7 ストリーミング実行](2-7-core-parse-streaming.md): `run_stream`/`resume` API、継続メタデータ、バックプレッシャ制御、RunConfig 連携を定義し、バッチランナーと同等の診断品質を保つストリーミング処理の契約を示します。
+
+## Phase 8〜10 の拡張ドラフト（脚注）
+- `RunConfig.extensions["parse"].operator_table`（Phase 8）: `Core.Parse.expr_builder`/`OpBuilder` が利用する優先度・結合性テーブルを外部から注入するためのオプション。未指定時は各パーサーが埋め込む `levels` を採用し、既存のチェーン/ビルダー挙動は変わらない。

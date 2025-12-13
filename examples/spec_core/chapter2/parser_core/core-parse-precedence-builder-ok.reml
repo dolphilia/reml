@@ -1,0 +1,77 @@
+module Spec.Core.Chapter2.Parser.PrecedenceBuilder
+
+use Core.Parse as Parse
+use Core.Parse.Lex
+use Core.Prelude
+
+let sc: Parse.Parser<()> =
+  (Lex.spaceOrTabsOrNewlines)
+  |> Lex.skipMany
+
+fn sym(text: Str) -> Parse.Parser<()> {
+  Lex.symbol(sc, text)
+}
+
+fn integer() -> Parse.Parser<Int> {
+  Lex.lexeme(sc, Lex.int(10))
+    .andThen(|digits|
+      match Lex.parseI64(digits, 10) with
+      | Ok(v) -> Parse.ok(v)
+      | Err(_) -> Parse.fail("整数として解釈できません")
+    )
+}
+
+let expr_precedence: Parse.Parser<Int> =
+  Parse.rule("expr_precedence_builder",
+    let atom: Parse.Parser<Int> =
+      Parse.choice([
+        sym("(").skipR(rec expr_precedence).skipL(sym(")")),
+        integer()
+      ])
+
+    let levels: [Parse.ExprOpLevel<Int>] = [
+      { prefix: [
+          sym("+").map(|_| (|x| x)),
+          sym("-").map(|_| (|x| -x)),
+        ],
+        infixl: [],
+        infixr: [],
+        infixn: [],
+        postfix: []
+      },
+      { prefix: [],
+        postfix: [],
+        infixl: [
+          sym("*").map(|_| (|a, b| a * b)),
+          sym("/").map(|_| (|a, b| a / b)),
+        ],
+        infixr: [],
+        infixn: []
+      },
+      { prefix: [],
+        postfix: [],
+        infixl: [
+          sym("+").map(|_| (|a, b| a + b)),
+          sym("-").map(|_| (|a, b| a - b)),
+        ],
+        infixr: [],
+        infixn: []
+      },
+    ]
+
+    Parse.expr_builder(
+      atom,
+      levels,
+      {
+        space: Some(sc),
+        operand_label: Some("expression"),
+        commit_style: Parse.ExprCommit::Preserve,
+      },
+    )
+  )
+
+fn main() -> Str {
+  match Parse.run(expr_precedence, "-1 + 2 * (3 + 4)") with
+    Ok(value) -> format("result=%d", [value])
+    Err(diag) -> diag.message
+}

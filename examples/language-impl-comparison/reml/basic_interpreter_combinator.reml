@@ -202,6 +202,78 @@ fn array_access() -> Parser<Expr> {
     )
 }
 
+// Phase 8: 優先度ビルダー版の式パーサ（既定は chainl1 系を継続）
+fn expr_with_builder() -> Parser<Expr> {
+  let atom: Parser<Expr> =
+    rule("expr.atom",
+      Parse.choice([
+        number().map(|n| Number(n)),
+        string_literal().map(|s| String(s)),
+        Parse.attempt(array_access()),
+        identifier().map(|name| Variable(name)),
+        symbol("(")
+          .skipR(rec expr_with_builder)
+          .skipL(symbol(")"))
+      ])
+    )
+
+  let levels: [Parse.ExprOpLevel<Expr>] = [
+    { prefix: [
+        symbol("-").map(|_| (|x| UnaryOp({ op: Neg, operand: x }))),
+        keyword("NOT").map(|_| (|x| UnaryOp({ op: Not, operand: x }))),
+      ],
+      postfix: [],
+      infixl: [],
+      infixr: [],
+      infixn: []
+    },
+    { prefix: [],
+      postfix: [],
+      infixl: [
+        symbol("*").map(|_| (|l, r| BinOp({ op: Mul, left: l, right: r }))),
+        symbol("/").map(|_| (|l, r| BinOp({ op: Div, left: l, right: r }))),
+      ],
+      infixr: [],
+      infixn: []
+    },
+    { prefix: [],
+      postfix: [],
+      infixl: [
+        symbol("+").map(|_| (|l, r| BinOp({ op: Add, left: l, right: r }))),
+        symbol("-").map(|_| (|l, r| BinOp({ op: Sub, left: l, right: r }))),
+      ],
+      infixr: [],
+      infixn: []
+    },
+    { prefix: [],
+      postfix: [],
+      infixl: [
+        keyword("AND").map(|_| (|l, r| BinOp({ op: And, left: l, right: r }))),
+      ],
+      infixr: [],
+      infixn: []
+    },
+    { prefix: [],
+      postfix: [],
+      infixl: [
+        keyword("OR").map(|_| (|l, r| BinOp({ op: Or, left: l, right: r }))),
+      ],
+      infixr: [],
+      infixn: []
+    },
+  ]
+
+  Parse.expr_builder(
+    atom,
+    levels,
+    {
+      space: Some(sc),
+      operand_label: Some("expression"),
+      commit_style: Parse.ExprCommit::Preserve,
+    },
+  )
+}
+
 // 文パーサー
 fn statement() -> Parser<Statement> {
   Parse.choice([

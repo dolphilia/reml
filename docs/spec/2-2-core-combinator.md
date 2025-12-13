@@ -161,6 +161,40 @@ fn expect_symbol(space: Parser<()>, text: Str) -> Parser<()>        // = expect(
 
 `expect_keyword`/`expect_symbol` は `Core.Parse.Lex` のトークン API と `expect` を合成した糖衣で、キーワードや記号の欠落時に「`then` を期待しました」のようなメッセージを自動生成する。PL/0 サンプルで多用される `skipL(sc, kw("while"))`／`label+cut` の記述を 1 行にまとめ、DSL の差分実装時に診断の一貫性を確保できる。【F:../examples/language-impl-comparison/reml/pl0_combinator.reml†L103-L111】
 
+### C-1. 優先度ビルダー（Phase 8 ドラフト）
+
+```reml
+type ExprOpLevel<A> = {
+  prefix: [Parser<A -> A>] = [],
+  postfix: [Parser<A -> A>] = [],
+  infixl: [Parser<(A, A) -> A>] = [],
+  infixr: [Parser<(A, A) -> A>] = [],
+  infixn: [Parser<(A, A) -> A>] = [],
+}
+
+type ExprBuilderConfig = {
+  space: Option<Parser<()>>,
+  operand_label: Option<String>,
+  commit_style: ExprCommit = ExprCommit::Preserve,
+}
+
+enum ExprCommit {
+  Preserve,       // term/op が持つ committed を尊重（デフォルト）
+  CommitOperators // 各演算子直後に cut_here 相当を挿入し期待集合を縮約
+}
+
+fn expr_builder<A>(
+  atom: Parser<A>,
+  levels: [ExprOpLevel<A>],
+  config: ExprBuilderConfig = {}
+) -> Parser<A>
+```
+
+* `makeExprParser` 系の薄いラッパーで、`chainl1/chainr1` の巻き戻し規約と `committed` フラグを保ったまま優先度テーブルを組み立てる。`levels` は**強い→弱い**順に並べ、各 `infix*` は内部で適切に `attempt` を挿入して「途中失敗が手前の分岐へ漏れない」挙動を維持する。
+* `config.space` を指定すると演算子トークンに一貫したトリビアスキップを適用し、未指定時は各 `op` パーサの定義に委ねる。`operand_label` は診断に表示する「被演算子の名前」を上書きするための任意値。
+* `commit_style=Preserve` は term/op が持つ `committed` をそのまま伝播し、`CommitOperators` は演算子消費後に `cut_here()` を差し込んで期待集合の過剰拡張を防ぐ（Phase 10 の観測系 API と併用する前提で opt-in）。どちらも `chainl1/chainr1` の 2bit セマンティクスと互換。
+* `RunConfig.extensions["parse"].operator_table` が与えられた場合は `levels` を上書きし、`OpBuilder` DSL（2-4）と同じ優先度/結合性を外部宣言で共有できるようにする。未指定なら `levels` 引数をそのまま使用するため、既存コードは影響を受けない。
+
 ---
 
 ## D. 消費／コミットの要点（実務上の指針）

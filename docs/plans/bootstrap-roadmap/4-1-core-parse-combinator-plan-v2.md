@@ -53,6 +53,12 @@
 - サンプル: `examples/` に演算子優先度の DSL パーサを追加し、既存 `basic_interpreter_combinator.reml` にオプションでビルダー版を併記。  
 - 回帰: `phase4-scenario-matrix.csv` にシナリオ行を追加し、期待診断/成功条件を定義。Phase 7 で保留とした zero-copy/ストリーミング再開はシナリオ備考に保留理由を明記して除外する。
 
+#### 実施記録
+- `docs/spec/2-2-core-combinator.md` に `expr_builder` ドラフト（`ExprOpLevel`/`ExprCommit` と `operator_table` 上書き経路）を脚注追加し、`chainl1/chainr1` の committed 規約と期待集合抑制の扱いを明文化。  
+- `docs/spec/2-0-parser-api-overview.md` の RunConfig 脚注に `extensions["parse"].operator_table` を追加し、OpBuilder/CLI から優先度・結合性を注入する入口を記載。  
+- サンプル: `examples/spec_core/chapter2/parser_core/core-parse-precedence-builder-ok.reml`（期待出力: `expected/spec_core/chapter2/parser_core/core-parse-precedence-builder-ok.stdout`）を追加し、`phase4-scenario-matrix.csv` に `CH2-PARSE-801`（resolution=pending、zero-copy/streaming resume 除外理由を備考に記載）を登録。  
+- `examples/language-impl-comparison/reml/basic_interpreter_combinator.reml` に `expr_builder` 版を併記（既定は従来チェーンを維持）し、OpBuilder 互換性検証のためのオプション経路を明示。
+
 ### Phase 9: autoWhitespace/Layout と Lex ブリッジ強化
 - `autoWhitespace`（トリビア共有）と `Layout`（オフサイドルール）を Core.Parse へ導入する設計を決定。`RunConfig.extensions["lex"]` を尊重し、未提供時のフォールバックを整理。  
 - `symbol/keyword/lexeme` を新プロファイルに対応させ、コメント/トリビアのスキップ戦略を明文化。`IdentifierProfile` との統合や Bidi/正規化チェックの拡張点を仕様に脚注。  
