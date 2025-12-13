@@ -75,6 +75,12 @@
 - CLI/診断出力への統合方法を決め、`reports/` へメトリクスを書き出す実験的フラグを実装（デフォルト OFF）。  
 - マイクロベンチを作成し、Phase 8/9 の追加機能による性能変化を測定。性能退行がある場合はフォールバック戦略を記録。
 
+#### 実施記録
+- Rust ランタイム: `RunConfig.profile` と `extensions["parse"].profile/profile_output` を解釈する観測フラグを追加し、`ParseObserver` → `ParseResult.profile` に Packrat ヒット/ミス、`attempt` 巻き戻し、`recover` 成功、左再帰ガード利用、メモ化エントリ数を集計（`compiler/rust/runtime/src/parse/combinator.rs`）。`profile_output` 指定時は JSON を best-effort で保存し、失敗しても診断へ影響しない。
+- API/仕様更新: `ParserProfile` を公開し、`ParseResult` に `profile: Option<ParserProfile>` を追加。`docs/spec/2-2-core-combinator.md` へ B-3 観測/プロファイル脚注、`docs/spec/2-0-parser-api-overview.md` へ RunConfig 拡張の脚注を追記し、Phase10 の利用条件と計測項目を明記。
+- テスト: プロファイル無効時の無出力と、Packrat ヒット/ミス＋`attempt` バックトラック計測を確認するユニットテストを `compiler/rust/runtime/tests/parse_combinator.rs` に追加。
+- ベンチ: Phase8/9 の演算子チェーンを用いたマイクロベンチ `benchmarks/parse/profile.rs` を新設し、`packrat_only` と `packrat_with_profile` を比較できる Criterion グループ `parse::profile` を登録（`benchmarks/Cargo.toml`）。
+
 ### Phase 11: Plugin/Streaming/OpBuilder 連携強化
 - Plugin: `docs/guides/plugin-authoring.md` と `docs/spec/3-8-core-runtime-capability.md` を踏まえ、Core.Parse パーサをプラグインから安全に呼び出すための API ガイドラインを追加。署名検証/Stage 整合をチェックリスト化。  
 - Streaming: `core-parse-streaming` ガイドに合わせ、`Parser` → `StreamingParser` への変換方針と制約を整理（完全実装は次フェーズでも可）。  

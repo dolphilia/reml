@@ -176,6 +176,38 @@ fn chainr1_is_right_associative() {
 }
 
 #[test]
+fn profile_collects_packrat_and_backtrack_metrics() {
+    let branch = tag("x");
+    let parser = branch.clone().attempt().or(branch.clone());
+    let cfg = RunConfig {
+        packrat: true,
+        profile: true,
+        ..RunConfig::default()
+    };
+    let result = run(&parser, "y", &cfg);
+    let profile = result.profile.as_ref().expect("profile should be collected");
+    assert!(
+        profile.packrat_hits >= 1,
+        "expected at least one memo hit on retry"
+    );
+    assert!(
+        profile.packrat_misses >= 1,
+        "initial calls should record memo misses"
+    );
+    assert_eq!(profile.backtracks, 1, "attempt should record one backtrack");
+    assert!(
+        profile.memo_entries >= 1,
+        "memoized entries should be tracked"
+    );
+}
+
+#[test]
+fn profile_stays_disabled_by_default() {
+    let result = run(&ok(()), "", &RunConfig::default());
+    assert!(result.profile.is_none(), "profile is opt-in");
+}
+
+#[test]
 fn recover_syncs_and_keeps_diagnostic() {
     let parser = consume_then_fail("recover me").recover(tag("\n").map(|_| ()), ());
     let result = run(&parser, "oops\nrest", &RunConfig::default());

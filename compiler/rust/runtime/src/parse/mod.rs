@@ -9,9 +9,9 @@ pub mod op_builder;
 pub use combinator::{
     between, chainl1, chainr1, choice, cut_here, delimited, eof, fail, keyword, label, lexeme,
     layout_token, lookahead, not_followed_by, ok, parse_errors_to_guard_diagnostics,
-    parse_result_to_guard_diagnostics, position, preceded, rule, run, run_with_default,
-    spanned, symbol, terminated, BinaryOp, ExprBuilderConfig, ExprCommit, ExprOpLevel, Input,
-    InputPosition, MemoEntry, MemoKey, MemoTable, ParseError, ParseResult, ParseState, Parser,
+    parse_result_to_guard_diagnostics, position, preceded, rule, run, run_with_default, spanned,
+    symbol, terminated, BinaryOp, ExprBuilderConfig, ExprCommit, ExprOpLevel, Input, InputPosition,
+    MemoEntry, MemoKey, MemoTable, ParseError, ParseResult, ParserProfile, ParseState, Parser,
     ParserId, Reply, Span, UnaryOp,
 };
 pub use op_builder::{

@@ -31,6 +31,7 @@ pub type RunConfigExtensions = HashMap<std::string::String, RunConfigExtensionVa
 pub struct RunConfig {
     pub require_eof: bool,
     pub packrat: bool,
+    pub profile: bool,
     pub left_recursion: LeftRecursionStrategy,
     pub trace: bool,
     pub merge_warnings: bool,
@@ -44,6 +45,7 @@ impl Default for RunConfig {
         Self {
             require_eof: false,
             packrat: false,
+            profile: false,
             left_recursion: LeftRecursionStrategy::Auto,
             trace: false,
             merge_warnings: true,

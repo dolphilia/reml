@@ -165,6 +165,28 @@ fn autoWhitespace<A>(p: Parser<A>, cfg: AutoWhitespaceConfig = {}) -> Parser<A>
 * `symbol/keyword/lexeme` は `autoWhitespace` が挿入した `space_id` を検出して二重スキップを防ぎ、`RunConfig.extensions["lex"].identifier_profile` があれば境界判定に利用する。Bidi/正規化チェックを強化する場合は 2-3 §D の `IdentifierProfile` を併用する。
 * フォールバック: RunConfig/`cfg.profile` のどちらも無い場合は `whitespace()` + `commentLine("//")` を `skipMany` した簡易空白を用いる（0-1 §1.2 の安全側フォールバック）。レイアウトが無効な環境でも構文意味は変えず、空白/コメントの共有率だけが低下する。
 
+### B-3. 観測/プロファイル（Phase 10 実験フラグ）
+
+```reml
+type ParserProfile = {
+  packrat_hits: Int,
+  packrat_misses: Int,
+  backtracks: Int,
+  recoveries: Int,
+  left_recursion_guard_hits: Int,
+  memo_entries: Int,
+}
+
+RunConfig.profile: Bool = false
+RunConfig.extensions["parse"].profile: Bool
+RunConfig.extensions["parse"].profile_output: Str
+ParseResult.profile: Option<ParserProfile>
+```
+
+* `RunConfig.profile` または `extensions["parse"].profile` を `true` にすると観測が有効化され、Packrat ヒット/ミス、`attempt` による巻き戻し回数、`recover` 成功回数、左再帰ガード利用回数、Memo テーブルのエントリ数を `ParseResult.profile` に集計する。デフォルトは OFF（0-1 §1.1 の性能優先）。
+* `profile_output` を指定すると観測結果を JSON (`{packrat_hits,...}`) として書き出す。解析失敗時も集計され、書き込みエラーは診断に影響しない best-effort。`reports/spec-audit` 等のレポートディレクトリでの利用を想定。
+* Packrat 計測は `ParserId` + バイトオフセット単位。`backtracks` は `attempt` の空失敗変換で加算し、`recoveries` は同期成功時に加算する。左再帰ガードが無効な実装では 0 のまま保持される。
+
 ---
 
 ## C. 便利だが派生（derived）に落とすもの

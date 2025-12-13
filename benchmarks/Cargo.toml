@@ -28,3 +28,8 @@ harness = false
 name = "text_builder"
 path = "text/builder.rs"
 harness = false
+
+[[bench]]
+name = "parse_profile"
+path = "parse/profile.rs"
+harness = false

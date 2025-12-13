@@ -16,3 +16,4 @@
 
 ## Phase 8〜10 の拡張ドラフト（脚注）
 - `RunConfig.extensions["parse"].operator_table`（Phase 8）: `Core.Parse.expr_builder`/`OpBuilder` が利用する優先度・結合性テーブルを外部から注入するためのオプション。未指定時は各パーサーが埋め込む `levels` を採用し、既存のチェーン/ビルダー挙動は変わらない。
+- `RunConfig.profile` / `RunConfig.extensions["parse"].profile` / `profile_output`（Phase 10）: Packrat/バックトラック/回復の計測を opt-in で有効化し、`ParseResult.profile` に集計する観測フラグ。`profile_output` を与えると JSON を `reports/` 等へ書き出す（デフォルト OFF、安全側フォールバック）。

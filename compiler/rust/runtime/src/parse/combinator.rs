@@ -1,12 +1,14 @@
 use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic};
 use crate::run_config::RunConfig;
 use crate::text::Str;
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
 use std::any::Any;
 use super::op_builder::FixitySymbol;
 use std::collections::{HashMap, VecDeque};
+use std::fs;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use unicode_ident::{is_xid_continue, is_xid_start};
@@ -254,6 +256,108 @@ pub enum AutoWhitespaceStrategy {
     ForceProfile,
     /// Lex ブリッジを無効化し、現行 space/profile のみ利用。
     NoLexBridge,
+}
+
+/// パース時に収集するメトリクス。
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ParserProfile {
+    pub packrat_hits: u64,
+    pub packrat_misses: u64,
+    pub backtracks: u64,
+    pub recoveries: u64,
+    pub left_recursion_guard_hits: u64,
+    pub memo_entries: usize,
+}
+
+impl ParserProfile {
+    pub fn to_json(&self) -> Value {
+        json!({
+            "packrat_hits": self.packrat_hits,
+            "packrat_misses": self.packrat_misses,
+            "backtracks": self.backtracks,
+            "recoveries": self.recoveries,
+            "left_recursion_guard_hits": self.left_recursion_guard_hits,
+            "memo_entries": self.memo_entries,
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+struct ParseObserver {
+    profile: ParserProfile,
+    enabled: bool,
+    profile_output: Option<PathBuf>,
+}
+
+impl ParseObserver {
+    fn new(enabled: bool, profile_output: Option<PathBuf>) -> Self {
+        Self {
+            profile: ParserProfile::default(),
+            enabled,
+            profile_output,
+        }
+    }
+
+    fn record_packrat_hit(&mut self) {
+        if self.enabled {
+            self.profile.packrat_hits += 1;
+        }
+    }
+
+    fn record_packrat_miss(&mut self) {
+        if self.enabled {
+            self.profile.packrat_misses += 1;
+        }
+    }
+
+    fn record_backtrack(&mut self) {
+        if self.enabled {
+            self.profile.backtracks += 1;
+        }
+    }
+
+    fn record_recovery(&mut self) {
+        if self.enabled {
+            self.profile.recoveries += 1;
+        }
+    }
+
+    fn record_left_recursion_guard(&mut self) {
+        if self.enabled {
+            self.profile.left_recursion_guard_hits += 1;
+        }
+    }
+
+    fn finalize(mut self, memo_entries: usize) -> Option<(ParserProfile, Option<PathBuf>)> {
+        if !self.enabled {
+            return None;
+        }
+        self.profile.memo_entries = memo_entries;
+        Some((self.profile, self.profile_output))
+    }
+}
+
+#[derive(Default)]
+struct ParseProfileConfig {
+    enabled: bool,
+    profile_output: Option<PathBuf>,
+}
+
+fn decode_profile_config(run_config: &RunConfig) -> ParseProfileConfig {
+    let mut config = ParseProfileConfig {
+        enabled: run_config.profile,
+        profile_output: None,
+    };
+    if let Some(parse) = run_config.extensions.get("parse") {
+        if let Some(enabled) = parse.get("profile").and_then(|v| v.as_bool()) {
+            config.enabled |= enabled;
+        }
+        if let Some(output) = parse.get("profile_output").and_then(|v| v.as_str()) {
+            config.enabled = true;
+            config.profile_output = Some(PathBuf::from(output));
+        }
+    }
+    config
 }
 
 /// `RunConfig.extensions["lex"].identifier_profile` から派生した識別子プロファイル。
@@ -942,6 +1046,7 @@ pub struct ParseResult<T> {
     pub diagnostics: Vec<ParseError>,
     pub recovered: bool,
     pub legacy_error: Option<ParseError>,
+    pub profile: Option<ParserProfile>,
 }
 
 impl<T> ParseResult<T> {
@@ -952,6 +1057,7 @@ impl<T> ParseResult<T> {
             diagnostics: Vec::new(),
             recovered: false,
             legacy_error: None,
+            profile: None,
         }
     }
 
@@ -962,6 +1068,7 @@ impl<T> ParseResult<T> {
             diagnostics: vec![error.clone()],
             recovered: false,
             legacy_error: legacy_result.then_some(error),
+            profile: None,
         }
     }
 
@@ -1024,7 +1131,10 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
         let key = (self.id, state.input().byte_offset());
         if state.packrat_enabled() {
             if let Some(memo) = state.memo_get::<T>(key) {
+                state.record_packrat_hit();
                 return memo;
+            } else {
+                state.record_packrat_miss();
             }
         }
         let reply = (self.f)(state);
@@ -1293,6 +1403,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                     }
                 }
                 Reply::Err { error, .. } => {
+                    state.record_backtrack();
                     state.set_input(start_input);
                     Reply::Err {
                         error,
@@ -1351,6 +1462,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                                     };
                                 }
                                 state.set_input(rest.clone());
+                                state.record_recovery();
                                 state.recovered = true;
                                 let span = span_from_inputs(&start_input, &rest);
                                 return Reply::Ok {
@@ -2693,6 +2805,7 @@ pub struct ParseState {
     input: Input,
     pub run_config: RunConfig,
     pub memo: MemoTable,
+    observer: Option<ParseObserver>,
     diagnostics: Vec<ParseError>,
     pub recovered: bool,
     space: Option<Parser<()>>,
@@ -2707,6 +2820,10 @@ impl ParseState {
         let identifier_profile = IdentifierProfile::from_run_config(&run_config);
         let space = decode_lex_space(&run_config);
         let layout_profile = decode_layout_profile(&run_config);
+        let profile_config = decode_profile_config(&run_config);
+        let observer = profile_config
+            .enabled
+            .then(|| ParseObserver::new(true, profile_config.profile_output));
         let mut layout_stack = Vec::new();
         if matches!(layout_profile, Some(ref lp) if lp.offside) {
             layout_stack.push(0);
@@ -2715,6 +2832,7 @@ impl ParseState {
             input: Input::new(source),
             run_config,
             memo: MemoTable::new(),
+            observer,
             diagnostics: Vec::new(),
             recovered: false,
             space,
@@ -2867,6 +2985,43 @@ impl ParseState {
         self.memo
             .insert(key, Box::new(MemoizedReply { reply: reply.clone() }));
     }
+
+    pub fn record_packrat_hit(&mut self) {
+        if let Some(observer) = self.observer.as_mut() {
+            observer.record_packrat_hit();
+        }
+    }
+
+    pub fn record_packrat_miss(&mut self) {
+        if let Some(observer) = self.observer.as_mut() {
+            observer.record_packrat_miss();
+        }
+    }
+
+    pub fn record_backtrack(&mut self) {
+        if let Some(observer) = self.observer.as_mut() {
+            observer.record_backtrack();
+        }
+    }
+
+    pub fn record_recovery(&mut self) {
+        if let Some(observer) = self.observer.as_mut() {
+            observer.record_recovery();
+        }
+    }
+
+    pub fn record_left_recursion_guard(&mut self) {
+        if let Some(observer) = self.observer.as_mut() {
+            observer.record_left_recursion_guard();
+        }
+    }
+
+    pub fn take_profile(&mut self) -> Option<(ParserProfile, Option<PathBuf>)> {
+        let memo_entries = self.memo.len();
+        self.observer
+            .take()
+            .and_then(|observer| observer.finalize(memo_entries))
+    }
 }
 
 /// バッチランナー。`require_eof` と Packrat 設定を反映する。
@@ -2896,6 +3051,14 @@ where
         result.extend_diagnostics(diagnostics);
     }
     result.recovered |= state.recovered;
+    if let Some((profile, output)) = state.take_profile() {
+        if let Some(path) = output {
+            if let Err(err) = write_profile_report(&profile, &path) {
+                eprintln!("parse profile 出力に失敗しました: {err}");
+            }
+        }
+        result.profile = Some(profile);
+    }
     result
 }
 
@@ -2920,4 +3083,14 @@ pub fn parse_errors_to_guard_diagnostics(errors: &[ParseError]) -> Vec<GuardDiag
         .iter()
         .map(ParseError::to_guard_diagnostic)
         .collect()
+}
+
+fn write_profile_report(profile: &ParserProfile, path: &Path) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)?;
+        }
+    }
+    let body = serde_json::to_string_pretty(&profile.to_json())?;
+    fs::write(path, body)
 }
