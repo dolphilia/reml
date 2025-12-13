@@ -202,6 +202,60 @@ fn is_nfc_char(ch: char) -> bool {
     matches!(is_nfc_quick(s.chars()), IsNormalized::Yes)
 }
 
+/// レイアウト（オフサイド）プロファイル。
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LayoutProfile {
+    pub indent_token: String,
+    pub dedent_token: String,
+    pub newline_token: String,
+    pub offside: bool,
+    pub allow_mixed_tabs: bool,
+}
+
+impl Default for LayoutProfile {
+    fn default() -> Self {
+        Self {
+            indent_token: "<indent>".to_string(),
+            dedent_token: "<dedent>".to_string(),
+            newline_token: "<newline>".to_string(),
+            offside: false,
+            allow_mixed_tabs: false,
+        }
+    }
+}
+
+/// autoWhitespace 設定。
+#[derive(Clone, Debug)]
+pub struct AutoWhitespaceConfig {
+    /// Lex プロファイル由来の空白パーサ（未指定なら RunConfig/現行の space を利用）。
+    pub profile: Option<Parser<()>>,
+    /// レイアウト（オフサイド）プロファイル。
+    pub layout: Option<LayoutProfile>,
+    /// RunConfig 優先/強制/無効化の切替。
+    pub strategy: AutoWhitespaceStrategy,
+}
+
+impl Default for AutoWhitespaceConfig {
+    fn default() -> Self {
+        Self {
+            profile: None,
+            layout: None,
+            strategy: AutoWhitespaceStrategy::PreferRunConfig,
+        }
+    }
+}
+
+/// autoWhitespace の戦略。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AutoWhitespaceStrategy {
+    /// RunConfig.extensions["lex"] を優先し、無ければ profile を利用。
+    PreferRunConfig,
+    /// RunConfig を無視して profile を強制。
+    ForceProfile,
+    /// Lex ブリッジを無効化し、現行 space/profile のみ利用。
+    NoLexBridge,
+}
+
 /// `RunConfig.extensions["lex"].identifier_profile` から派生した識別子プロファイル。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IdentifierProfile {
@@ -743,6 +797,54 @@ fn decode_lex_space(run_config: &RunConfig) -> Option<Parser<()>> {
         }
     });
     Some(space)
+}
+
+fn count_indent(input: &str, allow_mixed_tabs: bool) -> (usize, bool, usize) {
+    let mut spaces = 0usize;
+    let mut tabs = 0usize;
+    let mut consumed_bytes = 0usize;
+    for (idx, ch) in input.char_indices() {
+        match ch {
+            ' ' => spaces += 1,
+            '\t' => tabs += 1,
+            _ => {
+                consumed_bytes = idx;
+                break;
+            }
+        }
+    }
+    if consumed_bytes == 0 {
+        consumed_bytes = input.len();
+    }
+    let mixed = spaces > 0 && tabs > 0 && !allow_mixed_tabs;
+    let width = spaces + tabs;
+    (width, mixed, consumed_bytes)
+}
+
+fn decode_layout_profile(run_config: &RunConfig) -> Option<LayoutProfile> {
+    let lex = run_config.extensions.get("lex")?;
+    let layout_value = lex.get("layout_profile")?;
+    let mut profile = LayoutProfile::default();
+    if let Some(obj) = layout_value.as_object() {
+        if let Some(indent) = obj.get("indent_token").and_then(Value::as_str) {
+            profile.indent_token = indent.to_string();
+        }
+        if let Some(dedent) = obj.get("dedent_token").and_then(Value::as_str) {
+            profile.dedent_token = dedent.to_string();
+        }
+        if let Some(newline) = obj.get("newline_token").and_then(Value::as_str) {
+            profile.newline_token = newline.to_string();
+        }
+        if let Some(offside) = obj.get("offside").and_then(Value::as_bool) {
+            profile.offside = offside;
+        }
+        if let Some(mixed) = obj.get("allow_mixed_tabs").and_then(Value::as_bool) {
+            profile.allow_mixed_tabs = mixed;
+        }
+        Some(profile)
+    } else {
+        None
+    }
 }
 
 /// パースエラーの骨組み。
@@ -2266,6 +2368,100 @@ where
     parser.not_followed_by()
 }
 
+/// レイアウトトークン（indent/dedent/newline）を消費する。
+pub fn layout_token(text: impl AsRef<str>) -> Parser<()>
+{
+    let expected = text.as_ref().to_string();
+    Parser::new(move |state| {
+        if !state.layout_active() {
+            return Reply::Err {
+                error: ParseError::new(
+                    format!("レイアウトが無効の状態で {} を要求しました", expected),
+                    state.input().position(),
+                )
+                .with_expected_tokens([expected.clone()]),
+                consumed: false,
+                committed: false,
+            };
+        }
+        state.produce_layout_tokens();
+        if let Some(token) = state.layout_pop_token() {
+            if token == expected {
+                return Reply::Ok {
+                    value: (),
+                    span: empty_span(state.input()),
+                    consumed: false,
+                    rest: state.input().clone(),
+                };
+            } else {
+                return Reply::Err {
+                    error: ParseError::new(
+                        format!("期待したレイアウトトークン: {}", expected),
+                        state.input().position(),
+                    )
+                    .with_expected_tokens([expected.clone()]),
+                    consumed: false,
+                    committed: false,
+                };
+            }
+        }
+        Reply::Err {
+            error: ParseError::new(
+                format!("レイアウトトークンが不足しています: {}", expected),
+                state.input().position(),
+            )
+            .with_expected_tokens([expected.clone()]),
+            consumed: false,
+            committed: false,
+        }
+    })
+}
+
+/// RunConfig/Lex プロファイルと結び付けた空白/レイアウト共有を行う。
+pub fn auto_whitespace<T>(parser: Parser<T>, cfg: AutoWhitespaceConfig) -> Parser<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    Parser::new(move |state| {
+        let run_space = match cfg.strategy {
+            AutoWhitespaceStrategy::ForceProfile | AutoWhitespaceStrategy::NoLexBridge => None,
+            _ => decode_lex_space(&state.run_config),
+        };
+        let chosen_space = match cfg.strategy {
+            AutoWhitespaceStrategy::PreferRunConfig => run_space.or_else(|| cfg.profile.clone()),
+            AutoWhitespaceStrategy::ForceProfile => cfg.profile.clone(),
+            AutoWhitespaceStrategy::NoLexBridge => None,
+        };
+        let prev_space = state.space();
+        let applied_space = chosen_space.clone().or_else(|| prev_space.clone());
+        if let Some(sp) = applied_space {
+            state.set_space(Some(sp));
+        } else {
+            state.set_space(None);
+        }
+
+        let run_layout = match cfg.strategy {
+            AutoWhitespaceStrategy::ForceProfile | AutoWhitespaceStrategy::NoLexBridge => None,
+            _ => decode_layout_profile(&state.run_config),
+        };
+        let chosen_layout = match cfg.strategy {
+            AutoWhitespaceStrategy::PreferRunConfig => {
+                run_layout.clone().or_else(|| cfg.layout.clone())
+            }
+            AutoWhitespaceStrategy::ForceProfile => cfg.layout.clone(),
+            AutoWhitespaceStrategy::NoLexBridge => None,
+        };
+        let prev_layout = state.layout_profile();
+        let applied_layout = chosen_layout.clone().or_else(|| prev_layout.clone());
+        state.set_layout_profile(applied_layout);
+
+        let reply = parser.parse(state);
+        state.set_space(prev_space);
+        state.set_layout_profile(prev_layout);
+        reply
+    })
+}
+
 /// 後続の空白をまとめて処理する。
 pub fn lexeme<A, S>(space: S, parser: Parser<A>) -> Parser<A>
 where
@@ -2285,32 +2481,34 @@ where
                 state.set_input(rest.clone());
                 let mut tail_input = rest.clone();
                 let mut consumed_flag = consumed;
-                if let Some(space_parser) = space.clone().or_else(|| state.space()) {
-                    state.set_input(tail_input.clone());
-                    match space_parser.parse(state) {
-                        Reply::Ok {
-                            rest: space_rest,
-                            consumed: space_consumed,
-                            ..
-                        } => {
-                            consumed_flag = consumed_flag || space_consumed;
-                            tail_input = space_rest.clone();
-                            state.set_input(space_rest);
-                        }
-                        Reply::Err {
-                            error,
-                            consumed: space_consumed,
-                            committed,
-                        } => {
-                            if space_consumed || committed {
-                                state.set_input(start_input);
-                                return Reply::Err {
-                                    error,
-                                    consumed: true,
-                                    committed,
-                                };
-                            } else {
-                                state.set_input(tail_input.clone());
+                if !state.layout_active() {
+                    if let Some(space_parser) = space.clone().or_else(|| state.space()) {
+                        state.set_input(tail_input.clone());
+                        match space_parser.parse(state) {
+                            Reply::Ok {
+                                rest: space_rest,
+                                consumed: space_consumed,
+                                ..
+                            } => {
+                                consumed_flag = consumed_flag || space_consumed;
+                                tail_input = space_rest.clone();
+                                state.set_input(space_rest);
+                            }
+                            Reply::Err {
+                                error,
+                                consumed: space_consumed,
+                                committed,
+                            } => {
+                                if space_consumed || committed {
+                                    state.set_input(start_input);
+                                    return Reply::Err {
+                                        error,
+                                        consumed: true,
+                                        committed,
+                                    };
+                                } else {
+                                    state.set_input(tail_input.clone());
+                                }
                             }
                         }
                     }
@@ -2498,6 +2696,9 @@ pub struct ParseState {
     diagnostics: Vec<ParseError>,
     pub recovered: bool,
     space: Option<Parser<()>>,
+    layout_profile: Option<LayoutProfile>,
+    layout_pending: VecDeque<String>,
+    layout_stack: Vec<usize>,
     identifier_profile: IdentifierProfile,
 }
 
@@ -2505,6 +2706,11 @@ impl ParseState {
     pub fn new(source: &str, run_config: RunConfig) -> Self {
         let identifier_profile = IdentifierProfile::from_run_config(&run_config);
         let space = decode_lex_space(&run_config);
+        let layout_profile = decode_layout_profile(&run_config);
+        let mut layout_stack = Vec::new();
+        if matches!(layout_profile, Some(ref lp) if lp.offside) {
+            layout_stack.push(0);
+        }
         Self {
             input: Input::new(source),
             run_config,
@@ -2512,6 +2718,9 @@ impl ParseState {
             diagnostics: Vec::new(),
             recovered: false,
             space,
+            layout_profile,
+            layout_pending: VecDeque::new(),
+            layout_stack,
             identifier_profile,
         }
     }
@@ -2530,6 +2739,105 @@ impl ParseState {
 
     pub fn set_space(&mut self, space: Option<Parser<()>>) {
         self.space = space;
+    }
+
+    pub fn layout_profile(&self) -> Option<LayoutProfile> {
+        self.layout_profile.clone()
+    }
+
+    pub fn set_layout_profile(&mut self, layout: Option<LayoutProfile>) {
+        self.layout_profile = layout;
+        self.layout_pending.clear();
+        self.layout_stack.clear();
+        if matches!(self.layout_profile, Some(ref lp) if lp.offside) {
+            self.layout_stack.push(0);
+        }
+    }
+
+    fn layout_active(&self) -> bool {
+        matches!(self.layout_profile, Some(ref lp) if lp.offside)
+    }
+
+    fn layout_peek_token(&self) -> Option<String> {
+        self.layout_pending.front().cloned()
+    }
+
+    fn layout_pop_token(&mut self) -> Option<String> {
+        self.layout_pending.pop_front()
+    }
+
+    fn emit_layout_diagnostic(&mut self, message: impl Into<String>) {
+        let error = ParseError::new(message, self.input.position());
+        self.push_diagnostic(error);
+    }
+
+    fn produce_layout_tokens(&mut self) {
+        if !self.layout_active() {
+            return;
+        }
+        if !self.layout_pending.is_empty() {
+            return;
+        }
+        let profile = match self.layout_profile.clone() {
+            Some(p) => p,
+            None => return,
+        };
+
+        // EOF 時に未処理の dedent を吐き出す。
+        if self.input.is_empty() {
+            while self.layout_stack.len() > 1 {
+                self.layout_stack.pop();
+                self.layout_pending
+                    .push_back(profile.dedent_token.clone());
+            }
+            return;
+        }
+
+        // 改行を検出して消費し、newline トークンを生成。
+        let remaining = self.input.remaining();
+        let mut advanced_newline = false;
+        if remaining.starts_with("\r\n") {
+            let rest = self.input.advance(2);
+            self.set_input(rest);
+            advanced_newline = true;
+        } else if remaining.starts_with('\n') {
+            let rest = self.input.advance(1);
+            self.set_input(rest);
+            advanced_newline = true;
+        }
+        if advanced_newline && !(self.input.line() == 1 && self.input.byte_offset() == 0) {
+            self.layout_pending
+                .push_back(profile.newline_token.clone());
+        }
+
+        // 行頭でインデント幅を評価し、indent/dedent を生成。
+        if self.input.column() == 1 {
+            let (indent_width, mixed, consumed_bytes) =
+                count_indent(self.input.remaining(), profile.allow_mixed_tabs);
+            if mixed {
+                self.emit_layout_diagnostic("インデントにタブとスペースが混在しています");
+            }
+            if consumed_bytes > 0 {
+                let rest = self.input.advance(consumed_bytes);
+                self.set_input(rest);
+            }
+            let current = *self.layout_stack.last().unwrap_or(&0);
+            if indent_width > current {
+                self.layout_stack.push(indent_width);
+                self.layout_pending
+                    .push_back(profile.indent_token.clone());
+            } else if indent_width < current {
+                while let Some(&top) = self.layout_stack.last() {
+                    if top > indent_width {
+                        self.layout_stack.pop();
+                        self.layout_pending
+                            .push_back(profile.dedent_token.clone());
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     pub fn identifier_profile(&self) -> IdentifierProfile {

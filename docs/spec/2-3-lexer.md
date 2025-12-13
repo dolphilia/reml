@@ -278,6 +278,26 @@ fn indentGt(n: usize) -> Parser<()>        // 列 > n
 fn column() -> Parser<usize>               // 現在列（グラフェム数）
 ```
 
+### H-2. LayoutProfile（Phase 9 ドラフト）
+
+```reml
+type LayoutProfile = {
+  indent_token: Str = "<indent>",
+  dedent_token: Str = "<dedent>",
+  newline_token: Str = "<newline>",
+  offside: Bool = false,          // true のときオフサイド規則を有効化
+  allow_mixed_tabs: Bool = false, // タブとスペース混在を許容するか
+}
+
+fn layout(profile: LayoutProfile) -> Parser<()>           // レイアウトトークンを生成
+fn layout_token(profile: LayoutProfile, s: Str) -> Parser<()> // indent/dedent/newline 判定
+```
+
+* `layout` は Lex 側でインデント幅を追跡し、オフサイド規則に従って仮想トークン（`indent_token`/`dedent_token`/`newline_token`）を発行する。`Core.Parse` からは通常の `symbol`/`keyword` と同様に扱え、`autoWhitespace`（2-2 §B-2）経由で空白スキップと併用できる。
+* `allow_mixed_tabs=false` が既定で、タブ・スペース混在行は `lex.layout.mixed_indent` 診断として報告する。`offside=false` の場合は仮想トークンを発行せず、単なる改行スキップとして振る舞う。
+* `RunConfig.extensions["lex"].layout_profile` に `LayoutProfile` を格納すると `autoWhitespace` が検出して Parser 側へ伝搬する。未指定時は Layout を無効化し、2-2 §B-2 のフォールバック空白を用いる。
+* 期待集合生成では `indent_token` 等を `expected` に含め、エラー箇所の列情報は `column()` が返すグラフェム数に基づいて計算する（0-1 §3.1 の Unicode 要件と整合）。
+
 ---
 
 ## I. セキュリティ・正規化（安全モード）

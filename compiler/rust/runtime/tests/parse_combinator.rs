@@ -1,5 +1,8 @@
-use reml_runtime::parse::{cut_here, ok, position, run, ParseError, Parser, Reply, Span};
+use reml_runtime::parse::{
+    cut_here, layout_token, ok, position, run, symbol, ParseError, Parser, Reply, Span,
+};
 use reml_runtime::run_config::RunConfig;
+use serde_json::{Map, Value};
 
 fn tag(expected: &'static str) -> Parser<&'static str> {
     Parser::new(move |state| {
@@ -202,4 +205,59 @@ fn spanned_and_position_report_offsets() {
     assert_eq!(mid.start.column, 1);
     assert_eq!(mid.end.column, 3);
     assert_eq!(end.start.column, 3);
+}
+
+fn layout_run_config() -> RunConfig {
+    RunConfig::default().with_extension("lex", |mut m| {
+        let mut layout = Map::new();
+        layout.insert("offside".into(), Value::Bool(true));
+        m.insert("layout_profile".into(), Value::Object(layout));
+        m
+    })
+}
+
+#[test]
+fn layout_tokens_emit_indent_and_dedent() {
+    let cfg = layout_run_config();
+    let parser = symbol(None, "if")
+        .then(layout_token("<newline>"))
+        .then(layout_token("<indent>"))
+        .then(symbol(None, "x"))
+        .then(layout_token("<newline>"))
+        .then(symbol(None, "y"))
+        .then(layout_token("<newline>"))
+        .then(layout_token("<dedent>"));
+    let result = run(&parser, "if\n  x\n  y\n", &cfg);
+    assert!(
+        result.value.is_some(),
+        "レイアウト付きで成功するはず: diagnostics={:?}",
+        result.diagnostics
+    );
+    assert!(
+        result.diagnostics.is_empty(),
+        "レイアウト有効時は診断なしで通る想定"
+    );
+}
+
+#[test]
+fn layout_reports_mixed_indent() {
+    let cfg = layout_run_config();
+    let parser = symbol(None, "if")
+        .then(layout_token("<newline>"))
+        .then(layout_token("<indent>"))
+        .then(symbol(None, "x"))
+        .then(layout_token("<dedent>"));
+    let result = run(&parser, "if\n \tx", &cfg);
+    assert!(
+        result.value.is_some(),
+        "混在インデントでもパース自体は継続: diagnostics={:?}",
+        result.diagnostics
+    );
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|d| d.message.contains("混在")),
+        "混在インデント診断 lex.layout.* が記録されること"
+    );
 }

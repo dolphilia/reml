@@ -65,6 +65,11 @@
 - `symbol/keyword/lexeme` を新プロファイルに対応させ、コメント/トリビアのスキップ戦略を明文化。`IdentifierProfile` との統合や Bidi/正規化チェックの拡張点を仕様に脚注。  
 - テスト: 空白プロファイルの切替、Layout あり/なしを切り替えるユニット/サンプルを追加し、期待診断を更新。
 
+#### 実施記録
+- 仕様ドラフト追加: `docs/spec/2-2-core-combinator.md` に `autoWhitespace` / `AutoWhitespaceConfig` / `AutoWhitespaceStrategy` を追記し、RunConfig の lex プロファイル優先・強制プロファイル・無効化フォールバックの 3 戦略を明示。`LayoutProfile` との連携とシンボル側の二重スキップ防止を記述。  
+- Lex 側ドラフト: `docs/spec/2-3-lexer.md` に `LayoutProfile` / `layout` / `layout_token` を追加し、`RunConfig.extensions["lex"].layout_profile` を `autoWhitespace` が検出する経路を定義。混在インデント診断とオフサイド無効時のフォールバックを明文化。  
+- 今後のテスト: Layout 有効/無効と profile 切替を行うユニット/サンプルを追加し、期待診断に `lex.layout.*` を含める（次フェーズで `examples/spec_core/chapter2` 系へ追加予定）。
+
 ### Phase 10: 観測性・性能計測（observe/profile）
 - Packrat/バックトラック/左再帰ガードのヒット率やメモ化サイズを収集する `ParseObserver`/`ParserProfile` API を追加し、`RunConfig` で ON/OFF 制御。  
 - CLI/診断出力への統合方法を決め、`reports/` へメトリクスを書き出す実験的フラグを実装（デフォルト OFF）。  

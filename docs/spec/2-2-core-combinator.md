@@ -142,6 +142,29 @@ impl Parser<()> {
 * `space_id` は空白パーサに安定した `ParserId` を割り当てる。`rule` で既に ID が確保されている場合はその値を返し、未登録の場合は内部で匿名の `rule("space")` を差し込んで ID を生成する。`RunConfig.extensions["lex"]` 等に格納して IDE/CLI と共有する用途を想定している。【参照: 2-3-lexer.md §L-4】
 * `space_id` が返す ID は Packrat メモ化と同じ仕組みを利用する。したがって `Parser<()>` をコピーしても ID は保持され、0-1 §1.1 の性能要件（共有メモ化）を満たす。
 
+### B-2. autoWhitespace / Layout（Phase 9 ドラフト）
+
+```reml
+type AutoWhitespaceConfig = {
+  profile: Option<Lex.TriviaProfile> = None,   // Lex 側のトリビア定義
+  layout: Option<Lex.LayoutProfile> = None,    // オフサイド規則の適用設定
+  strategy: AutoWhitespaceStrategy = AutoWhitespaceStrategy::PreferRunConfig,
+}
+
+enum AutoWhitespaceStrategy {
+  PreferRunConfig,   // RunConfig.extensions["lex"] 優先（無ければ profile を使用）
+  ForceProfile,      // RunConfig を無視して profile を強制
+  NoLexBridge,       // 現行 space を維持し、ParserId 共有のみ
+}
+
+fn autoWhitespace<A>(p: Parser<A>, cfg: AutoWhitespaceConfig = {}) -> Parser<A>
+```
+
+* `autoWhitespace` は `with_space` をベースに、`RunConfig.extensions["lex"].profile/space_id` を検出して自動的に空白・コメントスキップを注入する。`strategy=PreferRunConfig` では RunConfig が提供するトリビアプロファイルを最優先し、未設定時のみ `cfg.profile` を用いる。`ForceProfile` はテスト/サンプル専用で、RunConfig を無視して与えられたプロファイルを全体へ適用する。
+* `cfg.layout` を指定すると、Lex 側の `LayoutProfile`（2-3 §H-2）を `Parser` に紐付け、オフサイド規則で生成される仮想 `indent`/`dedent`/`semicolon` トークンを `symbol`/`keyword` が共有できるようにする。`NoLexBridge` は Layout を無効化し、既存の空白スキップを温存したい場合に選択する。
+* `symbol/keyword/lexeme` は `autoWhitespace` が挿入した `space_id` を検出して二重スキップを防ぎ、`RunConfig.extensions["lex"].identifier_profile` があれば境界判定に利用する。Bidi/正規化チェックを強化する場合は 2-3 §D の `IdentifierProfile` を併用する。
+* フォールバック: RunConfig/`cfg.profile` のどちらも無い場合は `whitespace()` + `commentLine("//")` を `skipMany` した簡易空白を用いる（0-1 §1.2 の安全側フォールバック）。レイアウトが無効な環境でも構文意味は変えず、空白/コメントの共有率だけが低下する。
+
 ---
 
 ## C. 便利だが派生（derived）に落とすもの
