@@ -86,6 +86,11 @@
 - Streaming: `core-parse-streaming` ガイドに合わせ、`Parser` → `StreamingParser` への変換方針と制約を整理（完全実装は次フェーズでも可）。  
 - OpBuilder: 新ビルダー/autoWhitespace を `OpBuilder` DSL に統合するための変更点を洗い出し、回帰テストを更新。互換性リスクを `docs/notes/core-parse-api-evolution.md` に記載。
 
+#### 実施記録
+- Plugin: `docs/guides/plugin-authoring.md` に Stage/Capability 署名検証と RunConfig 共有のチェックリストを追加し、`RuntimeBridgeAuditSpec`（`docs/spec/3-8-core-runtime-capability.md`）準拠で `bridge.stage.*` を転写する手順を明文化。`reml plugin verify`（署名検証）と RunConfig 経由の `extensions["parse"].operator_table` 共有を併記。
+- Streaming: `docs/guides/core-parse-streaming.md#94-parser-から-streamingparser-への変換指針（phase-11）` を新設し、`Parser<T>` を `StreamDriver` に受け渡す際の Packrat/期待集合/lex/layout/演算子テーブル共有ポリシーと Stage 伝播の扱い、Rust 実装欠落時の TODO を整理。
+- OpBuilder/autoWhitespace: RunConfig での演算子テーブル上書き方針とプラグイン設定衝突時の回帰監視案を `docs/notes/core-parse-api-evolution.md#phase-4-1-phase11-pluginstreamingopbuilder-連携メモ` に追記。`phase4-scenario-matrix.csv` への追加と Phase 12 のフォローアップを次ステップとして残した。
+
 ### Phase 12: ドキュメント・回帰更新
 - 仕様: `docs/spec/2-2-core-combinator.md` に新 API/挙動変更の脚注を追加し、必要に応じて `2-0-parser-api-overview.md` へ概要を追記。  
 - ガイド: `docs/guides/plugin-authoring.md`, `core-parse-streaming.md` に新機能の利用例/制約を追記。  

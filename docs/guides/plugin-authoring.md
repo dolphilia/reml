@@ -162,4 +162,12 @@ let register =
 
 さらなる詳細は `docs/notes/dsl-plugin-roadmap.md` の各プランに従って拡張してください。
 
+## 7. Core.Parse プラグイン連携チェックリスト（Phase 11）
+
+- **署名検証**: `@dsl_export` が出力する `signature.stage_bounds` / `requires_capabilities` と `plugin.toml` の `dsl.<name>.exports[*].signature` を必ず同期し、`reml plugin verify`（署名検証）または CI の Manifest チェックで乖離がないか確認する。Stage 不一致は `docs/spec/3-8-core-runtime-capability.md` の `effects.contract.stage_mismatch` として報告されるため、公開前に `verify_capability_stage`（ランタイム Bridge 経由）で検査する。
+- **RunConfig 共有**: Core.Parse をプラグイン内で呼び出す際は、`RunConfig` に `extensions["lex"]`（トリビア/レイアウトプロファイル）、`extensions["recover"]`（同期トークン）、`extensions["parse"].operator_table`（演算子優先度ビルダーで上書きする場合）を明示し、CLI/LSP/Streaming と同じ期待集合・空白処理を再現する。`Core.Parse.Plugin.with_capabilities` は Capability だけでなく RunConfig を併せて渡す前提で設計する。
+- **Streaming 互換**: ストリーミング実行を前提にするプラグインは、`ContinuationMeta.resume_hint` と `DemandHint` を `RunConfig.extensions["stream"]` から受け取り、バッチとストリーミングで同じ復旧フックを提供する。Rust 版では Streaming Runner が未実装のため、バッチ経路での再現手順を README に併記し、将来の実装時に互換性を検証できるよう `docs/notes/core-parse-api-evolution.md#todo-rust-lex-streaming-plugin` へ差分を記録する。
+- **監査メタデータ**: `register_parser` 時に `RuntimeBridgeAuditSpec` で要求される `bridge.stage.*` / `effect.capabilities[*]` / `parser.runconfig.*` を埋め込み、Packrat/Recover/autoWhitespace の各経路で診断と同じキーが出力されるか確認する。`reports/spec-audit/ch3` 系ログと突合して欠落がないかをチェックする。
+- **オペレーター宣言**: OpBuilder DSL や新しい演算子優先度ビルダーを使う場合は、`RunConfig.extensions["parse"].operator_table` で CLI/OpBuilder からの上書きに耐えるようにし、プラグイン内の DSL 設定と衝突しないかを `phase4-scenario-matrix.csv` の該当シナリオで回帰確認する。
+
 [^plugin-lexer001]: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §7 および `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md` Step5/6 実施記録を参照。Phase 2-7 で Unicode プロファイルが既定化され、ASCII 互換モードは移行期間中のフォールバック手段としてのみ利用する。

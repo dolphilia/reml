@@ -175,6 +175,12 @@ end
 - `docs/guides/core-parse-streaming.md` と `docs/guides/plugin-authoring.md` に暫定の非対応メモを追加済み。実装着手後は同ガイドと `docs/spec/2-0-parser-api-overview.md` / `2-2-core-combinator.md` の脚注を更新し、RunConfig 共有キーや診断メタデータの差分を明文化する。  
 - Streaming Runner の PoC を Rust で復元する際は、Packrat キャッシュ共有と `Recover` 同期トークンが欠落しないかを micro テストで検証し、欠落箇所を `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan.md` へ逆流させる。
 
+## Phase 4-1 Phase11 Plugin/Streaming/OpBuilder 連携メモ
+
+- Plugin 経由で Core.Parse を呼び出す際の安全策として、`RuntimeBridgeAuditSpec`（`docs/spec/3-8-core-runtime-capability.md`）で要求される `bridge.stage.*` / `effect.capabilities[*]` を `register_parser` 経路に転写するチェックリストを `docs/guides/plugin-authoring.md` に追加。Stage 不一致や署名乖離は `@dsl_export` → Manifest → CLI 検証（`reml plugin verify` 想定）で検出し、プラグイン固有の RunConfig を同時に共有する方針を明文化した。
+- Streaming との接続では、`ParserId`・Packrat・期待集合を共有したまま `Parser<T>` を `StreamDriver` へ渡す変換手順（lex/layout/autoWhitespace/優先度テーブルの共有を必須とする）を `docs/guides/core-parse-streaming.md#94-parser-から-streamingparser-への変換指針（phase-11）` に追記。Rust 実装欠落分は `#todo-rust-lex-streaming-plugin` へ残し、実装開始時のギャップ一覧として利用する。
+- OpBuilder と autoWhitespace/演算子優先度ビルダーの上書き経路を RunConfig (`extensions["parse"].operator_table`) で統一する方針を記録。CLI/OpBuilder DSL からの上書きがプラグイン側設定と衝突した場合に備え、`phase4-scenario-matrix.csv` で該当シナリオを追加し回帰監視する案を Phase 12 へ引き継ぐ。
+
 ---
 
 [^parser003-step1]: `docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-003-proposal.md` Step1 実施記録。Menhir 規則と 15 コアコンビネーターの対応表・欠落メタデータを整理。

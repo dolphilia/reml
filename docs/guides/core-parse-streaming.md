@@ -259,6 +259,13 @@ let outcome =
 
 この構成により、ストリーミング実行とバッチ実行が同じ `parser.core.rule.*` メタデータと Packrat 指標を共有し、Phase 2-7 で予定されているテレメトリ統合や Menhir 置換判断に必要な計測値を維持できる。
 
+### 9.4 Parser から StreamingParser への変換指針（Phase 11）
+
+- **変換方針**: 既存の `Parser<T>` をそのまま `StreamDriver` / `run_stream` に渡し、`ContinuationMeta.commit_watermark` と Packrat キャッシュを共有する。`rule` で固定した `ParserId` が Stream 経路でも維持されることを前提に、`StreamEvent::Pending` に `expected_tokens` を含めて IDE での補完を可能にする。
+- **Lex/autoWhitespace の共有**: autoWhitespace/Layout や `lexeme`/`symbol` の挙動を一致させるため、`RunConfig.extensions["lex"]` と `layout_profile` をストリーミング側へ必ず注入する。`extensions["parse"].operator_table` を用いて演算子優先度を上書きしている場合も同じテーブルを共有し、バッチとストリーミングで期待集合がずれないようにする。
+- **Capability/Stage の伝播**: プラグイン経由で `Core.Parse.Plugin.with_capabilities` を利用している場合、`bridge.stage.*` / `effect.capabilities[*]` を `StreamEvent::Error` へ転写し、`RuntimeBridgeAuditSpec`（`docs/spec/3-8-core-runtime-capability.md`）の要求を満たす。署名検証や Stage チェックで失敗した場合は `Pending` を返さずエラー完了とし、復旧経路に乗せない。
+- **既知の制約**: Rust ランタイムでは Streaming Runner が未実装のため、上記方針は OCaml 実装と将来の Rust 実装の整合指針として扱う。Packrat 共有や `resume` のバックプレッシャ制御は `docs/notes/core-parse-api-evolution.md#todo-rust-lex-streaming-plugin` に記録し、実装時に本節を最新の API 契約へ更新する。
+
 ## 10. Phase 2-5 PoC 状態と既知制限
 
 - 2026-01-24 時点で OCaml 実装は `Parser_driver.Streaming.run_stream` / `resume` を実装し、CLI (`--streaming` フラグ)・LSP・CI へ統合済み。`streaming_runner_tests.ml` と `streaming-outcome.json.golden` によりバッチ結果との一致を継続的に検証している。[^exec001-step4]
