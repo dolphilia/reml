@@ -2,6 +2,7 @@ use crate::run_config::RunConfig;
 use crate::text::Str;
 use std::any::Any;
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
@@ -135,6 +136,23 @@ impl Span {
     }
 }
 
+fn empty_span(input: &Input) -> Span {
+    let pos = input.position();
+    Span::new(pos, pos)
+}
+
+fn span_from_inputs(start: &Input, end: &Input) -> Span {
+    Span::new(start.position(), end.position())
+}
+
+fn parser_id_from_name(name: &str) -> ParserId {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    name.hash(&mut hasher);
+    let raw = hasher.finish() as u32;
+    // 0 を避けるため 1 を足す。
+    ParserId::from_raw(raw.wrapping_add(1))
+}
+
 /// パースエラーの骨組み。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParseError {
@@ -214,7 +232,7 @@ impl<T> Clone for Parser<T> {
     }
 }
 
-impl<T> Parser<T> {
+impl<T: Send + Sync + 'static> Parser<T> {
     pub fn new<F>(f: F) -> Self
     where
         F: Fn(&mut ParseState) -> Reply<T> + Send + Sync + 'static,
@@ -239,10 +257,1348 @@ impl<T> Parser<T> {
     pub fn parse(&self, state: &mut ParseState) -> Reply<T> {
         (self.f)(state)
     }
+
+    /// 値を変換する。
+    pub fn map<U, F>(self, f: F) -> Parser<U>
+    where
+        U: Send + Sync + 'static,
+        F: Fn(T) -> U + Send + Sync + 'static,
+    {
+        Parser::with_id(self.id, move |state| match self.parse(state) {
+            Reply::Ok {
+                value,
+                span,
+                consumed,
+                rest,
+            } => {
+                state.set_input(rest.clone());
+                Reply::Ok {
+                    value: f(value),
+                    span,
+                    consumed,
+                    rest,
+                }
+            }
+            Reply::Err {
+                error,
+                consumed,
+                committed,
+            } => {
+                Reply::Err {
+                    error,
+                    consumed,
+                    committed,
+                }
+            }
+        })
+    }
+
+    /// 直列合成。
+    pub fn then<U>(self, other: Parser<U>) -> Parser<(T, U)>
+    where
+        U: Send + Sync + 'static,
+    {
+        Parser::new(move |state| {
+            let start_input = state.input().clone();
+            match self.parse(state) {
+                Reply::Ok {
+                    value: left,
+                    span: _,
+                    consumed: left_consumed,
+                    rest: left_rest,
+                } => {
+                    state.set_input(left_rest.clone());
+                    match other.parse(state) {
+                        Reply::Ok {
+                            value: right,
+                            span: _right_span,
+                            consumed: right_consumed,
+                            rest,
+                        } => {
+                            let span = span_from_inputs(&start_input, &rest);
+                            state.set_input(rest.clone());
+                            Reply::Ok {
+                                value: (left, right),
+                                span,
+                                consumed: left_consumed || right_consumed,
+                                rest,
+                            }
+                        }
+                        Reply::Err {
+                            error,
+                            consumed,
+                            committed,
+                        } => {
+                            state.set_input(start_input);
+                            Reply::Err {
+                                error,
+                                consumed: left_consumed || consumed,
+                                committed,
+                            }
+                        }
+                    }
+                }
+                Reply::Err {
+                    error,
+                    consumed,
+                    committed,
+                } => {
+                    state.set_input(start_input);
+                    Reply::Err {
+                        error,
+                        consumed,
+                        committed,
+                    }
+                }
+            }
+        })
+    }
+
+    /// flatMap 相当。
+    pub fn and_then<U, F>(self, f: F) -> Parser<U>
+    where
+        U: Send + Sync + 'static,
+        F: Fn(T) -> Parser<U> + Send + Sync + 'static,
+    {
+        Parser::new(move |state| {
+            let start_input = state.input().clone();
+            match self.parse(state) {
+                Reply::Ok {
+                    value,
+                    consumed,
+                    rest,
+                    ..
+                } => {
+                    state.set_input(rest.clone());
+                    let next = f(value);
+                    match next.parse(state) {
+                        Reply::Ok {
+                            value: out,
+                            span,
+                            consumed: next_consumed,
+                            rest,
+                        } => {
+                            state.set_input(rest.clone());
+                            Reply::Ok {
+                                value: out,
+                                span,
+                                consumed: consumed || next_consumed,
+                                rest,
+                            }
+                        }
+                        Reply::Err {
+                            error,
+                            consumed: next_consumed,
+                            committed,
+                        } => {
+                            state.set_input(start_input);
+                            Reply::Err {
+                                error,
+                                consumed: consumed || next_consumed,
+                                committed,
+                            }
+                        }
+                    }
+                }
+                Reply::Err {
+                    error,
+                    consumed,
+                    committed,
+                } => {
+                    state.set_input(start_input);
+                    Reply::Err {
+                        error,
+                        consumed,
+                        committed,
+                    }
+                }
+            }
+        })
+    }
+
+    /// 左側を捨てて右側を返す。
+    pub fn skip_l<U>(self, other: Parser<U>) -> Parser<U>
+    where
+        U: Send + Sync + 'static,
+    {
+        self.then(other).map(|(_, r)| r)
+    }
+
+    /// 右側を捨てて左側を返す。
+    pub fn skip_r<U>(self, other: Parser<U>) -> Parser<T>
+    where
+        U: Send + Sync + 'static,
+    {
+        self.then(other).map(|(l, _)| l)
+    }
+
+    /// 左優先の選択。
+    pub fn or(self, other: Parser<T>) -> Parser<T>
+    {
+        Parser::new(move |state| {
+            let start_input = state.input().clone();
+            match self.parse(state) {
+                ok @ Reply::Ok { .. } => ok,
+                Reply::Err {
+                    error,
+                    consumed,
+                    committed,
+                } => {
+                    if consumed || committed {
+                        state.set_input(start_input);
+                        Reply::Err {
+                            error,
+                            consumed,
+                            committed,
+                        }
+                    } else {
+                        state.set_input(start_input.clone());
+                        other.parse(state)
+                    }
+                }
+            }
+        })
+    }
+
+    /// 値を変換しつつ committed を付与する。
+    pub fn cut(self) -> Parser<T>
+    {
+        Parser::with_id(self.id, move |state| match self.parse(state) {
+            Reply::Ok {
+                value,
+                span,
+                consumed,
+                rest,
+            } => {
+                state.set_input(rest.clone());
+                Reply::Ok {
+                    value,
+                    span,
+                    consumed,
+                    rest,
+                }
+            }
+            Reply::Err {
+                error,
+                consumed,
+                committed: _,
+            } => Reply::Err {
+                error,
+                consumed,
+                committed: true,
+            },
+        })
+    }
+
+    /// 直近の消費を巻き戻し、空失敗に変換する。
+    pub fn attempt(self) -> Parser<T>
+    {
+        Parser::with_id(self.id, move |state| {
+            let start_input = state.input().clone();
+            match self.parse(state) {
+                Reply::Ok {
+                    value,
+                    span,
+                    consumed,
+                    rest,
+                } => {
+                    state.set_input(rest.clone());
+                    Reply::Ok {
+                        value,
+                        span,
+                        consumed,
+                        rest,
+                    }
+                }
+                Reply::Err { error, .. } => {
+                    state.set_input(start_input);
+                    Reply::Err {
+                        error,
+                        consumed: false,
+                        committed: false,
+                    }
+                }
+            }
+        })
+    }
+
+    /// 失敗時に until まで読み飛ばし、with の値で継続する。
+    pub fn recover(self, until: Parser<()>, with: T) -> Parser<T>
+    where
+        T: Clone + 'static,
+    {
+        Parser::new(move |state| {
+            let start_input = state.input().clone();
+            match self.parse(state) {
+                ok @ Reply::Ok { .. } => ok,
+                Reply::Err {
+                    error,
+                    consumed,
+                    committed,
+                } => {
+                    if committed {
+                        state.set_input(start_input);
+                        return Reply::Err {
+                            error,
+                            consumed,
+                            committed,
+                        };
+                    }
+
+                    state.set_input(start_input.clone());
+                    let mut cursor = start_input.clone();
+                    loop {
+                        state.set_input(cursor.clone());
+                        match until.parse(state) {
+                            Reply::Ok {
+                                rest,
+                                consumed: until_consumed,
+                                ..
+                            } => {
+                                if !until_consumed {
+                                    let err = ParseError::new(
+                                        "recover until が空成功しました",
+                                        cursor.position(),
+                                    );
+                                    state.set_input(start_input);
+                                    return Reply::Err {
+                                        error: err,
+                                        consumed: false,
+                                        committed: false,
+                                    };
+                                }
+                                state.set_input(rest.clone());
+                                state.recovered = true;
+                                let span = span_from_inputs(&start_input, &rest);
+                                return Reply::Ok {
+                                    value: with.clone(),
+                                    span,
+                                    consumed: true,
+                                    rest,
+                                };
+                            }
+                            Reply::Err {
+                                consumed: until_consumed,
+                                committed: until_committed,
+                                error: until_err,
+                            } => {
+                                if until_consumed || until_committed {
+                                    state.set_input(start_input);
+                                    return Reply::Err {
+                                        error: until_err,
+                                        consumed: true,
+                                        committed: until_committed,
+                                    };
+                                }
+                            }
+                        }
+
+                        if cursor.is_empty() {
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error,
+                                consumed,
+                                committed: false,
+                            };
+                        }
+
+                        if let Some((idx, ch)) = cursor.remaining().char_indices().next() {
+                            let step = ch.len_utf8().max(1);
+                            cursor = cursor.advance(idx + step);
+                        } else {
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error,
+                                consumed,
+                                committed: false,
+                            };
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    /// トレースフラグを尊重して内側を実行する（現状は透過）。
+    pub fn trace(self) -> Parser<T> {
+        Parser::with_id(self.id, move |state| self.parse(state))
+    }
+
+    /// 0 回または 1 回。
+    pub fn opt(self) -> Parser<Option<T>> {
+        Parser::new(move |state| {
+            let start_input = state.input().clone();
+            match self.parse(state) {
+                Reply::Ok {
+                    value,
+                    span,
+                    consumed,
+                    rest,
+                } => {
+                    state.set_input(rest.clone());
+                    Reply::Ok {
+                        value: Some(value),
+                        span,
+                        consumed,
+                        rest,
+                    }
+                }
+                Reply::Err {
+                    consumed,
+                    committed,
+                    error,
+                } => {
+                    if consumed || committed {
+                        state.set_input(start_input);
+                        Reply::Err {
+                            error,
+                            consumed,
+                            committed,
+                        }
+                    } else {
+                        state.set_input(start_input.clone());
+                        Reply::Ok {
+                            value: None,
+                            span: empty_span(&start_input),
+                            consumed: false,
+                            rest: start_input,
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    /// 0 回以上。
+    pub fn many(self) -> Parser<Vec<T>> {
+        Parser::new(move |state| {
+            let mut values = Vec::new();
+            let start_input = state.input().clone();
+            let mut current_input = start_input.clone();
+            let mut any_consumed = false;
+
+            loop {
+                state.set_input(current_input.clone());
+                match self.parse(state) {
+                    Reply::Ok {
+                        value,
+                        consumed,
+                        rest,
+                        ..
+                    } => {
+                        if !consumed {
+                            let err = ParseError::new("繰り返し本体が空成功しました", current_input.position());
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error: err,
+                                consumed: false,
+                                committed: false,
+                            };
+                        }
+                        any_consumed = true;
+                        current_input = rest.clone();
+                        values.push(value);
+                    }
+                    Reply::Err {
+                        consumed,
+                        committed,
+                        error,
+                    } => {
+                        if consumed || committed {
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error,
+                                consumed,
+                                committed,
+                            };
+                        } else {
+                            state.set_input(current_input.clone());
+                            let span = span_from_inputs(&start_input, &current_input);
+                            return Reply::Ok {
+                                value: values,
+                                span,
+                                consumed: any_consumed,
+                                rest: current_input,
+                            };
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    /// 1 回以上。
+    pub fn many1(self) -> Parser<Vec<T>> {
+        Parser::new(move |state| {
+            let start_input = state.input().clone();
+            match self.clone().many().parse(state) {
+                Reply::Ok {
+                    value,
+                    consumed,
+                    rest,
+                    span,
+                } => {
+                    if value.is_empty() {
+                        state.set_input(start_input);
+                        let err = ParseError::new("1 回以上の繰り返しが必要です", state.input().position());
+                        Reply::Err {
+                            error: err,
+                            consumed: false,
+                            committed: false,
+                        }
+                    } else {
+                        state.set_input(rest.clone());
+                        Reply::Ok {
+                            value,
+                            span,
+                            consumed,
+                            rest,
+                        }
+                    }
+                }
+                err @ Reply::Err { .. } => err,
+            }
+        })
+    }
+
+    /// 繰り返し回数を指定する。
+    pub fn repeat(self, min: usize, max: Option<usize>) -> Parser<Vec<T>> {
+        Parser::new(move |state| {
+            let mut values = Vec::new();
+            let start_input = state.input().clone();
+            let mut current_input = start_input.clone();
+            let mut any_consumed = false;
+
+            loop {
+                if let Some(limit) = max {
+                    if values.len() >= limit {
+                        state.set_input(current_input.clone());
+                        let span = span_from_inputs(&start_input, &current_input);
+                        return Reply::Ok {
+                            value: values,
+                            span,
+                            consumed: any_consumed,
+                            rest: current_input,
+                        };
+                    }
+                }
+
+                state.set_input(current_input.clone());
+                match self.parse(state) {
+                    Reply::Ok {
+                        value,
+                        consumed,
+                        rest,
+                        ..
+                    } => {
+                        if !consumed {
+                            let err = ParseError::new("繰り返し本体が空成功しました", current_input.position());
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error: err,
+                                consumed: false,
+                                committed: false,
+                            };
+                        }
+                        any_consumed = true;
+                        current_input = rest.clone();
+                        values.push(value);
+                    }
+                    Reply::Err {
+                        consumed,
+                        committed,
+                        error,
+                    } => {
+                        if consumed || committed {
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error,
+                                consumed,
+                                committed,
+                            };
+                        } else if values.len() >= min {
+                            state.set_input(current_input.clone());
+                            let span = span_from_inputs(&start_input, &current_input);
+                            return Reply::Ok {
+                                value: values,
+                                span,
+                                consumed: any_consumed,
+                                rest: current_input,
+                            };
+                        } else {
+                            state.set_input(start_input);
+                            let err =
+                                ParseError::new("指定回数の繰り返しに失敗しました", current_input.position());
+                            return Reply::Err {
+                                error: err,
+                                consumed: false,
+                                committed: false,
+                            };
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    /// セパレータ区切り（0 回以上）。
+    pub fn sep_by<U>(self, sep: Parser<U>) -> Parser<Vec<T>>
+    where
+        U: Send + Sync + 'static,
+    {
+        Parser::new(move |state| {
+            let start_input = state.input().clone();
+            let mut values = Vec::new();
+            let mut current_input = start_input.clone();
+
+            state.set_input(current_input.clone());
+            match self.parse(state) {
+                Reply::Ok {
+                    value,
+                    consumed,
+                    rest,
+                    ..
+                } => {
+                    if !consumed {
+                        let err = ParseError::new("繰り返し本体が空成功しました", current_input.position());
+                        state.set_input(start_input);
+                        return Reply::Err {
+                            error: err,
+                            consumed: false,
+                            committed: false,
+                        };
+                    }
+                    values.push(value);
+                    current_input = rest.clone();
+                }
+                Reply::Err {
+                    consumed,
+                    committed,
+                    error,
+                } => {
+                    if consumed || committed {
+                        state.set_input(start_input);
+                        return Reply::Err {
+                            error,
+                            consumed,
+                            committed,
+                        };
+                    } else {
+                        state.set_input(start_input.clone());
+                        return Reply::Ok {
+                            value: values,
+                            span: empty_span(&start_input),
+                            consumed: false,
+                            rest: start_input,
+                        };
+                    }
+                }
+            }
+
+            loop {
+                state.set_input(current_input.clone());
+                match sep.parse(state) {
+                    Reply::Ok {
+                        consumed: sep_consumed,
+                        rest: sep_rest,
+                        ..
+                    } => {
+                        if !sep_consumed {
+                            let err = ParseError::new("セパレータが空成功しました", current_input.position());
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error: err,
+                                consumed: false,
+                                committed: false,
+                            };
+                        }
+                        current_input = sep_rest.clone();
+                    }
+                    Reply::Err {
+                        consumed: sep_consumed,
+                        committed: sep_committed,
+                        error: sep_error,
+                    } => {
+                        if sep_consumed || sep_committed {
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error: sep_error,
+                                consumed: sep_consumed,
+                                committed: sep_committed,
+                            };
+                        } else {
+                            state.set_input(current_input.clone());
+                            let span = span_from_inputs(&start_input, &current_input);
+                            return Reply::Ok {
+                                value: values,
+                                span,
+                                consumed: true,
+                                rest: current_input,
+                            };
+                        }
+                    }
+                }
+
+                state.set_input(current_input.clone());
+                match self.parse(state) {
+                    Reply::Ok {
+                        value,
+                        consumed,
+                        rest,
+                        ..
+                    } => {
+                        if !consumed {
+                            let err = ParseError::new("繰り返し本体が空成功しました", current_input.position());
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error: err,
+                                consumed: false,
+                                committed: false,
+                            };
+                        }
+                        values.push(value);
+                        current_input = rest.clone();
+                    }
+                    Reply::Err {
+                        consumed: item_consumed,
+                        committed: item_committed,
+                        error: item_error,
+                    } => {
+                        if item_consumed || item_committed {
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error: item_error,
+                                consumed: item_consumed,
+                                committed: item_committed,
+                            };
+                        } else {
+                            state.set_input(start_input);
+                            let err = ParseError::new("区切りの後に要素が見つかりません", current_input.position());
+                            return Reply::Err {
+                                error: err,
+                                consumed: true,
+                                committed: false,
+                            };
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    /// セパレータ区切り（1 回以上）。
+    pub fn sep_by1<U>(self, sep: Parser<U>) -> Parser<Vec<T>>
+    where
+        U: Send + Sync + 'static,
+    {
+        Parser::new(move |state| {
+            match self.clone().sep_by(sep.clone()).parse(state) {
+                Reply::Ok {
+                    value,
+                    consumed,
+                    rest,
+                    span,
+                } => {
+                    if value.is_empty() {
+                        let err = ParseError::new("1 回以上の繰り返しが必要です", state.input().position());
+                        Reply::Err {
+                            error: err,
+                            consumed: false,
+                            committed: false,
+                        }
+                    } else {
+                        Reply::Ok {
+                            value,
+                            consumed,
+                            rest,
+                            span,
+                        }
+                    }
+                }
+                err @ Reply::Err { .. } => err,
+            }
+        })
+    }
+
+    /// end まで読み続ける。
+    pub fn many_till<U>(self, end: Parser<U>) -> Parser<Vec<T>>
+    where
+        U: Send + Sync + 'static,
+    {
+        Parser::new(move |state| {
+            let mut values = Vec::new();
+            let start_input = state.input().clone();
+            let mut current_input = start_input.clone();
+
+            loop {
+                state.set_input(current_input.clone());
+                match end.parse(state) {
+                    Reply::Ok {
+                        rest,
+                        consumed: end_consumed,
+                        ..
+                    } => {
+                        state.set_input(rest.clone());
+                        let span = span_from_inputs(&start_input, &rest);
+                        let consumed_flag = !values.is_empty() || end_consumed;
+                        return Reply::Ok {
+                            value: values,
+                            span,
+                            consumed: consumed_flag,
+                            rest,
+                        };
+                    }
+                    Reply::Err {
+                        consumed: end_consumed,
+                        committed: end_committed,
+                        error: end_error,
+                    } => {
+                        if end_consumed || end_committed {
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error: end_error,
+                                consumed: end_consumed,
+                                committed: end_committed,
+                            };
+                        }
+                    }
+                }
+
+                state.set_input(current_input.clone());
+                match self.parse(state) {
+                    Reply::Ok {
+                        value,
+                        consumed,
+                        rest,
+                        ..
+                    } => {
+                        if !consumed {
+                            let err = ParseError::new("繰り返し本体が空成功しました", current_input.position());
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error: err,
+                                consumed: false,
+                                committed: false,
+                            };
+                        }
+                        current_input = rest.clone();
+                        values.push(value);
+                    }
+                    Reply::Err {
+                        consumed,
+                        committed,
+                        error,
+                    } => {
+                        if consumed || committed {
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error,
+                                consumed,
+                                committed,
+                            };
+                        } else {
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error,
+                                consumed: false,
+                                committed: false,
+                            };
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    /// 先読み（非消費）。
+    pub fn lookahead(self) -> Parser<T>
+    where
+        T: Clone + 'static,
+    {
+        Parser::new(move |state| {
+            let start_input = state.input().clone();
+            match self.parse(state) {
+                Reply::Ok {
+                    value,
+                    span,
+                    ..
+                } => {
+                    state.set_input(start_input.clone());
+                    Reply::Ok {
+                        value: value.clone(),
+                        span,
+                        consumed: false,
+                        rest: start_input,
+                    }
+                }
+                Reply::Err {
+                    error,
+                    committed,
+                    ..
+                } => {
+                    state.set_input(start_input);
+                    Reply::Err {
+                        error,
+                        consumed: false,
+                        committed,
+                    }
+                }
+            }
+        })
+    }
+
+    /// 否定先読み。
+    pub fn not_followed_by(self) -> Parser<()> {
+        Parser::new(move |state| {
+            let start_input = state.input().clone();
+            match self.parse(state) {
+                Reply::Ok { span, .. } => {
+                    state.set_input(start_input.clone());
+                    let err = ParseError::new("後続禁止のパターンにマッチしました", span.start);
+                    Reply::Err {
+                        error: err,
+                        consumed: false,
+                        committed: false,
+                    }
+                }
+                Reply::Err {
+                    consumed,
+                    committed,
+                    error,
+                } => {
+                    state.set_input(start_input.clone());
+                    if consumed || committed {
+                        Reply::Err {
+                            error,
+                            consumed,
+                            committed,
+                        }
+                    } else {
+                        Reply::Ok {
+                            value: (),
+                            span: empty_span(&start_input),
+                            consumed: false,
+                            rest: start_input,
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    /// 値とスパンを返す。
+    pub fn spanned(self) -> Parser<(T, Span)> {
+        Parser::new(move |state| {
+            match self.parse(state) {
+                Reply::Ok {
+                    value,
+                    span,
+                    consumed,
+                    rest,
+                } => {
+                    state.set_input(rest.clone());
+                    Reply::Ok {
+                        value: (value, span.clone()),
+                        span,
+                        consumed,
+                        rest,
+                    }
+                }
+                Reply::Err {
+                    error,
+                    consumed,
+                    committed,
+                } => Reply::Err {
+                    error,
+                    consumed,
+                    committed,
+                },
+            }
+        })
+    }
+
+    /// 左結合のチェーン。
+    pub fn chainl1<F>(self, op: Parser<F>) -> Parser<T>
+    where
+        T: Clone,
+        F: Fn(T, T) -> T + Send + Sync + 'static,
+    {
+        Parser::new(move |state| {
+            let start_input = state.input().clone();
+            let mut current_input = start_input.clone();
+            state.set_input(current_input.clone());
+            let mut reply = match self.parse(state) {
+                Reply::Ok {
+                    value,
+                    span,
+                    consumed,
+                    rest,
+                } => {
+                    current_input = rest.clone();
+                    (value, span, consumed)
+                }
+                err @ Reply::Err { .. } => {
+                    state.set_input(start_input);
+                    return err;
+                }
+            };
+
+            let mut acc = reply.0;
+            let mut acc_span = reply.1;
+            let mut any_consumed = reply.2;
+
+            loop {
+                let iter_input = current_input.clone();
+                state.set_input(iter_input.clone());
+                let step = op
+                    .clone()
+                    .then(self.clone())
+                    .attempt();
+                match step.parse(state) {
+                    Reply::Ok {
+                        value: (f, rhs),
+                        span: rhs_span,
+                        consumed,
+                        rest,
+                    } => {
+                        if !consumed {
+                            let err =
+                                ParseError::new("繰り返し本体が空成功しました", iter_input.position());
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error: err,
+                                consumed: false,
+                                committed: false,
+                            };
+                        }
+                        acc = f(acc, rhs);
+                        acc_span = Span::new(acc_span.start, rhs_span.end);
+                        any_consumed = true;
+                        current_input = rest.clone();
+                    }
+                    Reply::Err {
+                        consumed,
+                        committed,
+                        error,
+                    } => {
+                        state.set_input(iter_input);
+                        if consumed || committed {
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error,
+                                consumed,
+                                committed,
+                            };
+                        } else {
+                            state.set_input(current_input.clone());
+                            let span = Span::new(acc_span.start, current_input.position());
+                            return Reply::Ok {
+                                value: acc,
+                                span,
+                                consumed: any_consumed,
+                                rest: current_input,
+                            };
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    /// 右結合のチェーン。
+    pub fn chainr1<F>(self, op: Parser<F>) -> Parser<T>
+    where
+        T: Clone,
+        F: Fn(T, T) -> T + Send + Sync + 'static,
+    {
+        Parser::new(move |state| {
+            let start_input = state.input().clone();
+            state.set_input(start_input.clone());
+            let first = match self.parse(state) {
+                Reply::Ok {
+                    value,
+                    consumed,
+                    rest,
+                    ..
+                } => (value, consumed, rest),
+                err @ Reply::Err { .. } => return err,
+            };
+
+            let mut operands = vec![first.0];
+            let mut operators: Vec<F> = Vec::new();
+            let mut consumed_any = first.1;
+            let mut current_input = first.2.clone();
+
+            loop {
+                state.set_input(current_input.clone());
+                let step = op.clone().then(self.clone()).attempt();
+                match step.parse(state) {
+                    Reply::Ok {
+                        value: (f, rhs),
+                        consumed,
+                        rest,
+                        ..
+                    } => {
+                        if !consumed {
+                            let err =
+                                ParseError::new("繰り返し本体が空成功しました", current_input.position());
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error: err,
+                                consumed: false,
+                                committed: false,
+                            };
+                        }
+                        operators.push(f);
+                        operands.push(rhs);
+                        consumed_any = true;
+                        current_input = rest.clone();
+                    }
+                    Reply::Err {
+                        consumed,
+                        committed,
+                        error,
+                    } => {
+                        if consumed || committed {
+                            state.set_input(start_input);
+                            return Reply::Err {
+                                error,
+                                consumed,
+                                committed,
+                            };
+                        }
+                        break;
+                    }
+                }
+            }
+
+            let mut result = operands
+                .pop()
+                .expect("chainr1 で operands が空になることはありません");
+            while let Some(lhs) = operands.pop() {
+                if let Some(op_fn) = operators.pop() {
+                    result = op_fn(lhs, result);
+                }
+            }
+
+            let span = span_from_inputs(&start_input, &current_input);
+            state.set_input(current_input.clone());
+            Reply::Ok {
+                value: result,
+                span,
+                consumed: consumed_any,
+                rest: current_input,
+            }
+        })
+    }
+}
+
+/// 非消費で成功するパーサー。
+pub fn ok<T>(value: T) -> Parser<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    Parser::new(move |state| Reply::Ok {
+        value: value.clone(),
+        span: empty_span(state.input()),
+        consumed: false,
+        rest: state.input().clone(),
+    })
+}
+
+/// 非消費で失敗するパーサー。
+pub fn fail<T>(message: impl Into<String>) -> Parser<T>
+where
+    T: Send + Sync + 'static,
+{
+    let msg = message.into();
+    Parser::new(move |state| Reply::Err {
+        error: ParseError::new(msg.clone(), state.input().position()),
+        consumed: false,
+        committed: false,
+    })
+}
+
+/// 入力終端のみ成功する。
+pub fn eof() -> Parser<()> {
+    Parser::new(|state| {
+        if state.input().is_empty() {
+            Reply::Ok {
+                value: (),
+                span: empty_span(state.input()),
+                consumed: false,
+                rest: state.input().clone(),
+            }
+        } else {
+            Reply::Err {
+                error: ParseError::new("入力の終端を期待しました", state.input().position()),
+                consumed: false,
+                committed: false,
+            }
+        }
+    })
+}
+
+/// 名前付きパーサー（ParserId を固定化する）。
+pub fn rule<T>(name: impl AsRef<str>, parser: Parser<T>) -> Parser<T>
+where
+    T: Send + Sync + 'static,
+{
+    let id = parser_id_from_name(name.as_ref());
+    Parser::with_id(id, move |state| parser.parse(state))
+}
+
+/// エラー時のラベルを差し替える。
+pub fn label<T>(name: impl Into<String>, parser: Parser<T>) -> Parser<T>
+where
+    T: Send + Sync + 'static,
+{
+    let label = name.into();
+    Parser::new(move |state| match parser.parse(state) {
+        Reply::Ok {
+            value,
+            span,
+            consumed,
+            rest,
+        } => {
+            state.set_input(rest.clone());
+            Reply::Ok {
+                value,
+                span,
+                consumed,
+                rest,
+            }
+        }
+        Reply::Err {
+            consumed,
+            committed,
+            ..
+        } => Reply::Err {
+            error: ParseError::new(label.clone(), state.input().position()),
+            consumed,
+            committed,
+        },
+    })
+}
+
+/// 選択肢の列を左から試す。
+pub fn choice<T>(parsers: Vec<Parser<T>>) -> Parser<T>
+where
+    T: Send + Sync + 'static,
+{
+    parsers
+        .into_iter()
+        .reduce(|acc, p| acc.or(p))
+        .unwrap_or_else(|| fail("選択肢がありません"))
+}
+
+/// ゼロ幅コミット。
+pub fn cut_here() -> Parser<()> {
+    Parser::new(|state| Reply::Ok {
+        value: (),
+        span: empty_span(state.input()),
+        consumed: true,
+        rest: state.input().clone(),
+    })
+}
+
+/// 2 つのパーサーの間に挟む。
+pub fn between<A>(
+    open: Parser<()>,
+    parser: Parser<A>,
+    close: Parser<()>,
+) -> Parser<A>
+where
+    A: Send + Sync + 'static,
+{
+    open.skip_l(parser).skip_r(close)
+}
+
+/// 前置パーサーを読み捨てる。
+pub fn preceded<A, B>(pre: Parser<A>, parser: Parser<B>) -> Parser<B>
+where
+    A: Send + Sync + 'static,
+    B: Send + Sync + 'static,
+{
+    pre.skip_l(parser)
+}
+
+/// 後置パーサーを読み捨てる。
+pub fn terminated<A, B>(parser: Parser<A>, post: Parser<B>) -> Parser<A>
+where
+    A: Send + Sync + 'static,
+    B: Send + Sync + 'static,
+{
+    parser.skip_r(post)
+}
+
+/// a b c の中央だけを返す。
+pub fn delimited<A, B, C>(a: Parser<A>, b: Parser<B>, c: Parser<C>) -> Parser<B>
+where
+    A: Send + Sync + 'static,
+    B: Send + Sync + 'static,
+    C: Send + Sync + 'static,
+{
+    a.skip_l(b).skip_r(c)
+}
+
+/// 先読み。
+pub fn lookahead<T>(parser: Parser<T>) -> Parser<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    parser.lookahead()
+}
+
+/// 否定先読み。
+pub fn not_followed_by<T>(parser: Parser<T>) -> Parser<()>
+where
+    T: Send + Sync + 'static,
+{
+    parser.not_followed_by()
+}
+
+/// 位置パーサー。
+pub fn position() -> Parser<Span> {
+    Parser::new(|state| {
+        let span = empty_span(state.input());
+        Reply::Ok {
+            value: span.clone(),
+            span,
+            consumed: false,
+            rest: state.input().clone(),
+        }
+    })
+}
+
+/// 値とスパンを返す。
+pub fn spanned<T>(parser: Parser<T>) -> Parser<(T, Span)>
+where
+    T: Send + Sync + 'static,
+{
+    parser.spanned()
+}
+
+/// 左結合チェーン。
+pub fn chainl1<T, F>(term: Parser<T>, op: Parser<F>) -> Parser<T>
+where
+    T: Clone + Send + Sync + 'static,
+    F: Fn(T, T) -> T + Send + Sync + 'static,
+{
+    term.chainl1(op)
+}
+
+/// 右結合チェーン。
+pub fn chainr1<T, F>(term: Parser<T>, op: Parser<F>) -> Parser<T>
+where
+    T: Clone + Send + Sync + 'static,
+    F: Fn(T, T) -> T + Send + Sync + 'static,
+{
+    term.chainr1(op)
 }
 
 /// パース実行時の可変状態。
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ParseState {
     input: Input,
     pub run_config: RunConfig,
@@ -274,7 +1630,10 @@ impl ParseState {
 }
 
 /// バッチランナー。`require_eof` と Packrat 設定を反映する。
-pub fn run<T>(parser: &Parser<T>, input: &str, cfg: &RunConfig) -> ParseResult<T> {
+pub fn run<T>(parser: &Parser<T>, input: &str, cfg: &RunConfig) -> ParseResult<T>
+where
+    T: Send + Sync + 'static,
+{
     let mut state = ParseState::new(input, cfg.clone());
     let reply = parser.parse(&mut state);
     match reply {
@@ -294,6 +1653,9 @@ pub fn run<T>(parser: &Parser<T>, input: &str, cfg: &RunConfig) -> ParseResult<T
 }
 
 /// RunConfig を指定しない場合のエイリアス。
-pub fn run_with_default<T>(parser: &Parser<T>, input: &str) -> ParseResult<T> {
+pub fn run_with_default<T>(parser: &Parser<T>, input: &str) -> ParseResult<T>
+where
+    T: Send + Sync + 'static,
+{
     run(parser, input, &RunConfig::default())
 }
