@@ -1,4 +1,6 @@
+use crate::run_config::RunConfigExtensionValue;
 use indexmap::IndexMap;
+use serde_json::{json, Value};
 use std::fmt;
 
 /// DSL で使用する fixity シンボル。
@@ -237,6 +239,44 @@ impl OpTable {
     /// 優先度レベルの一覧を取得する（高い優先度から降順）。
     pub fn levels(&self) -> &[OpLevel] {
         &self.levels
+    }
+
+    /// RunConfig.extensions["parse"] へ埋め込むための JSON 互換値を生成する。
+    pub fn to_run_config_extension(&self) -> RunConfigExtensionValue {
+        let levels = self
+            .levels
+            .iter()
+            .map(|lvl| {
+                let mut obj = serde_json::Map::new();
+                obj.insert("priority".into(), json!(lvl.priority));
+                obj.insert(
+                    "fixity".into(),
+                    json!(match lvl.fixity {
+                        FixitySymbol::Prefix => "prefix",
+                        FixitySymbol::Postfix => "postfix",
+                        FixitySymbol::InfixLeft => "infix_left",
+                        FixitySymbol::InfixRight => "infix_right",
+                        FixitySymbol::InfixNonassoc => "infix_nonassoc",
+                        FixitySymbol::Ternary => "ternary",
+                    }),
+                );
+                let operators = lvl
+                    .operators
+                    .iter()
+                    .map(|op| match op {
+                        OperatorSpec::Token(t) => Value::String(t.clone()),
+                        OperatorSpec::Ternary { head, mid } => {
+                            Value::Array(vec![Value::String(head.clone()), Value::String(mid.clone())])
+                        }
+                    })
+                    .collect();
+                obj.insert("operators".into(), Value::Array(operators));
+                Value::Object(obj)
+            })
+            .collect();
+        let mut ext = RunConfigExtensionValue::new();
+        ext.insert("operator_table".into(), Value::Array(levels));
+        ext
     }
 }
 

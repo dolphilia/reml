@@ -3,7 +3,8 @@ use crate::run_config::RunConfig;
 use crate::text::Str;
 use serde_json::{Map, Value};
 use std::any::Any;
-use std::collections::HashMap;
+use super::op_builder::FixitySymbol;
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -230,6 +231,359 @@ impl IdentifierProfile {
         }
         Ok(())
     }
+}
+
+/// 優先度ビルダーで利用する単項/二項演算子の型。
+pub type UnaryOp<T> = fn(T) -> T;
+pub type BinaryOp<T> = fn(T, T) -> T;
+
+/// 演算子レベルの設定。
+#[derive(Clone)]
+pub struct ExprOpLevel<T> {
+    pub prefix: Vec<Parser<UnaryOp<T>>>,
+    pub postfix: Vec<Parser<UnaryOp<T>>>,
+    pub infixl: Vec<Parser<BinaryOp<T>>>,
+    pub infixr: Vec<Parser<BinaryOp<T>>>,
+    pub infixn: Vec<Parser<BinaryOp<T>>>,
+}
+
+impl<T: Clone + Send + Sync + 'static> ExprOpLevel<T> {
+    fn with_space(&self, space: &Option<Parser<()>>) -> Self {
+        let apply_unary = |ops: &Vec<Parser<UnaryOp<T>>>| {
+            if let Some(sp) = space.clone() {
+                ops.iter()
+                    .cloned()
+                    .map(|p| p.with_space(sp.clone()))
+                    .collect::<Vec<_>>()
+            } else {
+                ops.clone()
+            }
+        };
+        let apply_binary = |ops: &Vec<Parser<BinaryOp<T>>>| {
+            if let Some(sp) = space.clone() {
+                ops.iter()
+                    .cloned()
+                    .map(|p| p.with_space(sp.clone()))
+                    .collect::<Vec<_>>()
+            } else {
+                ops.clone()
+            }
+        };
+        Self {
+            prefix: apply_unary(&self.prefix),
+            postfix: apply_unary(&self.postfix),
+            infixl: apply_binary(&self.infixl),
+            infixr: apply_binary(&self.infixr),
+            infixn: apply_binary(&self.infixn),
+        }
+    }
+
+    fn split_by_fixity(&self) -> Vec<(FixitySymbol, ExprOpLevel<T>)> {
+        let mut parts = Vec::new();
+        if !self.prefix.is_empty() {
+            parts.push((
+                FixitySymbol::Prefix,
+                ExprOpLevel {
+                    prefix: self.prefix.clone(),
+                    postfix: Vec::new(),
+                    infixl: Vec::new(),
+                    infixr: Vec::new(),
+                    infixn: Vec::new(),
+                },
+            ));
+        }
+        if !self.postfix.is_empty() {
+            parts.push((
+                FixitySymbol::Postfix,
+                ExprOpLevel {
+                    prefix: Vec::new(),
+                    postfix: self.postfix.clone(),
+                    infixl: Vec::new(),
+                    infixr: Vec::new(),
+                    infixn: Vec::new(),
+                },
+            ));
+        }
+        if !self.infixl.is_empty() {
+            parts.push((
+                FixitySymbol::InfixLeft,
+                ExprOpLevel {
+                    prefix: Vec::new(),
+                    postfix: Vec::new(),
+                    infixl: self.infixl.clone(),
+                    infixr: Vec::new(),
+                    infixn: Vec::new(),
+                },
+            ));
+        }
+        if !self.infixr.is_empty() {
+            parts.push((
+                FixitySymbol::InfixRight,
+                ExprOpLevel {
+                    prefix: Vec::new(),
+                    postfix: Vec::new(),
+                    infixl: Vec::new(),
+                    infixr: self.infixr.clone(),
+                    infixn: Vec::new(),
+                },
+            ));
+        }
+        if !self.infixn.is_empty() {
+            parts.push((
+                FixitySymbol::InfixNonassoc,
+                ExprOpLevel {
+                    prefix: Vec::new(),
+                    postfix: Vec::new(),
+                    infixl: Vec::new(),
+                    infixr: Vec::new(),
+                    infixn: self.infixn.clone(),
+                },
+            ));
+        }
+        parts
+    }
+}
+
+impl<T> Default for ExprOpLevel<T> {
+    fn default() -> Self {
+        Self {
+            prefix: Vec::new(),
+            postfix: Vec::new(),
+            infixl: Vec::new(),
+            infixr: Vec::new(),
+            infixn: Vec::new(),
+        }
+    }
+}
+
+/// 優先度ビルダーの commit スタイル。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExprCommit {
+    Preserve,
+    CommitOperators,
+}
+
+/// 優先度ビルダーのコンフィグ。
+#[derive(Clone)]
+pub struct ExprBuilderConfig {
+    pub space: Option<Parser<()>>,
+    pub operand_label: Option<String>,
+    pub commit_style: ExprCommit,
+}
+
+impl Default for ExprBuilderConfig {
+    fn default() -> Self {
+        Self {
+            space: None,
+            operand_label: None,
+            commit_style: ExprCommit::Preserve,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct OperatorTableOverride {
+    fixities: Vec<FixitySymbol>,
+    commit_operators: Option<bool>,
+}
+
+fn decode_operator_table_override(run_config: &RunConfig) -> Option<OperatorTableOverride> {
+    let parse = run_config.extensions.get("parse")?;
+    let levels = parse.get("operator_table")?.as_array()?;
+    let mut fixities = Vec::new();
+    for level in levels {
+        if let Some(label) = level.get("fixity").and_then(Value::as_str) {
+            let symbol = match label {
+                ":prefix" | "prefix" => FixitySymbol::Prefix,
+                ":postfix" | "postfix" => FixitySymbol::Postfix,
+                ":infix_left" | "infixl" | "infix_left" => FixitySymbol::InfixLeft,
+                ":infix_right" | "infixr" | "infix_right" => FixitySymbol::InfixRight,
+                ":infix_nonassoc" | "infixn" | "infix_nonassoc" => FixitySymbol::InfixNonassoc,
+                _ => continue,
+            };
+            fixities.push(symbol);
+        }
+    }
+    let commit_operators = parse
+        .get("commit_operators")
+        .and_then(Value::as_bool)
+        .or_else(|| parse.get("commitOperators").and_then(Value::as_bool));
+
+    Some(OperatorTableOverride {
+        fixities,
+        commit_operators,
+    })
+}
+
+fn reorder_levels<T: Clone + Send + Sync + 'static>(
+    levels: &[ExprOpLevel<T>],
+    override_fixities: &[FixitySymbol],
+) -> Vec<ExprOpLevel<T>> {
+    let mut buckets: HashMap<FixitySymbol, VecDeque<ExprOpLevel<T>>> = HashMap::new();
+    for level in levels {
+        for (fixity, part) in level.split_by_fixity() {
+            buckets.entry(fixity).or_default().push_back(part);
+        }
+    }
+    let mut reordered = Vec::new();
+    for fixity in override_fixities {
+        if let Some(queue) = buckets.get_mut(fixity) {
+            if let Some(level) = queue.pop_front() {
+                reordered.push(level);
+            }
+        }
+    }
+    for queue in buckets.values_mut() {
+        while let Some(level) = queue.pop_front() {
+            reordered.push(level);
+        }
+    }
+    reordered
+}
+
+fn choice_ops<T: Clone + Send + Sync + 'static>(
+    ops: &[Parser<T>],
+) -> Option<Parser<T>> {
+    match ops.len() {
+        0 => None,
+        1 => Some(ops[0].clone()),
+        _ => Some(choice(ops.to_vec())),
+    }
+}
+
+fn apply_prefix_postfix<T: Clone + Send + Sync + 'static>(
+    term: Parser<T>,
+    prefix: Option<Parser<UnaryOp<T>>>,
+    postfix: Option<Parser<UnaryOp<T>>>,
+) -> Parser<T> {
+    let prefix_many = prefix.map(|p| p.many()).unwrap_or_else(|| ok(Vec::new()));
+    let postfix_many = postfix.map(|p| p.many()).unwrap_or_else(|| ok(Vec::new()));
+    prefix_many.and_then(move |pres| {
+        let postfix_many = postfix_many.clone();
+        let term = term.clone();
+        term.and_then(move |core| {
+            let pres_clone = pres.clone();
+            postfix_many.clone().map(move |posts| {
+                let with_prefix = pres_clone
+                    .iter()
+                    .rev()
+                    .fold(core.clone(), |acc, f| f(acc));
+                posts.into_iter().fold(with_prefix, |acc, f| f(acc))
+            })
+        })
+    })
+}
+
+fn infix_nonassoc<T: Clone + Send + Sync + 'static>(
+    term: Parser<T>,
+    op: Parser<BinaryOp<T>>,
+) -> Parser<T> {
+    term.clone()
+        .and_then(move |lhs| {
+            let lhs_for_ok = lhs.clone();
+            let op = op.clone();
+            let term = term.clone();
+            op.and_then(move |f| {
+                let term = term.clone();
+                let lhs_for_map = lhs.clone();
+                term.map(move |rhs| f(lhs_for_map.clone(), rhs))
+            })
+            .or(ok(lhs_for_ok))
+        })
+}
+
+fn build_level<T: Clone + Send + Sync + 'static>(
+    term: Parser<T>,
+    level: &ExprOpLevel<T>,
+    commit: ExprCommit,
+) -> Parser<T> {
+    let mut prefix = level.prefix.clone();
+    let mut postfix = level.postfix.clone();
+    let mut infixl = level.infixl.clone();
+    let mut infixr = level.infixr.clone();
+    let mut infixn = level.infixn.clone();
+    if commit == ExprCommit::CommitOperators {
+        prefix = prefix
+            .into_iter()
+            .map(|p| p.then(cut_here()).map(|(f, _)| f))
+            .collect();
+        postfix = postfix
+            .into_iter()
+            .map(|p| p.then(cut_here()).map(|(f, _)| f))
+            .collect();
+        infixl = infixl
+            .into_iter()
+            .map(|p| p.then(cut_here()).map(|(f, _)| f))
+            .collect();
+        infixr = infixr
+            .into_iter()
+            .map(|p| p.then(cut_here()).map(|(f, _)| f))
+            .collect();
+        infixn = infixn
+            .into_iter()
+            .map(|p| p.then(cut_here()).map(|(f, _)| f))
+            .collect();
+    }
+
+    let prefix_choice = choice_ops(&prefix);
+    let postfix_choice = choice_ops(&postfix);
+    let infixl_choice = choice_ops(&infixl);
+    let infixr_choice = choice_ops(&infixr);
+    let infixn_choice = choice_ops(&infixn);
+
+    let term = apply_prefix_postfix(term, prefix_choice, postfix_choice);
+
+    if let Some(op) = infixl_choice {
+        chainl1(term, op)
+    } else if let Some(op) = infixr_choice {
+        chainr1(term, op)
+    } else if let Some(op) = infixn_choice {
+        infix_nonassoc(term, op)
+    } else {
+        term
+    }
+}
+
+/// `makeExprParser` 相当の優先度ビルダー。
+pub fn expr_builder<T: Clone + Send + Sync + 'static>(
+    atom: Parser<T>,
+    levels: Vec<ExprOpLevel<T>>,
+    config: ExprBuilderConfig,
+) -> Parser<T> {
+    Parser::new(move |state| {
+        let override_table = decode_operator_table_override(&state.run_config);
+        let commit_style = match override_table
+            .as_ref()
+            .and_then(|cfg| cfg.commit_operators)
+        {
+            Some(true) => ExprCommit::CommitOperators,
+            Some(false) => ExprCommit::Preserve,
+            None => config.commit_style,
+        };
+
+        let space = config.space.clone().or_else(|| state.space());
+        let base_atom = match &space {
+            Some(sp) => atom.clone().with_space(sp.clone()),
+            None => atom.clone(),
+        };
+
+        let reordered = if let Some(cfg) = override_table {
+            reorder_levels(&levels, &cfg.fixities)
+        } else {
+            levels.clone()
+        };
+
+        let spaced_levels: Vec<ExprOpLevel<T>> = reordered
+            .iter()
+            .map(|lvl| lvl.with_space(&space))
+            .collect();
+
+        let mut parser = base_atom;
+        for level in spaced_levels.iter() {
+            parser = build_level(parser, level, commit_style);
+        }
+        parser.parse(state)
+    })
 }
 
 fn decode_lex_space(run_config: &RunConfig) -> Option<Parser<()>> {
