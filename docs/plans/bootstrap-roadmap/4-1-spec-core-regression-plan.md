@@ -378,7 +378,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [ ] `examples/language-impl-comparison/reml/toml_parser.reml`（期待: 成功）
 - [ ] `examples/language-impl-comparison/reml/yaml_parser.reml`（期待: 成功）
 - [ ] `examples/language-impl-comparison/reml/json_parser_combinator.reml`（期待: 成功）
-- [ ] `examples/language-impl-comparison/reml/basic_interpreter_combinator.reml`（期待: 成功）
+- [x] `examples/language-impl-comparison/reml/basic_interpreter_combinator.reml`（期待: 成功 → 2025-12-13 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output human examples/language-impl-comparison/reml/basic_interpreter_combinator.reml` / diagnostics=[]。`execute_while_loop` の条件式に Bool 変数 `cond_truth` を挟み、型推論が Unknown で落ちる回帰を解消）
 - [ ] `examples/language-impl-comparison/reml/config_manifest_lifecycle.reml`（期待: 成功）
 - [ ] `examples/language-impl-comparison/reml/template_engine.reml`（期待: 成功）
 - [ ] `examples/language-impl-comparison/reml/algebraic_effects.reml`（期待: 成功）

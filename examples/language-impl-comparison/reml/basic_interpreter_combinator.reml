@@ -563,7 +563,8 @@ fn execute_while_loop(
   state: RuntimeState
 ) -> Result<List<Text>, RuntimeError> {
   let cond_val = eval_expr(cond, state.env)?
-  if is_truthy(cond_val) then {
+  let cond_truth: Bool = is_truthy(cond_val)
+  if cond_truth == true then {
     let new_state = execute_block(body, state)?
     execute_while_loop(cond, body, program, pc, new_state)
   } else {
