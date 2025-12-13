@@ -2,10 +2,10 @@ module samples.language_impl_comparison.basic_interpreter_combinator
 
 use ::Core.Collection.List as List
 use ::Core.Collection.Map as Map
-use ::Core.Prelude.Result::{self, Result}
-use ::Core.Text::{self, Text}
-use ::Core.Parse::{self, Parser, Input}
-use ::Core.Parse.Lex as Lex
+use ::Core.Prelude
+use ::Core.Text
+use ::Core.Parse
+use ::Core.Parse.Lex
 
 /// パーサーコンビネーターを使った Basic インタープリタ。
 /// LET, PRINT, IF, FOR, WHILE, GOTO, GOSUB, RETURN, DIM, END をサポート。
@@ -18,24 +18,24 @@ type Value =
 type Env = Map<Text, Value>
 
 type Statement =
-  | Let { var: Text, expr: Expr }
+  | Let({ name: Text, expr: Expr })
   | Print(List<Expr>)
-  | If { cond: Expr, then_block: List<Statement>, else_block: List<Statement> }
-  | For { var: Text, start: Expr, end: Expr, step: Expr, body: List<Statement> }
-  | While { cond: Expr, body: List<Statement> }
-  | Goto(i32)
-  | Gosub(i32)
+  | If({ cond: Expr, then_block: List<Statement>, else_block: List<Statement> })
+  | For({ name: Text, start: Expr, end: Expr, step: Expr, body: List<Statement> })
+  | While({ cond: Expr, body: List<Statement> })
+  | Goto(i64)
+  | Gosub(i64)
   | Return
-  | Dim { var: Text, size: Expr }
+  | Dim({ name: Text, size: Expr })
   | End
 
 type Expr =
   | Number(f64)
   | String(Text)
   | Variable(Text)
-  | ArrayAccess { var: Text, index: Expr }
-  | BinOp { op: BinOperator, left: Expr, right: Expr }
-  | UnaryOp { op: UnaryOperator, operand: Expr }
+  | ArrayAccess({ name: Text, index: Expr })
+  | BinOp({ op: BinOperator, left: Expr, right: Expr })
+  | UnaryOp({ op: UnaryOperator, operand: Expr })
 
 type BinOperator =
   | Add | Sub | Mul | Div
@@ -45,55 +45,71 @@ type BinOperator =
 type UnaryOperator =
   | Neg | Not
 
-type Program = List<(i32, Statement)>
+type Program = List<(i64, Statement)>
 
 type RuntimeState = {
   env: Env,
-  call_stack: List<i32>,
+  call_stack: List<i64>,
   output: List<Text>,
 }
 
 type RuntimeError =
-  | UndefinedVariable { name: Text }
-  | UndefinedLabel { line: i32 }
-  | TypeMismatch { expected: Text, got: Text }
+  | UndefinedVariable({ name: Text })
+  | UndefinedLabel({ line: i64 })
+  | TypeMismatch({ expected: Text, got: Text })
   | IndexOutOfBounds
   | DivisionByZero
   | StackUnderflow
 
 // ========== パーサー定義 ==========
 
-fn ws() -> Parser<()> {
-  Parse.many(Parse.one_of([' ', '\t', '\r', '\n']))
-    |> Parse.map(|_| ())
+let sc: Parser<()> =
+  (Lex.whitespace())
+  |> Lex.skipMany
+
+fn lexeme<A>(p: Parser<A>) -> Parser<A> {
+  Lex.lexeme(sc, p)
 }
 
-fn lexeme(p: Parser<T>) -> Parser<T> {
-  p |> Parse.skip(ws())
+fn keyword(name: Text) -> Parser<()> {
+  Lex.keyword(sc, name)
 }
 
-fn keyword(kw: Text) -> Parser<Text> {
-  lexeme(Lex.keyword(kw))
+fn symbol(text: Text) -> Parser<()> {
+  Lex.symbol(sc, text)
 }
 
-fn symbol(sym: Text) -> Parser<Text> {
-  lexeme(Lex.symbol(sym))
-}
-
-fn line_number() -> Parser<i32> {
-  lexeme(Lex.integer())
+fn line_number() -> Parser<i64> {
+  rule("basic.line_number",
+    lexeme(Lex.int(10))
+      .andThen(|digits|
+        match Lex.parseI64(digits, 10) with
+        | Ok(value) -> Parse.ok(value)
+        | Err(_) -> Parse.fail(format("行番号として解釈できません: {digits}"))
+      )
+  )
 }
 
 fn identifier() -> Parser<Text> {
-  lexeme(Lex.identifier())
+  rule("basic.identifier", lexeme(Lex.identifier()))
 }
 
 fn number() -> Parser<f64> {
-  lexeme(Lex.float())
+  rule("basic.number",
+    lexeme(
+      Parse.attempt(Lex.float())
+        .or(Lex.integer())
+    )
+      .andThen(|repr|
+        match Lex.parseF64(repr) with
+        | Ok(value) -> Parse.ok(value)
+        | Err(_) -> Parse.fail(format("数値として解釈できません: {repr}"))
+      )
+  )
 }
 
 fn string_literal() -> Parser<Text> {
-  lexeme(Lex.string_literal())
+  rule("basic.string", lexeme(Lex.stringLit()))
 }
 
 // 式パーサー
@@ -102,90 +118,88 @@ fn expr() -> Parser<Expr> {
 }
 
 fn or_expr() -> Parser<Expr> {
-  Parse.chainl1(
+  chainl1(
     and_expr(),
-    symbol("OR") |> Parse.map(|_| |l, r| BinOp { op: Or, left: l, right: r })
+    keyword("OR").map(|_| (|l, r| BinOp({ op: Or, left: l, right: r })))
   )
 }
 
 fn and_expr() -> Parser<Expr> {
-  Parse.chainl1(
+  chainl1(
     comparison_expr(),
-    symbol("AND") |> Parse.map(|_| |l, r| BinOp { op: And, left: l, right: r })
+    keyword("AND").map(|_| (|l, r| BinOp({ op: And, left: l, right: r })))
   )
 }
 
 fn comparison_expr() -> Parser<Expr> {
-  let comp_op = Parse.choice([
-    symbol("=") |> Parse.map(|_| Eq),
-    symbol("<>") |> Parse.map(|_| Ne),
-    symbol("<=") |> Parse.map(|_| Le),
-    symbol(">=") |> Parse.map(|_| Ge),
-    symbol("<") |> Parse.map(|_| Lt),
-    symbol(">") |> Parse.map(|_| Gt),
+  let comp_op: Parser<BinOperator> = Parse.choice([
+    symbol("=").map(|_| Eq),
+    symbol("<>").map(|_| Ne),
+    symbol("<=").map(|_| Le),
+    symbol(">=").map(|_| Ge),
+    symbol("<").map(|_| Lt),
+    symbol(">").map(|_| Gt),
   ])
-
-  Parse.chainl1(
+  chainl1(
     additive_expr(),
-    comp_op |> Parse.map(|op| |l, r| BinOp { op, left: l, right: r })
+    comp_op.map(|op| (|l, r| BinOp({ op, left: l, right: r })))
   )
 }
 
 fn additive_expr() -> Parser<Expr> {
-  let add_op = Parse.choice([
-    symbol("+") |> Parse.map(|_| Add),
-    symbol("-") |> Parse.map(|_| Sub),
+  let add_op: Parser<BinOperator> = Parse.choice([
+    symbol("+").map(|_| Add),
+    symbol("-").map(|_| Sub),
   ])
-
-  Parse.chainl1(
+  chainl1(
     multiplicative_expr(),
-    add_op |> Parse.map(|op| |l, r| BinOp { op, left: l, right: r })
+    add_op.map(|op| (|l, r| BinOp({ op, left: l, right: r })))
   )
 }
 
 fn multiplicative_expr() -> Parser<Expr> {
-  let mul_op = Parse.choice([
-    symbol("*") |> Parse.map(|_| Mul),
-    symbol("/") |> Parse.map(|_| Div),
+  let mul_op: Parser<BinOperator> = Parse.choice([
+    symbol("*").map(|_| Mul),
+    symbol("/").map(|_| Div),
   ])
-
-  Parse.chainl1(
+  chainl1(
     unary_expr(),
-    mul_op |> Parse.map(|op| |l, r| BinOp { op, left: l, right: r })
+    mul_op.map(|op| (|l, r| BinOp({ op, left: l, right: r })))
   )
 }
 
 fn unary_expr() -> Parser<Expr> {
   Parse.choice([
     symbol("-")
-      |> Parse.then(primary_expr())
-      |> Parse.map(|(_, operand)| UnaryOp { op: Neg, operand }),
-    symbol("NOT")
-      |> Parse.then(primary_expr())
-      |> Parse.map(|(_, operand)| UnaryOp { op: Not, operand }),
+      .then(primary_expr())
+      .map(|(_, operand)| UnaryOp({ op: Neg, operand })),
+    keyword("NOT")
+      .then(primary_expr())
+      .map(|(_, operand)| UnaryOp({ op: Not, operand })),
     primary_expr()
   ])
 }
 
 fn primary_expr() -> Parser<Expr> {
   Parse.choice([
-    number() |> Parse.map(Number),
-    string_literal() |> Parse.map(String),
-    Parse.try(array_access()),
-    identifier() |> Parse.map(Variable),
+    number().map(|n| Number(n)),
+    string_literal().map(|s| String(s)),
+    Parse.attempt(array_access()),
+    identifier().map(|name| Variable(name)),
     symbol("(")
-      |> Parse.then(expr())
-      |> Parse.skip(symbol(")"))
-      |> Parse.map(|(_, e)| e)
+      .skipR(expr())
+      .skipL(symbol(")"))
   ])
 }
 
 fn array_access() -> Parser<Expr> {
   identifier()
-    |> Parse.skip(symbol("("))
-    |> Parse.then(expr())
-    |> Parse.skip(symbol(")"))
-    |> Parse.map(|(var, index)| ArrayAccess { var, index })
+    .andThen(|name|
+      symbol("(")
+        .skipR(expr())
+        .skipL(symbol(")"))
+        .map(|index| ArrayAccess({ name, index }))
+    )
 }
 
 // 文パーサー
@@ -206,104 +220,102 @@ fn statement() -> Parser<Statement> {
 
 fn let_stmt() -> Parser<Statement> {
   keyword("LET")
-    |> Parse.then(identifier())
-    |> Parse.skip(symbol("="))
-    |> Parse.then(expr())
-    |> Parse.map(|((_, var), expr)| Let { var, expr })
+    .skipR(identifier())
+    .skipL(symbol("="))
+    .then(expr())
+    .map(|(name, expr)| Let({ name, expr }))
 }
 
 fn print_stmt() -> Parser<Statement> {
   keyword("PRINT")
-    |> Parse.then(Parse.sep_by(expr(), symbol(",")))
-    |> Parse.map(|(_, exprs)| Print(exprs))
+    .skipR(Parse.sepBy(expr(), symbol(",")))
+    .map(|exprs| Print(exprs))
 }
 
 fn if_stmt() -> Parser<Statement> {
   keyword("IF")
-    |> Parse.then(expr())
-    |> Parse.skip(keyword("THEN"))
-    |> Parse.then(Parse.many(statement()))
-    |> Parse.then(Parse.optional(
+    .skipR(expr())
+    .skipL(keyword("THEN"))
+    .then(Parse.many(statement()))
+    .then(Parse.opt(
       keyword("ELSE")
-        |> Parse.then(Parse.many(statement()))
-        |> Parse.map(|(_, stmts)| stmts)
+        .skipR(Parse.many(statement()))
     ))
-    |> Parse.skip(keyword("END"))
-    |> Parse.map(|(((_, cond), then_block), else_opt)| {
+    .skipL(keyword("END"))
+    .map(|((cond, then_block), else_opt)| {
       let else_block = else_opt.unwrap_or(List.empty())
-      If { cond, then_block, else_block }
+      If({ cond, then_block, else_block })
     })
 }
 
 fn for_stmt() -> Parser<Statement> {
   keyword("FOR")
-    |> Parse.then(identifier())
-    |> Parse.skip(symbol("="))
-    |> Parse.then(expr())
-    |> Parse.skip(keyword("TO"))
-    |> Parse.then(expr())
-    |> Parse.then(Parse.optional(
+    .skipR(identifier())
+    .skipL(symbol("="))
+    .then(expr())
+    .skipL(keyword("TO"))
+    .then(expr())
+    .then(Parse.opt(
       keyword("STEP")
-        |> Parse.then(expr())
-        |> Parse.map(|(_, e)| e)
+        .skipR(expr())
     ))
-    |> Parse.then(Parse.many(statement()))
-    |> Parse.skip(keyword("NEXT"))
-    |> Parse.map(|(((((_, var), start), end), step_opt), body)| {
+    .then(Parse.many(statement()))
+    .skipL(keyword("NEXT"))
+    .map(|((((name, start), end), step_opt), body)| {
       let step = step_opt.unwrap_or(Number(1.0))
-      For { var, start, end, step, body }
+      For({ name, start, end, step, body })
     })
 }
 
 fn while_stmt() -> Parser<Statement> {
   keyword("WHILE")
-    |> Parse.then(expr())
-    |> Parse.then(Parse.many(statement()))
-    |> Parse.skip(keyword("WEND"))
-    |> Parse.map(|((_, cond), body)| While { cond, body })
+    .skipR(expr())
+    .then(Parse.many(statement()))
+    .skipL(keyword("WEND"))
+    .map(|(cond, body)| While({ cond, body }))
 }
 
 fn goto_stmt() -> Parser<Statement> {
   keyword("GOTO")
-    |> Parse.then(line_number())
-    |> Parse.map(|(_, line)| Goto(line))
+    .skipR(line_number())
+    .map(|line| Goto(line))
 }
 
 fn gosub_stmt() -> Parser<Statement> {
   keyword("GOSUB")
-    |> Parse.then(line_number())
-    |> Parse.map(|(_, line)| Gosub(line))
+    .skipR(line_number())
+    .map(|line| Gosub(line))
 }
 
 fn return_stmt() -> Parser<Statement> {
   keyword("RETURN")
-    |> Parse.map(|_| Return)
+    .map(|_| Return)
 }
 
 fn dim_stmt() -> Parser<Statement> {
   keyword("DIM")
-    |> Parse.then(identifier())
-    |> Parse.skip(symbol("("))
-    |> Parse.then(expr())
-    |> Parse.skip(symbol(")"))
-    |> Parse.map(|((_, var), size)| Dim { var, size })
+    .skipR(identifier())
+    .skipL(symbol("("))
+    .then(expr())
+    .skipL(symbol(")"))
+    .map(|(name, size)| Dim({ name, size }))
 }
 
 fn end_stmt() -> Parser<Statement> {
   keyword("END")
-    |> Parse.map(|_| End)
+    .map(|_| End)
 }
 
-fn program_line() -> Parser<(i32, Statement)> {
+fn program_line() -> Parser<(i64, Statement)> {
   line_number()
-    |> Parse.then(statement())
+    .then(statement())
 }
 
 fn program() -> Parser<Program> {
-  ws()
-    |> Parse.then(Parse.many(program_line()))
-    |> Parse.skip(Parse.eof())
-    |> Parse.map(|(_, lines)| lines)
+  sc
+    .skipR(Parse.many(program_line()))
+    .skipL(Parse.eof())
+    .map(|lines| lines)
 }
 
 // ========== 実行エンジン ==========
@@ -328,74 +340,123 @@ fn run(program: Program) -> Result<List<Text>, RuntimeError> {
 }
 
 fn execute_program(
-  program: List<(i32, Statement)>,
-  pc: i32,
+  program: List<(i64, Statement)>,
+  pc: i64,
   state: RuntimeState
 ) -> Result<List<Text>, RuntimeError> {
-  if pc >= List.length(program) {
-    return Result.ok(state.output)
+  if pc >= List.length(program) then {
+    Result.ok(state.output)
+  } else {
+    let (line, stmt) = List.get(program, pc).unwrap()
+
+    match stmt with
+    | End -> Result.ok(state.output)
+    | Let(let_stmt) ->
+      match eval_expr(let_stmt.expr, state.env) with
+      | Ok(value) ->
+        execute_program(
+          program,
+          pc + 1,
+          {
+            env: Map.insert(state.env, let_stmt.name, value),
+            call_stack: state.call_stack,
+            output: state.output,
+          },
+        )
+      | Err(err) -> Result.err(err)
+
+    | Print(exprs) ->
+      match collect_expr_results(exprs, state.env) with
+      | Ok(values) ->
+        execute_program(
+          program,
+          pc + 1,
+          {
+            env: state.env,
+            call_stack: state.call_stack,
+            output: List.push_back(state.output, values |> List.map(value_to_text) |> Text.join(" ")),
+          },
+        )
+      | Err(err) -> Result.err(err)
+
+    | If(if_stmt) ->
+      match eval_expr(if_stmt.cond, state.env) with
+      | Ok(cond_val) ->
+        match execute_block(
+          if is_truthy(cond_val) then {
+            if_stmt.then_block
+          } else {
+            if_stmt.else_block
+          },
+          state,
+        ) with
+        | Ok(new_state) -> execute_program(program, pc + 1, new_state)
+        | Err(err) -> Result.err(err)
+      | Err(err) -> Result.err(err)
+
+    | For(for_stmt) ->
+      match eval_expr(for_stmt.start, state.env) with
+      | Ok(start_val) ->
+        match eval_expr(for_stmt.end, state.env) with
+        | Ok(end_val) ->
+          match eval_expr(for_stmt.step, state.env) with
+          | Ok(step_val) ->
+            execute_for_loop(for_stmt.name, start_val, end_val, step_val, for_stmt.body, program, pc, state)
+          | Err(err) -> Result.err(err)
+        | Err(err) -> Result.err(err)
+      | Err(err) -> Result.err(err)
+
+    | While(while_stmt) ->
+      execute_while_loop(while_stmt.cond, while_stmt.body, program, pc, state)
+
+    | Goto(target) ->
+      match find_line(program, target) with
+      | Ok(new_pc) -> execute_program(program, new_pc, state)
+      | Err(err) -> Result.err(err)
+
+    | Gosub(target) ->
+      match find_line(program, target) with
+      | Ok(new_pc) ->
+        execute_program(
+          program,
+          new_pc,
+          {
+            env: state.env,
+            call_stack: List.push_back(state.call_stack, pc + 1),
+            output: state.output,
+          },
+        )
+      | Err(err) -> Result.err(err)
+
+    | Return ->
+      match List.pop_back(state.call_stack) with
+      | None -> Result.err(StackUnderflow)
+      | Some((rest, return_pc)) ->
+        execute_program(
+          program,
+          return_pc,
+          {
+            env: state.env,
+            call_stack: rest,
+            output: state.output,
+          },
+        )
+
+    | Dim(dim_stmt) ->
+      match eval_expr(dim_stmt.size, state.env) with
+      | Ok(VNumber(n)) ->
+        execute_program(
+          program,
+          pc + 1,
+          {
+            env: Map.insert(state.env, dim_stmt.name, VArray(List.repeat(VNumber(0.0), Int.from_float(n)))),
+            call_stack: state.call_stack,
+            output: state.output,
+          },
+        )
+      | Ok(_) -> Result.err(TypeMismatch({ expected: "Number", got: "Other" }))
+      | Err(err) -> Result.err(err)
   }
-
-  let (line, stmt) = List.get(program, pc).unwrap()
-
-  match stmt with
-  | End -> Result.ok(state.output)
-  | Let(let_stmt) ->
-    let value = eval_expr(let_stmt.expr, state.env)?
-    let new_env = Map.insert(state.env, let_stmt.var, value)
-    execute_program(program, pc + 1, { state with env = new_env })
-
-  | Print(exprs) ->
-    let values = collect_expr_results(exprs, state.env)?
-    let text = values
-      |> List.map(value_to_text)
-      |> Text.join(" ")
-    let new_output = List.push_back(state.output, text)
-    execute_program(program, pc + 1, { state with output = new_output })
-
-  | If(if_stmt) ->
-    let cond_val = eval_expr(if_stmt.cond, state.env)?
-    let branch = if is_truthy(cond_val) {
-      if_stmt.then_block
-    } else {
-      if_stmt.else_block
-    }
-    let new_state = execute_block(branch, state)?
-    execute_program(program, pc + 1, new_state)
-
-  | For(for_stmt) ->
-    let start_val = eval_expr(for_stmt.start, state.env)?
-    let end_val = eval_expr(for_stmt.end, state.env)?
-    let step_val = eval_expr(for_stmt.step, state.env)?
-    execute_for_loop(for_stmt.var, start_val, end_val, step_val, for_stmt.body, program, pc, state)
-
-  | While(while_stmt) ->
-    execute_while_loop(while_stmt.cond, while_stmt.body, program, pc, state)
-
-  | Goto(target) ->
-    let new_pc = find_line(program, target)?
-    execute_program(program, new_pc, state)
-
-  | Gosub(target) ->
-    let new_pc = find_line(program, target)?
-    let new_call_stack = List.push_back(state.call_stack, pc + 1)
-    execute_program(program, new_pc, { state with call_stack = new_call_stack })
-
-  | Return ->
-    match List.pop_back(state.call_stack) with
-    | None -> Result.err(StackUnderflow)
-    | Some((rest, return_pc)) ->
-      execute_program(program, return_pc, { state with call_stack = rest })
-
-  | Dim(dim_stmt) ->
-    let size_val = eval_expr(dim_stmt.size, state.env)?
-    match size_val with
-    | VNumber(n) ->
-      let size = n as i32
-      let array = List.repeat(VNumber(0.0), size)
-      let new_env = Map.insert(state.env, dim_stmt.var, VArray(array))
-      execute_program(program, pc + 1, { state with env = new_env })
-    | _ -> Result.err(TypeMismatch { expected: "Number", got: "Other" })
 }
 
 fn execute_block(
@@ -415,65 +476,94 @@ fn execute_single_statement(
 ) -> Result<RuntimeState, RuntimeError> {
   match stmt with
   | Let(let_stmt) ->
-    let value = eval_expr(let_stmt.expr, state.env)?
-    let new_env = Map.insert(state.env, let_stmt.var, value)
-    Result.ok({ state with env = new_env })
+    match eval_expr(let_stmt.expr, state.env) with
+    | Ok(value) ->
+      Result.ok({
+        env: Map.insert(state.env, let_stmt.name, value),
+        call_stack: state.call_stack,
+        output: state.output,
+      })
+    | Err(err) -> Result.err(err)
 
   | Print(exprs) ->
-    let values = collect_expr_results(exprs, state.env)?
-    let text = values
-      |> List.map(value_to_text)
-      |> Text.join(" ")
-    let new_output = List.push_back(state.output, text)
-    Result.ok({ state with output = new_output })
+    match collect_expr_results(exprs, state.env) with
+    | Ok(values) ->
+      Result.ok({
+        env: state.env,
+        call_stack: state.call_stack,
+        output: List.push_back(
+          state.output,
+          values |> List.map(value_to_text) |> Text.join(" "),
+        ),
+      })
+    | Err(err) -> Result.err(err)
 
   | _ -> Result.ok(state)
 }
 
 fn execute_for_loop(
-  var: Text,
+  name: Text,
   start: Value,
   end: Value,
   step: Value,
   body: List<Statement>,
-  program: List<(i32, Statement)>,
-  pc: i32,
+  program: List<(i64, Statement)>,
+  pc: i64,
   state: RuntimeState
 ) -> Result<List<Text>, RuntimeError> {
   match (start, end, step) with
   | (VNumber(s), VNumber(e), VNumber(st)) ->
-    for_loop_helper(var, s, e, st, body, program, pc, state)
-  | _ -> Result.err(TypeMismatch { expected: "Number", got: "Other" })
+    for_loop_helper(name, s, e, st, body, program, pc, state)
+  | _ -> Result.err(TypeMismatch({ expected: "Number", got: "Other" }))
 }
 
 fn for_loop_helper(
-  var: Text,
+  name: Text,
   current: f64,
   end: f64,
   step: f64,
   body: List<Statement>,
-  program: List<(i32, Statement)>,
-  pc: i32,
+  program: List<(i64, Statement)>,
+  pc: i64,
   state: RuntimeState
 ) -> Result<List<Text>, RuntimeError> {
-  if (step > 0.0 and current > end) or (step < 0.0 and current < end) {
-    execute_program(program, pc + 1, state)
+  if step == 0.0 then {
+    Result.err(TypeMismatch({ expected: "Non-zero step", got: "Zero" }))
   } else {
-    let new_env = Map.insert(state.env, var, VNumber(current))
-    let new_state = execute_block(body, { state with env = new_env })?
-    for_loop_helper(var, current + step, end, step, body, program, pc, new_state)
+
+    let should_exit =
+      if step > 0.0 then {
+        current > end
+      } else {
+        current < end
+      }
+
+    if should_exit then {
+      execute_program(program, pc + 1, state)
+    } else {
+      let new_env = Map.insert(state.env, name, VNumber(current))
+      let new_state = execute_block(
+        body,
+        {
+          env: new_env,
+          call_stack: state.call_stack,
+          output: state.output,
+        },
+      )?
+      for_loop_helper(name, current + step, end, step, body, program, pc, new_state)
+    }
   }
 }
 
 fn execute_while_loop(
   cond: Expr,
   body: List<Statement>,
-  program: List<(i32, Statement)>,
-  pc: i32,
+  program: List<(i64, Statement)>,
+  pc: i64,
   state: RuntimeState
 ) -> Result<List<Text>, RuntimeError> {
   let cond_val = eval_expr(cond, state.env)?
-  if is_truthy(cond_val) {
+  if is_truthy(cond_val) then {
     let new_state = execute_block(body, state)?
     execute_while_loop(cond, body, program, pc, new_state)
   } else {
@@ -486,28 +576,31 @@ fn eval_expr(expr: Expr, env: Env) -> Result<Value, RuntimeError> {
   | Number(n) -> Result.ok(VNumber(n))
   | String(s) -> Result.ok(VString(s))
   | Variable(name) ->
-    Map.get(env, name).ok_or(UndefinedVariable { name })
+    Map.get(env, name).ok_or(UndefinedVariable({ name }))
 
   | ArrayAccess(access) ->
-    match Map.get(env, access.var) with
-    | None -> Result.err(UndefinedVariable { name: access.var })
+    match Map.get(env, access.name) with
+    | None -> Result.err(UndefinedVariable({ name: access.name }))
     | Some(VArray(arr)) ->
-      let index_val = eval_expr(access.index, env)?
-      match index_val with
-      | VNumber(idx) ->
-        let i = idx as i32
-        List.get(arr, i).ok_or(IndexOutOfBounds)
-      | _ -> Result.err(TypeMismatch { expected: "Number", got: "Other" })
-    | Some(_) -> Result.err(TypeMismatch { expected: "Array", got: "Other" })
+      match eval_expr(access.index, env) with
+      | Ok(VNumber(idx)) ->
+        List.get(arr, Int.from_float(idx)).ok_or(IndexOutOfBounds)
+      | Ok(_) -> Result.err(TypeMismatch({ expected: "Number", got: "Other" }))
+      | Err(err) -> Result.err(err)
+    | Some(_) -> Result.err(TypeMismatch({ expected: "Array", got: "Other" }))
 
   | BinOp(bin) ->
-    let left = eval_expr(bin.left, env)?
-    let right = eval_expr(bin.right, env)?
-    eval_binop(bin.op, left, right)
+    match eval_expr(bin.left, env) with
+    | Ok(left) ->
+      match eval_expr(bin.right, env) with
+      | Ok(right) -> eval_binop(bin.op, left, right)
+      | Err(err) -> Result.err(err)
+    | Err(err) -> Result.err(err)
 
   | UnaryOp(unary) ->
-    let operand = eval_expr(unary.operand, env)?
-    eval_unaryop(unary.op, operand)
+    match eval_expr(unary.operand, env) with
+    | Ok(operand) -> eval_unaryop(unary.op, operand)
+    | Err(err) -> Result.err(err)
 }
 
 fn eval_binop(op: BinOperator, left: Value, right: Value) -> Result<Value, RuntimeError> {
@@ -516,34 +609,48 @@ fn eval_binop(op: BinOperator, left: Value, right: Value) -> Result<Value, Runti
   | (Sub, VNumber(l), VNumber(r)) -> Result.ok(VNumber(l - r))
   | (Mul, VNumber(l), VNumber(r)) -> Result.ok(VNumber(l * r))
   | (Div, VNumber(l), VNumber(r)) ->
-    if r == 0.0 {
+    if r == 0.0 then {
       Result.err(DivisionByZero)
     } else {
       Result.ok(VNumber(l / r))
     }
-  | (Eq, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l == r { 1.0 } else { 0.0 }))
-  | (Ne, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l != r { 1.0 } else { 0.0 }))
-  | (Lt, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l < r { 1.0 } else { 0.0 }))
-  | (Le, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l <= r { 1.0 } else { 0.0 }))
-  | (Gt, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l > r { 1.0 } else { 0.0 }))
-  | (Ge, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l >= r { 1.0 } else { 0.0 }))
-  | (And, l, r) -> Result.ok(VNumber(if is_truthy(l) and is_truthy(r) { 1.0 } else { 0.0 }))
-  | (Or, l, r) -> Result.ok(VNumber(if is_truthy(l) or is_truthy(r) { 1.0 } else { 0.0 }))
-  | _ -> Result.err(TypeMismatch { expected: "Number", got: "Other" })
+  | (Eq, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l == r then { 1.0 } else { 0.0 }))
+  | (Ne, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l != r then { 1.0 } else { 0.0 }))
+  | (Lt, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l < r then { 1.0 } else { 0.0 }))
+  | (Le, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l <= r then { 1.0 } else { 0.0 }))
+  | (Gt, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l > r then { 1.0 } else { 0.0 }))
+  | (Ge, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l >= r then { 1.0 } else { 0.0 }))
+  | (And, l, r) ->
+    if is_truthy(l) then {
+      Result.ok(VNumber(if is_truthy(r) then { 1.0 } else { 0.0 }))
+    } else {
+      Result.ok(VNumber(0.0))
+    }
+  | (Or, l, r) ->
+    if is_truthy(l) then {
+      Result.ok(VNumber(1.0))
+    } else {
+      if is_truthy(r) then {
+        Result.ok(VNumber(1.0))
+      } else {
+        Result.ok(VNumber(0.0))
+      }
+    }
+  | _ -> Result.err(TypeMismatch({ expected: "Number", got: "Other" }))
 }
 
 fn eval_unaryop(op: UnaryOperator, operand: Value) -> Result<Value, RuntimeError> {
   match (op, operand) with
-  | (Neg, VNumber(n)) -> Result.ok(VNumber(-n))
-  | (Not, v) -> Result.ok(VNumber(if is_truthy(v) { 0.0 } else { 1.0 }))
-  | _ -> Result.err(TypeMismatch { expected: "Number", got: "Other" })
+  | (Neg, VNumber(n)) -> Result.ok(VNumber(0.0 - n))
+  | (Not, v) -> Result.ok(VNumber(if is_truthy(v) then { 0.0 } else { 1.0 }))
+  | _ -> Result.err(TypeMismatch({ expected: "Number", got: "Other" }))
 }
 
-fn is_truthy(value: Value) -> bool {
+fn is_truthy(value: Value) -> Bool {
   match value with
   | VNumber(n) -> n != 0.0
-  | VString(s) -> not Text.is_empty(s)
-  | VArray(a) -> not List.is_empty(a)
+  | VString(s) -> Text.is_empty(s) == false
+  | VArray(a) -> List.is_empty(a) == false
 }
 
 fn value_to_text(value: Value) -> Text {
@@ -553,9 +660,9 @@ fn value_to_text(value: Value) -> Text {
   | VArray(_) -> "[Array]"
 }
 
-fn find_line(program: List<(i32, Statement)>, target: i32) -> Result<i32, RuntimeError> {
+fn find_line(program: List<(i64, Statement)>, target: i64) -> Result<i64, RuntimeError> {
   List.find_index(program, |(line, _)| line == target)
-    .ok_or(UndefinedLabel { line: target })
+    .ok_or(UndefinedLabel({ line: target }))
 }
 
 fn collect_expr_results(exprs: List<Expr>, env: Env) -> Result<List<Value>, RuntimeError> {
