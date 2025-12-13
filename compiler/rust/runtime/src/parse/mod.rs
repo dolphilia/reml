@@ -7,10 +7,10 @@ pub mod combinator;
 pub mod op_builder;
 
 pub use combinator::{
-    between, chainl1, chainr1, choice, cut_here, delimited, eof, fail, label, lookahead,
-    not_followed_by, ok, position, preceded, rule, run, run_with_default, spanned, terminated,
-    Input, InputPosition, MemoEntry, MemoKey, MemoTable, ParseError, ParseResult, ParseState,
-    Parser, ParserId, Reply, Span,
+    between, chainl1, chainr1, choice, cut_here, delimited, eof, fail, keyword, label, lexeme,
+    lookahead, not_followed_by, ok, position, preceded, rule, run, run_with_default, spanned,
+    symbol, terminated, Input, InputPosition, MemoEntry, MemoKey, MemoTable, ParseError,
+    ParseResult, ParseState, Parser, ParserId, Reply, Span,
 };
 pub use op_builder::{
     FixitySymbol, OpBuilder, OpBuilderError, OpBuilderErrorKind, OpLevel, OpTable, OperatorSpec,

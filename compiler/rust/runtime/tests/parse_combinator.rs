@@ -79,10 +79,7 @@ fn attempt_rewinds_consumption_for_alternatives() {
 fn many_reports_empty_success_body() {
     let parser = empty_success().many();
     let result = run(&parser, "", &RunConfig::default());
-    assert!(
-        result.value.is_none(),
-        "空成功検知時はエラーになるはず"
-    );
+    assert!(result.value.is_none(), "空成功検知時はエラーになるはず");
     assert_eq!(
         result
             .diagnostics

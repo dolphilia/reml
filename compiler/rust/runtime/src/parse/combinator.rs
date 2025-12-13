@@ -2,6 +2,7 @@ use crate::run_config::RunConfig;
 use crate::text::Str;
 use std::any::Any;
 use std::collections::HashMap;
+use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
@@ -153,6 +154,12 @@ fn parser_id_from_name(name: &str) -> ParserId {
     ParserId::from_raw(raw.wrapping_add(1))
 }
 
+/// 簡易的な識別子継続文字の判定。
+fn is_ident_continue(ch: char) -> bool {
+    // TODO: `Core.Parse.Lex` の識別子プロファイルを参照する（extensions["lex"]）。
+    ch == '_' || ch.is_alphanumeric()
+}
+
 /// パースエラーの骨組み。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParseError {
@@ -232,6 +239,12 @@ impl<T> Clone for Parser<T> {
     }
 }
 
+impl<T> fmt::Debug for Parser<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Parser").field("id", &self.id).finish()
+    }
+}
+
 impl<T: Send + Sync + 'static> Parser<T> {
     pub fn new<F>(f: F) -> Self
     where
@@ -256,6 +269,17 @@ impl<T: Send + Sync + 'static> Parser<T> {
 
     pub fn parse(&self, state: &mut ParseState) -> Reply<T> {
         (self.f)(state)
+    }
+
+    /// 既定の空白パーサーをスコープに設定する。
+    pub fn with_space(self, space: Parser<()>) -> Parser<T> {
+        Parser::with_id(self.id, move |state| {
+            let previous = state.space();
+            state.set_space(Some(space.clone()));
+            let result = self.parse(state);
+            state.set_space(previous);
+            result
+        })
     }
 
     /// 値を変換する。
@@ -283,13 +307,11 @@ impl<T: Send + Sync + 'static> Parser<T> {
                 error,
                 consumed,
                 committed,
-            } => {
-                Reply::Err {
-                    error,
-                    consumed,
-                    committed,
-                }
-            }
+            } => Reply::Err {
+                error,
+                consumed,
+                committed,
+            },
         })
     }
 
@@ -433,8 +455,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
     }
 
     /// 左優先の選択。
-    pub fn or(self, other: Parser<T>) -> Parser<T>
-    {
+    pub fn or(self, other: Parser<T>) -> Parser<T> {
         Parser::new(move |state| {
             let start_input = state.input().clone();
             match self.parse(state) {
@@ -461,8 +482,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
     }
 
     /// 値を変換しつつ committed を付与する。
-    pub fn cut(self) -> Parser<T>
-    {
+    pub fn cut(self) -> Parser<T> {
         Parser::with_id(self.id, move |state| match self.parse(state) {
             Reply::Ok {
                 value,
@@ -491,8 +511,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
     }
 
     /// 直近の消費を巻き戻し、空失敗に変換する。
-    pub fn attempt(self) -> Parser<T>
-    {
+    pub fn attempt(self) -> Parser<T> {
         Parser::with_id(self.id, move |state| {
             let start_input = state.input().clone();
             match self.parse(state) {
@@ -687,7 +706,10 @@ impl<T: Send + Sync + 'static> Parser<T> {
                         ..
                     } => {
                         if !consumed {
-                            let err = ParseError::new("繰り返し本体が空成功しました", current_input.position());
+                            let err = ParseError::new(
+                                "繰り返し本体が空成功しました",
+                                current_input.position(),
+                            );
                             state.set_input(start_input);
                             return Reply::Err {
                                 error: err,
@@ -740,7 +762,10 @@ impl<T: Send + Sync + 'static> Parser<T> {
                 } => {
                     if value.is_empty() {
                         state.set_input(start_input);
-                        let err = ParseError::new("1 回以上の繰り返しが必要です", state.input().position());
+                        let err = ParseError::new(
+                            "1 回以上の繰り返しが必要です",
+                            state.input().position(),
+                        );
                         Reply::Err {
                             error: err,
                             consumed: false,
@@ -792,7 +817,10 @@ impl<T: Send + Sync + 'static> Parser<T> {
                         ..
                     } => {
                         if !consumed {
-                            let err = ParseError::new("繰り返し本体が空成功しました", current_input.position());
+                            let err = ParseError::new(
+                                "繰り返し本体が空成功しました",
+                                current_input.position(),
+                            );
                             state.set_input(start_input);
                             return Reply::Err {
                                 error: err,
@@ -827,8 +855,10 @@ impl<T: Send + Sync + 'static> Parser<T> {
                             };
                         } else {
                             state.set_input(start_input);
-                            let err =
-                                ParseError::new("指定回数の繰り返しに失敗しました", current_input.position());
+                            let err = ParseError::new(
+                                "指定回数の繰り返しに失敗しました",
+                                current_input.position(),
+                            );
                             return Reply::Err {
                                 error: err,
                                 consumed: false,
@@ -860,7 +890,10 @@ impl<T: Send + Sync + 'static> Parser<T> {
                     ..
                 } => {
                     if !consumed {
-                        let err = ParseError::new("繰り返し本体が空成功しました", current_input.position());
+                        let err = ParseError::new(
+                            "繰り返し本体が空成功しました",
+                            current_input.position(),
+                        );
                         state.set_input(start_input);
                         return Reply::Err {
                             error: err,
@@ -904,7 +937,10 @@ impl<T: Send + Sync + 'static> Parser<T> {
                         ..
                     } => {
                         if !sep_consumed {
-                            let err = ParseError::new("セパレータが空成功しました", current_input.position());
+                            let err = ParseError::new(
+                                "セパレータが空成功しました",
+                                current_input.position(),
+                            );
                             state.set_input(start_input);
                             return Reply::Err {
                                 error: err,
@@ -948,7 +984,10 @@ impl<T: Send + Sync + 'static> Parser<T> {
                         ..
                     } => {
                         if !consumed {
-                            let err = ParseError::new("繰り返し本体が空成功しました", current_input.position());
+                            let err = ParseError::new(
+                                "繰り返し本体が空成功しました",
+                                current_input.position(),
+                            );
                             state.set_input(start_input);
                             return Reply::Err {
                                 error: err,
@@ -973,7 +1012,10 @@ impl<T: Send + Sync + 'static> Parser<T> {
                             };
                         } else {
                             state.set_input(start_input);
-                            let err = ParseError::new("区切りの後に要素が見つかりません", current_input.position());
+                            let err = ParseError::new(
+                                "区切りの後に要素が見つかりません",
+                                current_input.position(),
+                            );
                             return Reply::Err {
                                 error: err,
                                 consumed: true,
@@ -991,8 +1033,8 @@ impl<T: Send + Sync + 'static> Parser<T> {
     where
         U: Send + Sync + 'static,
     {
-        Parser::new(move |state| {
-            match self.clone().sep_by(sep.clone()).parse(state) {
+        Parser::new(
+            move |state| match self.clone().sep_by(sep.clone()).parse(state) {
                 Reply::Ok {
                     value,
                     consumed,
@@ -1000,7 +1042,10 @@ impl<T: Send + Sync + 'static> Parser<T> {
                     span,
                 } => {
                     if value.is_empty() {
-                        let err = ParseError::new("1 回以上の繰り返しが必要です", state.input().position());
+                        let err = ParseError::new(
+                            "1 回以上の繰り返しが必要です",
+                            state.input().position(),
+                        );
                         Reply::Err {
                             error: err,
                             consumed: false,
@@ -1016,8 +1061,8 @@ impl<T: Send + Sync + 'static> Parser<T> {
                     }
                 }
                 err @ Reply::Err { .. } => err,
-            }
-        })
+            },
+        )
     }
 
     /// end まで読み続ける。
@@ -1073,7 +1118,10 @@ impl<T: Send + Sync + 'static> Parser<T> {
                         ..
                     } => {
                         if !consumed {
-                            let err = ParseError::new("繰り返し本体が空成功しました", current_input.position());
+                            let err = ParseError::new(
+                                "繰り返し本体が空成功しました",
+                                current_input.position(),
+                            );
                             state.set_input(start_input);
                             return Reply::Err {
                                 error: err,
@@ -1118,11 +1166,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
         Parser::new(move |state| {
             let start_input = state.input().clone();
             match self.parse(state) {
-                Reply::Ok {
-                    value,
-                    span,
-                    ..
-                } => {
+                Reply::Ok { value, span, .. } => {
                     state.set_input(start_input.clone());
                     Reply::Ok {
                         value: value.clone(),
@@ -1132,9 +1176,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
                     }
                 }
                 Reply::Err {
-                    error,
-                    committed,
-                    ..
+                    error, committed, ..
                 } => {
                     state.set_input(start_input);
                     Reply::Err {
@@ -1188,32 +1230,30 @@ impl<T: Send + Sync + 'static> Parser<T> {
 
     /// 値とスパンを返す。
     pub fn spanned(self) -> Parser<(T, Span)> {
-        Parser::new(move |state| {
-            match self.parse(state) {
+        Parser::new(move |state| match self.parse(state) {
+            Reply::Ok {
+                value,
+                span,
+                consumed,
+                rest,
+            } => {
+                state.set_input(rest.clone());
                 Reply::Ok {
-                    value,
+                    value: (value, span.clone()),
                     span,
                     consumed,
                     rest,
-                } => {
-                    state.set_input(rest.clone());
-                    Reply::Ok {
-                        value: (value, span.clone()),
-                        span,
-                        consumed,
-                        rest,
-                    }
                 }
-                Reply::Err {
-                    error,
-                    consumed,
-                    committed,
-                } => Reply::Err {
-                    error,
-                    consumed,
-                    committed,
-                },
             }
+            Reply::Err {
+                error,
+                consumed,
+                committed,
+            } => Reply::Err {
+                error,
+                consumed,
+                committed,
+            },
         })
     }
 
@@ -1250,10 +1290,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
             loop {
                 let iter_input = current_input.clone();
                 state.set_input(iter_input.clone());
-                let step = op
-                    .clone()
-                    .then(self.clone())
-                    .attempt();
+                let step = op.clone().then(self.clone()).attempt();
                 match step.parse(state) {
                     Reply::Ok {
                         value: (f, rhs),
@@ -1262,8 +1299,10 @@ impl<T: Send + Sync + 'static> Parser<T> {
                         rest,
                     } => {
                         if !consumed {
-                            let err =
-                                ParseError::new("繰り返し本体が空成功しました", iter_input.position());
+                            let err = ParseError::new(
+                                "繰り返し本体が空成功しました",
+                                iter_input.position(),
+                            );
                             state.set_input(start_input);
                             return Reply::Err {
                                 error: err,
@@ -1340,8 +1379,10 @@ impl<T: Send + Sync + 'static> Parser<T> {
                         ..
                     } => {
                         if !consumed {
-                            let err =
-                                ParseError::new("繰り返し本体が空成功しました", current_input.position());
+                            let err = ParseError::new(
+                                "繰り返し本体が空成功しました",
+                                current_input.position(),
+                            );
                             state.set_input(start_input);
                             return Reply::Err {
                                 error: err,
@@ -1390,6 +1431,14 @@ impl<T: Send + Sync + 'static> Parser<T> {
                 rest: current_input,
             }
         })
+    }
+}
+
+impl Parser<()> {
+    /// 空白パーサーの安定 ID を取得する。
+    pub fn space_id(&self) -> ParserId {
+        // ID 割り当ての安定性は `rule` 由来に依存する。Lex ブリッジ連携時に共有する。
+        self.id
     }
 }
 
@@ -1503,11 +1552,7 @@ pub fn cut_here() -> Parser<()> {
 }
 
 /// 2 つのパーサーの間に挟む。
-pub fn between<A>(
-    open: Parser<()>,
-    parser: Parser<A>,
-    close: Parser<()>,
-) -> Parser<A>
+pub fn between<A>(open: Parser<()>, parser: Parser<A>, close: Parser<()>) -> Parser<A>
 where
     A: Send + Sync + 'static,
 {
@@ -1558,6 +1603,178 @@ where
     parser.not_followed_by()
 }
 
+/// 後続の空白をまとめて処理する。
+pub fn lexeme<A, S>(space: S, parser: Parser<A>) -> Parser<A>
+where
+    A: Send + Sync + 'static,
+    S: Into<Option<Parser<()>>>,
+{
+    let space = space.into();
+    Parser::new(move |state| {
+        let start_input = state.input().clone();
+        match parser.parse(state) {
+            Reply::Ok {
+                value,
+                span,
+                consumed,
+                rest,
+            } => {
+                state.set_input(rest.clone());
+                let mut tail_input = rest.clone();
+                let mut consumed_flag = consumed;
+                if let Some(space_parser) = space.clone().or_else(|| state.space()) {
+                    state.set_input(tail_input.clone());
+                    match space_parser.parse(state) {
+                        Reply::Ok {
+                            rest: space_rest,
+                            consumed: space_consumed,
+                            ..
+                        } => {
+                            consumed_flag = consumed_flag || space_consumed;
+                            tail_input = space_rest.clone();
+                            state.set_input(space_rest);
+                        }
+                        Reply::Err {
+                            error,
+                            consumed: space_consumed,
+                            committed,
+                        } => {
+                            if space_consumed || committed {
+                                state.set_input(start_input);
+                                return Reply::Err {
+                                    error,
+                                    consumed: true,
+                                    committed,
+                                };
+                            } else {
+                                state.set_input(tail_input.clone());
+                            }
+                        }
+                    }
+                }
+                Reply::Ok {
+                    value,
+                    span,
+                    consumed: consumed_flag,
+                    rest: tail_input,
+                }
+            }
+            Reply::Err {
+                error,
+                consumed,
+                committed,
+            } => Reply::Err {
+                error,
+                consumed,
+                committed,
+            },
+        }
+    })
+}
+
+/// 記号を読み取り、後続の空白もまとめて消費する。
+pub fn symbol<S>(space: S, text: impl AsRef<str>) -> Parser<()>
+where
+    S: Into<Option<Parser<()>>>,
+{
+    let text = text.as_ref().to_string();
+    let space = space.into();
+    lexeme(
+        space,
+        Parser::new(move |state| {
+            if text.is_empty() {
+                return Reply::Err {
+                    error: ParseError::new(
+                        "空の記号は許可されていません",
+                        state.input().position(),
+                    ),
+                    consumed: false,
+                    committed: false,
+                };
+            }
+            let start_input = state.input().clone();
+            let remaining = start_input.remaining();
+            if remaining.starts_with(&text) {
+                let rest = start_input.advance(text.len());
+                state.set_input(rest.clone());
+                Reply::Ok {
+                    value: (),
+                    span: span_from_inputs(&start_input, &rest),
+                    consumed: true,
+                    rest,
+                }
+            } else {
+                Reply::Err {
+                    error: ParseError::new(
+                        format!("期待した記号: {}", text),
+                        state.input().position(),
+                    ),
+                    consumed: false,
+                    committed: false,
+                }
+            }
+        }),
+    )
+}
+
+/// キーワードを読み取り、識別子境界を検査する。
+pub fn keyword<S>(space: S, kw: impl AsRef<str>) -> Parser<()>
+where
+    S: Into<Option<Parser<()>>>,
+{
+    let kw = kw.as_ref().to_string();
+    let space = space.into();
+    lexeme(
+        space,
+        Parser::new(move |state| {
+            if kw.is_empty() {
+                return Reply::Err {
+                    error: ParseError::new(
+                        "空のキーワードは許可されていません",
+                        state.input().position(),
+                    ),
+                    consumed: false,
+                    committed: false,
+                };
+            }
+            let start_input = state.input().clone();
+            let remaining = start_input.remaining();
+            if remaining.starts_with(&kw) {
+                let rest = start_input.advance(kw.len());
+                if let Some(ch) = rest.remaining().chars().next() {
+                    if is_ident_continue(ch) {
+                        state.set_input(start_input);
+                        return Reply::Err {
+                            error: ParseError::new(
+                                format!("キーワード '{}' の後ろに識別子が続いています", kw),
+                                rest.position(),
+                            ),
+                            consumed: true,
+                            committed: false,
+                        };
+                    }
+                }
+                state.set_input(rest.clone());
+                Reply::Ok {
+                    value: (),
+                    span: span_from_inputs(&start_input, &rest),
+                    consumed: true,
+                    rest,
+                }
+            } else {
+                Reply::Err {
+                    error: ParseError::new(
+                        format!("期待したキーワード: {}", kw),
+                        state.input().position(),
+                    ),
+                    consumed: false,
+                    committed: false,
+                }
+            }
+        }),
+    )
+}
+
 /// 位置パーサー。
 pub fn position() -> Parser<Span> {
     Parser::new(|state| {
@@ -1604,6 +1821,7 @@ pub struct ParseState {
     pub run_config: RunConfig,
     pub memo: MemoTable,
     pub recovered: bool,
+    space: Option<Parser<()>>,
 }
 
 impl ParseState {
@@ -1613,6 +1831,7 @@ impl ParseState {
             run_config,
             memo: MemoTable::new(),
             recovered: false,
+            space: None, // TODO: extensions["lex"] 由来の空白プロファイルをここで反映する。
         }
     }
 
@@ -1622,6 +1841,14 @@ impl ParseState {
 
     pub fn set_input(&mut self, input: Input) {
         self.input = input;
+    }
+
+    pub fn space(&self) -> Option<Parser<()>> {
+        self.space.clone()
+    }
+
+    pub fn set_space(&mut self, space: Option<Parser<()>>) {
+        self.space = space;
     }
 
     pub fn packrat_enabled(&self) -> bool {
