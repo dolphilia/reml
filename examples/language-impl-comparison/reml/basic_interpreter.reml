@@ -1,5 +1,6 @@
 module samples.language_impl_comparison.basic_interpreter
 
+use ::Core.Prelude
 use ::Core.Collection.List as List
 use ::Core.Collection.Map as Map
 use ::Core.Text.String as Str
@@ -171,7 +172,8 @@ fn exec_if(
   state: RuntimeState
 ) -> Result<List<Str>, RuntimeError> {
   let cond_val = eval_expr(stmt.cond, state.env)?
-  let branch = if is_truthy(cond_val) then {
+  let cond_truth: Bool = is_truthy(cond_val)
+  let branch = if cond_truth == true then {
     stmt.then_block
   } else {
     stmt.else_block
@@ -335,7 +337,8 @@ fn execute_while_loop(
   state: RuntimeState
 ) -> Result<List<Str>, RuntimeError> {
   let cond_val = eval_expr(cond, state.env)?
-  if is_truthy(cond_val) then {
+  let cond_truth: Bool = is_truthy(cond_val)
+  if cond_truth == true then {
     let new_state = execute_block(body, state)?
     execute_while_loop(cond, body, program, pc, new_state)
   } else {
@@ -377,35 +380,52 @@ fn eval_unaryop_expr(
 }
 
 fn eval_binop(op: BinOperator, left: Value, right: Value) -> Result<Value, RuntimeError> {
-  match (op, left, right) with {
-    (Add, VNumber(l), VNumber(r)) -> Result.ok(VNumber(l + r))
-    (Sub, VNumber(l), VNumber(r)) -> Result.ok(VNumber(l - r))
-    (Mul, VNumber(l), VNumber(r)) -> Result.ok(VNumber(l * r))
-    (Div, VNumber(l), VNumber(r)) ->
-      if r == 0.0 then {
-        Result.err(DivisionByZero)
-      } else {
-        Result.ok(VNumber(l / r))
-      }
-    (Eq, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l == r then { 1.0 } else { 0.0 }))
-    (Ne, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l != r then { 1.0 } else { 0.0 }))
-    (Lt, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l < r then { 1.0 } else { 0.0 }))
-    (Le, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l <= r then { 1.0 } else { 0.0 }))
-    (Gt, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l > r then { 1.0 } else { 0.0 }))
-    (Ge, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l >= r then { 1.0 } else { 0.0 }))
-    (And, l, r) -> eval_logic_and(l, r)
-    (Or, l, r) -> eval_logic_or(l, r)
-    (_, l, r) -> binop_mismatch(l, r)
+  match op with
+    Add -> numeric_binop(left, right, |l, r| l + r)
+    Sub -> numeric_binop(left, right, |l, r| l - r)
+    Mul -> numeric_binop(left, right, |l, r| l * r)
+    Div -> eval_division(left, right)
+    Eq -> numeric_binop(left, right, |l, r| if l == r then { 1.0 } else { 0.0 })
+    Ne -> numeric_binop(left, right, |l, r| if l != r then { 1.0 } else { 0.0 })
+    Lt -> numeric_binop(left, right, |l, r| if l < r then { 1.0 } else { 0.0 })
+    Le -> numeric_binop(left, right, |l, r| if l <= r then { 1.0 } else { 0.0 })
+    Gt -> numeric_binop(left, right, |l, r| if l > r then { 1.0 } else { 0.0 })
+    Ge -> numeric_binop(left, right, |l, r| if l >= r then { 1.0 } else { 0.0 })
+    And -> eval_logic_and(left, right)
+    Or -> eval_logic_or(left, right)
+}
+
+fn numeric_binop(
+  left: Value,
+  right: Value,
+  op: (f64, f64) -> f64
+) -> Result<Value, RuntimeError> {
+  let lhs = expect_number(left)?
+  let rhs = expect_number(right)?
+  Result.ok(VNumber(op(lhs, rhs)))
+}
+
+fn eval_division(left: Value, right: Value) -> Result<Value, RuntimeError> {
+  let lhs = expect_number(left)?
+  let rhs = expect_number(right)?
+  if rhs == 0.0 then {
+    Result.err(DivisionByZero)
+  } else {
+    Result.ok(VNumber(lhs / rhs))
+  }
 }
 
 fn eval_unaryop(op: UnaryOperator, operand: Value) -> Result<Value, RuntimeError> {
-  match (op, operand) with {
-    (Neg, VNumber(n)) -> Result.ok(VNumber(-n))
-    (Not, v) -> Result.ok(VNumber(if is_truthy(v) then { 0.0 } else { 1.0 }))
-    (_, other) -> Result.err(TypeMismatch({ expected: "Number", got: value_kind(other) }))
+  match op with
+    Neg ->
+      match operand with
+        VNumber(n) -> Result.ok(VNumber(0.0 - n))
+        other -> Result.err(TypeMismatch({ expected: "Number", got: value_kind(other) }))
+    Not ->
+      Result.ok(VNumber(if is_truthy(operand) then { 0.0 } else { 1.0 }))
 }
 
-fn is_truthy(value: Value) -> bool {
+fn is_truthy(value: Value) -> Bool {
   match value with
     VNumber(n) -> n != 0.0
     VString(s) -> Str.is_empty(s) == false
@@ -427,23 +447,23 @@ fn value_kind(value: Value) -> Str {
 }
 
 fn eval_logic_and(left: Value, right: Value) -> Result<Value, RuntimeError> {
-  let left_truth = is_truthy(left)
-  if not left_truth then {
+  let left_truth: Bool = is_truthy(left)
+  if left_truth == false then {
     Result.ok(VNumber(0.0))
   } else {
-    let right_truth = is_truthy(right)
-    let value = if right_truth then { 1.0 } else { 0.0 }
+    let right_truth: Bool = is_truthy(right)
+    let value = if right_truth == true then { 1.0 } else { 0.0 }
     Result.ok(VNumber(value))
   }
 }
 
 fn eval_logic_or(left: Value, right: Value) -> Result<Value, RuntimeError> {
-  let left_truth = is_truthy(left)
-  if left_truth then {
+  let left_truth: Bool = is_truthy(left)
+  if left_truth == true then {
     Result.ok(VNumber(1.0))
   } else {
-    let right_truth = is_truthy(right)
-    let value = if right_truth then { 1.0 } else { 0.0 }
+    let right_truth: Bool = is_truthy(right)
+    let value = if right_truth == true then { 1.0 } else { 0.0 }
     Result.ok(VNumber(value))
   }
 }
@@ -470,7 +490,8 @@ fn collect_results(results: List<Result<Value, RuntimeError>>) -> Result<List<Va
 
 fn join_with_space(values: List<Str>) -> Str {
   List.fold(values, "", |acc, s| {
-    if Str.is_empty(acc) then {
+    let is_empty: Bool = Str.is_empty(acc)
+    if is_empty == true then {
       s
     } else {
       Str.concat(Str.concat(acc, " "), s)
