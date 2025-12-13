@@ -891,6 +891,7 @@ dependencies = [
  "thiserror",
  "time",
  "toml",
+ "unicode-ident",
  "unicode-normalization",
  "unicode-segmentation",
  "unicode-width",

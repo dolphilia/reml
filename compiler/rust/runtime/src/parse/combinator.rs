@@ -7,6 +7,8 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use unicode_ident::{is_xid_continue, is_xid_start};
+use unicode_normalization::{is_nfc_quick, IsNormalized};
 
 /// Packrat メモキー。
 pub type MemoKey = (ParserId, usize);
@@ -156,11 +158,35 @@ fn parser_id_from_name(name: &str) -> ParserId {
 }
 
 /// 簡易的な識別子継続文字の判定。
+fn is_ident_start(ch: char, profile: IdentifierProfile) -> bool {
+    match profile {
+        IdentifierProfile::Unicode => ch == '_' || is_xid_start(ch),
+        IdentifierProfile::AsciiCompat => ch == '_' || ch.is_ascii_alphabetic(),
+    }
+}
+
 fn is_ident_continue(ch: char, profile: IdentifierProfile) -> bool {
     match profile {
-        IdentifierProfile::Unicode => ch == '_' || ch.is_alphanumeric(),
+        IdentifierProfile::Unicode => ch == '_' || is_xid_continue(ch),
         IdentifierProfile::AsciiCompat => ch == '_' || ch.is_ascii_alphanumeric(),
     }
+}
+
+fn is_bidi_control(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{061C}' // ARABIC LETTER MARK
+            | '\u{200E}' // LRM
+            | '\u{200F}' // RLM
+            | '\u{202A}'..='\u{202E}' // LRE/RLE/PDF/LRO/RLO
+            | '\u{2066}'..='\u{2069}' // LRI/RLI/FSI/PDI
+    )
+}
+
+fn is_nfc_char(ch: char) -> bool {
+    let mut buf = [0u8; 4];
+    let s = ch.encode_utf8(&mut buf);
+    matches!(is_nfc_quick(s.chars()), IsNormalized::Yes)
 }
 
 /// `RunConfig.extensions["lex"].identifier_profile` から派生した識別子プロファイル。
@@ -181,6 +207,16 @@ impl IdentifierProfile {
                 _ => IdentifierProfile::Unicode,
             })
             .unwrap_or(IdentifierProfile::Unicode)
+    }
+
+    fn validate_char(&self, ch: char) -> Result<(), &'static str> {
+        if is_bidi_control(ch) {
+            return Err("識別子に Bidi 制御文字は使用できません");
+        }
+        if !is_nfc_char(ch) {
+            return Err("識別子は NFC 正規化されている必要があります");
+        }
+        Ok(())
     }
 }
 
@@ -1815,7 +1851,17 @@ where
             if remaining.starts_with(&kw) {
                 let rest = start_input.advance(kw.len());
                 if let Some(ch) = rest.remaining().chars().next() {
-                    if is_ident_continue(ch, state.identifier_profile()) {
+                    if let Err(msg) = state.identifier_profile().validate_char(ch) {
+                        state.set_input(start_input);
+                        return Reply::Err {
+                            error: ParseError::new(msg, rest.position()),
+                            consumed: true,
+                            committed: false,
+                        };
+                    }
+                    if is_ident_continue(ch, state.identifier_profile())
+                        || is_ident_start(ch, state.identifier_profile())
+                    {
                         state.set_input(start_input);
                         return Reply::Err {
                             error: ParseError::new(

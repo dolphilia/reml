@@ -50,6 +50,11 @@
 - `Parser::with_space` / `space_id` を実装し、空白パーサに安定 ID を付与。`symbol/keyword` は `with_space` 設定がある場合に自動で空白を消費する。  
 - `Core.Parse.Lex` ブリッジが未導入でも動く暫定策として、`RunConfig` からの lex プロファイルを無視する場合は脚注/TODO を残す。将来の `Lex.Bridge` 接続ポイントをコメントで明記。
 
+#### Phase 3 実施時の制約（2026-xx-xx 現在）
+- `RunConfig.extensions["lex"].profile/space_id` を `ParseState` でデコードして空白パーサに反映したが、実装は**空白のみ**（`is_whitespace` / ASCII 制限）を連続消費する簡易版。コメント・トリビア構成や Lex プロファイルの詳細は未反映で、後続フェーズで `Core.Parse.Lex.Bridge` に置き換える必要がある。  
+- `IdentifierProfile` は `unicode-ident` による XID 判定と単文字レベルの NFC/Bidi チェックのみで、識別子全体の正規化・Bidi ポリシー検証や `identifier` パーサ本体への統合は未対応。識別子処理を導入する際に全体検証へ拡張する。  
+- キーワード境界検査は上記簡易チェックに依存するため、Lex 仕様が想定するトリビア共有・コメントスキップが有効になるまでは精度に制約がある。
+
 ### Phase 4: エラー・診断統合
 - `ParseError` → `Diagnostic` 変換を実装し、`expected_tokens` を `parser.syntax.expected_tokens` と互換な形式で組み立てる（class/keyword/symbol の優先順位も仕様どおり）。  
 - `recover` に `until` 走査と診断保持を実装し、`with` の値を返す際の `committed`/`consumed` を明示。  
