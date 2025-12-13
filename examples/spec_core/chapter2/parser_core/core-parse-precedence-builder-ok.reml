@@ -21,43 +21,60 @@ fn integer() -> Parse.Parser<Int> {
     )
 }
 
-fn expr_precedence_builder() -> Parse.Parser<Int> {
-  let levels = [
-    { prefix: [
-        sym("+").map(|_| (|x| x)),
-        sym("-").map(|_| (|x| 0 - x)),
-      ],
-      infixl: [],
-      infixr: [],
-      infixn: [],
-      postfix: []
-    },
-    { prefix: [],
-      postfix: [],
-      infixl: [
-        sym("*").map(|_| (|a, b| a * b)),
-        sym("/").map(|_| (|a, b| a / b)),
-      ],
-      infixr: [],
-      infixn: []
-    },
-    { prefix: [],
-      postfix: [],
-      infixl: [
-        sym("+").map(|_| (|a, b| a + b)),
-        sym("-").map(|_| (|a, b| a - b)),
-      ],
-      infixr: [],
-      infixn: []
-    },
-  ]
+let expr_levels = [
+  { prefix: [
+      sym("+").map(|_| (|x| x)),
+      sym("-").map(|_| (|x| 0 - x)),
+    ],
+    infixl: [],
+    infixr: [],
+    infixn: [],
+    postfix: [],
+    ternary: [],
+  },
+  { prefix: [],
+    postfix: [],
+    infixl: [
+      sym("*").map(|_| (|a, b| a * b)),
+      sym("/").map(|_| (|a, b| a / b)),
+    ],
+    infixr: [],
+    infixn: [],
+    ternary: [],
+  },
+  { prefix: [],
+    postfix: [],
+    infixl: [
+      sym("+").map(|_| (|a, b| a + b)),
+      sym("-").map(|_| (|a, b| a - b)),
+    ],
+    infixr: [],
+    infixn: [],
+    ternary: [],
+  },
+  { prefix: [],
+    postfix: [],
+    infixl: [],
+    infixr: [],
+    infixn: [],
+    ternary: [
+      {
+        head: sym("?"),
+        mid: sym(":"),
+        build: (|c, t, f| if c == 0 then f else t),
+      }
+    ],
+  },
+]
 
+let expr_precedence_builder: Parse.Parser<Int> =
   Parse.rule("expr_precedence_builder",
     Parse.expr_builder(
       Parse.choice([
-        integer()
+        sym("(").skipR(rec(expr_precedence_builder)).skipL(sym(")")),
+        integer(),
       ]),
-      levels,
+      expr_levels,
       {
         space: Some(sc),
         operand_label: Some("expression"),
@@ -65,10 +82,9 @@ fn expr_precedence_builder() -> Parse.Parser<Int> {
       },
     )
   )
-}
 
 fn main() -> Str {
-  match Parse.run(expr_precedence_builder(), "-1 + 2 * 3 + 4") with
+  match Parse.run(expr_precedence_builder, "-1 + 2 * (3 + 4) + (0 ? 10 : 20)") with
     Ok(value) -> format("result=%d", [value])
     Err(diag) -> diag.message
 }

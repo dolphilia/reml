@@ -236,6 +236,14 @@ impl IdentifierProfile {
 /// 優先度ビルダーで利用する単項/二項演算子の型。
 pub type UnaryOp<T> = fn(T) -> T;
 pub type BinaryOp<T> = fn(T, T) -> T;
+pub type TernaryBuild<T> = fn(T, T, T) -> T;
+
+#[derive(Clone)]
+pub struct TernaryOp<T> {
+    pub head: Parser<()>,
+    pub mid: Parser<()>,
+    pub build: TernaryBuild<T>,
+}
 
 /// 演算子レベルの設定。
 #[derive(Clone)]
@@ -245,6 +253,7 @@ pub struct ExprOpLevel<T> {
     pub infixl: Vec<Parser<BinaryOp<T>>>,
     pub infixr: Vec<Parser<BinaryOp<T>>>,
     pub infixn: Vec<Parser<BinaryOp<T>>>,
+    pub ternary: Vec<TernaryOp<T>>,
 }
 
 impl<T: Clone + Send + Sync + 'static> ExprOpLevel<T> {
@@ -269,12 +278,27 @@ impl<T: Clone + Send + Sync + 'static> ExprOpLevel<T> {
                 ops.clone()
             }
         };
+        let apply_ternary = |ops: &Vec<TernaryOp<T>>| {
+            if let Some(sp) = space.clone() {
+                ops.iter()
+                    .cloned()
+                    .map(|op| TernaryOp {
+                        head: op.head.clone().with_space(sp.clone()),
+                        mid: op.mid.clone().with_space(sp.clone()),
+                        build: op.build,
+                    })
+                    .collect::<Vec<_>>()
+            } else {
+                ops.clone()
+            }
+        };
         Self {
             prefix: apply_unary(&self.prefix),
             postfix: apply_unary(&self.postfix),
             infixl: apply_binary(&self.infixl),
             infixr: apply_binary(&self.infixr),
             infixn: apply_binary(&self.infixn),
+            ternary: apply_ternary(&self.ternary),
         }
     }
 
@@ -289,6 +313,7 @@ impl<T: Clone + Send + Sync + 'static> ExprOpLevel<T> {
                     infixl: Vec::new(),
                     infixr: Vec::new(),
                     infixn: Vec::new(),
+                    ternary: Vec::new(),
                 },
             ));
         }
@@ -301,6 +326,7 @@ impl<T: Clone + Send + Sync + 'static> ExprOpLevel<T> {
                     infixl: Vec::new(),
                     infixr: Vec::new(),
                     infixn: Vec::new(),
+                    ternary: Vec::new(),
                 },
             ));
         }
@@ -313,6 +339,7 @@ impl<T: Clone + Send + Sync + 'static> ExprOpLevel<T> {
                     infixl: self.infixl.clone(),
                     infixr: Vec::new(),
                     infixn: Vec::new(),
+                    ternary: Vec::new(),
                 },
             ));
         }
@@ -325,6 +352,7 @@ impl<T: Clone + Send + Sync + 'static> ExprOpLevel<T> {
                     infixl: Vec::new(),
                     infixr: self.infixr.clone(),
                     infixn: Vec::new(),
+                    ternary: Vec::new(),
                 },
             ));
         }
@@ -337,6 +365,20 @@ impl<T: Clone + Send + Sync + 'static> ExprOpLevel<T> {
                     infixl: Vec::new(),
                     infixr: Vec::new(),
                     infixn: self.infixn.clone(),
+                    ternary: Vec::new(),
+                },
+            ));
+        }
+        if !self.ternary.is_empty() {
+            parts.push((
+                FixitySymbol::Ternary,
+                ExprOpLevel {
+                    prefix: Vec::new(),
+                    postfix: Vec::new(),
+                    infixl: Vec::new(),
+                    infixr: Vec::new(),
+                    infixn: Vec::new(),
+                    ternary: self.ternary.clone(),
                 },
             ));
         }
@@ -352,6 +394,7 @@ impl<T> Default for ExprOpLevel<T> {
             infixl: Vec::new(),
             infixr: Vec::new(),
             infixn: Vec::new(),
+            ternary: Vec::new(),
         }
     }
 }
@@ -399,6 +442,7 @@ fn decode_operator_table_override(run_config: &RunConfig) -> Option<OperatorTabl
                 ":infix_left" | "infixl" | "infix_left" => FixitySymbol::InfixLeft,
                 ":infix_right" | "infixr" | "infix_right" => FixitySymbol::InfixRight,
                 ":infix_nonassoc" | "infixn" | "infix_nonassoc" => FixitySymbol::InfixNonassoc,
+                ":ternary" | "ternary" => FixitySymbol::Ternary,
                 _ => continue,
             };
             fixities.push(symbol);
@@ -530,8 +574,45 @@ fn build_level<T: Clone + Send + Sync + 'static>(
     let infixl_choice = choice_ops(&infixl);
     let infixr_choice = choice_ops(&infixr);
     let infixn_choice = choice_ops(&infixn);
+    let ternary_choice = if level.ternary.is_empty() {
+        None
+    } else {
+        // ternary は複数あっても順序は同レベル扱い。最初にマッチしたものを使用。
+        let ops = level.ternary.clone();
+        let parser = Parser::new(move |state| {
+            for op in ops.iter() {
+                let op_parser = Parser::new({
+                    let op = op.clone();
+                    move |state| {
+                        Reply::Ok {
+                            value: op.clone(),
+                            span: empty_span(state.input()),
+                            consumed: false,
+                            rest: state.input().clone(),
+                        }
+                    }
+                });
+                match op_parser.parse(state) {
+                    ok @ Reply::Ok { .. } => return ok,
+                    Reply::Err { .. } => continue,
+                }
+            }
+            Reply::Err {
+                error: ParseError::new("ternary operator not matched", state.input().position()),
+                consumed: false,
+                committed: false,
+            }
+        });
+        Some(parser)
+    };
 
     let term = apply_prefix_postfix(term, prefix_choice, postfix_choice);
+
+    let term = if let Some(ternary) = ternary_choice {
+        apply_ternary(term, ternary)
+    } else {
+        term
+    };
 
     if let Some(op) = infixl_choice {
         chainl1(term, op)
@@ -542,6 +623,35 @@ fn build_level<T: Clone + Send + Sync + 'static>(
     } else {
         term
     }
+}
+
+fn apply_ternary<T: Clone + Send + Sync + 'static>(
+    term: Parser<T>,
+    op: Parser<TernaryOp<T>>,
+) -> Parser<T> {
+    term.clone().and_then(move |cond| {
+        let cond_for_ok = cond.clone();
+        let cond_shared = Arc::new(cond.clone());
+        let term_branch = term.clone();
+        let op_parser = op.clone();
+        op_parser
+            .and_then(move |op| {
+                let t_branch = term_branch.clone();
+                let f_branch = term_branch.clone();
+                op.head
+                    .clone()
+                    .then(t_branch)
+                    .then(op.mid.clone())
+                    .then(f_branch)
+                    .map({
+                        let cond_shared = cond_shared.clone();
+                        move |((((), t_val), ()), f_val)| {
+                            (op.build)((*cond_shared).clone(), t_val, f_val)
+                        }
+                    })
+            })
+            .or(ok(cond_for_ok))
+    })
 }
 
 /// `makeExprParser` 相当の優先度ビルダー。

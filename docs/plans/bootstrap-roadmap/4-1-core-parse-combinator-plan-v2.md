@@ -58,7 +58,7 @@
 - `docs/spec/2-0-parser-api-overview.md` の RunConfig 脚注に `extensions["parse"].operator_table` を追加し、OpBuilder/CLI から優先度・結合性を注入する入口を記載。  
 - サンプル: `examples/spec_core/chapter2/parser_core/core-parse-precedence-builder-ok.reml`（期待出力: `expected/spec_core/chapter2/parser_core/core-parse-precedence-builder-ok.stdout`）を追加し、`phase4-scenario-matrix.csv` に `CH2-PARSE-801`（resolution=pending、zero-copy/streaming resume 除外理由を備考に記載）を登録。  
 - `examples/language-impl-comparison/reml/basic_interpreter_combinator.reml` に `expr_builder` 版を併記（既定は従来チェーンを維持）し、OpBuilder 互換性検証のためのオプション経路を明示。
-- Rust 実装: `Parse.expr_builder` を `compiler/rust/runtime/src/parse/combinator.rs` に追加し、`RunConfig.extensions["parse"].operator_table.commit_operators` を尊重する上書きロジックと、`OpTable::to_run_config_extension`（`op_builder.rs`）経由の接続コードを実装。CLI で `CH2-PARSE-801` を実行し `result=9` をゴールデン化、シナリオを `resolution=ok` に更新。
+- Rust 実装: `Parse.expr_builder` を `compiler/rust/runtime/src/parse/combinator.rs` に追加し、`RunConfig.extensions["parse"].operator_table.commit_operators` を尊重する上書きロジックと、`OpTable::to_run_config_extension`（`op_builder.rs`）経由の接続コードを実装。`CH2-PARSE-801` は `compiler/rust/frontend/target/debug/reml_frontend examples/spec_core/chapter2/parser_core/core-parse-precedence-builder-ok.reml（run_id=89811feb-586f-428c-b95b-41263adbda18）` で再実行し、括弧再帰と ternary/infixn を含む入力で `result=33` をゴールデン化して `resolution=ok` を維持。`operator_table` 上書きは `RunConfig.extensions.parse.operator_table` で確認済み。
 
 ### Phase 9: autoWhitespace/Layout と Lex ブリッジ強化
 - `autoWhitespace`（トリビア共有）と `Layout`（オフサイドルール）を Core.Parse へ導入する設計を決定。`RunConfig.extensions["lex"]` を尊重し、未提供時のフォールバックを整理。  
