@@ -27,6 +27,12 @@
 - 既存 `op_builder` を `Parser` ベースへ移行する際の互換性リスク。
 
 ## フェーズ計画
+### Phase 0: 先行事例調査と機能精練方針
+- 対象ライブラリを決めて調査する: Haskell Parsec/Megaparsec（`makeExprParser`、`indentBlock`、rich error）、Scala FastParse（`autoWhitespace`、`Logger`）、Rust chumsky/nom/pom（zero-copy・診断集約）、Elixir NimbleParsec（コンパイル時展開）、Go pigeon など PEG/Packrat 系を優先し、構文力・診断・性能・可用性を比較する。  
+- 調査結果を `docs/notes/core-parse-combinator-survey.md` にまとめ、Core.Parse へ移植すべき具体機能と導入難易度（低: 糖衣追加 / 中: API 拡張 / 高: ランタイム変更）でタグ付けする。  
+- 取り込み候補を洗い出す: `makeExprParser` 相当の演算子優先度ビルダー、`autoWhitespace`/`Layout`（オフサイド対応）層、`logger/profile` による Packrat ヒット率・バックトラック統計、`recoverWith`/`cut` の実例パターン集、`left_recursion_guard` のガイドライン、`resumable parser` や `byte-slice` 最適化の適用可否。  
+- Phase 1〜5 へ反映する差分を決める: 優先度高は Phase 2/3 に組み込み（例: 優先度ビルダー・autoWhitespace・cut パターンのサンプル）、中は Phase 4（診断/プロファイル）で検証、低は Phase 5 のテスト/サンプル追加で段階投入する。  
+- 調査完了の定義: 比較表と採用/見送り理由を `docs/notes/core-parse-combinator-survey.md` に記載し、`README.md` から当計画書へリンクを追記する TODO を残す。既存 Phase の着手前にレビューし、必要なら仕様 `docs/spec/2-2-core-combinator.md` へ脚注案を起票する。
 ### Phase 1: 型と最小ランナー設計
 - `compiler/rust/runtime/src/parse/combinator.rs`（新規）に `Parser<T>` / `Reply<T>` / `ParseResult<T>` / `ParseError` / `ParserId` を定義し、`consumed` / `committed` を型で表現。  
 - `ParseState` を新設し、`Input`・位置情報（Byte/Grapheme）・`run_config`・Packrat キャッシュを保持する骨組みを実装。  
