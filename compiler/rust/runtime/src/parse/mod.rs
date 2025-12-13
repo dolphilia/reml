@@ -8,7 +8,8 @@ pub mod op_builder;
 
 pub use combinator::{
     between, chainl1, chainr1, choice, cut_here, delimited, eof, fail, keyword, label, lexeme,
-    lookahead, not_followed_by, ok, position, preceded, rule, run, run_with_default, spanned,
+    lookahead, not_followed_by, ok, parse_errors_to_guard_diagnostics,
+    parse_result_to_guard_diagnostics, position, preceded, rule, run, run_with_default, spanned,
     symbol, terminated, Input, InputPosition, MemoEntry, MemoKey, MemoTable, ParseError,
     ParseResult, ParseState, Parser, ParserId, Reply, Span,
 };

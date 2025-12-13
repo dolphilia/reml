@@ -1,6 +1,7 @@
+use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic};
 use crate::run_config::RunConfig;
 use crate::text::Str;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
@@ -18,6 +19,17 @@ pub type MemoEntry = Box<dyn Any + Send + Sync>;
 
 /// Packrat メモテーブル。
 pub type MemoTable = HashMap<MemoKey, MemoEntry>;
+
+#[derive(Clone)]
+struct MemoizedReply<T: Clone> {
+    reply: Reply<T>,
+}
+
+impl<T: Clone> MemoizedReply<T> {
+    fn clone_reply(&self) -> Reply<T> {
+        self.reply.clone()
+    }
+}
 
 /// パーサー ID。診断や Packrat キーに利用する。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -274,6 +286,7 @@ fn decode_lex_space(run_config: &RunConfig) -> Option<Parser<()>> {
 pub struct ParseError {
     pub message: String,
     pub position: InputPosition,
+    pub expected_tokens: Vec<String>,
 }
 
 impl ParseError {
@@ -281,6 +294,60 @@ impl ParseError {
         Self {
             message: message.into(),
             position,
+            expected_tokens: Vec::new(),
+        }
+    }
+
+    pub fn with_expected_tokens(
+        mut self,
+        tokens: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.expected_tokens
+            .extend(tokens.into_iter().map(Into::into));
+        self
+    }
+
+    pub fn to_guard_diagnostic(&self) -> GuardDiagnostic {
+        let mut extensions = Map::new();
+        let mut audit_metadata = Map::new();
+        extensions.insert(
+            "parser.position".into(),
+            Value::Object({
+                let mut obj = Map::new();
+                obj.insert("byte".into(), Value::from(self.position.byte as u64));
+                obj.insert("line".into(), Value::from(self.position.line as u64));
+                obj.insert("column".into(), Value::from(self.position.column as u64));
+                obj
+            }),
+        );
+        if !self.expected_tokens.is_empty() {
+            extensions.insert(
+                "parser.syntax.expected_tokens".into(),
+                Value::Array(
+                    self.expected_tokens
+                        .iter()
+                        .cloned()
+                        .map(Value::from)
+                        .collect(),
+                ),
+            );
+            audit_metadata.insert(
+                "parser.syntax.expected_tokens.count".into(),
+                Value::from(self.expected_tokens.len() as u64),
+            );
+        }
+
+        GuardDiagnostic {
+            code: if self.expected_tokens.is_empty() {
+                "parser.syntax.error"
+            } else {
+                "parser.syntax.expected_tokens"
+            },
+            domain: "parser",
+            severity: DiagnosticSeverity::Error,
+            message: self.message.clone(),
+            extensions,
+            audit_metadata,
         }
     }
 }
@@ -331,6 +398,17 @@ impl<T> ParseResult<T> {
             legacy_error: legacy_result.then_some(error),
         }
     }
+
+    pub fn extend_diagnostics(&mut self, diagnostics: Vec<ParseError>) {
+        self.diagnostics.extend(diagnostics);
+    }
+
+    pub fn guard_diagnostics(&self) -> Vec<GuardDiagnostic> {
+        self.diagnostics
+            .iter()
+            .map(ParseError::to_guard_diagnostic)
+            .collect()
+    }
 }
 
 /// パーサー本体。`ParserId` と実行クロージャを保持する。
@@ -354,7 +432,7 @@ impl<T> fmt::Debug for Parser<T> {
     }
 }
 
-impl<T: Send + Sync + 'static> Parser<T> {
+impl<T: Clone + Send + Sync + 'static> Parser<T> {
     pub fn new<F>(f: F) -> Self
     where
         F: Fn(&mut ParseState) -> Reply<T> + Send + Sync + 'static,
@@ -377,7 +455,17 @@ impl<T: Send + Sync + 'static> Parser<T> {
     }
 
     pub fn parse(&self, state: &mut ParseState) -> Reply<T> {
-        (self.f)(state)
+        let key = (self.id, state.input().byte_offset());
+        if state.packrat_enabled() {
+            if let Some(memo) = state.memo_get::<T>(key) {
+                return memo;
+            }
+        }
+        let reply = (self.f)(state);
+        if state.packrat_enabled() {
+            state.memo_put(key, &reply);
+        }
+        reply
     }
 
     /// 既定の空白パーサーをスコープに設定する。
@@ -394,7 +482,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
     /// 値を変換する。
     pub fn map<U, F>(self, f: F) -> Parser<U>
     where
-        U: Send + Sync + 'static,
+        U: Clone + Send + Sync + 'static,
         F: Fn(T) -> U + Send + Sync + 'static,
     {
         Parser::with_id(self.id, move |state| match self.parse(state) {
@@ -427,7 +515,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
     /// 直列合成。
     pub fn then<U>(self, other: Parser<U>) -> Parser<(T, U)>
     where
-        U: Send + Sync + 'static,
+        U: Clone + Send + Sync + 'static,
     {
         Parser::new(move |state| {
             let start_input = state.input().clone();
@@ -488,7 +576,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
     /// flatMap 相当。
     pub fn and_then<U, F>(self, f: F) -> Parser<U>
     where
-        U: Send + Sync + 'static,
+        U: Clone + Send + Sync + 'static,
         F: Fn(T) -> Parser<U> + Send + Sync + 'static,
     {
         Parser::new(move |state| {
@@ -550,7 +638,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
     /// 左側を捨てて右側を返す。
     pub fn skip_l<U>(self, other: Parser<U>) -> Parser<U>
     where
-        U: Send + Sync + 'static,
+        U: Clone + Send + Sync + 'static,
     {
         self.then(other).map(|(_, r)| r)
     }
@@ -558,7 +646,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
     /// 右側を捨てて左側を返す。
     pub fn skip_r<U>(self, other: Parser<U>) -> Parser<T>
     where
-        U: Send + Sync + 'static,
+        U: Clone + Send + Sync + 'static,
     {
         self.then(other).map(|(l, _)| l)
     }
@@ -673,6 +761,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
                         };
                     }
 
+                    state.push_diagnostic(error.clone());
                     state.set_input(start_input.clone());
                     let mut cursor = start_input.clone();
                     loop {
@@ -983,7 +1072,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
     /// セパレータ区切り（0 回以上）。
     pub fn sep_by<U>(self, sep: Parser<U>) -> Parser<Vec<T>>
     where
-        U: Send + Sync + 'static,
+        U: Clone + Send + Sync + 'static,
     {
         Parser::new(move |state| {
             let start_input = state.input().clone();
@@ -1140,7 +1229,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
     /// セパレータ区切り（1 回以上）。
     pub fn sep_by1<U>(self, sep: Parser<U>) -> Parser<Vec<T>>
     where
-        U: Send + Sync + 'static,
+        U: Clone + Send + Sync + 'static,
     {
         Parser::new(
             move |state| match self.clone().sep_by(sep.clone()).parse(state) {
@@ -1177,7 +1266,7 @@ impl<T: Send + Sync + 'static> Parser<T> {
     /// end まで読み続ける。
     pub fn many_till<U>(self, end: Parser<U>) -> Parser<Vec<T>>
     where
-        U: Send + Sync + 'static,
+        U: Clone + Send + Sync + 'static,
     {
         Parser::new(move |state| {
             let mut values = Vec::new();
@@ -1567,7 +1656,7 @@ where
 /// 非消費で失敗するパーサー。
 pub fn fail<T>(message: impl Into<String>) -> Parser<T>
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
 {
     let msg = message.into();
     Parser::new(move |state| Reply::Err {
@@ -1589,7 +1678,8 @@ pub fn eof() -> Parser<()> {
             }
         } else {
             Reply::Err {
-                error: ParseError::new("入力の終端を期待しました", state.input().position()),
+                error: ParseError::new("入力の終端を期待しました", state.input().position())
+                    .with_expected_tokens([String::from("<eof>")]),
                 consumed: false,
                 committed: false,
             }
@@ -1600,7 +1690,7 @@ pub fn eof() -> Parser<()> {
 /// 名前付きパーサー（ParserId を固定化する）。
 pub fn rule<T>(name: impl AsRef<str>, parser: Parser<T>) -> Parser<T>
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
 {
     let id = parser_id_from_name(name.as_ref());
     Parser::with_id(id, move |state| parser.parse(state))
@@ -1609,7 +1699,7 @@ where
 /// エラー時のラベルを差し替える。
 pub fn label<T>(name: impl Into<String>, parser: Parser<T>) -> Parser<T>
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
 {
     let label = name.into();
     Parser::new(move |state| match parser.parse(state) {
@@ -1642,7 +1732,7 @@ where
 /// 選択肢の列を左から試す。
 pub fn choice<T>(parsers: Vec<Parser<T>>) -> Parser<T>
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
 {
     parsers
         .into_iter()
@@ -1663,7 +1753,7 @@ pub fn cut_here() -> Parser<()> {
 /// 2 つのパーサーの間に挟む。
 pub fn between<A>(open: Parser<()>, parser: Parser<A>, close: Parser<()>) -> Parser<A>
 where
-    A: Send + Sync + 'static,
+    A: Clone + Send + Sync + 'static,
 {
     open.skip_l(parser).skip_r(close)
 }
@@ -1671,8 +1761,8 @@ where
 /// 前置パーサーを読み捨てる。
 pub fn preceded<A, B>(pre: Parser<A>, parser: Parser<B>) -> Parser<B>
 where
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
+    A: Clone + Send + Sync + 'static,
+    B: Clone + Send + Sync + 'static,
 {
     pre.skip_l(parser)
 }
@@ -1680,8 +1770,8 @@ where
 /// 後置パーサーを読み捨てる。
 pub fn terminated<A, B>(parser: Parser<A>, post: Parser<B>) -> Parser<A>
 where
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
+    A: Clone + Send + Sync + 'static,
+    B: Clone + Send + Sync + 'static,
 {
     parser.skip_r(post)
 }
@@ -1689,9 +1779,9 @@ where
 /// a b c の中央だけを返す。
 pub fn delimited<A, B, C>(a: Parser<A>, b: Parser<B>, c: Parser<C>) -> Parser<B>
 where
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    C: Send + Sync + 'static,
+    A: Clone + Send + Sync + 'static,
+    B: Clone + Send + Sync + 'static,
+    C: Clone + Send + Sync + 'static,
 {
     a.skip_l(b).skip_r(c)
 }
@@ -1707,7 +1797,7 @@ where
 /// 否定先読み。
 pub fn not_followed_by<T>(parser: Parser<T>) -> Parser<()>
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
 {
     parser.not_followed_by()
 }
@@ -1715,7 +1805,7 @@ where
 /// 後続の空白をまとめて処理する。
 pub fn lexeme<A, S>(space: S, parser: Parser<A>) -> Parser<A>
 where
-    A: Send + Sync + 'static,
+    A: Clone + Send + Sync + 'static,
     S: Into<Option<Parser<()>>>,
 {
     let space = space.into();
@@ -1817,7 +1907,8 @@ where
                     error: ParseError::new(
                         format!("期待した記号: {}", text),
                         state.input().position(),
-                    ),
+                    )
+                    .with_expected_tokens([text.clone()]),
                     consumed: false,
                     committed: false,
                 }
@@ -1885,7 +1976,8 @@ where
                     error: ParseError::new(
                         format!("期待したキーワード: {}", kw),
                         state.input().position(),
-                    ),
+                    )
+                    .with_expected_tokens([kw.clone()]),
                     consumed: false,
                     committed: false,
                 }
@@ -1910,7 +2002,7 @@ pub fn position() -> Parser<Span> {
 /// 値とスパンを返す。
 pub fn spanned<T>(parser: Parser<T>) -> Parser<(T, Span)>
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
 {
     parser.spanned()
 }
@@ -1939,6 +2031,7 @@ pub struct ParseState {
     input: Input,
     pub run_config: RunConfig,
     pub memo: MemoTable,
+    diagnostics: Vec<ParseError>,
     pub recovered: bool,
     space: Option<Parser<()>>,
     identifier_profile: IdentifierProfile,
@@ -1952,6 +2045,7 @@ impl ParseState {
             input: Input::new(source),
             run_config,
             memo: MemoTable::new(),
+            diagnostics: Vec::new(),
             recovered: false,
             space,
             identifier_profile,
@@ -1981,16 +2075,36 @@ impl ParseState {
     pub fn packrat_enabled(&self) -> bool {
         self.run_config.packrat
     }
+
+    pub fn push_diagnostic(&mut self, error: ParseError) {
+        self.diagnostics.push(error);
+    }
+
+    pub fn take_diagnostics(&mut self) -> Vec<ParseError> {
+        std::mem::take(&mut self.diagnostics)
+    }
+
+    pub fn memo_get<T: Clone + 'static>(&self, key: MemoKey) -> Option<Reply<T>> {
+        self.memo
+            .get(&key)
+            .and_then(|entry| entry.downcast_ref::<MemoizedReply<T>>())
+            .map(MemoizedReply::clone_reply)
+    }
+
+    pub fn memo_put<T: Clone + 'static>(&mut self, key: MemoKey, reply: &Reply<T>) {
+        self.memo
+            .insert(key, Box::new(MemoizedReply { reply: reply.clone() }));
+    }
 }
 
 /// バッチランナー。`require_eof` と Packrat 設定を反映する。
 pub fn run<T>(parser: &Parser<T>, input: &str, cfg: &RunConfig) -> ParseResult<T>
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
 {
     let mut state = ParseState::new(input, cfg.clone());
     let reply = parser.parse(&mut state);
-    match reply {
+    let mut result = match reply {
         Reply::Ok {
             value, span, rest, ..
         } => {
@@ -2003,13 +2117,35 @@ where
             }
         }
         Reply::Err { error, .. } => ParseResult::from_error(error, cfg.legacy_result),
+    };
+
+    let diagnostics = state.take_diagnostics();
+    if !diagnostics.is_empty() {
+        result.extend_diagnostics(diagnostics);
     }
+    result.recovered |= state.recovered;
+    result
 }
 
 /// RunConfig を指定しない場合のエイリアス。
 pub fn run_with_default<T>(parser: &Parser<T>, input: &str) -> ParseResult<T>
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
 {
     run(parser, input, &RunConfig::default())
+}
+
+/// CLI / LSP など外部向け診断形式へ変換する。
+pub fn parse_result_to_guard_diagnostics<T>(
+    result: &ParseResult<T>,
+) -> Vec<GuardDiagnostic> {
+    result.guard_diagnostics()
+}
+
+/// ParseError の列を GuardDiagnostic へ変換する。
+pub fn parse_errors_to_guard_diagnostics(errors: &[ParseError]) -> Vec<GuardDiagnostic> {
+    errors
+        .iter()
+        .map(ParseError::to_guard_diagnostic)
+        .collect()
 }
