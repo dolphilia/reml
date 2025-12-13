@@ -1,8 +1,74 @@
 use crate::{
     config::{compat::CompatibilityLayer, manifest::Manifest, ConfigFormat},
     stage::StageId,
+    text::LocaleId,
 };
 use serde_json::{json, Map, Value};
+use std::collections::HashMap;
+
+/// 左再帰処理のモード。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LeftRecursionStrategy {
+    Off,
+    On,
+    Auto,
+}
+
+impl Default for LeftRecursionStrategy {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
+/// RunConfig 拡張のネームスペースごとの値を保持する。
+pub type RunConfigExtensionValue = Map<std::string::String, Value>;
+
+/// `extensions` 全体を表すマップ。名前空間ごとに JSON 互換の値を保持する。
+pub type RunConfigExtensions = HashMap<std::string::String, RunConfigExtensionValue>;
+
+/// パーサー実行時に利用する設定。
+#[derive(Clone, Debug, PartialEq)]
+pub struct RunConfig {
+    pub require_eof: bool,
+    pub packrat: bool,
+    pub left_recursion: LeftRecursionStrategy,
+    pub trace: bool,
+    pub merge_warnings: bool,
+    pub legacy_result: bool,
+    pub locale: Option<LocaleId>,
+    pub extensions: RunConfigExtensions,
+}
+
+impl Default for RunConfig {
+    fn default() -> Self {
+        Self {
+            require_eof: false,
+            packrat: false,
+            left_recursion: LeftRecursionStrategy::Auto,
+            trace: false,
+            merge_warnings: true,
+            legacy_result: false,
+            locale: None,
+            extensions: RunConfigExtensions::new(),
+        }
+    }
+}
+
+impl RunConfig {
+    /// 指定した名前空間の拡張設定をイミュータブルに更新する。
+    pub fn with_extension<F>(&self, key: &str, update: F) -> Self
+    where
+        F: FnOnce(RunConfigExtensionValue) -> RunConfigExtensionValue,
+    {
+        let mut extensions = self.extensions.clone();
+        let current = extensions.remove(key).unwrap_or_default();
+        extensions.insert(key.to_string(), update(current));
+        Self {
+            extensions,
+            ..self.clone()
+        }
+    }
+}
 
 /// `apply_manifest_overrides` の入出力を表す。
 #[derive(Debug, Clone, Default)]
