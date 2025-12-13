@@ -357,6 +357,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 **examples/ffi**
 - [x] `examples/ffi/macos/ffi_dispatch_async.reml`（期待: 成功 → 2025-12-12 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/ffi/macos/ffi_dispatch_async.reml` / diagnostics=[] / run_id=41f3ed0b-d401-4ca9-9a6b-4bb1786d48d1）
 - [x] `examples/ffi/macos/ffi_malloc_arm64.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/ffi/macos/ffi_malloc_arm64.reml` / diagnostics=[] / log=reports/spec-audit/ch4/logs/ffi-20251211T151355Z.md / 関数本体をブロック式へ変更し、数値リテラルの型サフィックスを外して Parser エラーを解消）
+- [x] `examples/ffi/macos/ffi_getpid.reml`（期待: 成功 → 2025-12-13 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/ffi/macos/ffi_getpid.reml` / diagnostics=[] / run_id=`b69f825a-1634-4cdf-b292-1e31fe117492`）
 - [ ] `examples/ffi/windows/ownership_transfer.reml`（期待: 成功）
 - [ ] `examples/ffi/windows/struct_passing.reml`（期待: 成功）
 - [ ] `examples/ffi/windows/messagebox.reml`（期待: 成功）

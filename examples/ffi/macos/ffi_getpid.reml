@@ -1,0 +1,32 @@
+module examples.ffi.macos.ffi_getpid
+
+use ::Core.Text.String as Str
+
+/// macOS libc の `getpid` / `getppid` を FFI 経由で呼び出すサンプル。
+/// 所有権を伴わない整数返却のケースを示し、呼び出し規約とターゲット指定のみで足りる最小例を確認する。
+extern "C" {
+  @target("arm64-apple-darwin")
+  @link_name("getpid")
+  @callconv("aapcs64")
+  fn getpid() -> i32;
+
+  @target("arm64-apple-darwin")
+  @link_name("getppid")
+  @callconv("aapcs64")
+  fn getppid() -> i32;
+}
+
+pub fn print_process_ids() -> () {
+  let pid = getpid();
+  let ppid = getppid();
+
+  print("pid=");
+  print(Str.from_i32(pid));
+  print(" ppid=");
+  print(Str.from_i32(ppid));
+}
+
+pub fn main() -> i64 {
+  print_process_ids();
+  0
+}
