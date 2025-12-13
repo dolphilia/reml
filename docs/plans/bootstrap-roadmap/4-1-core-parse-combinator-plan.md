@@ -1,4 +1,4 @@
-# 4.1 Core.Parse パーサーコンビネーター実装計画（ドラフト）
+# 4.1 Core.Parse パーサーコンビネーター実装計画
 
 ## 背景
 - `docs/spec/2-0-parser-api-overview.md` / `2-2-core-combinator.md` で定義された `Parser<T>` 公理系（12〜15 個）が現行 Rust 実装に存在しない。`compiler/rust/runtime/src/parse/` は `op_builder` のみを提供し、`Parse.chainl1` などを使うサンプル（例: `examples/language-impl-comparison/reml/basic_interpreter_combinator.reml`）は実行不能。
