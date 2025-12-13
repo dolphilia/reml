@@ -41,12 +41,17 @@
   - `docs/spec/2-2-core-combinator.md` に新設 API（優先度ビルダー、`recoverWith` 拡張、`left_recursion_guard` ガイド）の脚注案を起票し、Phase 8/9/10 で採択可否を判断。  
   - `docs/spec/2-0-parser-api-overview.md` に `RunConfig` での `lex/layout`/`profile` フラグ追加を脚注するドラフトを準備。  
   - 観測系 API は `docs/notes/core-parse-api-evolution.md` に暫定契約を残し、回帰指標（期待集合、バックトラック率）の計測ポイントを明文化してから仕様化する。
+- 実施記録  
+  - `docs/notes/core-parse-combinator-survey.md#phase-7-統合方針（優先度再編と採否理由）` に Phase 7 の採否テーブルと影響度を集約済み。性能/安全性の判断基準は `docs/spec/0-1-project-purpose.md` に準拠。  
+  - 脚注ドラフトの起票先: `docs/spec/2-2-core-combinator.md`（優先度ビルダー/`recoverWith`/左再帰ガード）、`docs/spec/2-0-parser-api-overview.md`（`RunConfig.lex/layout/profile`）。観測系 API は `docs/notes/core-parse-api-evolution.md` に暫定契約を追記する。  
+  - シナリオ追加検討: ストリーミング再開 API と zero-copy 最適化は保留扱いとして、`docs/plans/bootstrap-roadmap/4-1-scenario-matrix-plan.md` へ検証条件を登録することを次ステップ候補とする。
 
 ### Phase 8: 演算子優先度ビルダー導入
-- `makeExprParser` 互換のビルダーを Core.Parse に追加し、`chainl1/chainr1` ベースで優先度テーブルを生成できる API を設計。  
-- `OpBuilder` との互換性を検証し、`RunConfig` 経由で優先度/結合性を外部指定できるかを検討（破壊的変更は避ける）。  
+- Phase 7 採否テーブル（`docs/notes/core-parse-combinator-survey.md#phase-7-統合方針（優先度再編と採否理由）`）を前提に、演算子優先度ビルダーを「非破壊追加」として設計する。`committed` フラグの扱いと期待集合抑制を `chainl1/chainr1` の巻き戻し規約に統合する。  
+- `makeExprParser` 互換のビルダーを Core.Parse に追加し、`chainl1/chainr1` ベースで優先度テーブルを生成できる API を設計。仕様脚注ドラフトは `docs/spec/2-2-core-combinator.md` に起票し、Phase 10 の観測系 API と一貫した ID/計測ポイントを設定する。  
+- `OpBuilder` との互換性を検証し、`RunConfig` 経由で優先度/結合性を外部指定できるかを検討（破壊的変更は避ける）。`RunConfig` 拡張案は `docs/spec/2-0-parser-api-overview.md` の脚注ドラフトに反映。  
 - サンプル: `examples/` に演算子優先度の DSL パーサを追加し、既存 `basic_interpreter_combinator.reml` にオプションでビルダー版を併記。  
-- 回帰: `phase4-scenario-matrix.csv` にシナリオ行を追加し、期待診断/成功条件を定義。
+- 回帰: `phase4-scenario-matrix.csv` にシナリオ行を追加し、期待診断/成功条件を定義。Phase 7 で保留とした zero-copy/ストリーミング再開はシナリオ備考に保留理由を明記して除外する。
 
 ### Phase 9: autoWhitespace/Layout と Lex ブリッジ強化
 - `autoWhitespace`（トリビア共有）と `Layout`（オフサイドルール）を Core.Parse へ導入する設計を決定。`RunConfig.extensions["lex"]` を尊重し、未提供時のフォールバックを整理。  
