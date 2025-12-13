@@ -164,6 +164,7 @@ fn autoWhitespace<A>(p: Parser<A>, cfg: AutoWhitespaceConfig = {}) -> Parser<A>
 * `cfg.layout` を指定すると、Lex 側の `LayoutProfile`（2-3 §H-2）を `Parser` に紐付け、オフサイド規則で生成される仮想 `indent`/`dedent`/`semicolon` トークンを `symbol`/`keyword` が共有できるようにする。`NoLexBridge` は Layout を無効化し、既存の空白スキップを温存したい場合に選択する。
 * `symbol/keyword/lexeme` は `autoWhitespace` が挿入した `space_id` を検出して二重スキップを防ぎ、`RunConfig.extensions["lex"].identifier_profile` があれば境界判定に利用する。Bidi/正規化チェックを強化する場合は 2-3 §D の `IdentifierProfile` を併用する。
 * フォールバック: RunConfig/`cfg.profile` のどちらも無い場合は `whitespace()` + `commentLine("//")` を `skipMany` した簡易空白を用いる（0-1 §1.2 の安全側フォールバック）。レイアウトが無効な環境でも構文意味は変えず、空白/コメントの共有率だけが低下する。
+* 回帰登録: `phase4-scenario-matrix.csv` の `CH2-PARSE-901` に autoWhitespace + Layout 共有を、`CH2-PARSE-902` に観測フラグ付きの ParserProfile 出力を登録し、PhaseF トラッカーで CLI/LSP/Streaming の再実行ログを残す。Rust 実装では `RunConfig.extensions["lex"].layout_profile` と `extensions["parse"].profile_output` が未指定でも安全側フォールバックに倒れることを確認する。[^phase12-autowhitespace-regression]
 
 ### B-3. 観測/プロファイル（Phase 10 実験フラグ）
 
@@ -436,3 +437,4 @@ register_plugin(ParserPlugin {
 
 [^core-parse-progress-ocaml]: `docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-003-proposal.md` Step6 実施記録および `docs/plans/bootstrap-roadmap/2-5-review-log.md` 2025-12-24 エントリを参照。API 変更履歴は `docs/notes/core-parse-api-evolution.md` Phase 2-5 Step6 セクションに整理されている。
 [^core-parse-progress-rust]: Rust ランタイムは `compiler/rust/runtime/src/parse/combinator.rs` で `Parser<T>` / `Reply` / Packrat メモ化 / 期待集合生成を実装し、`examples/language-impl-comparison/reml/basic_interpreter_combinator.reml` などバッチ系サンプルを CLI で実行できる状態にある。一方で `RunConfig.extensions["lex"]` の詳細プロファイル共有や `Core.Parse.Streaming`・`Core.Parse.Plugin` 連携は未着手であり、`docs/notes/core-parse-api-evolution.md#todo-rust-lex-streaming-plugin` にフォローアップ TODO を記録している。
+[^phase12-autowhitespace-regression]: Phase 12 ドキュメント・回帰更新で、autoWhitespace/Layout と ParserProfile の再実行を `phase4-scenario-matrix.csv`（CH2-PARSE-901/902）に登録し、`docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` フェーズF の checklist へ転写した。RunConfig に `layout_profile` や `profile_output` が無い場合でもフォールバックする現在の Rust 実装を前提とし、欠落時は診断挙動を変えない。

@@ -173,7 +173,8 @@ end
 
 - Rust ランタイムには `Parser<T>` / Packrat / 期待集合生成が導入されたが、`RunConfig.extensions["lex"]` プロファイルの共有やコメント/トリビア消費、`Core.Parse.Streaming` / `Core.Parse.Plugin` との橋渡しは未実装。4.1 Core.Parse 計画 Phase 6 のフォローアップとして、Lex ブリッジと Plugin Capability 連携の設計案を立案する。  
 - `docs/guides/core-parse-streaming.md` と `docs/guides/plugin-authoring.md` に暫定の非対応メモを追加済み。実装着手後は同ガイドと `docs/spec/2-0-parser-api-overview.md` / `2-2-core-combinator.md` の脚注を更新し、RunConfig 共有キーや診断メタデータの差分を明文化する。  
-- Streaming Runner の PoC を Rust で復元する際は、Packrat キャッシュ共有と `Recover` 同期トークンが欠落しないかを micro テストで検証し、欠落箇所を `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan.md` へ逆流させる。
+- Streaming Runner の PoC を Rust で復元する際は、Packrat キャッシュ共有と `Recover` 同期トークンが欠落しないかを micro テストで検証し、欠落箇所を `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan.md` へ逆流させる。  
+- Phase 12 で追加した回帰シナリオ（`CH2-PARSE-901` autoWhitespace/Layout、`CH2-PARSE-902` ParserProfile JSON）向けに Rust 側サンプル・expected を作成する。`RunConfig.extensions["lex"].layout_profile` 未設定時のフォールバックと `profile_output` 書き出し失敗が診断に影響しないことを CLI/LSP/Streaming で確認する。
 
 ## Phase 4-1 Phase11 Plugin/Streaming/OpBuilder 連携メモ
 

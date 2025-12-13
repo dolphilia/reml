@@ -264,6 +264,7 @@ let outcome =
 - **変換方針**: 既存の `Parser<T>` をそのまま `StreamDriver` / `run_stream` に渡し、`ContinuationMeta.commit_watermark` と Packrat キャッシュを共有する。`rule` で固定した `ParserId` が Stream 経路でも維持されることを前提に、`StreamEvent::Pending` に `expected_tokens` を含めて IDE での補完を可能にする。
 - **Lex/autoWhitespace の共有**: autoWhitespace/Layout や `lexeme`/`symbol` の挙動を一致させるため、`RunConfig.extensions["lex"]` と `layout_profile` をストリーミング側へ必ず注入する。`extensions["parse"].operator_table` を用いて演算子優先度を上書きしている場合も同じテーブルを共有し、バッチとストリーミングで期待集合がずれないようにする。
 - **Capability/Stage の伝播**: プラグイン経由で `Core.Parse.Plugin.with_capabilities` を利用している場合、`bridge.stage.*` / `effect.capabilities[*]` を `StreamEvent::Error` へ転写し、`RuntimeBridgeAuditSpec`（`docs/spec/3-8-core-runtime-capability.md`）の要求を満たす。署名検証や Stage チェックで失敗した場合は `Pending` を返さずエラー完了とし、復旧経路に乗せない。
+- **観測フラグの扱い**: `RunConfig.profile` / `extensions["parse"].profile_output` が有効な場合は、バッチと同じ `ParserProfile` を `StreamOutcome` に含める。`profile_output` の書き出しは best-effort（失敗しても診断に影響しない）であり、Phase 4 シナリオ `CH2-PARSE-902` で JSON 出力経路を監視する。
 - **既知の制約**: Rust ランタイムでは Streaming Runner が未実装のため、上記方針は OCaml 実装と将来の Rust 実装の整合指針として扱う。Packrat 共有や `resume` のバックプレッシャ制御は `docs/notes/core-parse-api-evolution.md#todo-rust-lex-streaming-plugin` に記録し、実装時に本節を最新の API 契約へ更新する。
 
 ## 10. Phase 2-5 PoC 状態と既知制限

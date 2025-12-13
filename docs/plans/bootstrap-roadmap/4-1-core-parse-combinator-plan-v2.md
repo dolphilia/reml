@@ -97,6 +97,11 @@
 - 回帰: Phase4 シナリオ表と `4-1-spec-core-regression-plan.md` の PhaseF トラッカーへ新シナリオを登録し、完了時にチェックボックスを更新。  
 - ハンドオーバー: 未着手/保留項目は `docs/notes/core-parse-api-evolution.md` に TODO として残し、次フェーズの入口を明示。
 
+#### 実施記録
+- 仕様更新: `docs/spec/2-2-core-combinator.md` に autoWhitespace/Layout + ParserProfile の回帰登録脚注を追加し、`phase4-scenario-matrix.csv` の `CH2-PARSE-901/902` と PhaseF トラッカーを参照できるようにした。`docs/spec/2-0-parser-api-overview.md` では RunConfig の lex/layout/profile フラグにシナリオ紐付けを追記。
+- ガイド更新: `docs/guides/plugin-authoring.md` のチェックリストへ autoWhitespace/Layout 共有と観測フラグの扱いを追加し、`docs/guides/core-parse-streaming.md#94-parser-から-streamingparser-への変換指針（phase-11）` に ParserProfile 出力時の注意と `CH2-PARSE-902` 監視メモを記載。
+- 回帰登録: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH2-PARSE-901`（autoWhitespace/Layout）と `CH2-PARSE-902`（ParserProfile JSON）を追加し、`docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` PhaseF チェックリストへ未実施タスクとして転写。`docs/notes/core-parse-api-evolution.md` にサンプル/expected 作成 TODO を残した。
+
 ## 成果物と完了条件
 - `Core.Parse` に演算子優先度ビルダー、autoWhitespace/Layout、observe/profile API が追加され、Lex/OpBuilder/Plugin/Streaming との接合ガイドが整備されていること。  
 - 新規サンプル・ユニット/回帰テストが追加され、Phase4 シナリオ表に反映されていること。  
