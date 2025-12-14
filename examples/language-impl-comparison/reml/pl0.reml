@@ -15,7 +15,7 @@ type Stmt =
 type Expr =
   | Number(i64)
   | Var(Str)
-  | Binary({ op: Op, lhs: Box<Expr>, rhs: Box<Expr> })
+  | Binary(Op, Box<Expr>, Box<Expr>)
 
 type Op =
   | Add
@@ -39,7 +39,7 @@ fn parse_program(source: Str) -> Result<List<Stmt>, ParseError> {
         Write({ expr: Var("x") }),
         Assign({
           name: "x",
-          expr: Binary({ op: Sub, lhs: Box.of(Var("x")), rhs: Box.of(Number(1)) }),
+          expr: Binary(Sub, Box.of(Var("x")), Box.of(Number(1))),
         }),
       ],
     }),
@@ -93,10 +93,10 @@ fn eval_expr(expr: Expr, vars: Map<Str, i64>) -> Result<(i64, Map<Str, i64>), Ex
     | Some(value) -> Result.ok((value, vars))
     | None -> Result.err({ reason: format("未定義変数: {name}") })
     end
-  | Binary(bin) ->
-    let (l, vars_after_lhs) = eval_expr(*bin.lhs, vars)?
-    let (r, vars_after_rhs) = eval_expr(*bin.rhs, vars_after_lhs)?
-    let result = match bin.op with
+  | Binary(op, lhs, rhs) -> {
+    let (l, vars_after_lhs) = eval_expr(*lhs, vars)?
+    let (r, vars_after_rhs) = eval_expr(*rhs, vars_after_lhs)?
+    let result = match op with
       | Add -> l + r
       | Sub -> l - r
       | Mul -> l * r
@@ -104,7 +104,9 @@ fn eval_expr(expr: Expr, vars: Map<Str, i64>) -> Result<(i64, Map<Str, i64>), Ex
         if r == 0 { return Result.err({ reason: "0 で割ることはできません" }) }
         l / r
       }
+    end
     Result.ok((result, vars_after_rhs))
+  }
   end
 }
 
