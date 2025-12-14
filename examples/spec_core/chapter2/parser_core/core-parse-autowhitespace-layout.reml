@@ -1,0 +1,79 @@
+module Spec.Core.Chapter2.Parser.AutoWhitespaceLayout
+
+use Core.Parse as Parse
+use Core.Parse.Lex
+use Core.Prelude
+
+let layout_profile: Lex.LayoutProfile = {
+  indent_token: "<indent>",
+  dedent_token: "<dedent>",
+  newline_token: "<newline>",
+  offside: true,
+  allow_mixed_tabs: false,
+}
+
+let layout_space: Parse.Parser<()> =
+  Lex.layout(layout_profile)
+
+fn layout_block() -> Parse.Parser<Str> {
+  Parse.autoWhitespace(
+    Parse.rule("layout_block",
+      Parse.then(
+        Parse.symbol(layout_space, "block"),
+        Parse.then(
+          Parse.layout_token(layout_profile, "<indent>"),
+          Parse.then(
+            Parse.symbol(layout_space, "line1"),
+            Parse.then(
+              Parse.layout_token(layout_profile, "<newline>"),
+              Parse.then(
+                Parse.symbol(layout_space, "line2"),
+                Parse.then(
+                  Parse.layout_token(layout_profile, "<dedent>"),
+                  Parse.ok("layout-ok"),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+    {
+      profile: Some(layout_space),
+      layout: Some(layout_profile),
+      strategy: Parse.AutoWhitespaceStrategy::PreferRunConfig,
+    },
+  )
+}
+
+fn config_with_layout() -> RunConfig {
+  RunConfig::builder()
+    .with_extension("lex", {
+      layout_profile: layout_profile,
+    })
+    .finish()
+}
+
+fn config_without_layout() -> RunConfig {
+  RunConfig::builder().finish()
+}
+
+fn sample_source() -> Str {
+  """
+block
+  line1
+  line2
+"""
+}
+
+fn run_case(cfg: RunConfig, label: Str) -> Str {
+  match Parse.run(layout_block(), sample_source(), cfg) with
+  | Ok(_) -> format("%s=ok", [label])
+  | Err(diag) -> format("%s=err:%s", [label, diag.message])
+}
+
+fn main() -> Str {
+  let with_layout = run_case(config_with_layout(), "with_layout")
+  let fallback = run_case(config_without_layout(), "fallback")
+  format("%s\n%s", [with_layout, fallback])
+}
