@@ -1,0 +1,11 @@
+module Spec.Core.Chapter1.ActivePatterns.Partial
+
+use Core.Prelude
+
+pattern (|IsFoo|_|)(s: String) = if s == "foo" then Some(()) else None
+
+fn main() -> String = {
+  match "foo" with
+  | (|IsFoo|_|) () -> "hit"
+  | _ -> "miss"
+}
