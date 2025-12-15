@@ -1,4 +1,4 @@
-# パターンマッチ強化計画（ドラフト）
+# パターンマッチ強化計画
 
 パターンマッチ機能を強化するための専用計画群を集約するディレクトリです。背景メモは `../../notes/pattern-matching-improvement.md` を参照してください。
 
@@ -11,7 +11,7 @@
 - [1-0-active-patterns-plan.md](1-0-active-patterns-plan.md): Active Patterns 導入に関する詳細計画
 - [1-1-pattern-surface-plan.md](1-1-pattern-surface-plan.md): Or/Slice/Range/Binding/Regex など周辺機能の拡張計画
 
-> すべてドラフト版です。実施に伴い内容を更新し、`docs/plans/README.md` からも参照します。
+本計画は承認済みの正式版です。更新時は `docs/plans/README.md` と関連仕様のリンク整合を確認してください。
 
 ## 実装連携メモ（Rust/OCaml パーサ向け短報）
 

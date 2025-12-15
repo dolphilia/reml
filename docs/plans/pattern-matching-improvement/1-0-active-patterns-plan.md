@@ -1,4 +1,4 @@
-# 1.0 Active Patterns 導入計画（ドラフト）
+# 1.0 Active Patterns 導入計画
 
 ## 目的と背景
 
@@ -20,9 +20,9 @@
   - **Fallible Active Pattern (要検討)**: `Result<T, E>` を返す場合、`Err` を「マッチ失敗」とみなすか「実行時エラー（例外）」として伝播させるかの設計が必要。Phase A では `Option` (失敗) と `T` (成功) を基本とし、`Result` は原則非サポート（または `Option` への変換を要求）としてリスクを低減する。
 - 副作用: `@pure` 関数内で使用する場合の制約を `docs/spec/1-3-effects-safety.md` と照合。副作用（I/O等）を伴う Active Pattern は、網羅性検査の前に「効果の発生順序」が確定している必要がある。
 
-## タスク（ドラフト）
+## タスク
 
-1. **構文/BNF ドラフト**  
+1. **構文/BNF 差分策定**  
    - `docs/spec/1-1-syntax.md` に Active Pattern 定義/呼び出し構文を追加。  
    - `docs/spec/1-5-formal-grammar-bnf.md` へ `active_pattern_decl` / `active_pattern_app` の生成規則を追記し、`match_arm` に組み込む。  
    - 優先順位表に `when`/`as` との結合順を明記。
@@ -39,7 +39,7 @@
    - 既存の関数呼び出しと Active Pattern 名の衝突を避ける命名ルール案を提示。  
    - `docs/guides/ai-integration.md` へ導入時の LLM 提案ガイドライン追記案を準備。
 
-## 成果物（ドラフト段階の出口条件）
+## 成果物（出口条件）
 
 - 上記タスクのアウトラインを各仕様ファイルへの修正ポイント付きで提示できている。
 - 最低 2 本の例題案（成功/失敗）が決まり、診断キーと期待挙動が文章で示されている。
@@ -53,13 +53,13 @@
 ## 仕様差分メモ（1-1 / 1-5 に対する追記箇所）
 
 - `docs/spec/1-1-syntax.md` は C.3/C.4 に Active Pattern の説明が存在しない。定義記法と `match` 内での使用例を追加する差分が必要。
-- `docs/spec/1-5-formal-grammar-bnf.md` には Active Pattern の生成規則が無い。以下をドラフトとして追加する方針を計画タスクに組み込む。  
+- `docs/spec/1-5-formal-grammar-bnf.md` には Active Pattern の生成規則が無い。以下を追加する方針を計画タスクに組み込む。  
   - `ActivePatternDecl ::= "pattern" "(|" Ident ("|_|")? "|)" "(" ParamList? ")" "=" Expr`（呼び出し規約と戻り値契約を注記）  
   - `ActivePatternApp  ::= "(|" Ident "|)" Pattern?` を `Pattern` もしくは `Primary` に統合（優先順位を表で明記）  
   - `MatchArm` のガード/エイリアス順は `MatchGuard? MatchAlias?` 固定だが Phase 4 実装は順不同を許容しているため、どちらに揃えるか決定する必要あり。
 - 診断キーは仕様本文に未登場。最低限 `pattern.active.return_contract_invalid`（Option/Result 以外の戻り値）、`pattern.active.effect_violation`（@pure で副作用を持つ場合）を `2-5-error.md` か `1-1` 診断節に追加する差分を要検討。
 
-## 仕様差分ドラフトパッチ（準備用スケッチ）
+## 仕様差分パッチ（準備用スケッチ）
 
 以下は実装前にレビュー用として `docs/spec/1-1-syntax.md` / `1-5-formal-grammar-bnf.md` / `2-5-error.md` に適用を検討する短縮パッチ案。
 
@@ -133,11 +133,11 @@ RangeBound      ::= Literal | Ident | ConstructorPattern
 - `MatchGuard` と `MatchAlias` の順序は順不同を受理し、AST 正規化は guard→alias の順で固定する。BNF では `MatchArmTail ::= MatchGuard? MatchAlias? | MatchAlias? MatchGuard?` を採用予定。
 - Active Pattern の例示では `(|Name|_|) x when cond as v -> ...` 形式を推奨形として示し、順不同許容に関する注記を `1-5` 側に併記する。
 
-## 下準備
+## 実行前の下準備
 
-1. **仕様パッチ作成（下書き）**: 上記ドラフトパッチ案を実際の差分として `docs/spec/1-1-syntax.md` / `1-5-formal-grammar-bnf.md` / `2-5-error.md` に適用する下書きを用意し、`when` 正規形・順不同ガード/エイリアスを明文化。
+1. **仕様パッチ作成（下書き）**: 上記パッチ案を実際の差分として `docs/spec/1-1-syntax.md` / `1-5-formal-grammar-bnf.md` / `2-5-error.md` に適用する下書きを用意し、`when` 正規形・順不同ガード/エイリアスを明文化。
 2. **型/効果セマンティクス追記案**: `1-2-types-Inference.md` と `1-3-effects-safety.md` へ Option/T 返り値の推論規則・@pure での副作用制約を追加する文案を作成し、`Result` 非推奨方針を脚注で明示。
-3. **サンプル設計**: `examples/spec_core/chapter1/match_expr/` 用に部分/完全 Active Pattern の成功・失敗・ガード併用の 3 本をプロットし、対応する `phase4-scenario-matrix.csv` 行（`diagnostic_keys`）をドラフト登録。
+3. **サンプル設計**: `examples/spec_core/chapter1/match_expr/` 用に部分/完全 Active Pattern の成功・失敗・ガード併用の 3 本をプロットし、対応する `phase4-scenario-matrix.csv` 行（`diagnostic_keys`）を登録。
 4. **診断メッセージ雛形**: `pattern.active.return_contract_invalid` / `pattern.active.effect_violation` の短文メッセージ案を作成し、既存診断スタイルと揃える（コード・タイトル・説明の3要素）。
 5. **実装連携メモ更新**: Rust/OCaml パーサが `if` ガードを警告付きで受理し、AST 正規化を guard→alias とする実装指針を短文で `docs/plans/pattern-matching-improvement/README.md` に転載（共有しやすくするため）。
 

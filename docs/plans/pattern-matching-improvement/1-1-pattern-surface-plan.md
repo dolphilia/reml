@@ -1,4 +1,4 @@
-# 1.1 パターン表現拡張計画（ドラフト）
+# 1.1 パターン表現拡張計画
 
 ## 目的
 - Active Patterns 以外の周辺機能（Or/Slice/Range/Binding/Regex）を優先度付きで整理し、実装順序と診断ポリシーを定義する。
@@ -21,7 +21,7 @@
    - 構文案: `r"^\\d+" as digits -> ...`。Active Pattern 糖衣として実装位置を決める。  
    - 作業: `docs/spec/1-1-syntax.md` に限定的な使用条件（文字列/バイト列のみ等）を記載し、`docs/spec/3-3-core-text-unicode.md` との整合を確認。
 
-## タスク（ドラフト）
+## タスク
 - **BNF 更新**: `pattern` 規則を再構成し、Or/Slice/Range/Binding/Regex の優先順位・結合ルールを明示。  
 - **型・診断定義**:  
   - Or/Slice/Range の網羅性・到達不能診断キーを追加。  
@@ -30,9 +30,9 @@
 - **サンプル計画**:  
   - `examples/spec_core/chapter1/match_expr/` に各機能の成功/失敗例を 1 本ずつ追加する案をまとめる。  
   - `reports/spec-audit/ch4` に対応する診断サンプルを設計し、`phase4-scenario-matrix.csv` 用の `diagnostic_keys` を列挙。
-- **導入順序**: Or → Slice → Range → Binding → Regex の順で仕様ドラフトを確定し、各ステップで回帰計画（Phase 4）への影響をレビューする。
+- **導入順序**: Or → Slice → Range → Binding → Regex の順で仕様を確定し、各ステップで回帰計画（Phase 4）への影響をレビューする。
 
-## 成果物（ドラフト段階の出口条件）
+## 成果物（出口条件）
 - 対象機能ごとの BNF 追記ポイントと診断キー案が明文化されている。
 - サンプル追加計画（ファイルパス、期待診断/標準出力）が文章で用意され、重複回避の方針が決まっている。
 - 導入順序と Phase 4 回帰計画のチェックポイントが合意できる状態にある。
@@ -102,15 +102,15 @@
 
 ## 下準備
 
-1. **BNF 拡張パッチ草案**: Or/Slice/Range/Binding/Regex/Active 呼び出しの非終端を `docs/spec/1-5-formal-grammar-bnf.md` に追加するドラフトを作成し、優先順位表で結合順を明記（特に Or vs Active の優先度を決定）。
+1. **BNF 拡張パッチ計画**: Or/Slice/Range/Binding/Regex/Active 呼び出しの非終端を `docs/spec/1-5-formal-grammar-bnf.md` に追加する方針を整理し、優先順位表で結合順を明記（特に Or vs Active の優先度を決定）。
 2. **本文サンプル追加案**: `docs/spec/1-1-syntax.md` C.3/C.4 に各機能の短い使用例を追記する差分案を用意し、ガードは `when` に統一。`as`/`@` 併用例も含める。
-3. **サンプルファイル設計**: `examples/spec_core/chapter1/match_expr/` へ追加する `.reml` を優先順にリスト化（成功/失敗を明記）し、`phase4-scenario-matrix.csv` の `diagnostic_keys` を暫定登録する表を作る。
+3. **サンプルファイル設計**: `examples/spec_core/chapter1/match_expr/` へ追加する `.reml` を優先順にリスト化（成功/失敗を明記）し、`phase4-scenario-matrix.csv` の `diagnostic_keys` を登録する表を作る。
 4. **診断キー定義案**: `pattern.exhaustiveness.missing` など既出キー案を `2-5-error.md` のフォーマットで文面化し、Range/Slice/Regex/Binding ごとに短文メッセージを準備。
 5. **互換性・フェーズアウト方針明記**: `if` ガード許容を警告付きで残す期間と、順序順不同受理の理由を脚注にまとめ、`docs/plans/pattern-matching-improvement/README.md` からも参照できるよう短文で転載する。
 
 ## サンプルファイル設計（下準備ステップ3）
 
-`examples/spec_core/chapter1/match_expr/` に追加する想定サンプルを成功/失敗で整理し、`reports/spec-audit/ch4/phase4-scenario-matrix.csv` に登録する暫定 `diagnostic_keys` を付記する。既存サンプルとの重複を避けるため、ファイル名は `bnf-match-*` 接頭辞で統一。
+`examples/spec_core/chapter1/match_expr/` に追加する想定サンプルを成功/失敗で整理し、`reports/spec-audit/ch4/phase4-scenario-matrix.csv` に登録する `diagnostic_keys` を付記する。既存サンプルとの重複を避けるため、ファイル名は `bnf-match-*` 接頭辞で統一。
 
 - Or パターン  
   - `bnf-match-or-pattern-ok.reml`（成功）: `Some(A | B)` の成功分岐で `"ok"` を返す。`diagnostic_keys` なし。  
