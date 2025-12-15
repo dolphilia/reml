@@ -142,3 +142,11 @@
 - Active Pattern は `(|Name|_|)`/`(|Name|)` の両形を継続サポートし、副作用規約は `pattern.active.effect_violation` で監査する。`@pure` 契約厳格化や戻り値制約強化は Phase4 回帰計画と連動し、追加警告キーを導入する場合は本計画に追記する。
 
 ## Rust実装Remlコンパイラのパターンマッチ実装を強化するための具体的な作業ステップ
+- **パーサ/AST 拡張（Or → Slice → Range → Binding → Regex の順）**: `compiler/rust/frontend/src/parser` の BNF 実装を上記優先順で拡張し、`MatchGuard` は `when` を正規形として `if` は警告 `pattern.guard.if_deprecated` を発火。`parser::ast` のパターンノードに Or/Slice/Range/Binding/Regex/Active 呼び出しを追加し、結合順位を表で固定する。
+- **字句・正規表現サポート**: Regex 糖衣用に `lexer` へ `r"..."` 字句を追加し、エスケープと境界制約を明示。対象型チェックは後段の型検査で `pattern.regex.invalid_syntax`/`unsupported_target` を返せるようトークン情報を保持する。
+- **型検査・整合性チェック**: `typeck` のパターン検査に Slice/Range/Binding/Regex を追加し、`Iterator`/`Slice` 要件と Range 境界型一致・下限上限の大小比較を `pattern.range.type_mismatch`/`bound_inverted` で報告。Binding は `as`/`@` の重複束縛を検知し `pattern.binding.duplicate_name` を発行。
+- **網羅性/到達不能診断の拡張**: 既存の到達不能・網羅性判定ロジックを Or/Slice/Range/Active 呼び出しに対応させ、`pattern.exhaustiveness.missing` と `pattern.unreachable_arm` を Rust 側で発火できるようにする。Slice の可変長と Range の閉区間を考慮した分割戦略を実装し、Phase4 の診断キーと一致させる。
+- **診断キーの登録と出力整備**: `frontend/src/diagnostic` に上記キーを登録し、メッセージ文面を `docs/spec/2-5-error.md` 案と同期。警告/エラーのデフォルトレベルを Phase4（`docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md`）のゲートに合わせる。
+- **テスト・サンプル統合**: `examples/spec_core/chapter1/match_expr/` の追加ファイルを Rust フロントエンドで実行する `frontend/tests` を用意し、`expected/` ゴールデンを生成。失敗系は `diagnostic_keys` と一致することをアサートし、`reports/spec-audit/ch4/phase4-scenario-matrix.csv` への反映を自動化または手順化する。
+- **互換性フラグと段階的ロールアウト**: `when` ガード正規化や Regex/Slice/Range の導入で互換性リスクがあるため、`REML_EXPERIMENTAL_PATTERN` などのフラグで段階的に有効化し、CI ではフラグ有効/無効の両構成を走らせる。フラグ除去の判断を Phase4 週次レビューで決め、`docs/plans/bootstrap-roadmap` へ結果を記録。
+- **実装クロスレビューと OCaml 版との差分監査**: OCaml 実装の挙動と照らし合わせるため、同一 `.reml` サンプルを両実装で実行し差分ログを `reports/dual-write/front-end/` に保存。差分が出た箇所は仕様側の BNF/本文更新か実装修正かを切り分け、`docs/plans/rust-migration/` と本計画に補遺を残す。

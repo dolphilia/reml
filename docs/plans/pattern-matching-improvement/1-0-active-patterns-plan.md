@@ -142,3 +142,25 @@ RangeBound      ::= Literal | Ident | ConstructorPattern
 5. **実装連携メモ更新**: Rust/OCaml パーサが `if` ガードを警告付きで受理し、AST 正規化を guard→alias とする実装指針を短文で `docs/plans/pattern-matching-improvement/README.md` に転載（共有しやすくするため）。
 
 ## Rust実装Remlコンパイラのパターンマッチ実装を強化するための具体的な作業ステップ
+1. **構文パーサ拡張（frontend/parser）**  
+   - `(|Name|_|)` / `(|Name|)` 定義と呼び出しをパーサに追加し、`MatchGuard`/`MatchAlias` の順不同受理と `if` ガード警告（`pattern.guard.if_deprecated`）を実装する。  
+   - BNF 差分（`ActivePatternDecl`/`ActivePatternApp`）を parser テーブル・テストに反映し、既存 `match` サンプルがレグレッションしないことを確認する。
+2. **AST/HIR 拡張と IR 正規化**  
+   - Active Pattern 定義ノード（部分/完全の区別を持つ）と適用ノードを AST/HIR に追加し、ガード→エイリアス順で正規化する共通パスを整備する。  
+   - パターン内の Active 呼び出しと通常関数呼び出しの混同を避けるタグ付けを行い、IR 生成で Option/値返却の分岐を明示する。
+3. **型・効果検査の実装（typeck/effects）**  
+   - 戻り値契約: 部分パターンは `Option<T>`、完全パターンは `T` のみ許容し、`Result`/その他は `pattern.active.return_contract_invalid` で失敗させる。  
+   - `@pure` 文脈で副作用を持つ Active Pattern を検出し `pattern.active.effect_violation` を発火、効果タグ伝播を既存 `perform` チェックと共有する。  
+   - パターンバインディングの型付け（`(|Name|_|) x` の束縛型推論）を既存 Binding/Or/Slice のロジックに組み込む。
+4. **網羅性・到達不能解析の拡張（exhaustiveness pass）**  
+   - 部分 Active Pattern を「失敗し得るパターン」として扱い、網羅性不足は `pattern.exhaustiveness.missing`、重複は `pattern.unreachable_arm` で報告する。  
+   - 完全 Active Pattern は常時成功パスとして扱い、Range/Slice/Or と併用した場合のカバレッジ計算を回帰テストで固定する。
+5. **診断メッセージとキーの統合（diagnostics crate）**  
+   - `pattern.active.return_contract_invalid` / `pattern.active.effect_violation` を診断レジストリに追加し、コード・タイトル・短文説明を既存パターン系メッセージと揃える。  
+   - `pattern.guard.if_deprecated` を警告レベルで登録し、将来のフェーズアウト方針（when 正規形）をメッセージ内に明示する。
+6. **サンプル・E2E テスト連携**  
+   - `examples/spec_core/chapter1/match_expr/` に Active Pattern 成功/失敗サンプルを追加し、`tooling/examples/run_examples.sh --suite spec_core` で実行する期待結果 (`expected/` と `reports/spec-audit/ch4`) を更新。  
+   - `compiler/rust/tests`（もしくは `frontend/tests`）で AST 正規化・網羅性診断・効果違反のユニット/スナップショットテストを追加し、`phase4-scenario-matrix.csv` の該当行に `diagnostic_keys` を登録する。
+7. **移行・互換性ガード**  
+   - 既存コードとの衝突を防ぐため、Active Pattern 名の予約衝突チェック（通常関数との重複時の警告方針）を実装し、ドキュメントの命名規則と同期させる。  
+   - `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` と `rust-migration` 計画に着手タイミングを記録し、Phase4 回帰スイートでの確認手順を追記する。
