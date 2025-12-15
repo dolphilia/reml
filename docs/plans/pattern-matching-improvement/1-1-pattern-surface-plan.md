@@ -106,3 +106,28 @@
 3. **サンプルファイル設計**: `examples/spec_core/chapter1/match_expr/` へ追加する `.reml` を優先順にリスト化（成功/失敗を明記）し、`phase4-scenario-matrix.csv` の `diagnostic_keys` を暫定登録する表を作る。
 4. **診断キー定義案**: `pattern.exhaustiveness.missing` など既出キー案を `2-5-error.md` のフォーマットで文面化し、Range/Slice/Regex/Binding ごとに短文メッセージを準備。
 5. **互換性・フェーズアウト方針明記**: `if` ガード許容を警告付きで残す期間と、順序順不同受理の理由を脚注にまとめ、`docs/plans/pattern-matching-improvement/README.md` からも参照できるよう短文で転載する。
+
+## サンプルファイル設計（作業ステップ3草案）
+
+`examples/spec_core/chapter1/match_expr/` に追加する想定サンプルを成功/失敗で整理し、`reports/spec-audit/ch4/phase4-scenario-matrix.csv` に登録する暫定 `diagnostic_keys` を付記する。既存サンプルとの重複を避けるため、ファイル名は `bnf-match-*` 接頭辞で統一。
+
+- Or パターン  
+  - `bnf-match-or-pattern-ok.reml`（成功）: `Some(A | B)` の成功分岐で `"ok"` を返す。`diagnostic_keys` なし。  
+  - `bnf-match-or-pattern-unreachable.reml`（失敗）: 先行アームが後続と重複し `pattern.unreachable_arm` を発火。
+- スライスパターン  
+  - `bnf-match-slice-head-tail-ok.reml`（成功）: `[head, ..tail]` を分解し長さ表示。`diagnostic_keys` なし。  
+  - `bnf-match-slice-multiple-rest.reml`（失敗）: `[..a, ..b]` を含み `pattern.slice.multiple_rest` を期待。型不一致例は別途 `pattern.slice.type_mismatch` で拡張可。
+- 範囲パターン  
+  - `bnf-match-range-inclusive-ok.reml`（成功）: `1..=10` で `"in-range"` を返す。`diagnostic_keys` なし。  
+  - `bnf-match-range-bound-inverted.reml`（失敗）: `10..1` を含み `pattern.range.bound_inverted` を期待。必要に応じて `pattern.range.type_mismatch` 追加ケースを派生。
+- バインディング  
+  - `bnf-match-binding-as-ok.reml`（成功）: `pat as name` でエイリアスをログする。`diagnostic_keys` なし。  
+  - `bnf-match-binding-duplicate.reml`（失敗）: `as` と `@` の重複束縛で `pattern.binding.duplicate_name`。
+- 正規表現  
+  - `bnf-match-regex-ok.reml`（成功）: 文字列に `r"^\\d+$"` を適用し、マッチ結果を返す。`diagnostic_keys` なし。  
+  - `bnf-match-regex-unsupported-target.reml`（失敗）: 非文字列ターゲットに適用し `pattern.regex.unsupported_target`。必要に応じて無効構文で `pattern.regex.invalid_syntax` も追加。
+- Active Pattern 併用（Or/Slice/Range との統合確認）  
+  - `bnf-match-active-or-combined.reml`（成功）: `(|HexInt|_|)` と Or/スライス併用の成功例。`diagnostic_keys` なし。  
+  - `bnf-match-active-effect-violation.reml`（失敗）: `@pure` 期待を破る Active Pattern 呼び出しで `pattern.active.effect_violation`（+併用パターンの診断があれば併記）。
+
+備考: 各失敗サンプルは Phase4 回帰計画（`docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md`）のシナリオ行に `diagnostic_keys` を併記し、網羅性不足系は `pattern.exhaustiveness.missing` を別途ケース追加して管理する。
