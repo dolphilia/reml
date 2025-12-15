@@ -144,18 +144,18 @@ RangeBound      ::= Literal | Ident | ConstructorPattern
 ## Rust実装Remlコンパイラのパターンマッチ実装を強化するための具体的な作業ステップ
 1. **構文パーサ拡張（frontend/parser）**  
    - `(|Name|_|)` / `(|Name|)` 定義と呼び出しをパーサに追加し、`MatchGuard`/`MatchAlias` の順不同受理と `if` ガード警告（`pattern.guard.if_deprecated`）を実装する。  
-   - BNF 差分（`ActivePatternDecl`/`ActivePatternApp`）を parser テーブル・テストに反映し、既存 `match` サンプルがレグレッションしないことを確認する。
+   - BNF 差分（`ActivePatternDecl`/`ActivePatternApp`）を parser テーブル・テストに反映し、既存 `match` サンプルがレグレッションしないことを確認する。  
    - **進捗**: Rust Parser/Lexer へ Active Pattern 定義・適用を追加し、`when` 正規形 + `if` 非推奨警告を実装済み。`match` ガード/エイリアス順不同受理も導入し、`spec_core` テストを追加（`bnf-activepattern-partial-ok` ほか）して受理を確認。  
      残件: BNF 表への同期・`expected/` ゴールデンの更新は次ステップで実施。
 2. **AST/HIR 拡張と IR 正規化**  
    - Active Pattern 定義ノード（部分/完全の区別を持つ）と適用ノードを AST/HIR に追加し、ガード→エイリアス順で正規化する共通パスを整備する。  
-   - パターン内の Active 呼び出しと通常関数呼び出しの混同を避けるタグ付けを行い、IR 生成で Option/値返却の分岐を明示する。
-   - **進捗**: AST に ActivePatternDecl/PatternKind::ActivePattern を追加し、MatchArm に `guard_used_if` を保持。ガード→エイリアス順で正規化するパーサ実装を導入済み。  
-     残件: HIR/IR 伝播と Option/値の戻り値分岐の明示化は未着手。
+   - パターン内の Active 呼び出しと通常関数呼び出しの混同を避けるタグ付けを行い、IR 生成で Option/値返却の分岐を明示する。  
+   - **進捗**: AST に ActivePatternDecl/PatternKind::ActivePattern を追加済み。HIR/Typed では `TypedActivePattern`（Partial/Total 区別 + ReturnCarrier=OptionLike/Value + param 型 + dict_refs + span）を格納し、Typeck から IR 相当の TypedModule へ伝播する実装を追加。パラメータ束縛の型・ボディの TypedExpr を最終化し、CLI Typed AST 出力にも ActivePattern セクションを表示。  
+     残件: IR 実行時分岐（Option/値）とランタイム側の分岐生成は未着手。
 3. **型・効果検査の実装（typeck/effects）**  
    - 戻り値契約: 部分パターンは `Option<T>`、完全パターンは `T` のみ許容し、`Result`/その他は `pattern.active.return_contract_invalid` で失敗させる。  
    - `@pure` 文脈で副作用を持つ Active Pattern を検出し `pattern.active.effect_violation` を発火、効果タグ伝播を既存 `perform` チェックと共有する。  
-   - パターンバインディングの型付け（`(|Name|_|) x` の束縛型推論）を既存 Binding/Or/Slice のロジックに組み込む。
+   - パターンバインディングの型付け（`(|Name|_|) x` の束縛型推論）を既存 Binding/Or/Slice のロジックに組み込む。  
    - **進捗**: TypecheckDriver に戻り値契約検証と @pure 時の副作用検出を実装し、`pattern.active.return_contract_invalid` / `pattern.active.effect_violation` を発火させる経路を追加。パターン束縛の環境挿入は従来どおり。効果タグの IR 連携は未着手。
 4. **網羅性・到達不能解析の拡張（exhaustiveness pass）**  
    - 部分 Active Pattern を「失敗し得るパターン」として扱い、網羅性不足は `pattern.exhaustiveness.missing`、重複は `pattern.unreachable_arm` で報告する。  
