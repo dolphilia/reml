@@ -168,15 +168,21 @@ impl TypecheckDriver {
             let mut stats = FunctionStats::default();
             let mut constraints = Vec::new();
             let mut env = module_env.clone();
+            let mut param_bindings = Vec::new();
             let is_pure = active.attrs.iter().any(|attr| attr.name.name == "pure");
             let context = FunctionContext::active_pattern(active.name.name.as_str(), is_pure);
             for param in &active.params {
                 let ty = var_gen.fresh_type();
                 let scheme = Scheme::simple(ty.clone());
                 bind_pattern_to_env(&param.pattern, &scheme, &mut env, &mut var_gen);
+                param_bindings.push(ParamBinding {
+                    display: param.pattern.render(),
+                    span: param.span,
+                    ty,
+                });
             }
             let mut loop_context = LoopContextStack::default();
-            let typed_body = infer_expr(
+            let typed_body_draft = infer_expr(
                 &active.body,
                 &mut env,
                 &mut var_gen,
@@ -192,7 +198,16 @@ impl TypecheckDriver {
             all_constraints.extend(constraints.drain(..));
             let return_kind = classify_active_pattern_return(&active.body);
             let substitution = solver.substitution().clone();
-            let _ = substitution.apply(&typed_body.ty);
+            let typed_params = param_bindings
+                .into_iter()
+                .map(|binding| typed::TypedParam {
+                    name: binding.display,
+                    span: binding.span,
+                    ty: substitution.apply(&binding.ty).label(),
+                })
+                .collect::<Vec<_>>();
+            let typed_body = finalize_typed_expr(typed_body_draft, &substitution);
+            let dict_ref_ids = typed_body.dict_ref_ids.clone();
             let is_valid = if active.is_partial {
                 matches!(return_kind, ActiveReturnKind::Option)
             } else {
@@ -209,6 +224,20 @@ impl TypecheckDriver {
                     return_kind,
                 ));
             }
+
+            typed_module.active_patterns.push(typed::TypedActivePattern {
+                name: active.name.name.clone(),
+                span: active.span,
+                kind: if active.is_partial {
+                    typed::ActivePatternKind::Partial
+                } else {
+                    typed::ActivePatternKind::Total
+                },
+                return_carrier: active_return_carrier(return_kind),
+                params: typed_params,
+                body: typed_body,
+                dict_ref_ids,
+            });
         }
 
         for function in &module.functions {
@@ -439,6 +468,15 @@ impl ActiveReturnKind {
             ActiveReturnKind::Result => "Result",
             ActiveReturnKind::Value => "値",
         }
+    }
+}
+
+fn active_return_carrier(kind: ActiveReturnKind) -> typed::ActiveReturnCarrier {
+    match kind {
+        ActiveReturnKind::Option | ActiveReturnKind::Result => {
+            typed::ActiveReturnCarrier::OptionLike
+        }
+        ActiveReturnKind::Value => typed::ActiveReturnCarrier::Value,
     }
 }
 
@@ -1818,10 +1856,15 @@ fn infer_expr(
                 context,
             );
             let mut dicts = target_result.dict_ref_ids;
-            let mut coverage_reached = false;
+            let coverage = analyze_match_exhaustiveness(arms);
             let mut arm_type: Option<Type> = None;
-            for arm in arms {
-                if coverage_reached {
+            let unreachable_indices: HashSet<usize> = coverage
+                .unreachable_arm_indices
+                .iter()
+                .copied()
+                .collect();
+            for (arm_index, arm) in arms.iter().enumerate() {
+                if unreachable_indices.contains(&arm_index) {
                     violations.push(TypecheckViolation::pattern_unreachable_arm(arm.span));
                 }
                 let mut arm_env = env.enter_scope();
@@ -1873,11 +1916,8 @@ fn infer_expr(
                     arm_type = Some(body_result.ty.clone());
                 }
                 dicts.extend(body_result.dict_ref_ids);
-                if arm.guard.is_none() && is_covering_pattern(&arm.pattern) {
-                    coverage_reached = true;
-                }
             }
-            if !coverage_reached {
+            if !coverage.coverage_reached {
                 violations.push(TypecheckViolation::pattern_exhaustiveness_missing(expr.span()));
             }
             make_typed(
@@ -2283,6 +2323,28 @@ fn classify_constructor_name(name: &str) -> Option<ActiveReturnKind> {
         "Ok" | "Err" => Some(ActiveReturnKind::Result),
         _ => None,
     }
+}
+
+#[derive(Default)]
+struct ExhaustivenessResult {
+    coverage_reached: bool,
+    unreachable_arm_indices: Vec<usize>,
+}
+
+fn analyze_match_exhaustiveness(arms: &[MatchArm]) -> ExhaustivenessResult {
+    let mut result = ExhaustivenessResult::default();
+    let mut coverage_reached = false;
+    for (idx, arm) in arms.iter().enumerate() {
+        if coverage_reached {
+            result.unreachable_arm_indices.push(idx);
+            continue;
+        }
+        if arm.guard.is_none() && is_covering_pattern(&arm.pattern) {
+            coverage_reached = true;
+        }
+    }
+    result.coverage_reached = coverage_reached;
+    result
 }
 
 fn is_covering_pattern(pattern: &Pattern) -> bool {

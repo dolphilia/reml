@@ -11,6 +11,7 @@ pub type DictRefId = usize;
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct TypedModule {
     pub functions: Vec<TypedFunction>,
+    pub active_patterns: Vec<TypedActivePattern>,
     pub dict_refs: Vec<DictRef>,
     pub schemes: Vec<SchemeInfo>,
 }
@@ -31,6 +32,32 @@ pub struct TypedParam {
     pub name: String,
     pub span: Span,
     pub ty: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ActivePatternKind {
+    Partial,
+    Total,
+}
+
+/// Active Pattern が戻り値をどのキャリア（Option 相当か値そのものか）で返すかを表す。
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "carrier", rename_all = "snake_case")]
+pub enum ActiveReturnCarrier {
+    OptionLike,
+    Value,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedActivePattern {
+    pub name: String,
+    pub span: Span,
+    pub kind: ActivePatternKind,
+    pub return_carrier: ActiveReturnCarrier,
+    pub params: Vec<TypedParam>,
+    pub body: TypedExpr,
+    pub dict_ref_ids: Vec<DictRefId>,
 }
 
 #[derive(Debug, Clone, Serialize)]

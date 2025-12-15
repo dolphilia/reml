@@ -3093,22 +3093,50 @@ fn build_function_summaries(
 }
 
 fn render_typed_module(module: &typed::TypedModule) -> String {
-    if module.functions.is_empty() {
+    if module.functions.is_empty() && module.active_patterns.is_empty() {
         return "=== Typed AST ===\n\n<empty>".to_string();
     }
     let mut lines = vec!["=== Typed AST ===".to_string()];
-    for function in &module.functions {
-        let params = function
-            .params
-            .iter()
-            .map(|param| format!("{}: {}", param.name, param.ty))
-            .collect::<Vec<_>>()
-            .join(", ");
-        let line = format!(
-            "fn {}({}) : {}",
-            function.name, params, function.return_type
-        );
-        lines.push(line);
+    if !module.active_patterns.is_empty() {
+        lines.push("[active_patterns]".to_string());
+        for pattern in &module.active_patterns {
+            let params = pattern
+                .params
+                .iter()
+                .map(|param| format!("{}: {}", param.name, param.ty))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let head = match pattern.kind {
+                typed::ActivePatternKind::Partial => format!("(|{}|_|)", pattern.name),
+                typed::ActivePatternKind::Total => format!("(|{}|)", pattern.name),
+            };
+            let carrier = match pattern.return_carrier {
+                typed::ActiveReturnCarrier::OptionLike => "OptionLike",
+                typed::ActiveReturnCarrier::Value => "Value",
+            };
+            let line = if params.is_empty() {
+                format!("{head} : {carrier}")
+            } else {
+                format!("{head}({}) : {}", params, carrier)
+            };
+            lines.push(line);
+        }
+    }
+    if !module.functions.is_empty() {
+        lines.push("[functions]".to_string());
+        for function in &module.functions {
+            let params = function
+                .params
+                .iter()
+                .map(|param| format!("{}: {}", param.name, param.ty))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let line = format!(
+                "fn {}({}) : {}",
+                function.name, params, function.return_type
+            );
+            lines.push(line);
+        }
     }
     lines.join("\n\n")
 }
