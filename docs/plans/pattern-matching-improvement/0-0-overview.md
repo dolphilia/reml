@@ -30,7 +30,7 @@
 ## リスクと対応
 - **仕様衝突**: 既存の `match` ガード/エイリアス構文と Active Patterns 記法の優先順位が衝突する可能性 → `docs/spec/1-5-formal-grammar-bnf.md` で優先順位表を更新し、パース規則の回帰チェックを必須化。
 - **網羅性検査への影響**: Or/Slice/Range 追加で網羅性計算が複雑化 → 診断の最小実装（警告のみ）と完全実装（エラー化）の二段階を計画し、Phase C で段階的に有効化。
-- **スケジュール干渉**: Phase 4 既存タスクとの競合 → 変更は `spec_fix` / `impl_fix` ラベルで明示し、`docs/plans/bootstrap-roadmap/` に事前通知する。
+- **スケジュール干渉**: Phase 4 既存タスクとの競合 → 変更は `spec_fix` / `impl_fix` ラベルで明示し、`docs/plans/bootstrap-roadmap/` に事前通知する。また、新設される診断キーや構文ルールは必ず `phase4-scenario-matrix.csv` に新規シナリオ行として登録し、`4-1-spec-core-regression-plan.md` のトラッカーで監視する。
 
 ## 参照資料
 - 主要メモ: `docs/notes/pattern-matching-improvement.md`

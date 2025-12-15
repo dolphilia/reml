@@ -12,9 +12,10 @@
 - 定義記法は F# 互換案を第一候補: `pattern (|Name|_|)(args) = expr`。部分/完全パターンを `_|` の有無で区別する案を比較。
 - パターン使用例: `match input with | Name value -> ...`。`as` エイリアスや `when` ガードと併用可能とする。
 - 戻り値契約:  
-  - 部分パターン: `Option<T>`（`None` でマッチ失敗）。  
-  - 完全パターン: `T` もしくは `Result<T, E>` だが、網羅性計算と衝突しないように `Result` は診断設計で扱いを決める。
-- 副作用: `@pure` 関数内で使用する場合の制約を `docs/spec/1-3-effects-safety.md` と照合。
+  - **Partial Active Pattern (部分パターン)**: `Option<T>` を返す。`Some(v)` でマッチ成功、`None` で失敗（次のアームへ）。名前は `(|Name|_|)` のように `|_|` を含む。
+  - **Total Active Pattern (完全パターン)**: `T` を返す。**常にマッチ**し、網羅性検査では「成功」として扱われる。名前は `(|Name|)` のように `|_|` を含まない。
+  - **Fallible Active Pattern (要検討)**: `Result<T, E>` を返す場合、`Err` を「マッチ失敗」とみなすか「実行時エラー（例外）」として伝播させるかの設計が必要。Phase A では `Option` (失敗) と `T` (成功) を基本とし、`Result` は原則非サポート（または `Option` への変換を要求）としてリスクを低減する。
+- 副作用: `@pure` 関数内で使用する場合の制約を `docs/spec/1-3-effects-safety.md` と照合。副作用（I/O等）を伴う Active Pattern は、網羅性検査の前に「効果の発生順序」が確定している必要がある。
 
 ## タスク（ドラフト）
 1. **構文/BNF ドラフト**  

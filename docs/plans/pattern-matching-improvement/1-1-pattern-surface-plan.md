@@ -64,9 +64,11 @@
    - 診断キー案: `pattern.unreachable_arm`（到達不能）、`pattern.exhaustiveness.missing`（網羅性不足）。
 
 2. **Slice Patterns（高優先）**  
-   - BNF 追記: `SlicePattern ::= "[" Pattern? ".." Pattern? "]"`（複数 `..` は不可を注記）。`Pattern` に追加。  
-   - サンプル案: `bnf-match-slice-head-tail-ok.reml`（`[head, ..tail]` 成功）、`bnf-match-slice-invalid-target.reml`（非コレクション対象）。  
-   - 診断キー案: `pattern.slice.type_mismatch`, `pattern.slice.too_many_parts`, `pattern.exhaustiveness.missing`。
+   - 構文: `[p1, p2, ..rest, p3]` のように、先頭/末尾の固定要素と中間の可変長部分（`..` または `..ident`）を記述可能にする。
+   - BNF 追記（案）: `SlicePattern ::= "[" SliceElem { "," SliceElem } [","] "]"` / `SliceElem ::= Pattern | ".." [Ident]`。  
+     （※正確な定義は `1-5` 策定時に「`..` は1回のみ出現可」などの制約を加える）
+   - サンプル案: `bnf-match-slice-head-tail-ok.reml`（`[head, ..tail]` 成功）、`bnf-match-slice-middle-rest.reml`（`[1, ..mid, 9]`）。  
+   - 診断キー案: `pattern.slice.type_mismatch`, `pattern.slice.multiple_rest`（`..` が複数回出現）, `pattern.exhaustiveness.missing`。
 
 3. **Range Patterns（高優先）**  
    - BNF 追記: `RangePattern ::= RangeBound ".." RangeBound ["="]`（`..=` を閉区間として明示）。`RangeBound ::= Literal | Ident | ConstructorPattern`。  
@@ -79,9 +81,11 @@
    - 診断キー案: `pattern.binding.duplicate_name`。
 
 5. **Regex パターン糖衣（中優先）**  
-   - BNF 追記: `RegexPattern ::= "r\"" RegexBody "\""` を `Pattern` に追加し、文字列/バイト列に限定する注記を併記。Active Pattern 糖衣である旨を明示。  
-   - サンプル案: `bnf-match-regex-ok.reml`（数値文字列の抽出成功）、`bnf-match-regex-unsupported-target.reml`（対象が非テキスト）。  
-   - 診断キー案: `pattern.regex.invalid_syntax`, `pattern.regex.unsupported_target`, `pattern.exhaustiveness.missing`（部分マッチを警告扱いにする場合）。
+   - 構文案: `r"^\\d+" as digits -> ...`。これは **全体マッチ (Whole Match)** と **検証 (Validation)** に特化した糖衣構文とする。  
+     ※キャプチャグループの個別の取り出し（`year`, `month` 等）が必要な場合は、Active Pattern `(|Regex|_|) "..." (y, m)` の使用を推奨する。
+   - BNF 追記: `RegexPattern ::= "r\"" RegexBody "\""` を `Pattern` に追加。文字列/バイト列限定。  
+   - サンプル案: `bnf-match-regex-ok.reml`（数値文字列抽出）、`bnf-match-regex-unsupported-target.reml`。  
+   - 診断キー案: `pattern.regex.invalid_syntax`, `pattern.regex.unsupported_target`。
 
 6. **Active Pattern 呼び出しとの統合（優先度: Or/Slice/Range 確定後に併走）**  
    - BNF 追記: `ActivePatternApp ::= "(|" Ident "|)" Pattern?` を `Pattern`/`Primary` に追加し、Or/Slice/Range より高い/低いどちらの優先度にするかを表で明示。  
