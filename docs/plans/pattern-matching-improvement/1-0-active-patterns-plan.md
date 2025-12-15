@@ -121,7 +121,7 @@ RangeBound      ::= Literal | Ident | ConstructorPattern
 - `MatchGuard` と `MatchAlias` の順序は順不同を受理し、AST 正規化は guard→alias の順で固定する。BNF では `MatchArmTail ::= MatchGuard? MatchAlias? | MatchAlias? MatchGuard?` を採用予定。
 - Active Pattern の例示では `(|Name|_|) x when cond as v -> ...` 形式を推奨形として示し、順不同許容に関する注記を `1-5` 側に併記する。
 
-## 次の具体作業ステップ
+## 作業ステップ
 1. **仕様パッチ作成（下書き）**: 上記ドラフトパッチ案を実際の差分として `docs/spec/1-1-syntax.md` / `1-5-formal-grammar-bnf.md` / `2-5-error.md` に適用する下書きを用意し、`when` 正規形・順不同ガード/エイリアスを明文化。
 2. **型/効果セマンティクス追記案**: `1-2-types-Inference.md` と `1-3-effects-safety.md` へ Option/T 返り値の推論規則・@pure での副作用制約を追加する文案を作成し、`Result` 非推奨方針を脚注で明示。
 3. **サンプル設計**: `examples/spec_core/chapter1/match_expr/` 用に部分/完全 Active Pattern の成功・失敗・ガード併用の 3 本をプロットし、対応する `phase4-scenario-matrix.csv` 行（`diagnostic_keys`）をドラフト登録。

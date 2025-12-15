@@ -199,6 +199,17 @@ conductor config_orchestrator {
   }
   ```
 
+* **アクティブパターン宣言 (`pattern`)**  \n  入力を部分的・完全に分解するロジックをパターンとして公開します。
+
+  ```reml
+  pattern (|IntLit|_|)(src: String) = parse_int(src) // Option<T> を返す部分パターン
+  pattern (|Normalize|)(x) = normalize(x)             // 常に成功する完全パターン
+  ```
+
+  * `(|Name|_|)` 形式は **部分パターン**。`Option<T>` を返し、`Some` でマッチ成功、`None` で次のアームへ進む。
+  * `(|Name|)` 形式は **完全パターン**。`T` を返し常に成功するため、網羅性検査では「到達済み」として扱われる。
+  * `Result` を返す実装は原則非推奨で、`Option` への変換を求める。副作用を伴う場合は `@pure` との整合を 1.3 節の効果規約で確認する。
+
 
 ### B.5 効果宣言とハンドラ構文（実験段階）
 
@@ -430,7 +441,8 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
 * レコード：`{ x, y: y0 }`（`x: x` は `x` に省略可）
 * 代数型：`Some(x)`, `Add(Int(a), b)`
   - **モジュール修飾列挙子**: コンストラクタは `Option.None` や `DSL.Node(tag)` のように `.` 区切りで修飾できる。`Option.None` の末尾 `None`（先頭大文字）が列挙子とみなされ、前置の `Option` はモジュール／型名として扱われる。
-* ガード：`p if cond`
+* ガード：`p when cond`（`if` は互換用に受理するが警告対象）
+* アクティブパターン：`(|Name|_|)` / `(|Name|)` で定義した分解ロジックをパターンとして使用
 
 ### C.4 制御構文
 
@@ -457,8 +469,18 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
   * スクラティニー `expr` を**最初に評価**し、その結果を保持したまま各アームを検査する。
   * アームは**上から順に**照合され、先に一致した分岐のみが評価される。
   * パターンには、ワイルドカード `_`、リテラル（整数、文字列、真偽値など）、変数、タプル、レコード、コンストラクタが使用できる。
-  * ガード `| pat if cond -> ...` の `cond` は、`pat` が一致した後で束縛を共有して評価され、`cond` が偽なら次のアームへ進む（以降のアームでは再評価しない）。
+  * ガード `| pat when cond -> ...` の `cond` は、`pat` が一致した後で束縛を共有して評価され、`cond` が偽なら次のアームへ進む（以降のアームでは再評価しない）。`if` ガードは互換目的で受理するが、正規形は `when`。ガードと `as` エイリアスの記述順は順不同で受理し、AST では `guard -> alias` の順に正規化する。
+  * アクティブパターン `(|Name|_|) value` は `Option` を返す関数を介して分解し、`Some` のときに成功する。`(|Name|) value` は常に成功する完全パターンとして扱われる。
   網羅性は [効果と安全性](1-3-effects-safety.md) および [エラー設計](2-5-error.md) で扱う（警告/エラー方針）。
+
+  ```reml
+  match input with
+  | (|HexInt|_|) n when n > 0xFF -> "large"
+  | Some(x) | None as v          -> debug(v)
+  | [head, ..tail]               -> handle(head, tail)
+  | 1..=10                       -> "small"
+  | _                            -> "other"
+  ```
 
 * ループ：`while`・`for` は式として扱われ、結果は `()`（ユニット）です。`loop` は無条件ループで、`break`/`continue` は今後の拡張に備えて予約されています。
 
