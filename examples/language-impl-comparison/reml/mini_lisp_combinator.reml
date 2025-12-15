@@ -2,8 +2,8 @@ module samples.language_impl_comparison.mini_lisp_combinator
 
 use ::Core.Collection.List as List
 use ::Core.Collection.Map as Map
-use ::Core.Prelude.Result::{self, Result}
-use ::Core.Text::{self, Text}
+use ::Core.Prelude
+use ::Core.Text as Text
 use ::Core.Parse
 use ::Core.Parse.Lex
 
@@ -16,11 +16,11 @@ type Expr =
 /// 評価結果のバリエーション。
 type Value =
   | VNumber(f64)
-  | VLambda { params: List<Text>, body: Expr, env: Env }
+  | VLambda({ params: List<Text>, body: Expr, env: Env })
   | VBuiltin(NativeFn)
 
 /// ネイティブ関数は値リストを受け取り Result を返す。
-type NativeFn = |List<Value>| -> Result<Value, Text>
+type alias NativeFn = fn(List<Value>) -> Result<Value, Text>
 
 type Env = Map<Text, Value>
 
@@ -31,9 +31,17 @@ let sc: Parser<()> =
     .or(Lex.commentBlock("#|", "|#", nested = true)))
   |> Lex.skipMany
 
-let lexeme<A>(p: Parser<A>) -> Parser<A> = Lex.lexeme(sc, p)
-let sym(token: Str) -> Parser<()> = symbol(sc, token)
-let trim<A>(p: Parser<A>) -> Parser<A> = Lex.trim(sc, p)
+fn lexeme<A>(p: Parser<A>) -> Parser<A> {
+  Lex.lexeme(sc, p)
+}
+
+fn sym(token: Str) -> Parser<()> {
+  symbol(sc, token)
+}
+
+fn trim<A>(p: Parser<A>) -> Parser<A> {
+  Lex.trim(sc, p)
+}
 
 let number_atom: Parser<Expr> =
   rule("lisp.number",
@@ -77,14 +85,14 @@ fn eval_expr(expr: Expr, env: Env) -> Result<Value, Text> {
   match expr with
   | Number(n) -> Result.ok(VNumber(n))
   | Symbol(name) ->
-    Map.get(env, name).ok_or(|| format("未定義シンボル: {name}"))
+    Map.get(env, name).ok_or(| | format("未定義シンボル: {name}"))
   | ListExpr(items) -> eval_list(items, env)
 }
 
 fn eval_list(items: List<Expr>, env: Env) -> Result<Value, Text> {
   match List.pop_front(items) with
   | None -> Result.err("空の式は評価できません")
-  | Some((head, rest)) ->
+  | Some((head, rest)) -> {
     let callee = eval_expr(head, env)?
     let args = List.fold(rest, Result.ok(List.empty()), |acc_res, expr| {
       match acc_res with
@@ -97,6 +105,7 @@ fn eval_list(items: List<Expr>, env: Env) -> Result<Value, Text> {
       end
     })?
     apply(callee, args)
+  }
 }
 
 fn apply(callee: Value, args: List<Value>) -> Result<Value, Text> {
@@ -107,18 +116,19 @@ fn apply(callee: Value, args: List<Value>) -> Result<Value, Text> {
 }
 
 fn apply_lambda(lambda: { params: List<Text>, body: Expr, env: Env }, args: List<Value>) -> Result<Value, Text> {
-  let params = List.to_vec(lambda.params)
-  let values = List.to_vec(args)
-  if params.len() != values.len() {
-    return Result.err("引数の数が一致しません")
+  let params = lambda.params
+  let values = args
+  let pairs = List.zip(params, values)
+  if List.len(pairs) != List.len(params) then {
+    Result.err("引数の数が一致しません")
+  } else {
+    let new_env = List.fold(pairs, lambda.env, |acc, pair| {
+      match pair with
+      | (param, value) -> Map.insert(acc, param, value)
+      end
+    })
+    eval_expr(lambda.body, new_env)
   }
-
-  var new_env = lambda.env
-  for index in 0..params.len() {
-    new_env = Map.insert(new_env, params[index], values[index])
-  }
-
-  eval_expr(lambda.body, new_env)
 }
 
 fn default_env() -> Env {
@@ -132,16 +142,24 @@ fn default_env() -> Env {
   | Err(_) -> Map.empty()
 }
 
-fn builtin_numeric(op: |f64, f64| -> f64) -> NativeFn {
+fn builtin_numeric(op: fn(f64, f64) -> f64) -> NativeFn {
   |args| {
-    let values = List.to_vec(args)
-    if values.len() != 2 {
-      return Result.err("数値演算は 2 引数のみ対応します")
-    }
-
-    match (values[0], values[1]) with
-    | (VNumber(lhs), VNumber(rhs)) -> Result.ok(VNumber(op(lhs, rhs)))
-    | _ -> Result.err("数値以外を演算できません")
+    match List.pop_front(args) with
+    | None -> Result.err("数値演算は 2 引数のみ対応します")
+    | Some((first, rest1)) ->
+      match List.pop_front(rest1) with
+      | None -> Result.err("数値演算は 2 引数のみ対応します")
+      | Some((second, tail)) ->
+        if List.is_empty(tail) then {
+          match (first, second) with
+          | (VNumber(lhs), VNumber(rhs)) -> Result.ok(VNumber(op(lhs, rhs)))
+          | _ -> Result.err("数値以外を演算できません")
+          end
+        } else {
+          Result.err("数値演算は 2 引数のみ対応します")
+        }
+      end
+    end
   }
 }
 

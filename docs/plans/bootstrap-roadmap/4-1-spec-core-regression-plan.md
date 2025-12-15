@@ -391,7 +391,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [ ] `examples/language-impl-comparison/reml/pl0_combinator.reml`（期待: 成功）
 - [x] `examples/language-impl-comparison/reml/mini_lisp.reml`（期待: 成功 → 2025-12-15 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output human examples/language-impl-comparison/reml/mini_lisp.reml` で診断 0 を確認）
 - [ ] `examples/language-impl-comparison/reml/regex_engine.reml`（期待: 成功）
-- [ ] `examples/language-impl-comparison/reml/mini_lisp_combinator.reml`（期待: 成功）
+- [x] `examples/language-impl-comparison/reml/mini_lisp_combinator.reml`（期待: 成功 → 2025-12-15 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output human examples/language-impl-comparison/reml/mini_lisp_combinator.reml` で診断 0 を確認。`if`/`match` を最新構文へ揃え、`NativeFn` / `VLambda` を `mini_lisp.reml` と同スタイルで整理）
 
 **examples/core-text / core_diagnostics**
 - [x] `examples/core-text/text_unicode.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- examples/core-text/text_unicode.reml` / diagnostics=[] / run_id=`a9eb0839-1c6c-44c4-b9fe-3d448200af09` / log=reports/spec-audit/ch4/logs/core-text-20251211T222317Z.md。DocComment 正規化と Emoji トークンを簡素化し、パイプラインをブロック式に統一）
