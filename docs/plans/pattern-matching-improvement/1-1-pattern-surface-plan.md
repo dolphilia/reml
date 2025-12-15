@@ -131,3 +131,11 @@
   - `bnf-match-active-effect-violation.reml`（失敗）: `@pure` 期待を破る Active Pattern 呼び出しで `pattern.active.effect_violation`（+併用パターンの診断があれば併記）。
 
 備考: 各失敗サンプルは Phase4 回帰計画（`docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md`）のシナリオ行に `diagnostic_keys` を併記し、網羅性不足系は `pattern.exhaustiveness.missing` を別途ケース追加して管理する。
+
+## 互換性・フェーズアウト方針（作業ステップ5）
+
+- ガード記法は `when` を正規形とし、`if` は互換目的で受理するが警告キー `pattern.guard.if_deprecated` を発行する運用。フェーズアウト手順（`if` 削除時期）は Phase4/週次レビューで決定し、本計画と `docs/plans/pattern-matching-improvement/README.md` 双方に履歴を残す。
+- `MatchGuard` と `MatchAlias` は順不同で受理し、AST では guard→alias へ正規化する方針を維持。仕様本文と BNF は順不同を許容する形で固定し、将来順序固定とする場合は警告→非推奨→削除の段階を明示する。
+- バインディングは `pat as name` を推奨形、`name @ pat` をエイリアス糖衣として併存。`@` を将来的に制限する場合は `pattern.binding.duplicate_name` と別の非推奨警告キーを用意し、移行期間を示す。
+- 正規表現パターンは文字列/バイト列限定かつ全体一致のみを許容し、その他の型や部分一致要求は Active Pattern へ誘導する。適用対象外は `pattern.regex.unsupported_target` で警告/エラー化し、拡張時は対象型を段階的に追加する。
+- Active Pattern は `(|Name|_|)`/`(|Name|)` の両形を継続サポートし、副作用規約は `pattern.active.effect_violation` で監査する。`@pure` 契約厳格化や戻り値制約強化は Phase4 回帰計画と連動し、追加警告キーを導入する場合は本計画に追記する。
