@@ -167,9 +167,36 @@ RangeBound      ::= Literal | Ident | ConstructorPattern
    - **進捗**: `pattern.guard.if_deprecated` の警告発火は継続。TypecheckDriver から `pattern.active.return_contract_invalid` / `pattern.active.effect_violation` / `pattern.exhaustiveness.missing` / `pattern.unreachable_arm` を生成し、CLI で JSON 出力を確認済み。diagnostics crate（共通レジストリ）への文面登録は未対応。
 6. **サンプル・E2E テスト連携**  
    - `examples/spec_core/chapter1/match_expr/` に Active Pattern 成功/失敗サンプルを追加し、`tooling/examples/run_examples.sh --suite spec_core` で実行する期待結果 (`expected/` と `reports/spec-audit/ch4`) を更新。  
-   - `compiler/rust/tests`（もしくは `frontend/tests`）で AST 正規化・網羅性診断・効果違反のユニット/スナップショットテストを追加し、`phase4-scenario-matrix.csv` の該当行に `diagnostic_keys` を登録する。
+   - `compiler/rust/tests`（もしくは `frontend/tests`）で AST 正規化・網羅性診断・効果違反のユニット/スナップショットテストを追加し、`phase4-scenario-matrix.csv` の該当行に `diagnostic_keys` を登録する。  
    - **進捗**: Typecheck 連携テストを追加（戻り値契約違反、@pure 副作用、網羅性欠落、到達不能を検証）。`expected/spec_core/chapter1/active_patterns/bnf-activepattern-return-contract-error.diagnostic.json` と `phase4-scenario-matrix.csv` の CH1-ACT-* 行を更新済み。その他サンプルの expected/ 再取得は未実施。
 7. **移行・互換性ガード**  
    - 既存コードとの衝突を防ぐため、Active Pattern 名の予約衝突チェック（通常関数との重複時の警告方針）を実装し、ドキュメントの命名規則と同期させる。  
    - `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` と `rust-migration` 計画に着手タイミングを記録し、Phase4 回帰スイートでの確認手順を追記する。
    - **進捗**: 未着手（予約衝突チェック/計画書同期は今後実施）。
+
+## 推奨順 (1〜5) 対応の具体方針
+
+1. **予約衝突ガード（Active Pattern 名 vs 通常関数）**  
+   - **ポリシー**: 同一モジュール内で `(|Name|_|)` / `(|Name|)` と `fn Name` が衝突した場合は **エラー** とする（警告では抑止できず曖昧さが残るため）。外部モジュールからの import による衝突は `use` 解決時に ModulePath へ正規化し、型検査側で重複シンボル診断（既存のシンボル重複キーを再利用）を発火させる。  
+   - **検出ポイント**: パーサは Active Pattern 定義を `DeclKind::ActivePattern` で保持し、シンボルテーブル登録時に `fn` と同一名前空間へ挿入する。Typeck は関数テーブルへの insert 時に `ActivePatternKind` を確認し、既存関数・外部 import と衝突した場合にエラーを生成する。  
+   - **命名ルール明示**: `docs/spec/1-1-syntax.md` へ「Active Pattern 名は通常関数と共有できない」旨を追記する前提で、Rust 実装は `pattern.active.name_conflict`（仮）を新設する場合でも既存の重複診断キーを再利用する。
+
+2. **診断レジストリ統合（diagnostics crate 反映）**  
+   - diagnostics crate へ登録する文面を以下で固定し、`docs/spec/2-5-error.md` のフォーマットに合わせてコード・タイトル・説明をそろえる。  
+     - `pattern.active.return_contract_invalid`（Error, domain=typeck）: 「Active Pattern は `Option<T>`（部分）または `T`（完全）を返す必要があります。`Result` / それ以外の戻り値は許可されません。」  
+     - `pattern.active.effect_violation`（Error, domain=effects）: 「`@pure` 文脈で副作用を含む Active Pattern を呼び出すことはできません。副作用を除去するか純粋な Active Pattern に置き換えてください。」  
+     - `pattern.exhaustiveness.missing`（Warning 初期、将来 Error）: 「`match` の網羅性が不足しています。未処理のケースを追加してください。」  
+     - `pattern.unreachable_arm`（Warning 初期）: 「先行パターンによりこのアームは到達不能です。順序を見直すか冗長なアームを削除してください。」  
+   - Typeck/Parser から出力する際は上記 Severity を既定値とし、Phase4 のゲートで Error 昇格を選択できるよう `resolution_notes` に記載する。
+
+3. **HIR/IR 伝播（Option/値タグ付け）**  
+   - HIR に `ActivePatternKind::{Partial,Total}` と `ReturnCarrier::{OptionLike,Value}` を保持し、Typeck での戻り値検証結果を IR へ渡す。Partial は `Option<T>` を要求し、IR では `Some/None` の分岐を明示する。Total は `T` をそのまま束縛し、網羅性検査で「常に成功」扱いとする。  
+   - IR 生成時は `ActivePatternBranch::{Matched,NotMatched}` を付け、実行時に `None` を検出した場合は即座に次アームへジャンプする分岐を生成する。`Result` など非許容の戻り値は Typeck 手前で拒否し、IR 側に例外パスを持ち込まない。
+
+4. **ゴールデン/マトリクス更新（bnf-activepattern-*.reml）**  
+   - 対象: `expected/spec_core/chapter1/active_patterns/*.stdout|*.diagnostic.json` と `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `CH1-ACT-00{1,2,3}` / `CH1-MATCH-018` 行。  
+   - 手順: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/active_patterns/bnf-activepattern-*.reml` を再実行し、戻り値契約・副作用違反の診断文面が上記レジストリ案と一致することを確認して expected を再取得。マトリクスの `resolution_notes` に再取得コマンドと `diagnostic_keys` 一致確認ログを記録する。
+
+5. **網羅性精度向上（Guard/複合パターン）**  
+   - Guard 付き完全パターンや Range/Slice/Or/Active 併用時のカバレッジ計算を専用パスへ分離し、`pattern.exhaustiveness.missing` の生成ロジックを Typeck 本体から切り出す。  
+   - 優先順位: (a) Guard を含む完全 Active Pattern を「常に成功」集合へ折り込み、(b) Range/Slice/Or を束ねたカバレッジマージ関数を実装、(c) 上記を IR 分岐と整合させ、到達不能計算で `pattern.unreachable_arm` を確実に返す。

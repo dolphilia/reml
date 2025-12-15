@@ -187,6 +187,12 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - `examples/spec_core/chapter1/match_expr/` に MatchAlias + RecordPattern の受理例（`bnf-matchexpr-alias-record-ok.reml`）と、Result ベースのガード分岐例（`bnf-matchexpr-result-guard-else-ok.reml`）を追加し、Chapter1 の `match` バリエーションを補完。`docs/spec/1-5-formal-grammar-bnf.md` §4 のガード/alias 順序と §5 のレコードパターン整合を確認済み。
 - alias は MatchArm 全体への `as` 付与が必要なため `Some({ x, y }) as point` へ修正し、CLI 実行で診断 0 を確認。`expected/spec_core/chapter1/match_expr/bnf-matchexpr-*.stdout` を取得済み（`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json ...`）。`phase4-scenario-matrix.csv` への行追加は次回レビューで実施。
 
+#### ⏳ 6.4 週 着手ログ（Active Pattern 衝突ガード/診断レジストリ）
+
+- `docs/plans/pattern-matching-improvement/1-0-active-patterns-plan.md` に推奨順 (1〜5) の具体方針を追記し、Active Pattern 名と `fn` の衝突を同一名前空間で検出してエラーにする方針を固定。パーサで `DeclKind::ActivePattern` を登録し、Typeck でシンボル重複診断を出す設計メモを共有。  
+- 診断レジストリ文面を確定（`pattern.active.return_contract_invalid` / `pattern.active.effect_violation` / `pattern.exhaustiveness.missing` / `pattern.unreachable_arm` のコード・Severity・短文を記述）し、Phase4 で Warning→Error 昇格を判断できるようメモ化。diagnostics crate への登録と CLI 文面同期が残件。  
+- HIR/IR では `ActivePatternKind::{Partial,Total}` と `ReturnCarrier::{OptionLike,Value}` をタグ付けし、IR 分岐で `Some/None` を明示する案を決定。ゴールデン再取得とマトリクス更新（`CH1-ACT-00{1,2,3}` / `CH1-MATCH-018`）は次のステップで実施する。
+
 ### フェーズF: 全 `.reml` 逐次実行・完全是正（新規）
 
 `examples/` 配下にあるすべての `.reml` を 1 ファイルずつ愚直に実行し、期待した成功/失敗へ確実に到達させるフェーズ。効率よりも完遂を優先し、実行ログと仕様照合結果を `phase4-scenario-matrix.csv`・`reports/spec-audit/ch4/*.md`・`docs/notes/examples-regression-log.md` に逐次反映する。
