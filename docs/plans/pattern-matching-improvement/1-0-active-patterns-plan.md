@@ -120,3 +120,10 @@ RangeBound      ::= Literal | Ident | ConstructorPattern
 - ガードは正規形として `when` を使用し、互換目的で `if` を許容する場合は警告付きエイリアスとする（警告キー案: `pattern.guard.if_deprecated`）。例示・仕様本文は `when` へ統一。
 - `MatchGuard` と `MatchAlias` の順序は順不同を受理し、AST 正規化は guard→alias の順で固定する。BNF では `MatchArmTail ::= MatchGuard? MatchAlias? | MatchAlias? MatchGuard?` を採用予定。
 - Active Pattern の例示では `(|Name|_|) x when cond as v -> ...` 形式を推奨形として示し、順不同許容に関する注記を `1-5` 側に併記する。
+
+## 次の具体作業ステップ
+1. **仕様パッチ作成（下書き）**: 上記ドラフトパッチ案を実際の差分として `docs/spec/1-1-syntax.md` / `1-5-formal-grammar-bnf.md` / `2-5-error.md` に適用する下書きを用意し、`when` 正規形・順不同ガード/エイリアスを明文化。
+2. **型/効果セマンティクス追記案**: `1-2-types-Inference.md` と `1-3-effects-safety.md` へ Option/T 返り値の推論規則・@pure での副作用制約を追加する文案を作成し、`Result` 非推奨方針を脚注で明示。
+3. **サンプル設計**: `examples/spec_core/chapter1/match_expr/` 用に部分/完全 Active Pattern の成功・失敗・ガード併用の 3 本をプロットし、対応する `phase4-scenario-matrix.csv` 行（`diagnostic_keys`）をドラフト登録。
+4. **診断メッセージ雛形**: `pattern.active.return_contract_invalid` / `pattern.active.effect_violation` の短文メッセージ案を作成し、既存診断スタイルと揃える（コード・タイトル・説明の3要素）。
+5. **実装連携メモ更新**: Rust/OCaml パーサが `if` ガードを警告付きで受理し、AST 正規化を guard→alias とする実装指針を短文で `docs/plans/pattern-matching-improvement/README.md` に転載（共有しやすくするため）。

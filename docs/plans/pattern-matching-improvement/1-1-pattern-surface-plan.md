@@ -99,3 +99,10 @@
 ### 実装チーム向け共有メモ（短文）
 - 解析器は `when` を正規形としつつ `if` を警告付きで許容（警告キー案: `pattern.guard.if_deprecated`）。将来は `when` のみに絞る前提でフェーズアウト計画を検討。
 - `MatchGuard`/`MatchAlias` は両順序を受理し、出力 AST では guard→alias の順で正規化する。既存テストは guard-only/alias-only/併用両順を追加して回帰防止。
+
+## 次の具体作業ステップ
+1. **BNF 拡張パッチ草案**: Or/Slice/Range/Binding/Regex/Active 呼び出しの非終端を `docs/spec/1-5-formal-grammar-bnf.md` に追加するドラフトを作成し、優先順位表で結合順を明記（特に Or vs Active の優先度を決定）。
+2. **本文サンプル追加案**: `docs/spec/1-1-syntax.md` C.3/C.4 に各機能の短い使用例を追記する差分案を用意し、ガードは `when` に統一。`as`/`@` 併用例も含める。
+3. **サンプルファイル設計**: `examples/spec_core/chapter1/match_expr/` へ追加する `.reml` を優先順にリスト化（成功/失敗を明記）し、`phase4-scenario-matrix.csv` の `diagnostic_keys` を暫定登録する表を作る。
+4. **診断キー定義案**: `pattern.exhaustiveness.missing` など既出キー案を `2-5-error.md` のフォーマットで文面化し、Range/Slice/Regex/Binding ごとに短文メッセージを準備。
+5. **互換性・フェーズアウト方針明記**: `if` ガード許容を警告付きで残す期間と、順序順不同受理の理由を脚注にまとめ、`docs/plans/pattern-matching-improvement/README.md` からも参照できるよう短文で転載する。
