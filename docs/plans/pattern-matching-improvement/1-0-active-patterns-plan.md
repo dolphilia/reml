@@ -156,19 +156,19 @@ RangeBound      ::= Literal | Ident | ConstructorPattern
    - 戻り値契約: 部分パターンは `Option<T>`、完全パターンは `T` のみ許容し、`Result`/その他は `pattern.active.return_contract_invalid` で失敗させる。  
    - `@pure` 文脈で副作用を持つ Active Pattern を検出し `pattern.active.effect_violation` を発火、効果タグ伝播を既存 `perform` チェックと共有する。  
    - パターンバインディングの型付け（`(|Name|_|) x` の束縛型推論）を既存 Binding/Or/Slice のロジックに組み込む。
-   - **進捗**: パターン束縛への環境挿入のみ対応。戻り値契約・効果診断は未着手。
+   - **進捗**: TypecheckDriver に戻り値契約検証と @pure 時の副作用検出を実装し、`pattern.active.return_contract_invalid` / `pattern.active.effect_violation` を発火させる経路を追加。パターン束縛の環境挿入は従来どおり。効果タグの IR 連携は未着手。
 4. **網羅性・到達不能解析の拡張（exhaustiveness pass）**  
    - 部分 Active Pattern を「失敗し得るパターン」として扱い、網羅性不足は `pattern.exhaustiveness.missing`、重複は `pattern.unreachable_arm` で報告する。  
    - 完全 Active Pattern は常時成功パスとして扱い、Range/Slice/Or と併用した場合のカバレッジ計算を回帰テストで固定する。
-   - **進捗**: 未着手。
+   - **進捗**: TypecheckDriver に簡易カバレッジ判定を追加し、総称パターン（`_` / 変数 / 完全 Active Pattern）以降を `pattern.unreachable_arm` で報告、欠落時に `pattern.exhaustiveness.missing` を発火。専用の網羅性パスおよび複合パターン対応は今後実施。
 5. **診断メッセージとキーの統合（diagnostics crate）**  
    - `pattern.active.return_contract_invalid` / `pattern.active.effect_violation` を診断レジストリに追加し、コード・タイトル・短文説明を既存パターン系メッセージと揃える。  
    - `pattern.guard.if_deprecated` を警告レベルで登録し、将来のフェーズアウト方針（when 正規形）をメッセージ内に明示する。
-   - **進捗**: `pattern.guard.if_deprecated` を Parser で発火する経路を追加し、テストで警告出力を確認済み。Active Pattern 戻り値/効果の診断キー統合は未着手。
+   - **進捗**: `pattern.guard.if_deprecated` の警告発火は継続。TypecheckDriver から `pattern.active.return_contract_invalid` / `pattern.active.effect_violation` / `pattern.exhaustiveness.missing` / `pattern.unreachable_arm` を生成し、CLI で JSON 出力を確認済み。diagnostics crate（共通レジストリ）への文面登録は未対応。
 6. **サンプル・E2E テスト連携**  
    - `examples/spec_core/chapter1/match_expr/` に Active Pattern 成功/失敗サンプルを追加し、`tooling/examples/run_examples.sh --suite spec_core` で実行する期待結果 (`expected/` と `reports/spec-audit/ch4`) を更新。  
    - `compiler/rust/tests`（もしくは `frontend/tests`）で AST 正規化・網羅性診断・効果違反のユニット/スナップショットテストを追加し、`phase4-scenario-matrix.csv` の該当行に `diagnostic_keys` を登録する。
-   - **進捗**: `compiler/rust/frontend/tests/spec_core` にパーサ/ガード警告テストを追加し、`bnf-activepattern-*.reml` 受理を確認。`expected/` ゴールデンとマトリクス `diagnostic_keys` 更新は未実施。
+   - **進捗**: Typecheck 連携テストを追加（戻り値契約違反、@pure 副作用、網羅性欠落、到達不能を検証）。`expected/spec_core/chapter1/active_patterns/bnf-activepattern-return-contract-error.diagnostic.json` と `phase4-scenario-matrix.csv` の CH1-ACT-* 行を更新済み。その他サンプルの expected/ 再取得は未実施。
 7. **移行・互換性ガード**  
    - 既存コードとの衝突を防ぐため、Active Pattern 名の予約衝突チェック（通常関数との重複時の警告方針）を実装し、ドキュメントの命名規則と同期させる。  
    - `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` と `rust-migration` 計画に着手タイミングを記録し、Phase4 回帰スイートでの確認手順を追記する。
