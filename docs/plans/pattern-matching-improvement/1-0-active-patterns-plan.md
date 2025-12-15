@@ -141,4 +141,4 @@ RangeBound      ::= Literal | Ident | ConstructorPattern
 4. **診断メッセージ雛形**: `pattern.active.return_contract_invalid` / `pattern.active.effect_violation` の短文メッセージ案を作成し、既存診断スタイルと揃える（コード・タイトル・説明の3要素）。
 5. **実装連携メモ更新**: Rust/OCaml パーサが `if` ガードを警告付きで受理し、AST 正規化を guard→alias とする実装指針を短文で `docs/plans/pattern-matching-improvement/README.md` に転載（共有しやすくするため）。
 
-## Rust実装のための具体的な作業ステップ
+## Rust実装Remlコンパイラのパターンマッチ実装を強化するための具体的な作業ステップ

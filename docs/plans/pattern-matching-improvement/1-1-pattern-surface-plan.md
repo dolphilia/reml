@@ -141,4 +141,4 @@
 - 正規表現パターンは文字列/バイト列限定かつ全体一致のみを許容し、その他の型や部分一致要求は Active Pattern へ誘導する。適用対象外は `pattern.regex.unsupported_target` で警告/エラー化し、拡張時は対象型を段階的に追加する。
 - Active Pattern は `(|Name|_|)`/`(|Name|)` の両形を継続サポートし、副作用規約は `pattern.active.effect_violation` で監査する。`@pure` 契約厳格化や戻り値制約強化は Phase4 回帰計画と連動し、追加警告キーを導入する場合は本計画に追記する。
 
-## Rust実装のための具体的な作業ステップ
+## Rust実装Remlコンパイラのパターンマッチ実装を強化するための具体的な作業ステップ
