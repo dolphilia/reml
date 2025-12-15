@@ -25,5 +25,11 @@ Reml 実装ロードマップや運用計画を集約しています。
   - [2-1-runtime-integration.md](rust-migration/2-1-runtime-integration.md) — ランタイム FFI・Capability 連携と監査手順
   - [2-2-adapter-layer-guidelines.md](rust-migration/2-2-adapter-layer-guidelines.md) — プラットフォーム差分アダプタ層の設計ガイドライン
 
+## パターンマッチ強化計画 (`docs/plans/pattern-matching-improvement/`)
+- [README.md](pattern-matching-improvement/README.md) — 強化計画の目次と位置づけ
+- [0-0-overview.md](pattern-matching-improvement/0-0-overview.md) — 背景・目的・進行フェーズの骨子
+- [1-0-active-patterns-plan.md](pattern-matching-improvement/1-0-active-patterns-plan.md) — Active Patterns 導入計画（ドラフト）
+- [1-1-pattern-surface-plan.md](pattern-matching-improvement/1-1-pattern-surface-plan.md) — Or/Slice/Range/Binding/Regex 拡張計画（ドラフト）
+
 ---
 計画書を更新する際は、関連する仕様書やガイドのリンクが最新構成になっているか確認し、`docs-migrations.log` に必要な記録を追加してください。
