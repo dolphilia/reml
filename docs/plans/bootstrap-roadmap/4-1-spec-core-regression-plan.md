@@ -45,6 +45,12 @@
    - `examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml`・`bnf-impldecl-duplicate-error.reml` を参考に、`trait` ヘッダ（型パラメータ、where 句）、`impl` ターゲット型、メソッドブロックをそれぞれ受理できるか確認するための parser-only テストを追加。  
    - `parser.syntax.expected_tokens` が `trait` / `impl` を候補に含むよう `ExpectedTokenCollector` を更新し、`CH1-IMPL-302` で `typeclass.impl.duplicate` 診断に到達できる状態を整える。
 
+4. **Active Pattern 構文パーサ拡張（pattern-matching-improvement 連携）**  
+   - `(|Name|_|)` / `(|Name|)` の定義・適用を Parser/Lexer に追加し、`MatchGuard`/`MatchAlias` を順不同で受理しつつ AST 正規化を guard→alias に固定する。`if` ガードは互換用に受理しつつ `pattern.guard.if_deprecated` を警告として出す。  
+   - `docs/spec/1-5-formal-grammar-bnf.md` の `ActivePatternDecl` / `ActivePatternApp` と `docs/spec/1-1-syntax.md` C.3/C.4 の例示を差分付きで同期し、`docs/plans/pattern-matching-improvement/1-0-active-patterns-plan.md` の BNF 案を Rust parser 実装の根拠として記録する。  
+   - `phase4-scenario-matrix.csv` の `CH1-ACT-001` / `CH1-ACT-002` / `CH1-ACT-003` を対象に parser-only テストを `compiler/rust/frontend/tests/spec_core/` へ追加し、CLI（`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- examples/spec_core/chapter1/active_patterns/bnf-activepattern-*.reml`）で構文受理を確認したうえでゴールデン生成を行う。  
+   - 退出条件: Active Pattern 定義/適用を含む `.reml` が構文エラーなく通り、ガード/エイリアス順不同と `pattern.guard.if_deprecated` 警告が再現できる状態。シナリオマトリクスの `resolution` を `impl_fix→ok` へ遷移できる。
+
 #### ✅ 4.4 週 実施ログ（Trait/Impl / Match ガード）
 
 - `match` ガードと `as` エイリアス構文を Rust Parser/Lexer に再実装（`KeywordWhen` 追加、`MatchArm` alias フィールド、guard/alias の順不同許容）し、`cargo test -p reml_frontend spec_core::ch1_match_003_accepts_guard_and_alias` と CLI 実行（`cargo run --bin reml_frontend ../../../examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml`）の双方で `CH1-MATCH-003` が診断ゼロになることを確認。`docs/spec/1-1-syntax.md` / `1-5-formal-grammar-bnf.md` にガード/エイリアス規則を追加し、`phase4-scenario-matrix.csv` の該当行を `resolution=ok` に更新した。
