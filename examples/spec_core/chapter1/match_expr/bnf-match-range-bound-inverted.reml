@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.Match.RangeBoundInverted
+
+use Core.Prelude
+
+// 診断: pattern.range.bound_inverted（下限 > 上限）
+fn classify(n: Int) -> Str {
+  match n with
+    | 10..1 -> "invalid"
+    | _ -> "other"
+}
+
+fn main() -> Str = classify(3)

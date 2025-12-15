@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.Match.SliceHeadTailOk
+
+use Core.Prelude
+
+// スライスパターンの成功例（先頭要素と残りを分解）
+fn summarize(xs: Array<Int>) -> Str {
+  match xs with
+    | [head, ..tail] -> "head=" + head.to_string()
+    | [] -> "empty"
+}
+
+fn main() -> Str = summarize([1, 2, 3])

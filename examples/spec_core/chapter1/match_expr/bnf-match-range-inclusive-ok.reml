@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.Match.RangeInclusiveOk
+
+use Core.Prelude
+
+// 閉区間 `1..=10` の成功例
+fn classify(n: Int) -> Str {
+  match n with
+    | 1..=10 -> "in-range"
+    | _ -> "out-of-range"
+}
+
+fn main() -> Str = classify(7)

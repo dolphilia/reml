@@ -1,0 +1,13 @@
+module Spec.Core.Chapter1.Match.OrPatternOk
+
+use Core.Prelude
+
+// Or パターンの成功例（docs/spec/1-1-syntax.md C.3）
+fn describe(value: Option<Str>) -> Str {
+  match value with
+    | Some("A" | "B") -> "ok"
+    | Some(other) -> "other=" + other
+    | None -> "none"
+}
+
+fn main() -> Str = describe(Some("A"))

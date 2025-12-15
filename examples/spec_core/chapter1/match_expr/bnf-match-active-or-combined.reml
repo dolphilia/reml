@@ -1,0 +1,15 @@
+module Spec.Core.Chapter1.Match.ActiveOrCombined
+
+use Core.Prelude
+
+pattern (|HexInt|_|)(text: Str) =
+  if text.starts_with("0x") then Some(text) else None
+
+// Active Pattern と Or パターンの併用成功例
+fn classify(code: Str) -> Str {
+  match code with
+    | (|HexInt|_|) h | "0" -> "hex=" + h
+    | _ -> "other"
+}
+
+fn main() -> Str = classify("0xFF")

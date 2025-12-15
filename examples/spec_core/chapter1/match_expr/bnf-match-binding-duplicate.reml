@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.Match.BindingDuplicate
+
+use Core.Prelude
+
+// 診断: pattern.binding.duplicate_name（同名束縛を `@` と直接束縛で重複）
+fn describe(value: Option<Int>) -> Str {
+  match value with
+    | num @ Some(num) -> "dup=" + num.to_string()
+    | None -> "none"
+}
+
+fn main() -> Str = describe(Some(1))
