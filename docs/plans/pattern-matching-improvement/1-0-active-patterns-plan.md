@@ -200,3 +200,9 @@ RangeBound      ::= Literal | Ident | ConstructorPattern
 5. **網羅性精度向上（Guard/複合パターン）**  
    - Guard 付き完全パターンや Range/Slice/Or/Active 併用時のカバレッジ計算を専用パスへ分離し、`pattern.exhaustiveness.missing` の生成ロジックを Typeck 本体から切り出す。  
    - 優先順位: (a) Guard を含む完全 Active Pattern を「常に成功」集合へ折り込み、(b) Range/Slice/Or を束ねたカバレッジマージ関数を実装、(c) 上記を IR 分岐と整合させ、到達不能計算で `pattern.unreachable_arm` を確実に返す。
+
+### 次に着手するステップ（優先順）
+- 1→2: 衝突ガードを Typeck のシンボル登録で実装し、diagnostics crate へ `pattern.active.*` 文面を登録して CLI と同期。
+- 4: Active Pattern サンプル (`bnf-activepattern-*` / `bnf-match-active-effect-violation`) の expected/diagnostic 再取得とマトリクス更新を実施し、resolution_notes にログを残す。
+- 3: HIR/IR で Option/値の実行時分岐を生成するコードパスを追加し、ReturnCarrier と IR の挙動を突き合わせる。
+- 5: Guard/複合パターンを含む網羅性判定を専用パスへ切り出し、`pattern.exhaustiveness.missing`/`pattern.unreachable_arm` の精度を上げる。
