@@ -521,6 +521,106 @@ fn demo(n: Int) -> Int = {
 }
 
 #[test]
+fn ch1_act_003_reports_return_contract_violation_from_typeck() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/active_patterns/bnf-activepattern-return-contract-error.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "pattern.active.return_contract_invalid"),
+        "expected pattern.active.return_contract_invalid, got {:?}",
+        report
+            .violations
+            .iter()
+            .map(|violation| violation.code)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn active_pattern_perform_in_pure_context_reports_violation() {
+    let source = r#"
+module Spec.Core.Chapter1.ActivePatterns.PureEffect
+
+use Core.Prelude
+
+@pure
+pattern (|Logger|_|)(n: Int) = perform Console "ping"
+
+fn main() -> Int = {
+  match 1 with
+  | (|Logger|_|) v -> v
+  | _ -> 0
+}
+"#;
+    let result = ParserDriver::parse(source);
+    let module = result.value.expect("module should parse");
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "pattern.active.effect_violation"),
+        "expected pattern.active.effect_violation, got {:?}",
+        report
+            .violations
+            .iter()
+            .map(|violation| violation.code)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn match_with_partial_active_pattern_requires_fallback() {
+    let source = r#"
+module Spec.Core.Chapter1.ActivePatterns.Exhaustiveness
+
+use Core.Prelude
+
+pattern (|IsFoo|_|)(s: String) = if s == "foo" then Some(()) else None
+
+fn main() -> Int = {
+  match "foo" with
+  | (|IsFoo|_|) () -> 1
+}
+"#;
+    let result = ParserDriver::parse(source);
+    let module = result.value.expect("module should parse");
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "pattern.exhaustiveness.missing"),
+        "expected pattern.exhaustiveness.missing, got {:?}",
+        report
+            .violations
+            .iter()
+            .map(|violation| violation.code)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn match_reports_unreachable_arm_after_wildcard() {
+    let source = r#"
+module Spec.Core.Chapter1.ActivePatterns.Unreachable
+
+fn demo(n: Int) -> Int = {
+  match n with
+  | _ -> 0
+  | 1 -> 1
+}
+"#;
+    let result = ParserDriver::parse(source);
+    let module = result.value.expect("module should parse");
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "pattern.unreachable_arm"),
+        "expected pattern.unreachable_arm, got {:?}",
+        report
+            .violations
+            .iter()
+            .map(|violation| violation.code)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
 fn ch1_effects_201_parses_handle_expr_perform_counter() {
     let module = parse_example_module(
         "examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-perform-counter.reml",
@@ -892,6 +992,7 @@ fn block_expr(statements: Vec<Stmt>) -> Expr {
 fn build_function(body: Expr, attrs: Vec<Attribute>) -> Function {
     Function {
         name: make_ident("sample"),
+        visibility: Visibility::Private,
         generics: Vec::new(),
         params: Vec::new(),
         body,
@@ -908,6 +1009,7 @@ fn run_typecheck(function: Function) -> TypecheckReport {
         header: None,
         uses: Vec::new(),
         effects: Vec::new(),
+        active_patterns: Vec::new(),
         functions: vec![function],
         decls: Vec::new(),
     };

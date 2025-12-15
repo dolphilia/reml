@@ -990,7 +990,8 @@ fn collect_match_guard_diagnostics(module: &Module, diagnostics: &mut Vec<Fronte
             | ExprKind::Literal(_)
             | ExprKind::FixityLiteral(_)
             | ExprKind::Identifier(_)
-            | ExprKind::ModulePath(_) => {}
+            | ExprKind::ModulePath(_)
+            | ExprKind::Assign { .. } => {}
         }
     }
 
@@ -1933,13 +1934,16 @@ fn module_parser<'src>(
             .then_ignore(just(TokenKind::Arrow))
             .then(expr.clone())
             .map_with_span(
-                |((pattern, (guard, used_if, alias)), body), span: Range<usize>| MatchArm {
-                    pattern,
-                    guard,
-                    guard_used_if: guard.is_some() && used_if,
-                    alias,
-                    body,
-                    span: range_to_span(span),
+                |((pattern, (guard, used_if, alias)), body), span: Range<usize>| {
+                    let guard_used_if = guard.as_ref().is_some() && used_if;
+                    MatchArm {
+                        pattern,
+                        guard,
+                        guard_used_if,
+                        alias,
+                        body,
+                        span: range_to_span(span),
+                    }
                 },
             );
 

@@ -8,6 +8,12 @@
       "message": "Active Pattern の戻り値は Option<T> または完全パターンの T に限定されます",
       "notes": [
         {
+          "message": "期待される戻り値: Option<T>"
+        },
+        {
+          "message": "検出した戻り値の形: Result"
+        },
+        {
           "message": "Result を返す場合は Option へ変換するか通常の関数として呼び出してください"
         }
       ]

@@ -15,7 +15,7 @@ use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSum
 use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
     BinaryOp, Decl, DeclKind, Expr, ExprKind, FixityKind, Function, HandlerEntry, Ident, Literal,
-    LiteralKind, Module, ModulePath, Pattern, PatternKind, RelativeHead, Stmt, StmtKind,
+    LiteralKind, MatchArm, Module, ModulePath, Pattern, PatternKind, RelativeHead, Stmt, StmtKind,
 };
 use crate::semantics::typed;
 use crate::span::Span;
@@ -50,16 +50,56 @@ impl UnicodeShadowTracker {
 }
 
 #[derive(Clone, Copy)]
+enum ContextKind {
+    Function,
+    ActivePattern,
+    Module,
+}
+
+#[derive(Clone, Copy)]
 struct FunctionContext<'a> {
     name: Option<&'a str>,
     is_pure: bool,
+    kind: ContextKind,
 }
 
 impl<'a> FunctionContext<'a> {
-    fn new(name: &'a str, is_pure: bool) -> Self {
+    fn function(name: &'a str, is_pure: bool) -> Self {
         Self {
             name: Some(name),
             is_pure,
+            kind: ContextKind::Function,
+        }
+    }
+
+    fn active_pattern(name: &'a str, is_pure: bool) -> Self {
+        Self {
+            name: Some(name),
+            is_pure,
+            kind: ContextKind::ActivePattern,
+        }
+    }
+
+    fn module() -> Self {
+        Self {
+            name: None,
+            is_pure: false,
+            kind: ContextKind::Module,
+        }
+    }
+
+    fn purity_violation(&self, span: Span, effect: String) -> TypecheckViolation {
+        match self.kind {
+            ContextKind::ActivePattern => TypecheckViolation::active_pattern_effect_violation(
+                span,
+                self.name.map(|name| name.to_string()),
+                effect,
+            ),
+            _ => TypecheckViolation::purity_violation(
+                span,
+                self.name.map(|name| name.to_string()),
+                effect,
+            ),
         }
     }
 }
@@ -103,10 +143,7 @@ impl TypecheckDriver {
         if !module.decls.is_empty() {
             let mut module_decl_stats = FunctionStats::default();
             let mut module_decl_constraints = Vec::new();
-            let module_context = FunctionContext {
-                name: None,
-                is_pure: false,
-            };
+            let module_context = FunctionContext::module();
             let mut module_loop_context = LoopContextStack::default();
             for decl in &module.decls {
                 infer_decl(
@@ -127,6 +164,53 @@ impl TypecheckDriver {
             all_constraints.extend(module_decl_constraints.drain(..));
         }
 
+        for active in &module.active_patterns {
+            let mut stats = FunctionStats::default();
+            let mut constraints = Vec::new();
+            let mut env = module_env.clone();
+            let is_pure = active.attrs.iter().any(|attr| attr.name.name == "pure");
+            let context = FunctionContext::active_pattern(active.name.name.as_str(), is_pure);
+            for param in &active.params {
+                let ty = var_gen.fresh_type();
+                let scheme = Scheme::simple(ty.clone());
+                bind_pattern_to_env(&param.pattern, &scheme, &mut env, &mut var_gen);
+            }
+            let mut loop_context = LoopContextStack::default();
+            let typed_body = infer_expr(
+                &active.body,
+                &mut env,
+                &mut var_gen,
+                &mut solver,
+                &mut constraints,
+                &mut stats,
+                &mut metrics,
+                &mut violations,
+                &mut dict_ref_drafts,
+                &mut loop_context,
+                context,
+            );
+            all_constraints.extend(constraints.drain(..));
+            let return_kind = classify_active_pattern_return(&active.body);
+            let substitution = solver.substitution().clone();
+            let _ = substitution.apply(&typed_body.ty);
+            let is_valid = if active.is_partial {
+                matches!(return_kind, ActiveReturnKind::Option)
+            } else {
+                !matches!(
+                    return_kind,
+                    ActiveReturnKind::Option | ActiveReturnKind::Result
+                )
+            };
+            if !is_valid {
+                violations.push(TypecheckViolation::active_pattern_return_contract(
+                    active.span,
+                    active.name.name.as_str(),
+                    active.is_partial,
+                    return_kind,
+                ));
+            }
+        }
+
         for function in &module.functions {
             metrics.record_function();
             let mut stats = FunctionStats::default();
@@ -134,7 +218,7 @@ impl TypecheckDriver {
             let mut env = module_env.clone();
             let mut param_bindings = Vec::new();
             let is_pure = function.attrs.iter().any(|attr| attr.name.name == "pure");
-            let function_context = FunctionContext::new(function.name.name.as_str(), is_pure);
+            let function_context = FunctionContext::function(function.name.name.as_str(), is_pure);
 
             for param in &function.params {
                 let ty = var_gen.fresh_type();
@@ -324,6 +408,10 @@ pub enum TypecheckViolationKind {
     ReturnConflict,
     UnicodeShadowing,
     ResidualLeak,
+    ActivePatternReturnContract,
+    ActivePatternEffectViolation,
+    PatternExhaustivenessMissing,
+    PatternUnreachableArm,
     StageMismatch,
     IteratorStageMismatch,
     ValueRestriction,
@@ -335,6 +423,23 @@ pub enum TypecheckViolationKind {
     ControlFlowUnreachable,
     OpBuilderLevelConflict,
     OpBuilderFixityMissing,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ActiveReturnKind {
+    Option,
+    Result,
+    Value,
+}
+
+impl ActiveReturnKind {
+    fn label(&self) -> &'static str {
+        match self {
+            ActiveReturnKind::Option => "Option",
+            ActiveReturnKind::Result => "Result",
+            ActiveReturnKind::Value => "値",
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -602,6 +707,109 @@ impl TypecheckViolation {
         }
     }
 
+    fn active_pattern_effect_violation(
+        span: Span,
+        name: Option<String>,
+        effect: String,
+    ) -> Self {
+        let message = match name.as_ref() {
+            Some(label) => format!(
+                "`@pure` Active Pattern `{}` で副作用 `{}` が検出されました。",
+                label, effect
+            ),
+            None => format!(
+                "`@pure` Active Pattern 本体で副作用 `{}` が検出されました。",
+                effect
+            ),
+        };
+        Self {
+            kind: TypecheckViolationKind::ActivePatternEffectViolation,
+            code: "pattern.active.effect_violation",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "`@pure` を外すか副作用を伴う処理を通常の関数へ移動してください。",
+            )],
+            capability: None,
+            function: name,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn active_pattern_return_contract(
+        span: Span,
+        name: &str,
+        is_partial: bool,
+        actual: ActiveReturnKind,
+    ) -> Self {
+        let message =
+            "Active Pattern の戻り値は Option<T> または完全パターンの T に限定されます"
+                .to_string();
+        let mut notes = Vec::new();
+        let expected_label = if is_partial { "Option<T>" } else { "T" };
+        notes.push(ViolationNote::plain(format!(
+            "期待される戻り値: {expected_label}"
+        )));
+        let actual_label = actual.label();
+        notes.push(ViolationNote::plain(format!(
+            "検出した戻り値の形: {}",
+            actual_label
+        )));
+        if matches!(actual, ActiveReturnKind::Result) {
+            notes.push(ViolationNote::plain(
+                "Result を返す場合は Option へ変換するか通常の関数として呼び出してください",
+            ));
+        }
+        Self {
+            kind: TypecheckViolationKind::ActivePatternReturnContract,
+            code: "pattern.active.return_contract_invalid",
+            message,
+            span: Some(span),
+            notes,
+            capability: None,
+            function: Some(name.to_string()),
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn pattern_exhaustiveness_missing(span: Span) -> Self {
+        Self {
+            kind: TypecheckViolationKind::PatternExhaustivenessMissing,
+            code: "pattern.exhaustiveness.missing",
+            message: "この match はすべての入力を網羅していません".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "`_` もしくは完全一致するパターンを追加してください。",
+            )],
+            capability: None,
+            function: None,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn pattern_unreachable_arm(span: Span) -> Self {
+        Self {
+            kind: TypecheckViolationKind::PatternUnreachableArm,
+            code: "pattern.unreachable_arm",
+            message: "このパターンには到達できません".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "前段で常にマッチするパターンが存在するか、guard が不要か確認してください。",
+            )],
+            capability: None,
+            function: None,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
     fn impl_duplicate(span: Span, trait_name: String, target: String, previous_span: Span) -> Self {
         let message = format!(
             "`{}` への `{}` impl が重複定義されています。",
@@ -740,6 +948,9 @@ impl TypecheckViolation {
             | TypecheckViolationKind::AstUnavailable
             | TypecheckViolationKind::ReturnConflict
             | TypecheckViolationKind::UnicodeShadowing
+            | TypecheckViolationKind::ActivePatternReturnContract
+            | TypecheckViolationKind::PatternExhaustivenessMissing
+            | TypecheckViolationKind::PatternUnreachableArm
             | TypecheckViolationKind::ValueRestriction
             | TypecheckViolationKind::ImplDuplicate
             | TypecheckViolationKind::IteratorExpected
@@ -747,7 +958,8 @@ impl TypecheckViolation {
             TypecheckViolationKind::ResidualLeak
             | TypecheckViolationKind::StageMismatch
             | TypecheckViolationKind::IteratorStageMismatch
-            | TypecheckViolationKind::PurityViolation => "effects",
+            | TypecheckViolationKind::PurityViolation
+            | TypecheckViolationKind::ActivePatternEffectViolation => "effects",
             TypecheckViolationKind::CoreParseRecoverBranch
             | TypecheckViolationKind::OpBuilderLevelConflict
             | TypecheckViolationKind::OpBuilderFixityMissing => "parser",
@@ -1322,9 +1534,8 @@ fn infer_expr(
                 &argument_result.ty,
             );
             if context.is_pure {
-                violations.push(TypecheckViolation::purity_violation(
+                violations.push(context.purity_violation(
                     expr.span(),
-                    context.name.map(|name| name.to_string()),
                     call.effect.name.clone(),
                 ));
             }
@@ -1589,6 +1800,90 @@ fn infer_expr(
                 expr,
                 TypedExprKindDraft::Unknown,
                 Type::builtin(BuiltinType::Unknown),
+                dicts,
+            )
+        }
+        ExprKind::Match { target, arms } => {
+            let target_result = infer_expr(
+                target,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            let mut dicts = target_result.dict_ref_ids;
+            let mut coverage_reached = false;
+            let mut arm_type: Option<Type> = None;
+            for arm in arms {
+                if coverage_reached {
+                    violations.push(TypecheckViolation::pattern_unreachable_arm(arm.span));
+                }
+                let mut arm_env = env.enter_scope();
+                let pattern_scheme = Scheme::simple(var_gen.fresh_type());
+                bind_pattern_to_env(&arm.pattern, &pattern_scheme, &mut arm_env, var_gen);
+                if let Some(alias) = &arm.alias {
+                    arm_env.insert(alias.name.clone(), Scheme::simple(var_gen.fresh_type()));
+                }
+                if let Some(guard) = &arm.guard {
+                    let guard_result = infer_expr(
+                        guard,
+                        &mut arm_env,
+                        var_gen,
+                        solver,
+                        constraints,
+                        stats,
+                        metrics,
+                        violations,
+                        dict_refs,
+                        loop_context,
+                        context,
+                    );
+                    check_bool_condition(guard.span(), &guard_result.ty, violations, context);
+                    dicts.extend(guard_result.dict_ref_ids);
+                }
+                let body_result = infer_expr(
+                    &arm.body,
+                    &mut arm_env,
+                    var_gen,
+                    solver,
+                    constraints,
+                    stats,
+                    metrics,
+                    violations,
+                    dict_refs,
+                    loop_context,
+                    context,
+                );
+                if let Some(existing) = arm_type.as_ref() {
+                    stats.constraints += 1;
+                    metrics.record_constraint("match.arm");
+                    constraints.push(Constraint::equal(
+                        existing.clone(),
+                        body_result.ty.clone(),
+                    ));
+                    metrics.record_unify_call();
+                    let _ = solver.unify(existing.clone(), body_result.ty.clone());
+                } else {
+                    arm_type = Some(body_result.ty.clone());
+                }
+                dicts.extend(body_result.dict_ref_ids);
+                if arm.guard.is_none() && is_covering_pattern(&arm.pattern) {
+                    coverage_reached = true;
+                }
+            }
+            if !coverage_reached {
+                violations.push(TypecheckViolation::pattern_exhaustiveness_missing(expr.span()));
+            }
+            make_typed(
+                expr,
+                TypedExprKindDraft::Unknown,
+                arm_type.unwrap_or_else(|| Type::builtin(BuiltinType::Unknown)),
                 dicts,
             )
         }
@@ -1908,6 +2203,93 @@ fn pattern_binding_name(pattern: &Pattern) -> Option<String> {
     match &pattern.kind {
         PatternKind::Var(ident) => Some(ident.name.clone()),
         _ => None,
+    }
+}
+
+fn classify_active_pattern_return(expr: &Expr) -> ActiveReturnKind {
+    match &expr.kind {
+        ExprKind::IfElse {
+            then_branch,
+            else_branch,
+            ..
+        } => {
+            let then_kind = classify_active_pattern_return(then_branch);
+            let else_kind = else_branch
+                .as_deref()
+                .map(classify_active_pattern_return)
+                .unwrap_or(ActiveReturnKind::Value);
+            if then_kind == else_kind {
+                then_kind
+            } else {
+                ActiveReturnKind::Value
+            }
+        }
+        ExprKind::Call { callee, .. } => classify_constructor(callee).unwrap_or(ActiveReturnKind::Value),
+        ExprKind::Identifier(ident) => {
+            classify_constructor_name(ident.name.as_str()).unwrap_or(ActiveReturnKind::Value)
+        }
+        ExprKind::ModulePath(path) => classify_constructor_path(path).unwrap_or(ActiveReturnKind::Value),
+        ExprKind::Match { arms, .. } => classify_match_return(arms),
+        ExprKind::Block { statements, .. } => classify_block_return(statements),
+        _ => ActiveReturnKind::Value,
+    }
+}
+
+fn classify_block_return(statements: &[Stmt]) -> ActiveReturnKind {
+    for stmt in statements.iter().rev() {
+        match &stmt.kind {
+            StmtKind::Expr { expr } | StmtKind::Defer { expr } => {
+                return classify_active_pattern_return(expr)
+            }
+            _ => continue,
+        }
+    }
+    ActiveReturnKind::Value
+}
+
+fn classify_match_return(arms: &[MatchArm]) -> ActiveReturnKind {
+    let mut iter = arms.iter();
+    if let Some(first) = iter.next() {
+        let mut kind = classify_active_pattern_return(&first.body);
+        for arm in iter {
+            let next = classify_active_pattern_return(&arm.body);
+            if next != kind {
+                kind = ActiveReturnKind::Value;
+                break;
+            }
+        }
+        kind
+    } else {
+        ActiveReturnKind::Value
+    }
+}
+
+fn classify_constructor(expr: &Expr) -> Option<ActiveReturnKind> {
+    match &expr.kind {
+        ExprKind::Identifier(ident) => classify_constructor_name(ident.name.as_str()),
+        ExprKind::ModulePath(path) => classify_constructor_path(path),
+        _ => None,
+    }
+}
+
+fn classify_constructor_path(path: &ModulePath) -> Option<ActiveReturnKind> {
+    module_path_last_segment(path)
+        .and_then(|segment| classify_constructor_name(segment.name.as_str()))
+}
+
+fn classify_constructor_name(name: &str) -> Option<ActiveReturnKind> {
+    match name {
+        "Some" | "None" => Some(ActiveReturnKind::Option),
+        "Ok" | "Err" => Some(ActiveReturnKind::Result),
+        _ => None,
+    }
+}
+
+fn is_covering_pattern(pattern: &Pattern) -> bool {
+    match &pattern.kind {
+        PatternKind::Wildcard | PatternKind::Var(_) => true,
+        PatternKind::ActivePattern { is_partial, .. } => !*is_partial,
+        _ => false,
     }
 }
 
