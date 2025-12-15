@@ -389,7 +389,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [ ] `examples/language-impl-comparison/reml/hindley_milner.reml`（期待: 成功）
 - [ ] `examples/language-impl-comparison/reml/markdown_parser_combinator.reml`（期待: 成功）
 - [ ] `examples/language-impl-comparison/reml/pl0_combinator.reml`（期待: 成功）
-- [ ] `examples/language-impl-comparison/reml/mini_lisp.reml`（期待: 成功）
+- [x] `examples/language-impl-comparison/reml/mini_lisp.reml`（期待: 成功 → 2025-12-15 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output human examples/language-impl-comparison/reml/mini_lisp.reml` で診断 0 を確認）
 - [ ] `examples/language-impl-comparison/reml/regex_engine.reml`（期待: 成功）
 - [ ] `examples/language-impl-comparison/reml/mini_lisp_combinator.reml`（期待: 成功）
 
