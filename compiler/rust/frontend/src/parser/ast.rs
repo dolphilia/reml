@@ -8,6 +8,7 @@ pub struct Module {
     pub uses: Vec<UseDecl>,
     pub effects: Vec<EffectDecl>,
     pub functions: Vec<Function>,
+    pub active_patterns: Vec<ActivePatternDecl>,
     pub decls: Vec<Decl>,
 }
 
@@ -22,6 +23,9 @@ impl Module {
         }
         for effect in &self.effects {
             rendered.push(format!("effect {}", effect.name.name));
+        }
+        for active_pattern in &self.active_patterns {
+            rendered.push(active_pattern.render());
         }
         for decl in &self.decls {
             rendered.push(decl.render());
@@ -708,6 +712,7 @@ impl UnaryOp {
 pub struct MatchArm {
     pub pattern: Pattern,
     pub guard: Option<Expr>,
+    pub guard_used_if: bool,
     pub body: Expr,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alias: Option<Ident>,
@@ -880,6 +885,21 @@ impl Pattern {
             PatternKind::Guard { pattern, guard } => {
                 format!("{} if {}", pattern.render(), guard.render())
             }
+            PatternKind::ActivePattern {
+                name,
+                is_partial,
+                argument,
+            } => {
+                let head = if *is_partial {
+                    format!("(|{}|_|)", name.name)
+                } else {
+                    format!("(|{}|)", name.name)
+                };
+                match argument {
+                    Some(arg) => format!("{head} {}", arg.render()),
+                    None => head,
+                }
+            }
         }
     }
 }
@@ -904,6 +924,12 @@ pub enum PatternKind {
     Guard {
         pattern: Box<Pattern>,
         guard: Box<Expr>,
+    },
+    ActivePattern {
+        name: Ident,
+        is_partial: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        argument: Option<Box<Pattern>>,
     },
 }
 
@@ -1061,6 +1087,45 @@ impl Function {
             effect,
             self.body.render()
         )
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ActivePatternDecl {
+    pub name: Ident,
+    pub is_partial: bool,
+    pub params: Vec<Param>,
+    pub body: Expr,
+    pub span: Span,
+    pub attrs: Vec<Attribute>,
+    pub visibility: Visibility,
+}
+
+impl ActivePatternDecl {
+    pub fn render(&self) -> String {
+        let head = if self.is_partial {
+            format!("(|{}|_|)", self.name.name)
+        } else {
+            format!("(|{}|)", self.name.name)
+        };
+        let params = self
+            .params
+            .iter()
+            .map(Param::render)
+            .collect::<Vec<_>>()
+            .join(", ");
+        let mut text = String::new();
+        if let Visibility::Public = self.visibility {
+            text.push_str("pub ");
+        }
+        text.push_str("pattern ");
+        text.push_str(&head);
+        text.push('(');
+        text.push_str(&params);
+        text.push(')');
+        text.push_str(" = ");
+        text.push_str(&self.body.render());
+        text
     }
 }
 

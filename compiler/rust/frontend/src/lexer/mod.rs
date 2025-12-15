@@ -126,6 +126,8 @@ enum RawToken {
     KeywordOperation,
     #[token("handler")]
     KeywordHandler,
+    #[token("pattern")]
+    KeywordPattern,
     #[token("conductor")]
     KeywordConductor,
     #[token("channels")]
@@ -459,6 +461,9 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             }
             Ok(RawToken::KeywordHandler) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordHandler, "handler")
+            }
+            Ok(RawToken::KeywordPattern) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordPattern, "pattern")
             }
             Ok(RawToken::KeywordConductor) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordConductor, "conductor")

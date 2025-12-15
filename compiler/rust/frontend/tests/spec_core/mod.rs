@@ -361,11 +361,163 @@ fn ch1_match_003_accepts_guard_and_alias() {
                 .unwrap_or("missing");
             assert_eq!(
                 alias_name, "large",
-                "match arm alias should be parsed as `large`"
+            "match arm alias should be parsed as `large`"
+        );
+    }
+    other => panic!("expected match expression, got {:?}", other),
+}
+
+#[test]
+fn ch1_act_001_parses_partial_active_pattern_definition() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/active_patterns/bnf-activepattern-partial-ok.reml",
+    );
+    assert_eq!(
+        module.active_patterns.len(),
+        1,
+        "expected one active pattern declaration"
+    );
+    let active = &module.active_patterns[0];
+    assert!(active.is_partial, "active pattern should be partial");
+    assert_eq!(active.name.name, "IsFoo");
+    assert_eq!(active.params.len(), 1, "expected one parameter");
+
+    let main_fn = module
+        .functions
+        .iter()
+        .find(|function| function.name.name == "main")
+        .expect("main function should exist");
+    let match_expr = match &main_fn.body.kind {
+        ExprKind::Block { statements, .. } => statements
+            .iter()
+            .find_map(|stmt| match &stmt.kind {
+                StmtKind::Expr { expr } => Some(expr),
+                _ => None,
+            })
+            .expect("match expression should be present"),
+        other => panic!("expected block body, got {:?}", other),
+    };
+    match &match_expr.kind {
+        ExprKind::Match { arms, .. } => {
+            let first_arm = arms.first().expect("expected a match arm");
+            match &first_arm.pattern.kind {
+                PatternKind::ActivePattern {
+                    name,
+                    is_partial,
+                    argument,
+                } => {
+                    assert_eq!(name.name, "IsFoo");
+                    assert!(*is_partial, "match arm should treat pattern as partial");
+                    assert!(
+                        argument.is_some(),
+                        "active pattern application should capture the argument"
+                    );
+                }
+                other => panic!("expected active pattern application, got {:?}", other),
+            }
+        }
+        other => panic!("expected match expression, got {:?}", other),
+    }
+}
+
+#[test]
+fn match_guard_accepts_alias_before_guard() {
+    let source = r#"
+module Spec.Core.Chapter1.ActivePatterns.AliasOrder
+
+fn demo(n: Int) -> Int = {
+  match n with
+  | _ as value when value > 0 -> value
+  | _ -> 0
+}
+"#;
+    let result = ParserDriver::parse(source);
+    assert!(
+        result.diagnostics.is_empty(),
+        "expected parser diagnostics to be empty, got {:?}",
+        result
+            .diagnostics
+            .iter()
+            .map(|diag| diag.code.clone())
+            .collect::<Vec<_>>()
+    );
+    let module = result.value.expect("module should parse");
+    let demo_fn = module
+        .functions
+        .iter()
+        .find(|function| function.name.name == "demo")
+        .expect("demo function should exist");
+    let match_expr = match &demo_fn.body.kind {
+        ExprKind::Block { statements, .. } => statements
+            .iter()
+            .find_map(|stmt| match &stmt.kind {
+                StmtKind::Expr { expr } => Some(expr),
+                _ => None,
+            })
+            .expect("match expression should be present"),
+        other => panic!("expected block body, got {:?}", other),
+    };
+    match &match_expr.kind {
+        ExprKind::Match { arms, .. } => {
+            let first_arm = arms.first().expect("expected a match arm");
+            let alias = first_arm
+                .alias
+                .as_ref()
+                .map(|ident| ident.name.as_str())
+                .unwrap_or("missing");
+            assert_eq!(alias, "value", "alias should be parsed from alias-first form");
+            assert!(
+                first_arm.guard.is_some(),
+                "guard should be preserved after alias"
             );
         }
         other => panic!("expected match expression, got {:?}", other),
     }
+}
+
+#[test]
+fn match_guard_with_if_emits_deprecation_warning() {
+    let source = r#"
+module Spec.Core.Chapter1.ActivePatterns.IfGuard
+
+fn demo(n: Int) -> Int = {
+  match n with
+  | _ if n > 0 -> n
+  | _ -> 0
+}
+"#;
+    let result = ParserDriver::parse(source);
+    let codes = result
+        .diagnostics
+        .iter()
+        .filter_map(|diag| diag.code.as_deref())
+        .collect::<Vec<_>>();
+    assert!(
+        codes.contains(&"pattern.guard.if_deprecated"),
+        "expected pattern.guard.if_deprecated, got {:?}",
+        codes
+    );
+    let module = result.value.expect("module should parse");
+    let demo_fn = module
+        .functions
+        .iter()
+        .find(|function| function.name.name == "demo")
+        .expect("demo function should exist");
+    let has_if_guard = match &demo_fn.body.kind {
+        ExprKind::Block { statements, .. } => statements.iter().any(|stmt| {
+            if let StmtKind::Expr { expr } = &stmt.kind {
+                if let ExprKind::Match { arms, .. } = &expr.kind {
+                    return arms
+                        .iter()
+                        .any(|arm| arm.guard.is_some() && arm.guard_used_if);
+                }
+            }
+            false
+        }),
+        _ => false,
+    };
+    assert!(has_if_guard, "match arm should record use of `if` guard");
+}
 }
 
 #[test]

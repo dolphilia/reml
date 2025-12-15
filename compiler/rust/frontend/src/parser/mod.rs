@@ -45,14 +45,15 @@ use crate::streaming::{
 use crate::token::{Token, TokenKind};
 use crate::unicode::{unicode_diagnostic_code, UnicodeDetail};
 use ast::{
-    Attribute, BinaryOp, ConductorArg, ConductorChannelRoute, ConductorDecl, ConductorDslDef,
-    ConductorDslTail, ConductorEndpoint, ConductorExecutionBlock, ConductorMonitorTarget,
-    ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind, EffectAnnotation, EffectCall,
-    EffectDecl, ExternItem, Expr, ExprKind, FixityKind, Function, FunctionSignature, HandleExpr,
-    HandlerDecl, HandlerEntry, Ident, ImplDecl, ImplItem, IntBase, Literal, LiteralKind, MatchArm,
-    Module, ModuleHeader, ModulePath, OperationDecl, Param, Pattern, PatternKind,
-    PatternRecordField, RecordField, RelativeHead, Stmt, StmtKind, StringKind, TraitDecl,
-    TraitItem, TraitRef, TypeAnnot, TypeKind, UseDecl, UseItem, UseTree, Visibility, WherePredicate,
+    ActivePatternDecl, Attribute, BinaryOp, ConductorArg, ConductorChannelRoute, ConductorDecl,
+    ConductorDslDef, ConductorDslTail, ConductorEndpoint, ConductorExecutionBlock,
+    ConductorMonitorTarget, ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind,
+    EffectAnnotation, EffectCall, EffectDecl, ExternItem, Expr, ExprKind, FixityKind, Function,
+    FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry, Ident, ImplDecl, ImplItem, IntBase,
+    Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath, OperationDecl, Param,
+    Pattern, PatternKind, PatternRecordField, RecordField, RelativeHead, Stmt, StmtKind, StringKind,
+    TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind, UseDecl, UseItem, UseTree, Visibility,
+    WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -548,6 +549,7 @@ fn parse_result_from_module(
     if let Some(module) = ast.as_ref() {
         collect_cfg_diagnostics(module, &run_config, &mut diagnostics);
         collect_use_diagnostics(module, &mut diagnostics);
+        collect_match_guard_diagnostics(module, &mut diagnostics);
     }
 
     let farthest_error_offset = diagnostics
@@ -795,6 +797,14 @@ fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<Fro
     for function in &module.functions {
         record(&function.body, diagnostics);
     }
+    for active_pattern in &module.active_patterns {
+        for param in &active_pattern.params {
+            if let Some(default) = &param.default {
+                record(default, diagnostics);
+            }
+        }
+        record(&active_pattern.body, diagnostics);
+    }
     for decl in &module.decls {
         match &decl.kind {
             DeclKind::Let { value, .. } | DeclKind::Var { value, .. } => record(value, diagnostics),
@@ -815,6 +825,9 @@ fn collect_cfg_diagnostics(
     if let Some(header) = &module.header {
         evaluate_cfg_attributes(&header.attrs, diagnostics, &registry);
     }
+    for active_pattern in &module.active_patterns {
+        evaluate_cfg_attributes(&active_pattern.attrs, diagnostics, &registry);
+    }
     for decl in &module.decls {
         evaluate_cfg_attributes(&decl.attrs, diagnostics, &registry);
     }
@@ -826,6 +839,9 @@ fn collect_cfg_diagnostics(
     for function in &module.functions {
         evaluate_cfg_attributes(&function.attrs, diagnostics, &registry);
         inspect_cfg_expr(&function.body, diagnostics, &registry);
+    }
+    for active_pattern in &module.active_patterns {
+        inspect_cfg_expr(&active_pattern.body, diagnostics, &registry);
     }
 }
 
@@ -880,6 +896,127 @@ fn build_invalid_super_diagnostic(decl: &UseDecl) -> FrontendDiagnostic {
     diagnostic.add_note(DiagnosticNote::new(
         "language.use.invalid_super.note",
         "`use ::Core.Prelude` など明示的なルート参照に書き換えてください。",
+    ));
+    diagnostic
+}
+
+fn collect_match_guard_diagnostics(module: &Module, diagnostics: &mut Vec<FrontendDiagnostic>) {
+    fn walk_expr(expr: &Expr, diagnostics: &mut Vec<FrontendDiagnostic>) {
+        match &expr.kind {
+            ExprKind::Match { target, arms } => {
+                walk_expr(target, diagnostics);
+                for arm in arms {
+                    if arm.guard_used_if {
+                        diagnostics.push(build_if_guard_deprecated_diagnostic(arm.span));
+                    }
+                    if let Some(guard_expr) = &arm.guard {
+                        walk_expr(guard_expr, diagnostics);
+                    }
+                    walk_expr(&arm.body, diagnostics);
+                }
+            }
+            ExprKind::Call { callee, args } => {
+                walk_expr(callee, diagnostics);
+                for arg in args {
+                    walk_expr(arg, diagnostics);
+                }
+            }
+            ExprKind::PerformCall { call } => walk_expr(&call.argument, diagnostics),
+            ExprKind::Lambda { body, .. }
+            | ExprKind::Loop { body }
+            | ExprKind::Unsafe { body }
+            | ExprKind::Defer { body } => walk_expr(body, diagnostics),
+            ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
+                walk_expr(left, diagnostics);
+                walk_expr(right, diagnostics);
+            }
+            ExprKind::Unary { expr: inner, .. }
+            | ExprKind::Propagate { expr: inner }
+            | ExprKind::Return { value: Some(inner) } => walk_expr(inner, diagnostics),
+            ExprKind::Break { value: Some(inner) } => walk_expr(inner, diagnostics),
+            ExprKind::FieldAccess { target, .. }
+            | ExprKind::TupleAccess { target, .. }
+            | ExprKind::Index { target, .. } => walk_expr(target, diagnostics),
+            ExprKind::IfElse {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                walk_expr(condition, diagnostics);
+                walk_expr(then_branch, diagnostics);
+                if let Some(branch) = else_branch {
+                    walk_expr(branch, diagnostics);
+                }
+            }
+            ExprKind::While { condition, body } => {
+                walk_expr(condition, diagnostics);
+                walk_expr(body, diagnostics);
+            }
+            ExprKind::For { start, end, .. } => {
+                walk_expr(start, diagnostics);
+                walk_expr(end, diagnostics);
+            }
+            ExprKind::Block { statements, .. } => {
+                for stmt in statements {
+                    match &stmt.kind {
+                        StmtKind::Decl { decl } => {
+                            if let DeclKind::Let { value, .. } | DeclKind::Var { value, .. } =
+                                &decl.kind
+                            {
+                                walk_expr(value, diagnostics);
+                            }
+                        }
+                        StmtKind::Expr { expr } | StmtKind::Defer { expr } => {
+                            walk_expr(expr, diagnostics)
+                        }
+                        StmtKind::Assign { target, value } => {
+                            walk_expr(target, diagnostics);
+                            walk_expr(value, diagnostics);
+                        }
+                    }
+                }
+            }
+            ExprKind::Handle { handle } => {
+                walk_expr(&handle.target, diagnostics);
+                for entry in &handle.handler.entries {
+                    if let HandlerEntry::Operation { body, .. } = entry {
+                        walk_expr(body, diagnostics);
+                    }
+                }
+            }
+            ExprKind::Return { value: None }
+            | ExprKind::Break { value: None }
+            | ExprKind::Continue
+            | ExprKind::Literal(_)
+            | ExprKind::FixityLiteral(_)
+            | ExprKind::Identifier(_)
+            | ExprKind::ModulePath(_) => {}
+        }
+    }
+
+    for function in &module.functions {
+        walk_expr(&function.body, diagnostics);
+    }
+    for active_pattern in &module.active_patterns {
+        walk_expr(&active_pattern.body, diagnostics);
+    }
+    for decl in &module.decls {
+        if let DeclKind::Let { value, .. } | DeclKind::Var { value, .. } = &decl.kind {
+            walk_expr(value, diagnostics);
+        }
+    }
+}
+
+fn build_if_guard_deprecated_diagnostic(span: Span) -> FrontendDiagnostic {
+    let mut diagnostic = FrontendDiagnostic::new("`if` ガードは非推奨です。正規形の `when` を使用してください。")
+        .with_code("pattern.guard.if_deprecated")
+        .with_severity(DiagnosticSeverity::Warning)
+        .with_domain(DiagnosticDomain::Parser)
+        .with_recoverability(Recoverability::Recoverable)
+        .with_span(span);
+    diagnostic.add_note(DiagnosticNote::new(
+        "pattern.guard.if_deprecated.note",
+        "`match` のガードは `when` に統一されます。互換目的の `if` は将来削除予定です。",
     ));
     diagnostic
 }
@@ -1556,6 +1693,31 @@ fn module_parser<'src>(
                 kind: PatternKind::Wildcard,
             });
 
+        let active_pattern_suffix = just(TokenKind::Bar)
+            .ignore_then(
+                just(TokenKind::Underscore)
+                    .ignore_then(just(TokenKind::Bar))
+                    .to(true)
+                    .or(just(TokenKind::Bar).to(false)),
+            );
+
+        let active_pattern_head = just(TokenKind::LParen)
+            .ignore_then(just(TokenKind::Bar))
+            .ignore_then(ident.clone())
+            .then(active_pattern_suffix)
+            .then_ignore(just(TokenKind::RParen));
+
+        let active_pattern = active_pattern_head
+            .then(pat.clone().or_not())
+            .map_with_span(|((name, is_partial), argument), span: Range<usize>| Pattern {
+                span: range_to_span(span),
+                kind: PatternKind::ActivePattern {
+                    name,
+                    is_partial,
+                    argument: argument.map(Box::new),
+                },
+            });
+
         let record_field_alias = ident.clone().map(|field_ident| PatternRecordField {
             key: field_ident.clone(),
             value: None,
@@ -1594,6 +1756,7 @@ fn module_parser<'src>(
             });
 
         choice((
+            active_pattern,
             tuple_pattern,
             record_pattern,
             pattern_var.clone(),
@@ -1738,49 +1901,45 @@ fn module_parser<'src>(
                 }
             });
 
-        let match_guard = just(TokenKind::KeywordWhen)
-            .ignore_then(expr.clone())
-            .then(
-                just(TokenKind::KeywordAs)
-                    .ignore_then(lower_ident.clone())
-                    .map(Some)
-                    .or_not(),
-            )
-            .map(|(guard_expr, alias)| (guard_expr, alias.unwrap_or(None)))
-            .boxed();
+        let match_guard = choice((
+            just(TokenKind::KeywordWhen).to(false),
+            just(TokenKind::KeywordIf).to(true),
+        ))
+        .then(expr.clone())
+        .map(|(used_if, guard_expr)| (guard_expr, used_if));
+
+        let match_alias = just(TokenKind::KeywordAs).ignore_then(lower_ident.clone());
+
+        let match_tail = choice((
+            match_guard
+                .clone()
+                .then(match_alias.clone().or_not())
+                .map(|((guard_expr, used_if), alias)| (Some(guard_expr), used_if, alias)),
+            match_alias
+                .clone()
+                .then(match_guard.clone().or_not())
+                .map(|(alias, guard_opt)| match guard_opt {
+                    Some((guard_expr, used_if)) => (Some(guard_expr), used_if, Some(alias)),
+                    None => (None, false, Some(alias)),
+                }),
+        ))
+        .or_not()
+        .map(|result| result.unwrap_or((None, false, None)));
 
         let match_arm = just(TokenKind::Bar)
             .or_not()
             .ignore_then(pattern_for_expr.clone())
-            .then(match_guard.or_not())
-            .then(
-                just(TokenKind::KeywordAs)
-                    .ignore_then(lower_ident.clone())
-                    .map(Some)
-                    .or_not(),
-            )
+            .then(match_tail)
             .then_ignore(just(TokenKind::Arrow))
             .then(expr.clone())
-            .try_map(
-                |(((pattern, guard_info), alias_after_guard), body), span: Range<usize>| {
-                    let (guard, alias_from_guard) = guard_info
-                        .map(|(guard_expr, alias)| (Some(guard_expr), alias))
-                        .unwrap_or((None, None));
-                    let alias_tail = alias_after_guard.flatten();
-                    if alias_from_guard.is_some() && alias_tail.is_some() {
-                        return Err(Simple::custom(
-                            span.clone(),
-                            "match arm に複数の `as` は指定できません",
-                        ));
-                    }
-                    let alias = alias_from_guard.or(alias_tail);
-                    Ok(MatchArm {
-                        pattern,
-                        guard,
-                        alias,
-                        body,
-                        span: range_to_span(span),
-                    })
+            .map_with_span(
+                |((pattern, (guard, used_if, alias)), body), span: Range<usize>| MatchArm {
+                    pattern,
+                    guard,
+                    guard_used_if: guard.is_some() && used_if,
+                    alias,
+                    body,
+                    span: range_to_span(span),
                 },
             );
 
@@ -2513,6 +2672,42 @@ fn module_parser<'src>(
             function
         });
 
+    let active_pattern_head = just(TokenKind::KeywordPattern)
+        .ignore_then(
+            just(TokenKind::LParen)
+                .ignore_then(just(TokenKind::Bar))
+                .ignore_then(ident.clone())
+                .then(
+                    just(TokenKind::Bar)
+                        .ignore_then(just(TokenKind::Underscore))
+                        .ignore_then(just(TokenKind::Bar))
+                        .to(true)
+                        .or(just(TokenKind::Bar).to(false)),
+                )
+                .then_ignore(just(TokenKind::RParen)),
+        );
+
+    let active_pattern_decl = attr_list
+        .clone()
+        .then(visibility.clone())
+        .then(active_pattern_head)
+        .then(params.clone())
+        .then_ignore(just(TokenKind::Assign))
+        .then(expr.clone())
+        .map_with_span(
+            |((((attrs, visibility), (name, is_partial)), params), body), span: Range<usize>| {
+                ActivePatternDecl {
+                    name,
+                    is_partial,
+                    params,
+                    body,
+                    span: range_to_span(span),
+                    attrs,
+                    visibility,
+                }
+            },
+        );
+
     let extern_fn_decl = attr_list
         .clone()
         .then(visibility.clone())
@@ -2908,6 +3103,7 @@ fn module_parser<'src>(
     enum ModuleItem {
         Effect(EffectDecl),
         Function(Function),
+        ActivePattern(ActivePatternDecl),
         Decl(Decl),
     }
 
@@ -2920,6 +3116,7 @@ fn module_parser<'src>(
         let_decl.clone().map(ModuleItem::Decl),
         var_decl.clone().map(ModuleItem::Decl),
         conductor_decl.clone().map(ModuleItem::Decl),
+        active_pattern_decl.clone().map(ModuleItem::ActivePattern),
         function.clone().map(ModuleItem::Function),
     ));
 
@@ -2929,11 +3126,13 @@ fn module_parser<'src>(
         .map(|items| {
             let mut effects_vec = Vec::new();
             let mut functions_vec = Vec::new();
+            let mut active_patterns_vec = Vec::new();
             let mut decls_vec = Vec::new();
             for item in items {
                 match item {
                     ModuleItem::Effect(effect) => effects_vec.push(effect),
                     ModuleItem::Function(function) => functions_vec.push(function),
+                    ModuleItem::ActivePattern(active) => active_patterns_vec.push(active),
                     ModuleItem::Decl(decl) => decls_vec.push(decl),
                 }
             }
@@ -2942,6 +3141,7 @@ fn module_parser<'src>(
                 uses: Vec::new(),
                 effects: effects_vec,
                 functions: functions_vec,
+                active_patterns: active_patterns_vec,
                 decls: decls_vec,
             }
         })
@@ -2992,6 +3192,9 @@ fn append_module_trace_events(module: &Module, events: &mut Vec<ParserTraceEvent
     for decl in &module.decls {
         record_decl_trace_events(decl, events);
     }
+    for active_pattern in &module.active_patterns {
+        record_active_pattern_trace_events(active_pattern, events);
+    }
     for function in &module.functions {
         record_function_trace_events(function, events);
     }
@@ -3004,6 +3207,18 @@ fn record_function_trace_events(function: &Function, events: &mut Vec<ParserTrac
         }
     }
     record_expr_trace_events(&function.body, events);
+}
+
+fn record_active_pattern_trace_events(
+    active_pattern: &ActivePatternDecl,
+    events: &mut Vec<ParserTraceEvent>,
+) {
+    for param in &active_pattern.params {
+        if let Some(default) = &param.default {
+            record_expr_trace_events(default, events);
+        }
+    }
+    record_expr_trace_events(&active_pattern.body, events);
 }
 
 fn record_decl_trace_events(decl: &Decl, events: &mut Vec<ParserTraceEvent>) {

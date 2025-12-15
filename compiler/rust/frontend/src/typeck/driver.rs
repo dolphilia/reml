@@ -1894,6 +1894,12 @@ fn bind_pattern_to_env(
         PatternKind::Guard { pattern: inner, .. } => {
             bind_pattern_to_env(inner, scheme, env, var_gen);
         }
+        PatternKind::ActivePattern { argument, .. } => {
+            if let Some(argument) = argument {
+                let arg_scheme = Scheme::simple(var_gen.fresh_type());
+                bind_pattern_to_env(argument, &arg_scheme, env, var_gen);
+            }
+        }
         PatternKind::Literal(_) | PatternKind::Wildcard => {}
     }
 }
