@@ -54,3 +54,44 @@
   - Slice: `pattern.slice.type_mismatch`, `pattern.slice.too_many_parts`  
   - Regex: `pattern.regex.invalid_syntax`, `pattern.regex.unsupported_target`  
   - Binding: `pattern.binding.duplicate_name`
+
+## 優先順に沿った BNF 追加案とサンプル候補（Phase4 マトリクス紐付け）
+以下は `docs/spec/1-5-formal-grammar-bnf.md` への追加案と、`examples/spec_core/chapter1/match_expr/` に置く想定サンプル、および `phase4-scenario-matrix.csv` で使う診断キー案。
+
+1. **Or-patterns（最優先）**  
+   - BNF 追記: `OrPattern ::= Pattern "|" Pattern { "|" Pattern }` を `Pattern` オルタナティブに追加。  
+   - サンプル案: `bnf-match-or-pattern-ok.reml`（成功）、`bnf-match-or-pattern-unreachable.reml`（先行アームにより後続が到達不能）。  
+   - 診断キー案: `pattern.unreachable_arm`（到達不能）、`pattern.exhaustiveness.missing`（網羅性不足）。
+
+2. **Slice Patterns（高優先）**  
+   - BNF 追記: `SlicePattern ::= "[" Pattern? ".." Pattern? "]"`（複数 `..` は不可を注記）。`Pattern` に追加。  
+   - サンプル案: `bnf-match-slice-head-tail-ok.reml`（`[head, ..tail]` 成功）、`bnf-match-slice-invalid-target.reml`（非コレクション対象）。  
+   - 診断キー案: `pattern.slice.type_mismatch`, `pattern.slice.too_many_parts`, `pattern.exhaustiveness.missing`。
+
+3. **Range Patterns（高優先）**  
+   - BNF 追記: `RangePattern ::= RangeBound ".." RangeBound ["="]`（`..=` を閉区間として明示）。`RangeBound ::= Literal | Ident | ConstructorPattern`。  
+   - サンプル案: `bnf-match-range-inclusive-ok.reml`（`1..=10` 成功）、`bnf-match-range-bound-inverted.reml`（下限>上限）。  
+   - 診断キー案: `pattern.range.type_mismatch`, `pattern.range.bound_inverted`, `pattern.exhaustiveness.missing`。
+
+4. **Binding Operator（中優先）**  
+   - BNF 追記: `BindingPattern ::= Ident "@" Pattern | Pattern "as" Ident` を `Pattern` に追加し、優先順位表で `as`/`@` の結合順を明示。  
+   - サンプル案: `bnf-match-binding-as-ok.reml`（`pat as name`）、`bnf-match-binding-at-duplicate.reml`（`as` と `@` 併用で重複）。  
+   - 診断キー案: `pattern.binding.duplicate_name`。
+
+5. **Regex パターン糖衣（中優先）**  
+   - BNF 追記: `RegexPattern ::= "r\"" RegexBody "\""` を `Pattern` に追加し、文字列/バイト列に限定する注記を併記。Active Pattern 糖衣である旨を明示。  
+   - サンプル案: `bnf-match-regex-ok.reml`（数値文字列の抽出成功）、`bnf-match-regex-unsupported-target.reml`（対象が非テキスト）。  
+   - 診断キー案: `pattern.regex.invalid_syntax`, `pattern.regex.unsupported_target`, `pattern.exhaustiveness.missing`（部分マッチを警告扱いにする場合）。
+
+6. **Active Pattern 呼び出しとの統合（優先度: Or/Slice/Range 確定後に併走）**  
+   - BNF 追記: `ActivePatternApp ::= "(|" Ident "|)" Pattern?` を `Pattern`/`Primary` に追加し、Or/Slice/Range より高い/低いどちらの優先度にするかを表で明示。  
+   - サンプル案: `bnf-match-active-or-combined.reml`（Active と Or/Slice 併用）、`bnf-match-active-effect-violation.reml`（@pure で副作用）。  
+   - 診断キー案: `pattern.active.return_contract_invalid`, `pattern.active.effect_violation`, 併用時は上記各パターン診断と組み合わせ。
+
+### ガード/エイリアス方針（仕様側で確定）
+- ガード記法は **`when` を正規形** とし、過去互換のため `if` を受理する場合は「非推奨エイリアス」と明記する。本文・例示は `when` へ統一。BNF は `MatchGuard ::= "when" Expr`（実装上 `if` も許可する場合は脚注で記載）。
+- `MatchGuard` と `MatchAlias` の順序は **順不同許容** を仕様に明記し、推奨形は `when` → `as`。BNF は `MatchArmTail ::= MatchGuard? MatchAlias? | MatchAlias? MatchGuard?` とする。
+
+### 実装チーム向け共有メモ（短文）
+- 解析器は `when` を正規形としつつ `if` を警告付きで許容（警告キー案: `pattern.guard.if_deprecated`）。将来は `when` のみに絞る前提でフェーズアウト計画を検討。
+- `MatchGuard`/`MatchAlias` は両順序を受理し、出力 AST では guard→alias の順で正規化する。既存テストは guard-only/alias-only/併用両順を追加して回帰防止。

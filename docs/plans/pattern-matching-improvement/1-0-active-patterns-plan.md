@@ -50,3 +50,72 @@
   - `ActivePatternApp  ::= "(|" Ident "|)" Pattern?` を `Pattern` もしくは `Primary` に統合（優先順位を表で明記）  
   - `MatchArm` のガード/エイリアス順は `MatchGuard? MatchAlias?` 固定だが Phase 4 実装は順不同を許容しているため、どちらに揃えるか決定する必要あり。
 - 診断キーは仕様本文に未登場。最低限 `pattern.active.return_contract_invalid`（Option/Result 以外の戻り値）、`pattern.active.effect_violation`（@pure で副作用を持つ場合）を `2-5-error.md` か `1-1` 診断節に追加する差分を要検討。
+
+## 仕様差分ドラフトパッチ（準備用スケッチ）
+以下は実装前にレビュー用として `docs/spec/1-1-syntax.md` / `1-5-formal-grammar-bnf.md` / `2-5-error.md` に適用を検討する短縮パッチ案。
+
+### 1-1-syntax.md への追記案（抜粋）
+```
+@@ C.3 パターン（束縛・`match` で共通）
+* アクティブパターン：`(|Name|_|)` / `(|Name|)` で定義された分解ロジックを `match` で使用できる。
+  - 使用例：`match input with | (|IntLit|_|) n -> n | _ -> 0`
+  - ガード/エイリアスとの併用可。評価順は「パターン一致 → ガード → エイリアス」。
+
+@@ C.4 `match` 式
+* 例を追加：
+  | (|HexInt|_|) n when n > 0xFF -> "large"
+  | Some(x) | None as v          -> ...
+  | [head, ..tail]               -> ...
+  | 1..=10                       -> ...
+```
+
+### 1-5-formal-grammar-bnf.md への追記案（抜粋）
+```
+@@ 4. 式
+Primary         ::= ... | ActivePatternApp | ...
+MatchArm        ::= "|" Pattern MatchArmTail "->" Expr
+MatchArmTail    ::= MatchGuard? MatchAlias? | MatchAlias? MatchGuard?
+MatchGuard      ::= ("if" | "when") Expr
+MatchAlias      ::= "as" Ident
+ActivePatternApp ::= "(|" Ident "|)" Pattern?
+
+@@ 5. パターン
+Pattern         ::= "_"
+                  | Ident
+                  | OrPattern
+                  | TuplePattern
+                  | RecordPattern
+                  | ConstructorPattern
+                  | SlicePattern
+                  | RangePattern
+                  | BindingPattern
+                  | RegexPattern
+                  | ActivePatternApp
+
+OrPattern       ::= Pattern "|" Pattern { "|" Pattern }
+SlicePattern    ::= "[" Pattern? ".." Pattern? "]"
+RangePattern    ::= RangeBound ".." RangeBound ["="]
+BindingPattern  ::= Ident "@" Pattern | Pattern "as" Ident
+RegexPattern    ::= "r\"" RegexBody "\""
+RangeBound      ::= Literal | Ident | ConstructorPattern
+```
+
+### 2-5-error.md への診断キー追加案（抜粋）
+```
+- pattern.active.return_contract_invalid : Active Pattern の戻り値が Option/Result 以外
+- pattern.active.effect_violation        : @pure 文脈で副作用を持つ Active Pattern を使用
+- pattern.exhaustiveness.missing         : 網羅性未達（Or/Slice/Range/Active 追加後も共通）
+- pattern.unreachable_arm                : 先行アームにより到達不能
+- pattern.range.type_mismatch            : Range 境界の型が一致しない
+- pattern.range.bound_inverted           : 下限 > 上限
+- pattern.slice.type_mismatch            : Slice パターンに非コレクションを適用
+- pattern.slice.too_many_parts           : Slice パターンの `..` が複数など不正形
+- pattern.regex.invalid_syntax           : Regex リテラル糖衣の構文エラー
+- pattern.regex.unsupported_target       : 対象型が文字列/バイト列でない
+- pattern.binding.duplicate_name         : `as` / `@` 併用で同一名を重複束縛
+```
+
+### ガード/エイリアス統一方針（Active 併用時の扱い）
+- ガードは正規形として `when` を使用し、互換目的で `if` を許容する場合は警告付きエイリアスとする（警告キー案: `pattern.guard.if_deprecated`）。例示・仕様本文は `when` へ統一。
+- `MatchGuard` と `MatchAlias` の順序は順不同を受理し、AST 正規化は guard→alias の順で固定する。BNF では `MatchArmTail ::= MatchGuard? MatchAlias? | MatchAlias? MatchGuard?` を採用予定。
+- Active Pattern の例示では `(|Name|_|) x when cond as v -> ...` 形式を推奨形として示し、順不同許容に関する注記を `1-5` 側に併記する。
