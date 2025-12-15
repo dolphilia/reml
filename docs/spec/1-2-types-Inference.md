@@ -177,6 +177,21 @@ impl Add<i64, i64, i64> for i64 { fn add(a,b) = a + b }
 * **Stage と Capability**: `stage = Experimental` の効果を扱う場合、シグネチャに `@requires_capability(stage="experimental")` を含め、Capability Registry が許可した環境でのみビルドできるようにする。
 > **移行完了（Phase 2-7）**: `RunConfig.extensions["effects"].type_row_mode` の既定値は `"ty-integrated"` であり、`TArrow of ty * effect_row * ty` を通じて効果行が常時型表現へ統合される。CI や互換性検証で従来のメタデータ運用が必要な場合は `"metadata-only"` を明示して切り替え、移行期の二重出力が必要な場合のみ `"dual-write"` を利用する。
 
+#### C.6.1 アクティブパターンの型付けと網羅性（ドラフト）
+
+* **定義の型**:
+  * 部分アクティブパターン `pattern (|Name|_|)(p1, …, pn) = body` は関数型 `(P1, …, Pn) -> Option<T>` を持つ。`Option` 以外の戻り値は `pattern.active.return_contract_invalid`。
+  * 完全アクティブパターン `pattern (|Name|)(p1, …, pn) = body` は `(P1, …, Pn) -> T`。戻り値型 `T` は常にマッチ成功を表す。
+  * `Result<T, E>` を返す実装はサポート外（`pattern.active.return_contract_invalid`）とし、`Option` へ変換するか `Result` を外層で処理する。
+* **使用時の型付け**:
+  * `(|Name|_|) pat` の型推論は `Name : (A1, …, An) -> Option<T>` を要求し、`pat` に束縛される値の型を `T` とする。`Option` の `Some` のときのみマッチ成功。
+  * `(|Name|) pat` は `Name : (A1, …, An) -> T` を要求し、常に成功するパターンとして `pat` へ `T` を束縛。
+  * 引数 `A1…An` の型は定義側のパラメータから決まり、スクラティニー値をそのまま渡す単項形（`(|Name|_|) v`）を推奨形とする。
+* **網羅性と到達性**:
+  * 部分アクティブパターンは **網羅性に寄与しない**（`None` で次アームへ）。`match` 網羅性検査では未達の場合に `pattern.exhaustiveness.missing` を発行し、欠落分岐を `extensions["pattern"].missing` に列挙する。
+  * 完全アクティブパターンは **常に成功**するため、先行アームに置くと後続アームを到達不能にする可能性がある（`pattern.unreachable_arm`）。
+  * `as` エイリアスや `when` ガードは Active Pattern 後に適用され、型環境には `Option` 展開後の束縛が渡される。
+
 ### C.7 失敗時の方針（エラー）
 
 * **期待/実際**・**候補トレイト**・**不足制約**を列挙。

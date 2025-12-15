@@ -126,6 +126,14 @@ fn sum(xs: [i64]) -> i64 = { print("x"); fold(xs, 0, (+)) }
 * `security` 効果は **ポリシー検査・適用**を行う API に付与される。`Capability.enforce_security_policy` は `security` と `audit` の両方を伴うケースが多く、組み合わせの診断メッセージを [3-6-core-diagnostics-audit.md](3-6-core-diagnostics-audit.md) で規定する。
 * 監査・セキュリティ関連 API は Capability Registry に接続されるため、`@cfg` で無効化せずとも他プラットフォームでダミー実装を提供し、効果集合の整合性を維持する。
 
+### C.3 アクティブパターンの効果扱い（ドラフト）
+
+* **評価順序**：`match` はスクラティニーを評価した後、各アームでアクティブパターンを呼び出し、その結果に `when` ガードと `as` エイリアスを適用する。呼び出し時に発生した効果はそのアームの効果集合に加算される。
+* **`@pure` 整合**：`@pure` 関数やブロック内でアクティブパターンを利用する場合、定義側が効果を持たないことが前提。`io` などを含む場合は `pattern.active.effect_violation` を発行し、`Diagnostic.extensions["effects"]` に発生効果を記録する。
+* **効果伝搬**：部分パターン（`Option<T>` 戻り値）であっても `body` が持つ効果は常に伝搬する。完全パターンは常に成功するため、効果を伴う場合は後続アームの到達性に影響しうる点に注意。
+* **Stage / Capability**：呼び出し先の効果タグが Capability Registry の Stage 要件を持つ場合、通常の関数呼び出しと同様に検査され、満たされないと `effects.contract.stage_mismatch` が併発する。
+* **診断の棲み分け**：戻り値契約違反は型側の `pattern.active.return_contract_invalid`、効果違反は本節の `pattern.active.effect_violation` で報告し、必要に応じて `Diagnostic.secondaries` に補助診断を付ける。
+
 
 ---
 
