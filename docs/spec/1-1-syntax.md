@@ -441,6 +441,11 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
 * レコード：`{ x, y: y0 }`（`x: x` は `x` に省略可）
 * 代数型：`Some(x)`, `Add(Int(a), b)`
   - **モジュール修飾列挙子**: コンストラクタは `Option.None` や `DSL.Node(tag)` のように `.` 区切りで修飾できる。`Option.None` の末尾 `None`（先頭大文字）が列挙子とみなされ、前置の `Option` はモジュール／型名として扱われる。
+* Or パターン：`Some(A | B)`（左結合。網羅性診断は Or 全体で判定）
+* スライスパターン：`[head, ..tail]`, `[first, .., last]`（`..` は 1 回のみ）
+* 範囲パターン：`1..=10`, `'a'..'z'`（比較可能な型に限定）
+* バインディング：`pat as name`（推奨）／`name @ pat`（エイリアス糖衣）。`when` ガードと併用可。
+* 正規表現パターン：`r"^\\d+$" as digits`（文字列/バイト列対象。全体一致に限定）
 * ガード：`p when cond`（`if` は互換用に受理するが警告対象）
 * アクティブパターン：`(|Name|_|)` / `(|Name|)` で定義した分解ロジックをパターンとして使用
 
@@ -468,18 +473,19 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
 
   * スクラティニー `expr` を**最初に評価**し、その結果を保持したまま各アームを検査する。
   * アームは**上から順に**照合され、先に一致した分岐のみが評価される。
-  * パターンには、ワイルドカード `_`、リテラル（整数、文字列、真偽値など）、変数、タプル、レコード、コンストラクタが使用できる。
-  * ガード `| pat when cond -> ...` の `cond` は、`pat` が一致した後で束縛を共有して評価され、`cond` が偽なら次のアームへ進む（以降のアームでは再評価しない）。`if` ガードは互換目的で受理するが、正規形は `when`。ガードと `as` エイリアスの記述順は順不同で受理し、AST では `guard -> alias` の順に正規化する。
+  * パターンには、ワイルドカード `_`、リテラル（整数、文字列、真偽値など）、変数、タプル、レコード、コンストラクタに加え、Or/スライス/範囲/バインディング/正規表現/アクティブパターンを使用できる。
+  * ガード `| pat when cond -> ...` の `cond` は、`pat` が一致した後で束縛を共有して評価され、`cond` が偽なら次のアームへ進む（以降のアームでは再評価しない）。`if` ガードは互換目的で受理するが、正規形は `when`。ガードと `as`/`@` エイリアスの記述順は順不同で受理し、AST では `guard -> alias` の順に正規化する。
   * アクティブパターン `(|Name|_|) value` は `Option` を返す関数を介して分解し、`Some` のときに成功する。`(|Name|) value` は常に成功する完全パターンとして扱われる。
   網羅性は [効果と安全性](1-3-effects-safety.md) および [エラー設計](2-5-error.md) で扱う（警告/エラー方針）。
 
   ```reml
   match input with
+  | Some(A | B) when cond(input) -> handle_ab(input)
+  | whole @ [head, ..tail] when head > 0 -> log(whole, tail)
+  | 1..=10 as small_range -> render_range(small_range)
+  | r"^\\d+$" as digits -> digits   // 文字列/バイト列のみ対応
   | (|HexInt|_|) n when n > 0xFF -> "large"
-  | Some(x) | None as v          -> debug(v)
-  | [head, ..tail]               -> handle(head, tail)
-  | 1..=10                       -> "small"
-  | _                            -> "other"
+  | _ -> "other"
   ```
 
 * ループ：`while`・`for` は式として扱われ、結果は `()`（ユニット）です。`loop` は無条件ループで、`break`/`continue` は今後の拡張に備えて予約されています。
