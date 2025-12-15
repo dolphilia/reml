@@ -12,3 +12,9 @@
 - [1-1-pattern-surface-plan.md](1-1-pattern-surface-plan.md): Or/Slice/Range/Binding/Regex など周辺機能の拡張計画
 
 > すべてドラフト版です。実施に伴い内容を更新し、`docs/plans/README.md` からも参照します。
+
+## 実装連携メモ（Rust/OCaml パーサ向け短報）
+
+- `match` ガードは正規形を `when` とし、互換目的で `if` を受理する場合は `pattern.guard.if_deprecated` 警告を発行する。
+- AST ではガードと `as` エイリアスを **guard → alias** の順に正規化する（記述順は順不同で受理）。
+- 上記方針を Rust/OCaml パーサ双方で揃え、診断キーと正規化順が一致することをテストで固定する。
