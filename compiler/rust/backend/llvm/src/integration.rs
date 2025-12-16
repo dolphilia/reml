@@ -7,6 +7,7 @@ use crate::target_machine::{
 use crate::type_mapping::RemlType;
 use crate::verify::Verifier;
 use serde::Deserialize;
+use serde_json::Value;
 use std::error::Error;
 use std::{fmt, fs::File, io, path::Path};
 
@@ -162,12 +163,16 @@ impl BackendDiffSnapshot {
 /// モジュール全体と MIR 関数の構造を JSON から読み込む。
 #[derive(Debug, Deserialize)]
 struct MirModuleSpec {
+    #[serde(default)]
+    schema_version: Option<String>,
     module: Option<String>,
     #[serde(default)]
     metadata: Vec<String>,
     #[serde(default)]
     runtime_symbols: Vec<String>,
     functions: Vec<MirFunctionJson>,
+    #[serde(default)]
+    active_patterns: Vec<Value>,
 }
 
 impl MirModuleSpec {
@@ -198,6 +203,10 @@ struct MirFunctionJson {
     attributes: Vec<String>,
     #[serde(default)]
     ffi_calls: Vec<FfiCallJson>,
+    #[serde(default)]
+    exprs: Vec<MirExprJson>,
+    #[serde(default)]
+    body: Option<usize>,
 }
 
 impl MirFunctionJson {
@@ -209,7 +218,10 @@ impl MirFunctionJson {
         if let Some(ret) = self.return_type {
             builder = builder.with_return(parse_reml_type(&ret));
         }
-        for attr in self.attributes {
+
+        let mut attributes = self.attributes;
+        attributes.extend(match_attributes(&self.exprs));
+        for attr in attributes {
             builder = builder.with_attribute(attr);
         }
         for ffi in self.ffi_calls {
@@ -241,6 +253,263 @@ impl FfiCallJson {
                 .map(|arg| parse_reml_type(&arg))
                 .collect(),
             ret: self.ret.map(|ret| parse_reml_type(&ret)),
+        }
+    }
+}
+
+/// フロントエンド MIR から Match/Pattern 情報を抽出する簡易モデル。
+#[derive(Debug, Deserialize)]
+struct MirExprJson {
+    id: usize,
+    kind: MirExprKindJson,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum MirExprKindJson {
+    Match {
+        target: usize,
+        #[serde(default)]
+        arms: Vec<MirMatchArmJson>,
+        #[serde(default)]
+        lowering: Option<MatchLoweringPlanJson>,
+    },
+    Call {
+        callee: usize,
+        #[serde(default)]
+        args: Vec<usize>,
+    },
+    Binary {
+        #[serde(default)]
+        operator: String,
+        left: usize,
+        right: usize,
+    },
+    IfElse {
+        condition: usize,
+        then_branch: usize,
+        else_branch: usize,
+    },
+    PerformCall {
+        call: MirEffectCallJson,
+    },
+    Identifier { ident: Value },
+    Literal { value: Value },
+    Unknown,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirEffectCallJson {
+    effect: Value,
+    argument: usize,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirMatchArmJson {
+    pattern: MirPatternJson,
+    #[serde(default)]
+    guard: Option<usize>,
+    #[serde(default)]
+    alias: Option<String>,
+    body: usize,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum MirPatternJson {
+    Wildcard,
+    Var { name: String },
+    Literal(Value),
+    Tuple { elements: Vec<MirPatternJson> },
+    Record {
+        fields: Vec<MirPatternRecordFieldJson>,
+        #[serde(default)]
+        has_rest: bool,
+    },
+    Constructor { name: String, args: Vec<MirPatternJson> },
+    Binding {
+        name: String,
+        pattern: Box<MirPatternJson>,
+        #[serde(default)]
+        via_at: bool,
+    },
+    Or { variants: Vec<MirPatternJson> },
+    Slice(MirSlicePatternJson),
+    Range {
+        #[serde(default)]
+        start: Option<Box<MirPatternJson>>,
+        #[serde(default)]
+        end: Option<Box<MirPatternJson>>,
+        inclusive: bool,
+    },
+    Regex { pattern: String },
+    Active(MirActivePatternCallJson),
+}
+
+#[derive(Debug, Deserialize)]
+struct MirPatternRecordFieldJson {
+    key: String,
+    #[serde(default)]
+    value: Option<Box<MirPatternJson>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirSlicePatternJson {
+    #[serde(default)]
+    head: Vec<MirPatternJson>,
+    #[serde(default)]
+    rest: Option<MirSliceRestJson>,
+    #[serde(default)]
+    tail: Vec<MirPatternJson>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirSliceRestJson {
+    #[serde(default)]
+    binding: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirActivePatternCallJson {
+    name: String,
+    #[serde(default)]
+    kind: Option<String>,
+    #[serde(default)]
+    argument: Option<Box<MirPatternJson>>,
+    #[serde(default)]
+    input_binding: Option<String>,
+    #[serde(default)]
+    miss_target: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MatchLoweringPlanJson {
+    #[serde(default)]
+    owner: Option<String>,
+    #[serde(default)]
+    target_type: Option<String>,
+    #[serde(default)]
+    arm_count: Option<usize>,
+    #[serde(default)]
+    arms: Vec<MatchArmLoweringJson>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MatchArmLoweringJson {
+    pattern: PatternLoweringJson,
+    #[serde(default)]
+    has_guard: bool,
+    #[serde(default)]
+    alias: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PatternLoweringJson {
+    label: String,
+    #[serde(default)]
+    miss_on_none: bool,
+    #[serde(default)]
+    always_matches: bool,
+    #[serde(default)]
+    children: Vec<PatternLoweringJson>,
+}
+
+fn match_attributes(exprs: &[MirExprJson]) -> Vec<String> {
+    let mut attrs = Vec::new();
+    for expr in exprs {
+        if let MirExprKindJson::Match { arms, lowering, .. } = &expr.kind {
+            let pattern_labels: Vec<String> = arms
+                .iter()
+                .map(|arm| summarize_pattern(&arm.pattern))
+                .collect();
+            let lowering_label = lowering
+                .as_ref()
+                .and_then(|l| l.target_type.clone())
+                .unwrap_or_else(|| "unknown".into());
+            let attr = format!(
+                "mir.match(id={},arms={},ty={},patterns=[{}])",
+                expr.id,
+                arms.len(),
+                lowering_label,
+                pattern_labels.join("|")
+            );
+            attrs.push(attr);
+        }
+    }
+    attrs
+}
+
+fn summarize_pattern(pattern: &MirPatternJson) -> String {
+    match pattern {
+        MirPatternJson::Wildcard => "_".into(),
+        MirPatternJson::Var { name } => format!("var({})", name),
+        MirPatternJson::Literal(_) => "literal".into(),
+        MirPatternJson::Tuple { elements } => format!("tuple({})", elements.len()),
+        MirPatternJson::Record { has_rest, fields } => {
+            if *has_rest {
+                format!("record({}+,..)", fields.len())
+            } else {
+                format!("record({})", fields.len())
+            }
+        }
+        MirPatternJson::Constructor { name, args } => {
+            format!("ctor({};{})", name, args.len())
+        }
+        MirPatternJson::Binding { name, pattern, via_at } => {
+            let inner = summarize_pattern(pattern);
+            if *via_at {
+                format!("binding(@ {}:{})", name, inner)
+            } else {
+                format!("binding(as {}:{})", name, inner)
+            }
+        }
+        MirPatternJson::Or { variants } => {
+            let joined = variants
+                .iter()
+                .map(summarize_pattern)
+                .collect::<Vec<_>>()
+                .join("|");
+            format!("or({})", joined)
+        }
+        MirPatternJson::Slice(MirSlicePatternJson { head, rest, tail }) => {
+            let mut parts = Vec::new();
+            if !head.is_empty() {
+                parts.push(format!("head{}", head.len()));
+            }
+            if rest.is_some() {
+                parts.push("rest".into());
+            }
+            if !tail.is_empty() {
+                parts.push(format!("tail{}", tail.len()));
+            }
+            format!("slice({})", parts.join(","))
+        }
+        MirPatternJson::Range { inclusive, .. } => {
+            if *inclusive {
+                "range(..=)".into()
+            } else {
+                "range(..)".into()
+            }
+        }
+        MirPatternJson::Regex { .. } => "regex".into(),
+        MirPatternJson::Active(MirActivePatternCallJson {
+            name,
+            kind,
+            miss_target,
+            ..
+        }) => {
+            let mut flags = Vec::new();
+            if let Some(kind) = kind {
+                flags.push(kind.to_string());
+            }
+            if miss_target.is_some() {
+                flags.push("miss".into());
+            }
+            if flags.is_empty() {
+                format!("active({})", name)
+            } else {
+                format!("active({};{})", name, flags.join(","))
+            }
         }
     }
 }
