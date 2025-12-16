@@ -206,3 +206,10 @@ RangeBound      ::= Literal | Ident | ConstructorPattern
 - 4: Active Pattern サンプル (`bnf-activepattern-*` / `bnf-match-active-effect-violation`) の expected/diagnostic 再取得とマトリクス更新を実施し、resolution_notes にログを残す。
 - 3: HIR/IR で Option/値の実行時分岐を生成するコードパスを追加し、ReturnCarrier と IR の挙動を突き合わせる。
 - 5: Guard/複合パターンを含む網羅性判定を専用パスへ切り出し、`pattern.exhaustiveness.missing`/`pattern.unreachable_arm` の精度を上げる。
+
+### 進捗メモ（2026-02-XX）
+- 推奨順 1 実施済み: Typeck のシンボル登録で Active Pattern と `fn` の同名衝突を検出し、`pattern.active.name_conflict` を新設（`compiler/rust/frontend/src/typeck/driver.rs`）。`spec_core` テスト `active_pattern_name_conflicts_with_function_symbol` 追加。
+- 推奨順 2 実施済み: diagnostics registry に `pattern.active.*` / `pattern.exhaustiveness.*` 文面を登録し、CLI 出力へ `diagnostic.message` 拡張を同期（`compiler/rust/frontend/src/diagnostic/messages/pattern.rs` / `src/bin/reml_frontend.rs`）。
+- 推奨順 4 実施済み: Active Pattern サンプル expected を再取得し、`phase4-scenario-matrix.csv` の CH1-MATCH-018 を `ok` へ遷移。`bnf-match-active-effect-violation` を純粋文脈での `perform Console.log` に修正。
+- 推奨順 3 実施済み: Typeck デバッグ出力に Active Pattern の ReturnCarrier 分岐（OptionLike/Value）を記録し、実行時分岐計画を確認できるようにした（`ActivePatternLowering` 追加）。
+- 推奨順 5 実施済み: 網羅性判定を `ExhaustivenessTracker` に切り出し、Guard/Bool/Option/完全 Active Pattern を考慮した `pattern.exhaustiveness.missing` / `pattern.unreachable_arm` 精度を向上。
