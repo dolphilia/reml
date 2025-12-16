@@ -2027,6 +2027,7 @@ fn infer_expr(
             let mut arm_type: Option<Type> = None;
             let unreachable_indices: HashSet<usize> =
                 coverage.unreachable_arm_indices.iter().copied().collect();
+            let mut typed_arms = Vec::new();
             for (arm_index, arm) in arms.iter().enumerate() {
                 if unreachable_indices.contains(&arm_index) {
                     violations.push(TypecheckViolation::pattern_unreachable_arm(arm.span));
@@ -2040,7 +2041,7 @@ fn infer_expr(
                 if let Some(alias) = &arm.alias {
                     arm_env.insert(alias.name.clone(), Scheme::simple(var_gen.fresh_type()));
                 }
-                if let Some(guard) = &arm.guard {
+                let typed_guard_draft = if let Some(guard) = &arm.guard {
                     let guard_result = infer_expr(
                         guard,
                         &mut arm_env,
@@ -2055,8 +2056,11 @@ fn infer_expr(
                         context,
                     );
                     check_bool_condition(guard.span(), &guard_result.ty, violations, context);
-                    dicts.extend(guard_result.dict_ref_ids);
-                }
+                    dicts.extend(guard_result.dict_ref_ids.clone());
+                    Some(guard_result)
+                } else {
+                    None
+                };
                 let body_result = infer_expr(
                     &arm.body,
                     &mut arm_env,
@@ -2080,6 +2084,12 @@ fn infer_expr(
                     arm_type = Some(body_result.ty.clone());
                 }
                 dicts.extend(body_result.dict_ref_ids);
+                typed_arms.push(TypedMatchArmDraft {
+                    pattern: lower_typed_pattern(&arm.pattern),
+                    guard: typed_guard_draft,
+                    alias: arm.alias.as_ref().map(|ident| ident.name.clone()),
+                    body: body_result,
+                });
             }
             if !coverage.coverage_reached {
                 violations.push(TypecheckViolation::pattern_exhaustiveness_missing(
@@ -2088,7 +2098,10 @@ fn infer_expr(
             }
             make_typed(
                 expr,
-                TypedExprKindDraft::Unknown,
+                TypedExprKindDraft::Match {
+                    target: Box::new(target_result),
+                    arms: typed_arms,
+                },
                 arm_type.unwrap_or_else(|| Type::builtin(BuiltinType::Unknown)),
                 dicts,
             )
@@ -2438,6 +2451,92 @@ fn bind_pattern_to_env(
             }
         }
         PatternKind::Literal(_) | PatternKind::Wildcard => {}
+    }
+}
+
+fn lower_typed_pattern(pattern: &Pattern) -> typed::TypedPattern {
+    use typed::{TypedPatternKind, TypedPatternRecordField, TypedSlicePatternItem};
+
+    let kind = match &pattern.kind {
+        PatternKind::Wildcard => TypedPatternKind::Wildcard,
+        PatternKind::Var(ident) => TypedPatternKind::Var {
+            name: ident.name.clone(),
+        },
+        PatternKind::Literal(literal) => TypedPatternKind::Literal(literal.clone()),
+        PatternKind::Tuple { elements } => TypedPatternKind::Tuple {
+            elements: elements.iter().map(lower_typed_pattern).collect(),
+        },
+        PatternKind::Record { fields, has_rest } => TypedPatternKind::Record {
+            fields: fields
+                .iter()
+                .map(|field| TypedPatternRecordField {
+                    key: field.key.name.clone(),
+                    value: field.value.as_deref().map(lower_typed_pattern).map(Box::new),
+                })
+                .collect(),
+            has_rest: *has_rest,
+        },
+        PatternKind::Constructor { name, args } => TypedPatternKind::Constructor {
+            name: name.name.clone(),
+            args: args.iter().map(lower_typed_pattern).collect(),
+        },
+        PatternKind::Guard { pattern: inner, .. } => {
+            return lower_typed_pattern(inner);
+        }
+        PatternKind::Binding {
+            name,
+            pattern: inner,
+            via_at,
+        } => TypedPatternKind::Binding {
+            name: name.name.clone(),
+            pattern: Box::new(lower_typed_pattern(inner)),
+            via_at: *via_at,
+        },
+        PatternKind::Or { variants } => TypedPatternKind::Or {
+            variants: variants.iter().map(lower_typed_pattern).collect(),
+        },
+        PatternKind::Slice { elements } => TypedPatternKind::Slice {
+            elements: elements
+                .iter()
+                .map(|elem| match elem {
+                    SlicePatternItem::Element(pat) => {
+                        TypedSlicePatternItem::Element(lower_typed_pattern(pat))
+                    }
+                    SlicePatternItem::Rest { ident } => TypedSlicePatternItem::Rest {
+                        ident: ident.as_ref().map(|id| id.name.clone()),
+                    },
+                })
+                .collect(),
+        },
+        PatternKind::Range {
+            start,
+            end,
+            inclusive,
+        } => TypedPatternKind::Range {
+            start: start.as_deref().map(lower_typed_pattern).map(Box::new),
+            end: end.as_deref().map(lower_typed_pattern).map(Box::new),
+            inclusive: *inclusive,
+        },
+        PatternKind::Regex { pattern, .. } => TypedPatternKind::Regex {
+            pattern: pattern.clone(),
+        },
+        PatternKind::ActivePattern {
+            name,
+            is_partial,
+            argument,
+        } => TypedPatternKind::ActivePattern {
+            name: name.name.clone(),
+            is_partial: *is_partial,
+            argument: argument
+                .as_deref()
+                .map(lower_typed_pattern)
+                .map(Box::new),
+        },
+    };
+
+    typed::TypedPattern {
+        span: pattern.span,
+        kind,
     }
 }
 
@@ -3133,6 +3232,10 @@ enum TypedExprKindDraft {
     Identifier {
         ident: Ident,
     },
+    Match {
+        target: Box<TypedExprDraft>,
+        arms: Vec<TypedMatchArmDraft>,
+    },
     Call {
         callee: Box<TypedExprDraft>,
         args: Vec<TypedExprDraft>,
@@ -3156,6 +3259,13 @@ enum TypedExprKindDraft {
 struct TypedEffectCallDraft {
     effect: Ident,
     argument: Box<TypedExprDraft>,
+}
+
+struct TypedMatchArmDraft {
+    pattern: typed::TypedPattern,
+    guard: Option<TypedExprDraft>,
+    alias: Option<String>,
+    body: TypedExprDraft,
 }
 
 struct DictRefDraft {
@@ -3198,6 +3308,20 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
             operator,
             left: Box::new(finalize_typed_expr(*left, substitution)),
             right: Box::new(finalize_typed_expr(*right, substitution)),
+        },
+        TypedExprKindDraft::Match { target, arms } => typed::TypedExprKind::Match {
+            target: Box::new(finalize_typed_expr(*target, substitution)),
+            arms: arms
+                .into_iter()
+                .map(|arm| typed::TypedMatchArm {
+                    pattern: arm.pattern,
+                    guard: arm
+                        .guard
+                        .map(|guard| finalize_typed_expr(guard, substitution)),
+                    alias: arm.alias,
+                    body: finalize_typed_expr(arm.body, substitution),
+                })
+                .collect(),
         },
         TypedExprKindDraft::Call { callee, args } => typed::TypedExprKind::Call {
             callee: Box::new(finalize_typed_expr(*callee, substitution)),

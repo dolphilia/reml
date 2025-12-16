@@ -87,6 +87,10 @@ pub enum TypedExprKind {
         left: Box<TypedExpr>,
         right: Box<TypedExpr>,
     },
+    Match {
+        target: Box<TypedExpr>,
+        arms: Vec<TypedMatchArm>,
+    },
     IfElse {
         condition: Box<TypedExpr>,
         then_branch: Box<TypedExpr>,
@@ -103,6 +107,79 @@ pub enum TypedExprKind {
 pub struct TypedEffectCall {
     pub effect: Ident,
     pub argument: Box<TypedExpr>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedMatchArm {
+    pub pattern: TypedPattern,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub guard: Option<TypedExpr>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alias: Option<String>,
+    pub body: TypedExpr,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedPattern {
+    pub span: Span,
+    pub kind: TypedPatternKind,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TypedPatternKind {
+    Wildcard,
+    Var { name: String },
+    Literal(Literal),
+    Tuple { elements: Vec<TypedPattern> },
+    Record {
+        fields: Vec<TypedPatternRecordField>,
+        has_rest: bool,
+    },
+    Constructor {
+        name: String,
+        args: Vec<TypedPattern>,
+    },
+    Binding {
+        name: String,
+        pattern: Box<TypedPattern>,
+        via_at: bool,
+    },
+    Or {
+        variants: Vec<TypedPattern>,
+    },
+    Slice {
+        elements: Vec<TypedSlicePatternItem>,
+    },
+    Range {
+        start: Option<Box<TypedPattern>>,
+        end: Option<Box<TypedPattern>>,
+        inclusive: bool,
+    },
+    Regex { pattern: String },
+    ActivePattern {
+        name: String,
+        is_partial: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        argument: Option<Box<TypedPattern>>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedPatternRecordField {
+    pub key: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<Box<TypedPattern>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TypedSlicePatternItem {
+    Element(TypedPattern),
+    Rest {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        ident: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]

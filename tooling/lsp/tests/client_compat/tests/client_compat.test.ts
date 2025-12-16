@@ -142,4 +142,18 @@ describe("client compatibility scaffolding", () => {
     expect(configuration.audit?.policy?.level).toBe("info");
     expect(configuration.audit?.policy?.anonymize_pii).toBe(true);
   });
+
+  it("parses pattern diagnostics fixture and collects codes", () => {
+    const diagnostics = readDiagnostics(fixturesDir, "diagnostic-v2-pattern-sample.json");
+    const codes = Array.from(collectCodes(diagnostics));
+    expect(codes).toEqual(
+      expect.arrayContaining([
+        "pattern.slice.multiple_rest",
+        "pattern.binding.duplicate_name",
+        "pattern.regex.unsupported_target",
+        "pattern.range.bound_inverted",
+        "pattern.active.effect_violation",
+      ]),
+    );
+  });
 });

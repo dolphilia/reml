@@ -1,0 +1,122 @@
+[
+  {
+    "schema_version": "2.0.0-draft",
+    "id": "pattern-0001",
+    "message": "`..` は 1 度だけ使用できます",
+    "severity": 1,
+    "domain": "parser",
+    "codes": ["pattern.slice.multiple_rest"],
+    "primary": {
+      "file": "file:///workspace/examples/spec_core/chapter1/match_expr/bnf-match-slice-multiple-rest.reml",
+      "start_line": 4,
+      "start_col": 5,
+      "end_line": 4,
+      "end_col": 24
+    },
+    "secondary": [],
+    "hints": [],
+    "structured_hints": [],
+    "extensions": {
+      "diagnostic.v2": {
+        "codes": ["pattern.slice.multiple_rest"]
+      }
+    },
+    "timestamp": "2026-02-15T12:00:00Z"
+  },
+  {
+    "schema_version": "2.0.0-draft",
+    "id": "pattern-0002",
+    "message": "バインディング名が重複しています",
+    "severity": 1,
+    "domain": "parser",
+    "codes": ["pattern.binding.duplicate_name"],
+    "primary": {
+      "file": "file:///workspace/examples/spec_core/chapter1/match_expr/bnf-match-binding-duplicate.reml",
+      "start_line": 3,
+      "start_col": 7,
+      "end_line": 3,
+      "end_col": 25
+    },
+    "secondary": [],
+    "hints": [],
+    "structured_hints": [],
+    "extensions": {
+      "diagnostic.v2": {
+        "codes": ["pattern.binding.duplicate_name"]
+      }
+    },
+    "timestamp": "2026-02-15T12:00:01Z"
+  },
+  {
+    "schema_version": "2.0.0-draft",
+    "id": "pattern-0003",
+    "message": "正規表現は文字列またはバイト列にのみ適用できます",
+    "severity": 1,
+    "domain": "parser",
+    "codes": ["pattern.regex.unsupported_target"],
+    "primary": {
+      "file": "file:///workspace/examples/spec_core/chapter1/match_expr/bnf-match-regex-unsupported-target.reml",
+      "start_line": 5,
+      "start_col": 3,
+      "end_line": 5,
+      "end_col": 24
+    },
+    "secondary": [],
+    "hints": [],
+    "structured_hints": [],
+    "extensions": {
+      "diagnostic.v2": {
+        "codes": ["pattern.regex.unsupported_target"]
+      }
+    },
+    "timestamp": "2026-02-15T12:00:02Z"
+  },
+  {
+    "schema_version": "2.0.0-draft",
+    "id": "pattern-0004",
+    "message": "範囲パターンの上下限が逆転しています",
+    "severity": 1,
+    "domain": "parser",
+    "codes": ["pattern.range.bound_inverted"],
+    "primary": {
+      "file": "file:///workspace/examples/spec_core/chapter1/match_expr/bnf-match-range-bound-inverted.reml",
+      "start_line": 4,
+      "start_col": 5,
+      "end_line": 4,
+      "end_col": 17
+    },
+    "secondary": [],
+    "hints": [],
+    "structured_hints": [],
+    "extensions": {
+      "diagnostic.v2": {
+        "codes": ["pattern.range.bound_inverted"]
+      }
+    },
+    "timestamp": "2026-02-15T12:00:03Z"
+  },
+  {
+    "schema_version": "2.0.0-draft",
+    "id": "pattern-0005",
+    "message": "@pure 文脈で副作用を持つ Active Pattern は使用できません",
+    "severity": 1,
+    "domain": "effect",
+    "codes": ["pattern.active.effect_violation"],
+    "primary": {
+      "file": "file:///workspace/examples/spec_core/chapter1/match_expr/bnf-match-active-effect-violation.reml",
+      "start_line": 6,
+      "start_col": 3,
+      "end_line": 6,
+      "end_col": 28
+    },
+    "secondary": [],
+    "hints": [],
+    "structured_hints": [],
+    "extensions": {
+      "diagnostic.v2": {
+        "codes": ["pattern.active.effect_violation"]
+      }
+    },
+    "timestamp": "2026-02-15T12:00:04Z"
+  }
+]

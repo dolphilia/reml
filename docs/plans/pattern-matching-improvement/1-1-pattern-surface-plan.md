@@ -6,10 +6,11 @@
 
 ## 進捗ステータス（2026-02）
 - **完了**: `pattern.guard.if_deprecated` 警告と順不同ガード/エイリアスの正規化、Active Pattern と関数名の衝突ガード（`pattern.active.name_conflict`）、診断レジストリへの `pattern.active.*` / `pattern.exhaustiveness.*` 追加、ReturnCarrier (OptionLike/Value) を Typed/HIR/CLI 表示へ伝搬。
-- **完了**: 簡易網羅性パスの抽出（`ExhaustivenessTracker`）と Active Pattern（部分/完全）の到達不能検出を回帰テスト化。
+- **完了**: 簡易網羅性パスの抽出（`ExhaustivenessTracker`）と Active Pattern（部分/完全）の到達不能検出を回帰テスト化。Range/Slice/Or/Active 混在の到達不能・網羅性テスト（typeck_exhaustiveness.rs）を追加。
 - **進行中**: Binding/Regex の受理と診断固定（`pattern.binding.duplicate_name` / `pattern.regex.unsupported_target`）。Phase4 マトリクス CH1-MATCH-014/016 の expected/diagnostic を更新済み。
 - **完了**: Or/Slice/Range の型検査と診断（`pattern.slice.multiple_rest` / `pattern.slice.type_mismatch` / `pattern.range.*`）を追加し、CH1-MATCH-007〜013/017 の expected/diagnostic を再取得。
-- **次の着手候補**: Regex 糖衣の型制約（文字列/バイト列限定）テスト済み。Range/Slice/Active 混在時の網羅性精度向上と `docs/spec` への残差反映を進める。
+- **完了**: typed/IR で Match/Pattern 正規化を導入し、Active miss 分岐・Range/Slice/Or/Regex/Binding をタグ付きで伝搬。LSP 用パターン診断フィクスチャを追加し、client_compat で codes 抽出を確認。
+- **次の着手候補**: Regex 糖衣の型制約（文字列/バイト列限定）テスト済み。range/slice/active 仕様の残差を `docs/spec` に反映しつつ、ランタイム IR 分岐生成と Phase4 マトリクス再取得を進める。
 
 ## 対象機能と方針
 1. **Or-patterns（最優先）**  
