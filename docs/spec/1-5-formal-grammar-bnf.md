@@ -310,6 +310,8 @@ ActivePatternApp ::= "(|" Ident ("|_|")? "|)" Pattern?
 
 `OrPattern` は左結合で解釈されるため、`pat1 | pat2 | pat3` は `(pat1 | pat2) | pat3` と等価となる。`ActivePatternApp` の `(|Name|_|)` 形式は `Option<T>` を返し、`Some` のときにマッチ成功、`None` のときは次のアームへ進む。`(|Name|)` 形式は常に成功する完全パターンとして扱われる。`RegexBody` の詳細はリテラル正規化規則（1.1 A.4/A.5）に従う。
 
+`BindingPattern` で同一識別子を `as`/`@` に跨って束縛した場合は `pattern.binding.duplicate_name` を報告する。`RegexPattern` は文字列/バイト列を対象とし、それ以外の型に適用した場合は `pattern.regex.unsupported_target` を返す。
+
 ---
 
 ## 6. 型式

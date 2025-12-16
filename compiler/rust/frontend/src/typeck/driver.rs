@@ -15,7 +15,8 @@ use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSum
 use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
     BinaryOp, Decl, DeclKind, Expr, ExprKind, FixityKind, Function, HandlerEntry, Ident, Literal,
-    LiteralKind, MatchArm, Module, ModulePath, Pattern, PatternKind, RelativeHead, Stmt, StmtKind,
+    LiteralKind, MatchArm, Module, ModulePath, Pattern, PatternKind, RelativeHead,
+    SlicePatternItem, Stmt, StmtKind, TypeKind,
 };
 use crate::semantics::typed;
 use crate::span::Span;
@@ -173,7 +174,11 @@ impl TypecheckDriver {
             let is_pure = active.attrs.iter().any(|attr| attr.name.name == "pure");
             let context = FunctionContext::active_pattern(active.name.name.as_str(), is_pure);
             for param in &active.params {
-                let ty = var_gen.fresh_type();
+                let ty = param
+                    .type_annotation
+                    .as_ref()
+                    .and_then(|annot| type_from_annotation_kind(&annot.kind))
+                    .unwrap_or_else(|| var_gen.fresh_type());
                 let scheme = Scheme::simple(ty.clone());
                 bind_pattern_to_env(&param.pattern, &scheme, &mut env, &mut var_gen);
                 param_bindings.push(ParamBinding {
@@ -252,7 +257,11 @@ impl TypecheckDriver {
             let function_context = FunctionContext::function(function.name.name.as_str(), is_pure);
 
             for param in &function.params {
-                let ty = var_gen.fresh_type();
+                let ty = param
+                    .type_annotation
+                    .as_ref()
+                    .and_then(|annot| type_from_annotation_kind(&annot.kind))
+                    .unwrap_or_else(|| var_gen.fresh_type());
                 let scheme = Scheme::simple(ty.clone());
                 bind_pattern_to_env(&param.pattern, &scheme, &mut env, &mut var_gen);
                 param_bindings.push(ParamBinding {
@@ -444,6 +453,8 @@ pub enum TypecheckViolationKind {
     ActivePatternNameConflict,
     PatternExhaustivenessMissing,
     PatternUnreachableArm,
+    PatternBindingDuplicate,
+    PatternRegexUnsupportedTarget,
     StageMismatch,
     IteratorStageMismatch,
     ValueRestriction,
@@ -843,6 +854,38 @@ impl TypecheckViolation {
         }
     }
 
+    fn pattern_binding_duplicate(span: Span, name: &str) -> Self {
+        Self {
+            kind: TypecheckViolationKind::PatternBindingDuplicate,
+            code: "pattern.binding.duplicate_name",
+            message: format!("パターン内で識別子 `{}` が重複しています。", name),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "`as` と `@` の併用や同名の束縛を見直してください。",
+            )],
+            capability: None,
+            function: None,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn pattern_regex_unsupported_target(span: Span, actual: String) -> Self {
+        Self {
+            kind: TypecheckViolationKind::PatternRegexUnsupportedTarget,
+            code: "pattern.regex.unsupported_target",
+            message: "正規表現パターンは文字列/バイト列にのみ適用できます。".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!("対象の型: {}", actual))],
+            capability: None,
+            function: None,
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
     fn pattern_exhaustiveness_missing(span: Span) -> Self {
         Self {
             kind: TypecheckViolationKind::PatternExhaustivenessMissing,
@@ -1019,6 +1062,8 @@ impl TypecheckViolation {
             | TypecheckViolationKind::ActivePatternNameConflict
             | TypecheckViolationKind::PatternExhaustivenessMissing
             | TypecheckViolationKind::PatternUnreachableArm
+            | TypecheckViolationKind::PatternBindingDuplicate
+            | TypecheckViolationKind::PatternRegexUnsupportedTarget
             | TypecheckViolationKind::ValueRestriction
             | TypecheckViolationKind::ImplDuplicate
             | TypecheckViolationKind::IteratorExpected
@@ -1887,6 +1932,7 @@ fn infer_expr(
             );
             let mut dicts = target_result.dict_ref_ids;
             let coverage = analyze_match_exhaustiveness(arms);
+            let target_ty = solver.substitution().apply(&target_result.ty);
             let mut arm_type: Option<Type> = None;
             let unreachable_indices: HashSet<usize> = coverage
                 .unreachable_arm_indices
@@ -1898,6 +1944,8 @@ fn infer_expr(
                     violations.push(TypecheckViolation::pattern_unreachable_arm(arm.span));
                 }
                 let mut arm_env = env.enter_scope();
+                detect_duplicate_bindings(&arm.pattern, violations);
+                detect_regex_target_mismatch(&arm.pattern, &target_ty, violations);
                 let pattern_scheme = Scheme::simple(var_gen.fresh_type());
                 bind_pattern_to_env(&arm.pattern, &pattern_scheme, &mut arm_env, var_gen);
                 if let Some(alias) = &arm.alias {
@@ -1977,7 +2025,11 @@ fn infer_expr(
             let mut lambda_env = env.enter_scope();
             let mut param_types = Vec::new();
             for param in params {
-                let ty = var_gen.fresh_type();
+                let ty = param
+                    .type_annotation
+                    .as_ref()
+                    .and_then(|annot| type_from_annotation_kind(&annot.kind))
+                    .unwrap_or_else(|| var_gen.fresh_type());
                 let scheme = Scheme::simple(ty.clone());
                 bind_pattern_to_env(&param.pattern, &scheme, &mut lambda_env, var_gen);
                 param_types.push(ty);
@@ -2219,6 +2271,8 @@ fn infer_binding(
     );
     let substitution = solver.substitution().clone();
     let resolved_ty = substitution.apply(&value_result.ty);
+    detect_duplicate_bindings(pattern, violations);
+    detect_regex_target_mismatch(pattern, &resolved_ty, violations);
     let scheme = generalize_type(env, resolved_ty.clone());
     bind_pattern_to_env(pattern, &scheme, env, var_gen);
     value_result.dict_ref_ids
@@ -2233,6 +2287,19 @@ fn bind_pattern_to_env(
     match &pattern.kind {
         PatternKind::Var(ident) => {
             env.insert(ident.name.clone(), scheme.clone());
+        }
+        PatternKind::Binding {
+            name,
+            pattern,
+            via_at: _,
+        } => {
+            env.insert(name.name.clone(), scheme.clone());
+            bind_pattern_to_env(pattern, scheme, env, var_gen);
+        }
+        PatternKind::Or { variants } => {
+            for variant in variants {
+                bind_pattern_to_env(variant, scheme, env, var_gen);
+            }
         }
         PatternKind::Tuple { elements } => {
             for element in elements {
@@ -2250,6 +2317,22 @@ fn bind_pattern_to_env(
                 }
             }
         }
+        PatternKind::Slice { elements } => {
+            for element in elements {
+                match element {
+                    SlicePatternItem::Element(pat) => {
+                        let element_scheme = Scheme::simple(var_gen.fresh_type());
+                        bind_pattern_to_env(pat, &element_scheme, env, var_gen);
+                    }
+                    SlicePatternItem::Rest { ident: Some(ident) } => {
+                        env.insert(ident.name.clone(), Scheme::simple(var_gen.fresh_type()));
+                    }
+                    SlicePatternItem::Rest { ident: None } => {}
+                }
+            }
+        }
+        PatternKind::Range { .. } => {}
+        PatternKind::Regex { .. } => {}
         PatternKind::Constructor { args, .. } => {
             for arg in args {
                 let arg_scheme = Scheme::simple(var_gen.fresh_type());
@@ -2355,6 +2438,180 @@ fn classify_constructor_name(name: &str) -> Option<ActiveReturnKind> {
     }
 }
 
+fn detect_duplicate_bindings(pattern: &Pattern, violations: &mut Vec<TypecheckViolation>) {
+    fn walk(
+        pattern: &Pattern,
+        seen: &mut HashSet<String>,
+        violations: &mut Vec<TypecheckViolation>,
+    ) {
+        match &pattern.kind {
+            PatternKind::Var(ident) => {
+                if !seen.insert(ident.name.clone()) {
+                    violations.push(TypecheckViolation::pattern_binding_duplicate(
+                        pattern.span,
+                        ident.name.as_str(),
+                    ));
+                }
+            }
+            PatternKind::Binding { name, pattern, .. } => {
+                if !seen.insert(name.name.clone()) {
+                    violations.push(TypecheckViolation::pattern_binding_duplicate(
+                        pattern.span,
+                        name.name.as_str(),
+                    ));
+                }
+                walk(pattern, seen, violations);
+            }
+            PatternKind::Tuple { elements } => {
+                for element in elements {
+                    walk(element, seen, violations);
+                }
+            }
+            PatternKind::Record { fields, .. } => {
+                for field in fields {
+                    if let Some(value) = &field.value {
+                        walk(value, seen, violations);
+                    } else if !seen.insert(field.key.name.clone()) {
+                        violations.push(TypecheckViolation::pattern_binding_duplicate(
+                            pattern.span,
+                            field.key.name.as_str(),
+                        ));
+                    }
+                }
+            }
+            PatternKind::Constructor { args, .. } => {
+                for arg in args {
+                    walk(arg, seen, violations);
+                }
+            }
+            PatternKind::Guard { pattern: inner, .. } => walk(inner, seen, violations),
+            PatternKind::ActivePattern { argument, .. } => {
+                if let Some(arg) = argument {
+                    walk(arg, seen, violations);
+                }
+            }
+            PatternKind::Or { variants } => {
+                for variant in variants {
+                    let mut branch_seen = seen.clone();
+                    walk(variant, &mut branch_seen, violations);
+                }
+            }
+            PatternKind::Slice { elements } => {
+                for element in elements {
+                    match element {
+                        SlicePatternItem::Element(pat) => walk(pat, seen, violations),
+                        SlicePatternItem::Rest { ident: Some(ident) } => {
+                            if !seen.insert(ident.name.clone()) {
+                                violations.push(TypecheckViolation::pattern_binding_duplicate(
+                                    pattern.span,
+                                    ident.name.as_str(),
+                                ));
+                            }
+                        }
+                        SlicePatternItem::Rest { ident: None } => {}
+                    }
+                }
+            }
+            PatternKind::Range { start, end, .. } => {
+                if let Some(start) = start {
+                    walk(start, seen, violations);
+                }
+                if let Some(end) = end {
+                    walk(end, seen, violations);
+                }
+            }
+            PatternKind::Regex { .. }
+            | PatternKind::Literal(_)
+            | PatternKind::Wildcard => {}
+        }
+    }
+
+    let mut seen = HashSet::new();
+    walk(pattern, &mut seen, violations);
+}
+
+fn is_string_like(ty: &Type) -> bool {
+    matches!(ty, Type::Builtin(BuiltinType::Str))
+        || matches!(ty, Type::Builtin(BuiltinType::Bytes))
+        || matches!(
+            ty,
+            Type::App {
+                constructor,
+                arguments
+            } if (constructor == "Str" || constructor == "Bytes") && arguments.is_empty()
+        )
+}
+
+fn detect_regex_target_mismatch(
+    pattern: &Pattern,
+    target_ty: &Type,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    fn walk(pattern: &Pattern, target_ty: &Type, violations: &mut Vec<TypecheckViolation>) {
+        match &pattern.kind {
+            PatternKind::Regex { .. } => {
+                if !is_string_like(target_ty)
+                    && !matches!(target_ty, Type::Builtin(BuiltinType::Unknown) | Type::Var(_))
+                {
+                    violations.push(TypecheckViolation::pattern_regex_unsupported_target(
+                        pattern.span,
+                        target_ty.label(),
+                    ));
+                }
+            }
+            PatternKind::Tuple { elements } => {
+                for element in elements {
+                    walk(element, target_ty, violations);
+                }
+            }
+            PatternKind::Record { fields, .. } => {
+                for field in fields {
+                    if let Some(value) = &field.value {
+                        walk(value, target_ty, violations);
+                    }
+                }
+            }
+            PatternKind::Constructor { args, .. } => {
+                for arg in args {
+                    walk(arg, target_ty, violations);
+                }
+            }
+            PatternKind::Guard { pattern: inner, .. } => walk(inner, target_ty, violations),
+            PatternKind::ActivePattern { argument, .. } => {
+                if let Some(arg) = argument {
+                    walk(arg, target_ty, violations);
+                }
+            }
+            PatternKind::Or { variants } => {
+                for variant in variants {
+                    walk(variant, target_ty, violations);
+                }
+            }
+            PatternKind::Slice { elements } => {
+                for element in elements {
+                    if let SlicePatternItem::Element(inner) = element {
+                        walk(inner, target_ty, violations);
+                    }
+                }
+            }
+            PatternKind::Range { start, end, .. } => {
+                if let Some(start) = start {
+                    walk(start, target_ty, violations);
+                }
+                if let Some(end) = end {
+                    walk(end, target_ty, violations);
+                }
+            }
+            PatternKind::Binding { pattern: inner, .. } => {
+                walk(inner, target_ty, violations);
+            }
+            PatternKind::Literal(_) | PatternKind::Wildcard | PatternKind::Var(_) => {}
+        }
+    }
+
+    walk(pattern, target_ty, violations);
+}
+
 #[derive(Default)]
 struct ExhaustivenessResult {
     coverage_reached: bool,
@@ -2402,6 +2659,14 @@ impl ExhaustivenessTracker {
             PatternKind::Wildcard | PatternKind::Var(_) => {
                 self.wildcard_covered = true;
             }
+            PatternKind::Binding { pattern: inner, .. } => {
+                self.observe_pattern(inner, has_guard);
+            }
+            PatternKind::Or { variants } => {
+                for variant in variants {
+                    self.observe_pattern(variant, has_guard);
+                }
+            }
             PatternKind::Literal(Literal {
                 value: LiteralKind::Bool { value },
             }) => {
@@ -2424,6 +2689,13 @@ impl ExhaustivenessTracker {
             PatternKind::Guard { pattern, .. } => {
                 self.observe_pattern(pattern, true);
             }
+            PatternKind::Slice { .. } => {}
+            PatternKind::Range { start, end, .. } => {
+                if start.is_none() && end.is_none() {
+                    self.wildcard_covered = true;
+                }
+            }
+            PatternKind::Regex { .. } => {}
             _ => {}
         }
     }
@@ -2435,6 +2707,19 @@ impl ExhaustivenessTracker {
     }
 }
 
+fn type_from_annotation_kind(kind: &TypeKind) -> Option<Type> {
+    match kind {
+        TypeKind::Ident { name } => match name.name.as_str() {
+            "Int" => Some(Type::builtin(BuiltinType::Int)),
+            "Bool" => Some(Type::builtin(BuiltinType::Bool)),
+            "Str" => Some(Type::builtin(BuiltinType::Str)),
+            "Bytes" => Some(Type::builtin(BuiltinType::Bytes)),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 fn type_for_literal(literal: &Literal) -> Type {
     match literal {
         Literal {
@@ -2443,6 +2728,12 @@ fn type_for_literal(literal: &Literal) -> Type {
         Literal {
             value: LiteralKind::Bool { .. },
         } => Type::builtin(BuiltinType::Bool),
+        Literal {
+            value: LiteralKind::String { .. },
+        } => Type::builtin(BuiltinType::Str),
+        Literal {
+            value: LiteralKind::Char { .. },
+        } => Type::builtin(BuiltinType::Unknown),
         Literal {
             value: LiteralKind::Unit,
         } => Type::builtin(BuiltinType::Unit),

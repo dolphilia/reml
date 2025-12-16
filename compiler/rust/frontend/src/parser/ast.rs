@@ -885,6 +885,60 @@ impl Pattern {
             PatternKind::Guard { pattern, guard } => {
                 format!("{} if {}", pattern.render(), guard.render())
             }
+            PatternKind::Binding {
+                name,
+                pattern,
+                via_at,
+            } => {
+                if *via_at {
+                    format!("{} @ {}", name.name, pattern.render())
+                } else {
+                    format!("{} as {}", pattern.render(), name.name)
+                }
+            }
+            PatternKind::Or { variants } => variants
+                .iter()
+                .map(Pattern::render)
+                .collect::<Vec<_>>()
+                .join(" | "),
+            PatternKind::Slice { elements } => {
+                let rendered = elements
+                    .iter()
+                    .map(|elem| match elem {
+                        SlicePatternItem::Element(pat) => pat.render(),
+                        SlicePatternItem::Rest { ident: None } => "..".to_string(),
+                        SlicePatternItem::Rest { ident: Some(ident) } => {
+                            format!("..{}", ident.name)
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("[{}]", rendered)
+            }
+            PatternKind::Range {
+                start,
+                end,
+                inclusive,
+            } => {
+                let start_display = start
+                    .as_ref()
+                    .map(|pat| pat.render())
+                    .unwrap_or_else(|| "".to_string());
+                let end_display = end
+                    .as_ref()
+                    .map(|pat| pat.render())
+                    .unwrap_or_else(|| "".to_string());
+                let eq = if *inclusive { "=" } else { "" };
+                format!("{start_display}..{eq}{end_display}")
+            }
+            PatternKind::Regex {
+                pattern,
+                string_kind,
+            } => match string_kind {
+                StringKind::Raw => format!("r\"{pattern}\""),
+                StringKind::Multiline => format!("\"\"\"{pattern}\"\"\""),
+                StringKind::Normal => format!("\"{pattern}\""),
+            },
             PatternKind::ActivePattern {
                 name,
                 is_partial,
@@ -925,6 +979,26 @@ pub enum PatternKind {
         pattern: Box<Pattern>,
         guard: Box<Expr>,
     },
+    Binding {
+        name: Ident,
+        pattern: Box<Pattern>,
+        via_at: bool,
+    },
+    Or {
+        variants: Vec<Pattern>,
+    },
+    Slice {
+        elements: Vec<SlicePatternItem>,
+    },
+    Range {
+        start: Option<Box<Pattern>>,
+        end: Option<Box<Pattern>>,
+        inclusive: bool,
+    },
+    Regex {
+        pattern: String,
+        string_kind: StringKind,
+    },
     ActivePattern {
         name: Ident,
         is_partial: bool,
@@ -937,6 +1011,16 @@ pub enum PatternKind {
 pub struct PatternRecordField {
     pub key: Ident,
     pub value: Option<Box<Pattern>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum SlicePatternItem {
+    Element(Pattern),
+    Rest {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        ident: Option<Ident>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]

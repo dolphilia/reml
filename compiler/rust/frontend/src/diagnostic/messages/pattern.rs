@@ -27,6 +27,18 @@ pub fn pattern_messages() -> &'static [PatternDiagnosticMessage] {
             severity: DiagnosticSeverity::Error,
         },
         PatternDiagnosticMessage {
+            code: "pattern.binding.duplicate_name",
+            title: "パターン束縛が重複しています",
+            message: "`as` や `@` で同じ名前を複数回束縛しています。",
+            severity: DiagnosticSeverity::Error,
+        },
+        PatternDiagnosticMessage {
+            code: "pattern.regex.unsupported_target",
+            title: "正規表現パターンの適用対象が不正です",
+            message: "正規表現パターンは文字列またはバイト列にのみ適用できます。",
+            severity: DiagnosticSeverity::Error,
+        },
+        PatternDiagnosticMessage {
             code: "pattern.active.name_conflict",
             title: "Active Pattern 名が衝突しています",
             message: "同一モジュール内で Active Pattern 名が別のシンボルと衝突しています。",
@@ -56,6 +68,8 @@ mod tests {
     fn registry_contains_all_pattern_codes() {
         assert!(find_pattern_message("pattern.active.return_contract_invalid").is_some());
         assert!(find_pattern_message("pattern.active.effect_violation").is_some());
+        assert!(find_pattern_message("pattern.binding.duplicate_name").is_some());
+        assert!(find_pattern_message("pattern.regex.unsupported_target").is_some());
         assert!(find_pattern_message("pattern.exhaustiveness.missing").is_some());
         assert!(find_pattern_message("pattern.unreachable_arm").is_some());
         assert!(find_pattern_message("pattern.active.name_conflict").is_some());

@@ -7,8 +7,9 @@
 ## 進捗ステータス（2026-02）
 - **完了**: `pattern.guard.if_deprecated` 警告と順不同ガード/エイリアスの正規化、Active Pattern と関数名の衝突ガード（`pattern.active.name_conflict`）、診断レジストリへの `pattern.active.*` / `pattern.exhaustiveness.*` 追加、ReturnCarrier (OptionLike/Value) を Typed/HIR/CLI 表示へ伝搬。
 - **完了**: 簡易網羅性パスの抽出（`ExhaustivenessTracker`）と Active Pattern（部分/完全）の到達不能検出を回帰テスト化。
-- **未完**: Or/Slice/Range/Binding/Regex 受理と型検査、Phase4 マトリクス CH1-MATCH-014〜017 の expected/diagnostic ゴールデン更新、LSP フィクスチャ更新。
-- **次の着手候補**: Regex 糖衣の型制約（文字列/バイト列限定）テスト、Range/Slice/Active 混在時の網羅性精度向上、`docs/spec` への最終文面反映。
+- **進行中**: Binding/Regex の受理と診断固定（`pattern.binding.duplicate_name` / `pattern.regex.unsupported_target`）。Phase4 マトリクス CH1-MATCH-014/016 の expected/diagnostic を更新済み。
+- **未完**: Or/Slice/Range 受理と型検査、CH1-MATCH-008〜013/017 のゴールデン拡充、LSP フィクスチャ更新。
+- **次の着手候補**: Regex 糖衣の型制約（文字列/バイト列限定）テスト済み。Range/Slice/Active 混在時の網羅性精度向上と `docs/spec` への残差反映を進める。
 
 ## 対象機能と方針
 1. **Or-patterns（最優先）**  

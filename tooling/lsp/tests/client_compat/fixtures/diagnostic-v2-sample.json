@@ -227,5 +227,32 @@
       }
     },
     "timestamp": "2025-10-27T12:40:01Z"
+  },
+  {
+    "schema_version": "2.0.0-draft",
+    "id": "sample-pattern-regex",
+    "message": "正規表現パターンは文字列またはバイト列にのみ適用できます。",
+    "severity": 1,
+    "domain": "type",
+    "codes": ["pattern.regex.unsupported_target"],
+    "primary": {
+      "file": "file:///workspace/examples/spec_core/chapter1/match_expr/bnf-match-regex-unsupported-target.reml",
+      "start_line": 8,
+      "start_col": 7,
+      "end_line": 8,
+      "end_col": 16
+    },
+    "notes": [
+      { "message": "対象の型: Int" }
+    ],
+    "extensions": {
+      "diagnostic.message": {
+        "code": "pattern.regex.unsupported_target",
+        "title": "正規表現パターンの適用対象が不正です",
+        "message": "正規表現パターンは文字列/バイト列にのみ適用できます。",
+        "severity": "error"
+      }
+    },
+    "timestamp": "2026-02-01T00:00:00Z"
   }
 ]

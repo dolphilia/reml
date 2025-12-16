@@ -451,6 +451,7 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
   - **定義**: `pattern (|Name|_|)(args) = expr` は部分パターンとして `Option<T>` を返し、`Some` ならマッチ成功、`None` なら次のアームへフォールスルー。`pattern (|Name|)(args) = expr` は常に成功する完全パターンで、戻り値 `T` を束縛する。  
   - **使用**: `match input with | (|Hex|_|) n -> ... | (|Total|) v -> ...` のように他のパターンと同列で使用でき、`when` ガードや `as`/`@` と併用可。  
   - **副作用/診断**: `@pure` 文脈で副作用を持つ場合は `pattern.active.effect_violation`、戻り値が契約外（`Option` 以外の部分パターンや `Result`）の場合は `pattern.active.return_contract_invalid` を報告する（[2-5 エラー設計](2-5-error.md)）。
+  - **診断**: パターン内で同じ識別子を `as`/`@` で重複束縛した場合は `pattern.binding.duplicate_name` を発行する。正規表現パターンを文字列/バイト列以外へ適用した場合は `pattern.regex.unsupported_target` を報告する。
 
 ### C.4 制御構文
 

@@ -545,7 +545,7 @@ module Spec.Core.Chapter1.ActivePatterns.PureEffect
 use Core.Prelude
 
 @pure
-pattern (|Logger|_|)(n: Int) = perform Console "ping"
+pattern (|Logger|_|)(n: Int) = perform Console("ping")
 
 fn main() -> Int = {
   match 1 with
@@ -687,6 +687,54 @@ fn eval(n: Int) -> Int = {
     assert!(
         !has_violation(&report, "pattern.unreachable_arm"),
         "guarded total active pattern should not make following arms unreachable"
+    );
+}
+
+#[test]
+fn ch1_match_014_reports_binding_duplicate_name() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/match_expr/bnf-match-binding-duplicate.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    let codes = report
+        .violations
+        .iter()
+        .map(|v| v.code)
+        .collect::<Vec<_>>();
+    assert!(
+        has_violation(&report, "pattern.binding.duplicate_name"),
+        "expected pattern.binding.duplicate_name, got {:?}",
+        codes
+    );
+}
+
+#[test]
+fn ch1_match_016_reports_regex_unsupported_target() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/match_expr/bnf-match-regex-unsupported-target.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    let codes = report
+        .violations
+        .iter()
+        .map(|v| v.code)
+        .collect::<Vec<_>>();
+    assert!(
+        has_violation(&report, "pattern.regex.unsupported_target"),
+        "expected pattern.regex.unsupported_target, got {:?}",
+        codes
+    );
+}
+
+#[test]
+fn ch1_match_008_reports_unreachable_or_arm_after_wildcard() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/match_expr/bnf-match-or-pattern-unreachable.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "pattern.unreachable_arm"),
+        "expected pattern.unreachable_arm for trailing or-pattern arm"
     );
 }
 

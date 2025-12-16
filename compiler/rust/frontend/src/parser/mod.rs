@@ -51,7 +51,8 @@ use ast::{
     EffectAnnotation, EffectCall, EffectDecl, ExternItem, Expr, ExprKind, FixityKind, Function,
     FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry, Ident, ImplDecl, ImplItem, IntBase,
     Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath, OperationDecl, Param,
-    Pattern, PatternKind, PatternRecordField, RecordField, RelativeHead, Stmt, StmtKind, StringKind,
+    Pattern, PatternKind, PatternRecordField, RecordField, RelativeHead, SlicePatternItem, Stmt,
+    StmtKind, StringKind,
     TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind, UseDecl, UseItem, UseTree, Visibility,
     WherePredicate,
 };
@@ -517,7 +518,9 @@ fn convert_range(range: Range<usize>) -> Span {
 
 fn parse_string_literal_value(source: &str, span: Range<usize>) -> String {
     let slice = &source[span.start..span.end];
-    let value = if slice.starts_with("\\\"") && slice.ends_with("\\\"") && slice.len() >= 4 {
+    let value = if slice.starts_with("r\"") && slice.ends_with('"') && slice.len() >= 3 {
+        &slice[2..slice.len() - 1]
+    } else if slice.starts_with("\\\"") && slice.ends_with("\\\"") && slice.len() >= 4 {
         &slice[2..slice.len() - 2]
     } else if slice.starts_with('"') && slice.ends_with('"') && slice.len() >= 2 {
         &slice[1..slice.len() - 1]
@@ -1576,6 +1579,19 @@ fn module_parser<'src>(
             Rest,
         }
 
+        let parse_string_literal = |span: Range<usize>| -> (String, StringKind) {
+            let slice = &source[span.start..span.end];
+            if slice.starts_with("r\"") && slice.ends_with('"') && slice.len() >= 3 {
+                (slice[2..slice.len() - 1].to_string(), StringKind::Raw)
+            } else if slice.starts_with("\"\"\"") && slice.ends_with("\"\"\"") && slice.len() >= 6 {
+                (slice[3..slice.len() - 3].to_string(), StringKind::Multiline)
+            } else if slice.starts_with('"') && slice.ends_with('"') && slice.len() >= 2 {
+                (slice[1..slice.len() - 1].replace("\\\"", "\""), StringKind::Normal)
+            } else {
+                (slice.replace("\\\"", "\""), StringKind::Normal)
+            }
+        };
+
         let bool_literal_pattern = choice((
             just(TokenKind::KeywordTrue).map_with_span(|_, span: Range<usize>| Pattern {
                 span: range_to_span(span),
@@ -1620,28 +1636,26 @@ fn module_parser<'src>(
                 }
             });
 
-        let string_literal_pattern =
-            just(TokenKind::StringLiteral).map_with_span(|_, span: Range<usize>| {
-                let slice = &source[span.start..span.end];
-                let value =
-                    if slice.starts_with("\\\"") && slice.ends_with("\\\"") && slice.len() >= 4 {
-                        &slice[2..slice.len() - 2]
-                    } else if slice.starts_with('"') && slice.ends_with('"') && slice.len() >= 2 {
-                        &slice[1..slice.len() - 1]
-                    } else {
-                        slice
-                    };
-                let unescaped = value.replace("\\\"", "\"");
-                Pattern {
-                    span: range_to_span(span),
-                    kind: PatternKind::Literal(Literal {
+        let string_literal_pattern = just(TokenKind::StringLiteral).map_with_span(
+            move |_, span: Range<usize>| {
+                let (value, string_kind) = parse_string_literal(span.clone());
+                let span = range_to_span(span);
+                let kind = if matches!(string_kind, StringKind::Raw) {
+                    PatternKind::Regex {
+                        pattern: value.clone(),
+                        string_kind: string_kind.clone(),
+                    }
+                } else {
+                    PatternKind::Literal(Literal {
                         value: LiteralKind::String {
-                            value: unescaped,
-                            string_kind: StringKind::Normal,
+                            value: value.clone(),
+                            string_kind: string_kind.clone(),
                         },
-                    }),
-                }
-            });
+                    })
+                };
+                Pattern { span, kind }
+            },
+        );
 
         let unit_literal_pattern = just(TokenKind::LParen)
             .ignore_then(just(TokenKind::RParen))
@@ -1669,6 +1683,20 @@ fn module_parser<'src>(
             .map_with_span(|elements, span: Range<usize>| Pattern {
                 span: range_to_span(span),
                 kind: PatternKind::Tuple { elements },
+            });
+
+        let slice_rest = just(TokenKind::DotDot)
+            .ignore_then(ident.clone().or_not())
+            .map(|ident| SlicePatternItem::Rest { ident });
+        let slice_element = slice_rest.or(pat.clone().map(SlicePatternItem::Element));
+
+        let slice_pattern = slice_element
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing()
+            .delimited_by(just(TokenKind::LBracket), just(TokenKind::RBracket))
+            .map_with_span(|elements, span: Range<usize>| Pattern {
+                span: range_to_span(span),
+                kind: PatternKind::Slice { elements },
             });
 
         let pattern_ctor = qualified_ident
@@ -1756,15 +1784,88 @@ fn module_parser<'src>(
                 }
             });
 
-        choice((
-            active_pattern,
-            tuple_pattern,
-            record_pattern,
+        let base_pattern = choice((
+            active_pattern.clone(),
+            tuple_pattern.clone(),
+            record_pattern.clone(),
+            slice_pattern.clone(),
             pattern_var.clone(),
-            pattern_ctor,
-            literal_pattern,
-            wildcard_pattern,
-        ))
+            pattern_ctor.clone(),
+            literal_pattern.clone(),
+            wildcard_pattern.clone(),
+        ));
+
+        let binding_pattern = choice((
+            ident
+                .clone()
+                .then_ignore(just(TokenKind::At))
+                .then(pat.clone())
+                .map_with_span(|(name, pattern), span: Range<usize>| Pattern {
+                    span: range_to_span(span),
+                    kind: PatternKind::Binding {
+                        name,
+                        pattern: Box::new(pattern),
+                        via_at: true,
+                    },
+                }),
+            base_pattern
+                .clone()
+                .then(just(TokenKind::KeywordAs).ignore_then(ident.clone()))
+                .map_with_span(|(pattern, name), span: Range<usize>| Pattern {
+                    span: range_to_span(span),
+                    kind: PatternKind::Binding {
+                        name,
+                        pattern: Box::new(pattern),
+                        via_at: false,
+                    },
+                }),
+            base_pattern.clone(),
+        ));
+
+        let range_with_start = binding_pattern
+            .clone()
+            .then(
+                just(TokenKind::DotDot)
+                    .then(just(TokenKind::Assign).or_not())
+                    .then(binding_pattern.clone().or_not()),
+            )
+            .map_with_span(|(start, ((_, inclusive_opt), end)), span: Range<usize>| Pattern {
+                span: range_to_span(span),
+                kind: PatternKind::Range {
+                    start: Some(Box::new(start)),
+                    end: end.map(Box::new),
+                    inclusive: inclusive_opt.is_some(),
+                },
+            });
+
+        let range_without_start = just(TokenKind::DotDot)
+            .then(just(TokenKind::Assign).or_not())
+            .then(binding_pattern.clone().or_not())
+            .map_with_span(|((_, inclusive_opt), end), span: Range<usize>| Pattern {
+                span: range_to_span(span),
+                kind: PatternKind::Range {
+                    start: None,
+                    end: end.map(Box::new),
+                    inclusive: inclusive_opt.is_some(),
+                },
+            });
+
+        let range_pattern = choice((range_with_start, range_without_start, binding_pattern));
+
+        range_pattern
+            .clone()
+            .separated_by(just(TokenKind::Bar))
+            .at_least(1)
+            .map_with_span(|variants, span: Range<usize>| {
+                if variants.len() == 1 {
+                    variants.into_iter().next().unwrap()
+                } else {
+                    Pattern {
+                        span: range_to_span(span),
+                        kind: PatternKind::Or { variants },
+                    }
+                }
+            })
     });
 
     let pattern_for_expr = pattern.clone();

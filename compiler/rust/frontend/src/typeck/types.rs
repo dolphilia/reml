@@ -171,6 +171,8 @@ impl fmt::Display for Type {
 pub enum BuiltinType {
     Int,
     Bool,
+    Str,
+    Bytes,
     Unit,
     Unknown,
 }
@@ -180,6 +182,8 @@ impl BuiltinType {
         match self {
             BuiltinType::Int => "Int",
             BuiltinType::Bool => "Bool",
+            BuiltinType::Str => "Str",
+            BuiltinType::Bytes => "Bytes",
             BuiltinType::Unit => "Unit",
             BuiltinType::Unknown => "Unknown",
         }
