@@ -148,6 +148,16 @@
 - 正規表現パターンは文字列/バイト列限定かつ全体一致のみを許容し、その他の型や部分一致要求は Active Pattern へ誘導する。適用対象外は `pattern.regex.unsupported_target` で警告/エラー化し、拡張時は対象型を段階的に追加する。
 - Active Pattern は `(|Name|_|)`/`(|Name|)` の両形を継続サポートし、副作用規約は `pattern.active.effect_violation` で監査する。`@pure` 契約厳格化や戻り値制約強化は Phase4 回帰計画と連動し、追加警告キーを導入する場合は本計画に追記する。
 
+## 残作業チェックポイント（IR/仕様/LSP/網羅性）
+- **IR 正規化/実行分岐**: `compiler/rust/frontend/src/semantics/typed.rs` と IR 生成に Range/Slice/Or/Active をタグ付きで伝搬し、Partial Active の miss パス分岐を生成する。`TypedExprKind` に `Match`/`MatchArm` を追加して guard→alias 正規化済みの形で保持する。
+- **ExhaustivenessTracker 拡張**: Range/Slice/Or/Active 混在ケースを到達不能・網羅性計算に反映し、`pattern.exhaustiveness.missing`/`pattern.unreachable_arm` の精度向上テストを追加する。
+- **LSP フィクスチャ**: `tooling/lsp/tests/client_compat/fixtures` に binding/regex/range/slice/active の診断サンプルを追加し、`client_compat.test.ts` で `codes` が読み取れることを確認する。
+- **仕様同期の追補**: `docs/spec/1-1-syntax.md` / `1-5-formal-grammar-bnf.md` / `2-5-error.md` の現行差分をベースに、Range 境界省略時のワイルドカード扱いと `pattern.slice.multiple_rest` を脚注で補足し、必要に応じて `README.md` の索引を更新する。
+
+## Phase4 マトリクス更新履歴（簡易ログ）
+- 2026-02: Range/Slice/Or の BNF・診断キーを `docs/spec/1-1-syntax.md` / `1-5-formal-grammar-bnf.md` / `2-5-error.md` に反映。`pattern.slice.multiple_rest` へキー名を統一。
+- 予定: IR/LSP/網羅性拡張完了後、`docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` の CH1-MATCH-* 行に新規診断キーを追記し、`phase4-scenario-matrix.csv` の更新コマンドと run_id を記録する。
+
 ## Rust実装Remlコンパイラのパターンマッチ実装を強化するための具体的な作業ステップ
 - **パーサ/AST 拡張（Or → Slice → Range → Binding → Regex の順）**: `compiler/rust/frontend/src/parser` の BNF 実装を上記優先順で拡張し、`MatchGuard` は `when` を正規形として `if` は警告 `pattern.guard.if_deprecated` を発火。`parser::ast` のパターンノードに Or/Slice/Range/Binding/Regex/Active 呼び出しを追加し、結合順位を表で固定する。
 - **字句・正規表現サポート**: Regex 糖衣用に `lexer` へ `r"..."` 字句を追加し、エスケープと境界制約を明示。対象型チェックは後段の型検査で `pattern.regex.invalid_syntax`/`unsupported_target` を返せるようトークン情報を保持する。

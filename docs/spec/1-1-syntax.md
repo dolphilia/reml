@@ -441,9 +441,9 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
 * レコード：`{ x, y: y0 }`（`x: x` は `x` に省略可）
 * 代数型：`Some(x)`, `Add(Int(a), b)`
   - **モジュール修飾列挙子**: コンストラクタは `Option.None` や `DSL.Node(tag)` のように `.` 区切りで修飾できる。`Option.None` の末尾 `None`（先頭大文字）が列挙子とみなされ、前置の `Option` はモジュール／型名として扱われる。
-* Or パターン：`Some(A | B)`（左結合。網羅性診断は Or 全体で判定）
-* スライスパターン：`[head, ..tail]`, `[first, .., last]`（`..` は 1 回のみ）
-* 範囲パターン：`1..=10`, `'a'..'z'`（比較可能な型に限定）
+* Or パターン：`Some(A | B)`（左結合。網羅性診断は Or 全体で判定し、到達不能は `pattern.unreachable_arm` を使用）
+* スライスパターン：`[head, ..tail]`, `[first, .., last]`（カンマ区切りで複数要素を記述し、`..` は 1 回のみ。対象型がコレクションでない場合は `pattern.slice.type_mismatch`、`..` 重複時は `pattern.slice.multiple_rest`）
+* 範囲パターン：`1..=10`, `'a'..'z'`（下限・上限はいずれも省略可で、`..` 単体はワイルドカード扱い。型が比較不可能な場合は `pattern.range.type_mismatch`、数値リテラルで逆転している場合は `pattern.range.bound_inverted`）
 * バインディング：`pat as name`（推奨）／`name @ pat`（エイリアス糖衣）。`when` ガードと併用可。
 * 正規表現パターン：`r"^\\d+$" as digits`（文字列/バイト列対象。全体一致に限定）
 * ガード：`p when cond`（`if` は互換用に受理するが警告対象）
