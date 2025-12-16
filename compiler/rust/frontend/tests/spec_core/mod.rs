@@ -568,6 +568,30 @@ fn main() -> Int = {
 }
 
 #[test]
+fn active_pattern_name_conflicts_with_function_symbol() {
+    let source = r#"
+module Spec.Core.Chapter1.ActivePatterns.NameConflict
+
+pattern (|Demo|)(n: Int) = n
+
+fn Demo(n: Int) -> Int = n
+"#;
+    let module = ParserDriver::parse(source)
+        .value
+        .expect("module should parse");
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "pattern.active.name_conflict"),
+        "expected pattern.active.name_conflict, got {:?}",
+        report
+            .violations
+            .iter()
+            .map(|violation| violation.code)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
 fn match_with_partial_active_pattern_requires_fallback() {
     let source = r#"
 module Spec.Core.Chapter1.ActivePatterns.Exhaustiveness

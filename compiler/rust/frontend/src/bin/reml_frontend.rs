@@ -19,6 +19,7 @@ use reml_frontend::diagnostic::{
     formatter::{self, FormatterContext},
     json as diag_json, unicode, DiagnosticDomain, FrontendDiagnostic, StageAuditPayload,
 };
+use reml_frontend::diagnostic::messages;
 use reml_frontend::effects::diagnostics::EffectDiagnostic;
 use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::{lex_source_with_options, IdentifierProfile, LexerOptions};
@@ -2486,13 +2487,25 @@ fn build_type_diagnostics(
             }
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
             extensions.insert("cfg".to_string(), args.target_cfg_extension.clone());
-            let severity_label = if should_downgrade_experimental(
+            let mut severity_label = messages::find_pattern_message(violation.code)
+                .map(|template| template.severity.as_str())
+                .unwrap_or("error");
+            if let Some(template) = messages::find_pattern_message(violation.code) {
+                extensions.insert(
+                    "diagnostic.message".to_string(),
+                    json!({
+                        "code": template.code,
+                        "title": template.title,
+                        "message": template.message,
+                        "severity": template.severity.as_str(),
+                    }),
+                );
+            }
+            if should_downgrade_experimental(
                 args.run_config.ack_experimental_diagnostics,
                 &extensions,
             ) {
-                "warning"
-            } else {
-                "error"
+                severity_label = "warning";
             };
             let mut metadata = build_audit_metadata(
                 &timestamp,
@@ -3049,6 +3062,22 @@ struct FunctionConstraintSummary {
 }
 
 #[derive(Clone, Serialize)]
+struct ActivePatternBranchPlan {
+    on_match: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    on_miss: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+struct ActivePatternLowering {
+    name: String,
+    kind: typed::ActivePatternKind,
+    carrier: typed::ActiveReturnCarrier,
+    span: Span,
+    branches: ActivePatternBranchPlan,
+}
+
+#[derive(Clone, Serialize)]
 struct TypeckDebugFile {
     schema_version: &'static str,
     effect_context: StageContext,
@@ -3060,6 +3089,7 @@ struct TypeckDebugFile {
     used_impls: Vec<String>,
     metrics: TypecheckMetrics,
     violations: Vec<TypecheckViolation>,
+    active_patterns: Vec<ActivePatternLowering>,
 }
 
 fn build_function_summaries(
@@ -3090,6 +3120,34 @@ fn build_function_summaries(
         }
     }
     summaries
+}
+
+fn build_active_pattern_lowerings(
+    module: &typed::TypedModule,
+) -> Vec<ActivePatternLowering> {
+    module
+        .active_patterns
+        .iter()
+        .map(|pattern| {
+            let branches = match pattern.return_carrier {
+                typed::ActiveReturnCarrier::OptionLike => ActivePatternBranchPlan {
+                    on_match: "Some(value) を束縛して現在のアームを評価".to_string(),
+                    on_miss: Some("None なら次のアームへフォールスルー".to_string()),
+                },
+                typed::ActiveReturnCarrier::Value => ActivePatternBranchPlan {
+                    on_match: "値を束縛して現在のアームを評価".to_string(),
+                    on_miss: None,
+                },
+            };
+            ActivePatternLowering {
+                name: pattern.name.clone(),
+                kind: pattern.kind.clone(),
+                carrier: pattern.return_carrier.clone(),
+                span: pattern.span,
+                branches,
+            }
+        })
+        .collect()
 }
 
 fn render_typed_module(module: &typed::TypedModule) -> String {
@@ -3200,6 +3258,7 @@ impl TypeckArtifacts {
             used_impls: report.used_impls.clone(),
             metrics: report.metrics.clone(),
             violations: report.violations.clone(),
+            active_patterns: build_active_pattern_lowerings(&report.typed_module),
         };
         Self {
             typed_ast,

@@ -5,7 +5,7 @@ use Core.Prelude
 @pure
 // 診断: pattern.active.effect_violation（副作用を伴う Active Pattern）
 pattern (|Impure|_|)(n: Int) = {
-  print("impure") // 想定: 純粋契約に反する副作用
+  perform Console.log("impure") // 想定: 純粋契約に反する副作用
   if n > 0 then Some(n) else None
 }
 

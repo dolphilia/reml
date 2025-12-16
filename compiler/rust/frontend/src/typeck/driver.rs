@@ -139,6 +139,7 @@ impl TypecheckDriver {
         let mut unicode_shadow_tracker = UnicodeShadowTracker::default();
 
         collect_opbuilder_violations(module, &mut violations);
+        violations.extend(detect_active_pattern_conflicts(module));
 
         if !module.decls.is_empty() {
             let mut module_decl_stats = FunctionStats::default();
@@ -439,6 +440,7 @@ pub enum TypecheckViolationKind {
     ResidualLeak,
     ActivePatternReturnContract,
     ActivePatternEffectViolation,
+    ActivePatternNameConflict,
     PatternExhaustivenessMissing,
     PatternUnreachableArm,
     StageMismatch,
@@ -814,6 +816,32 @@ impl TypecheckViolation {
         }
     }
 
+    fn active_pattern_name_conflict(
+        span: Span,
+        name: &str,
+        other_span: Span,
+        other_kind: &str,
+    ) -> Self {
+        Self {
+            kind: TypecheckViolationKind::ActivePatternNameConflict,
+            code: "pattern.active.name_conflict",
+            message: format!(
+                "Active Pattern `{}` は既存の {} と同名のため利用できません。",
+                name, other_kind
+            ),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "最初に定義された {} は {} にあります",
+                other_kind, other_span
+            ))],
+            capability: None,
+            function: Some(name.to_string()),
+            expected: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
     fn pattern_exhaustiveness_missing(span: Span) -> Self {
         Self {
             kind: TypecheckViolationKind::PatternExhaustivenessMissing,
@@ -987,6 +1015,7 @@ impl TypecheckViolation {
             | TypecheckViolationKind::ReturnConflict
             | TypecheckViolationKind::UnicodeShadowing
             | TypecheckViolationKind::ActivePatternReturnContract
+            | TypecheckViolationKind::ActivePatternNameConflict
             | TypecheckViolationKind::PatternExhaustivenessMissing
             | TypecheckViolationKind::PatternUnreachableArm
             | TypecheckViolationKind::ValueRestriction
@@ -2332,26 +2361,76 @@ struct ExhaustivenessResult {
 }
 
 fn analyze_match_exhaustiveness(arms: &[MatchArm]) -> ExhaustivenessResult {
-    let mut result = ExhaustivenessResult::default();
-    let mut coverage_reached = false;
+    let mut tracker = ExhaustivenessTracker::default();
+    let mut unreachable_arm_indices = Vec::new();
     for (idx, arm) in arms.iter().enumerate() {
-        if coverage_reached {
-            result.unreachable_arm_indices.push(idx);
+        if tracker.coverage_reached() {
+            unreachable_arm_indices.push(idx);
             continue;
         }
-        if arm.guard.is_none() && is_covering_pattern(&arm.pattern) {
-            coverage_reached = true;
-        }
+        tracker.observe_arm(arm);
     }
-    result.coverage_reached = coverage_reached;
-    result
+    ExhaustivenessResult {
+        coverage_reached: tracker.coverage_reached(),
+        unreachable_arm_indices,
+    }
 }
 
-fn is_covering_pattern(pattern: &Pattern) -> bool {
-    match &pattern.kind {
-        PatternKind::Wildcard | PatternKind::Var(_) => true,
-        PatternKind::ActivePattern { is_partial, .. } => !*is_partial,
-        _ => false,
+#[derive(Default)]
+struct ExhaustivenessTracker {
+    wildcard_covered: bool,
+    bool_true_seen: bool,
+    bool_false_seen: bool,
+    option_some_seen: bool,
+    option_none_seen: bool,
+}
+
+impl ExhaustivenessTracker {
+    fn observe_arm(&mut self, arm: &MatchArm) {
+        if arm.guard.is_some() {
+            return;
+        }
+        self.observe_pattern(&arm.pattern, false);
+    }
+
+    fn observe_pattern(&mut self, pattern: &Pattern, has_guard: bool) {
+        if has_guard || self.wildcard_covered {
+            return;
+        }
+        match &pattern.kind {
+            PatternKind::Wildcard | PatternKind::Var(_) => {
+                self.wildcard_covered = true;
+            }
+            PatternKind::Literal(Literal {
+                value: LiteralKind::Bool { value },
+            }) => {
+                if *value {
+                    self.bool_true_seen = true;
+                } else {
+                    self.bool_false_seen = true;
+                }
+            }
+            PatternKind::Constructor { name, .. } => match name.name.as_str() {
+                "Some" | "Ok" => self.option_some_seen = true,
+                "None" | "Err" => self.option_none_seen = true,
+                _ => {}
+            },
+            PatternKind::ActivePattern { is_partial, .. } => {
+                if !*is_partial {
+                    self.wildcard_covered = true;
+                }
+            }
+            PatternKind::Guard { pattern, .. } => {
+                self.observe_pattern(pattern, true);
+            }
+            _ => {}
+        }
+    }
+
+    fn coverage_reached(&self) -> bool {
+        self.wildcard_covered
+            || (self.bool_true_seen && self.bool_false_seen)
+            || (self.option_some_seen && self.option_none_seen)
     }
 }
 
@@ -2620,6 +2699,42 @@ fn detect_duplicate_impls(module: &Module) -> Vec<TypecheckViolation> {
                     seen.insert(key, decl.span);
                 }
             }
+        }
+    }
+    violations
+}
+
+fn detect_active_pattern_conflicts(module: &Module) -> Vec<TypecheckViolation> {
+    #[derive(Clone, Copy)]
+    enum SymbolKind {
+        Function,
+        ActivePattern,
+    }
+
+    impl SymbolKind {
+        fn label(&self) -> &'static str {
+            match self {
+                SymbolKind::Function => "関数",
+                SymbolKind::ActivePattern => "Active Pattern",
+            }
+        }
+    }
+
+    let mut registry: HashMap<String, (Span, SymbolKind)> = HashMap::new();
+    for function in &module.functions {
+        registry.insert(function.name.name.clone(), (function.span, SymbolKind::Function));
+    }
+    let mut violations = Vec::new();
+    for active in &module.active_patterns {
+        if let Some((other_span, kind)) = registry.get(&active.name.name).copied() {
+            violations.push(TypecheckViolation::active_pattern_name_conflict(
+                active.span,
+                active.name.name.as_str(),
+                other_span,
+                kind.label(),
+            ));
+        } else {
+            registry.insert(active.name.name.clone(), (active.span, SymbolKind::ActivePattern));
         }
     }
     violations
