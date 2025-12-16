@@ -1,4 +1,10 @@
-use crate::codegen::{CodegenContext, GeneratedFunction, MirFunction};
+use crate::codegen::{
+    summarize_pattern, ActivePatternKind, CodegenContext, GeneratedFunction, MatchArmLowering,
+    MatchLoweringPlan, MirActivePatternCall, MirExpr, MirExprKind, MirFunction, MirJumpTarget,
+    MirMatchArm,
+    MirPattern, MirPatternKind, MirPatternRecordField, MirSlicePattern, MirSliceRest,
+    PatternLowering,
+};
 use crate::ffi_lowering::FfiCallSignature;
 use crate::target_machine::{
     CodeModel, DataLayoutSpec, OptimizationLevel, RelocModel, TargetMachine, TargetMachineBuilder,
@@ -199,13 +205,18 @@ impl MirModuleSpec {
     }
 }
 
+fn default_calling_conv() -> String {
+    "ccc".into()
+}
+
 /// 単体 MIR 関数の JSON 表現。
 #[derive(Debug, Deserialize)]
 struct MirFunctionJson {
     name: String,
+    #[serde(default = "default_calling_conv")]
     calling_conv: String,
     #[serde(default)]
-    params: Vec<String>,
+    params: Vec<MirParamJson>,
     #[serde(alias = "return")]
     return_type: Option<String>,
     #[serde(default)]
@@ -218,11 +229,27 @@ struct MirFunctionJson {
     body: Option<usize>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum MirParamJson {
+    Bare(String),
+    Detailed { #[serde(default)] ty: Option<String> },
+}
+
+impl MirParamJson {
+    fn into_type_token(self) -> String {
+        match self {
+            MirParamJson::Bare(token) => token,
+            MirParamJson::Detailed { ty } => ty.unwrap_or_else(|| "pointer".into()),
+        }
+    }
+}
+
 impl MirFunctionJson {
     fn into_mir(self) -> MirFunction {
         let mut builder = MirFunction::new(self.name, self.calling_conv);
         for param in self.params {
-            builder = builder.with_param(parse_reml_type(&param));
+            builder = builder.with_param(parse_reml_type(&param.into_type_token()));
         }
         if let Some(ret) = self.return_type {
             builder = builder.with_return(parse_reml_type(&ret));
@@ -234,7 +261,9 @@ impl MirFunctionJson {
         for ffi in self.ffi_calls {
             builder = builder.with_ffi_call(ffi.into_signature());
         }
-        builder.match_plans = extract_match_plans(&self.exprs);
+        let exprs = convert_exprs(self.exprs);
+        builder.match_plans = extract_match_plans(&exprs);
+        builder = builder.with_exprs(self.body, exprs);
         builder
     }
 }
@@ -422,10 +451,188 @@ struct PatternLoweringJson {
     children: Vec<PatternLoweringJson>,
 }
 
-fn extract_match_plans(exprs: &[MirExprJson]) -> Vec<String> {
+fn convert_exprs(exprs: Vec<MirExprJson>) -> Vec<MirExpr> {
+    exprs
+        .into_iter()
+        .map(|expr| MirExpr {
+            id: expr.id,
+            kind: convert_expr_kind(expr.kind),
+        })
+        .collect()
+}
+
+fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
+    match kind {
+        MirExprKindJson::Match {
+            target,
+            arms,
+            lowering,
+        } => MirExprKind::Match {
+            target,
+            arms: arms.into_iter().map(convert_match_arm).collect(),
+            lowering: convert_match_lowering(lowering),
+        },
+        MirExprKindJson::Call { callee, args } => MirExprKind::Call { callee, args },
+        MirExprKindJson::Binary {
+            operator,
+            left,
+            right,
+        } => MirExprKind::Binary {
+            operator,
+            left,
+            right,
+        },
+        MirExprKindJson::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+        } => MirExprKind::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+        },
+        MirExprKindJson::PerformCall { call } => MirExprKind::PerformCall {
+            effect: value_summary(call.effect),
+            argument: call.argument,
+        },
+        MirExprKindJson::Identifier { ident } => MirExprKind::Identifier {
+            summary: value_summary(ident),
+        },
+        MirExprKindJson::Literal { value } => MirExprKind::Literal {
+            summary: value_summary(value),
+        },
+        MirExprKindJson::Unknown => MirExprKind::Unknown,
+    }
+}
+
+fn convert_match_lowering(plan: Option<MatchLoweringPlanJson>) -> Option<MatchLoweringPlan> {
+    plan.map(|plan| MatchLoweringPlan {
+        owner: plan.owner,
+        target_type: plan.target_type,
+        arm_count: plan.arm_count,
+        arms: plan
+            .arms
+            .into_iter()
+            .map(|arm| MatchArmLowering {
+                pattern: convert_pattern_lowering(arm.pattern),
+                has_guard: arm.has_guard,
+                alias: arm.alias,
+            })
+            .collect(),
+    })
+}
+
+fn convert_pattern_lowering(pattern: PatternLoweringJson) -> PatternLowering {
+    PatternLowering {
+        label: pattern.label,
+        miss_on_none: pattern.miss_on_none,
+        always_matches: pattern.always_matches,
+        children: pattern
+            .children
+            .into_iter()
+            .map(convert_pattern_lowering)
+            .collect(),
+    }
+}
+
+fn convert_match_arm(arm: MirMatchArmJson) -> MirMatchArm {
+    MirMatchArm {
+        pattern: convert_pattern(arm.pattern),
+        guard: arm.guard,
+        alias: arm.alias,
+        body: arm.body,
+    }
+}
+
+fn convert_pattern(pattern: MirPatternJson) -> MirPattern {
+    let kind = match pattern {
+        MirPatternJson::Wildcard => MirPatternKind::Wildcard,
+        MirPatternJson::Var { name } => MirPatternKind::Var { name },
+        MirPatternJson::Literal(value) => MirPatternKind::Literal {
+            summary: value_summary(value),
+        },
+        MirPatternJson::Tuple { elements } => MirPatternKind::Tuple {
+            elements: elements.into_iter().map(convert_pattern).collect(),
+        },
+        MirPatternJson::Record { fields, has_rest } => MirPatternKind::Record {
+            fields: fields
+                .into_iter()
+                .map(|field| MirPatternRecordField {
+                    key: field.key,
+                    value: field.value.map(|value| Box::new(convert_pattern(*value))),
+                })
+                .collect(),
+            has_rest,
+        },
+        MirPatternJson::Constructor { name, args } => MirPatternKind::Constructor {
+            name,
+            args: args.into_iter().map(convert_pattern).collect(),
+        },
+        MirPatternJson::Binding {
+            name,
+            pattern,
+            via_at,
+        } => MirPatternKind::Binding {
+            name,
+            pattern: Box::new(convert_pattern(*pattern)),
+            via_at,
+        },
+        MirPatternJson::Or { variants } => MirPatternKind::Or {
+            variants: variants.into_iter().map(convert_pattern).collect(),
+        },
+        MirPatternJson::Slice(spec) => MirPatternKind::Slice(convert_slice_pattern(spec)),
+        MirPatternJson::Range {
+            start,
+            end,
+            inclusive,
+        } => MirPatternKind::Range {
+            start: start.map(|value| Box::new(convert_pattern(*value))),
+            end: end.map(|value| Box::new(convert_pattern(*value))),
+            inclusive,
+        },
+        MirPatternJson::Regex { pattern } => MirPatternKind::Regex { pattern },
+        MirPatternJson::Active(call) => MirPatternKind::Active(MirActivePatternCall {
+            name: call.name,
+            kind: convert_active_kind(call.kind),
+            argument: call
+                .argument
+                .map(|value| Box::new(convert_pattern(*value))),
+            input_binding: call.input_binding,
+            miss_target: convert_jump_target(call.miss_target),
+        }),
+    };
+    MirPattern { kind }
+}
+
+fn convert_slice_pattern(pattern: MirSlicePatternJson) -> MirSlicePattern {
+    MirSlicePattern {
+        head: pattern.head.into_iter().map(convert_pattern).collect(),
+        rest: pattern
+            .rest
+            .map(|rest| MirSliceRest { binding: rest.binding }),
+        tail: pattern.tail.into_iter().map(convert_pattern).collect(),
+    }
+}
+
+fn convert_active_kind(kind: Option<String>) -> ActivePatternKind {
+    match kind.as_deref() {
+        Some("partial") => ActivePatternKind::Partial,
+        Some("total") => ActivePatternKind::Total,
+        _ => ActivePatternKind::Unknown,
+    }
+}
+
+fn convert_jump_target(label: Option<String>) -> Option<MirJumpTarget> {
+    match label.as_deref() {
+        Some("next_arm") => Some(MirJumpTarget::NextArm),
+        _ => None,
+    }
+}
+
+fn extract_match_plans(exprs: &[MirExpr]) -> Vec<String> {
     let mut plans = Vec::new();
     for expr in exprs {
-        if let MirExprKindJson::Match { arms, lowering, .. } = &expr.kind {
+        if let MirExprKind::Match { arms, lowering, .. } = &expr.kind {
             let pattern_labels: Vec<String> = arms
                 .iter()
                 .map(|arm| summarize_pattern(&arm.pattern))
@@ -437,11 +644,7 @@ fn extract_match_plans(exprs: &[MirExprJson]) -> Vec<String> {
             let arm_with_guard = arms.iter().filter(|arm| arm.guard.is_some()).count();
             let plan = format!(
                 "match#{} ty={} arms={} guard_arms={} patterns=[{}]",
-                expr.id,
-                lowering_label,
-                arms.len(),
-                arm_with_guard,
-                pattern_labels.join("|")
+                expr.id, lowering_label, arms.len(), arm_with_guard, pattern_labels.join("|")
             );
             plans.push(plan);
         }
@@ -449,78 +652,12 @@ fn extract_match_plans(exprs: &[MirExprJson]) -> Vec<String> {
     plans
 }
 
-fn summarize_pattern(pattern: &MirPatternJson) -> String {
-    match pattern {
-        MirPatternJson::Wildcard => "_".into(),
-        MirPatternJson::Var { name } => format!("var({})", name),
-        MirPatternJson::Literal(_) => "literal".into(),
-        MirPatternJson::Tuple { elements } => format!("tuple({})", elements.len()),
-        MirPatternJson::Record { has_rest, fields } => {
-            if *has_rest {
-                format!("record({}+,..)", fields.len())
-            } else {
-                format!("record({})", fields.len())
-            }
-        }
-        MirPatternJson::Constructor { name, args } => {
-            format!("ctor({};{})", name, args.len())
-        }
-        MirPatternJson::Binding { name, pattern, via_at } => {
-            let inner = summarize_pattern(pattern);
-            if *via_at {
-                format!("binding(@ {}:{})", name, inner)
-            } else {
-                format!("binding(as {}:{})", name, inner)
-            }
-        }
-        MirPatternJson::Or { variants } => {
-            let joined = variants
-                .iter()
-                .map(summarize_pattern)
-                .collect::<Vec<_>>()
-                .join("|");
-            format!("or({})", joined)
-        }
-        MirPatternJson::Slice(MirSlicePatternJson { head, rest, tail }) => {
-            let mut parts = Vec::new();
-            if !head.is_empty() {
-                parts.push(format!("head{}", head.len()));
-            }
-            if rest.is_some() {
-                parts.push("rest".into());
-            }
-            if !tail.is_empty() {
-                parts.push(format!("tail{}", tail.len()));
-            }
-            format!("slice({})", parts.join(","))
-        }
-        MirPatternJson::Range { inclusive, .. } => {
-            if *inclusive {
-                "range(..=)".into()
-            } else {
-                "range(..)".into()
-            }
-        }
-        MirPatternJson::Regex { .. } => "regex".into(),
-        MirPatternJson::Active(MirActivePatternCallJson {
-            name,
-            kind,
-            miss_target,
-            ..
-        }) => {
-            let mut flags = Vec::new();
-            if let Some(kind) = kind {
-                flags.push(kind.to_string());
-            }
-            if miss_target.is_some() {
-                flags.push("miss".into());
-            }
-            if flags.is_empty() {
-                format!("active({})", name)
-            } else {
-                format!("active({};{})", name, flags.join(","))
-            }
-        }
+fn value_summary(value: Value) -> String {
+    match value {
+        Value::String(text) => text,
+        Value::Number(num) => num.to_string(),
+        Value::Bool(flag) => flag.to_string(),
+        other => other.to_string(),
     }
 }
 
