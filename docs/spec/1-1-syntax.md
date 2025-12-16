@@ -444,8 +444,8 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
 * Or パターン：`Some(A | B)`（左結合。網羅性診断は Or 全体で判定し、到達不能は `pattern.unreachable_arm` を使用）
 * スライスパターン：`[head, ..tail]`, `[first, .., last]`（カンマ区切りで複数要素を記述し、`..` は 1 回のみ。対象型がコレクションでない場合は `pattern.slice.type_mismatch`、`..` 重複時は `pattern.slice.multiple_rest`）
 * 範囲パターン：`1..=10`, `'a'..'z'`（下限・上限はいずれも省略可で、`..` 単体はワイルドカード扱い。型が比較不可能な場合は `pattern.range.type_mismatch`、数値リテラルで逆転している場合は `pattern.range.bound_inverted`）
-* バインディング：`pat as name`（推奨）／`name @ pat`（エイリアス糖衣）。`when` ガードと併用可。
-* 正規表現パターン：`r"^\\d+$" as digits`（文字列/バイト列対象。全体一致に限定）
+* バインディング：`pat as name`（推奨）／`name @ pat`（エイリアス糖衣）。`when` ガードと併用可。同じ識別子を重複束縛した場合は `pattern.binding.duplicate_name` を報告する（例: `examples/spec_core/chapter1/match_expr/bnf-match-binding-duplicate.reml`）。
+* 正規表現パターン：`r"^\\d+$" as digits`（文字列/バイト列対象。全体一致に限定。対象が文字列系でない場合は `pattern.regex.unsupported_target`、リテラル構文が無効な場合は `pattern.regex.invalid_syntax`。サンプルは `examples/spec_core/chapter1/match_expr/bnf-match-regex-ok.reml` / `bnf-match-regex-unsupported-target.reml` を参照）
 * ガード：`p when cond`（`if` は互換用に受理するが警告対象）
 * アクティブパターン：`(|Name|_|)` / `(|Name|)` で定義した分解ロジックをパターンとして使用  
   - **定義**: `pattern (|Name|_|)(args) = expr` は部分パターンとして `Option<T>` を返し、`Some` ならマッチ成功、`None` なら次のアームへフォールスルー。`pattern (|Name|)(args) = expr` は常に成功する完全パターンで、戻り値 `T` を束縛する。  
@@ -490,6 +490,13 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
   | r"^\\d+$" as digits -> digits   // 文字列/バイト列のみ対応
   | (|HexInt|_|) n when n > 0xFF -> "large"
   | _ -> "other"
+  ```
+
+  重複束縛を含む場合の診断例：
+
+  ```reml
+  match value with
+  | x @ Some(x) -> x    // pattern.binding.duplicate_name
   ```
 
 * ループ：`while`・`for` は式として扱われ、結果は `()`（ユニット）です。`loop` は無条件ループで、`break`/`continue` は今後の拡張に備えて予約されています。
