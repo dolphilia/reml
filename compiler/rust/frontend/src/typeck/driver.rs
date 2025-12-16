@@ -798,8 +798,7 @@ impl TypecheckViolation {
         is_partial: bool,
         actual: ActiveReturnKind,
     ) -> Self {
-        let message =
-            "Active Pattern の戻り値は Option<T> または完全パターンの T に限定されます".to_string();
+        let message = "Active Pattern の戻り値は Option<T>（部分）または T（完全）のみ許可されます。Result など別の型は使用できません。".to_string();
         let mut notes = Vec::new();
         let expected_label = if is_partial { "Option<T>" } else { "T" };
         notes.push(ViolationNote::plain(format!(
@@ -876,7 +875,7 @@ impl TypecheckViolation {
         Self {
             kind: TypecheckViolationKind::PatternRegexUnsupportedTarget,
             code: "pattern.regex.unsupported_target",
-            message: "正規表現パターンは文字列/バイト列にのみ適用できます。".to_string(),
+            message: "正規表現パターンは文字列またはバイト列にのみ適用できます。".to_string(),
             span: Some(span),
             notes: vec![ViolationNote::plain(format!("対象の型: {}", actual))],
             capability: None,
@@ -2021,7 +2020,7 @@ fn infer_expr(
                 loop_context,
                 context,
             );
-            let mut dicts = target_result.dict_ref_ids;
+            let mut dicts = target_result.dict_ref_ids.clone();
             let coverage = analyze_match_exhaustiveness(arms);
             let target_ty = solver.substitution().apply(&target_result.ty);
             let mut arm_type: Option<Type> = None;
@@ -2083,7 +2082,7 @@ fn infer_expr(
                 } else {
                     arm_type = Some(body_result.ty.clone());
                 }
-                dicts.extend(body_result.dict_ref_ids);
+                dicts.extend(body_result.dict_ref_ids.clone());
                 typed_arms.push(TypedMatchArmDraft {
                     pattern: lower_typed_pattern(&arm.pattern),
                     guard: typed_guard_draft,
