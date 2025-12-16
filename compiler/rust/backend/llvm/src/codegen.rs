@@ -410,34 +410,169 @@ fn render_branch_plans(exprs: &[MirExpr]) -> Vec<String> {
                 .as_ref()
                 .and_then(|plan| plan.target_type.clone())
                 .unwrap_or_else(|| "unknown".to_string());
-            let mut arm_descriptions = Vec::new();
+            let mut arm_blocks = Vec::new();
             for (index, arm) in arms.iter().enumerate() {
-                let mut steps = Vec::new();
-                steps.push(format!("pat({})", summarize_pattern(&arm.pattern)));
-                if let Some(guard_id) = arm.guard {
-                    steps.push(format!("guard#{guard_id}"));
-                }
-                if let Some(alias) = &arm.alias {
-                    steps.push(format!("alias:{alias}"));
-                }
-                steps.push(format!("body#{}", arm.body));
-                let miss = if index + 1 == arms.len() {
+                let next_arm = if index + 1 == arms.len() {
                     "end".to_string()
                 } else {
                     format!("arm{}", index + 1)
                 };
-                steps.push(format!("miss->{miss}"));
-                arm_descriptions.push(format!("arm{index}: {}", steps.join(" -> ")));
+                let success_label = arm_success_label(arm);
+                arm_blocks.extend(render_pattern_blocks(
+                    index,
+                    &arm.pattern,
+                    &success_label,
+                    &next_arm,
+                    &target_label,
+                ));
+                if let Some(guard_id) = arm.guard {
+                    arm_blocks.push(format!(
+                        "arm{index}.guard#{guard_id}: true->{success} / false->{next}",
+                        success = success_label,
+                        next = next_arm
+                    ));
+                }
+                if let Some(alias) = &arm.alias {
+                    arm_blocks.push(format!(
+                        "arm{index}.alias:{alias} -> body#{}",
+                        arm.body
+                    ));
+                }
+                arm_blocks.push(format!("arm{index}.body#{} -> end", arm.body));
             }
             plans.push(format!(
-                "match#{id} target={target_label} ty={target_type} arms={count} {{ {} }}",
-                arm_descriptions.join(" | "),
+                "match#{id} target={target_label} ty={target_type} blocks=[{}]",
+                arm_blocks.join("; "),
                 id = expr.id,
-                count = arms.len()
             ));
         }
     }
     plans
+}
+
+fn arm_success_label(arm: &MirMatchArm) -> String {
+    if let Some(guard) = arm.guard {
+        format!("guard#{guard}")
+    } else if let Some(alias) = &arm.alias {
+        format!("alias:{alias}")
+    } else {
+        format!("body#{}", arm.body)
+    }
+}
+
+fn render_pattern_blocks(
+    arm_index: usize,
+    pattern: &MirPattern,
+    success_label: &str,
+    next_arm_label: &str,
+    target_label: &str,
+) -> Vec<String> {
+    match &pattern.kind {
+        MirPatternKind::Or { variants } => {
+            let mut blocks = Vec::new();
+            for (idx, variant) in variants.iter().enumerate() {
+                let miss_target = if idx + 1 == variants.len() {
+                    next_arm_label.to_string()
+                } else {
+                    format!("arm{arm_index}.or{}", idx + 1)
+                };
+                let label = pattern_check_label(variant, target_label, &miss_target);
+                blocks.push(format!(
+                    "arm{arm_index}.or{idx}: {label} -> match:{success} / miss:{miss}",
+                    success = success_label,
+                    miss = miss_target
+                ));
+            }
+            blocks
+        }
+        _ => {
+            let label = pattern_check_label(pattern, target_label, next_arm_label);
+            vec![format!(
+                "arm{arm_index}.pat: {label} -> match:{success} / miss:{miss}",
+                success = success_label,
+                miss = next_arm_label
+            )]
+        }
+    }
+}
+
+fn pattern_check_label(pattern: &MirPattern, target_label: &str, miss_label: &str) -> String {
+    match &pattern.kind {
+        MirPatternKind::Wildcard => format!("match_any({target_label})"),
+        MirPatternKind::Var { name } => format!("bind({name})"),
+        MirPatternKind::Literal { summary } => format!("eq({target_label},{summary})"),
+        MirPatternKind::Tuple { elements } => {
+            format!("tuple_check(len={} on {target_label})", elements.len())
+        }
+        MirPatternKind::Record { fields, has_rest } => {
+            let rest = if *has_rest { "with_rest" } else { "exact" };
+            format!(
+                "record_check({} fields,{rest} on {target_label})",
+                fields.len()
+            )
+        }
+        MirPatternKind::Constructor { name, args } => {
+            format!(
+                "ctor_check({name}, args={} on {target_label})",
+                args.len()
+            )
+        }
+        MirPatternKind::Binding { pattern, .. } => pattern_check_label(pattern, target_label, miss_label),
+        MirPatternKind::Or { variants } => {
+            format!("or({} variants)", variants.len())
+        }
+        MirPatternKind::Slice(MirSlicePattern { head, rest, tail }) => {
+            let base_len = head.len() + tail.len();
+            let len_rule = if rest.is_some() {
+                format!("len>={}", base_len)
+            } else {
+                format!("len=={}", base_len)
+            };
+            format!(
+                "slice_check({len_rule};head={};tail={};rest={} on {target_label})",
+                head.len(),
+                tail.len(),
+                rest.is_some()
+            )
+        }
+        MirPatternKind::Range {
+            start,
+            end,
+            inclusive,
+        } => {
+            let bound = if *inclusive { "..=" } else { ".." };
+            let mut parts = Vec::new();
+            if start.is_some() {
+                parts.push("start".to_string());
+            }
+            if end.is_some() {
+                parts.push("end".to_string());
+            }
+            let bounds = if parts.is_empty() {
+                "open".to_string()
+            } else {
+                parts.join("+")
+            };
+            format!("range_check({bound}{bounds} on {target_label})")
+        }
+        MirPatternKind::Regex { pattern } => format!("regex_match({pattern} on {target_label})"),
+        MirPatternKind::Active(MirActivePatternCall {
+            name,
+            kind,
+            miss_target,
+            ..
+        }) => match kind {
+            ActivePatternKind::Partial => {
+                let miss = miss_target
+                    .as_ref()
+                    .map(|_| miss_label.to_string())
+                    .unwrap_or_else(|| miss_label.to_string());
+                format!("active_partial({name} miss->{miss})")
+            }
+            ActivePatternKind::Total => format!("active_total({name})"),
+            ActivePatternKind::Unknown => format!("active({name})"),
+        },
+    }
 }
 
 pub(crate) fn summarize_pattern(pattern: &MirPattern) -> String {
