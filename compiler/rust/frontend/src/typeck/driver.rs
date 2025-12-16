@@ -2109,7 +2109,7 @@ fn infer_expr(
             )
         }
         ExprKind::Block { statements, .. } => {
-            let (block_ty, block_dict_refs) = infer_block(
+            let block_result = infer_block(
                 statements,
                 env,
                 var_gen,
@@ -2122,7 +2122,21 @@ fn infer_expr(
                 context,
                 loop_context,
             );
-            make_typed(expr, TypedExprKindDraft::Unknown, block_ty, block_dict_refs)
+            if let Some(tail_expr) = block_result.tail_expr {
+                TypedExprDraft {
+                    span: expr.span,
+                    kind: tail_expr.kind,
+                    ty: block_result.ty,
+                    dict_ref_ids: block_result.dict_ref_ids,
+                }
+            } else {
+                make_typed(
+                    expr,
+                    TypedExprKindDraft::Unknown,
+                    block_result.ty,
+                    block_result.dict_ref_ids,
+                )
+            }
         }
         ExprKind::Lambda { params, body, .. } => {
             let mut lambda_env = env.enter_scope();
@@ -2167,6 +2181,12 @@ fn infer_expr(
     }
 }
 
+struct BlockInferenceResult {
+    ty: Type,
+    dict_ref_ids: Vec<typed::DictRefId>,
+    tail_expr: Option<TypedExprDraft>,
+}
+
 fn infer_block(
     statements: &[Stmt],
     parent_env: &TypeEnv,
@@ -2179,10 +2199,11 @@ fn infer_block(
     dict_refs: &mut Vec<DictRefDraft>,
     context: FunctionContext<'_>,
     loop_context: &mut LoopContextStack,
-) -> (Type, Vec<typed::DictRefId>) {
+) -> BlockInferenceResult {
     let mut block_env = parent_env.enter_scope();
     let mut last_ty = Type::builtin(BuiltinType::Unknown);
     let mut block_dict_refs = Vec::new();
+    let mut tail_expr = None;
     let mut terminated = false;
     for stmt in statements {
         if terminated {
@@ -2221,7 +2242,8 @@ fn infer_block(
                     context,
                 );
                 last_ty = expr_result.ty.clone();
-                block_dict_refs.extend(expr_result.dict_ref_ids);
+                block_dict_refs.extend(expr_result.dict_ref_ids.clone());
+                tail_expr = Some(expr_result);
                 if matches!(expr.kind, ExprKind::Return { .. } | ExprKind::Break { .. }) {
                     terminated = true;
                 }
@@ -2274,7 +2296,11 @@ fn infer_block(
             }
         }
     }
-    (last_ty, block_dict_refs)
+    BlockInferenceResult {
+        ty: last_ty,
+        dict_ref_ids: block_dict_refs,
+        tail_expr,
+    }
 }
 
 fn infer_decl(
