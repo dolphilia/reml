@@ -3084,6 +3084,31 @@ struct ActivePatternLowering {
 }
 
 #[derive(Clone, Serialize)]
+struct MatchLoweringPlan {
+    owner: String,
+    span: Span,
+    target_type: String,
+    arm_count: usize,
+    arms: Vec<MatchArmLowering>,
+}
+
+#[derive(Clone, Serialize)]
+struct MatchArmLowering {
+    pattern: PatternLowering,
+    has_guard: bool,
+    alias: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+struct PatternLowering {
+    label: String,
+    miss_on_none: bool,
+    always_matches: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    children: Vec<PatternLowering>,
+}
+
+#[derive(Clone, Serialize)]
 struct TypeckDebugFile {
     schema_version: &'static str,
     effect_context: StageContext,
@@ -3096,6 +3121,7 @@ struct TypeckDebugFile {
     metrics: TypecheckMetrics,
     violations: Vec<TypecheckViolation>,
     active_patterns: Vec<ActivePatternLowering>,
+    match_lowerings: Vec<MatchLoweringPlan>,
 }
 
 fn build_function_summaries(
@@ -3153,6 +3179,220 @@ fn build_active_pattern_lowerings(module: &typed::TypedModule) -> Vec<ActivePatt
             }
         })
         .collect()
+}
+
+fn lower_pattern(pattern: &typed::TypedPattern) -> PatternLowering {
+    match &pattern.kind {
+        typed::TypedPatternKind::Wildcard => PatternLowering {
+            label: "_".to_string(),
+            miss_on_none: false,
+            always_matches: true,
+            children: Vec::new(),
+        },
+        typed::TypedPatternKind::Var { name } => PatternLowering {
+            label: format!("var({})", name),
+            miss_on_none: false,
+            always_matches: true,
+            children: Vec::new(),
+        },
+        typed::TypedPatternKind::Literal(literal) => PatternLowering {
+            label: format!("literal({:?})", literal),
+            miss_on_none: false,
+            always_matches: false,
+            children: Vec::new(),
+        },
+        typed::TypedPatternKind::Tuple { elements } => PatternLowering {
+            label: "tuple".to_string(),
+            miss_on_none: false,
+            always_matches: false,
+            children: elements.iter().map(lower_pattern).collect(),
+        },
+        typed::TypedPatternKind::Record { fields, has_rest } => {
+            let mut children = fields
+                .iter()
+                .filter_map(|field| field.value.as_ref().map(|value| lower_pattern(value)))
+                .collect::<Vec<_>>();
+            if *has_rest {
+                children.push(PatternLowering {
+                    label: "rest".to_string(),
+                    miss_on_none: false,
+                    always_matches: true,
+                    children: Vec::new(),
+                });
+            }
+            PatternLowering {
+                label: "record".to_string(),
+                miss_on_none: false,
+                always_matches: false,
+                children,
+            }
+        }
+        typed::TypedPatternKind::Constructor { name, args } => PatternLowering {
+            label: format!("ctor({})", name),
+            miss_on_none: false,
+            always_matches: false,
+            children: args.iter().map(lower_pattern).collect(),
+        },
+        typed::TypedPatternKind::Binding {
+            name,
+            pattern,
+            via_at,
+        } => {
+            let child = lower_pattern(pattern);
+            PatternLowering {
+                label: if *via_at {
+                    format!("binding(@ {})", name)
+                } else {
+                    format!("binding(as {})", name)
+                },
+                miss_on_none: child.miss_on_none,
+                always_matches: child.always_matches,
+                children: vec![child],
+            }
+        }
+        typed::TypedPatternKind::Or { variants } => PatternLowering {
+            label: "or".to_string(),
+            miss_on_none: variants.iter().any(|variant| lower_pattern(variant).miss_on_none),
+            always_matches: false,
+            children: variants.iter().map(lower_pattern).collect(),
+        },
+        typed::TypedPatternKind::Slice { elements } => PatternLowering {
+            label: "slice".to_string(),
+            miss_on_none: false,
+            always_matches: false,
+            children: elements
+                .iter()
+                .map(|item| match item {
+                    typed::TypedSlicePatternItem::Element(pat) => lower_pattern(pat),
+                    typed::TypedSlicePatternItem::Rest { ident } => PatternLowering {
+                        label: ident
+                            .as_ref()
+                            .map(|name| format!("rest({})", name))
+                            .unwrap_or_else(|| "rest".to_string()),
+                        miss_on_none: false,
+                        always_matches: true,
+                        children: Vec::new(),
+                    },
+                })
+                .collect(),
+        },
+        typed::TypedPatternKind::Range {
+            start,
+            end,
+            inclusive,
+        } => {
+            let mut children = Vec::new();
+            if let Some(start_pat) = start {
+                children.push(lower_pattern(start_pat));
+            }
+            if let Some(end_pat) = end {
+                children.push(lower_pattern(end_pat));
+            }
+            PatternLowering {
+                label: if *inclusive {
+                    "range(..=)".to_string()
+                } else {
+                    "range(..)".to_string()
+                },
+                miss_on_none: false,
+                always_matches: false,
+                children,
+            }
+        }
+        typed::TypedPatternKind::Regex { pattern } => PatternLowering {
+            label: format!("regex({})", pattern),
+            miss_on_none: false,
+            always_matches: false,
+            children: Vec::new(),
+        },
+        typed::TypedPatternKind::ActivePattern {
+            name,
+            is_partial,
+            argument,
+        } => {
+            let child = argument.as_ref().map(|arg| lower_pattern(arg));
+            PatternLowering {
+                label: if *is_partial {
+                    format!("active(|{}|_|)", name)
+                } else {
+                    format!("active(|{}|)", name)
+                },
+                miss_on_none: *is_partial,
+                always_matches: !*is_partial,
+                children: child.into_iter().collect(),
+            }
+        }
+    }
+}
+
+fn collect_match_lowerings_from_expr(
+    expr: &typed::TypedExpr,
+    owner: &str,
+    plans: &mut Vec<MatchLoweringPlan>,
+) {
+    match &expr.kind {
+        typed::TypedExprKind::Match { target, arms } => {
+            let arms_lowered = arms
+                .iter()
+                .map(|arm| MatchArmLowering {
+                    pattern: lower_pattern(&arm.pattern),
+                    has_guard: arm.guard.is_some(),
+                    alias: arm.alias.clone(),
+                })
+                .collect::<Vec<_>>();
+            plans.push(MatchLoweringPlan {
+                owner: owner.to_string(),
+                span: expr.span,
+                target_type: target.ty.clone(),
+                arm_count: arms.len(),
+                arms: arms_lowered,
+            });
+            collect_match_lowerings_from_expr(target, owner, plans);
+            for arm in arms {
+                if let Some(guard) = &arm.guard {
+                    collect_match_lowerings_from_expr(guard, owner, plans);
+                }
+                collect_match_lowerings_from_expr(&arm.body, owner, plans);
+            }
+        }
+        typed::TypedExprKind::Call { callee, args } => {
+            collect_match_lowerings_from_expr(callee, owner, plans);
+            for arg in args {
+                collect_match_lowerings_from_expr(arg, owner, plans);
+            }
+        }
+        typed::TypedExprKind::Binary { left, right, .. } => {
+            collect_match_lowerings_from_expr(left, owner, plans);
+            collect_match_lowerings_from_expr(right, owner, plans);
+        }
+        typed::TypedExprKind::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            collect_match_lowerings_from_expr(condition, owner, plans);
+            collect_match_lowerings_from_expr(then_branch, owner, plans);
+            collect_match_lowerings_from_expr(else_branch, owner, plans);
+        }
+        typed::TypedExprKind::PerformCall { call } => {
+            collect_match_lowerings_from_expr(&call.argument, owner, plans);
+        }
+        typed::TypedExprKind::Literal(_)
+        | typed::TypedExprKind::Identifier { .. }
+        | typed::TypedExprKind::Unknown => {}
+    }
+}
+
+fn build_match_lowerings(module: &typed::TypedModule) -> Vec<MatchLoweringPlan> {
+    let mut plans = Vec::new();
+    for function in &module.functions {
+        collect_match_lowerings_from_expr(&function.body, &format!("fn {}", function.name), &mut plans);
+    }
+    for active in &module.active_patterns {
+        let owner = format!("active {}", active.name);
+        collect_match_lowerings_from_expr(&active.body, &owner, &mut plans);
+    }
+    plans
 }
 
 fn render_typed_module(module: &typed::TypedModule) -> String {
@@ -3281,6 +3521,7 @@ impl TypeckArtifacts {
             metrics: report.metrics.clone(),
             violations: report.violations.clone(),
             active_patterns: build_active_pattern_lowerings(&report.typed_module),
+            match_lowerings: build_match_lowerings(&report.typed_module),
         };
         Self {
             typed_ast,
