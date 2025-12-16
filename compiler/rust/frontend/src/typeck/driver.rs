@@ -18,7 +18,7 @@ use crate::parser::ast::{
     LiteralKind, MatchArm, Module, ModulePath, Pattern, PatternKind, RelativeHead,
     SlicePatternItem, Stmt, StmtKind, TypeKind,
 };
-use crate::semantics::typed;
+use crate::semantics::{mir, typed};
 use crate::span::Span;
 
 /// 型推論の簡易ドライバ。現時点では AST を走査して
@@ -371,12 +371,14 @@ impl TypecheckDriver {
             })
             .collect::<Vec<_>>();
         typed_module.dict_refs = dict_refs;
+        let mir_module = mir::MirModule::from_typed_module(&typed_module);
 
         TypecheckReport {
             metrics,
             functions,
             violations,
             typed_module,
+            mir: mir_module,
             constraints: all_constraints,
             used_impls,
         }
@@ -389,6 +391,7 @@ pub struct TypecheckReport {
     pub functions: Vec<TypedFunctionSummary>,
     pub violations: Vec<TypecheckViolation>,
     pub typed_module: typed::TypedModule,
+    pub mir: mir::MirModule,
     pub constraints: Vec<Constraint>,
     pub used_impls: Vec<String>,
 }

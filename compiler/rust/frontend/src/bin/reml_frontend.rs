@@ -33,7 +33,7 @@ use reml_frontend::parser::{
     StreamOutcome, StreamingRunner,
 };
 use reml_frontend::pipeline::{AuditEmitter, PipelineDescriptor, PipelineFailure, PipelineOutcome};
-use reml_frontend::semantics::typed;
+use reml_frontend::semantics::{mir, typed};
 use reml_frontend::span::Span;
 use reml_frontend::streaming::{
     StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig, TraceFrame,
@@ -516,6 +516,9 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
     if let Some(path) = &args.emit_typed_ast {
         write_json_file(path, &artifacts.typed_ast)?;
     }
+    if let Some(path) = &args.emit_mir {
+        write_json_file(path, &artifacts.mir)?;
+    }
     if let Some(path) = &args.emit_constraints {
         write_json_file(path, &artifacts.constraints)?;
     }
@@ -658,6 +661,7 @@ struct CliArgs {
     dualwrite: Option<DualwriteCliOpts>,
     emit_typed_ast: Option<PathBuf>,
     emit_ast: Option<PathBuf>,
+    emit_mir: Option<PathBuf>,
     emit_constraints: Option<PathBuf>,
     emit_typeck_debug: Option<PathBuf>,
     emit_effects_metrics: Option<PathBuf>,
@@ -1257,6 +1261,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut dualwrite_root = None;
     let mut emit_ast = None;
     let mut emit_typed_ast = None;
+    let mut emit_mir = None;
     let mut emit_constraints = None;
     let mut emit_typeck_debug = None;
     let mut emit_effects_metrics = None;
@@ -1380,6 +1385,12 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .next()
                     .ok_or_else(|| "--emit-typed-ast は出力パスを伴う必要があります")?;
                 emit_typed_ast = Some(PathBuf::from(path));
+            }
+            "--emit-mir" | "--debug-mir" => {
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--emit-mir は出力パスを伴う必要があります")?;
+                emit_mir = Some(PathBuf::from(path));
             }
             "--emit-constraints" => {
                 let path = args
@@ -1711,6 +1722,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         dualwrite,
         emit_ast,
         emit_typed_ast,
+        emit_mir,
         emit_constraints,
         emit_typeck_debug,
         emit_effects_metrics,
@@ -1744,6 +1756,7 @@ fn print_help(program_name: &str) {
 主なオプション:
   --emit-ast <PATH>              解析結果 AST を JSON で保存
   --emit-typed-ast <PATH>        型付き AST を JSON で保存
+  --emit-mir <PATH>              Match/Pattern MIR を JSON で保存（--debug-mir も利用可能）
   --emit-constraints <PATH>      Typecheck 制約を JSON で保存
   --emit-typeck-debug <PATH>     型推論デバッグ情報を JSON で保存
   --config-compat <PROFILE>      設定ファイル互換プロファイルを指定 (strict-json / json-relaxed 等)
@@ -1801,6 +1814,7 @@ fn write_dualwrite_typeck_payload(
     let payload = TypecheckMetricsPayload::from_report(report, stage_payload);
     guards.write_json("typeck/metrics.json", &payload)?;
     guards.write_json("typeck/typed-ast.rust.json", &artifacts.typed_ast)?;
+    guards.write_json("typeck/mir.rust.json", &artifacts.mir)?;
     guards.write_json("typeck/constraints.rust.json", &artifacts.constraints)?;
     guards.write_json("typeck/typeck-debug.rust.json", &artifacts.debug)?;
     let (run_label, case_label) = guards.labels();
@@ -2984,6 +2998,7 @@ struct TypeckArtifacts {
     typed_ast: TypedAstFile,
     constraints: ConstraintFile,
     debug: TypeckDebugFile,
+    mir: mir::MirModule,
 }
 
 #[derive(Clone, Serialize)]
@@ -3084,31 +3099,6 @@ struct ActivePatternLowering {
 }
 
 #[derive(Clone, Serialize)]
-struct MatchLoweringPlan {
-    owner: String,
-    span: Span,
-    target_type: String,
-    arm_count: usize,
-    arms: Vec<MatchArmLowering>,
-}
-
-#[derive(Clone, Serialize)]
-struct MatchArmLowering {
-    pattern: PatternLowering,
-    has_guard: bool,
-    alias: Option<String>,
-}
-
-#[derive(Clone, Serialize)]
-struct PatternLowering {
-    label: String,
-    miss_on_none: bool,
-    always_matches: bool,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    children: Vec<PatternLowering>,
-}
-
-#[derive(Clone, Serialize)]
 struct TypeckDebugFile {
     schema_version: &'static str,
     effect_context: StageContext,
@@ -3121,7 +3111,8 @@ struct TypeckDebugFile {
     metrics: TypecheckMetrics,
     violations: Vec<TypecheckViolation>,
     active_patterns: Vec<ActivePatternLowering>,
-    match_lowerings: Vec<MatchLoweringPlan>,
+    match_lowerings: Vec<mir::MatchLoweringPlan>,
+    mir: mir::MirModule,
 }
 
 fn build_function_summaries(
@@ -3179,220 +3170,6 @@ fn build_active_pattern_lowerings(module: &typed::TypedModule) -> Vec<ActivePatt
             }
         })
         .collect()
-}
-
-fn lower_pattern(pattern: &typed::TypedPattern) -> PatternLowering {
-    match &pattern.kind {
-        typed::TypedPatternKind::Wildcard => PatternLowering {
-            label: "_".to_string(),
-            miss_on_none: false,
-            always_matches: true,
-            children: Vec::new(),
-        },
-        typed::TypedPatternKind::Var { name } => PatternLowering {
-            label: format!("var({})", name),
-            miss_on_none: false,
-            always_matches: true,
-            children: Vec::new(),
-        },
-        typed::TypedPatternKind::Literal(literal) => PatternLowering {
-            label: format!("literal({:?})", literal),
-            miss_on_none: false,
-            always_matches: false,
-            children: Vec::new(),
-        },
-        typed::TypedPatternKind::Tuple { elements } => PatternLowering {
-            label: "tuple".to_string(),
-            miss_on_none: false,
-            always_matches: false,
-            children: elements.iter().map(lower_pattern).collect(),
-        },
-        typed::TypedPatternKind::Record { fields, has_rest } => {
-            let mut children = fields
-                .iter()
-                .filter_map(|field| field.value.as_ref().map(|value| lower_pattern(value)))
-                .collect::<Vec<_>>();
-            if *has_rest {
-                children.push(PatternLowering {
-                    label: "rest".to_string(),
-                    miss_on_none: false,
-                    always_matches: true,
-                    children: Vec::new(),
-                });
-            }
-            PatternLowering {
-                label: "record".to_string(),
-                miss_on_none: false,
-                always_matches: false,
-                children,
-            }
-        }
-        typed::TypedPatternKind::Constructor { name, args } => PatternLowering {
-            label: format!("ctor({})", name),
-            miss_on_none: false,
-            always_matches: false,
-            children: args.iter().map(lower_pattern).collect(),
-        },
-        typed::TypedPatternKind::Binding {
-            name,
-            pattern,
-            via_at,
-        } => {
-            let child = lower_pattern(pattern);
-            PatternLowering {
-                label: if *via_at {
-                    format!("binding(@ {})", name)
-                } else {
-                    format!("binding(as {})", name)
-                },
-                miss_on_none: child.miss_on_none,
-                always_matches: child.always_matches,
-                children: vec![child],
-            }
-        }
-        typed::TypedPatternKind::Or { variants } => PatternLowering {
-            label: "or".to_string(),
-            miss_on_none: variants.iter().any(|variant| lower_pattern(variant).miss_on_none),
-            always_matches: false,
-            children: variants.iter().map(lower_pattern).collect(),
-        },
-        typed::TypedPatternKind::Slice { elements } => PatternLowering {
-            label: "slice".to_string(),
-            miss_on_none: false,
-            always_matches: false,
-            children: elements
-                .iter()
-                .map(|item| match item {
-                    typed::TypedSlicePatternItem::Element(pat) => lower_pattern(pat),
-                    typed::TypedSlicePatternItem::Rest { ident } => PatternLowering {
-                        label: ident
-                            .as_ref()
-                            .map(|name| format!("rest({})", name))
-                            .unwrap_or_else(|| "rest".to_string()),
-                        miss_on_none: false,
-                        always_matches: true,
-                        children: Vec::new(),
-                    },
-                })
-                .collect(),
-        },
-        typed::TypedPatternKind::Range {
-            start,
-            end,
-            inclusive,
-        } => {
-            let mut children = Vec::new();
-            if let Some(start_pat) = start {
-                children.push(lower_pattern(start_pat));
-            }
-            if let Some(end_pat) = end {
-                children.push(lower_pattern(end_pat));
-            }
-            PatternLowering {
-                label: if *inclusive {
-                    "range(..=)".to_string()
-                } else {
-                    "range(..)".to_string()
-                },
-                miss_on_none: false,
-                always_matches: false,
-                children,
-            }
-        }
-        typed::TypedPatternKind::Regex { pattern } => PatternLowering {
-            label: format!("regex({})", pattern),
-            miss_on_none: false,
-            always_matches: false,
-            children: Vec::new(),
-        },
-        typed::TypedPatternKind::ActivePattern {
-            name,
-            is_partial,
-            argument,
-        } => {
-            let child = argument.as_ref().map(|arg| lower_pattern(arg));
-            PatternLowering {
-                label: if *is_partial {
-                    format!("active(|{}|_|)", name)
-                } else {
-                    format!("active(|{}|)", name)
-                },
-                miss_on_none: *is_partial,
-                always_matches: !*is_partial,
-                children: child.into_iter().collect(),
-            }
-        }
-    }
-}
-
-fn collect_match_lowerings_from_expr(
-    expr: &typed::TypedExpr,
-    owner: &str,
-    plans: &mut Vec<MatchLoweringPlan>,
-) {
-    match &expr.kind {
-        typed::TypedExprKind::Match { target, arms } => {
-            let arms_lowered = arms
-                .iter()
-                .map(|arm| MatchArmLowering {
-                    pattern: lower_pattern(&arm.pattern),
-                    has_guard: arm.guard.is_some(),
-                    alias: arm.alias.clone(),
-                })
-                .collect::<Vec<_>>();
-            plans.push(MatchLoweringPlan {
-                owner: owner.to_string(),
-                span: expr.span,
-                target_type: target.ty.clone(),
-                arm_count: arms.len(),
-                arms: arms_lowered,
-            });
-            collect_match_lowerings_from_expr(target, owner, plans);
-            for arm in arms {
-                if let Some(guard) = &arm.guard {
-                    collect_match_lowerings_from_expr(guard, owner, plans);
-                }
-                collect_match_lowerings_from_expr(&arm.body, owner, plans);
-            }
-        }
-        typed::TypedExprKind::Call { callee, args } => {
-            collect_match_lowerings_from_expr(callee, owner, plans);
-            for arg in args {
-                collect_match_lowerings_from_expr(arg, owner, plans);
-            }
-        }
-        typed::TypedExprKind::Binary { left, right, .. } => {
-            collect_match_lowerings_from_expr(left, owner, plans);
-            collect_match_lowerings_from_expr(right, owner, plans);
-        }
-        typed::TypedExprKind::IfElse {
-            condition,
-            then_branch,
-            else_branch,
-        } => {
-            collect_match_lowerings_from_expr(condition, owner, plans);
-            collect_match_lowerings_from_expr(then_branch, owner, plans);
-            collect_match_lowerings_from_expr(else_branch, owner, plans);
-        }
-        typed::TypedExprKind::PerformCall { call } => {
-            collect_match_lowerings_from_expr(&call.argument, owner, plans);
-        }
-        typed::TypedExprKind::Literal(_)
-        | typed::TypedExprKind::Identifier { .. }
-        | typed::TypedExprKind::Unknown => {}
-    }
-}
-
-fn build_match_lowerings(module: &typed::TypedModule) -> Vec<MatchLoweringPlan> {
-    let mut plans = Vec::new();
-    for function in &module.functions {
-        collect_match_lowerings_from_expr(&function.body, &format!("fn {}", function.name), &mut plans);
-    }
-    for active in &module.active_patterns {
-        let owner = format!("active {}", active.name);
-        collect_match_lowerings_from_expr(&active.body, &owner, &mut plans);
-    }
-    plans
 }
 
 fn render_typed_module(module: &typed::TypedModule) -> String {
@@ -3521,12 +3298,14 @@ impl TypeckArtifacts {
             metrics: report.metrics.clone(),
             violations: report.violations.clone(),
             active_patterns: build_active_pattern_lowerings(&report.typed_module),
-            match_lowerings: build_match_lowerings(&report.typed_module),
+            match_lowerings: mir::build_match_lowerings(&report.typed_module),
+            mir: report.mir.clone(),
         };
         Self {
             typed_ast,
             constraints,
             debug,
+            mir: report.mir.clone(),
         }
     }
 }
