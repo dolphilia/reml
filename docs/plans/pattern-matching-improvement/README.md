@@ -11,6 +11,7 @@
 - [0-0-overview.md](0-0-overview.md): 目的、スコープ、進行フェーズの骨子
 - [1-0-active-patterns-plan.md](1-0-active-patterns-plan.md): Active Patterns 導入に関する詳細計画
 - [1-1-pattern-surface-plan.md](1-1-pattern-surface-plan.md): Or/Slice/Range/Binding/Regex など周辺機能の拡張計画
+- [1-2-match-ir-lowering-plan.md](1-2-match-ir-lowering-plan.md): Match/Pattern を IR へ伝搬しコード生成で分岐を組むための計画（Partial Active の miss パス含む）
 
 本計画は承認済みの正式版です。更新時は `docs/plans/README.md` と関連仕様のリンク整合を確認してください。
 
