@@ -15,6 +15,8 @@ pub struct MirFunction {
     pub calling_conv: String,
     pub attributes: Vec<String>,
     pub ffi_calls: Vec<FfiCallSignature>,
+    /// Match/Pattern ローアリングから得られた分岐計画のサマリ。
+    pub match_plans: Vec<String>,
 }
 
 impl MirFunction {
@@ -26,6 +28,7 @@ impl MirFunction {
             calling_conv: calling_conv.into(),
             attributes: Vec::new(),
             ffi_calls: Vec::new(),
+            match_plans: Vec::new(),
         }
     }
 
@@ -67,6 +70,11 @@ impl MirFunction {
         self.ffi_calls.push(call);
         self
     }
+
+    pub fn with_match_plan(mut self, plan: impl Into<String>) -> Self {
+        self.match_plans.push(plan.into());
+        self
+    }
 }
 
 /// 生成された関数の LLVM 風表現。
@@ -77,6 +85,7 @@ pub struct GeneratedFunction {
     pub calling_conv: String,
     pub attributes: Vec<String>,
     pub lowered_calls: Vec<LoweredFfiCall>,
+    pub branch_plans: Vec<String>,
 }
 
 impl GeneratedFunction {
@@ -201,6 +210,7 @@ impl CodegenContext {
             calling_conv: mir.calling_conv.clone(),
             attributes: mir.attributes.clone(),
             lowered_calls,
+            branch_plans: mir.match_plans.clone(),
         };
         self.functions.push(generated.clone());
         generated

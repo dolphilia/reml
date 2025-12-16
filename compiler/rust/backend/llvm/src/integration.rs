@@ -19,6 +19,7 @@ pub struct BackendFunctionRecord {
     pub calling_conv: String,
     pub attributes: Vec<String>,
     pub lowered_calls: Vec<String>,
+    pub branch_plans: Vec<String>,
 }
 
 impl BackendFunctionRecord {
@@ -33,6 +34,7 @@ impl BackendFunctionRecord {
                 .iter()
                 .map(|call| call.describe())
                 .collect(),
+            branch_plans: func.branch_plans.clone(),
         }
     }
 }
@@ -104,6 +106,13 @@ impl BackendDiffSnapshot {
         buf.push_str("  \"ffi_calls\": ");
         buf.push_str(&Self::array_of_strings(
             &record.lowered_calls,
+            &(indent.to_string() + "  "),
+        ));
+        buf.push_str(",\n");
+        buf.push_str(indent);
+        buf.push_str("  \"match_branches\": ");
+        buf.push_str(&Self::array_of_strings(
+            &record.branch_plans,
             &(indent.to_string() + "  "),
         ));
         buf.push('\n');
@@ -219,14 +228,13 @@ impl MirFunctionJson {
             builder = builder.with_return(parse_reml_type(&ret));
         }
 
-        let mut attributes = self.attributes;
-        attributes.extend(match_attributes(&self.exprs));
-        for attr in attributes {
+        for attr in self.attributes {
             builder = builder.with_attribute(attr);
         }
         for ffi in self.ffi_calls {
             builder = builder.with_ffi_call(ffi.into_signature());
         }
+        builder.match_plans = extract_match_plans(&self.exprs);
         builder
     }
 }
@@ -414,8 +422,8 @@ struct PatternLoweringJson {
     children: Vec<PatternLoweringJson>,
 }
 
-fn match_attributes(exprs: &[MirExprJson]) -> Vec<String> {
-    let mut attrs = Vec::new();
+fn extract_match_plans(exprs: &[MirExprJson]) -> Vec<String> {
+    let mut plans = Vec::new();
     for expr in exprs {
         if let MirExprKindJson::Match { arms, lowering, .. } = &expr.kind {
             let pattern_labels: Vec<String> = arms
@@ -426,17 +434,19 @@ fn match_attributes(exprs: &[MirExprJson]) -> Vec<String> {
                 .as_ref()
                 .and_then(|l| l.target_type.clone())
                 .unwrap_or_else(|| "unknown".into());
-            let attr = format!(
-                "mir.match(id={},arms={},ty={},patterns=[{}])",
+            let arm_with_guard = arms.iter().filter(|arm| arm.guard.is_some()).count();
+            let plan = format!(
+                "match#{} ty={} arms={} guard_arms={} patterns=[{}]",
                 expr.id,
-                arms.len(),
                 lowering_label,
+                arms.len(),
+                arm_with_guard,
                 pattern_labels.join("|")
             );
-            attrs.push(attr);
+            plans.push(plan);
         }
     }
-    attrs
+    plans
 }
 
 fn summarize_pattern(pattern: &MirPatternJson) -> String {
