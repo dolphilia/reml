@@ -80,7 +80,7 @@
 ### 進捗ステータス（2026-03 時点）
 - [x] M1: IR 仕様決定 — 本計画記載のノード/評価順を採用。  
 - [x] M2: フロントエンド MIR 生成 — `compiler/rust/frontend/src/semantics/mir.rs` を新設し、`TypedExprKind::Match` から `MirExpr::Match` を構築。`--emit-mir`/`--debug-mir` オプションで JSON 出力できるように `compiler/rust/frontend/src/bin/reml_frontend.rs` を更新。`TypecheckReport` に MIR を保持しデバッグ出力へ組込み済み。  
-- [ ] M3: バックエンド分岐生成 — **着手済み（MIR ローダー側）**。`compiler/rust/backend/llvm/src/integration.rs` で `Match/Pattern` を含む式木を復元し、`CodegenContext` がブランチサマリ（`branch_plans`）を生成するところまで実装。LLVM ジャンプ生成と実際の分岐コード吐き出しは未実装。  
+- [ ] M3: バックエンド分岐生成 — **進行中**。`compiler/rust/backend/llvm/src/integration.rs` で `Match/Pattern` を含む式木を復元し、`CodegenContext` がパターン/ガード/エイリアス/Body/miss を列挙した `branch_plans` を生成するまで完了。`MIR_PATH` を指定して分岐サマリをダンプする補助テスト（ignore）を追加。CH1-MATCH/ACT 由来の MIR では現状 `Match` が `unknown` に落ちるため、実シナリオでの LLVM ジャンプ生成・出力検証は未着手。  
 - [ ] M4: 回帰資産更新 — 未着手。CH1-MATCH/ACT の expected 再取得と run_id 記録が必要。  
 - [ ] M5: クロス実装チェック — 未着手。Rust/OCaml 差分メモ作成が必要。
 
