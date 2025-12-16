@@ -43,6 +43,33 @@
    - ガイド: `docs/guides/core-parse-streaming.md` 付録で Match 分岐の実行順とストリーミング評価の関係を整理。  
    - OCaml 実装: MIR 仕様が確定したら差分メモを `docs/plans/rust-migration/` へ残し、移植方針を共有。
 
+## M1: MIR 拡張仕様（決定）
+
+### 基本ノードとメタデータ
+- `MirExpr::Match { target, arms, span, ty }` を追加し、`target` は 1 度だけ評価して全アームに共有する。`ty` は `match` 式の戻り型を保持し、分岐先の型不一致を防ぐ。  
+- `MirMatchArm { pattern, guard, alias, body, span }` で表現し、ガード失敗時は次アームへフォールスルーする前提とする。`guard` は `Option<MirExprId>`、`alias` は `Option<BindingId>`、`body` はブロック/式 ID を保持。  
+- すべてのパターンに `span` と型ラベル（型検査済みのラベル ID）を付与し、診断とバックエンド最適化で再利用する。`dict_ref_ids` / 効果集合は既存 MIR ノードと同じメタデータスキーマを継承する。
+
+### パターン種別と表現
+- `Wildcard | Var { name } | Literal { value } | Tuple { elements } | Record { fields, has_rest } | Constructor { path, args }` を既存 TypedPattern と同等に持ち込み、構造はフロントエンド正規化結果をそのまま使用する。  
+- Binding は `Binding { binder, inner }` に統一し、`pat as x` / `x @ pat` の両記法をここで集約する。`binder` は束縛名、`inner` は元パターン。  
+- Or パターンは `Or { variants: Vec<MirPattern> }` とし、ネストはフラット化済みを前提にする。各バリアントの型は同一でなければならない（型検査済み）。  
+- Slice パターンは `Slice { head: Vec<MirPattern>, rest: Option<BindingId>, tail: Vec<MirPattern> }` で保持し、`rest` が `None` なら固定長、`Some` なら可変長。長さ検証は MIR/LLVM で分岐化する。  
+- Range パターンは `Range { start, end, inclusive }`。`start/end` はリテラルまたは識別子参照を許容し、両者の型一致が前提。`inclusive=true` は `..=`、`false` は `..`。  
+- Regex パターンは `Regex { pattern, flags }` とし、ターゲット型が文字列/バイト列以外の場合は前段で診断済み。バックエンドではパターン全体一致（アンカー付き）を既定とする。  
+- Active パターンは `Active { name, kind: Partial|Total, args, input_binding, miss_target }`。`args` はマッチ対象以外の引数列、`input_binding` は呼び出し結果をアーム内で再利用する場合の束縛、`miss_target` は Partial のみ `Some(Label)` とし、`None`/`Some` を MIR 上でブランチに変換する。
+
+### 評価順序と制約
+- アーム評価順は **パターン照合 → ガード → エイリアス → 本体** に固定する。ガードは `when/if` いずれで記述されても MIR では `guard` に正規化し、`alias` はガード通過後にのみ束縛が有効になる。  
+- Partial Active は `None` → `miss_target` へジャンプ、`Some(payload)` → 残りのパターン照合/ガードへ進む。Total Active は常に成功とみなし、payload を `input_binding` へ束縛する。  
+- Or/Range/Slice/Regex/Binding で生成される補助分岐は MIR レベルで表現し、LLVM 変換ではジャンプ命令として具体化する。  
+- すべてのパターン比較は副作用なしを前提とし、効果が発生するのは Active Pattern 本体のみ。`@pure` 文脈では Typeck 段階の制約を尊重し、MIR には効果マーカーを追加しない。
+
+### JSON/バックエンド向け契約
+- `reml_frontend --debug-mir` で出力する JSON では、`expr.kind = "Match"` の下に `target`（式 ID）、`arms`（各アームに `pattern.kind` 等）を格納する形を基準とする。  
+- Active Pattern の miss 分岐は JSON でも `miss_target` を明示し、バックエンドが Option 判定なしにジャンプを構築できるようにする。  
+- 今回の決定は `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` の Phase4 マトリクスに沿った診断（Active miss / Range/Slice/Or 分岐）を LLVM まで伝搬させることを目的とし、以降のステップではこのスキーマを変更しない前提で実装を進める。
+
 ## 優先順位とマイルストーン
 - **M1: IR 仕様決定** — 上記 MIR ノード案をレビューし、受理。  
 - **M2: フロントエンド MIR 生成** — `TypedExprKind::Match` から MIR 生成が通り、JSON エクスポートができる状態。  
