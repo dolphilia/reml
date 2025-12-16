@@ -3073,6 +3073,7 @@ struct ActivePatternLowering {
     name: String,
     kind: typed::ActivePatternKind,
     carrier: typed::ActiveReturnCarrier,
+    has_miss_path: bool,
     span: Span,
     branches: ActivePatternBranchPlan,
 }
@@ -3143,6 +3144,7 @@ fn build_active_pattern_lowerings(
                 name: pattern.name.clone(),
                 kind: pattern.kind.clone(),
                 carrier: pattern.return_carrier.clone(),
+                has_miss_path: pattern.has_miss_path,
                 span: pattern.span,
                 branches,
             }
@@ -3173,9 +3175,18 @@ fn render_typed_module(module: &typed::TypedModule) -> String {
                 typed::ActiveReturnCarrier::Value => "Value",
             };
             let line = if params.is_empty() {
-                format!("{head} : {carrier}")
+                format!("{head} : {}{}", carrier, if pattern.has_miss_path { " (miss -> next arm)" } else { "" })
             } else {
-                format!("{head}({}) : {}", params, carrier)
+                format!(
+                    "{head}({}) : {}{}",
+                    params,
+                    carrier,
+                    if pattern.has_miss_path {
+                        " (miss -> next arm)"
+                    } else {
+                        ""
+                    }
+                )
             };
             lines.push(line);
         }

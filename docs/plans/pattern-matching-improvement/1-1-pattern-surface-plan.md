@@ -4,6 +4,12 @@
 - Active Patterns 以外の周辺機能（Or/Slice/Range/Binding/Regex）を優先度付きで整理し、実装順序と診断ポリシーを定義する。
 - 既存の `match` 記法（ガード/エイリアス）との互換性を維持しつつ、構文・BNF・サンプルを追加する。
 
+## 進捗ステータス（2026-02）
+- **完了**: `pattern.guard.if_deprecated` 警告と順不同ガード/エイリアスの正規化、Active Pattern と関数名の衝突ガード（`pattern.active.name_conflict`）、診断レジストリへの `pattern.active.*` / `pattern.exhaustiveness.*` 追加、ReturnCarrier (OptionLike/Value) を Typed/HIR/CLI 表示へ伝搬。
+- **完了**: 簡易網羅性パスの抽出（`ExhaustivenessTracker`）と Active Pattern（部分/完全）の到達不能検出を回帰テスト化。
+- **未完**: Or/Slice/Range/Binding/Regex 受理と型検査、Phase4 マトリクス CH1-MATCH-014〜017 の expected/diagnostic ゴールデン更新、LSP フィクスチャ更新。
+- **次の着手候補**: Regex 糖衣の型制約（文字列/バイト列限定）テスト、Range/Slice/Active 混在時の網羅性精度向上、`docs/spec` への最終文面反映。
+
 ## 対象機能と方針
 1. **Or-patterns（最優先）**  
    - 構文: `pat1 | pat2 -> ...`、ネスト可（例: `Some(A | B)`）。  

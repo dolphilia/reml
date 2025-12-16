@@ -55,6 +55,9 @@ pub struct TypedActivePattern {
     pub span: Span,
     pub kind: ActivePatternKind,
     pub return_carrier: ActiveReturnCarrier,
+    /// 実行時に「マッチ失敗パス」（None で次アームへフォールスルー）が必要か。
+    /// Total Active Pattern では常に成功するため false。
+    pub has_miss_path: bool,
     pub params: Vec<TypedParam>,
     pub body: TypedExpr,
     pub dict_ref_ids: Vec<DictRefId>,

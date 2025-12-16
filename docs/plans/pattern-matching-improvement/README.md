@@ -5,6 +5,7 @@
 - 設計指針: `docs/spec/0-1-project-purpose.md` に沿って安全性・実用性・DSLファーストを優先
 - 参考仕様: `docs/spec/1-1-syntax.md`, `docs/spec/1-5-formal-grammar-bnf.md`, `docs/spec/1-2-types-Inference.md`
 - 既存計画との関係: Phase 4 系（例: `../bootstrap-roadmap/4-1-spec-core-regression-plan.md`）の進行を阻害しないよう、仕様差分を明示して連携
+- 最新同期: Active Pattern の記法・BNF・診断キーを `docs/spec/1-1-syntax.md` / `1-5-formal-grammar-bnf.md` / `2-5-error.md` に追記し、CH1-MATCH 系マトリクス更新を進行中。
 
 ## 文書一覧
 - [0-0-overview.md](0-0-overview.md): 目的、スコープ、進行フェーズの骨子

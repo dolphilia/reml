@@ -235,6 +235,7 @@ impl TypecheckDriver {
                     typed::ActivePatternKind::Total
                 },
                 return_carrier: active_return_carrier(return_kind),
+                has_miss_path: matches!(return_kind, ActiveReturnKind::Option),
                 params: typed_params,
                 body: typed_body,
                 dict_ref_ids,

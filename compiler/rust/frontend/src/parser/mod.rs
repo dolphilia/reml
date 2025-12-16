@@ -1694,13 +1694,13 @@ fn module_parser<'src>(
                 kind: PatternKind::Wildcard,
             });
 
-        let active_pattern_suffix = just(TokenKind::Bar)
-            .ignore_then(
-                just(TokenKind::Underscore)
-                    .ignore_then(just(TokenKind::Bar))
-                    .to(true)
-                    .or(just(TokenKind::Bar).to(false)),
-            );
+        let active_pattern_suffix = just(TokenKind::Bar).ignore_then(
+            just(TokenKind::Underscore)
+                .ignore_then(just(TokenKind::Bar))
+                .to(true)
+                .or_not()
+                .map(|is_partial| is_partial.unwrap_or(false)),
+        );
 
         let active_pattern_head = just(TokenKind::LParen)
             .ignore_then(just(TokenKind::Bar))

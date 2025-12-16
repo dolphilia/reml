@@ -447,7 +447,10 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
 * バインディング：`pat as name`（推奨）／`name @ pat`（エイリアス糖衣）。`when` ガードと併用可。
 * 正規表現パターン：`r"^\\d+$" as digits`（文字列/バイト列対象。全体一致に限定）
 * ガード：`p when cond`（`if` は互換用に受理するが警告対象）
-* アクティブパターン：`(|Name|_|)` / `(|Name|)` で定義した分解ロジックをパターンとして使用
+* アクティブパターン：`(|Name|_|)` / `(|Name|)` で定義した分解ロジックをパターンとして使用  
+  - **定義**: `pattern (|Name|_|)(args) = expr` は部分パターンとして `Option<T>` を返し、`Some` ならマッチ成功、`None` なら次のアームへフォールスルー。`pattern (|Name|)(args) = expr` は常に成功する完全パターンで、戻り値 `T` を束縛する。  
+  - **使用**: `match input with | (|Hex|_|) n -> ... | (|Total|) v -> ...` のように他のパターンと同列で使用でき、`when` ガードや `as`/`@` と併用可。  
+  - **副作用/診断**: `@pure` 文脈で副作用を持つ場合は `pattern.active.effect_violation`、戻り値が契約外（`Option` 以外の部分パターンや `Result`）の場合は `pattern.active.return_contract_invalid` を報告する（[2-5 エラー設計](2-5-error.md)）。
 
 ### C.4 制御構文
 

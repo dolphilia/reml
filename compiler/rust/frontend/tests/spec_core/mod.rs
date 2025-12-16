@@ -615,7 +615,78 @@ fn main() -> Int = {
             .violations
             .iter()
             .map(|violation| violation.code)
-            .collect::<Vec<_>>()
+        .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn typed_active_pattern_carries_miss_path_flag() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/active_patterns/bnf-activepattern-partial-ok.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    let partial = report
+        .typed_module
+        .active_patterns
+        .iter()
+        .find(|pattern| pattern.name == "IsFoo")
+        .expect("partial active pattern should be present");
+    assert!(
+        partial.has_miss_path,
+        "partial active pattern should require miss path (None -> next arm)"
+    );
+
+    let total_source = r#"
+module Spec.Core.Chapter1.ActivePatterns.TotalCoverage
+
+use Core.Prelude
+
+pattern (|Total|)(n: Int) = n
+
+fn main() -> Int = {
+  match 1 with
+  | (|Total|) v -> v
+}
+"#;
+    let total_module = ParserDriver::parse(total_source)
+        .value
+        .expect("total active pattern module should parse");
+    let total_report =
+        TypecheckDriver::infer_module(Some(&total_module), &TypecheckConfig::default());
+    let total = total_report
+        .typed_module
+        .active_patterns
+        .iter()
+        .find(|pattern| pattern.name == "Total")
+        .expect("total active pattern should be present");
+    assert!(
+        !total.has_miss_path,
+        "total active pattern should not have a miss path"
+    );
+}
+
+#[test]
+fn active_pattern_with_guard_does_not_trigger_unreachable() {
+    let source = r#"
+module Spec.Core.Chapter1.ActivePatterns.GuardedTotal
+
+use Core.Prelude
+
+pattern (|Always|)(n: Int) = n
+
+fn eval(n: Int) -> Int = {
+  match n with
+  | (|Always|) v when v > 0 -> v
+  | (|Always|) v -> v + 1
+}
+"#;
+    let module = ParserDriver::parse(source)
+        .value
+        .expect("guarded active pattern module should parse");
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        !has_violation(&report, "pattern.unreachable_arm"),
+        "guarded total active pattern should not make following arms unreachable"
     );
 }
 
