@@ -19,9 +19,7 @@ fn descriptor() -> PipelineDescriptor {
 fn pipeline_audit_emits_expected_events() {
     let mut emitter = AuditEmitter::new(Vec::<u8>::new(), true);
     let desc = descriptor();
-    emitter
-        .pipeline_started(&desc, None)
-        .expect("start event");
+    emitter.pipeline_started(&desc, None).expect("start event");
     let outcome = PipelineOutcome::success(1, 0, "success");
     emitter
         .pipeline_completed(&desc, &outcome, None)

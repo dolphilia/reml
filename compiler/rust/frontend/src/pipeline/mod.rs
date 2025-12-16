@@ -53,7 +53,11 @@ impl PipelineDescriptor {
         }
     }
 
-    fn base_metadata(&self, timestamp: &str, stage: Option<&StageAuditPayload>) -> Map<String, Value> {
+    fn base_metadata(
+        &self,
+        timestamp: &str,
+        stage: Option<&StageAuditPayload>,
+    ) -> Map<String, Value> {
         let mut metadata = Map::new();
         metadata.insert("schema.version".to_string(), json!(self.schema_version));
         metadata.insert("pipeline.id".to_string(), json!(self.pipeline_id()));
@@ -79,9 +83,7 @@ impl PipelineDescriptor {
             if payload.primary_capability().is_some() {
                 payload.apply_audit_metadata(&mut metadata);
             } else {
-                let required = payload
-                    .required_stage_label()
-                    .unwrap_or(DEFAULT_CAPABILITY);
+                let required = payload.required_stage_label().unwrap_or(DEFAULT_CAPABILITY);
                 let actual = payload.actual_stage_label().unwrap_or(required);
                 metadata.insert("effect.capability".to_string(), json!(DEFAULT_CAPABILITY));
                 metadata.insert("effect.stage.required".to_string(), json!(required));

@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use reml_adapter::target::{self, TargetInference};
+use reml_frontend::diagnostic::messages;
 use reml_frontend::diagnostic::{
     effects,
     filter::{
@@ -19,7 +20,6 @@ use reml_frontend::diagnostic::{
     formatter::{self, FormatterContext},
     json as diag_json, unicode, DiagnosticDomain, FrontendDiagnostic, StageAuditPayload,
 };
-use reml_frontend::diagnostic::messages;
 use reml_frontend::effects::diagnostics::EffectDiagnostic;
 use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::{lex_source_with_options, IdentifierProfile, LexerOptions};
@@ -53,13 +53,13 @@ use reml_runtime::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDia
 use reml_runtime::run_config::{
     apply_manifest_overrides, ApplyManifestOverridesArgs, RunConfigManifestOverrides,
 };
+use reml_runtime::stage::StageId as RuntimeStageId;
+use reml_runtime::text::LocaleId;
 use reml_runtime::text::Str as RuntimeStr;
 use reml_runtime::{
     path as runtime_path,
     path::{PathBuf as RuntimePathBuf, SecurityPolicy as RuntimeSecurityPolicy},
 };
-use reml_runtime::stage::StageId as RuntimeStageId;
-use reml_runtime::text::LocaleId;
 use reml_runtime::{
     CapabilityDescriptor, CapabilityIsolationLevel, CapabilityPermission, CapabilityProvider,
     CapabilityRegistry, CapabilityTimestamp,
@@ -292,8 +292,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let args = parse_args()?;
     let cli_command = args.cli_command();
-    let stage_payload_seed =
-        StageAuditPayload::new(&args.typecheck_config.effect_context, &args.runtime_capabilities, None);
+    let stage_payload_seed = StageAuditPayload::new(
+        &args.typecheck_config.effect_context,
+        &args.runtime_capabilities,
+        None,
+    );
     let mut audit_emitter = AuditEmitter::stderr(args.emit_audit);
     let resolved_cli_compat = args.run_config.resolved_config_compat();
     let descriptor = PipelineDescriptor::new(
@@ -1878,7 +1881,9 @@ impl RuntimeExecutionPlan {
         let label = input.to_string_lossy();
         if label.contains("examples/practical/core_path/security_check/relative_denied.reml") {
             Some(Self::CorePathRelativeDenied)
-        } else if label.contains("examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml") {
+        } else if label.contains(
+            "examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml",
+        ) {
             Some(Self::CoreRuntimeBridgeStageMismatch)
         } else {
             None
@@ -3123,9 +3128,7 @@ fn build_function_summaries(
     summaries
 }
 
-fn build_active_pattern_lowerings(
-    module: &typed::TypedModule,
-) -> Vec<ActivePatternLowering> {
+fn build_active_pattern_lowerings(module: &typed::TypedModule) -> Vec<ActivePatternLowering> {
     module
         .active_patterns
         .iter()
@@ -3175,7 +3178,15 @@ fn render_typed_module(module: &typed::TypedModule) -> String {
                 typed::ActiveReturnCarrier::Value => "Value",
             };
             let line = if params.is_empty() {
-                format!("{head} : {}{}", carrier, if pattern.has_miss_path { " (miss -> next arm)" } else { "" })
+                format!(
+                    "{head} : {}{}",
+                    carrier,
+                    if pattern.has_miss_path {
+                        " (miss -> next arm)"
+                    } else {
+                        ""
+                    }
+                )
             } else {
                 format!(
                     "{head}({}) : {}{}",

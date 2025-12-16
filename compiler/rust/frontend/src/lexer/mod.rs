@@ -623,12 +623,9 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             Ok(RawToken::FixityPostfix) => {
                 push_keyword(&mut tokens, span, TokenKind::FixityPostfix, ":postfix")
             }
-            Ok(RawToken::FixityInfixLeft) => push_keyword(
-                &mut tokens,
-                span,
-                TokenKind::FixityInfixLeft,
-                ":infix_left",
-            ),
+            Ok(RawToken::FixityInfixLeft) => {
+                push_keyword(&mut tokens, span, TokenKind::FixityInfixLeft, ":infix_left")
+            }
             Ok(RawToken::FixityInfixRight) => push_keyword(
                 &mut tokens,
                 span,

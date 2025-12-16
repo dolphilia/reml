@@ -39,6 +39,30 @@ pub fn pattern_messages() -> &'static [PatternDiagnosticMessage] {
             severity: DiagnosticSeverity::Error,
         },
         PatternDiagnosticMessage {
+            code: "pattern.range.type_mismatch",
+            title: "範囲パターンの型が一致しません",
+            message: "範囲パターンの境界と対象の型は同じ比較可能な型である必要があります。",
+            severity: DiagnosticSeverity::Error,
+        },
+        PatternDiagnosticMessage {
+            code: "pattern.range.bound_inverted",
+            title: "範囲パターンの上下限が逆転しています",
+            message: "開始境界が終了境界より大きくなっています。境界の順序を見直してください。",
+            severity: DiagnosticSeverity::Error,
+        },
+        PatternDiagnosticMessage {
+            code: "pattern.slice.type_mismatch",
+            title: "スライスパターンの適用対象が不正です",
+            message: "スライスパターンは Array など反復可能な型にのみ適用できます。",
+            severity: DiagnosticSeverity::Error,
+        },
+        PatternDiagnosticMessage {
+            code: "pattern.slice.multiple_rest",
+            title: "スライスパターンで `..` が多重に指定されています",
+            message: "`..` は 1 回のみ使用できます。パターンを 1 つにまとめてください。",
+            severity: DiagnosticSeverity::Error,
+        },
+        PatternDiagnosticMessage {
             code: "pattern.active.name_conflict",
             title: "Active Pattern 名が衝突しています",
             message: "同一モジュール内で Active Pattern 名が別のシンボルと衝突しています。",
@@ -70,6 +94,10 @@ mod tests {
         assert!(find_pattern_message("pattern.active.effect_violation").is_some());
         assert!(find_pattern_message("pattern.binding.duplicate_name").is_some());
         assert!(find_pattern_message("pattern.regex.unsupported_target").is_some());
+        assert!(find_pattern_message("pattern.range.type_mismatch").is_some());
+        assert!(find_pattern_message("pattern.range.bound_inverted").is_some());
+        assert!(find_pattern_message("pattern.slice.type_mismatch").is_some());
+        assert!(find_pattern_message("pattern.slice.multiple_rest").is_some());
         assert!(find_pattern_message("pattern.exhaustiveness.missing").is_some());
         assert!(find_pattern_message("pattern.unreachable_arm").is_some());
         assert!(find_pattern_message("pattern.active.name_conflict").is_some());

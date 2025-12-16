@@ -48,13 +48,12 @@ use ast::{
     ActivePatternDecl, Attribute, BinaryOp, ConductorArg, ConductorChannelRoute, ConductorDecl,
     ConductorDslDef, ConductorDslTail, ConductorEndpoint, ConductorExecutionBlock,
     ConductorMonitorTarget, ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind,
-    EffectAnnotation, EffectCall, EffectDecl, ExternItem, Expr, ExprKind, FixityKind, Function,
+    EffectAnnotation, EffectCall, EffectDecl, Expr, ExprKind, ExternItem, FixityKind, Function,
     FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry, Ident, ImplDecl, ImplItem, IntBase,
     Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath, OperationDecl, Param,
     Pattern, PatternKind, PatternRecordField, RecordField, RelativeHead, SlicePatternItem, Stmt,
-    StmtKind, StringKind,
-    TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind, UseDecl, UseItem, UseTree, Visibility,
-    WherePredicate,
+    StmtKind, StringKind, TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind, UseDecl, UseItem,
+    UseTree, Visibility, WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -714,7 +713,10 @@ fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<Fro
             record(&handle.target, diagnostics);
         }
         match &expr.kind {
-            ExprKind::Literal(_) | ExprKind::FixityLiteral(_) | ExprKind::Identifier(_) | ExprKind::ModulePath(_) => {}
+            ExprKind::Literal(_)
+            | ExprKind::FixityLiteral(_)
+            | ExprKind::Identifier(_)
+            | ExprKind::ModulePath(_) => {}
             ExprKind::Call { callee, args } => {
                 record(callee, diagnostics);
                 for arg in args {
@@ -1012,12 +1014,13 @@ fn collect_match_guard_diagnostics(module: &Module, diagnostics: &mut Vec<Fronte
 }
 
 fn build_if_guard_deprecated_diagnostic(span: Span) -> FrontendDiagnostic {
-    let mut diagnostic = FrontendDiagnostic::new("`if` ガードは非推奨です。正規形の `when` を使用してください。")
-        .with_code("pattern.guard.if_deprecated")
-        .with_severity(DiagnosticSeverity::Warning)
-        .with_domain(DiagnosticDomain::Parser)
-        .with_recoverability(Recoverability::Recoverable)
-        .with_span(span);
+    let mut diagnostic =
+        FrontendDiagnostic::new("`if` ガードは非推奨です。正規形の `when` を使用してください。")
+            .with_code("pattern.guard.if_deprecated")
+            .with_severity(DiagnosticSeverity::Warning)
+            .with_domain(DiagnosticDomain::Parser)
+            .with_recoverability(Recoverability::Recoverable)
+            .with_span(span);
     diagnostic.add_note(DiagnosticNote::new(
         "pattern.guard.if_deprecated.note",
         "`match` のガードは `when` に統一されます。互換目的の `if` は将来削除予定です。",
@@ -1586,7 +1589,10 @@ fn module_parser<'src>(
             } else if slice.starts_with("\"\"\"") && slice.ends_with("\"\"\"") && slice.len() >= 6 {
                 (slice[3..slice.len() - 3].to_string(), StringKind::Multiline)
             } else if slice.starts_with('"') && slice.ends_with('"') && slice.len() >= 2 {
-                (slice[1..slice.len() - 1].replace("\\\"", "\""), StringKind::Normal)
+                (
+                    slice[1..slice.len() - 1].replace("\\\"", "\""),
+                    StringKind::Normal,
+                )
             } else {
                 (slice.replace("\\\"", "\""), StringKind::Normal)
             }
@@ -1636,8 +1642,8 @@ fn module_parser<'src>(
                 }
             });
 
-        let string_literal_pattern = just(TokenKind::StringLiteral).map_with_span(
-            move |_, span: Range<usize>| {
+        let string_literal_pattern =
+            just(TokenKind::StringLiteral).map_with_span(move |_, span: Range<usize>| {
                 let (value, string_kind) = parse_string_literal(span.clone());
                 let span = range_to_span(span);
                 let kind = if matches!(string_kind, StringKind::Raw) {
@@ -1654,8 +1660,7 @@ fn module_parser<'src>(
                     })
                 };
                 Pattern { span, kind }
-            },
-        );
+            });
 
         let unit_literal_pattern = just(TokenKind::LParen)
             .ignore_then(just(TokenKind::RParen))
@@ -1738,14 +1743,16 @@ fn module_parser<'src>(
 
         let active_pattern = active_pattern_head
             .then(pat.clone().or_not())
-            .map_with_span(|((name, is_partial), argument), span: Range<usize>| Pattern {
-                span: range_to_span(span),
-                kind: PatternKind::ActivePattern {
-                    name,
-                    is_partial,
-                    argument: argument.map(Box::new),
+            .map_with_span(
+                |((name, is_partial), argument), span: Range<usize>| Pattern {
+                    span: range_to_span(span),
+                    kind: PatternKind::ActivePattern {
+                        name,
+                        is_partial,
+                        argument: argument.map(Box::new),
+                    },
                 },
-            });
+            );
 
         let record_field_alias = ident.clone().map(|field_ident| PatternRecordField {
             key: field_ident.clone(),
@@ -1829,14 +1836,16 @@ fn module_parser<'src>(
                     .then(just(TokenKind::Assign).or_not())
                     .then(binding_pattern.clone().or_not()),
             )
-            .map_with_span(|(start, ((_, inclusive_opt), end)), span: Range<usize>| Pattern {
-                span: range_to_span(span),
-                kind: PatternKind::Range {
-                    start: Some(Box::new(start)),
-                    end: end.map(Box::new),
-                    inclusive: inclusive_opt.is_some(),
+            .map_with_span(
+                |(start, ((_, inclusive_opt), end)), span: Range<usize>| Pattern {
+                    span: range_to_span(span),
+                    kind: PatternKind::Range {
+                        start: Some(Box::new(start)),
+                        end: end.map(Box::new),
+                        inclusive: inclusive_opt.is_some(),
+                    },
                 },
-            });
+            );
 
         let range_without_start = just(TokenKind::DotDot)
             .then(just(TokenKind::Assign).or_not())
@@ -1968,9 +1977,7 @@ fn module_parser<'src>(
             .map_with_span(|fields, span: Range<usize>| {
                 Expr::literal(
                     Literal {
-                        value: LiteralKind::Record {
-                            fields,
-                        },
+                        value: LiteralKind::Record { fields },
                     },
                     range_to_span(span),
                 )
@@ -2266,7 +2273,7 @@ fn module_parser<'src>(
             float_literal.clone(),
             bool_literal,
             string_literal,
-             fixity_literal,
+            fixity_literal,
             array_literal,
             record_literal,
             tuple_literal,
@@ -2323,10 +2330,10 @@ fn module_parser<'src>(
                                 });
                             Expr::call(acc, args, call_span)
                         }
-                    Postfix::Field(field, span) => {
-                        let combined = span_union(acc.span(), span);
-                        Expr::field_access(acc, field, combined)
-                    }
+                        Postfix::Field(field, span) => {
+                            let combined = span_union(acc.span(), span);
+                            Expr::field_access(acc, field, combined)
+                        }
                     })
             })
             .boxed();
@@ -2629,9 +2636,8 @@ fn module_parser<'src>(
             },
         );
 
-    let abi_literal = just(TokenKind::StringLiteral).map_with_span(move |_, span: Range<usize>| {
-        parse_string_literal_value(source, span)
-    });
+    let abi_literal = just(TokenKind::StringLiteral)
+        .map_with_span(move |_, span: Range<usize>| parse_string_literal_value(source, span));
 
     let let_decl_raw = build_let_decl_parser(pattern.clone(), type_parser.clone(), expr.clone());
     let let_decl = attr_list
@@ -2777,20 +2783,19 @@ fn module_parser<'src>(
             function
         });
 
-    let active_pattern_head = just(TokenKind::KeywordPattern)
-        .ignore_then(
-            just(TokenKind::LParen)
-                .ignore_then(just(TokenKind::Bar))
-                .ignore_then(ident.clone())
-                .then(
-                    just(TokenKind::Bar)
-                        .ignore_then(just(TokenKind::Underscore))
-                        .ignore_then(just(TokenKind::Bar))
-                        .to(true)
-                        .or(just(TokenKind::Bar).to(false)),
-                )
-                .then_ignore(just(TokenKind::RParen)),
-        );
+    let active_pattern_head = just(TokenKind::KeywordPattern).ignore_then(
+        just(TokenKind::LParen)
+            .ignore_then(just(TokenKind::Bar))
+            .ignore_then(ident.clone())
+            .then(
+                just(TokenKind::Bar)
+                    .ignore_then(just(TokenKind::Underscore))
+                    .ignore_then(just(TokenKind::Bar))
+                    .to(true)
+                    .or(just(TokenKind::Bar).to(false)),
+            )
+            .then_ignore(just(TokenKind::RParen)),
+    );
 
     let active_pattern_decl = attr_list
         .clone()
@@ -2818,12 +2823,14 @@ fn module_parser<'src>(
         .then(visibility.clone())
         .then(fn_signature.clone())
         .then_ignore(just(TokenKind::Semicolon))
-        .map_with_span(|((attrs, visibility), signature), span: Range<usize>| ExternItem {
-            attrs,
-            visibility,
-            signature,
-            span: range_to_span(span),
-        });
+        .map_with_span(
+            |((attrs, visibility), signature), span: Range<usize>| ExternItem {
+                attrs,
+                visibility,
+                signature,
+                span: range_to_span(span),
+            },
+        );
 
     let extern_block = extern_fn_decl
         .clone()

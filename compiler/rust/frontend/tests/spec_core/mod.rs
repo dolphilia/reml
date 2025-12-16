@@ -361,68 +361,68 @@ fn ch1_match_003_accepts_guard_and_alias() {
                 .unwrap_or("missing");
             assert_eq!(
                 alias_name, "large",
-            "match arm alias should be parsed as `large`"
-        );
-    }
-    other => panic!("expected match expression, got {:?}", other),
-}
-
-#[test]
-fn ch1_act_001_parses_partial_active_pattern_definition() {
-    let module = parse_example_module(
-        "examples/spec_core/chapter1/active_patterns/bnf-activepattern-partial-ok.reml",
-    );
-    assert_eq!(
-        module.active_patterns.len(),
-        1,
-        "expected one active pattern declaration"
-    );
-    let active = &module.active_patterns[0];
-    assert!(active.is_partial, "active pattern should be partial");
-    assert_eq!(active.name.name, "IsFoo");
-    assert_eq!(active.params.len(), 1, "expected one parameter");
-
-    let main_fn = module
-        .functions
-        .iter()
-        .find(|function| function.name.name == "main")
-        .expect("main function should exist");
-    let match_expr = match &main_fn.body.kind {
-        ExprKind::Block { statements, .. } => statements
-            .iter()
-            .find_map(|stmt| match &stmt.kind {
-                StmtKind::Expr { expr } => Some(expr),
-                _ => None,
-            })
-            .expect("match expression should be present"),
-        other => panic!("expected block body, got {:?}", other),
-    };
-    match &match_expr.kind {
-        ExprKind::Match { arms, .. } => {
-            let first_arm = arms.first().expect("expected a match arm");
-            match &first_arm.pattern.kind {
-                PatternKind::ActivePattern {
-                    name,
-                    is_partial,
-                    argument,
-                } => {
-                    assert_eq!(name.name, "IsFoo");
-                    assert!(*is_partial, "match arm should treat pattern as partial");
-                    assert!(
-                        argument.is_some(),
-                        "active pattern application should capture the argument"
-                    );
-                }
-                other => panic!("expected active pattern application, got {:?}", other),
-            }
+                "match arm alias should be parsed as `large`"
+            );
         }
         other => panic!("expected match expression, got {:?}", other),
     }
-}
 
-#[test]
-fn match_guard_accepts_alias_before_guard() {
-    let source = r#"
+    #[test]
+    fn ch1_act_001_parses_partial_active_pattern_definition() {
+        let module = parse_example_module(
+            "examples/spec_core/chapter1/active_patterns/bnf-activepattern-partial-ok.reml",
+        );
+        assert_eq!(
+            module.active_patterns.len(),
+            1,
+            "expected one active pattern declaration"
+        );
+        let active = &module.active_patterns[0];
+        assert!(active.is_partial, "active pattern should be partial");
+        assert_eq!(active.name.name, "IsFoo");
+        assert_eq!(active.params.len(), 1, "expected one parameter");
+
+        let main_fn = module
+            .functions
+            .iter()
+            .find(|function| function.name.name == "main")
+            .expect("main function should exist");
+        let match_expr = match &main_fn.body.kind {
+            ExprKind::Block { statements, .. } => statements
+                .iter()
+                .find_map(|stmt| match &stmt.kind {
+                    StmtKind::Expr { expr } => Some(expr),
+                    _ => None,
+                })
+                .expect("match expression should be present"),
+            other => panic!("expected block body, got {:?}", other),
+        };
+        match &match_expr.kind {
+            ExprKind::Match { arms, .. } => {
+                let first_arm = arms.first().expect("expected a match arm");
+                match &first_arm.pattern.kind {
+                    PatternKind::ActivePattern {
+                        name,
+                        is_partial,
+                        argument,
+                    } => {
+                        assert_eq!(name.name, "IsFoo");
+                        assert!(*is_partial, "match arm should treat pattern as partial");
+                        assert!(
+                            argument.is_some(),
+                            "active pattern application should capture the argument"
+                        );
+                    }
+                    other => panic!("expected active pattern application, got {:?}", other),
+                }
+            }
+            other => panic!("expected match expression, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn match_guard_accepts_alias_before_guard() {
+        let source = r#"
 module Spec.Core.Chapter1.ActivePatterns.AliasOrder
 
 fn demo(n: Int) -> Int = {
@@ -431,53 +431,56 @@ fn demo(n: Int) -> Int = {
   | _ -> 0
 }
 "#;
-    let result = ParserDriver::parse(source);
-    assert!(
-        result.diagnostics.is_empty(),
-        "expected parser diagnostics to be empty, got {:?}",
-        result
-            .diagnostics
+        let result = ParserDriver::parse(source);
+        assert!(
+            result.diagnostics.is_empty(),
+            "expected parser diagnostics to be empty, got {:?}",
+            result
+                .diagnostics
+                .iter()
+                .map(|diag| diag.code.clone())
+                .collect::<Vec<_>>()
+        );
+        let module = result.value.expect("module should parse");
+        let demo_fn = module
+            .functions
             .iter()
-            .map(|diag| diag.code.clone())
-            .collect::<Vec<_>>()
-    );
-    let module = result.value.expect("module should parse");
-    let demo_fn = module
-        .functions
-        .iter()
-        .find(|function| function.name.name == "demo")
-        .expect("demo function should exist");
-    let match_expr = match &demo_fn.body.kind {
-        ExprKind::Block { statements, .. } => statements
-            .iter()
-            .find_map(|stmt| match &stmt.kind {
-                StmtKind::Expr { expr } => Some(expr),
-                _ => None,
-            })
-            .expect("match expression should be present"),
-        other => panic!("expected block body, got {:?}", other),
-    };
-    match &match_expr.kind {
-        ExprKind::Match { arms, .. } => {
-            let first_arm = arms.first().expect("expected a match arm");
-            let alias = first_arm
-                .alias
-                .as_ref()
-                .map(|ident| ident.name.as_str())
-                .unwrap_or("missing");
-            assert_eq!(alias, "value", "alias should be parsed from alias-first form");
-            assert!(
-                first_arm.guard.is_some(),
-                "guard should be preserved after alias"
-            );
+            .find(|function| function.name.name == "demo")
+            .expect("demo function should exist");
+        let match_expr = match &demo_fn.body.kind {
+            ExprKind::Block { statements, .. } => statements
+                .iter()
+                .find_map(|stmt| match &stmt.kind {
+                    StmtKind::Expr { expr } => Some(expr),
+                    _ => None,
+                })
+                .expect("match expression should be present"),
+            other => panic!("expected block body, got {:?}", other),
+        };
+        match &match_expr.kind {
+            ExprKind::Match { arms, .. } => {
+                let first_arm = arms.first().expect("expected a match arm");
+                let alias = first_arm
+                    .alias
+                    .as_ref()
+                    .map(|ident| ident.name.as_str())
+                    .unwrap_or("missing");
+                assert_eq!(
+                    alias, "value",
+                    "alias should be parsed from alias-first form"
+                );
+                assert!(
+                    first_arm.guard.is_some(),
+                    "guard should be preserved after alias"
+                );
+            }
+            other => panic!("expected match expression, got {:?}", other),
         }
-        other => panic!("expected match expression, got {:?}", other),
     }
-}
 
-#[test]
-fn match_guard_with_if_emits_deprecation_warning() {
-    let source = r#"
+    #[test]
+    fn match_guard_with_if_emits_deprecation_warning() {
+        let source = r#"
 module Spec.Core.Chapter1.ActivePatterns.IfGuard
 
 fn demo(n: Int) -> Int = {
@@ -486,38 +489,38 @@ fn demo(n: Int) -> Int = {
   | _ -> 0
 }
 "#;
-    let result = ParserDriver::parse(source);
-    let codes = result
-        .diagnostics
-        .iter()
-        .filter_map(|diag| diag.code.as_deref())
-        .collect::<Vec<_>>();
-    assert!(
-        codes.contains(&"pattern.guard.if_deprecated"),
-        "expected pattern.guard.if_deprecated, got {:?}",
-        codes
-    );
-    let module = result.value.expect("module should parse");
-    let demo_fn = module
-        .functions
-        .iter()
-        .find(|function| function.name.name == "demo")
-        .expect("demo function should exist");
-    let has_if_guard = match &demo_fn.body.kind {
-        ExprKind::Block { statements, .. } => statements.iter().any(|stmt| {
-            if let StmtKind::Expr { expr } = &stmt.kind {
-                if let ExprKind::Match { arms, .. } = &expr.kind {
-                    return arms
-                        .iter()
-                        .any(|arm| arm.guard.is_some() && arm.guard_used_if);
+        let result = ParserDriver::parse(source);
+        let codes = result
+            .diagnostics
+            .iter()
+            .filter_map(|diag| diag.code.as_deref())
+            .collect::<Vec<_>>();
+        assert!(
+            codes.contains(&"pattern.guard.if_deprecated"),
+            "expected pattern.guard.if_deprecated, got {:?}",
+            codes
+        );
+        let module = result.value.expect("module should parse");
+        let demo_fn = module
+            .functions
+            .iter()
+            .find(|function| function.name.name == "demo")
+            .expect("demo function should exist");
+        let has_if_guard = match &demo_fn.body.kind {
+            ExprKind::Block { statements, .. } => statements.iter().any(|stmt| {
+                if let StmtKind::Expr { expr } = &stmt.kind {
+                    if let ExprKind::Match { arms, .. } = &expr.kind {
+                        return arms
+                            .iter()
+                            .any(|arm| arm.guard.is_some() && arm.guard_used_if);
+                    }
                 }
-            }
-            false
-        }),
-        _ => false,
-    };
-    assert!(has_if_guard, "match arm should record use of `if` guard");
-}
+                false
+            }),
+            _ => false,
+        };
+        assert!(has_if_guard, "match arm should record use of `if` guard");
+    }
 }
 
 #[test]
@@ -615,7 +618,7 @@ fn main() -> Int = {
             .violations
             .iter()
             .map(|violation| violation.code)
-        .collect::<Vec<_>>()
+            .collect::<Vec<_>>()
     );
 }
 
@@ -696,11 +699,7 @@ fn ch1_match_014_reports_binding_duplicate_name() {
         "examples/spec_core/chapter1/match_expr/bnf-match-binding-duplicate.reml",
     );
     let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
-    let codes = report
-        .violations
-        .iter()
-        .map(|v| v.code)
-        .collect::<Vec<_>>();
+    let codes = report.violations.iter().map(|v| v.code).collect::<Vec<_>>();
     assert!(
         has_violation(&report, "pattern.binding.duplicate_name"),
         "expected pattern.binding.duplicate_name, got {:?}",
@@ -714,11 +713,7 @@ fn ch1_match_016_reports_regex_unsupported_target() {
         "examples/spec_core/chapter1/match_expr/bnf-match-regex-unsupported-target.reml",
     );
     let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
-    let codes = report
-        .violations
-        .iter()
-        .map(|v| v.code)
-        .collect::<Vec<_>>();
+    let codes = report.violations.iter().map(|v| v.code).collect::<Vec<_>>();
     assert!(
         has_violation(&report, "pattern.regex.unsupported_target"),
         "expected pattern.regex.unsupported_target, got {:?}",
@@ -735,6 +730,107 @@ fn ch1_match_008_reports_unreachable_or_arm_after_wildcard() {
     assert!(
         has_violation(&report, "pattern.unreachable_arm"),
         "expected pattern.unreachable_arm for trailing or-pattern arm"
+    );
+}
+
+#[test]
+fn ch1_match_009_accepts_slice_head_tail() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/match_expr/bnf-match-slice-head-tail-ok.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        report.violations.is_empty(),
+        "expected no diagnostics, got {:?}",
+        report
+            .violations
+            .iter()
+            .map(|violation| violation.code)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn ch1_match_010_reports_slice_multiple_rest() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/match_expr/bnf-match-slice-multiple-rest.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "pattern.slice.multiple_rest"),
+        "expected pattern.slice.multiple_rest, got {:?}",
+        report
+            .violations
+            .iter()
+            .map(|violation| violation.code)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn ch1_match_011_accepts_range_inclusive() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/match_expr/bnf-match-range-inclusive-ok.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        report.violations.is_empty(),
+        "expected no diagnostics, got {:?}",
+        report
+            .violations
+            .iter()
+            .map(|violation| violation.code)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn ch1_match_012_reports_range_bound_inverted() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/match_expr/bnf-match-range-bound-inverted.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "pattern.range.bound_inverted"),
+        "expected pattern.range.bound_inverted, got {:?}",
+        report
+            .violations
+            .iter()
+            .map(|violation| violation.code)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn ch1_match_013_accepts_binding_alias() {
+    let module =
+        parse_example_module("examples/spec_core/chapter1/match_expr/bnf-match-binding-as-ok.reml");
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        report.violations.is_empty(),
+        "expected no diagnostics, got {:?}",
+        report
+            .violations
+            .iter()
+            .map(|violation| violation.code)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn ch1_match_017_accepts_active_pattern_or_combination() {
+    let module = parse_example_module(
+        "examples/spec_core/chapter1/match_expr/bnf-match-active-or-combined.reml",
+    );
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        report.violations.is_empty(),
+        "expected no diagnostics, got {:?}",
+        report
+            .violations
+            .iter()
+            .map(|violation| violation.code)
+            .collect::<Vec<_>>()
     );
 }
 
@@ -967,7 +1063,10 @@ fn expr_contains_array(expr: &Expr) -> bool {
             }
             _ => false,
         },
-        ExprKind::FixityLiteral(_) | ExprKind::Identifier(_) | ExprKind::ModulePath(_) | ExprKind::Continue => false,
+        ExprKind::FixityLiteral(_)
+        | ExprKind::Identifier(_)
+        | ExprKind::ModulePath(_)
+        | ExprKind::Continue => false,
         ExprKind::Call { callee, args } => {
             expr_contains_array(callee) || args.iter().any(expr_contains_array)
         }
