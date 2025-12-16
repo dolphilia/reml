@@ -77,6 +77,13 @@
 - **M4: 回帰資産更新** — expected/diagnostic 再取得・マトリクス run_id 記録完了。  
 - **M5: クロス実装チェック** — OCaml/回帰レポートとの差分メモ完了。
 
+### 進捗ステータス（2026-03 時点）
+- [x] M1: IR 仕様決定 — 本計画記載のノード/評価順を採用。  
+- [x] M2: フロントエンド MIR 生成 — `compiler/rust/frontend/src/semantics/mir.rs` を新設し、`TypedExprKind::Match` から `MirExpr::Match` を構築。`--emit-mir`/`--debug-mir` オプションで JSON 出力できるように `compiler/rust/frontend/src/bin/reml_frontend.rs` を更新。`TypecheckReport` に MIR を保持しデバッグ出力へ組込み済み。  
+- [ ] M3: バックエンド分岐生成 — 未着手。MIR JSON ローダーと LLVM 変換の対応が必要。  
+- [ ] M4: 回帰資産更新 — 未着手。CH1-MATCH/ACT の expected 再取得と run_id 記録が必要。  
+- [ ] M5: クロス実装チェック — 未着手。Rust/OCaml 差分メモ作成が必要。
+
 ## 退出条件
 - Match/Pattern を含む MIR が生成され、バックエンドでジャンプ分岐が構築される。Partial Active の miss パスがランタイム挙動として確認できる。  
 - Phase4 マトリクスの該当行に最新 run_id・再取得コマンドが記録され、expected が更新済み。  
