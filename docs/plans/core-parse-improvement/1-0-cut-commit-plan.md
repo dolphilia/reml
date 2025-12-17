@@ -30,8 +30,8 @@ Reml は `docs/spec/2-1-parser-type.md` で `Reply{consumed, committed}` と `cu
   - [x] `docs/spec/2-2-core-combinator.md`（D 節）へ JSON/YAML 境界例（短縮版）を反映
   - [x] `docs/spec/2-1-parser-type.md` / `docs/spec/2-6-execution-strategy.md` を読み合わせし、`committed` が消費と独立であること・cut 通過後に期待集合を再初期化することを明示
   - [x] 追加追記は最小（2-1 に cut/committed 独立の注記、2-6 に期待再初期化＋ゼロ幅 cut の明記。2-2 は再追記不要）
-- [ ] Step 2: API 表面（糖衣）を「迷いが減る形」で整える
-  - [ ] 決定ログを `docs/notes/core-parse-api-evolution.md` に記録（`commit(p)` は derived、`p.commit()` は追加しない等）
+- [x] Step 2: API 表面（糖衣）を「迷いが減る形」で整える
+  - [x] 決定ログを `docs/notes/core-parse-api-evolution.md` に記録（`commit(p)` は derived、`p.commit()` は追加しない等）
 - [x] Step 3: サンプルと回帰（Cut の効果を “見える化” して固定）
   - [x] Cut 有り（現行）: `core-parse-cut-branch-mislead` / `core-parse-cut-unclosed-paren` をゴールデン化
   - [x] 比較対象（Cut 無し相当）: `*-no-cut` の入力と期待（誤誘導版）を追加
