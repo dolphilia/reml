@@ -18,6 +18,26 @@ Reml は `docs/spec/2-1-parser-type.md` で `Reply{consumed, committed}` と `cu
 - 期待集合（expected set）は「最遠失敗」「cut 境界」を加味して統合する（詳細は `docs/spec/2-5-error.md`）
 
 ## タスク分割
+
+## 進捗（この計画の状態が分かるチェックリスト）
+
+> 更新方針: 「Step の完了」だけでなく、仕様・回帰・サンプルが揃っているかをサブ項目で追えるようにする。
+
+- [x] Step 0: 現状の「Cut を置くべき場所」を棚卸しする
+  - [x] 代表サンプル（PL/0 / JSON / TOML / YAML / Spec.Core）の観測点を整理
+  - [x] Step1 へ渡す最小チェックリストを確定（JSON/YAML の境界例を含む）
+- [ ] Step 1: 仕様・ガイドの最小一貫化（Cut の意味と運用を固定）
+  - [x] `docs/spec/2-2-core-combinator.md`（D 節）へ JSON/YAML 境界例（短縮版）を反映
+  - [ ] `docs/spec/2-1-parser-type.md` / `docs/spec/2-6-execution-strategy.md` を含めて読み合わせし、用語・規則が一意に読めることを確認
+  - [ ] 必要なら `docs/spec/2-2-core-combinator.md` / `docs/spec/2-6-execution-strategy.md` へ最小追記（重複記述は避ける）
+- [ ] Step 2: API 表面（糖衣）を「迷いが減る形」で整える
+  - [ ] 決定ログを `docs/notes/core-parse-api-evolution.md` に記録（`commit(p)` は derived、`p.commit()` は追加しない等）
+- [x] Step 3: サンプルと回帰（Cut の効果を “見える化” して固定）
+  - [x] Cut 有り（現行）: `core-parse-cut-branch-mislead` / `core-parse-cut-unclosed-paren` をゴールデン化
+  - [x] 比較対象（Cut 無し相当）: `*-no-cut` の入力と期待（誤誘導版）を追加
+  - [x] Phase4 マトリクスへ比較対象リンクを反映（`CH2-PARSE-102/103` の scenario_notes / spec_anchor）
+  - [x] `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` 側へ比較対象の参照を追記
+
 ### Step 0: 現状の「Cut を置くべき場所」を棚卸しする
 Cut を入れる位置が曖昧だと、診断の改善も回帰の固定もできないため、まず「典型パターン」を確定する。
 
