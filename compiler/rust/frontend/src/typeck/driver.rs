@@ -1736,7 +1736,11 @@ fn infer_expr(
                 loop_context,
                 context,
             );
-            let result_ty = var_gen.fresh_type();
+            let result_ty = if field.name == "to_string" {
+                Type::arrow(vec![], Type::builtin(BuiltinType::Str))
+            } else {
+                var_gen.fresh_type()
+            };
             make_typed(
                 expr,
                 TypedExprKindDraft::FieldAccess {
