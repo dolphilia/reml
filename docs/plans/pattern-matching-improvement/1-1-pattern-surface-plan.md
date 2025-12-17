@@ -59,7 +59,7 @@
 - 診断キーは仕様に未登場のため、以下を `2-5-error.md` か `1-1` 診断節へ追加する差分が必要。  
   - 網羅性/到達不能: `pattern.exhaustiveness.missing`, `pattern.unreachable_arm`  
   - Range: `pattern.range.type_mismatch`, `pattern.range.bound_inverted`  
-  - Slice: `pattern.slice.type_mismatch`, `pattern.slice.too_many_parts`  
+  - Slice: `pattern.slice.type_mismatch`, `pattern.slice.multiple_rest`  
   - Regex: `pattern.regex.invalid_syntax`, `pattern.regex.unsupported_target`  
   - Binding: `pattern.binding.duplicate_name`
 

@@ -287,3 +287,37 @@ let outcome =
 - `Core.Text.decode_stream` は Phase 3 で `TextDecodeOptions` を通じて BOM/不正シーケンス処理を指定できる。Streaming Runner の `on_chunk` で UTF-8 検証が必要になった場合は `decode_stream` を呼び、戻り値の `String`/`Str` をそのまま `Unicode.segment_graphemes` へ渡す。`log_grapheme_stats` の値は `AuditEnvelope.metadata["text.grapheme_stats"]` と CLI/LSP 診断 (`Diagnostic.extensions["text.grapheme_stats"]`) へ転写し、`text.grapheme.cache_hit` KPI を `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --require-success` で監視する。  
 - Rust runtime には `compiler/rust/runtime/examples/io/text_stream_decode.rs` があり、`cargo run --manifest-path compiler/rust/runtime/Cargo.toml --bin text_stream_decode -- --input tests/data/unicode/streaming/sample_input.txt --output examples/core-text/expected/text_unicode.stream_decode.golden` でストリーミング decode + Grapheme 統計を JSON へ保存できる。CI ではこのゴールデンを `scripts/validate-diagnostic-json.sh --pattern text_stream_decode` の参照として利用する。  
 - `examples/core-text/text_unicode.reml` は `Bytes`→`Str`→`String` の三層モデル、`TextBuilder`, `Unicode.prepare_identifier`, `log_grapheme_stats` を 1 つのシナリオに統合したサンプルであり、`expected/text_unicode.{tokens,grapheme_stats}.golden` に CLI 出力と監査メタデータを保持している。Streaming Runner で `decode_stream` を導入する場合はこのサンプルをベースに自動テストを構築し、`reports/spec-audit/ch1/core_text_examples-YYYYMMDD.md` に実行ログを追加する。
+
+---
+
+## 付録A. `match` の評価順序とストリーミング運用
+
+ストリーミング実装では `StreamOutcome`／`FeederYield` の分岐や、診断フック内での状態更新に `match` を多用する。ここでは、`match` の評価順序（言語仕様）と、ストリーミング運用上の注意点を最小限にまとめる。
+
+*仕様参照: [1-1 §C.4 `match` 式](../spec/1-1-syntax.md#c4-制御構文), [1-5 §4 `MatchExpr`](../spec/1-5-formal-grammar-bnf.md)*
+
+### A.1 評価順序（重要）
+
+- スクラティニー（`match expr with ...` の `expr`）は **1 回だけ評価**され、その値に対してアームを上から順に照合する。
+- 各アームは **パターン照合 → ガード（`when`）→ エイリアス束縛（`as`/`@`）→ 本体** の順で評価される。
+- ガードが偽の場合は、そのアームの本体は評価されず **次のアームへフォールスルー**する。
+- 部分アクティブパターン（`(|Name|_|)`）の `None` は「照合失敗」として扱い、**診断を出さずに次アームへ進む**（失敗をエラーとして扱いたい場合は `Result`／診断生成を本体側で明示する）。
+
+### A.2 ストリーミングでの実務的ガイドライン
+
+- `Pending`／`Await` 系の分岐では、**入力要求と状態更新をアーム本体に寄せる**。ガード内で `resume`／`pull` を呼ぶと、分岐条件の見通しが悪化し「どこで入力が消費されたか」を追跡しづらくなる。
+- ガードはできるだけ **純粋（副作用なし）** に保つ。`Pending` の有無や `DemandHint` の比較など、軽量な判定に限定する（0-1 §1.1 の性能要件と §1.2 の安全性を満たしやすい）。
+- 例外や診断の生成は「最初に一致したアーム」の本体で行い、`None` などのフォールスルーを例外扱いしない（診断ポリシーが必要な場合は `core.parse.*`／`parser.stream.*` の運用キーと整合させる）。
+
+### A.3 代表パターン（`StreamOutcome` 分岐）
+
+```reml
+match outcome with
+| Completed { result, meta } -> finalize(result, meta)
+| Pending { continuation, demand, meta } when demand.min_bytes > 0 ->
+    request_more(continuation, demand, meta)
+| Pending { continuation, demand, meta } ->
+    park(continuation, demand, meta)
+```
+
+上例は「`Pending` の詳細条件（`min_bytes`）をガードで切り替え、実際の入力要求・待機処理は本体で完結させる」典型形。`resume` の呼び出しや `Feeder.pull` は本体に閉じ込め、`Pending` 判定が評価順序や再入に依存しないようにする。

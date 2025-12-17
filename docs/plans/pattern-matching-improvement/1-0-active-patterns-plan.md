@@ -121,7 +121,7 @@ RangeBound      ::= Literal | Ident | ConstructorPattern
 - pattern.range.type_mismatch            : Range 境界の型が一致しない
 - pattern.range.bound_inverted           : 下限 > 上限
 - pattern.slice.type_mismatch            : Slice パターンに非コレクションを適用
-- pattern.slice.too_many_parts           : Slice パターンの `..` が複数など不正形
+- pattern.slice.multiple_rest            : Slice パターンの `..` が複数など不正形
 - pattern.regex.invalid_syntax           : Regex リテラル糖衣の構文エラー
 - pattern.regex.unsupported_target       : 対象型が文字列/バイト列でない
 - pattern.binding.duplicate_name         : `as` / `@` 併用で同一名を重複束縛

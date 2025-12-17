@@ -39,9 +39,9 @@
    - IR ログ: `reports/spec-audit/ch4/logs/` に MIR/LLVM 簡易差分を保存し、ギャップがあればコメントで理由を残す。
 
 5. **クロスチェックとドキュメント同期**  
-   - 仕様: 必要に応じて `docs/spec/1-5-formal-grammar-bnf.md` の Match/Pattern セクションに「Partial Active miss は `None` で次アームへ」等の注記を追記。  
-   - ガイド: `docs/guides/core-parse-streaming.md` 付録で Match 分岐の実行順とストリーミング評価の関係を整理。  
-   - OCaml 実装: MIR 仕様が確定したら差分メモを `docs/plans/rust-migration/` へ残し、移植方針を共有。
+   - 仕様: `docs/spec/1-5-formal-grammar-bnf.md` の `MatchExpr` 注記に、評価順序（スクラティニー 1 回評価、アーム順照合、`guard -> alias -> body`）と「Partial Active の `None` は次アームへフォールスルー」を明記して同期する。  
+   - ガイド: `docs/guides/core-parse-streaming.md` に付録（付録A）を追加し、`match` の評価順序とストリーミング運用（`Pending`/`Await` 分岐の扱い、ガードの純粋性）を整理して同期する。  
+   - OCaml 実装: 本タスクでは進めない（別途、MIR 仕様確定後に `docs/plans/rust-migration/` へ差分メモを残す）。
 
 ## M1: MIR 拡張仕様（決定）
 
@@ -87,6 +87,11 @@
   - **ログ**: 一括ダンプ結果を `reports/spec-audit/ch4/logs/match-ir-20251217T023255Z.md` に保存（Range/Slice/Or/Partial Active/Guard/Body の接続を目視確認）。  
 - [ ] M4: 回帰資産更新 — 未着手。CH1-MATCH/ACT の expected 再取得と run_id 記録が必要。  
 - [ ] M5: クロス実装チェック — 未着手。Rust/OCaml 差分メモ作成が必要。
+
+#### ドキュメント同期ログ（2025-12-17）
+- `docs/spec/1-5-formal-grammar-bnf.md` に `MatchExpr` の評価順序と Partial Active のフォールスルー（`None` → 次アーム）を追記して同期。
+- `docs/guides/core-parse-streaming.md` に付録Aを追加し、ストリーミング運用での `match` 分岐の扱い（`Pending`/`Await`、ガードの純粋性）を整理。
+- OCaml 実装差分メモは本計画の M5 で扱う（本タスクでは未実施）。
 
 ### 次に着手する作業（優先順）
 1. **Constructor の内側パターンに対応**: `Some(x)` 等の payload を取り出して `Binding`/`Var`/`Literal` へ伝搬する（現状は `Some/None` を null 判定で分岐するのみ）。  
