@@ -402,8 +402,8 @@ struct MirPatternJson {
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum MirPatternKindSpec {
-    Active(MirActivePatternCallJson),
     Tagged(MirPatternKindJson),
+    Active(MirActivePatternCallJson),
     Other(Value),
 }
 

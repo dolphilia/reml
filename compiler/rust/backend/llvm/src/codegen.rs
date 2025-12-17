@@ -414,6 +414,10 @@ impl LlvmBuilder {
     fn bool_type(&self) -> String {
         self.type_mapping.layout_of(&RemlType::Bool).description
     }
+
+    fn pointer_type(&self) -> String {
+        self.type_mapping.layout_of(&RemlType::Pointer).description
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -427,6 +431,11 @@ pub enum LlvmInstr {
         rhs: String,
     },
     And {
+        result: String,
+        lhs: String,
+        rhs: String,
+    },
+    Or {
         result: String,
         lhs: String,
         rhs: String,
@@ -458,6 +467,7 @@ impl LlvmInstr {
             LlvmInstr::And { result, lhs, rhs } => {
                 format!("{result} = and i1 {lhs}, {rhs}")
             }
+            LlvmInstr::Or { result, lhs, rhs } => format!("{result} = or i1 {lhs}, {rhs}"),
             LlvmInstr::Call {
                 result,
                 ret_ty,
@@ -800,15 +810,16 @@ fn lower_match_to_blocks(
         } = &expr.kind
         {
             let end_label = format!("match{}.end", expr.id);
-            let target_label = expr_map
+            let target_desc = expr_map
                 .get(target)
                 .map(|node| match &node.kind {
                     MirExprKind::Identifier { summary } => summary.clone(),
                     _ => format!("#{}", target),
                 })
                 .unwrap_or_else(|| format!("#{}", target));
+            let target_operand = format_operand_from_summary(&target_desc);
             let mut ssa = LlvmBuilder::new(type_mapping.clone());
-            let mut phi_sources = Vec::new();
+            let mut phi_sources: Vec<(String, String)> = Vec::new();
             for (index, arm) in arms.iter().enumerate() {
                 let next_arm = if index + 1 == arms.len() {
                     end_label.clone()
@@ -818,7 +829,7 @@ fn lower_match_to_blocks(
                 let guard_label = arm.guard.map(|gid| format!("arm{index}.guard#{gid}"));
                 let alias_label = arm.alias.as_ref().map(|_| format!("arm{index}.alias"));
                 let body_label = format!("arm{index}.body#{}", arm.body);
-                phi_sources.push(body_label.clone());
+                let post_guard_label = alias_label.clone().unwrap_or_else(|| body_label.clone());
                 let success_label = guard_label
                     .clone()
                     .or(alias_label.clone())
@@ -829,7 +840,8 @@ fn lower_match_to_blocks(
                     &arm.pattern,
                     &success_label,
                     &next_arm,
-                    &target_label,
+                    &target_operand,
+                    &target_desc,
                     &mut ssa,
                 );
                 blocks.append(&mut arm_blocks);
@@ -841,30 +853,26 @@ fn lower_match_to_blocks(
                         instrs: vec![format!("guard check {}", label)],
                         terminator: format!(
                             "br_if {label} then {success} else {next}",
-                            success = success_label,
+                            success = post_guard_label,
                             next = next_arm
                         ),
                     });
-                    let cond = ssa.new_tmp("guard");
+                    let (cond, mut guard_instrs) =
+                        emit_guard_cond(arm.guard.unwrap_or(0), &expr_map, &mut ssa);
+                    guard_instrs.insert(
+                        0,
+                        LlvmInstr::Comment(format!(
+                            "guard {label} -> {success}/{next}",
+                            success = post_guard_label,
+                            next = next_arm
+                        )),
+                    );
                     llvm_blocks.push(LlvmBlock {
                         label: label.clone(),
-                        instrs: vec![
-                            LlvmInstr::Comment(format!(
-                                "guard {label} -> {success}/{next}",
-                                success = success_label,
-                                next = next_arm
-                            )),
-                            LlvmInstr::Icmp {
-                                result: cond.clone(),
-                                pred: "ne".into(),
-                                ty: "i1".into(),
-                                lhs: "true".into(),
-                                rhs: "false".into(),
-                            },
-                        ],
+                        instrs: guard_instrs,
                         terminator: LlvmTerminator::BrCond {
                             cond,
-                            then_bb: success_label.clone(),
+                            then_bb: post_guard_label.clone(),
                             else_bb: next_arm.clone(),
                         },
                     });
@@ -876,14 +884,12 @@ fn lower_match_to_blocks(
                         .unwrap_or_else(|| format!("arm{index}.alias"));
                     blocks.push(BasicBlock {
                         label: alias_block.clone(),
-                        instrs: vec![format!("alias {alias} = {target_label}")],
+                        instrs: vec![format!("alias {alias} = {target_desc}")],
                         terminator: format!("br {body}", body = body_label),
                     });
                     llvm_blocks.push(LlvmBlock {
                         label: alias_block.clone(),
-                        instrs: vec![LlvmInstr::Comment(format!(
-                            "alias {alias} = {target_label}"
-                        ))],
+                        instrs: vec![LlvmInstr::Comment(format!("alias {alias} = {target_desc}"))],
                         terminator: LlvmTerminator::Br {
                             target: body_label.clone(),
                         },
@@ -895,9 +901,21 @@ fn lower_match_to_blocks(
                     instrs: vec![format!("exec body#{}", arm.body)],
                     terminator: format!("br {}", end_label),
                 });
+                let result_type = lowering
+                    .as_ref()
+                    .and_then(|plan| plan.target_type.clone())
+                    .unwrap_or_else(|| "unknown".into());
+                let (value, value_label, mut value_instrs) =
+                    emit_body_value(index, arm.body, &expr_map, &result_type, &mut ssa);
+                phi_sources.push((value, value_label));
                 llvm_blocks.push(LlvmBlock {
                     label: body_label.clone(),
-                    instrs: vec![LlvmInstr::Comment(format!("exec body#{}", arm.body))],
+                    instrs: {
+                        let mut instrs = Vec::new();
+                        instrs.push(LlvmInstr::Comment(format!("exec body#{}", arm.body)));
+                        instrs.append(&mut value_instrs);
+                        instrs
+                    },
                     terminator: LlvmTerminator::Br {
                         target: end_label.clone(),
                     },
@@ -911,7 +929,14 @@ fn lower_match_to_blocks(
             let phi_inputs = if phi_sources.is_empty() {
                 "[]".into()
             } else {
-                format!("[{}]", phi_sources.join(", "))
+                format!(
+                    "[{}]",
+                    phi_sources
+                        .iter()
+                        .map(|(_, lbl)| lbl.clone())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
             };
             blocks.push(BasicBlock {
                 label: end_label.clone(),
@@ -927,16 +952,168 @@ fn lower_match_to_blocks(
                 instrs: vec![LlvmInstr::Phi {
                     result: phi_result.clone(),
                     ty: result_type.clone(),
-                    incomings: phi_sources
-                        .iter()
-                        .map(|lbl| ("match_result".into(), lbl.clone()))
-                        .collect(),
+                    incomings: phi_sources,
                 }],
                 terminator: LlvmTerminator::Ret(Some(phi_result)),
             });
         }
     }
     (blocks, llvm_blocks)
+}
+
+fn emit_guard_cond(
+    expr_id: MirExprId,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+) -> (String, Vec<LlvmInstr>) {
+    let expr = match expr_map.get(&expr_id) {
+        Some(expr) => expr,
+        None => {
+            return (
+                "true".into(),
+                vec![LlvmInstr::Comment(format!(
+                    "guard#{}: expr not found -> assume true",
+                    expr_id
+                ))],
+            );
+        }
+    };
+    match &expr.kind {
+        MirExprKind::Literal { summary } => {
+            if let Some(value) = extract_literal_operand(summary) {
+                if value == "true" || value == "false" {
+                    return (
+                        value.clone(),
+                        vec![LlvmInstr::Comment(format!(
+                            "guard literal {summary} -> {value}"
+                        ))],
+                    );
+                }
+                let cond = ssa.new_tmp("guard");
+                let mut instrs = Vec::new();
+                instrs.push(LlvmInstr::Comment(format!("guard literal {summary}")));
+                instrs.push(LlvmInstr::Icmp {
+                    result: cond.clone(),
+                    pred: "ne".into(),
+                    ty: "i64".into(),
+                    lhs: value,
+                    rhs: "0".into(),
+                });
+                return (cond, instrs);
+            }
+            (
+                "true".into(),
+                vec![LlvmInstr::Comment(format!(
+                    "guard literal {summary} (unsupported) -> assume true"
+                ))],
+            )
+        }
+        MirExprKind::Identifier { summary } => (
+            format_operand_from_summary(summary),
+            vec![LlvmInstr::Comment(format!("guard ident {summary}"))],
+        ),
+        MirExprKind::Binary {
+            operator,
+            left,
+            right,
+        } => {
+            let lhs = emit_expr_operand(*left, expr_map);
+            let rhs = emit_expr_operand(*right, expr_map);
+            let cond = ssa.new_tmp("guard");
+            let mut instrs = Vec::new();
+            instrs.push(LlvmInstr::Comment(format!(
+                "guard binary op={operator} lhs={lhs} rhs={rhs}"
+            )));
+            match operator.as_str() {
+                "&&" | "and" => {
+                    instrs.push(LlvmInstr::And {
+                        result: cond.clone(),
+                        lhs,
+                        rhs,
+                    });
+                }
+                "||" | "or" => {
+                    instrs.push(LlvmInstr::Or {
+                        result: cond.clone(),
+                        lhs,
+                        rhs,
+                    });
+                }
+                "==" | "!=" | "<" | "<=" | ">" | ">=" => {
+                    let pred = match operator.as_str() {
+                        "==" => "eq",
+                        "!=" => "ne",
+                        "<" => "slt",
+                        "<=" => "sle",
+                        ">" => "sgt",
+                        ">=" => "sge",
+                        _ => "ne",
+                    };
+                    let ty =
+                        if (lhs == "true" || lhs == "false") && (rhs == "true" || rhs == "false") {
+                            ssa.bool_type()
+                        } else {
+                            "i64".into()
+                        };
+                    instrs.push(LlvmInstr::Icmp {
+                        result: cond.clone(),
+                        pred: pred.into(),
+                        ty,
+                        lhs,
+                        rhs,
+                    });
+                }
+                _ => {
+                    instrs.push(LlvmInstr::Comment(format!(
+                        "guard operator {operator} unsupported -> assume true"
+                    )));
+                    return ("true".into(), instrs);
+                }
+            }
+            (cond, instrs)
+        }
+        _ => (
+            "true".into(),
+            vec![LlvmInstr::Comment(format!(
+                "guard expr#{expr_id} unsupported -> assume true"
+            ))],
+        ),
+    }
+}
+
+fn emit_expr_operand(expr_id: MirExprId, expr_map: &HashMap<MirExprId, &MirExpr>) -> String {
+    let expr = match expr_map.get(&expr_id) {
+        Some(expr) => expr,
+        None => return format!("#{}", expr_id),
+    };
+    match &expr.kind {
+        MirExprKind::Literal { summary } => extract_literal_operand(summary)
+            .or_else(|| Some(format_operand_from_summary(summary)))
+            .unwrap_or_else(|| format!("#{}", expr_id)),
+        MirExprKind::Identifier { summary } => format_operand_from_summary(summary),
+        _ => format!("#{}", expr_id),
+    }
+}
+
+fn emit_body_value(
+    arm_index: usize,
+    expr_id: MirExprId,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    result_type: &str,
+    ssa: &mut LlvmBuilder,
+) -> (String, String, Vec<LlvmInstr>) {
+    let body_label = format!("arm{arm_index}.body#{}", expr_id);
+    let operand = emit_expr_operand(expr_id, expr_map);
+    let result = ssa.new_tmp("match_result");
+    let mut instrs = Vec::new();
+    instrs.push(LlvmInstr::Comment(format!("match_result <- {operand}")));
+    instrs.push(LlvmInstr::Call {
+        result: Some(result.clone()),
+        ret_ty: result_type.to_string(),
+        callee: "@reml_value".into(),
+        args: vec![(result_type.to_string(), operand)],
+    });
+    (result, body_label, instrs)
 }
 
 fn arm_success_label(arm: &MirMatchArm) -> String {
@@ -1011,12 +1188,204 @@ fn synthesize_pattern_check_cond(
     (cond, instrs)
 }
 
+fn format_operand_from_summary(summary: &str) -> String {
+    let trimmed = summary.trim();
+    if let Some(rest) = trimmed.strip_prefix('#') {
+        if let Ok(index) = rest.parse::<usize>() {
+            return format!("%arg{index}");
+        }
+    }
+    if trimmed.starts_with('{') && trimmed.ends_with('}') {
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(trimmed) {
+            if let Some(name) = value.get("name").and_then(|v| v.as_str()) {
+                return format!("%{name}");
+            }
+        }
+    }
+    if trimmed == "true" || trimmed == "false" {
+        return trimmed.to_string();
+    }
+    if trimmed.parse::<i64>().is_ok() {
+        return trimmed.to_string();
+    }
+    trimmed.to_string()
+}
+
+fn extract_literal_operand(summary: &str) -> Option<String> {
+    let trimmed = summary.trim();
+    if trimmed == "true" || trimmed == "false" {
+        return Some(trimmed.to_string());
+    }
+    if let Ok(value) = trimmed.parse::<i64>() {
+        return Some(value.to_string());
+    }
+    if !(trimmed.starts_with('{') && trimmed.ends_with('}')) {
+        return None;
+    }
+    let value = serde_json::from_str::<serde_json::Value>(trimmed).ok()?;
+    if let Some(number) = value.get("value").and_then(|v| v.as_i64()) {
+        return Some(number.to_string());
+    }
+    if let Some(kind) = value.get("kind").and_then(|v| v.as_str()) {
+        match kind {
+            "int" => {
+                if let Some(number) = value.get("value").and_then(|v| v.as_i64()) {
+                    return Some(number.to_string());
+                }
+            }
+            "string" => {
+                if let Some(text) = value.get("value").and_then(|v| v.as_str()) {
+                    return Some(format!("\"{}\"", text.replace('"', "\\\"")));
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn emit_pattern_cond(
+    ssa: &mut LlvmBuilder,
+    pattern: &MirPattern,
+    target_operand: &str,
+    target_desc: &str,
+    miss_label: &str,
+    hint: &str,
+) -> (String, Vec<LlvmInstr>) {
+    match &pattern.kind {
+        MirPatternKind::Wildcard | MirPatternKind::Var { .. } => (
+            "true".into(),
+            vec![LlvmInstr::Comment(pattern_check_label(
+                pattern,
+                target_desc,
+                miss_label,
+            ))],
+        ),
+        MirPatternKind::Binding {
+            pattern: inner,
+            name,
+            ..
+        } => {
+            let (cond, mut instrs) =
+                emit_pattern_cond(ssa, inner, target_operand, target_desc, miss_label, hint);
+            instrs.insert(
+                0,
+                LlvmInstr::Comment(format!("binding {name} <- {target_desc}")),
+            );
+            (cond, instrs)
+        }
+        MirPatternKind::Regex { pattern: regex } => {
+            let mut instrs = Vec::new();
+            instrs.push(LlvmInstr::Comment(pattern_check_label(
+                pattern,
+                target_desc,
+                miss_label,
+            )));
+            let call_result = ssa.new_tmp("regex");
+            instrs.push(LlvmInstr::Call {
+                result: Some(call_result.clone()),
+                ret_ty: ssa.bool_type(),
+                callee: "@reml_regex_match".into(),
+                args: vec![
+                    (ssa.pointer_type(), target_operand.to_string()),
+                    (
+                        ssa.pointer_type(),
+                        format!("\"{}\"", regex.replace('"', "\\\"")),
+                    ),
+                ],
+            });
+            let cond = ssa.new_tmp("cmp");
+            instrs.push(LlvmInstr::Icmp {
+                result: cond.clone(),
+                pred: "ne".into(),
+                ty: ssa.bool_type(),
+                lhs: call_result,
+                rhs: "false".into(),
+            });
+            (cond, instrs)
+        }
+        MirPatternKind::Constructor { name, args } => {
+            let mut instrs = Vec::new();
+            instrs.push(LlvmInstr::Comment(pattern_check_label(
+                pattern,
+                target_desc,
+                miss_label,
+            )));
+            let cond = ssa.new_tmp("ctor");
+            if name == "None" {
+                instrs.push(LlvmInstr::Icmp {
+                    result: cond.clone(),
+                    pred: "eq".into(),
+                    ty: ssa.pointer_type(),
+                    lhs: target_operand.to_string(),
+                    rhs: "null".into(),
+                });
+                return (cond, instrs);
+            }
+            if name == "Some" || !args.is_empty() {
+                instrs.push(LlvmInstr::Icmp {
+                    result: cond.clone(),
+                    pred: "ne".into(),
+                    ty: ssa.pointer_type(),
+                    lhs: target_operand.to_string(),
+                    rhs: "null".into(),
+                });
+                return (cond, instrs);
+            }
+            instrs.push(LlvmInstr::Call {
+                result: Some(cond.clone()),
+                ret_ty: ssa.bool_type(),
+                callee: format!("@reml_is_ctor_{name}"),
+                args: vec![(ssa.pointer_type(), target_operand.to_string())],
+            });
+            (cond, instrs)
+        }
+        MirPatternKind::Literal { summary } => {
+            if let Some(lit) = extract_literal_operand(summary) {
+                let mut instrs = Vec::new();
+                instrs.push(LlvmInstr::Comment(pattern_check_label(
+                    pattern,
+                    target_desc,
+                    miss_label,
+                )));
+                let cond = ssa.new_tmp(hint);
+                let ty = if lit == "true" || lit == "false" {
+                    ssa.bool_type()
+                } else {
+                    "i64".into()
+                };
+                instrs.push(LlvmInstr::Icmp {
+                    result: cond.clone(),
+                    pred: "eq".into(),
+                    ty,
+                    lhs: target_operand.to_string(),
+                    rhs: lit,
+                });
+                return (cond, instrs);
+            }
+            synthesize_pattern_check_cond(
+                ssa,
+                pattern_check_label(pattern, target_desc, miss_label),
+                target_operand,
+                hint,
+            )
+        }
+        _ => synthesize_pattern_check_cond(
+            ssa,
+            pattern_check_label(pattern, target_desc, miss_label),
+            target_operand,
+            hint,
+        ),
+    }
+}
+
 fn emit_pattern_blocks(
     arm_index: usize,
     pattern: &MirPattern,
     success_label: &str,
     next_arm_label: &str,
-    target_label: &str,
+    target_operand: &str,
+    target_desc: &str,
     ssa: &mut LlvmBuilder,
 ) -> (Vec<BasicBlock>, Vec<LlvmBlock>) {
     match &pattern.kind {
@@ -1029,9 +1398,15 @@ fn emit_pattern_blocks(
                 } else {
                     format!("arm{arm_index}.or{}", idx + 1)
                 };
-                let check = pattern_check_label(variant, target_label, &miss_target);
-                let (cond, llvm_instrs) =
-                    synthesize_pattern_check_cond(ssa, check.clone(), target_label, "or");
+                let check = pattern_check_label(variant, target_desc, &miss_target);
+                let (cond, llvm_instrs) = emit_pattern_cond(
+                    ssa,
+                    variant,
+                    target_operand,
+                    target_desc,
+                    &miss_target,
+                    "or",
+                );
                 let label = format!("arm{arm_index}.or{idx}");
                 blocks.push(BasicBlock {
                     label: label.clone(),
@@ -1066,12 +1441,12 @@ fn emit_pattern_blocks(
             if let Some(lo) = start {
                 let lhs = render_range_bound(lo);
                 let var = format!("tmp_arm{arm_index}_ge");
-                instrs.push(format!("{var} = icmp_ge {target_label}, {lhs}"));
+                instrs.push(format!("{var} = icmp_ge {target_desc}, {lhs}"));
                 llvm_instrs.push(LlvmInstr::Icmp {
                     result: var.clone(),
                     pred: "sge".into(),
                     ty: "i64".into(),
-                    lhs: target_label.into(),
+                    lhs: target_operand.into(),
                     rhs: lhs,
                 });
                 cond = var.clone();
@@ -1080,7 +1455,7 @@ fn emit_pattern_blocks(
                 let rhs = render_range_bound(hi);
                 let op = if *inclusive { "icmp_le" } else { "icmp_lt" };
                 let var = format!("tmp_arm{arm_index}_hi");
-                instrs.push(format!("{var} = {op} {target_label}, {rhs}"));
+                instrs.push(format!("{var} = {op} {target_desc}, {rhs}"));
                 llvm_instrs.push(LlvmInstr::Icmp {
                     result: var.clone(),
                     pred: if *inclusive {
@@ -1089,7 +1464,7 @@ fn emit_pattern_blocks(
                         "slt".into()
                     },
                     ty: "i64".into(),
-                    lhs: target_label.into(),
+                    lhs: target_operand.into(),
                     rhs,
                 });
                 if cond != "true" {
@@ -1130,12 +1505,12 @@ fn emit_pattern_blocks(
             let mut llvm_instrs = Vec::new();
             let len_var = format!("len_arm{arm_index}");
             let need = head.len() + tail.len();
-            instrs.push(format!("{len_var} = len({target_label})"));
+            instrs.push(format!("{len_var} = len({target_desc})"));
             llvm_instrs.push(LlvmInstr::Call {
                 result: Some(len_var.clone()),
                 ret_ty: "i64".into(),
                 callee: "@len".into(),
-                args: vec![("ptr".into(), target_label.into())],
+                args: vec![(ssa.pointer_type(), target_operand.into())],
             });
             let check_var = format!("tmp_arm{arm_index}_len");
             if rest.is_some() {
@@ -1193,12 +1568,12 @@ fn emit_pattern_blocks(
             let mut instrs = Vec::new();
             let mut llvm_instrs = Vec::new();
             let call_var = format!("tmp_arm{arm_index}_active");
-            instrs.push(format!("{call_var} = call active {name}({target_label})"));
+            instrs.push(format!("{call_var} = call active {name}({target_desc})"));
             llvm_instrs.push(LlvmInstr::Call {
                 result: Some(call_var.clone()),
                 ret_ty: "ptr".into(),
                 callee: format!("@{}", name),
-                args: vec![("ptr".into(), target_label.into())],
+                args: vec![(ssa.pointer_type(), target_operand.into())],
             });
             let cond = match kind {
                 ActivePatternKind::Partial => {
@@ -1240,9 +1615,15 @@ fn emit_pattern_blocks(
             (vec![bb], vec![llvm_bb])
         }
         _ => {
-            let check = pattern_check_label(pattern, target_label, next_arm_label);
-            let (cond, llvm_instrs) =
-                synthesize_pattern_check_cond(ssa, check.clone(), target_label, "pat");
+            let check = pattern_check_label(pattern, target_desc, next_arm_label);
+            let (cond, llvm_instrs) = emit_pattern_cond(
+                ssa,
+                pattern,
+                target_operand,
+                target_desc,
+                next_arm_label,
+                "pat",
+            );
             let bb = BasicBlock {
                 label: format!("arm{arm_index}.pat"),
                 instrs: vec![format!("check {}", check)],
