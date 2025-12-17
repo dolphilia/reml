@@ -1,5 +1,8 @@
 # pattern-matching クロス実装差分メモ（CH1-MATCH/ACT）
 
+> 状態: **凍結（無効）**  
+> OCaml 実装の更新が停止しているため、本メモに基づく継続的なクロス実装差分追跡は現時点では行いません（`docs/plans/pattern-matching-improvement/1-2-match-ir-lowering-plan.md` の M5 を参照）。
+
 本メモは `docs/plans/pattern-matching-improvement/1-2-match-ir-lowering-plan.md` の **M5（クロス実装チェック）** を実施するための記録用テンプレートです。
 
 ## 対象
@@ -50,4 +53,3 @@ remlc-ocaml examples/spec_core/chapter1/match_expr/bnf-match-or-pattern-ok.reml
 - [ ] OCaml CLI の JSON 出力形式（あれば）を特定し、抽出手順を固定する。
 - [ ] `CH1-ACT-001..003` と `CH1-MATCH-007..018` を両実装で実行し、差分を表へ記録する。
 - [ ] 差分が出た場合、仕様側（`docs/spec/1-1` / `1-5` / `2-5`）と計画側（`phase4-scenario-matrix.csv`）のどちらで吸収するかを決める。
-

@@ -86,7 +86,7 @@
 - [x] M4: 回帰資産更新 — CH1-MATCH/ACT の expected と Phase4 マトリクス run_id 記録を完了。  
   - **対象**: `CH1-ACT-001..003` / `CH1-MATCH-007..018`  
   - **根拠**: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `resolution_notes` に run_id と CLI コマンドが記録され、`expected/spec_core/chapter1/{match_expr,active_patterns}/` に対応ファイルが存在する。  
-- [ ] M5: クロス実装チェック — 未着手。Rust/OCaml 差分メモ作成が必要。
+- [ ] M5: クロス実装チェック — **無効（凍結）**。OCaml 実装の更新が停止しているため、本計画では差分追跡を行わない。
 
 #### ドキュメント同期ログ（2025-12-17）
 - `docs/spec/1-5-formal-grammar-bnf.md` に `MatchExpr` の評価順序と Partial Active のフォールスルー（`None` → 次アーム）を追記して同期。
@@ -95,29 +95,18 @@
 - OCaml 実装差分メモは本計画の M5 で扱う（本タスクでは未実施）。
 
 ### 次に着手する作業（優先順）
-1. **M5 へ接続（クロス実装チェック）**: Rust/OCaml の差分を計測し、仕様・診断キー・出力正規化のどこで吸収するかを明文化する（下記「M5 実施計画」）。  
-2. **Constructor の内側パターンに対応**: `Some(x)` 等の payload を取り出して `Binding`/`Var`/`Literal` へ伝搬する（現状は `Some/None` を null 判定で分岐するのみ）。  
-3. **Guard/Body の式評価を拡張**: `Call` / `IfElse` / `FieldAccess` などを最小限で扱い、`#id` フォールバックを減らす（CH1-MATCH/ACT の残りサンプルで `match_result <- #...` が出ない状態を目標）。  
-4. **@reml_* の整理**: `@reml_value` / `@reml_regex_match` など「LLVM 風 IR での暫定コール」を `runtime_link`/FFI 宣言の方針に合わせて整理し、将来の実 LLVM IR 生成へ移行しやすい境界を固定する。
+1. **Constructor の内側パターンに対応**: `Some(x)` 等の payload を取り出して `Binding`/`Var`/`Literal` へ伝搬する（現状は `Some/None` を null 判定で分岐するのみ）。  
+2. **Guard/Body の式評価を拡張**: `Call` / `IfElse` / `FieldAccess` などを最小限で扱い、`#id` フォールバックを減らす（CH1-MATCH/ACT の残りサンプルで `match_result <- #...` が出ない状態を目標）。  
+3. **@reml_* の整理**: `@reml_value` / `@reml_regex_match` など「LLVM 風 IR での暫定コール」を `runtime_link`/FFI 宣言の方針に合わせて整理し、将来の実 LLVM IR 生成へ移行しやすい境界を固定する。
 
-## M5 実施計画（クロス実装チェック）
+## M5（無効化）メモ（クロス実装チェック）
 
-目的: Rust/OCaml の差分が「仕様差（spec_fix）」「実装差（impl_fix）」「アセット差（example_fix）」のどれに属するかを切り分け、Phase4 の回帰判断に使えるメモを残す。
+OCaml 実装の更新が停止しているため、Rust/OCaml を並走させた差分追跡（dual-write 前提のクロスチェック）は **本計画では実施しない**。
 
-1. **対象シナリオを固定**（まずは Chapter1 の最小集合）  
-   - Active Pattern: `CH1-ACT-001..003`（`examples/spec_core/chapter1/active_patterns/`）  
-   - Match/Pattern: `CH1-MATCH-007..018`（`examples/spec_core/chapter1/match_expr/`）
-2. **Rust 側の基準出力を採取**  
-   - `compiler/rust/frontend/target/debug/reml_frontend --output json <input.reml>` を実行し、`diagnostics[].code`（および必要なら `severity`）を抽出する。  
-   - run_id は毎回変わるため、比較は「診断キー集合」と「exit_code.label/value」を基準にする。
-3. **OCaml 側の基準出力を採取**（環境によりどちらかを使用）  
-   - 生成済みバイナリがある場合: `compiler/ocaml/_build/default/src/main.exe <file>` または `remlc-ocaml <file>`  
-   - 出力形式は CLI の `--format json` 等が利用できる場合は JSON を優先し、難しければ人間可読出力から診断コードを抽出する。
-4. **差分を集計し、原因を分類**  
-   - 例: `pattern.guard.if_deprecated` の有無、`pattern.unreachable_arm` の severity 差、`guard -> alias` 正規化順の差、Active Pattern の `None` フォールスルー扱いの差。
-5. **差分メモを保存し、参照リンクを張る**  
-   - 保存先案: `reports/dual-write/front-end/diff/pattern-matching-ch1-match-act.md`  
-   - 本計画（本ファイル）の M5 にリンクし、必要なら `docs/plans/rust-migration/` に「移植時の差分吸収方針（どちらを正とするか）」を追記する。
+将来 OCaml 実装の更新が再開し、クロスチェックが再び必要になった場合は、以下を入口として復帰する。
+
+- 差分メモ（凍結）: `reports/dual-write/front-end/diff/pattern-matching-ch1-match-act.md`
+- 対象シナリオ: `CH1-ACT-001..003` / `CH1-MATCH-007..018`（Phase4 マトリクスを正とする）
 
 ## 退出条件
 - Match/Pattern を含む MIR が生成され、バックエンドでジャンプ分岐が構築される。Partial Active の miss パスがランタイム挙動として確認できる。  
