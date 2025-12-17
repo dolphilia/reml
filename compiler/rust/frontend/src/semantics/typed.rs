@@ -87,6 +87,18 @@ pub enum TypedExprKind {
         left: Box<TypedExpr>,
         right: Box<TypedExpr>,
     },
+    FieldAccess {
+        target: Box<TypedExpr>,
+        field: Ident,
+    },
+    TupleAccess {
+        target: Box<TypedExpr>,
+        index: u32,
+    },
+    Index {
+        target: Box<TypedExpr>,
+        index: Box<TypedExpr>,
+    },
     Match {
         target: Box<TypedExpr>,
         arms: Vec<TypedMatchArm>,

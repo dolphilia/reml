@@ -1337,6 +1337,13 @@ fn visit_expr_for_opbuilder(
                 visit_expr_for_opbuilder(arg, tracker, violations);
             }
         }
+        ExprKind::FieldAccess { target, .. } | ExprKind::TupleAccess { target, .. } => {
+            visit_expr_for_opbuilder(target, tracker, violations);
+        }
+        ExprKind::Index { target, index } => {
+            visit_expr_for_opbuilder(target, tracker, violations);
+            visit_expr_for_opbuilder(index, tracker, violations);
+        }
         ExprKind::PerformCall { call } => {
             visit_expr_for_opbuilder(&call.argument, tracker, violations);
         }
@@ -1351,13 +1358,6 @@ fn visit_expr_for_opbuilder(
         | ExprKind::Defer { body }
         | ExprKind::Assign { value: body, .. } => {
             visit_expr_for_opbuilder(body, tracker, violations)
-        }
-        ExprKind::FieldAccess { target, .. } | ExprKind::TupleAccess { target, .. } => {
-            visit_expr_for_opbuilder(target, tracker, violations)
-        }
-        ExprKind::Index { target, index } => {
-            visit_expr_for_opbuilder(target, tracker, violations);
-            visit_expr_for_opbuilder(index, tracker, violations);
         }
         ExprKind::Return { value } | ExprKind::Break { value } => {
             if let Some(value) = value {
@@ -1688,6 +1688,22 @@ fn infer_expr(
                         let arg = Type::app("Array", vec![t]);
                         Type::arrow(vec![arg], Type::builtin(BuiltinType::Str))
                     }
+                    "Ok" => {
+                        let ok_ty = var_gen.fresh_type();
+                        let err_ty = var_gen.fresh_type();
+                        Type::arrow(
+                            vec![ok_ty.clone()],
+                            Type::app("Result", vec![ok_ty, err_ty]),
+                        )
+                    }
+                    "Err" => {
+                        let ok_ty = var_gen.fresh_type();
+                        let err_ty = var_gen.fresh_type();
+                        Type::arrow(
+                            vec![err_ty.clone()],
+                            Type::app("Result", vec![ok_ty, err_ty]),
+                        )
+                    }
                     other => {
                         let _ = other; // 未解決識別子として扱う
                         stats.unresolved_identifiers += 1;
@@ -1704,6 +1720,127 @@ fn infer_expr(
                 },
                 ty,
                 Vec::new(),
+            )
+        }
+        ExprKind::FieldAccess { target, field } => {
+            let target_result = infer_expr(
+                target,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            let result_ty = var_gen.fresh_type();
+            make_typed(
+                expr,
+                TypedExprKindDraft::FieldAccess {
+                    target: Box::new(target_result),
+                    field: field.clone(),
+                },
+                solver.substitution().apply(&result_ty),
+                Vec::new(),
+            )
+        }
+        ExprKind::TupleAccess { target, index } => {
+            let target_result = infer_expr(
+                target,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            let mut elements = Vec::new();
+            for _ in 0..=*index {
+                elements.push(var_gen.fresh_type());
+            }
+            let tuple_ty = Type::app("Tuple", elements.clone());
+            stats.constraints += 1;
+            metrics.record_constraint("tuple.access");
+            constraints.push(Constraint::equal(
+                target_result.ty.clone(),
+                tuple_ty.clone(),
+            ));
+            metrics.record_unify_call();
+            let _ = solver.unify(target_result.ty.clone(), tuple_ty.clone());
+            let elem_ty = elements
+                .get(*index as usize)
+                .cloned()
+                .unwrap_or_else(|| var_gen.fresh_type());
+            make_typed(
+                expr,
+                TypedExprKindDraft::TupleAccess {
+                    target: Box::new(target_result),
+                    index: *index,
+                },
+                solver.substitution().apply(&elem_ty),
+                Vec::new(),
+            )
+        }
+        ExprKind::Index { target, index } => {
+            let target_result = infer_expr(
+                target,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            let index_result = infer_expr(
+                index,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            let element_ty = var_gen.fresh_type();
+            let array_ty = Type::app("Array", vec![element_ty.clone()]);
+            stats.constraints += 1;
+            metrics.record_constraint("index.target");
+            constraints.push(Constraint::equal(
+                target_result.ty.clone(),
+                array_ty.clone(),
+            ));
+            metrics.record_unify_call();
+            let _ = solver.unify(target_result.ty.clone(), array_ty);
+            let int_ty = Type::builtin(BuiltinType::Int);
+            stats.constraints += 1;
+            metrics.record_constraint("index.type");
+            constraints.push(Constraint::equal(index_result.ty.clone(), int_ty.clone()));
+            metrics.record_unify_call();
+            let _ = solver.unify(index_result.ty.clone(), int_ty);
+            let mut dicts = target_result.dict_ref_ids.clone();
+            dicts.extend(index_result.dict_ref_ids.clone());
+            make_typed(
+                expr,
+                TypedExprKindDraft::Index {
+                    target: Box::new(target_result),
+                    index: Box::new(index_result),
+                },
+                solver.substitution().apply(&element_ty),
+                dicts,
             )
         }
         ExprKind::Binary {
@@ -3409,6 +3546,18 @@ enum TypedExprKindDraft {
     Identifier {
         ident: Ident,
     },
+    FieldAccess {
+        target: Box<TypedExprDraft>,
+        field: Ident,
+    },
+    TupleAccess {
+        target: Box<TypedExprDraft>,
+        index: u32,
+    },
+    Index {
+        target: Box<TypedExprDraft>,
+        index: Box<TypedExprDraft>,
+    },
     Match {
         target: Box<TypedExprDraft>,
         arms: Vec<TypedMatchArmDraft>,
@@ -3477,6 +3626,20 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
     let kind = match expr.kind {
         TypedExprKindDraft::Literal(literal) => typed::TypedExprKind::Literal(literal),
         TypedExprKindDraft::Identifier { ident } => typed::TypedExprKind::Identifier { ident },
+        TypedExprKindDraft::FieldAccess { target, field } => typed::TypedExprKind::FieldAccess {
+            target: Box::new(finalize_typed_expr(*target, substitution)),
+            field,
+        },
+        TypedExprKindDraft::TupleAccess { target, index } => {
+            typed::TypedExprKind::TupleAccess {
+                target: Box::new(finalize_typed_expr(*target, substitution)),
+                index,
+            }
+        }
+        TypedExprKindDraft::Index { target, index } => typed::TypedExprKind::Index {
+            target: Box::new(finalize_typed_expr(*target, substitution)),
+            index: Box::new(finalize_typed_expr(*index, substitution)),
+        },
         TypedExprKindDraft::Binary {
             operator,
             left,

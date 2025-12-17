@@ -95,6 +95,18 @@ pub enum MirExprKind {
         left: MirExprId,
         right: MirExprId,
     },
+    FieldAccess {
+        target: MirExprId,
+        field: String,
+    },
+    TupleAccess {
+        target: MirExprId,
+        index: u32,
+    },
+    Index {
+        target: MirExprId,
+        index: MirExprId,
+    },
     Match {
         target: MirExprId,
         arms: Vec<MirMatchArm>,
@@ -291,20 +303,32 @@ impl MirExprBuilder {
                 callee: self.lower_expr(callee),
                 args: args.iter().map(|arg| self.lower_expr(arg)).collect(),
             },
-            typed::TypedExprKind::Binary {
-                operator,
-                left,
-                right,
-            } => MirExprKind::Binary {
-                operator: operator.clone(),
-                left: self.lower_expr(left),
-                right: self.lower_expr(right),
-            },
-            typed::TypedExprKind::Match { target, arms } => MirExprKind::Match {
-                target: self.lower_expr(target),
-                arms: arms
-                    .iter()
-                    .map(|arm| MirMatchArm {
+        typed::TypedExprKind::Binary {
+            operator,
+            left,
+            right,
+        } => MirExprKind::Binary {
+            operator: operator.clone(),
+            left: self.lower_expr(left),
+            right: self.lower_expr(right),
+        },
+        typed::TypedExprKind::FieldAccess { target, field } => MirExprKind::FieldAccess {
+            target: self.lower_expr(target),
+            field: field.name.clone(),
+        },
+        typed::TypedExprKind::TupleAccess { target, index } => MirExprKind::TupleAccess {
+            target: self.lower_expr(target),
+            index: *index,
+        },
+        typed::TypedExprKind::Index { target, index } => MirExprKind::Index {
+            target: self.lower_expr(target),
+            index: self.lower_expr(index),
+        },
+        typed::TypedExprKind::Match { target, arms } => MirExprKind::Match {
+            target: self.lower_expr(target),
+            arms: arms
+                .iter()
+                .map(|arm| MirMatchArm {
                         pattern: lower_pattern(&arm.pattern),
                         guard: arm.guard.as_ref().map(|guard| self.lower_expr(guard)),
                         alias: arm.alias.clone(),
@@ -322,14 +346,14 @@ impl MirExprBuilder {
                 then_branch: self.lower_expr(then_branch),
                 else_branch: self.lower_expr(else_branch),
             },
-            typed::TypedExprKind::PerformCall { call } => MirExprKind::PerformCall {
-                call: MirEffectCall {
-                    effect: call.effect.clone(),
-                    argument: self.lower_expr(&call.argument),
-                },
+        typed::TypedExprKind::PerformCall { call } => MirExprKind::PerformCall {
+            call: MirEffectCall {
+                effect: call.effect.clone(),
+                argument: self.lower_expr(&call.argument),
             },
-            typed::TypedExprKind::Unknown => MirExprKind::Unknown,
-        };
+        },
+        typed::TypedExprKind::Unknown => MirExprKind::Unknown,
+    };
         self.push_expr(expr.span, expr.ty.clone(), expr.dict_ref_ids.clone(), kind)
     }
 
@@ -666,6 +690,14 @@ fn collect_match_lowerings_from_expr(
             for arg in args {
                 collect_match_lowerings_from_expr(arg, owner, plans);
             }
+        }
+        typed::TypedExprKind::FieldAccess { target, .. }
+        | typed::TypedExprKind::TupleAccess { target, .. } => {
+            collect_match_lowerings_from_expr(target, owner, plans);
+        }
+        typed::TypedExprKind::Index { target, index } => {
+            collect_match_lowerings_from_expr(target, owner, plans);
+            collect_match_lowerings_from_expr(index, owner, plans);
         }
         typed::TypedExprKind::Binary { left, right, .. } => {
             collect_match_lowerings_from_expr(left, owner, plans);
