@@ -1568,22 +1568,133 @@ fn infer_expr(
     metrics.record_token_count(expr.span.len() as usize);
     match &expr.kind {
         ExprKind::Literal(literal) => {
-            let ty = type_for_literal(literal);
-            make_typed(
-                expr,
-                TypedExprKindDraft::Literal(literal.clone()),
-                ty,
-                Vec::new(),
-            )
+            match &literal.value {
+                LiteralKind::Tuple { elements } => {
+                    let mut dicts = Vec::new();
+                    let mut element_types = Vec::new();
+                    for element in elements {
+                        let result = infer_expr(
+                            element,
+                            env,
+                            var_gen,
+                            solver,
+                            constraints,
+                            stats,
+                            metrics,
+                            violations,
+                            dict_refs,
+                            loop_context,
+                            context,
+                        );
+                        dicts.extend(result.dict_ref_ids);
+                        element_types.push(solver.substitution().apply(&result.ty));
+                    }
+                    let ty = Type::app("Tuple", element_types);
+                    make_typed(
+                        expr,
+                        TypedExprKindDraft::Literal(literal.clone()),
+                        ty,
+                        dicts,
+                    )
+                }
+                LiteralKind::Array { elements } => {
+                    let mut dicts = Vec::new();
+                    let element_ty = var_gen.fresh_type();
+                    for element in elements {
+                        let result = infer_expr(
+                            element,
+                            env,
+                            var_gen,
+                            solver,
+                            constraints,
+                            stats,
+                            metrics,
+                            violations,
+                            dict_refs,
+                            loop_context,
+                            context,
+                        );
+                        dicts.extend(result.dict_ref_ids);
+                        stats.constraints += 1;
+                        metrics.record_constraint("literal.array.element");
+                        constraints.push(Constraint::equal(
+                            result.ty.clone(),
+                            element_ty.clone(),
+                        ));
+                        metrics.record_unify_call();
+                        let _ = solver.unify(result.ty.clone(), element_ty.clone());
+                    }
+                    let ty = Type::app("Array", vec![solver.substitution().apply(&element_ty)]);
+                    make_typed(
+                        expr,
+                        TypedExprKindDraft::Literal(literal.clone()),
+                        ty,
+                        dicts,
+                    )
+                }
+                LiteralKind::Record { fields } => {
+                    let mut dicts = Vec::new();
+                    let mut field_types = Vec::new();
+                    for field in fields {
+                        let result = infer_expr(
+                            &field.value,
+                            env,
+                            var_gen,
+                            solver,
+                            constraints,
+                            stats,
+                            metrics,
+                            violations,
+                            dict_refs,
+                            loop_context,
+                            context,
+                        );
+                        dicts.extend(result.dict_ref_ids);
+                        field_types.push(solver.substitution().apply(&result.ty));
+                    }
+                    let ty = Type::app("Record", field_types);
+                    make_typed(
+                        expr,
+                        TypedExprKindDraft::Literal(literal.clone()),
+                        ty,
+                        dicts,
+                    )
+                }
+                _ => {
+                    let ty = type_for_literal(literal);
+                    make_typed(
+                        expr,
+                        TypedExprKindDraft::Literal(literal.clone()),
+                        ty,
+                        Vec::new(),
+                    )
+                }
+            }
         }
         ExprKind::Identifier(ident) => {
             let mut ty = match env.lookup(ident.name.as_str()) {
                 Some(binding) => binding.scheme.instantiate(var_gen),
-                None => {
-                    stats.unresolved_identifiers += 1;
-                    metrics.record_unresolved_identifier();
-                    Type::builtin(BuiltinType::Unknown)
-                }
+                None => match ident.name.as_str() {
+                    "Some" => {
+                        let t = var_gen.fresh_type();
+                        Type::arrow(vec![t.clone()], Type::app("Option", vec![t]))
+                    }
+                    "None" => {
+                        let t = var_gen.fresh_type();
+                        Type::app("Option", vec![t])
+                    }
+                    "format" => {
+                        let t = var_gen.fresh_type();
+                        let arg = Type::app("Array", vec![t]);
+                        Type::arrow(vec![arg], Type::builtin(BuiltinType::Str))
+                    }
+                    other => {
+                        let _ = other; // 未解決識別子として扱う
+                        stats.unresolved_identifiers += 1;
+                        metrics.record_unresolved_identifier();
+                        Type::builtin(BuiltinType::Unknown)
+                    }
+                },
             };
             ty = solver.substitution().apply(&ty);
             make_typed(
