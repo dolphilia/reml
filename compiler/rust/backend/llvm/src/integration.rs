@@ -27,6 +27,7 @@ pub struct BackendFunctionRecord {
     pub lowered_calls: Vec<String>,
     pub branch_plans: Vec<String>,
     pub basic_blocks: Vec<String>,
+    pub llvm_blocks: Vec<String>,
 }
 
 impl BackendFunctionRecord {
@@ -46,6 +47,11 @@ impl BackendFunctionRecord {
                 .basic_blocks
                 .iter()
                 .map(|block| block.describe_llvm())
+                .collect(),
+            llvm_blocks: func
+                .llvm_blocks
+                .iter()
+                .map(|block| block.describe())
                 .collect(),
         }
     }
@@ -132,6 +138,13 @@ impl BackendDiffSnapshot {
         buf.push_str("  \"basic_blocks\": ");
         buf.push_str(&Self::array_of_strings(
             &record.basic_blocks,
+            &(indent.to_string() + "  "),
+        ));
+        buf.push_str(",\n");
+        buf.push_str(indent);
+        buf.push_str("  \"llvm_blocks\": ");
+        buf.push_str(&Self::array_of_strings(
+            &record.llvm_blocks,
             &(indent.to_string() + "  "),
         ));
         buf.push('\n');

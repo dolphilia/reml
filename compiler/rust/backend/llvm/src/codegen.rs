@@ -235,6 +235,7 @@ pub struct GeneratedFunction {
     pub lowered_calls: Vec<LoweredFfiCall>,
     pub branch_plans: Vec<String>,
     pub basic_blocks: Vec<BasicBlock>,
+    pub llvm_blocks: Vec<LlvmBlock>,
 }
 
 impl GeneratedFunction {
@@ -319,6 +320,147 @@ fn render_terminator(term: &str) -> String {
         return term.to_string();
     }
     term.to_string()
+}
+
+/// LLVM IR 風の構造化ブロック。
+#[derive(Clone, Debug)]
+pub struct LlvmBlock {
+    pub label: String,
+    pub instrs: Vec<LlvmInstr>,
+    pub terminator: LlvmTerminator,
+}
+
+impl LlvmBlock {
+    pub fn describe(&self) -> String {
+        let mut buf = Vec::new();
+        buf.push(format!("{}:", self.label));
+        for instr in &self.instrs {
+            buf.push(format!("  {}", instr.describe()));
+        }
+        buf.push(format!("  {}", self.terminator.describe()));
+        buf.join("\n")
+    }
+}
+
+#[derive(Clone, Debug)]
+struct LlvmBuilder {
+    _type_mapping: TypeMappingContext,
+    counter: usize,
+}
+
+impl LlvmBuilder {
+    fn new(type_mapping: TypeMappingContext) -> Self {
+        Self {
+            _type_mapping: type_mapping,
+            counter: 0,
+        }
+    }
+
+    fn new_tmp(&mut self, hint: &str) -> String {
+        self.counter += 1;
+        format!("%{hint}{}", self.counter)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum LlvmInstr {
+    Comment(String),
+    Icmp {
+        result: String,
+        pred: String,
+        ty: String,
+        lhs: String,
+        rhs: String,
+    },
+    And {
+        result: String,
+        lhs: String,
+        rhs: String,
+    },
+    Call {
+        result: Option<String>,
+        ret_ty: String,
+        callee: String,
+        args: Vec<(String, String)>,
+    },
+    Phi {
+        result: String,
+        ty: String,
+        incomings: Vec<(String, String)>,
+    },
+}
+
+impl LlvmInstr {
+    pub fn describe(&self) -> String {
+        match self {
+            LlvmInstr::Comment(text) => format!("; {text}"),
+            LlvmInstr::Icmp {
+                result,
+                pred,
+                ty,
+                lhs,
+                rhs,
+            } => format!("{result} = icmp {pred} {ty} {lhs}, {rhs}"),
+            LlvmInstr::And { result, lhs, rhs } => {
+                format!("{result} = and i1 {lhs}, {rhs}")
+            }
+            LlvmInstr::Call {
+                result,
+                ret_ty,
+                callee,
+                args,
+            } => {
+                let args_rendered = args
+                    .iter()
+                    .map(|(ty, val)| format!("{ty} {val}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                if let Some(var) = result {
+                    format!("{var} = call {ret_ty} {callee}({args_rendered})")
+                } else {
+                    format!("call {ret_ty} {callee}({args_rendered})")
+                }
+            }
+            LlvmInstr::Phi {
+                result,
+                ty,
+                incomings,
+            } => {
+                let inputs = incomings
+                    .iter()
+                    .map(|(val, lbl)| format!("[ {val}, %{lbl} ]"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{result} = phi {ty} {inputs}")
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum LlvmTerminator {
+    Br { target: String },
+    BrCond {
+        cond: String,
+        then_bb: String,
+        else_bb: String,
+    },
+    Ret(Option<String>),
+}
+
+impl LlvmTerminator {
+    pub fn describe(&self) -> String {
+        match self {
+            LlvmTerminator::Br { target } => format!("br label %{target}"),
+            LlvmTerminator::BrCond {
+                cond,
+                then_bb,
+                else_bb,
+            } => format!("br i1 {cond}, label %{then_bb}, label %{else_bb}"),
+            LlvmTerminator::Ret(Some(val)) => format!("ret {}", val),
+            LlvmTerminator::Ret(None) => "ret void".into(),
+        }
+    }
 }
 
 /// LLVM 風モジュール IR。
@@ -433,10 +575,10 @@ impl CodegenContext {
         } else {
             render_branch_plans(&mir.exprs)
         };
-        let basic_blocks = if mir.exprs.is_empty() {
-            Vec::new()
+        let (basic_blocks, llvm_blocks) = if mir.exprs.is_empty() {
+            (Vec::new(), Vec::new())
         } else {
-            lower_match_to_basic_blocks(&mir.exprs)
+            lower_match_to_blocks(&mir.exprs, &self.type_mapping)
         };
         let generated = GeneratedFunction {
             name: mir.name.clone(),
@@ -446,6 +588,7 @@ impl CodegenContext {
             lowered_calls,
             branch_plans,
             basic_blocks,
+            llvm_blocks,
         };
         self.functions.push(generated.clone());
         generated
@@ -532,12 +675,16 @@ fn render_branch_plans(exprs: &[MirExpr]) -> Vec<String> {
     plans
 }
 
-fn lower_match_to_basic_blocks(exprs: &[MirExpr]) -> Vec<BasicBlock> {
+fn lower_match_to_blocks(
+    exprs: &[MirExpr],
+    type_mapping: &TypeMappingContext,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>) {
     let mut expr_map = HashMap::new();
     for expr in exprs {
         expr_map.insert(expr.id, expr);
     }
     let mut blocks = Vec::new();
+    let mut llvm_blocks = Vec::new();
     for expr in exprs {
         if let MirExprKind::Match {
             target,
@@ -553,6 +700,7 @@ fn lower_match_to_basic_blocks(exprs: &[MirExpr]) -> Vec<BasicBlock> {
                     _ => format!("#{}", target),
                 })
                 .unwrap_or_else(|| format!("#{}", target));
+            let mut ssa = LlvmBuilder::new(type_mapping.clone());
             let mut phi_sources = Vec::new();
             for (index, arm) in arms.iter().enumerate() {
                 let next_arm = if index + 1 == arms.len() {
@@ -569,13 +717,16 @@ fn lower_match_to_basic_blocks(exprs: &[MirExpr]) -> Vec<BasicBlock> {
                     .or(alias_label.clone())
                     .unwrap_or_else(|| body_label.clone());
 
-                blocks.extend(emit_pattern_blocks(
+                let (mut arm_blocks, mut arm_llvm_blocks) = emit_pattern_blocks(
                     index,
                     &arm.pattern,
                     &success_label,
                     &next_arm,
                     &target_label,
-                ));
+                    &mut ssa,
+                );
+                blocks.append(&mut arm_blocks);
+                llvm_blocks.append(&mut arm_llvm_blocks);
 
                 if let Some(label) = guard_label {
                     blocks.push(BasicBlock {
@@ -587,6 +738,22 @@ fn lower_match_to_basic_blocks(exprs: &[MirExpr]) -> Vec<BasicBlock> {
                             next = next_arm
                         ),
                     });
+                    let cond = ssa.new_tmp("guard");
+                    llvm_blocks.push(LlvmBlock {
+                        label: label.clone(),
+                        instrs: vec![LlvmInstr::Comment(format!("guard {label} -> {success}/{next}", success = success_label, next = next_arm)), LlvmInstr::Icmp {
+                            result: cond.clone(),
+                            pred: "ne".into(),
+                            ty: "i1".into(),
+                            lhs: "true".into(),
+                            rhs: "false".into(),
+                        }],
+                        terminator: LlvmTerminator::BrCond {
+                            cond,
+                            then_bb: success_label.clone(),
+                            else_bb: next_arm.clone(),
+                        },
+                    });
                 }
 
                 if let Some(alias) = &arm.alias {
@@ -596,12 +763,28 @@ fn lower_match_to_basic_blocks(exprs: &[MirExpr]) -> Vec<BasicBlock> {
                         instrs: vec![format!("alias {alias} = {target_label}")],
                         terminator: format!("br {body}", body = body_label),
                     });
+                    llvm_blocks.push(LlvmBlock {
+                        label: alias_block.clone(),
+                        instrs: vec![LlvmInstr::Comment(format!(
+                            "alias {alias} = {target_label}"
+                        ))],
+                        terminator: LlvmTerminator::Br {
+                            target: body_label.clone(),
+                        },
+                    });
                 }
 
                 blocks.push(BasicBlock {
                     label: body_label.clone(),
                     instrs: vec![format!("exec body#{}", arm.body)],
                     terminator: format!("br {}", end_label),
+                });
+                llvm_blocks.push(LlvmBlock {
+                    label: body_label.clone(),
+                    instrs: vec![LlvmInstr::Comment(format!("exec body#{}", arm.body))],
+                    terminator: LlvmTerminator::Br {
+                        target: end_label.clone(),
+                    },
                 });
             }
 
@@ -619,9 +802,22 @@ fn lower_match_to_basic_blocks(exprs: &[MirExpr]) -> Vec<BasicBlock> {
                 instrs: vec![format!("phi match_result : {} <- {}", result_type, phi_inputs)],
                 terminator: "ret match_result".into(),
             });
+            let phi_result = ssa.new_tmp("match");
+            llvm_blocks.push(LlvmBlock {
+                label: end_label.clone(),
+                instrs: vec![LlvmInstr::Phi {
+                    result: phi_result.clone(),
+                    ty: result_type.clone(),
+                    incomings: phi_sources
+                        .iter()
+                        .map(|lbl| ("match_result".into(), lbl.clone()))
+                        .collect(),
+                }],
+                terminator: LlvmTerminator::Ret(Some(phi_result)),
+            });
         }
     }
-    blocks
+    (blocks, llvm_blocks)
 }
 
 fn arm_success_label(arm: &MirMatchArm) -> String {
@@ -676,10 +872,12 @@ fn emit_pattern_blocks(
     success_label: &str,
     next_arm_label: &str,
     target_label: &str,
-) -> Vec<BasicBlock> {
+    ssa: &mut LlvmBuilder,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>) {
     match &pattern.kind {
         MirPatternKind::Or { variants } => {
             let mut blocks = Vec::new();
+            let mut llvm_blocks = Vec::new();
             for (idx, variant) in variants.iter().enumerate() {
                 let miss_target = if idx + 1 == variants.len() {
                     next_arm_label.to_string()
@@ -697,8 +895,17 @@ fn emit_pattern_blocks(
                         miss = miss_target
                     ),
                 });
+                llvm_blocks.push(LlvmBlock {
+                    label: label.clone(),
+                    instrs: vec![LlvmInstr::Comment(check.clone())],
+                    terminator: LlvmTerminator::BrCond {
+                        cond: ssa.new_tmp("or"),
+                        then_bb: success_label.to_string(),
+                        else_bb: miss_target.clone(),
+                    },
+                });
             }
-            blocks
+            (blocks, llvm_blocks)
         }
         MirPatternKind::Range {
             start,
@@ -706,11 +913,19 @@ fn emit_pattern_blocks(
             inclusive,
         } => {
             let mut instrs = Vec::new();
+            let mut llvm_instrs = Vec::new();
             let mut cond = String::from("true");
             if let Some(lo) = start {
                 let lhs = render_range_bound(lo);
                 let var = format!("tmp_arm{arm_index}_ge");
                 instrs.push(format!("{var} = icmp_ge {target_label}, {lhs}"));
+                llvm_instrs.push(LlvmInstr::Icmp {
+                    result: var.clone(),
+                    pred: "sge".into(),
+                    ty: "i64".into(),
+                    lhs: target_label.into(),
+                    rhs: lhs,
+                });
                 cond = var.clone();
             }
             if let Some(hi) = end {
@@ -718,15 +933,27 @@ fn emit_pattern_blocks(
                 let op = if *inclusive { "icmp_le" } else { "icmp_lt" };
                 let var = format!("tmp_arm{arm_index}_hi");
                 instrs.push(format!("{var} = {op} {target_label}, {rhs}"));
+                llvm_instrs.push(LlvmInstr::Icmp {
+                    result: var.clone(),
+                    pred: if *inclusive { "sle".into() } else { "slt".into() },
+                    ty: "i64".into(),
+                    lhs: target_label.into(),
+                    rhs,
+                });
                 if cond != "true" {
                     let and_var = format!("tmp_arm{arm_index}_range");
                     instrs.push(format!("{and_var} = and {cond}, {var}"));
+                    llvm_instrs.push(LlvmInstr::And {
+                        result: and_var.clone(),
+                        lhs: cond.clone(),
+                        rhs: var.clone(),
+                    });
                     cond = and_var;
                 } else {
                     cond = var;
                 }
             }
-            vec![BasicBlock {
+            let bb = BasicBlock {
                 label: format!("arm{arm_index}.pat"),
                 instrs,
                 terminator: format!(
@@ -734,18 +961,49 @@ fn emit_pattern_blocks(
                     success = success_label,
                     miss = next_arm_label
                 ),
-            }]
+            };
+            let llvm_bb = LlvmBlock {
+                label: bb.label.clone(),
+                instrs: llvm_instrs,
+                terminator: LlvmTerminator::BrCond {
+                    cond,
+                    then_bb: success_label.to_string(),
+                    else_bb: next_arm_label.to_string(),
+                },
+            };
+            (vec![bb], vec![llvm_bb])
         }
         MirPatternKind::Slice(MirSlicePattern { head, rest, tail }) => {
             let mut instrs = Vec::new();
+            let mut llvm_instrs = Vec::new();
             let len_var = format!("len_arm{arm_index}");
             let need = head.len() + tail.len();
             instrs.push(format!("{len_var} = len({target_label})"));
+            llvm_instrs.push(LlvmInstr::Call {
+                result: Some(len_var.clone()),
+                ret_ty: "i64".into(),
+                callee: "@len".into(),
+                args: vec![("ptr".into(), target_label.into())],
+            });
             let check_var = format!("tmp_arm{arm_index}_len");
             if rest.is_some() {
                 instrs.push(format!("{check_var} = icmp_uge {len_var}, {need}"));
+                llvm_instrs.push(LlvmInstr::Icmp {
+                    result: check_var.clone(),
+                    pred: "uge".into(),
+                    ty: "i64".into(),
+                    lhs: len_var.clone(),
+                    rhs: need.to_string(),
+                });
             } else {
                 instrs.push(format!("{check_var} = icmp_eq {len_var}, {need}"));
+                llvm_instrs.push(LlvmInstr::Icmp {
+                    result: check_var.clone(),
+                    pred: "eq".into(),
+                    ty: "i64".into(),
+                    lhs: len_var.clone(),
+                    rhs: need.to_string(),
+                });
             }
             instrs.push(format!(
                 "slice_bind head[{}], tail[{}], rest={}",
@@ -753,7 +1011,7 @@ fn emit_pattern_blocks(
                 tail.len(),
                 rest.is_some()
             ));
-            vec![BasicBlock {
+            let bb = BasicBlock {
                 label: format!("arm{arm_index}.pat"),
                 instrs,
                 terminator: format!(
@@ -762,7 +1020,17 @@ fn emit_pattern_blocks(
                     success = success_label,
                     miss = next_arm_label
                 ),
-            }]
+            };
+            let llvm_bb = LlvmBlock {
+                label: bb.label.clone(),
+                instrs: llvm_instrs,
+                terminator: LlvmTerminator::BrCond {
+                    cond: check_var,
+                    then_bb: success_label.to_string(),
+                    else_bb: next_arm_label.to_string(),
+                },
+            };
+            (vec![bb], vec![llvm_bb])
         }
         MirPatternKind::Active(MirActivePatternCall {
             name,
@@ -771,12 +1039,26 @@ fn emit_pattern_blocks(
             ..
         }) => {
             let mut instrs = Vec::new();
+            let mut llvm_instrs = Vec::new();
             let call_var = format!("tmp_arm{arm_index}_active");
             instrs.push(format!("{call_var} = call active {name}({target_label})"));
+            llvm_instrs.push(LlvmInstr::Call {
+                result: Some(call_var.clone()),
+                ret_ty: "ptr".into(),
+                callee: format!("@{}", name),
+                args: vec![("ptr".into(), target_label.into())],
+            });
             let cond = match kind {
                 ActivePatternKind::Partial => {
                     let check_var = format!("tmp_arm{arm_index}_is_some");
                     instrs.push(format!("{check_var} = option_is_some {call_var}"));
+                    llvm_instrs.push(LlvmInstr::Icmp {
+                        result: check_var.clone(),
+                        pred: "ne".into(),
+                        ty: "ptr".into(),
+                        lhs: call_var.clone(),
+                        rhs: "null".into(),
+                    });
                     check_var
                 }
                 _ => "true".into(),
@@ -785,7 +1067,7 @@ fn emit_pattern_blocks(
                 .as_ref()
                 .map(|_| next_arm_label.to_string())
                 .unwrap_or_else(|| next_arm_label.to_string());
-            vec![BasicBlock {
+            let bb = BasicBlock {
                 label: format!("arm{arm_index}.pat"),
                 instrs,
                 terminator: format!(
@@ -793,11 +1075,21 @@ fn emit_pattern_blocks(
                     success = success_label,
                     miss = miss
                 ),
-            }]
+            };
+            let llvm_bb = LlvmBlock {
+                label: bb.label.clone(),
+                instrs: llvm_instrs,
+                terminator: LlvmTerminator::BrCond {
+                    cond,
+                    then_bb: success_label.to_string(),
+                    else_bb: miss,
+                },
+            };
+            (vec![bb], vec![llvm_bb])
         }
         _ => {
             let check = pattern_check_label(pattern, target_label, next_arm_label);
-            vec![BasicBlock {
+            let bb = BasicBlock {
                 label: format!("arm{arm_index}.pat"),
                 instrs: vec![format!("check {}", check)],
                 terminator: format!(
@@ -805,7 +1097,17 @@ fn emit_pattern_blocks(
                     success = success_label,
                     miss = next_arm_label
                 ),
-            }]
+            };
+            let llvm_bb = LlvmBlock {
+                label: bb.label.clone(),
+                instrs: vec![LlvmInstr::Comment(check)],
+                terminator: LlvmTerminator::BrCond {
+                    cond: ssa.new_tmp("check"),
+                    then_bb: success_label.to_string(),
+                    else_bb: next_arm_label.to_string(),
+                },
+            };
+            (vec![bb], vec![llvm_bb])
         }
     }
 }
