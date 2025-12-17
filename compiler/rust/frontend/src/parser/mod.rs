@@ -1879,6 +1879,34 @@ fn module_parser<'src>(
 
     let pattern_for_expr = pattern.clone();
     let pattern_for_block = pattern.clone();
+    // ラムダ `|...|` のパラメータでは、`|` がラムダ区切りと衝突するため Or-pattern を受理しない。
+    // 例: `|_| (|x| x)` や `|(a, b)| a + b` の区切り `|` を Or と誤解釈するとパースが崩れる。
+    let pattern_for_lambda_param = recursive(|pat| {
+        let wildcard_pattern =
+            just(TokenKind::Underscore).map_with_span(|_, span: Range<usize>| Pattern {
+                span: range_to_span(span),
+                kind: PatternKind::Wildcard,
+            });
+
+        let var_pattern = ident.clone().map(|name| Pattern {
+            span: name.span,
+            kind: PatternKind::Var(name),
+        });
+
+        let tuple_pattern = pat
+            .clone()
+            .separated_by(just(TokenKind::Comma))
+            .at_least(2)
+            .allow_trailing()
+            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
+            .map_with_span(|elements, span: Range<usize>| Pattern {
+                span: range_to_span(span),
+                kind: PatternKind::Tuple { elements },
+            });
+
+        choice((tuple_pattern, var_pattern, wildcard_pattern))
+    });
+
     let ident_for_expr = ident.clone();
     let expr = recursive(move |expr| {
         let attribute = build_attribute_parser(expr.clone(), ident_for_expr.clone());
@@ -2200,7 +2228,7 @@ fn module_parser<'src>(
             );
 
         let lambda_body_expr = choice((block_expr.clone(), expr.clone())).boxed();
-        let lambda_param = pattern_for_expr
+        let lambda_param = pattern_for_lambda_param
             .clone()
             .then(
                 just(TokenKind::Colon)

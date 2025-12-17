@@ -1,7 +1,7 @@
 # spec_core スイート実行レポート
 
-- 実行時刻: 2025-12-17 05:46:39Z
-- 対象シナリオ: 64 件 / 成功 60 件 / 失敗 4 件
+- 実行時刻: 2025-12-17 06:05:14Z
+- 対象シナリオ: 64 件 / 成功 64 件 / 失敗 0 件
 - 入力ソース: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
 
 | Scenario | File | 期待 Diagnostics | 実際 Diagnostics | Exit | 判定 | 備考 |
@@ -10,7 +10,7 @@
 | `CH1-LET-002` | `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-pattern-tuple.reml` | — | — | 0 | ✅ pass | タプルパターン束縛。仕様上は許容だが OCaml 実装では過去に制約があったため検証対象。 |
 | `CH1-LET-003` | `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-shadow-unicode.reml` | `language.shadowing.unicode` | `language.shadowing.unicode` | 1 | ✅ pass | Unicode 識別子とシャドーイング境界。`αβ` のような識別子を1回だけ再束縛する。 |
 | `CH1-MATCH-001` | `examples/spec_core/chapter1/match_expr/bnf-matchexpr-option-canonical.reml` | — | — | 0 | ✅ pass | `Option` に対する `match ... with` の正準例。`Some`/`None` 分岐で BNF の最小形を固定。 |
-| `CH1-MATCH-002` | `examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml` | — | `pattern.exhaustiveness.missing` | 2 | ❌ fail | TuplePattern と `_` を組み合わせた `match` バリエーション。分岐順序とフォールバック処理を検証。 |
+| `CH1-MATCH-002` | `examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml` | — | — | 0 | ✅ pass | TuplePattern と `_` を組み合わせた `match` バリエーション。分岐順序とフォールバック処理を検証。 |
 | `CH1-EFFECT-004` | `examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-missing-with.reml` | `effects.handler.missing_with`<br>`effects.contract.stage_mismatch` | `effects.handler.missing_with`<br>`effects.contract.stage_mismatch` | 1 | ✅ pass | `with` 節を省略する意地悪ケース。診断キーとメッセージを固定化。 |
 | `CH1-EFF-006` | `examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-perform-counter.reml` | — | — | 0 | ✅ pass | `perform` と `handle ... with handler` を同時に提示する効果ハンドラの派生記法。`resume` を介した戻り値の合成を確認。 |
 | `CH1-MOD-003` | `examples/spec_core/chapter1/module_use/bnf-compilationunit-module-use-alias-ok.reml` | — | — | 0 | ✅ pass | `module spec_core.match_guard` と再帰 `use` を同一 `.reml` で実行し Prelude 名寄せのゴールデンを作成する。 |
@@ -18,7 +18,7 @@
 | `CH1-ATTR-101` | `examples/spec_core/chapter1/attributes/bnf-attr-cfg-let-gate-ok.reml` | — | — | 0 | ✅ pass | `@cfg(target = \"cli\")` で `let` ブロックが有効化される既定経路を `RunConfig` と連携して検証する。 |
 | `CH1-ATTR-102` | `examples/spec_core/chapter1/attributes/bnf-attr-cfg-missing-flag-error.reml` | `language.cfg.unsatisfied_branch` | `language.cfg.unsatisfied_branch` | 1 | ✅ pass | 未定義ターゲットを指定した `@cfg` が `language.cfg.unsatisfied_branch` を返すことを Chapter1 §B.6 準拠で確認する。 |
 | `CH1-FN-101` | `examples/spec_core/chapter1/fn_decl/bnf-fndecl-generic-default-effect-ok.reml` | — | — | 0 | ✅ pass | ジェネリック/デフォルト引数/効果注釈を組み合わせた `fn` 宣言を Chapter1 §B.4 の要件通り通過させる。 |
-| `CH1-TYPE-201` | `examples/spec_core/chapter1/type_decl/bnf-typedef-sum-recordpattern-ok.reml` | — | `pattern.exhaustiveness.missing` | 2 | ❌ fail | SumType と Record パターンの束縛を同一 `.reml` にまとめ BNF 通り受理されることを確認する。 |
+| `CH1-TYPE-201` | `examples/spec_core/chapter1/type_decl/bnf-typedef-sum-recordpattern-ok.reml` | — | — | 0 | ✅ pass | SumType と Record パターンの束縛を同一 `.reml` にまとめ BNF 通り受理されることを確認する。 |
 | `CH1-TRAIT-301` | `examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml` | — | — | 0 | ✅ pass | `trait Show<T> where T: Copy` とデフォルトメソッドの辞書生成ログを Chapter1 §B.1 の通り固定する。 |
 | `CH1-IMPL-302` | `examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml` | `typeclass.impl.duplicate` | `typeclass.impl.duplicate` | 1 | ✅ pass | 同一型への重複 `impl` を禁止する診断を B.2 の整合性規則に沿ってゴールデン化する。 |
 | `CH1-INF-601` | `examples/spec_core/chapter1/type_inference/bnf-inference-let-generalization-ok.reml` | — | — | 0 | ✅ pass | `let id = fn x => x` が多相化され `Vec<i64>` と `Vec<Text>` で共有できることを Chapter1 §H.1 に基づき確認する。 |
@@ -30,7 +30,7 @@
 | `CH2-PARSE-201` | `examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml` | `core.parse.recover.branch` | `core.parse.recover.branch` | 1 | ✅ pass | `Parse.recover` が `core.parse.recover.branch` 診断を生成し Diagnostics chapter と同期することを確認する。 |
 | `CH2-STREAM-301` | `examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml` | — | — | 0 | ✅ pass | `run_stream` と `DemandHint::More` の協調を示す Streaming API 基準ケースを chapter2 §C-1 に基づき追加する。 |
 | `CH2-OP-401` | `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml` | `core.parse.opbuilder.level_conflict` | `core.parse.opbuilder.level_conflict` | 1 | ✅ pass | 同一レベルへ異なる fixity を登録した際の `core.parse.opbuilder.level_conflict` 診断をゴールデン化し優先度規則を確認する。 |
-| `CH2-PARSE-801` | `examples/spec_core/chapter2/parser_core/core-parse-precedence-builder-ok.reml` | — | `parser.syntax.expected_tokens` | 1 | ❌ fail | `expr_builder`（Phase 8 ドラフト）。`operator_table` で OpBuilder/RunConfig から優先度を注入できる経路を追加。zero-copy と streaming resume は対象外。 |
+| `CH2-PARSE-801` | `examples/spec_core/chapter2/parser_core/core-parse-precedence-builder-ok.reml` | — | — | 0 | ✅ pass | `expr_builder`（Phase 8 ドラフト）。`operator_table` で OpBuilder/RunConfig から優先度を注入できる経路を追加。zero-copy と streaming resume は対象外。 |
 | `CH2-PARSE-901` | `examples/spec_core/chapter2/parser_core/core-parse-autowhitespace-layout.reml` | — | — | 0 | ✅ pass | autoWhitespace/Layout を RunConfig.extensions["lex"].layout_profile で共有し、未設定時は cfg.profile の layout_space へフォールバックする経路を CLI/LSP/Streaming で回帰監視する。 |
 | `CH2-PARSE-902` | `examples/spec_core/chapter2/parser_core/core-parse-profile-output.reml` | — | — | 0 | ✅ pass | RunConfig.extensions["parse"].profile/profile_output を有効化し、診断 0 のパースで ParserProfile JSON を best-effort 出力する経路をテストする。 |
 | `CH1-LET-004` | `examples/spec_core/chapter1/let_binding/bnf-valdecl-missing-initializer-error.reml` | `parser.syntax.expected_tokens` | `parser.syntax.expected_tokens` | 1 | ✅ pass | 初期化式を欠落させ parser.syntax.expected_tokens を誘発する。 |
@@ -69,4 +69,4 @@
 | `CH1-FN-102` | `examples/spec_core/chapter1/fn_decl/bnf-fndecl-no-args-ok.reml` | — | — | 0 | ✅ pass | 引数無し関数の宣言と呼び出しを示す。 |
 | `CH1-FN-103` | `examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml` | `language.inference.return_conflict` | `language.inference.return_conflict` | 1 | ✅ pass | 戻り値注釈無しで分岐戻り型が衝突する推論エラー。 |
 | `CH1-LAMBDA-101` | `examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml` | — | — | 0 | ✅ pass | 外側変数を捕捉するラムダを示す。 |
-| `CH1-LAMBDA-102` | `examples/spec_core/chapter1/lambda/bnf-lambda-arg-pattern.reml` | — | `parser.syntax.expected_tokens` | 1 | ❌ fail | パターン引数を用いたラムダの短縮形。 |
+| `CH1-LAMBDA-102` | `examples/spec_core/chapter1/lambda/bnf-lambda-arg-pattern.reml` | — | — | 0 | ✅ pass | パターン引数を用いたラムダの短縮形。 |

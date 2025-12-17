@@ -2388,8 +2388,8 @@ fn infer_expr(
                 context,
             );
             let mut dicts = target_result.dict_ref_ids.clone();
-            let coverage = analyze_match_exhaustiveness(arms);
             let target_ty = solver.substitution().apply(&target_result.ty);
+            let coverage = analyze_match_exhaustiveness(arms, &target_ty);
             let mut arm_type: Option<Type> = None;
             let unreachable_indices: HashSet<usize> =
                 coverage.unreachable_arm_indices.iter().copied().collect();
@@ -2457,7 +2457,7 @@ fn infer_expr(
                     body: body_result,
                 });
             }
-            if !coverage.coverage_reached {
+            if coverage.should_report_missing && !coverage.coverage_reached {
                 violations.push(TypecheckViolation::pattern_exhaustiveness_missing(
                     expr.span(),
                 ));
@@ -3449,11 +3449,35 @@ fn validate_pattern_against_type(
 #[derive(Default)]
 struct ExhaustivenessResult {
     coverage_reached: bool,
+    should_report_missing: bool,
     unreachable_arm_indices: Vec<usize>,
 }
 
-fn analyze_match_exhaustiveness(arms: &[MatchArm]) -> ExhaustivenessResult {
-    let mut tracker = ExhaustivenessTracker::default();
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ExhaustivenessDomain {
+    Unknown,
+    Bool,
+    OptionLike,
+    Slice,
+}
+
+fn exhaustiveness_domain_for_type(target_ty: &Type) -> ExhaustivenessDomain {
+    match target_ty {
+        Type::Builtin(BuiltinType::Bool) => ExhaustivenessDomain::Bool,
+        Type::App { constructor, .. } if constructor.as_str() == "Option" => {
+            ExhaustivenessDomain::OptionLike
+        }
+        Type::App { constructor, .. } if constructor.as_str() == "Result" => {
+            ExhaustivenessDomain::OptionLike
+        }
+        Type::App { constructor, .. } if constructor.as_str() == "Array" => ExhaustivenessDomain::Slice,
+        _ => ExhaustivenessDomain::Unknown,
+    }
+}
+
+fn analyze_match_exhaustiveness(arms: &[MatchArm], target_ty: &Type) -> ExhaustivenessResult {
+    let domain = exhaustiveness_domain_for_type(target_ty);
+    let mut tracker = ExhaustivenessTracker::new(domain);
     let mut unreachable_arm_indices = Vec::new();
     for (idx, arm) in arms.iter().enumerate() {
         if tracker.coverage_reached() {
@@ -3464,12 +3488,13 @@ fn analyze_match_exhaustiveness(arms: &[MatchArm]) -> ExhaustivenessResult {
     }
     ExhaustivenessResult {
         coverage_reached: tracker.coverage_reached(),
+        should_report_missing: domain != ExhaustivenessDomain::Unknown,
         unreachable_arm_indices,
     }
 }
 
-#[derive(Default)]
 struct ExhaustivenessTracker {
+    domain: ExhaustivenessDomain,
     wildcard_covered: bool,
     bool_true_seen: bool,
     bool_false_seen: bool,
@@ -3480,11 +3505,35 @@ struct ExhaustivenessTracker {
 }
 
 impl ExhaustivenessTracker {
+    fn new(domain: ExhaustivenessDomain) -> Self {
+        Self {
+            domain,
+            wildcard_covered: false,
+            bool_true_seen: false,
+            bool_false_seen: false,
+            option_some_seen: false,
+            option_none_seen: false,
+            slice_empty_seen: false,
+            slice_rest_seen: false,
+        }
+    }
+
     fn observe_arm(&mut self, arm: &MatchArm) {
         if arm.guard.is_some() {
             return;
         }
         self.observe_pattern(&arm.pattern, false);
+    }
+
+    fn is_total_like(&self, pattern: &Pattern) -> bool {
+        match &pattern.kind {
+            PatternKind::Wildcard | PatternKind::Var(_) => true,
+            PatternKind::Binding { pattern: inner, .. } => self.is_total_like(inner),
+            PatternKind::ActivePattern { is_partial, .. } => !*is_partial,
+            PatternKind::Range { start, end, .. } => start.is_none() && end.is_none(),
+            PatternKind::Tuple { elements } => elements.iter().all(|element| self.is_total_like(element)),
+            _ => false,
+        }
     }
 
     fn observe_pattern(&mut self, pattern: &Pattern, has_guard: bool) {
@@ -3494,6 +3543,11 @@ impl ExhaustivenessTracker {
         match &pattern.kind {
             PatternKind::Wildcard | PatternKind::Var(_) => {
                 self.wildcard_covered = true;
+            }
+            PatternKind::Tuple { elements } => {
+                if elements.iter().all(|element| self.is_total_like(element)) {
+                    self.wildcard_covered = true;
+                }
             }
             PatternKind::Binding { pattern: inner, .. } => {
                 self.observe_pattern(inner, has_guard);
@@ -3506,15 +3560,25 @@ impl ExhaustivenessTracker {
             PatternKind::Literal(Literal {
                 value: LiteralKind::Bool { value },
             }) => {
-                if *value {
-                    self.bool_true_seen = true;
-                } else {
-                    self.bool_false_seen = true;
+                if self.domain == ExhaustivenessDomain::Bool {
+                    if *value {
+                        self.bool_true_seen = true;
+                    } else {
+                        self.bool_false_seen = true;
+                    }
                 }
             }
             PatternKind::Constructor { name, .. } => match name.name.as_str() {
-                "Some" | "Ok" => self.option_some_seen = true,
-                "None" | "Err" => self.option_none_seen = true,
+                "Some" | "Ok" => {
+                    if self.domain == ExhaustivenessDomain::OptionLike {
+                        self.option_some_seen = true;
+                    }
+                }
+                "None" | "Err" => {
+                    if self.domain == ExhaustivenessDomain::OptionLike {
+                        self.option_none_seen = true;
+                    }
+                }
                 _ => {}
             },
             PatternKind::ActivePattern { is_partial, .. } => {
@@ -3526,6 +3590,9 @@ impl ExhaustivenessTracker {
                 self.observe_pattern(pattern, true);
             }
             PatternKind::Slice { elements } => {
+                if self.domain != ExhaustivenessDomain::Slice {
+                    return;
+                }
                 let has_rest = elements
                     .iter()
                     .any(|element| matches!(element, SlicePatternItem::Rest { .. }));
@@ -3550,10 +3617,15 @@ impl ExhaustivenessTracker {
     }
 
     fn coverage_reached(&self) -> bool {
-        self.wildcard_covered
-            || (self.bool_true_seen && self.bool_false_seen)
-            || (self.option_some_seen && self.option_none_seen)
-            || (self.slice_empty_seen && self.slice_rest_seen)
+        if self.wildcard_covered {
+            return true;
+        }
+        match self.domain {
+            ExhaustivenessDomain::Bool => self.bool_true_seen && self.bool_false_seen,
+            ExhaustivenessDomain::OptionLike => self.option_some_seen && self.option_none_seen,
+            ExhaustivenessDomain::Slice => self.slice_empty_seen && self.slice_rest_seen,
+            ExhaustivenessDomain::Unknown => false,
+        }
     }
 }
 
