@@ -330,6 +330,7 @@ enum MirExprKindJson {
     PerformCall {
         call: MirEffectCallJson,
     },
+    FieldAccess { target: usize, field: String },
     Identifier { ident: Value },
     Literal { value: Value },
     Unknown,
@@ -352,8 +353,21 @@ struct MirMatchArmJson {
 }
 
 #[derive(Debug, Deserialize)]
+struct MirPatternJson {
+    kind: MirPatternKindSpec,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum MirPatternKindSpec {
+    Active(MirActivePatternCallJson),
+    Tagged(MirPatternKindJson),
+    Other(Value),
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
-enum MirPatternJson {
+enum MirPatternKindJson {
     Wildcard,
     Var { name: String },
     Literal(Value),
@@ -380,7 +394,6 @@ enum MirPatternJson {
         inclusive: bool,
     },
     Regex { pattern: String },
-    Active(MirActivePatternCallJson),
 }
 
 #[derive(Debug, Deserialize)]
@@ -408,15 +421,34 @@ struct MirSliceRestJson {
 
 #[derive(Debug, Deserialize)]
 struct MirActivePatternCallJson {
-    name: String,
     #[serde(default)]
-    kind: Option<String>,
+    kind: MirActivePatternKindJson,
+    name: String,
     #[serde(default)]
     argument: Option<Box<MirPatternJson>>,
     #[serde(default)]
     input_binding: Option<String>,
     #[serde(default)]
     miss_target: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+#[serde(untagged)]
+enum MirActivePatternKindJson {
+    Tagged { kind: String },
+    Direct(String),
+    #[default]
+    Unknown,
+}
+
+impl MirActivePatternKindJson {
+    fn as_str(&self) -> Option<&str> {
+        match self {
+            MirActivePatternKindJson::Tagged { kind } => Some(kind.as_str()),
+            MirActivePatternKindJson::Direct(kind) => Some(kind.as_str()),
+            MirActivePatternKindJson::Unknown => None,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -495,6 +527,9 @@ fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
             effect: value_summary(call.effect),
             argument: call.argument,
         },
+        MirExprKindJson::FieldAccess { target, field } => MirExprKind::Identifier {
+            summary: format!("{target}.{field}"),
+        },
         MirExprKindJson::Identifier { ident } => MirExprKind::Identifier {
             summary: value_summary(ident),
         },
@@ -545,16 +580,25 @@ fn convert_match_arm(arm: MirMatchArmJson) -> MirMatchArm {
 }
 
 fn convert_pattern(pattern: MirPatternJson) -> MirPattern {
-    let kind = match pattern {
-        MirPatternJson::Wildcard => MirPatternKind::Wildcard,
-        MirPatternJson::Var { name } => MirPatternKind::Var { name },
-        MirPatternJson::Literal(value) => MirPatternKind::Literal {
+    let kind = match pattern.kind {
+        MirPatternKindSpec::Tagged(tagged) => convert_tagged_pattern(tagged),
+        MirPatternKindSpec::Active(call) => MirPatternKind::Active(convert_active_pattern(call)),
+        MirPatternKindSpec::Other(value) => convert_pattern_fallback(value),
+    };
+    MirPattern { kind }
+}
+
+fn convert_tagged_pattern(pattern: MirPatternKindJson) -> MirPatternKind {
+    match pattern {
+        MirPatternKindJson::Wildcard => MirPatternKind::Wildcard,
+        MirPatternKindJson::Var { name } => MirPatternKind::Var { name },
+        MirPatternKindJson::Literal(value) => MirPatternKind::Literal {
             summary: value_summary(value),
         },
-        MirPatternJson::Tuple { elements } => MirPatternKind::Tuple {
+        MirPatternKindJson::Tuple { elements } => MirPatternKind::Tuple {
             elements: elements.into_iter().map(convert_pattern).collect(),
         },
-        MirPatternJson::Record { fields, has_rest } => MirPatternKind::Record {
+        MirPatternKindJson::Record { fields, has_rest } => MirPatternKind::Record {
             fields: fields
                 .into_iter()
                 .map(|field| MirPatternRecordField {
@@ -564,11 +608,11 @@ fn convert_pattern(pattern: MirPatternJson) -> MirPattern {
                 .collect(),
             has_rest,
         },
-        MirPatternJson::Constructor { name, args } => MirPatternKind::Constructor {
+        MirPatternKindJson::Constructor { name, args } => MirPatternKind::Constructor {
             name,
             args: args.into_iter().map(convert_pattern).collect(),
         },
-        MirPatternJson::Binding {
+        MirPatternKindJson::Binding {
             name,
             pattern,
             via_at,
@@ -577,11 +621,11 @@ fn convert_pattern(pattern: MirPatternJson) -> MirPattern {
             pattern: Box::new(convert_pattern(*pattern)),
             via_at,
         },
-        MirPatternJson::Or { variants } => MirPatternKind::Or {
+        MirPatternKindJson::Or { variants } => MirPatternKind::Or {
             variants: variants.into_iter().map(convert_pattern).collect(),
         },
-        MirPatternJson::Slice(spec) => MirPatternKind::Slice(convert_slice_pattern(spec)),
-        MirPatternJson::Range {
+        MirPatternKindJson::Slice(spec) => MirPatternKind::Slice(convert_slice_pattern(spec)),
+        MirPatternKindJson::Range {
             start,
             end,
             inclusive,
@@ -590,18 +634,30 @@ fn convert_pattern(pattern: MirPatternJson) -> MirPattern {
             end: end.map(|value| Box::new(convert_pattern(*value))),
             inclusive,
         },
-        MirPatternJson::Regex { pattern } => MirPatternKind::Regex { pattern },
-        MirPatternJson::Active(call) => MirPatternKind::Active(MirActivePatternCall {
-            name: call.name,
-            kind: convert_active_kind(call.kind),
-            argument: call
-                .argument
-                .map(|value| Box::new(convert_pattern(*value))),
-            input_binding: call.input_binding,
-            miss_target: convert_jump_target(call.miss_target),
-        }),
-    };
-    MirPattern { kind }
+        MirPatternKindJson::Regex { pattern } => MirPatternKind::Regex { pattern },
+    }
+}
+
+fn convert_active_pattern(call: MirActivePatternCallJson) -> MirActivePatternCall {
+    MirActivePatternCall {
+        name: call.name,
+        kind: convert_active_kind(call.kind),
+        argument: call
+            .argument
+            .map(|value| Box::new(convert_pattern(*value))),
+        input_binding: call.input_binding,
+        miss_target: convert_jump_target(call.miss_target),
+    }
+}
+
+fn convert_pattern_fallback(value: Value) -> MirPatternKind {
+    if let Ok(tagged) = serde_json::from_value::<MirPatternKindJson>(value.clone()) {
+        return convert_tagged_pattern(tagged);
+    }
+    if let Ok(active) = serde_json::from_value::<MirActivePatternCallJson>(value) {
+        return MirPatternKind::Active(convert_active_pattern(active));
+    }
+    MirPatternKind::Wildcard
 }
 
 fn convert_slice_pattern(pattern: MirSlicePatternJson) -> MirSlicePattern {
@@ -614,8 +670,8 @@ fn convert_slice_pattern(pattern: MirSlicePatternJson) -> MirSlicePattern {
     }
 }
 
-fn convert_active_kind(kind: Option<String>) -> ActivePatternKind {
-    match kind.as_deref() {
+fn convert_active_kind(kind: MirActivePatternKindJson) -> ActivePatternKind {
+    match kind.as_str() {
         Some("partial") => ActivePatternKind::Partial,
         Some("total") => ActivePatternKind::Total,
         _ => ActivePatternKind::Unknown,
