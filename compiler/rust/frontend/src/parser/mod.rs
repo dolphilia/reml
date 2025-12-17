@@ -648,7 +648,8 @@ fn build_diagnostic_from_error(
 fn build_expected_summary(err: &Simple<TokenKind>) -> ExpectedTokensSummary {
     let mut collector = ExpectedTokenCollector::new();
     let expectations: Vec<Option<TokenKind>> = err.expected().cloned().collect();
-    if is_expression_recover_context(&expectations) {
+    let is_expr_context = is_expression_recover_context(&expectations);
+    if is_expr_context {
         collector.extend(expression_expected_tokens());
     } else {
         for expectation in expectations {
@@ -658,7 +659,18 @@ fn build_expected_summary(err: &Simple<TokenKind>) -> ExpectedTokensSummary {
             }
         }
     }
-    collector.summarize()
+    let mut summary = collector.summarize();
+    if summary.context_note.is_none() {
+        if expectations
+            .iter()
+            .any(|expectation| matches!(expectation, Some(TokenKind::RParen)))
+        {
+            summary.context_note = Some("`(` に対応する `)` が必要です".to_string());
+        } else if is_expr_context {
+            summary.context_note = Some("演算子の後に式が必要です".to_string());
+        }
+    }
+    summary
 }
 
 fn build_parse_error(span: Span, summary: &ExpectedTokensSummary) -> ParseError {

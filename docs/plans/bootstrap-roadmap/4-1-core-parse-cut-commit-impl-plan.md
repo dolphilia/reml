@@ -24,6 +24,7 @@
 2. **診断メッセージの調整（最小）**
    - `parser.syntax.expected_tokens` の notes/context を、WS1 D-1/D-5 の文脈に揃える（例: 「`(` に対応する `)` が必要です」「`+` の後に式が必要です」）。
    - 新規診断キーは追加しない。
+   - 進捗: **完了（最小調整）**。`compiler/rust/frontend/src/parser/mod.rs` の期待集合組み立てで、`RParen` 期待時に「`(` に対応する `)` が必要です」、式リカバー文脈（演算子右項欠落など）で「演算子の後に式が必要です」を `context_note` として付与。診断キーは追加せず `parser.syntax.expected_tokens` の notes/context のみ更新。
 3. **ゴールデン更新と確認**
    - `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.reml`
    - `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren.reml`
