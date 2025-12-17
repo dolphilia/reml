@@ -1736,20 +1736,81 @@ fn infer_expr(
                 loop_context,
                 context,
             );
+            let target_ty = solver.substitution().apply(&target_result.ty);
             let result_ty = match field.name.as_str() {
                 "to_string" => Type::arrow(vec![], Type::builtin(BuiltinType::Str)),
-                "len" => Type::arrow(vec![], Type::builtin(BuiltinType::Int)),
-                "is_empty" => Type::arrow(vec![], Type::builtin(BuiltinType::Bool)),
-                "starts_with" => Type::arrow(
-                    vec![Type::builtin(BuiltinType::Str)],
-                    Type::builtin(BuiltinType::Bool),
-                ),
+                "len" => {
+                    let int_ty = Type::builtin(BuiltinType::Int);
+                    match target_ty {
+                        Type::Builtin(BuiltinType::Str) => Type::arrow(vec![], int_ty),
+                        _ => {
+                            let elem = var_gen.fresh_type();
+                            let array_ty = Type::app("Array", vec![elem]);
+                            stats.constraints += 1;
+                            metrics.record_constraint("method.len.array");
+                            constraints.push(Constraint::equal(
+                                target_result.ty.clone(),
+                                array_ty.clone(),
+                            ));
+                            metrics.record_unify_call();
+                            let _ = solver.unify(target_result.ty.clone(), array_ty);
+                            Type::arrow(vec![], int_ty)
+                        }
+                    }
+                }
+                "is_empty" => {
+                    let bool_ty = Type::builtin(BuiltinType::Bool);
+                    match target_ty {
+                        Type::Builtin(BuiltinType::Str) => Type::arrow(vec![], bool_ty),
+                        _ => {
+                            let elem = var_gen.fresh_type();
+                            let array_ty = Type::app("Array", vec![elem]);
+                            stats.constraints += 1;
+                            metrics.record_constraint("method.is_empty.array");
+                            constraints.push(Constraint::equal(
+                                target_result.ty.clone(),
+                                array_ty.clone(),
+                            ));
+                            metrics.record_unify_call();
+                            let _ = solver.unify(target_result.ty.clone(), array_ty);
+                            Type::arrow(vec![], bool_ty)
+                        }
+                    }
+                }
+                "starts_with" => {
+                    if matches!(target_ty, Type::Builtin(BuiltinType::Str)) {
+                        Type::arrow(
+                            vec![Type::builtin(BuiltinType::Str)],
+                            Type::builtin(BuiltinType::Bool),
+                        )
+                    } else {
+                        var_gen.fresh_type()
+                    }
+                }
                 "push" => {
                     let elem = var_gen.fresh_type();
+                    let array_ty = Type::app("Array", vec![elem.clone()]);
+                    stats.constraints += 1;
+                    metrics.record_constraint("method.push.array");
+                    constraints.push(Constraint::equal(
+                        target_result.ty.clone(),
+                        array_ty.clone(),
+                    ));
+                    metrics.record_unify_call();
+                    let _ = solver.unify(target_result.ty.clone(), array_ty);
                     Type::arrow(vec![elem], Type::builtin(BuiltinType::Unit))
                 }
                 "pop" => {
                     let elem = var_gen.fresh_type();
+                    let array_ty = Type::app("Array", vec![elem.clone()]);
+                    stats.constraints += 1;
+                    metrics.record_constraint("method.pop.array");
+                    constraints.push(Constraint::equal(
+                        target_result.ty.clone(),
+                        array_ty.clone(),
+                    ));
+                    metrics.record_unify_call();
+                    let _ = solver.unify(target_result.ty.clone(), array_ty);
                     Type::arrow(vec![], Type::app("Option", vec![elem]))
                 }
                 _ => var_gen.fresh_type(),
