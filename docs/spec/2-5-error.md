@@ -118,6 +118,26 @@ fn Err.custom(at: Span, msg: Str) -> ParseError
 * `cut(p)` 以降の失敗は **`committed=true`**。`or` は**分岐しない**。
 * `expected` は **その地点で“再初期化”**（曖昧な上位の期待は引きずらない）。
 
+**例（誤誘導を防ぐ）**
+
+`attempt` を枝全体へ広げると、`[` のような一意トークンを消費した後でも別枝へ戻れてしまい、期待集合が「別の構文の期待」で汚れやすい。
+代わりに「確定地点で `cut_here()`（または `cut(p)`）」を置く。
+
+```reml
+// NG: `[` を読んだ後でも、value の別枝へ戻れてしまう
+let value =
+  choice([attempt(array), attempt(object), attempt(number), attempt(string)])
+
+// OK: `[` を読んだら配列として確定し、以降の期待は配列内で再構築される
+let array =
+  sym("[")
+    .then(cut_here())
+    .then(sepBy(value, sym(",")))
+    .then(expect("']'", sym("]")))
+```
+
+上の `OK` では、配列要素の途中失敗は「配列の中で何が必要か」（例：要素、`,`、`]`）として報告され、`value` の他枝（`object/number/string` 等）の期待を引きずりにくい。
+
 ### B-6. 期待集合の縮約
 
 * `Token("<=")` と `Token("<")` が同レベルで並ぶ場合は**最長一致規則**を尊重（2.4 起因の内部処理）。

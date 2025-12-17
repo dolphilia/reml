@@ -200,6 +200,7 @@ fn tuple2<A,B>(a: Parser<A>, b: Parser<B>) -> Parser<(A,B)>        // ~ then/map
 fn list1<A,S>(elem: Parser<A>, sep: Parser<S>) -> Parser<[A]>      // ~ sepBy1
 fn atomic<T>(p: Parser<T>) -> Parser<T>                             // = label+cut の糖衣
 fn expect<T>(name: String, p: Parser<T>) -> Parser<T>               // = label(name, cut(p))
+fn commit<T>(p: Parser<T>) -> Parser<T>                             // = cut(p) の糖衣
 fn separatedListTrailing<A,S>(elem: Parser<A>, sep: Parser<S>) -> Parser<[A]> // 末尾区切り許容
 fn expect_keyword(space: Parser<()>, kw: Str) -> Parser<()>        // = expect(kw, keyword(space, kw))
 fn expect_symbol(space: Parser<()>, text: Str) -> Parser<()>        // = expect(text, symbol(space, text))
@@ -254,6 +255,7 @@ fn expr_builder<A>(
   ```
 
   → 先頭のキーワード以降で失敗しても、**空失敗**として次の分岐へ進める。
+  → ただし `attempt` を枝全体に広げすぎると、`[`/`{` のような **一意トークンを消費した後**でも別枝へ戻れてしまい、期待集合や位置が不自然になる。`attempt` は「共通接頭辞がある入口」に寄せ、**確定地点は `cut_here()`** で固定する。
 * **「ここからはこの形」→ `cut_here()`**：
 
   ```reml
@@ -261,6 +263,20 @@ fn expr_builder<A>(
   ```
 
   → `let x` まで来たら **`=` が絶対必要**。以降の失敗は**コミット済み**として報告。
+* **`cut` / `commit` は同じ意味論（表面の違い）**：
+
+  * `cut(p)` は **`p` 内の失敗を `committed=true`** にする。
+  * `commit(p)` は `cut(p)` の糖衣（名前で意図を強調したい場合に使う）。
+  * `p.cut()` は `cut(p)` のメソッド糖衣。
+
+  いずれも「消費したか（consumed）」とは独立で、`or` の分岐可否と期待集合の縮約（2.5）に効く。
+* **Cut を置く場所チェックリスト（実務）**：
+
+  * **固定形が確定した直後**：`let <ident>`、`if <cond> then` のように、ここまで通れば構文が確定 → `cut_here()`
+  * **括弧・ペア構造の内側**：`(` の後は `expr` が必須で、失敗しても別枝へ逃がさない → `cut(expr)`（または `cut_here()` + `expr`）
+  * **区切り記号の直後**：`,` / `:` / `->` / `=>` などを消費したら、次に来る要素が必須 → `cut_here()`
+  * **演算子消費後**：`term + <rhs>` の `<rhs>` 欠落は committed 失敗として報告（2.4）
+  * **期待を絞りたい地点**：上位の曖昧な期待集合を引きずらない（2.5 B-5）
 * **繰り返しの本体は空成功禁止**：`many(p)` の `p` が空成功だと**停止しない**。ライブラリが検出してエラーに。
 * **`lookahead` は非消費**：曖昧性の解消・キーワードの後判定に。
 
