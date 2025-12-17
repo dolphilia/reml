@@ -501,6 +501,7 @@ fn lower_match_to_basic_blocks(exprs: &[MirExpr]) -> Vec<BasicBlock> {
                     _ => format!("#{}", target),
                 })
                 .unwrap_or_else(|| format!("#{}", target));
+            let mut phi_sources = Vec::new();
             for (index, arm) in arms.iter().enumerate() {
                 let next_arm = if index + 1 == arms.len() {
                     end_label.clone()
@@ -510,6 +511,7 @@ fn lower_match_to_basic_blocks(exprs: &[MirExpr]) -> Vec<BasicBlock> {
                 let guard_label = arm.guard.map(|gid| format!("arm{index}.guard#{gid}"));
                 let alias_label = arm.alias.as_ref().map(|_| format!("arm{index}.alias"));
                 let body_label = format!("arm{index}.body#{}", arm.body);
+                phi_sources.push(body_label.clone());
                 let success_label = guard_label
                     .clone()
                     .or(alias_label.clone())
@@ -555,9 +557,14 @@ fn lower_match_to_basic_blocks(exprs: &[MirExpr]) -> Vec<BasicBlock> {
                 .as_ref()
                 .and_then(|plan| plan.target_type.clone())
                 .unwrap_or_else(|| "unknown".into());
+            let phi_inputs = if phi_sources.is_empty() {
+                "[]".into()
+            } else {
+                format!("[{}]", phi_sources.join(", "))
+            };
             blocks.push(BasicBlock {
                 label: end_label.clone(),
-                instrs: vec![format!("phi match_result : {}", result_type)],
+                instrs: vec![format!("phi match_result : {} <- {}", result_type, phi_inputs)],
                 terminator: "ret match_result".into(),
             });
         }
@@ -641,6 +648,101 @@ fn emit_pattern_blocks(
             }
             blocks
         }
+        MirPatternKind::Range {
+            start,
+            end,
+            inclusive,
+        } => {
+            let mut instrs = Vec::new();
+            let mut cond = String::from("true");
+            if let Some(lo) = start {
+                let lhs = render_range_bound(lo);
+                let var = format!("tmp_arm{arm_index}_ge");
+                instrs.push(format!("{var} = icmp_ge {target_label}, {lhs}"));
+                cond = var.clone();
+            }
+            if let Some(hi) = end {
+                let rhs = render_range_bound(hi);
+                let op = if *inclusive { "icmp_le" } else { "icmp_lt" };
+                let var = format!("tmp_arm{arm_index}_hi");
+                instrs.push(format!("{var} = {op} {target_label}, {rhs}"));
+                if cond != "true" {
+                    let and_var = format!("tmp_arm{arm_index}_range");
+                    instrs.push(format!("{and_var} = and {cond}, {var}"));
+                    cond = and_var;
+                } else {
+                    cond = var;
+                }
+            }
+            vec![BasicBlock {
+                label: format!("arm{arm_index}.pat"),
+                instrs,
+                terminator: format!(
+                    "br_if {cond} then {success} else {miss}",
+                    success = success_label,
+                    miss = next_arm_label
+                ),
+            }]
+        }
+        MirPatternKind::Slice(MirSlicePattern { head, rest, tail }) => {
+            let mut instrs = Vec::new();
+            let len_var = format!("len_arm{arm_index}");
+            let need = head.len() + tail.len();
+            instrs.push(format!("{len_var} = len({target_label})"));
+            let check_var = format!("tmp_arm{arm_index}_len");
+            if rest.is_some() {
+                instrs.push(format!("{check_var} = icmp_uge {len_var}, {need}"));
+            } else {
+                instrs.push(format!("{check_var} = icmp_eq {len_var}, {need}"));
+            }
+            instrs.push(format!(
+                "slice_bind head[{}], tail[{}], rest={}",
+                head.len(),
+                tail.len(),
+                rest.is_some()
+            ));
+            vec![BasicBlock {
+                label: format!("arm{arm_index}.pat"),
+                instrs,
+                terminator: format!(
+                    "br_if {check} then {success} else {miss}",
+                    check = check_var,
+                    success = success_label,
+                    miss = next_arm_label
+                ),
+            }]
+        }
+        MirPatternKind::Active(MirActivePatternCall {
+            name,
+            kind,
+            miss_target,
+            ..
+        }) => {
+            let mut instrs = Vec::new();
+            let call_var = format!("tmp_arm{arm_index}_active");
+            instrs.push(format!("{call_var} = call active {name}({target_label})"));
+            let cond = match kind {
+                ActivePatternKind::Partial => {
+                    let check_var = format!("tmp_arm{arm_index}_is_some");
+                    instrs.push(format!("{check_var} = option_is_some {call_var}"));
+                    check_var
+                }
+                _ => "true".into(),
+            };
+            let miss = miss_target
+                .as_ref()
+                .map(|_| next_arm_label.to_string())
+                .unwrap_or_else(|| next_arm_label.to_string());
+            vec![BasicBlock {
+                label: format!("arm{arm_index}.pat"),
+                instrs,
+                terminator: format!(
+                    "br_if {cond} then {success} else {miss}",
+                    success = success_label,
+                    miss = miss
+                ),
+            }]
+        }
         _ => {
             let check = pattern_check_label(pattern, target_label, next_arm_label);
             vec![BasicBlock {
@@ -653,6 +755,14 @@ fn emit_pattern_blocks(
                 ),
             }]
         }
+    }
+}
+
+fn render_range_bound(pattern: &MirPattern) -> String {
+    match &pattern.kind {
+        MirPatternKind::Literal { summary } => summary.clone(),
+        MirPatternKind::Var { name } => name.clone(),
+        _ => summarize_pattern(pattern),
     }
 }
 
