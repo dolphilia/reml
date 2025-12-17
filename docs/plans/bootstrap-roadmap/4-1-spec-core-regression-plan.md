@@ -58,6 +58,34 @@
 - 既存の `CH1-TRAIT-301` も再度 CLI で確認し、match/impl 系フォローアップ完了後の Phase4 KPI へ反映済み。
 - 2026-02-16 追認: `cargo run --bin reml_frontend -- ../../../examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml` / `trait_impl/bnf-traitdecl-default-where-ok.reml` / `trait_impl/bnf-impldecl-duplicate-error.reml` を再実行し、`CH1-MATCH-003` は診断 0、`CH1-TRAIT-301` は CLI 成功、`CH1-IMPL-302` は `typeclass.impl.duplicate` を返すことを再確認。併せて `cargo test -p reml_frontend spec_core::ch1_match_003_accepts_guard_and_alias` を再度通し、`phase4-scenario-matrix.csv` 側の `resolution_notes` に追記して Phase4 KPI ログへ残した。
 
+#### ✅ 4.4 週 追補（pattern-matching-improvement: `match_expr` サンプルの関連付け）
+
+パターンマッチ強化（Or/Slice/Range/Binding/Regex/Active）の `.reml` は、Phase4 の `CH1-MATCH-007`〜`CH1-MATCH-018` と 1:1 対応する。入力パスと期待診断キーは `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` を正とし、回帰確認は以下のサンプル群を優先する。
+
+| Scenario | 入力 (`examples/`) | 期待診断キー |
+| --- | --- | --- |
+| CH1-MATCH-007 | `examples/spec_core/chapter1/match_expr/bnf-match-or-pattern-ok.reml` | `[]` |
+| CH1-MATCH-008 | `examples/spec_core/chapter1/match_expr/bnf-match-or-pattern-unreachable.reml` | `["pattern.unreachable_arm"]` |
+| CH1-MATCH-009 | `examples/spec_core/chapter1/match_expr/bnf-match-slice-head-tail-ok.reml` | `[]` |
+| CH1-MATCH-010 | `examples/spec_core/chapter1/match_expr/bnf-match-slice-multiple-rest.reml` | `["pattern.slice.multiple_rest"]` |
+| CH1-MATCH-011 | `examples/spec_core/chapter1/match_expr/bnf-match-range-inclusive-ok.reml` | `[]` |
+| CH1-MATCH-012 | `examples/spec_core/chapter1/match_expr/bnf-match-range-bound-inverted.reml` | `["pattern.range.bound_inverted"]` |
+| CH1-MATCH-013 | `examples/spec_core/chapter1/match_expr/bnf-match-binding-as-ok.reml` | `[]` |
+| CH1-MATCH-014 | `examples/spec_core/chapter1/match_expr/bnf-match-binding-duplicate.reml` | `["pattern.binding.duplicate_name"]` |
+| CH1-MATCH-015 | `examples/spec_core/chapter1/match_expr/bnf-match-regex-ok.reml` | `[]` |
+| CH1-MATCH-016 | `examples/spec_core/chapter1/match_expr/bnf-match-regex-unsupported-target.reml` | `["pattern.regex.unsupported_target"]` |
+| CH1-MATCH-017 | `examples/spec_core/chapter1/match_expr/bnf-match-active-or-combined.reml` | `[]` |
+| CH1-MATCH-018 | `examples/spec_core/chapter1/match_expr/bnf-match-active-effect-violation.reml` | `["pattern.active.effect_violation"]` |
+
+検証コマンド（Cargo ワークスペース衝突を避けるため、ビルド済みバイナリを推奨）:
+
+- `compiler/rust/frontend/target/debug/reml_frontend --output json examples/spec_core/chapter1/match_expr/bnf-match-range-inclusive-ok.reml`
+
+備考:
+
+- JSON 出力には `run_id` 等の実行ごとに変化しうるフィールドが含まれるため、回帰判定は「診断キー集合（`diagnostics[].code`）が `phase4-scenario-matrix.csv` と一致すること」を基本とする（詳細は `scripts/triage_spec_core_failures.py` の判定ロジックを参照）。
+- 2025-12-17 確認: `CH1-MATCH-007`〜`CH1-MATCH-018` の 12 件を `compiler/rust/frontend/target/debug/reml_frontend --output json` で順に実行し、すべて `diagnostics[].code` がマトリクスの `diagnostic_keys` と一致することを確認（成功ケースは診断 0、警告/失敗ケースは該当キーのみ）。
+
 4. **Conductor/DSL, Streaming Parser の最小受理**（4.5 週）  
    - `conductor` ブロックや `run_stream` テストが構文エラーになる箇所を特定し、`docs/spec/1-5` の派生構文に合わせたノードを復活。  
    - `CH1-DSL-801`, `CH2-STREAM-301` を通すまで Parser を段階調整。
@@ -234,8 +262,9 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 #### 判定ポリシー
 
-- **成功ケース**: CLI exit code 0 かつ `expected/*.stdout` / `expected/*.diagnostic.json` と完全一致。  
-- **想定失敗ケース**: CLI 出力の診断が `phase4-scenario-matrix.csv` に列挙されたキーと一致している状態。  
+- **成功ケース**: CLI exit code 0 かつ `diagnostics[].code` が空（`phase4-scenario-matrix.csv` の `diagnostic_keys=[]` と一致）であること。  
+  - `expected/*.stdout` / `expected/*.diagnostic.json` は「代表ログとしての保存先」であり、`run_id` 等の揺らぎ要素を含むため、機械判定は `scripts/triage_spec_core_failures.py` と同等の「診断キー集合 + exit code」を基本とする。  
+- **想定失敗ケース**: CLI 出力の診断キー集合（`diagnostics[].code`）が `phase4-scenario-matrix.csv` の `diagnostic_keys` と一致している状態（exit code は warning/error に応じて変化しうる）。  
 - **想定外失敗**:  
   - コード問題 → Example Fix として `.reml` / `expected` / `README` を更新。  
   - 実装問題 → Compiler Fix（Parser/Typeck/Runtime/FFI）として Phase A〜E の担当ラインへ逆流。  
