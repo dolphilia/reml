@@ -79,8 +79,8 @@
 
 ### 進捗ステータス（2026-03 時点）
 - [x] M1: IR 仕様決定 — 本計画記載のノード/評価順を採用。  
-- [x] M2: フロントエンド MIR 生成 — `compiler/rust/frontend/src/semantics/mir.rs` を新設し、`TypedExprKind::Match` から `MirExpr::Match` を構築。`--emit-mir`/`--debug-mir` オプションで JSON 出力できるように `compiler/rust/frontend/src/bin/reml_frontend.rs` を更新。`TypecheckReport` に MIR を保持しデバッグ出力へ組込み済み。  
-- [ ] M3: バックエンド分岐生成 — **進行中**。`compiler/rust/backend/llvm/src/integration.rs` で `Match/Pattern` を含む式木を復元し、`CodegenContext` がパターン/ガード/エイリアス/Body/miss を列挙した `branch_plans` を生成するまで完了。`MIR_PATH` を指定して分岐サマリをダンプする補助テスト（ignore）を追加。CH1-MATCH/ACT 由来の MIR では現状 `Match` が `unknown` に落ちるため、実シナリオでの LLVM ジャンプ生成・出力検証は未着手。  
+- [x] M2: フロントエンド MIR 生成 — `compiler/rust/frontend/src/semantics/mir.rs` を新設し、`TypedExprKind::Match` から `MirExpr::Match` を構築。`--emit-mir`/`--debug-mir` オプションで JSON 出力できるように `compiler/rust/frontend/src/bin/reml_frontend.rs` を更新。`TypecheckReport` に MIR を保持しデバッグ出力へ組込み済み。**追加完了**: `FieldAccess`/`TupleAccess`/`Index` を TypedExpr/MIR に連携、`Some/None/Ok/Err/format`/`to_string`/`len`/`is_empty`/`starts_with`/`push`/`pop` などの簡易型推論を実装し、CH1-MATCH/ACT サンプルの `--emit-mir` で `Unknown` が 0 件になる状態を確認。  
+- [ ] M3: バックエンド分岐生成 — **進行中**。`compiler/rust/backend/llvm/src/integration.rs` で `Match/Pattern` を含む式木を復元し、`CodegenContext` がパターン/ガード/エイリアス/Body/miss を列挙した `branch_plans` を生成するまで完了。MIR が安定したため、次のステップは `branch_plans` をもとに LLVM ジャンプ生成を実サンプルで確認する。  
 - [ ] M4: 回帰資産更新 — 未着手。CH1-MATCH/ACT の expected 再取得と run_id 記録が必要。  
 - [ ] M5: クロス実装チェック — 未着手。Rust/OCaml 差分メモ作成が必要。
 
