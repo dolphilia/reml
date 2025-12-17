@@ -17,6 +17,8 @@ Core.Parse の強化作業を「追跡可能な成果物」に分割し、`docs/
   - サンプル: Cut の有無で診断が改善する入力例
   - 回帰: 失敗位置が「最も近い分岐点」へ固定されること
   - 既存シナリオ: `CH2-PARSE-101`（`core-parse-or-commit-ok`）
+  - 追加シナリオ: `CH2-PARSE-102`（`core-parse-cut-branch-mislead` / 演算子右項欠落）
+  - 追加シナリオ: `CH2-PARSE-103`（`core-parse-cut-unclosed-paren` / 括弧閉じ忘れ）
 
 ### WS2: Error Labeling（文脈・期待集合）
 - 計画: `1-1-error-labeling-plan.md`

@@ -1,0 +1,13 @@
+module Spec.Core.Chapter2.Parser.CutBranchMislead
+
+use Core.Prelude
+
+// 目的: 「演算子欠落（右項無し）」の構文エラーで、`cut` 境界が効いているかを回帰で固定する。
+// 想定する改善: `+` を消費した時点で分岐が確定し、`)` が来た場合は「右項（式）が必要」と報告される。
+//
+// これは Core.Parse の Cut/Commit（= `Reply.committed`）設計が、
+// 式パーサ（演算子優先度/括弧）の“誤誘導しない失敗”へ落ちることを検証するサンプルである。
+
+fn main() -> Int {
+  (1 +)
+}
