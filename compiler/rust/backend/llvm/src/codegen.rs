@@ -18,9 +18,16 @@ pub struct MirExpr {
 
 #[derive(Clone, Debug)]
 pub enum MirExprKind {
-    Literal { summary: String },
-    Identifier { summary: String },
-    Call { callee: MirExprId, args: Vec<MirExprId> },
+    Literal {
+        summary: String,
+    },
+    Identifier {
+        summary: String,
+    },
+    Call {
+        callee: MirExprId,
+        args: Vec<MirExprId>,
+    },
     Binary {
         operator: String,
         left: MirExprId,
@@ -36,7 +43,10 @@ pub enum MirExprKind {
         then_branch: MirExprId,
         else_branch: MirExprId,
     },
-    PerformCall { effect: String, argument: MirExprId },
+    PerformCall {
+        effect: String,
+        argument: MirExprId,
+    },
     Unknown,
 }
 
@@ -56,27 +66,40 @@ pub struct MirPattern {
 #[derive(Clone, Debug)]
 pub enum MirPatternKind {
     Wildcard,
-    Var { name: String },
-    Literal { summary: String },
-    Tuple { elements: Vec<MirPattern> },
+    Var {
+        name: String,
+    },
+    Literal {
+        summary: String,
+    },
+    Tuple {
+        elements: Vec<MirPattern>,
+    },
     Record {
         fields: Vec<MirPatternRecordField>,
         has_rest: bool,
     },
-    Constructor { name: String, args: Vec<MirPattern> },
+    Constructor {
+        name: String,
+        args: Vec<MirPattern>,
+    },
     Binding {
         name: String,
         pattern: Box<MirPattern>,
         via_at: bool,
     },
-    Or { variants: Vec<MirPattern> },
+    Or {
+        variants: Vec<MirPattern>,
+    },
     Slice(MirSlicePattern),
     Range {
         start: Option<Box<MirPattern>>,
         end: Option<Box<MirPattern>>,
         inclusive: bool,
     },
-    Regex { pattern: String },
+    Regex {
+        pattern: String,
+    },
     Active(MirActivePatternCall),
 }
 
@@ -470,7 +493,9 @@ impl LlvmInstr {
 
 #[derive(Clone, Debug)]
 pub enum LlvmTerminator {
-    Br { target: String },
+    Br {
+        target: String,
+    },
     BrCond {
         cond: String,
         then_bb: String,
@@ -548,29 +573,29 @@ pub struct CodegenContext {
 }
 
 impl CodegenContext {
-  pub fn new(target_machine: TargetMachine, runtime_symbols: Vec<String>) -> Self {
-    let layout = target_machine.data_layout.clone();
-    let target_context = TargetDiagnosticContext::from_target_machine(&target_machine);
-    let bridge_metadata = BridgeMetadataContext::new(&target_machine);
-    let type_mapping = TypeMappingContext::new(layout);
-    let ffi_lowering = FfiLowering::new(
-      type_mapping.clone(),
-      runtime_symbols,
-      target_machine.triple,
-      target_machine.backend_abi().to_string(),
-    );
-    Self {
-      llvm_ir_builder: LlvmIrBuilder::new(type_mapping.clone()),
-      type_mapping,
-      ffi_lowering,
-      target_machine,
-      functions: Vec::new(),
-      llvm_functions: Vec::new(),
-      module_metadata: Vec::new(),
-      target_context,
-      bridge_metadata,
+    pub fn new(target_machine: TargetMachine, runtime_symbols: Vec<String>) -> Self {
+        let layout = target_machine.data_layout.clone();
+        let target_context = TargetDiagnosticContext::from_target_machine(&target_machine);
+        let bridge_metadata = BridgeMetadataContext::new(&target_machine);
+        let type_mapping = TypeMappingContext::new(layout);
+        let ffi_lowering = FfiLowering::new(
+            type_mapping.clone(),
+            runtime_symbols,
+            target_machine.triple,
+            target_machine.backend_abi().to_string(),
+        );
+        Self {
+            llvm_ir_builder: LlvmIrBuilder::new(type_mapping.clone()),
+            type_mapping,
+            ffi_lowering,
+            target_machine,
+            functions: Vec::new(),
+            llvm_functions: Vec::new(),
+            module_metadata: Vec::new(),
+            target_context,
+            bridge_metadata,
+        }
     }
-  }
 
     pub fn describe(&self) -> String {
         format!(
@@ -743,10 +768,7 @@ fn render_branch_plans(exprs: &[MirExpr]) -> Vec<String> {
                     ));
                 }
                 if let Some(alias) = &arm.alias {
-                    arm_blocks.push(format!(
-                        "arm{index}.alias:{alias} -> body#{}",
-                        arm.body
-                    ));
+                    arm_blocks.push(format!("arm{index}.alias:{alias} -> body#{}", arm.body));
                 }
                 arm_blocks.push(format!("arm{index}.body#{} -> end", arm.body));
             }
@@ -826,13 +848,20 @@ fn lower_match_to_blocks(
                     let cond = ssa.new_tmp("guard");
                     llvm_blocks.push(LlvmBlock {
                         label: label.clone(),
-                        instrs: vec![LlvmInstr::Comment(format!("guard {label} -> {success}/{next}", success = success_label, next = next_arm)), LlvmInstr::Icmp {
-                            result: cond.clone(),
-                            pred: "ne".into(),
-                            ty: "i1".into(),
-                            lhs: "true".into(),
-                            rhs: "false".into(),
-                        }],
+                        instrs: vec![
+                            LlvmInstr::Comment(format!(
+                                "guard {label} -> {success}/{next}",
+                                success = success_label,
+                                next = next_arm
+                            )),
+                            LlvmInstr::Icmp {
+                                result: cond.clone(),
+                                pred: "ne".into(),
+                                ty: "i1".into(),
+                                lhs: "true".into(),
+                                rhs: "false".into(),
+                            },
+                        ],
                         terminator: LlvmTerminator::BrCond {
                             cond,
                             then_bb: success_label.clone(),
@@ -842,7 +871,9 @@ fn lower_match_to_blocks(
                 }
 
                 if let Some(alias) = &arm.alias {
-                    let alias_block = alias_label.clone().unwrap_or_else(|| format!("arm{index}.alias"));
+                    let alias_block = alias_label
+                        .clone()
+                        .unwrap_or_else(|| format!("arm{index}.alias"));
                     blocks.push(BasicBlock {
                         label: alias_block.clone(),
                         instrs: vec![format!("alias {alias} = {target_label}")],
@@ -884,7 +915,10 @@ fn lower_match_to_blocks(
             };
             blocks.push(BasicBlock {
                 label: end_label.clone(),
-                instrs: vec![format!("phi match_result : {} <- {}", result_type, phi_inputs)],
+                instrs: vec![format!(
+                    "phi match_result : {} <- {}",
+                    result_type, phi_inputs
+                )],
                 terminator: "ret match_result".into(),
             });
             let phi_result = ssa.new_tmp("match");
@@ -1049,7 +1083,11 @@ fn emit_pattern_blocks(
                 instrs.push(format!("{var} = {op} {target_label}, {rhs}"));
                 llvm_instrs.push(LlvmInstr::Icmp {
                     result: var.clone(),
-                    pred: if *inclusive { "sle".into() } else { "slt".into() },
+                    pred: if *inclusive {
+                        "sle".into()
+                    } else {
+                        "slt".into()
+                    },
                     ty: "i64".into(),
                     lhs: target_label.into(),
                     rhs,
@@ -1253,12 +1291,11 @@ fn pattern_check_label(pattern: &MirPattern, target_label: &str, miss_label: &st
             )
         }
         MirPatternKind::Constructor { name, args } => {
-            format!(
-                "ctor_check({name}, args={} on {target_label})",
-                args.len()
-            )
+            format!("ctor_check({name}, args={} on {target_label})", args.len())
         }
-        MirPatternKind::Binding { pattern, .. } => pattern_check_label(pattern, target_label, miss_label),
+        MirPatternKind::Binding { pattern, .. } => {
+            pattern_check_label(pattern, target_label, miss_label)
+        }
         MirPatternKind::Or { variants } => {
             format!("or({} variants)", variants.len())
         }
@@ -1386,7 +1423,11 @@ pub(crate) fn summarize_pattern(pattern: &MirPattern) -> String {
             if let Some(hi) = end {
                 bounds.push(format!("end={}", summarize_pattern(hi)));
             }
-            let base = if *inclusive { "range(..=)" } else { "range(..)" };
+            let base = if *inclusive {
+                "range(..=)"
+            } else {
+                "range(..)"
+            };
             if bounds.is_empty() {
                 base.into()
             } else {

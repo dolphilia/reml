@@ -80,9 +80,18 @@
 ### 進捗ステータス（2026-03 時点）
 - [x] M1: IR 仕様決定 — 本計画記載のノード/評価順を採用。  
 - [x] M2: フロントエンド MIR 生成 — `compiler/rust/frontend/src/semantics/mir.rs` を新設し、`TypedExprKind::Match` から `MirExpr::Match` を構築。`--emit-mir`/`--debug-mir` オプションで JSON 出力できるように `compiler/rust/frontend/src/bin/reml_frontend.rs` を更新。`TypecheckReport` に MIR を保持しデバッグ出力へ組込み済み。**追加完了**: `FieldAccess`/`TupleAccess`/`Index` を TypedExpr/MIR に連携、`Some/None/Ok/Err/format`/`to_string`/`len`/`is_empty`/`starts_with`/`push`/`pop` などの簡易型推論を実装し、CH1-MATCH/ACT サンプルの `--emit-mir` で `Unknown` が 0 件になる状態を確認。  
-- [ ] M3: バックエンド分岐生成 — **進行中**。`CodegenContext` が Range/Slice/Or/Partial Active/Guard/Alias/Body の順で分岐を展開する `BasicBlock` と構造化 `LlvmBlock` を生成し、型情報（`TypeMappingContext`）を使って SSA 名を付与した `LlvmFunction` を構築、テキスト IR (`llvm_ir`) としてスナップショットに出力。CH1-MATCH/ACT MIR サンプルを `dump_branch_plans_from_mir_path` で実行し、miss→次アーム、Range/Slice 長さチェック、Or 逐次試行、Partial Active miss のフォールスルーが LLVM 風ブロック列挙に反映されることを確認済み。**次ステップ**: `LlvmFunction` を実際の LLVM IR ビルダーへ接続し、型付き `icmp`/`phi`/`br` を実 IR ノードとして `ModuleIr` に格納する。  
+- [ ] M3: バックエンド分岐生成 — **進行中（更新: 2025-12）**。`CodegenContext` が Range/Slice/Or/Partial Active/Guard/Alias/Body の順で分岐を展開し、`LlvmBlock`（`LlvmInstr`/`LlvmTerminator`）を `LlvmFunction` として組み立て、`llvm_ir` をスナップショットに格納するところまで到達。追加で、`LlvmFunction/LlvmBlock` の組み立てを `LlvmIrBuilder` に集約し、`emit_function` から一貫して `ModuleIr` に格納される経路を固定した。  
+  - **確認済み**: `tmp/mir-bnf-match-range-inclusive-ok.json` / `tmp/mir-bnf-match-slice-head-tail-ok.json` / `tmp/mir-bnf-activepattern-partial-ok.json` などの MIR JSON を入力に `llvm_ir` をダンプし、`icmp`/`and`/`br`/`phi` がブロック列として出力されることを確認。  
+  - **修正**: `Or` / フォールバック分岐の `br` 条件が「未定義 SSA（new_tmp しただけ）」になっていた箇所を、`call i1 @reml_match_check(...)` + `icmp` で条件 SSA を生成する形に置換（暫定のチェック関数）。  
+  - **次ステップ**: `@reml_match_check` 依存を段階的に解消し、パターン種別（Or/Regex/Binding/Constructor 等）ごとの実チェックへ置き換える。あわせて Guard/Body の式評価を LLVM 風 IR に載せ、`phi` に供給する `match_result` の生成（少なくとも `Literal`/`Identifier`/`Call` の最小セット）を実装する。  
 - [ ] M4: 回帰資産更新 — 未着手。CH1-MATCH/ACT の expected 再取得と run_id 記録が必要。  
 - [ ] M5: クロス実装チェック — 未着手。Rust/OCaml 差分メモ作成が必要。
+
+### 次に着手する作業（優先順）
+1. **分岐条件 SSA の実装を拡張**: `@reml_match_check` を「無条件フォールバック」用途に閉じ込め、Or/Binding/Regex/Constructor など主要パターンは `icmp` 等で直接条件を生成する（少なくとも CH1-MATCH/ACT の範囲をカバー）。  
+2. **Guard の評価を IR 化**: `MirExprKind::Binary` / `Identifier` / `Literal` の最小セットで `i1` 条件値を生成し、`arm{n}.guard#...` の `br` 条件に接続する（現状はダミー比較で固定化されている）。  
+3. **match の戻り値経路を固定**: アーム本体（Body）で `match_result` 相当の SSA を生成し、`match.end` の `phi` に正しい incoming（`[ value, %block ]`）を供給する。まずは `Literal`（整数/文字列）と `Identifier` のみでよい。  
+4. **MIR サンプルの網羅確認**: CH1-MATCH/ACT の MIR JSON を入力にし、Range/Slice/Or/Partial Active/Guard/Alias/Body が LLVM IR 上で「期待するブロック接続」になっているかを目視で確認し、差分があれば `reports/` 側へログを残す（M4 に接続）。
 
 ## 退出条件
 - Match/Pattern を含む MIR が生成され、バックエンドでジャンプ分岐が構築される。Partial Active の miss パスがランタイム挙動として確認できる。  

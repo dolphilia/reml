@@ -1,8 +1,7 @@
 use crate::codegen::{
     summarize_pattern, ActivePatternKind, CodegenContext, GeneratedFunction, MatchArmLowering,
     MatchLoweringPlan, MirActivePatternCall, MirExpr, MirExprKind, MirFunction, MirJumpTarget,
-    MirMatchArm,
-    MirPattern, MirPatternKind, MirPatternRecordField, MirSlicePattern, MirSliceRest,
+    MirMatchArm, MirPattern, MirPatternKind, MirPatternRecordField, MirSlicePattern, MirSliceRest,
     PatternLowering,
 };
 use crate::ffi_lowering::FfiCallSignature;
@@ -266,7 +265,10 @@ struct MirFunctionJson {
 #[serde(untagged)]
 enum MirParamJson {
     Bare(String),
-    Detailed { #[serde(default)] ty: Option<String> },
+    Detailed {
+        #[serde(default)]
+        ty: Option<String>,
+    },
 }
 
 impl MirParamJson {
@@ -363,9 +365,16 @@ enum MirExprKindJson {
     PerformCall {
         call: MirEffectCallJson,
     },
-    FieldAccess { target: usize, field: String },
-    Identifier { ident: Value },
-    Literal { value: Value },
+    FieldAccess {
+        target: usize,
+        field: String,
+    },
+    Identifier {
+        ident: Value,
+    },
+    Literal {
+        value: Value,
+    },
     Unknown,
 }
 
@@ -402,22 +411,31 @@ enum MirPatternKindSpec {
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum MirPatternKindJson {
     Wildcard,
-    Var { name: String },
+    Var {
+        name: String,
+    },
     Literal(Value),
-    Tuple { elements: Vec<MirPatternJson> },
+    Tuple {
+        elements: Vec<MirPatternJson>,
+    },
     Record {
         fields: Vec<MirPatternRecordFieldJson>,
         #[serde(default)]
         has_rest: bool,
     },
-    Constructor { name: String, args: Vec<MirPatternJson> },
+    Constructor {
+        name: String,
+        args: Vec<MirPatternJson>,
+    },
     Binding {
         name: String,
         pattern: Box<MirPatternJson>,
         #[serde(default)]
         via_at: bool,
     },
-    Or { variants: Vec<MirPatternJson> },
+    Or {
+        variants: Vec<MirPatternJson>,
+    },
     Slice(MirSlicePatternJson),
     Range {
         #[serde(default)]
@@ -426,7 +444,9 @@ enum MirPatternKindJson {
         end: Option<Box<MirPatternJson>>,
         inclusive: bool,
     },
-    Regex { pattern: String },
+    Regex {
+        pattern: String,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -468,7 +488,9 @@ struct MirActivePatternCallJson {
 #[derive(Debug, Deserialize, Default)]
 #[serde(untagged)]
 enum MirActivePatternKindJson {
-    Tagged { kind: String },
+    Tagged {
+        kind: String,
+    },
     Direct(String),
     #[default]
     Unknown,
@@ -675,9 +697,7 @@ fn convert_active_pattern(call: MirActivePatternCallJson) -> MirActivePatternCal
     MirActivePatternCall {
         name: call.name,
         kind: convert_active_kind(call.kind),
-        argument: call
-            .argument
-            .map(|value| Box::new(convert_pattern(*value))),
+        argument: call.argument.map(|value| Box::new(convert_pattern(*value))),
         input_binding: call.input_binding,
         miss_target: convert_jump_target(call.miss_target),
     }
@@ -696,9 +716,9 @@ fn convert_pattern_fallback(value: Value) -> MirPatternKind {
 fn convert_slice_pattern(pattern: MirSlicePatternJson) -> MirSlicePattern {
     MirSlicePattern {
         head: pattern.head.into_iter().map(convert_pattern).collect(),
-        rest: pattern
-            .rest
-            .map(|rest| MirSliceRest { binding: rest.binding }),
+        rest: pattern.rest.map(|rest| MirSliceRest {
+            binding: rest.binding,
+        }),
         tail: pattern.tail.into_iter().map(convert_pattern).collect(),
     }
 }
@@ -733,7 +753,11 @@ fn extract_match_plans(exprs: &[MirExpr]) -> Vec<String> {
             let arm_with_guard = arms.iter().filter(|arm| arm.guard.is_some()).count();
             let plan = format!(
                 "match#{} ty={} arms={} guard_arms={} patterns=[{}]",
-                expr.id, lowering_label, arms.len(), arm_with_guard, pattern_labels.join("|")
+                expr.id,
+                lowering_label,
+                arms.len(),
+                arm_with_guard,
+                pattern_labels.join("|")
             );
             plans.push(plan);
         }
@@ -985,8 +1009,8 @@ mod tests {
     #[test]
     #[ignore]
     fn dump_branch_plans_from_mir_path() -> Result<(), MirSnapshotError> {
-        let path = env::var("MIR_PATH")
-            .expect("MIR_PATH 環境変数で MIR JSON のパスを指定してください");
+        let path =
+            env::var("MIR_PATH").expect("MIR_PATH 環境変数で MIR JSON のパスを指定してください");
         let target_machine = TargetMachineBuilder::new()
             .with_triple(Triple::LinuxGNU)
             .with_relocation_model(RelocModel::Static)
@@ -1013,8 +1037,8 @@ mod tests {
     #[test]
     #[ignore]
     fn dump_llvm_ir_from_mir_path() -> Result<(), MirSnapshotError> {
-        let path = env::var("MIR_PATH")
-            .expect("MIR_PATH 環境変数で MIR JSON のパスを指定してください");
+        let path =
+            env::var("MIR_PATH").expect("MIR_PATH 環境変数で MIR JSON のパスを指定してください");
         let target_machine = TargetMachineBuilder::new()
             .with_triple(Triple::LinuxGNU)
             .with_relocation_model(RelocModel::Static)
