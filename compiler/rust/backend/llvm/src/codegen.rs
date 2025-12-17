@@ -256,17 +256,69 @@ pub struct BasicBlock {
 
 impl BasicBlock {
     pub fn describe(&self) -> String {
+        self.describe_llvm()
+    }
+
+    pub fn describe_llvm(&self) -> String {
         if self.instrs.is_empty() {
-            format!("{}: {}", self.label, self.terminator)
+            format!("{}: {}", self.label, render_terminator(&self.terminator))
         } else {
             format!(
-                "{}: {} | {}",
+                "{}:\n  {}",
                 self.label,
-                self.instrs.join("; "),
-                self.terminator
+                render_block_body(&self.instrs, &self.terminator).join("\n  ")
             )
         }
     }
+}
+
+fn render_block_body(instrs: &[String], term: &str) -> Vec<String> {
+    let mut lines: Vec<String> = instrs.iter().map(|i| render_instr(i)).collect();
+    lines.push(render_terminator(term));
+    lines
+}
+
+fn render_instr(instr: &str) -> String {
+    if let Some(rest) = instr.strip_prefix("len(") {
+        return format!("%tmp_len = call i64 @len({rest}");
+    }
+    if instr.contains(" = icmp_") {
+        // keep as-is but add type marker
+        return format!("{instr} : i1");
+    }
+    if instr.contains(" = and ") {
+        return format!("{instr} : i1");
+    }
+    if instr.contains("option_is_some") {
+        return instr.replace("option_is_some", "icmp_ne ptr null");
+    }
+    if instr.contains("slice_bind") {
+        return format!("; {}", instr);
+    }
+    if instr.contains("call active") {
+        return instr.replace("call active", "call %active");
+    }
+    if instr.starts_with("check ") {
+        return format!("; {}", instr);
+    }
+    format!("; {}", instr)
+}
+
+fn render_terminator(term: &str) -> String {
+    if let Some(rest) = term.strip_prefix("br_if ") {
+        let mut parts = rest.split_whitespace();
+        let cond = parts.next().unwrap_or("cond");
+        let then = parts.nth(1).unwrap_or("then");
+        let else_lbl = parts.next().unwrap_or("else");
+        return format!("br i1 {cond}, label %{then}, label %{else_lbl}");
+    }
+    if let Some(rest) = term.strip_prefix("br ") {
+        return format!("br label %{rest}");
+    }
+    if term.starts_with("ret ") {
+        return term.to_string();
+    }
+    term.to_string()
 }
 
 /// LLVM 風モジュール IR。

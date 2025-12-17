@@ -45,7 +45,7 @@ impl BackendFunctionRecord {
             basic_blocks: func
                 .basic_blocks
                 .iter()
-                .map(|block| block.describe())
+                .map(|block| block.describe_llvm())
                 .collect(),
         }
     }
