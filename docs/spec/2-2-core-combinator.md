@@ -23,6 +23,7 @@ fn label<T>(name: String, p: Parser<T>) -> Parser<T> // 失敗時の期待名を
 
 * `eof` は `RunConfig.require_eof` と相補。
 * `rule` は **ParserId** を固定化し、メモキーとトレースに使う。
+* `label` は `p` の失敗を `Expectation::Rule(name)` に置き換えつつ、`ParseError.context` にも同名を積む（2.5 B-4）。`rule` は期待集合を差し替えず、安定 ID と文脈名を提供する。`expect(name, p) = label(name, cut(p))` なので、cut 境界で親の期待を破棄した後に **`Rule(name)` 単体から期待集合を再構築**する。
 
 ### A-2. 直列・選択
 
