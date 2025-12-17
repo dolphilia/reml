@@ -20,6 +20,7 @@
    - 配列/オブジェクト/区切り: `[` / `{` / `:` / `,` / `]` / `}` 直後の `cut_here()`（JSON/YAML 指針）。
    - 演算子: `+` など演算子消費後の右項開始地点で `cut_here()`（expr builder / chainl 系）。
    - 括弧ペア: `between(open, p, close)` の `open` 消費直後に `cut_here()`（D-1）。
+   - 進捗: **完了**。`compiler/rust/frontend/src/parser/mod.rs` に `delimited_with_cut` を追加し、括弧/配列/レコード/属性/パラメータ/ハンドラ/エフェクト等の囲み構造と演算子チェーン・代入・引数列で `cut()` を挿入して committed 境界を明示化した。
 2. **診断メッセージの調整（最小）**
    - `parser.syntax.expected_tokens` の notes/context を、WS1 D-1/D-5 の文脈に揃える（例: 「`(` に対応する `)` が必要です」「`+` の後に式が必要です」）。
    - 新規診断キーは追加しない。
