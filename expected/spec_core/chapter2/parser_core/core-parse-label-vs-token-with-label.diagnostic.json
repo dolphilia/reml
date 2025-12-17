@@ -1,0 +1,20 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter2/parser_core/core-parse-label-vs-token-with-label.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "parser.syntax.expected_tokens",
+      "message": "構文エラー: `+` の後に式が必要です",
+      "expected": {
+        "alternatives": [
+          { "kind": "rule", "label": "expression" },
+          { "kind": "token", "label": "integer-literal", "token": "integer-literal" },
+          { "kind": "token", "label": "identifier", "token": "identifier" }
+        ],
+        "humanized": "ここで式（例: 整数リテラルや識別子）が必要です",
+        "context_note": "`+` の後に expression が必要です"
+      }
+    }
+  ]
+}

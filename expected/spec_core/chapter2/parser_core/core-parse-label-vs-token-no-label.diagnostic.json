@@ -1,0 +1,20 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter2/parser_core/core-parse-label-vs-token-no-label.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "parser.syntax.expected_tokens",
+      "message": "構文エラー: `+` の後に値が必要です",
+      "expected": {
+        "alternatives": [
+          { "kind": "token", "label": "integer-literal", "token": "integer-literal" },
+          { "kind": "token", "label": "identifier", "token": "identifier" },
+          { "kind": "token", "label": "(", "token": "(" }
+        ],
+        "humanized": "ここで整数リテラルまたは識別子が必要です",
+        "context_note": "`+` の後に項が必要です"
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+module Spec.Core.Chapter2.Parser.LabelVsTokenNoLabel
+
+use Core.Parse as Parse
+use Core.Prelude
+
+// ラベル無し: 期待集合は具体トークン中心（Rule ラベルなし）
+fn expr() -> Parse.Parser<Int> {
+  Parse.expect_int()
+    .then(Parse.expect_symbol("+"))
+    .then(Parse.expect_int())
+    .skipR(Parse.expect_eof())
+}
+
+fn main() -> Str {
+  match Parse.run(expr(), "1 + )") with
+    Ok(value) -> format("parsed=%d", [value])
+    Err(diag) -> diag.message
+}

@@ -1,0 +1,21 @@
+module Spec.Core.Chapter2.Parser.LabelVsTokenWithLabel
+
+use Core.Parse as Parse
+use Core.Prelude
+
+// ラベル有り: `expression` ラベルで期待集合を概念名へ寄せる
+fn expr() -> Parse.Parser<Int> {
+  Parse.label(
+    "expression",
+    Parse.expect_int()
+      .then(Parse.expect_symbol("+"))
+      .then(Parse.expect_int())
+      .skipR(Parse.expect_eof())
+  )
+}
+
+fn main() -> Str {
+  match Parse.run(expr(), "1 + )") with
+    Ok(value) -> format("parsed=%d", [value])
+    Err(diag) -> diag.message
+}
