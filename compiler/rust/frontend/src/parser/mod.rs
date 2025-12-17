@@ -108,6 +108,22 @@ fn operation_trace_id(kind: &str) -> SmolStr {
     trace_id("syntax:operation", kind)
 }
 
+trait CutParserExt<I, O>: chumsky::Parser<I, O, Error = Simple<I>> + Sized
+where
+    I: Clone + std::hash::Hash + Eq,
+{
+    fn cut(self) -> Self {
+        self
+    }
+}
+
+impl<I, O, P> CutParserExt<I, O> for P
+where
+    I: Clone + std::hash::Hash + Eq,
+    P: chumsky::Parser<I, O, Error = Simple<I>> + Sized,
+{
+}
+
 impl ParserTraceEvent {
     fn module_header(header: &ModuleHeader) -> Self {
         Self {
@@ -652,9 +668,9 @@ fn build_expected_summary(err: &Simple<TokenKind>) -> ExpectedTokensSummary {
     if is_expr_context {
         collector.extend(expression_expected_tokens());
     } else {
-        for expectation in expectations {
+        for expectation in &expectations {
             match expectation {
-                Some(kind) => collector.extend(token_kind_expectations(&kind)),
+                Some(kind) => collector.extend(token_kind_expectations(kind)),
                 None => collector.push(ExpectedToken::eof()),
             }
         }

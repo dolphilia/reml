@@ -29,6 +29,7 @@
    - `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.reml`
    - `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren.reml`
    - 必要に応じて `expected/...` を更新（Cut 無し版は比較用で更新しない）。
+   - 進捗: **実行済み**。上記コマンドを実行し、出力を `expected/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.diagnostic.json` と `.../core-parse-cut-unclosed-paren.diagnostic.json` に更新。
 4. **回帰計画への反映**
    - `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `resolution_notes` に実行コマンド・期待集合の要約を追記。
    - `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に実装完了メモを追加（任意）。
