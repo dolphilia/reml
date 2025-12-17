@@ -1,10 +1,10 @@
-# Core.Parse 強化計画（ドラフト）: 概要
+# Core.Parse 強化計画: 概要
 
 ## 背景
 - `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` を進めている途中で、回帰の土台となる `Core.Parse` の **診断品質** と **実装・運用の実用性**（DSL 開発の書きやすさ、復旧、性能）が不足しうると判断した。
 - 調査メモ `docs/notes/core-parse-improvement-survey.md` は、既存の優れたパーサーコンビネーター（Parsec/Megaparsec/nom/chumsky/Angstrom/FastParse）から Reml が取り込むべき要素を整理している。
 
-本計画は上記メモを具体タスクへ落とし込み、Core.Parse の強化を **回帰計画の前提整備（Phase4 の信頼性向上）** として実施するためのドラフトである。
+本計画は上記メモを具体タスクへ落とし込み、Core.Parse の強化を **回帰計画の前提整備（Phase4 の信頼性向上）** として実施するための正式計画である。
 
 ## 目的
 `docs/spec/0-1-project-purpose.md` に沿って、次を同時に満たす状態を目標とする。
@@ -19,7 +19,7 @@
 - パーサー生成（parser generator）への移行
 - 仕様外の暗黙挙動（例: 既定で無制限バックトラックする）を導入して診断品質を落とす変更
 
-## 成功条件（ドラフト）
+## 成功条件
 - Cut/Commit の慣習が API とガイドに反映され、代表的な分岐点で「別ルールへ誤って逃げる」診断が減る
 - `label`/文脈付与が導入され、期待集合がトークン列ではなく **人間可読な単位**（例: "expression"）で提示できる
 - `Core.Parse.Lex` の標準ヘルパで、サンプル DSL の多くが自前 `lexeme/symbol/literal` を定義せずに書ける
@@ -42,4 +42,3 @@
 - Error Recovery（複数エラー・IDE）: `1-3-error-recovery-plan.md`
 - Input/Zero-copy（入力抽象と性能）: `1-4-input-zero-copy-plan.md`
 - Left Recursion（式などの文法）: `1-5-left-recursion-plan.md`
-

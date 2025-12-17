@@ -31,8 +31,8 @@ Reml 実装ロードマップや運用計画を集約しています。
 - [1-0-active-patterns-plan.md](pattern-matching-improvement/1-0-active-patterns-plan.md) — Active Patterns 導入計画
 - [1-1-pattern-surface-plan.md](pattern-matching-improvement/1-1-pattern-surface-plan.md) — Or/Slice/Range/Binding/Regex 拡張計画
 
-## Core.Parse 強化計画（ドラフト）(`docs/plans/core-parse-improvement/`)
-- [README.md](core-parse-improvement/README.md) — 強化計画の目次と位置づけ（ドラフト）
+## Core.Parse 強化計画 (`docs/plans/core-parse-improvement/`)
+- [README.md](core-parse-improvement/README.md) — 強化計画の目次と位置づけ
 - [0-0-overview.md](core-parse-improvement/0-0-overview.md) — 背景・目的・成功条件
 - [0-1-workstream-tracking.md](core-parse-improvement/0-1-workstream-tracking.md) — 追跡ルールとワークストリーム分割
 

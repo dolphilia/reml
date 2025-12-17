@@ -1,9 +1,9 @@
-# Phase4 回帰計画との統合方針（ドラフト）
+# Phase4 回帰計画との統合方針
 
 ## 目的
 本ディレクトリ（Core.Parse 強化計画）で検討・実施した成果を、`docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` と `docs/plans/bootstrap-roadmap/4-1-scenario-matrix-plan.md` へ **安全に接続**する方針を定める。
 
-## 現状整理（ドラフト）
+## 現状整理
 - Phase4 は「仕様コア回帰（spec_core）」を軸にしており、Core.Parse はその基盤にあたる
 - `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan-v2.md` には Core.Parse の拡張計画が存在するが、本ディレクトリは `docs/notes/core-parse-improvement-survey.md` を起点に **Cut/Label/Lex/Zero-copy/Recovery** を改めて前面化する
 
@@ -14,14 +14,13 @@
   → 本ディレクトリで一時 ID（`CP-WS*-NNN`）を振り、転写時に `CH2-PARSE-xxx` 等へ割り当てる
 - **サンプル追加**: `examples/spec_core/chapter2/parser_core/` を基本置き場とし、必要に応じて `expected/spec_core/...` と同期する
 
-## 運用ルール（暫定）
-- 本ディレクトリのドラフトが安定したら、bootstrap-roadmap 側へ次のいずれかで反映する:
+## 運用ルール
+- 本ディレクトリの成果物（仕様追記案/サンプル/回帰登録）が揃い次第、bootstrap-roadmap 側へ次のいずれかで反映する:
   1) 既存 Phase の追記（重複が少ない場合）
   2) 参照リンクの追加のみ（内容は本ディレクトリに保持）
   3) 計画書を移管（正式版として採用する場合）
 - どの方式でも、`docs/plans/README.md` の目次リンクを更新し、計画の入口が迷子にならないようにする
 
-## TODO（次の具体作業）
+## 次の具体作業
 - `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` の現在位置（どの章・どのシナリオを進行中か）を確認し、WS1/WS2 を差し込む最小範囲を確定する
-- Phase4 マトリクスに追加すべき「Core.Parse 強化シナリオ」の候補を列挙する（Cut/Label/Lex/Recovery を優先）
-
+- Phase4 マトリクスに追加すべき「Core.Parse 強化シナリオ」を列挙する（Cut/Label/Lex/Recovery を優先）
