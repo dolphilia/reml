@@ -33,6 +33,7 @@
 4. **回帰計画への反映**
    - `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `resolution_notes` に実行コマンド・期待集合の要約を追記。
    - `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に実装完了メモを追加（任意）。
+   - 進捗: **完了**。`phase4-scenario-matrix.csv` の `CH2-PARSE-102/103` に最新 CLI コマンド（run_id=c9f29fff-58c7-4849-9bb3-999562132bbf / f9fb5aaa-f93d-42d9-b149-301a34f61485）と期待ファイル更新を記録し、`4-1-spec-core-regression-plan.md` へ cut/commit 回帰メモを追記。
 
 ## 依存関係
 - 仕様: `docs/spec/2-1-parser-type.md`（committed 独立性）、`docs/spec/2-2-core-combinator.md`（D 節の指針）、`docs/spec/2-5-error.md`（B-5 / D-1）、`docs/spec/2-6-execution-strategy.md`（期待再初期化）。

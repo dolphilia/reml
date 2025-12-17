@@ -98,6 +98,10 @@
 - `expected/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.stdout` および `expected/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.stdout` を現行 CLI のゴールデンとして維持し、`run_examples.sh --suite spec_core` での再取得なしでも差分比較できる状態を確保した。
 - 2026-02-16 追認: `cargo test -p reml_frontend spec_core::ch1_dsl_801_parses_conductor_sections` と `spec_core::ch2_stream_301_parses_streaming_example` を再実行して AST 断面が現在の Parser 実装でも保持されることを確認し、`phase4-scenario-matrix.csv` の `CH1-DSL-801` / `CH2-STREAM-301` `resolution_notes` に追跡ログを追加した。
 
+#### ✅ 4.5 週 追補（Cut/Commit 回帰メモ）
+
+- `CH2-PARSE-102/103` の cut 境界シナリオを Rust CLI で再実行し、期待診断を更新。コマンド: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.reml`（run_id=c9f29fff-58c7-4849-9bb3-999562132bbf）、`.../core-parse-cut-unclosed-paren.reml`（run_id=f9fb5aaa-f93d-42d9-b149-301a34f61485）。出力を `expected/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.diagnostic.json` および `...core-parse-cut-unclosed-paren.diagnostic.json` に反映し、`phase4-scenario-matrix.csv` の `resolution_notes` へ追記済み。
+
 ### フェーズB: Typeck / Effect 診断の復元
 4. **型推論 / 効果行の非アクティブ化回収**（5.1 週）  
    - Parserが通るようになった後も `typeck.aborted.ast_unavailable` が解消しない場合、`TypecheckDriver` が AST を拒否する条件（`allow_module_body` 等）の見直しを行う。  
