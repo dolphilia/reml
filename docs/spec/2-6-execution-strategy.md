@@ -170,7 +170,7 @@ fn specialise_config(profile: BuildProfile) -> RunConfig = {
 
 ### B-3. 期待集合の早期確定
 
-* `cut_here()` を通過したら **親の期待集合を破棄**し、その地点からの期待を再構築（2.5 と同一）。
+* `cut_here()` を通過したら **親の期待集合を破棄**し、その地点からの期待を再構築（2.5 B-5 と同一）。`committed=true` は消費の有無に関わらず立つ（ゼロ幅 cut も含む）。
 
 ---
 

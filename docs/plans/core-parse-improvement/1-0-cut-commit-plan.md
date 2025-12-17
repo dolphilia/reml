@@ -26,10 +26,10 @@ Reml は `docs/spec/2-1-parser-type.md` で `Reply{consumed, committed}` と `cu
 - [x] Step 0: 現状の「Cut を置くべき場所」を棚卸しする
   - [x] 代表サンプル（PL/0 / JSON / TOML / YAML / Spec.Core）の観測点を整理
   - [x] Step1 へ渡す最小チェックリストを確定（JSON/YAML の境界例を含む）
-- [ ] Step 1: 仕様・ガイドの最小一貫化（Cut の意味と運用を固定）
+- [x] Step 1: 仕様・ガイドの最小一貫化（Cut の意味と運用を固定）
   - [x] `docs/spec/2-2-core-combinator.md`（D 節）へ JSON/YAML 境界例（短縮版）を反映
-  - [ ] `docs/spec/2-1-parser-type.md` / `docs/spec/2-6-execution-strategy.md` を含めて読み合わせし、用語・規則が一意に読めることを確認
-  - [ ] 必要なら `docs/spec/2-2-core-combinator.md` / `docs/spec/2-6-execution-strategy.md` へ最小追記（重複記述は避ける）
+  - [x] `docs/spec/2-1-parser-type.md` / `docs/spec/2-6-execution-strategy.md` を読み合わせし、`committed` が消費と独立であること・cut 通過後に期待集合を再初期化することを明示
+  - [x] 追加追記は最小（2-1 に cut/committed 独立の注記、2-6 に期待再初期化＋ゼロ幅 cut の明記。2-2 は再追記不要）
 - [ ] Step 2: API 表面（糖衣）を「迷いが減る形」で整える
   - [ ] 決定ログを `docs/notes/core-parse-api-evolution.md` に記録（`commit(p)` は derived、`p.commit()` は追加しない等）
 - [x] Step 3: サンプルと回帰（Cut の効果を “見える化” して固定）

@@ -216,7 +216,7 @@ Core.LSP.Parser.attach(project_id, parser, shared);
     2025-11-18 更新。`PARSER-002` Step 1（RunConfig 型設計）で `Parser_run_config` モジュールを追加し、仕様に定義されたフィールドと拡張マップ操作を不変レコードとして提供。後続ステップで `parser_driver` へ適用する前提条件を満たした。2025-11-24 追記。Step 6 で CLI (`compiler/ocaml/src/main.ml`) と LSP (`tooling/lsp/run_config_loader.ml`) が `RunConfig` を共有し、`docs/guides/core-parse-streaming.md` に連携ワークフローを記録。監査ログは `parser-runconfig-packrat.json.golden` を用いて `parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate` を検証できる。
 
 * `consumed`：**入力を1バイト以上前進**したか。
-* `committed`：`cut` 境界を**越えた**とマーク（消費の有無に関わらず）。
+* `committed`：`cut` 境界を**越えた**とマーク（消費の有無に関わらず）。ゼロ幅の `cut_here()` でも `committed=true` になり、`or` の右枝を試さない。
 
 **合成の基本規則（抜粋）**
 
@@ -227,8 +227,8 @@ Core.LSP.Parser.attach(project_id, parser, shared);
 * `p.then(q)`：
 
   * `p` が `Ok(consumed=*)` → `q` へ続行（`consumed` は合成：`p||q`）
-  * `p` が `Err` → そのまま `Err`。
-* `cut`：以降で失敗したら **`committed=true`** を返す（期待集合は 2.5 参照）。
+* `p` が `Err` → そのまま `Err`。
+* `cut`：以降で失敗したら **`committed=true`** を返す（期待集合は 2.5 B-5 を参照し、cut 境界で親の期待を破棄して再構築する）。
 * `label("x", p)`：`p` の期待名を `"x"` に差し替え（エラー統合で優先）。
 
 > この規則で **`try` 相当**は不要：`cut` を使わず書けば *empty エラー* として `or` に落ちる。必要なら `recover` を使う。
