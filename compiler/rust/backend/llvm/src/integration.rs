@@ -28,6 +28,7 @@ pub struct BackendFunctionRecord {
     pub branch_plans: Vec<String>,
     pub basic_blocks: Vec<String>,
     pub llvm_blocks: Vec<String>,
+    pub llvm_ir: String,
 }
 
 impl BackendFunctionRecord {
@@ -53,6 +54,7 @@ impl BackendFunctionRecord {
                 .iter()
                 .map(|block| block.describe())
                 .collect(),
+            llvm_ir: func.llvm_ir.clone(),
         }
     }
 }
@@ -147,6 +149,11 @@ impl BackendDiffSnapshot {
             &record.llvm_blocks,
             &(indent.to_string() + "  "),
         ));
+        buf.push_str(",\n");
+        buf.push_str(indent);
+        buf.push_str("  \"llvm_ir\": \"");
+        buf.push_str(&Self::quote(&record.llvm_ir));
+        buf.push_str("\"\n");
         buf.push('\n');
         buf.push_str(indent);
         buf.push('}');

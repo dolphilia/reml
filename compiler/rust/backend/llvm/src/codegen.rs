@@ -236,6 +236,7 @@ pub struct GeneratedFunction {
     pub branch_plans: Vec<String>,
     pub basic_blocks: Vec<BasicBlock>,
     pub llvm_blocks: Vec<LlvmBlock>,
+    pub llvm_ir: String,
 }
 
 impl GeneratedFunction {
@@ -619,6 +620,7 @@ impl CodegenContext {
             branch_plans,
             basic_blocks,
             llvm_blocks,
+            llvm_ir: String::new(),
         };
         self.functions.push(generated.clone());
         let llvm_fn = LlvmFunction {
@@ -635,6 +637,8 @@ impl CodegenContext {
                 .unwrap_or_else(|| "void".into()),
             blocks: generated.llvm_blocks.clone(),
         };
+        let mut generated = generated;
+        generated.llvm_ir = llvm_fn.describe();
         self.llvm_functions.push(llvm_fn);
         generated
     }
