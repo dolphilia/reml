@@ -80,24 +80,44 @@
 ### 進捗ステータス（2026-03 時点）
 - [x] M1: IR 仕様決定 — 本計画記載のノード/評価順を採用。  
 - [x] M2: フロントエンド MIR 生成 — `compiler/rust/frontend/src/semantics/mir.rs` を新設し、`TypedExprKind::Match` から `MirExpr::Match` を構築。`--emit-mir`/`--debug-mir` オプションで JSON 出力できるように `compiler/rust/frontend/src/bin/reml_frontend.rs` を更新。`TypecheckReport` に MIR を保持しデバッグ出力へ組込み済み。**追加完了**: `FieldAccess`/`TupleAccess`/`Index` を TypedExpr/MIR に連携、`Some/None/Ok/Err/format`/`to_string`/`len`/`is_empty`/`starts_with`/`push`/`pop` などの簡易型推論を実装し、CH1-MATCH/ACT サンプルの `--emit-mir` で `Unknown` が 0 件になる状態を確認。  
-- [ ] M3: バックエンド分岐生成 — **進行中（更新: 2025-12）**。`CodegenContext` が Range/Slice/Or/Partial Active/Guard/Alias/Body の順で分岐を展開し、`LlvmBlock`（`LlvmInstr`/`LlvmTerminator`）を `LlvmFunction` として組み立て、`llvm_ir` をスナップショットに格納するところまで到達。追加で、`LlvmFunction/LlvmBlock` の組み立てを `LlvmIrBuilder` に集約し、`emit_function` から一貫して `ModuleIr` に格納される経路を固定した。  
-  - **確認済み**: `tmp/mir-bnf-match-range-inclusive-ok.json` / `tmp/mir-bnf-match-slice-head-tail-ok.json` / `tmp/mir-bnf-activepattern-partial-ok.json` などの MIR JSON を入力に `llvm_ir` をダンプし、`icmp`/`and`/`br`/`phi` がブロック列として出力されることを確認。  
-  - **修正**: `Or` / フォールバック分岐の `br` 条件が「未定義 SSA（new_tmp しただけ）」になっていた箇所を、条件 SSA の生成へ置換。あわせて Constructor/Regex/Binding/Wildcard/Var は `@reml_match_check` ではなく専用の条件生成（`icmp`/専用 `call`）へ移行し、CH1-MATCH/ACT の範囲で `@reml_match_check` 依存を縮小。  
-  - **追加**: Guard を `MirExprKind::Binary/Identifier/Literal` の範囲で SSA 化し、`arm{n}.guard#...` の `br` 条件に接続。Body も `Literal/Identifier` を SSA（`@reml_value` 呼び出し）として生成し、`match.end` の `phi` incomings に供給。  
-  - **ログ**: 一括ダンプ結果を `reports/spec-audit/ch4/logs/match-ir-20251217T023255Z.md` に保存（Range/Slice/Or/Partial Active/Guard/Body の接続を目視確認）。  
-- [ ] M4: 回帰資産更新 — 未着手。CH1-MATCH/ACT の expected 再取得と run_id 記録が必要。  
+- [x] M3: バックエンド分岐生成 — `compiler/rust/backend/llvm` が MIR JSON（`tmp/mir-bnf-*.json`）を読み取り、Range/Slice/Or/Regex/Binding/Active Pattern（Partial/Total、guard/alias 含む）を LLVM 風 IR（`llvm_ir`）へ変換できる状態を確認。  
+  - **確認コマンド**: `MIR_PATH=/abs/path/to/tmp/mir-bnf-match-binding-as-ok.json cargo test --manifest-path compiler/rust/backend/llvm/Cargo.toml dump_llvm_ir_from_mir_path -- --ignored --nocapture`  
+  - **ログ**: `reports/spec-audit/ch4/logs/match-ir-20251217T023255Z.md`（Range/Slice/Regex/Or/Active）にダンプ結果を保存。追加確認として Binding も同一テストで `binding whole <- ...` の生成を確認済み。  
+- [x] M4: 回帰資産更新 — CH1-MATCH/ACT の expected と Phase4 マトリクス run_id 記録を完了。  
+  - **対象**: `CH1-ACT-001..003` / `CH1-MATCH-007..018`  
+  - **根拠**: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `resolution_notes` に run_id と CLI コマンドが記録され、`expected/spec_core/chapter1/{match_expr,active_patterns}/` に対応ファイルが存在する。  
 - [ ] M5: クロス実装チェック — 未着手。Rust/OCaml 差分メモ作成が必要。
 
 #### ドキュメント同期ログ（2025-12-17）
 - `docs/spec/1-5-formal-grammar-bnf.md` に `MatchExpr` の評価順序と Partial Active のフォールスルー（`None` → 次アーム）を追記して同期。
 - `docs/guides/core-parse-streaming.md` に付録Aを追加し、ストリーミング運用での `match` 分岐の扱い（`Pending`/`Await`、ガードの純粋性）を整理。
+- Phase4 マトリクス（`docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`）の `CH1-MATCH-007..009` に run_id 記録を補完し、`CH1-ACT-001..003` / `CH1-MATCH-007..018` の run_id 記録が揃った状態を確認。
 - OCaml 実装差分メモは本計画の M5 で扱う（本タスクでは未実施）。
 
 ### 次に着手する作業（優先順）
-1. **Constructor の内側パターンに対応**: `Some(x)` 等の payload を取り出して `Binding`/`Var`/`Literal` へ伝搬する（現状は `Some/None` を null 判定で分岐するのみ）。  
-2. **Guard/Body の式評価を拡張**: `Call` / `IfElse` / `FieldAccess` などを最小限で扱い、`#id` フォールバックを減らす（CH1-MATCH/ACT の残りサンプルで `match_result <- #...` が出ない状態を目標）。  
-3. **M4 へ接続**: Phase4 マトリクス該当行（CH1-ACT-00x / CH1-MATCH-01x）で expected/diagnostic を再取得し、run_id と再取得コマンドを記録する（`docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` を更新）。  
+1. **M5 へ接続（クロス実装チェック）**: Rust/OCaml の差分を計測し、仕様・診断キー・出力正規化のどこで吸収するかを明文化する（下記「M5 実施計画」）。  
+2. **Constructor の内側パターンに対応**: `Some(x)` 等の payload を取り出して `Binding`/`Var`/`Literal` へ伝搬する（現状は `Some/None` を null 判定で分岐するのみ）。  
+3. **Guard/Body の式評価を拡張**: `Call` / `IfElse` / `FieldAccess` などを最小限で扱い、`#id` フォールバックを減らす（CH1-MATCH/ACT の残りサンプルで `match_result <- #...` が出ない状態を目標）。  
 4. **@reml_* の整理**: `@reml_value` / `@reml_regex_match` など「LLVM 風 IR での暫定コール」を `runtime_link`/FFI 宣言の方針に合わせて整理し、将来の実 LLVM IR 生成へ移行しやすい境界を固定する。
+
+## M5 実施計画（クロス実装チェック）
+
+目的: Rust/OCaml の差分が「仕様差（spec_fix）」「実装差（impl_fix）」「アセット差（example_fix）」のどれに属するかを切り分け、Phase4 の回帰判断に使えるメモを残す。
+
+1. **対象シナリオを固定**（まずは Chapter1 の最小集合）  
+   - Active Pattern: `CH1-ACT-001..003`（`examples/spec_core/chapter1/active_patterns/`）  
+   - Match/Pattern: `CH1-MATCH-007..018`（`examples/spec_core/chapter1/match_expr/`）
+2. **Rust 側の基準出力を採取**  
+   - `compiler/rust/frontend/target/debug/reml_frontend --output json <input.reml>` を実行し、`diagnostics[].code`（および必要なら `severity`）を抽出する。  
+   - run_id は毎回変わるため、比較は「診断キー集合」と「exit_code.label/value」を基準にする。
+3. **OCaml 側の基準出力を採取**（環境によりどちらかを使用）  
+   - 生成済みバイナリがある場合: `compiler/ocaml/_build/default/src/main.exe <file>` または `remlc-ocaml <file>`  
+   - 出力形式は CLI の `--format json` 等が利用できる場合は JSON を優先し、難しければ人間可読出力から診断コードを抽出する。
+4. **差分を集計し、原因を分類**  
+   - 例: `pattern.guard.if_deprecated` の有無、`pattern.unreachable_arm` の severity 差、`guard -> alias` 正規化順の差、Active Pattern の `None` フォールスルー扱いの差。
+5. **差分メモを保存し、参照リンクを張る**  
+   - 保存先案: `reports/dual-write/front-end/diff/pattern-matching-ch1-match-act.md`  
+   - 本計画（本ファイル）の M5 にリンクし、必要なら `docs/plans/rust-migration/` に「移植時の差分吸収方針（どちらを正とするか）」を追記する。
 
 ## 退出条件
 - Match/Pattern を含む MIR が生成され、バックエンドでジャンプ分岐が構築される。Partial Active の miss パスがランタイム挙動として確認できる。  
