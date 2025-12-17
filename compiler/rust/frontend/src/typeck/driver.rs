@@ -1736,10 +1736,23 @@ fn infer_expr(
                 loop_context,
                 context,
             );
-            let result_ty = if field.name == "to_string" {
-                Type::arrow(vec![], Type::builtin(BuiltinType::Str))
-            } else {
-                var_gen.fresh_type()
+            let result_ty = match field.name.as_str() {
+                "to_string" => Type::arrow(vec![], Type::builtin(BuiltinType::Str)),
+                "len" => Type::arrow(vec![], Type::builtin(BuiltinType::Int)),
+                "is_empty" => Type::arrow(vec![], Type::builtin(BuiltinType::Bool)),
+                "starts_with" => Type::arrow(
+                    vec![Type::builtin(BuiltinType::Str)],
+                    Type::builtin(BuiltinType::Bool),
+                ),
+                "push" => {
+                    let elem = var_gen.fresh_type();
+                    Type::arrow(vec![elem], Type::builtin(BuiltinType::Unit))
+                }
+                "pop" => {
+                    let elem = var_gen.fresh_type();
+                    Type::arrow(vec![], Type::app("Option", vec![elem]))
+                }
+                _ => var_gen.fresh_type(),
             };
             make_typed(
                 expr,
