@@ -342,6 +342,32 @@ impl LlvmBlock {
     }
 }
 
+/// LLVM 関数の簡易表現。
+#[derive(Clone, Debug)]
+pub struct LlvmFunction {
+    pub name: String,
+    pub params: Vec<String>,
+    pub ret: String,
+    pub blocks: Vec<LlvmBlock>,
+}
+
+impl LlvmFunction {
+    pub fn describe(&self) -> String {
+        let mut buf = Vec::new();
+        buf.push(format!(
+            "define {} {}({}) {{",
+            self.ret,
+            self.name,
+            self.params.join(", ")
+        ));
+        for block in &self.blocks {
+            buf.push(block.describe());
+        }
+        buf.push("}".into());
+        buf.join("\n")
+    }
+}
+
 #[derive(Clone, Debug)]
 struct LlvmBuilder {
     _type_mapping: TypeMappingContext,
@@ -469,6 +495,7 @@ pub struct ModuleIr {
     pub name: String,
     pub target: TargetMachine,
     pub functions: Vec<GeneratedFunction>,
+    pub llvm_functions: Vec<LlvmFunction>,
     pub metadata: Vec<String>,
     pub windows_toolchain: Option<WindowsToolchainConfig>,
     pub target_context: TargetDiagnosticContext,
@@ -487,6 +514,7 @@ impl ModuleIr {
             summary.push(format!("windows_toolchain({})", toolchain.toolchain_name));
         }
         summary.push(format!("functions: {}", self.functions.len()));
+        summary.push(format!("llvm_functions: {}", self.llvm_functions.len()));
         if self.bridge_metadata.has_stubs() {
             summary.push(format!(
                 "bridge stubs: {}",
@@ -507,6 +535,7 @@ pub struct CodegenContext {
     type_mapping: TypeMappingContext,
     ffi_lowering: FfiLowering,
     functions: Vec<GeneratedFunction>,
+    llvm_functions: Vec<LlvmFunction>,
     module_metadata: Vec<String>,
     target_context: TargetDiagnosticContext,
     bridge_metadata: BridgeMetadataContext,
@@ -528,6 +557,7 @@ impl CodegenContext {
       ffi_lowering,
       target_machine,
       functions: Vec::new(),
+      llvm_functions: Vec::new(),
       module_metadata: Vec::new(),
       target_context,
       bridge_metadata,
@@ -591,6 +621,21 @@ impl CodegenContext {
             llvm_blocks,
         };
         self.functions.push(generated.clone());
+        let llvm_fn = LlvmFunction {
+            name: mir.name.clone(),
+            params: mir
+                .params
+                .iter()
+                .map(|ty| self.type_mapping.layout_of(ty).description)
+                .collect(),
+            ret: mir
+                .ret
+                .as_ref()
+                .map(|ty| self.type_mapping.layout_of(ty).description.clone())
+                .unwrap_or_else(|| "void".into()),
+            blocks: generated.llvm_blocks.clone(),
+        };
+        self.llvm_functions.push(llvm_fn);
         generated
     }
 
@@ -603,6 +648,7 @@ impl CodegenContext {
             name: name.into(),
             target: self.target_machine.clone(),
             functions: self.functions,
+            llvm_functions: self.llvm_functions,
             metadata: self.module_metadata,
             windows_toolchain: self.target_machine.windows_toolchain.clone(),
             target_context: self.target_context.clone(),

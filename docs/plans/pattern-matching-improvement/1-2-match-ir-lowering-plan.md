@@ -80,7 +80,7 @@
 ### 進捗ステータス（2026-03 時点）
 - [x] M1: IR 仕様決定 — 本計画記載のノード/評価順を採用。  
 - [x] M2: フロントエンド MIR 生成 — `compiler/rust/frontend/src/semantics/mir.rs` を新設し、`TypedExprKind::Match` から `MirExpr::Match` を構築。`--emit-mir`/`--debug-mir` オプションで JSON 出力できるように `compiler/rust/frontend/src/bin/reml_frontend.rs` を更新。`TypecheckReport` に MIR を保持しデバッグ出力へ組込み済み。**追加完了**: `FieldAccess`/`TupleAccess`/`Index` を TypedExpr/MIR に連携、`Some/None/Ok/Err/format`/`to_string`/`len`/`is_empty`/`starts_with`/`push`/`pop` などの簡易型推論を実装し、CH1-MATCH/ACT サンプルの `--emit-mir` で `Unknown` が 0 件になる状態を確認。  
-- [ ] M3: バックエンド分岐生成 — **進行中**。`compiler/rust/backend/llvm/src/integration.rs` で `Match/Pattern` を含む式木を復元し、`CodegenContext` が `branch_plans` と併せて Range/Slice/Or/Partial Active/Guard/Alias/Body の順で分岐を展開する `BasicBlock` スケルトンを生成。CH1-MATCH/ACT MIR サンプルを `dump_branch_plans_from_mir_path` で実行し、miss→次アームや Range/Slice 長さチェック、Or 逐次試行、Partial Active miss のフォールスルーがブロック列挙に反映されることを確認済み。次ステップは BasicBlock から実際の LLVM IR ブロック/ジャンプへ写像し、phi/比較命令を割り当てる。  
+- [ ] M3: バックエンド分岐生成 — **進行中**。`compiler/rust/backend/llvm/src/integration.rs` で `Match/Pattern` を含む式木を復元し、`CodegenContext` が `branch_plans` と併せて Range/Slice/Or/Partial Active/Guard/Alias/Body の順で分岐を展開する `BasicBlock` と構造化 `LlvmBlock` を生成。`LlvmFunction` へ集約し、型情報（`TypeMappingContext`）を使って SSA 名を付与。CH1-MATCH/ACT MIR サンプルを `dump_branch_plans_from_mir_path` で実行し、miss→次アーム、Range/Slice 長さチェック、Or 逐次試行、Partial Active miss のフォールスルーが LLVM 風ブロック列挙に反映されることを確認済み。**次ステップ**: `LlvmFunction` を実際の LLVM IR ビルダーへ接続し、型付き `icmp`/`phi`/`br` を実 IR ノードとして出力する。  
 - [ ] M4: 回帰資産更新 — 未着手。CH1-MATCH/ACT の expected 再取得と run_id 記録が必要。  
 - [ ] M5: クロス実装チェック — 未着手。Rust/OCaml 差分メモ作成が必要。
 
