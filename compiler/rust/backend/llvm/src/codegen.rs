@@ -10,6 +10,24 @@ use crate::type_mapping::{RemlType, TypeLayout, TypeMappingContext};
 pub type MirExprId = usize;
 pub type MirBlockLabel = String;
 
+// LLVM 風 IR で使用する暫定 intrinsic（将来の実 LLVM IR/Runtime Bridge へ移行するための境界）。
+const INTRINSIC_VALUE: &str = "@reml_value";
+const INTRINSIC_MATCH_CHECK: &str = "@reml_match_check";
+const INTRINSIC_REGEX_MATCH: &str = "@reml_regex_match";
+const INTRINSIC_FIELD_ACCESS: &str = "@reml_field_access";
+const INTRINSIC_CALL: &str = "@reml_call";
+const INTRINSIC_STR_CONCAT: &str = "@reml_str_concat";
+const INTRINSIC_IF_ELSE: &str = "@reml_if_else";
+const INTRINSIC_PERFORM: &str = "@reml_perform";
+
+fn intrinsic_is_ctor(name: &str) -> String {
+    format!("@reml_is_ctor_{name}")
+}
+
+fn intrinsic_ctor_payload(name: &str) -> String {
+    format!("@reml_ctor_payload_{name}")
+}
+
 #[derive(Clone, Debug)]
 pub struct MirExpr {
     pub id: MirExprId,
@@ -23,6 +41,10 @@ pub enum MirExprKind {
     },
     Identifier {
         summary: String,
+    },
+    FieldAccess {
+        target: MirExprId,
+        field: String,
     },
     Call {
         callee: MirExprId,
@@ -423,6 +445,13 @@ impl LlvmBuilder {
 #[derive(Clone, Debug)]
 pub enum LlvmInstr {
     Comment(String),
+    BinOp {
+        result: String,
+        op: String,
+        ty: String,
+        lhs: String,
+        rhs: String,
+    },
     Icmp {
         result: String,
         pred: String,
@@ -457,6 +486,13 @@ impl LlvmInstr {
     pub fn describe(&self) -> String {
         match self {
             LlvmInstr::Comment(text) => format!("; {text}"),
+            LlvmInstr::BinOp {
+                result,
+                op,
+                ty,
+                lhs,
+                rhs,
+            } => format!("{result} = {op} {ty} {lhs}, {rhs}"),
             LlvmInstr::Icmp {
                 result,
                 pred,
@@ -966,6 +1002,21 @@ fn emit_guard_cond(
     expr_map: &HashMap<MirExprId, &MirExpr>,
     ssa: &mut LlvmBuilder,
 ) -> (String, Vec<LlvmInstr>) {
+    emit_bool_expr(expr_id, expr_map, ssa)
+}
+
+#[derive(Clone, Debug)]
+struct EmittedValue {
+    ty: String,
+    operand: String,
+    instrs: Vec<LlvmInstr>,
+}
+
+fn emit_bool_expr(
+    expr_id: MirExprId,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+) -> (String, Vec<LlvmInstr>) {
     let expr = match expr_map.get(&expr_id) {
         Some(expr) => expr,
         None => {
@@ -978,6 +1029,7 @@ fn emit_guard_cond(
             );
         }
     };
+
     match &expr.kind {
         MirExprKind::Literal { summary } => {
             if let Some(value) = extract_literal_operand(summary) {
@@ -989,109 +1041,460 @@ fn emit_guard_cond(
                         ))],
                     );
                 }
+            }
+            let value = emit_value_expr(expr_id, expr_map, ssa);
+            let cond = ssa.new_tmp("guard");
+            let mut instrs = value.instrs;
+            let ty = value.ty.clone();
+            let rhs = match ty.as_str() {
+                "i64" => "0".into(),
+                _ => "null".into(),
+            };
+            instrs.push(LlvmInstr::Comment(format!(
+                "guard expr#{expr_id} -> truthy check"
+            )));
+            instrs.push(LlvmInstr::Icmp {
+                result: cond.clone(),
+                pred: "ne".into(),
+                ty,
+                lhs: value.operand,
+                rhs,
+            });
+            (cond, instrs)
+        }
+        MirExprKind::Binary {
+            operator,
+            left,
+            right,
+        } => match operator.as_str() {
+            "&&" | "and" => {
+                let (lhs, mut instrs) = emit_bool_expr(*left, expr_map, ssa);
+                let (rhs, mut rhs_instrs) = emit_bool_expr(*right, expr_map, ssa);
+                instrs.append(&mut rhs_instrs);
                 let cond = ssa.new_tmp("guard");
-                let mut instrs = Vec::new();
-                instrs.push(LlvmInstr::Comment(format!("guard literal {summary}")));
+                instrs.push(LlvmInstr::And {
+                    result: cond.clone(),
+                    lhs,
+                    rhs,
+                });
+                (cond, instrs)
+            }
+            "||" | "or" => {
+                let (lhs, mut instrs) = emit_bool_expr(*left, expr_map, ssa);
+                let (rhs, mut rhs_instrs) = emit_bool_expr(*right, expr_map, ssa);
+                instrs.append(&mut rhs_instrs);
+                let cond = ssa.new_tmp("guard");
+                instrs.push(LlvmInstr::Or {
+                    result: cond.clone(),
+                    lhs,
+                    rhs,
+                });
+                (cond, instrs)
+            }
+            "==" | "!=" | "<" | "<=" | ">" | ">=" => {
+                let lhs = emit_value_expr(*left, expr_map, ssa);
+                let rhs = emit_value_expr(*right, expr_map, ssa);
+                let mut instrs = lhs.instrs;
+                instrs.extend(rhs.instrs);
+                let cond = ssa.new_tmp("guard");
+                let pred = match operator.as_str() {
+                    "==" => "eq",
+                    "!=" => "ne",
+                    "<" => "slt",
+                    "<=" => "sle",
+                    ">" => "sgt",
+                    ">=" => "sge",
+                    _ => "ne",
+                };
+                let ty = if (lhs.operand == "true" || lhs.operand == "false")
+                    && (rhs.operand == "true" || rhs.operand == "false")
+                {
+                    ssa.bool_type()
+                } else {
+                    "i64".into()
+                };
+                instrs.push(LlvmInstr::Comment(format!(
+                    "guard compare op={operator} lhs={} rhs={}",
+                    lhs.operand, rhs.operand
+                )));
+                instrs.push(LlvmInstr::Icmp {
+                    result: cond.clone(),
+                    pred: pred.into(),
+                    ty,
+                    lhs: lhs.operand,
+                    rhs: rhs.operand,
+                });
+                (cond, instrs)
+            }
+            _ => {
+                let value = emit_value_expr(expr_id, expr_map, ssa);
+                let cond = ssa.new_tmp("guard");
+                let mut instrs = value.instrs;
+                let ty = value.ty.clone();
+                let rhs = match ty.as_str() {
+                    "i64" => "0".into(),
+                    _ => "null".into(),
+                };
+                instrs.push(LlvmInstr::Comment(format!(
+                    "guard binary op={operator} unsupported -> truthy check"
+                )));
                 instrs.push(LlvmInstr::Icmp {
                     result: cond.clone(),
                     pred: "ne".into(),
-                    ty: "i64".into(),
-                    lhs: value,
-                    rhs: "0".into(),
+                    ty,
+                    lhs: value.operand,
+                    rhs,
                 });
-                return (cond, instrs);
+                (cond, instrs)
             }
-            (
-                "true".into(),
-                vec![LlvmInstr::Comment(format!(
-                    "guard literal {summary} (unsupported) -> assume true"
-                ))],
-            )
+        },
+        _ => {
+            let value = emit_value_expr(expr_id, expr_map, ssa);
+            let cond = match value.ty.as_str() {
+                "i1" => value.operand.clone(),
+                _ => {
+                    let tmp = ssa.new_tmp("guard");
+                    let mut instrs = value.instrs;
+                    let ty = value.ty.clone();
+                    let rhs = match ty.as_str() {
+                        "i64" => "0".into(),
+                        _ => "null".into(),
+                    };
+                    instrs.push(LlvmInstr::Comment(format!(
+                        "guard expr#{expr_id} -> truthy check"
+                    )));
+                    instrs.push(LlvmInstr::Icmp {
+                        result: tmp.clone(),
+                        pred: "ne".into(),
+                        ty,
+                        lhs: value.operand,
+                        rhs,
+                    });
+                    return (tmp, instrs);
+                }
+            };
+            (cond, value.instrs)
         }
-        MirExprKind::Identifier { summary } => (
-            format_operand_from_summary(summary),
-            vec![LlvmInstr::Comment(format!("guard ident {summary}"))],
-        ),
+    }
+}
+
+fn emit_value_expr(
+    expr_id: MirExprId,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+) -> EmittedValue {
+    let expr = match expr_map.get(&expr_id) {
+        Some(expr) => expr,
+        None => {
+            return EmittedValue {
+                ty: ssa.pointer_type(),
+                operand: format!("#{}", expr_id),
+                instrs: vec![LlvmInstr::Comment(format!(
+                    "expr#{expr_id} missing -> fallback operand"
+                ))],
+            };
+        }
+    };
+
+    match &expr.kind {
+        MirExprKind::Literal { summary } => {
+            if let Some(value) = extract_literal_operand(summary) {
+                let ty = if value == "true" || value == "false" {
+                    ssa.bool_type()
+                } else if value.starts_with('"') {
+                    "Str".into()
+                } else {
+                    "i64".into()
+                };
+                return EmittedValue {
+                    ty,
+                    operand: value,
+                    instrs: vec![],
+                };
+            }
+            EmittedValue {
+                ty: ssa.pointer_type(),
+                operand: format_operand_from_summary(summary),
+                instrs: vec![LlvmInstr::Comment(format!(
+                    "literal {summary} (unsupported) -> as operand"
+                ))],
+            }
+        }
+        MirExprKind::Identifier { summary } => EmittedValue {
+            ty: ssa.pointer_type(),
+            operand: format_operand_from_summary(summary),
+            instrs: vec![],
+        },
+        MirExprKind::FieldAccess { target, field } => {
+            let target_value = emit_value_expr(*target, expr_map, ssa);
+            let result = ssa.new_tmp("field");
+            let mut instrs = target_value.instrs;
+            instrs.push(LlvmInstr::Comment(format!(
+                "field_access {}.{}",
+                target_value.operand, field
+            )));
+            instrs.push(LlvmInstr::Call {
+                result: Some(result.clone()),
+                ret_ty: ssa.pointer_type(),
+                callee: INTRINSIC_FIELD_ACCESS.into(),
+                args: vec![
+                    (ssa.pointer_type(), target_value.operand),
+                    (ssa.pointer_type(), format!("\"{}\"", field.replace('"', "\\\""))),
+                ],
+            });
+            EmittedValue {
+                ty: ssa.pointer_type(),
+                operand: result,
+                instrs,
+            }
+        }
+        MirExprKind::Call { callee, args } => {
+            let callee_value = emit_value_expr(*callee, expr_map, ssa);
+            let mut instrs = callee_value.instrs;
+            let mut lowered_args: Vec<(String, String)> = Vec::new();
+            lowered_args.push((ssa.pointer_type(), callee_value.operand));
+            for arg in args {
+                let value = emit_value_expr(*arg, expr_map, ssa);
+                instrs.extend(value.instrs);
+                lowered_args.push((value.ty, value.operand));
+            }
+            let result = ssa.new_tmp("call");
+            let ret_ty = infer_call_return_type(*callee, expr_map, ssa);
+            instrs.push(LlvmInstr::Call {
+                result: Some(result.clone()),
+                ret_ty: ret_ty.clone(),
+                callee: INTRINSIC_CALL.into(),
+                args: lowered_args,
+            });
+            EmittedValue {
+                ty: ret_ty,
+                operand: result,
+                instrs,
+            }
+        }
         MirExprKind::Binary {
             operator,
             left,
             right,
         } => {
-            let lhs = emit_expr_operand(*left, expr_map);
-            let rhs = emit_expr_operand(*right, expr_map);
-            let cond = ssa.new_tmp("guard");
-            let mut instrs = Vec::new();
-            instrs.push(LlvmInstr::Comment(format!(
-                "guard binary op={operator} lhs={lhs} rhs={rhs}"
-            )));
             match operator.as_str() {
-                "&&" | "and" => {
-                    instrs.push(LlvmInstr::And {
-                        result: cond.clone(),
-                        lhs,
-                        rhs,
-                    });
-                }
-                "||" | "or" => {
-                    instrs.push(LlvmInstr::Or {
-                        result: cond.clone(),
-                        lhs,
-                        rhs,
-                    });
-                }
-                "==" | "!=" | "<" | "<=" | ">" | ">=" => {
-                    let pred = match operator.as_str() {
-                        "==" => "eq",
-                        "!=" => "ne",
-                        "<" => "slt",
-                        "<=" => "sle",
-                        ">" => "sgt",
-                        ">=" => "sge",
-                        _ => "ne",
+                "&&" | "and" | "||" | "or" | "==" | "!=" | "<" | "<=" | ">" | ">=" => {
+                    let (cond, instrs) = emit_bool_expr(expr_id, expr_map, ssa);
+                    return EmittedValue {
+                        ty: ssa.bool_type(),
+                        operand: cond,
+                        instrs,
                     };
-                    let ty =
-                        if (lhs == "true" || lhs == "false") && (rhs == "true" || rhs == "false") {
-                            ssa.bool_type()
-                        } else {
-                            "i64".into()
+                }
+                "+" => {
+                    let lhs = emit_value_expr(*left, expr_map, ssa);
+                    let rhs = emit_value_expr(*right, expr_map, ssa);
+                    let mut instrs = lhs.instrs;
+                    instrs.extend(rhs.instrs);
+                    let is_stringish = lhs.ty == "Str"
+                        || rhs.ty == "Str"
+                        || lhs.operand.starts_with('"')
+                        || rhs.operand.starts_with('"');
+                    if is_stringish {
+                        let result = ssa.new_tmp("concat");
+                        instrs.push(LlvmInstr::Call {
+                            result: Some(result.clone()),
+                            ret_ty: "Str".into(),
+                            callee: INTRINSIC_STR_CONCAT.into(),
+                            args: vec![
+                                ("Str".into(), lhs.operand),
+                                ("Str".into(), rhs.operand),
+                            ],
+                        });
+                        return EmittedValue {
+                            ty: "Str".into(),
+                            operand: result,
+                            instrs,
                         };
-                    instrs.push(LlvmInstr::Icmp {
-                        result: cond.clone(),
-                        pred: pred.into(),
-                        ty,
-                        lhs,
-                        rhs,
+                    }
+                    let result = ssa.new_tmp("add");
+                    instrs.push(LlvmInstr::BinOp {
+                        result: result.clone(),
+                        op: "add".into(),
+                        ty: "i64".into(),
+                        lhs: lhs.operand,
+                        rhs: rhs.operand,
                     });
+                    return EmittedValue {
+                        ty: "i64".into(),
+                        operand: result,
+                        instrs,
+                    };
                 }
-                _ => {
-                    instrs.push(LlvmInstr::Comment(format!(
-                        "guard operator {operator} unsupported -> assume true"
-                    )));
-                    return ("true".into(), instrs);
+                "%" => {
+                    let lhs = emit_value_expr(*left, expr_map, ssa);
+                    let rhs = emit_value_expr(*right, expr_map, ssa);
+                    let mut instrs = lhs.instrs;
+                    instrs.extend(rhs.instrs);
+                    let result = ssa.new_tmp("mod");
+                    instrs.push(LlvmInstr::BinOp {
+                        result: result.clone(),
+                        op: "srem".into(),
+                        ty: "i64".into(),
+                        lhs: lhs.operand,
+                        rhs: rhs.operand,
+                    });
+                    return EmittedValue {
+                        ty: "i64".into(),
+                        operand: result,
+                        instrs,
+                    };
                 }
+                "-" => {
+                    let lhs = emit_value_expr(*left, expr_map, ssa);
+                    let rhs = emit_value_expr(*right, expr_map, ssa);
+                    let mut instrs = lhs.instrs;
+                    instrs.extend(rhs.instrs);
+                    let result = ssa.new_tmp("sub");
+                    instrs.push(LlvmInstr::BinOp {
+                        result: result.clone(),
+                        op: "sub".into(),
+                        ty: "i64".into(),
+                        lhs: lhs.operand,
+                        rhs: rhs.operand,
+                    });
+                    return EmittedValue {
+                        ty: "i64".into(),
+                        operand: result,
+                        instrs,
+                    };
+                }
+                "*" => {
+                    let lhs = emit_value_expr(*left, expr_map, ssa);
+                    let rhs = emit_value_expr(*right, expr_map, ssa);
+                    let mut instrs = lhs.instrs;
+                    instrs.extend(rhs.instrs);
+                    let result = ssa.new_tmp("mul");
+                    instrs.push(LlvmInstr::BinOp {
+                        result: result.clone(),
+                        op: "mul".into(),
+                        ty: "i64".into(),
+                        lhs: lhs.operand,
+                        rhs: rhs.operand,
+                    });
+                    return EmittedValue {
+                        ty: "i64".into(),
+                        operand: result,
+                        instrs,
+                    };
+                }
+                "/" => {
+                    let lhs = emit_value_expr(*left, expr_map, ssa);
+                    let rhs = emit_value_expr(*right, expr_map, ssa);
+                    let mut instrs = lhs.instrs;
+                    instrs.extend(rhs.instrs);
+                    let result = ssa.new_tmp("div");
+                    instrs.push(LlvmInstr::BinOp {
+                        result: result.clone(),
+                        op: "sdiv".into(),
+                        ty: "i64".into(),
+                        lhs: lhs.operand,
+                        rhs: rhs.operand,
+                    });
+                    return EmittedValue {
+                        ty: "i64".into(),
+                        operand: result,
+                        instrs,
+                    };
+                }
+                _ => EmittedValue {
+                    ty: ssa.pointer_type(),
+                    operand: format!("#{}", expr_id),
+                    instrs: vec![LlvmInstr::Comment(format!(
+                        "binary op {operator} unsupported -> fallback #{expr_id}"
+                    ))],
+                },
             }
-            (cond, instrs)
         }
-        _ => (
-            "true".into(),
-            vec![LlvmInstr::Comment(format!(
-                "guard expr#{expr_id} unsupported -> assume true"
+        MirExprKind::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            let (cond, mut instrs) = emit_bool_expr(*condition, expr_map, ssa);
+            let then_value = emit_value_expr(*then_branch, expr_map, ssa);
+            let else_value = emit_value_expr(*else_branch, expr_map, ssa);
+            instrs.extend(then_value.instrs);
+            instrs.extend(else_value.instrs);
+            let ret_ty = if then_value.ty == else_value.ty {
+                then_value.ty
+            } else {
+                ssa.pointer_type()
+            };
+            let result = ssa.new_tmp("ifelse");
+            instrs.push(LlvmInstr::Call {
+                result: Some(result.clone()),
+                ret_ty: ret_ty.clone(),
+                callee: INTRINSIC_IF_ELSE.into(),
+                args: vec![
+                    (ssa.bool_type(), cond),
+                    (ret_ty.clone(), then_value.operand),
+                    (ret_ty.clone(), else_value.operand),
+                ],
+            });
+            EmittedValue {
+                ty: ret_ty,
+                operand: result,
+                instrs,
+            }
+        }
+        MirExprKind::PerformCall { effect, argument } => {
+            let value = emit_value_expr(*argument, expr_map, ssa);
+            let mut instrs = value.instrs;
+            let result = ssa.new_tmp("perform");
+            instrs.push(LlvmInstr::Call {
+                result: Some(result.clone()),
+                ret_ty: ssa.pointer_type(),
+                callee: INTRINSIC_PERFORM.into(),
+                args: vec![
+                    (ssa.pointer_type(), format!("\"{}\"", effect.replace('"', "\\\""))),
+                    (value.ty, value.operand),
+                ],
+            });
+            EmittedValue {
+                ty: ssa.pointer_type(),
+                operand: result,
+                instrs,
+            }
+        }
+        MirExprKind::Match { .. } | MirExprKind::Unknown => EmittedValue {
+            ty: ssa.pointer_type(),
+            operand: format!("#{}", expr_id),
+            instrs: vec![LlvmInstr::Comment(format!(
+                "expr#{expr_id} unsupported -> fallback operand"
             ))],
-        ),
+        },
     }
 }
 
-fn emit_expr_operand(expr_id: MirExprId, expr_map: &HashMap<MirExprId, &MirExpr>) -> String {
-    let expr = match expr_map.get(&expr_id) {
-        Some(expr) => expr,
-        None => return format!("#{}", expr_id),
+fn infer_call_return_type(
+    callee_id: MirExprId,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &LlvmBuilder,
+) -> String {
+    let Some(expr) = expr_map.get(&callee_id) else {
+        return ssa.pointer_type();
     };
     match &expr.kind {
-        MirExprKind::Literal { summary } => extract_literal_operand(summary)
-            .or_else(|| Some(format_operand_from_summary(summary)))
-            .unwrap_or_else(|| format!("#{}", expr_id)),
-        MirExprKind::Identifier { summary } => format_operand_from_summary(summary),
-        _ => format!("#{}", expr_id),
+        MirExprKind::FieldAccess { field, .. } => match field.as_str() {
+            "is_empty" | "starts_with" => ssa.bool_type(),
+            "len" => "i64".into(),
+            "to_string" | "format" => "Str".into(),
+            _ => ssa.pointer_type(),
+        },
+        MirExprKind::Identifier { summary } => {
+            let name = summary.trim();
+            match name {
+                "len" => "i64".into(),
+                _ => ssa.pointer_type(),
+            }
+        }
+        _ => ssa.pointer_type(),
     }
 }
 
@@ -1103,15 +1506,18 @@ fn emit_body_value(
     ssa: &mut LlvmBuilder,
 ) -> (String, String, Vec<LlvmInstr>) {
     let body_label = format!("arm{arm_index}.body#{}", expr_id);
-    let operand = emit_expr_operand(expr_id, expr_map);
+    let value = emit_value_expr(expr_id, expr_map, ssa);
     let result = ssa.new_tmp("match_result");
-    let mut instrs = Vec::new();
-    instrs.push(LlvmInstr::Comment(format!("match_result <- {operand}")));
+    let mut instrs = value.instrs;
+    instrs.push(LlvmInstr::Comment(format!(
+        "match_result <- expr#{expr_id} ({})",
+        value.operand
+    )));
     instrs.push(LlvmInstr::Call {
         result: Some(result.clone()),
         ret_ty: result_type.to_string(),
-        callee: "@reml_value".into(),
-        args: vec![(result_type.to_string(), operand)],
+        callee: INTRINSIC_VALUE.into(),
+        args: vec![(result_type.to_string(), value.operand)],
     });
     (result, body_label, instrs)
 }
@@ -1134,6 +1540,21 @@ fn render_pattern_blocks(
     target_label: &str,
 ) -> Vec<String> {
     match &pattern.kind {
+        MirPatternKind::Constructor { name, args } if !args.is_empty() => {
+            let payload_label = format!("arm{arm_index}.ctor_payload");
+            let outer = format!(
+                "arm{arm_index}.pat: ctor_check({name}, args={} on {target_label}) -> match:{payload} / miss:{miss}",
+                args.len(),
+                payload = payload_label,
+                miss = next_arm_label
+            );
+            let payload = format!(
+                "{payload_label}: ctor_payload({name}) -> match:{success} / miss:{miss}",
+                success = success_label,
+                miss = next_arm_label
+            );
+            vec![outer, payload]
+        }
         MirPatternKind::Or { variants } => {
             let mut blocks = Vec::new();
             for (idx, variant) in variants.iter().enumerate() {
@@ -1174,7 +1595,7 @@ fn synthesize_pattern_check_cond(
     instrs.push(LlvmInstr::Call {
         result: Some(call_result.clone()),
         ret_ty: ssa.bool_type(),
-        callee: "@reml_match_check".into(),
+        callee: INTRINSIC_MATCH_CHECK.into(),
         args: vec![("ptr".into(), target_label.to_string())],
     });
     let cond = ssa.new_tmp("cmp");
@@ -1285,7 +1706,7 @@ fn emit_pattern_cond(
             instrs.push(LlvmInstr::Call {
                 result: Some(call_result.clone()),
                 ret_ty: ssa.bool_type(),
-                callee: "@reml_regex_match".into(),
+                callee: INTRINSIC_REGEX_MATCH.into(),
                 args: vec![
                     (ssa.pointer_type(), target_operand.to_string()),
                     (
@@ -1305,6 +1726,17 @@ fn emit_pattern_cond(
             (cond, instrs)
         }
         MirPatternKind::Constructor { name, args } => {
+            if !args.is_empty() {
+                return synthesize_pattern_check_cond(
+                    ssa,
+                    format!(
+                        "ctor_check({name}, args={} on {target_desc}) (payload matching handled in emit_pattern_blocks)",
+                        args.len()
+                    ),
+                    target_operand,
+                    hint,
+                );
+            }
             let mut instrs = Vec::new();
             instrs.push(LlvmInstr::Comment(pattern_check_label(
                 pattern,
@@ -1322,7 +1754,7 @@ fn emit_pattern_cond(
                 });
                 return (cond, instrs);
             }
-            if name == "Some" || !args.is_empty() {
+            if name == "Some" {
                 instrs.push(LlvmInstr::Icmp {
                     result: cond.clone(),
                     pred: "ne".into(),
@@ -1335,7 +1767,7 @@ fn emit_pattern_cond(
             instrs.push(LlvmInstr::Call {
                 result: Some(cond.clone()),
                 ret_ty: ssa.bool_type(),
-                callee: format!("@reml_is_ctor_{name}"),
+                callee: intrinsic_is_ctor(name),
                 args: vec![(ssa.pointer_type(), target_operand.to_string())],
             });
             (cond, instrs)
@@ -1389,6 +1821,128 @@ fn emit_pattern_blocks(
     ssa: &mut LlvmBuilder,
 ) -> (Vec<BasicBlock>, Vec<LlvmBlock>) {
     match &pattern.kind {
+        MirPatternKind::Constructor { name, args } if !args.is_empty() => {
+            let outer_label = format!("arm{arm_index}.pat");
+            let payload_label = format!("arm{arm_index}.ctor_payload");
+
+            let (outer_cond, mut outer_instrs) = if name == "Some" {
+                let cond = ssa.new_tmp("ctor");
+                (
+                    cond.clone(),
+                    vec![
+                        LlvmInstr::Comment(format!(
+                            "ctor_check(Some) on {target_desc} -> non-null then {payload_label} else {next_arm_label}"
+                        )),
+                        LlvmInstr::Icmp {
+                            result: cond,
+                            pred: "ne".into(),
+                            ty: ssa.pointer_type(),
+                            lhs: target_operand.to_string(),
+                            rhs: "null".into(),
+                        },
+                    ],
+                )
+            } else {
+                let cond = ssa.new_tmp("ctor");
+                (
+                    cond.clone(),
+                    vec![
+                        LlvmInstr::Comment(format!(
+                            "ctor_check({name}) on {target_desc} -> then {payload_label} else {next_arm_label}"
+                        )),
+                        LlvmInstr::Call {
+                            result: Some(cond),
+                            ret_ty: ssa.bool_type(),
+                            callee: intrinsic_is_ctor(name),
+                            args: vec![(ssa.pointer_type(), target_operand.to_string())],
+                        },
+                    ],
+                )
+            };
+
+            let outer_bb = BasicBlock {
+                label: outer_label.clone(),
+                instrs: vec![format!(
+                    "check ctor({name}, args={}) on {target_desc}",
+                    args.len()
+                )],
+                terminator: format!(
+                    "br_if {outer_cond} then {payload_label} else {next_arm_label}"
+                ),
+            };
+            let outer_llvm_bb = LlvmBlock {
+                label: outer_label.clone(),
+                instrs: {
+                    outer_instrs.insert(
+                        0,
+                        LlvmInstr::Comment(pattern_check_label(pattern, target_desc, next_arm_label)),
+                    );
+                    outer_instrs
+                },
+                terminator: LlvmTerminator::BrCond {
+                    cond: outer_cond,
+                    then_bb: payload_label.clone(),
+                    else_bb: next_arm_label.to_string(),
+                },
+            };
+
+            let payload_var = ssa.new_tmp("payload");
+            let payload_desc = format!("payload({target_desc}.{name})");
+            let mut payload_instrs = Vec::new();
+            payload_instrs.push(LlvmInstr::Comment(format!(
+                "{payload_desc} <- {target_desc}"
+            )));
+            payload_instrs.push(LlvmInstr::Call {
+                result: Some(payload_var.clone()),
+                ret_ty: ssa.pointer_type(),
+                callee: intrinsic_ctor_payload(name),
+                args: vec![(ssa.pointer_type(), target_operand.to_string())],
+            });
+            let (inner_cond, mut inner_instrs) = match args.len() {
+                1 => emit_pattern_cond(
+                    ssa,
+                    &args[0],
+                    &payload_var,
+                    &payload_desc,
+                    next_arm_label,
+                    "ctor",
+                ),
+                _ => synthesize_pattern_check_cond(
+                    ssa,
+                    format!(
+                        "ctor_check({name}, args={}) (multi-arg payload matching unsupported)",
+                        args.len()
+                    ),
+                    &payload_var,
+                    "ctor",
+                ),
+            };
+            payload_instrs.append(&mut inner_instrs);
+            let payload_bb = BasicBlock {
+                label: payload_label.clone(),
+                instrs: vec![format!(
+                    "check ctor payload args={} on {payload_desc}",
+                    args.len()
+                )],
+                terminator: format!(
+                    "br_if {inner_cond} then {success_label} else {next_arm_label}"
+                ),
+            };
+            let payload_llvm_bb = LlvmBlock {
+                label: payload_label.clone(),
+                instrs: payload_instrs,
+                terminator: LlvmTerminator::BrCond {
+                    cond: inner_cond,
+                    then_bb: success_label.to_string(),
+                    else_bb: next_arm_label.to_string(),
+                },
+            };
+
+            (
+                vec![outer_bb, payload_bb],
+                vec![outer_llvm_bb, payload_llvm_bb],
+            )
+        }
         MirPatternKind::Or { variants } => {
             let mut blocks = Vec::new();
             let mut llvm_blocks = Vec::new();

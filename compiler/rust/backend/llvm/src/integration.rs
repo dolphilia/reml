@@ -582,9 +582,7 @@ fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
             effect: value_summary(call.effect),
             argument: call.argument,
         },
-        MirExprKindJson::FieldAccess { target, field } => MirExprKind::Identifier {
-            summary: format!("{target}.{field}"),
-        },
+        MirExprKindJson::FieldAccess { target, field } => MirExprKind::FieldAccess { target, field },
         MirExprKindJson::Identifier { ident } => MirExprKind::Identifier {
             summary: value_summary(ident),
         },
@@ -1006,18 +1004,22 @@ mod tests {
     use crate::type_mapping::RemlType;
     use std::{env, fs};
 
-    #[test]
-    #[ignore]
-    fn dump_branch_plans_from_mir_path() -> Result<(), MirSnapshotError> {
-        let path =
-            env::var("MIR_PATH").expect("MIR_PATH 環境変数で MIR JSON のパスを指定してください");
-        let target_machine = TargetMachineBuilder::new()
+    fn test_target_machine() -> crate::target_machine::TargetMachine {
+        TargetMachineBuilder::new()
             .with_triple(Triple::LinuxGNU)
             .with_relocation_model(RelocModel::Static)
             .with_code_model(CodeModel::Small)
             .with_optimization_level(OptimizationLevel::O1)
             .with_data_layout(DataLayoutSpec::new("e-m:e-p:64:64-f64:64:64-a:0:64"))
-            .build();
+            .build()
+    }
+
+    #[test]
+    #[ignore]
+    fn dump_branch_plans_from_mir_path() -> Result<(), MirSnapshotError> {
+        let path =
+            env::var("MIR_PATH").expect("MIR_PATH 環境変数で MIR JSON のパスを指定してください");
+        let target_machine = test_target_machine();
         let snapshot = generate_snapshot_from_mir_json(
             &path,
             target_machine,
@@ -1039,13 +1041,7 @@ mod tests {
     fn dump_llvm_ir_from_mir_path() -> Result<(), MirSnapshotError> {
         let path =
             env::var("MIR_PATH").expect("MIR_PATH 環境変数で MIR JSON のパスを指定してください");
-        let target_machine = TargetMachineBuilder::new()
-            .with_triple(Triple::LinuxGNU)
-            .with_relocation_model(RelocModel::Static)
-            .with_code_model(CodeModel::Small)
-            .with_optimization_level(OptimizationLevel::O1)
-            .with_data_layout(DataLayoutSpec::new("e-m:e-p:64:64-f64:64:64-a:0:64"))
-            .build();
+        let target_machine = test_target_machine();
         let snapshot = generate_snapshot_from_mir_json(
             &path,
             target_machine,
@@ -1136,6 +1132,76 @@ mod tests {
         assert_eq!(functions.len(), 1);
         assert_eq!(functions[0].name, "@json_main");
         fs::remove_file(tmp)?;
+        Ok(())
+    }
+
+    #[test]
+    fn llvm_ir_option_canonical_has_ctor_payload_and_expr_lowering() -> Result<(), MirSnapshotError> {
+        let repo_root = env!("CARGO_MANIFEST_DIR");
+        let path = std::path::Path::new(repo_root)
+            .join("../../../../tmp/mir-bnf-matchexpr-option-canonical.json");
+        let snapshot = generate_snapshot_from_mir_json(
+            &path,
+            test_target_machine(),
+            vec![],
+            vec!["phase=test".into()],
+            "mir_test",
+        )?;
+        let describe = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "describe")
+            .expect("describe 関数が存在すること");
+        let llvm_ir = &describe.llvm_ir;
+        assert!(
+            llvm_ir.contains("@reml_ctor_payload_Some"),
+            "Some(payload) の payload 抽出が IR に含まれること"
+        );
+        assert!(
+            llvm_ir.contains("@reml_field_access") && llvm_ir.contains("@reml_call"),
+            "FieldAccess/Call が IR に含まれること"
+        );
+        assert!(
+            llvm_ir.contains("@reml_str_concat"),
+            "文字列結合が IR に含まれること"
+        );
+        assert!(
+            !llvm_ir.contains("match_result <- #"),
+            "`match_result <- #...` のフォールバックが残らないこと"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn llvm_ir_result_guard_else_has_ctor_payload_and_guard_eval() -> Result<(), MirSnapshotError> {
+        let repo_root = env!("CARGO_MANIFEST_DIR");
+        let path = std::path::Path::new(repo_root)
+            .join("../../../../tmp/mir-bnf-matchexpr-result-guard-else-ok.json");
+        let snapshot = generate_snapshot_from_mir_json(
+            &path,
+            test_target_machine(),
+            vec![],
+            vec!["phase=test".into()],
+            "mir_test",
+        )?;
+        let classify = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "classify")
+            .expect("classify 関数が存在すること");
+        let llvm_ir = &classify.llvm_ir;
+        assert!(
+            llvm_ir.contains("@reml_ctor_payload_Ok") && llvm_ir.contains("@reml_ctor_payload_Err"),
+            "Ok/Err の payload 抽出が IR に含まれること"
+        );
+        assert!(
+            llvm_ir.contains("srem i64"),
+            "ガード式（%）が IR に落ちること"
+        );
+        assert!(
+            !llvm_ir.contains("match_result <- #"),
+            "`match_result <- #...` のフォールバックが残らないこと"
+        );
         Ok(())
     }
 }

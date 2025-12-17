@@ -95,9 +95,9 @@
 - OCaml 実装差分メモは本計画の M5 で扱う（本タスクでは未実施）。
 
 ### 次に着手する作業（優先順）
-1. **Constructor の内側パターンに対応**: `Some(x)` 等の payload を取り出して `Binding`/`Var`/`Literal` へ伝搬する（現状は `Some/None` を null 判定で分岐するのみ）。  
-2. **Guard/Body の式評価を拡張**: `Call` / `IfElse` / `FieldAccess` などを最小限で扱い、`#id` フォールバックを減らす（CH1-MATCH/ACT の残りサンプルで `match_result <- #...` が出ない状態を目標）。  
-3. **@reml_* の整理**: `@reml_value` / `@reml_regex_match` など「LLVM 風 IR での暫定コール」を `runtime_link`/FFI 宣言の方針に合わせて整理し、将来の実 LLVM IR 生成へ移行しやすい境界を固定する。
+1. ✅ **完了: Constructor の内側パターンに対応**: `Some(x)` / `Ok(x)` / `Err(x)` の payload を `arm*.ctor_payload` ブロックで取り出し、下位パターンへ伝搬する。根拠ログ: `reports/spec-audit/ch4/logs/match-ir-20251217T081600Z.md`。  
+2. ✅ **完了: Guard/Body の式評価を拡張**: `FieldAccess` / `Call` / `Binary`（例: `%` / `+`）を最小限で LLVM 風 IR へ落とし込み、`match_result <- #...` フォールバックを削減する。根拠ログ: `reports/spec-audit/ch4/logs/match-ir-20251217T081600Z.md`。  
+3. ✅ **完了: @reml_* の整理**: LLVM 風 IR での暫定 intrinsic 名（`@reml_value` / `@reml_call` / `@reml_ctor_payload_*` など）を `compiler/rust/backend/llvm/src/codegen.rs` の定数/ヘルパへ集約し、境界名を固定する。再現テスト: `compiler/rust/backend/llvm/src/integration.rs` の `llvm_ir_*` 2 本。
 
 ## M5（無効化）メモ（クロス実装チェック）
 
