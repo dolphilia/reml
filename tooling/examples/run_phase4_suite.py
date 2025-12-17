@@ -158,6 +158,7 @@ def run_reml_frontend(root: Path, scenario: Scenario) -> ScenarioResult:
     stdout = completed.stdout.strip()
     stderr = completed.stderr.strip()
     actual_codes: List[str] = []
+    seen_codes: set[str] = set()
     error_message: str | None = None
     if stdout:
         try:
@@ -172,7 +173,9 @@ def run_reml_frontend(root: Path, scenario: Scenario) -> ScenarioResult:
                         if diag["codes"]:
                             code = diag["codes"][0]
                     if code:
-                        actual_codes.append(code)
+                        if code not in seen_codes:
+                            actual_codes.append(code)
+                            seen_codes.add(code)
         except json.JSONDecodeError as err:
             error_message = f"CLI 出力の JSON 化に失敗しました: {err}"
     else:
