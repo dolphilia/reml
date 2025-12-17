@@ -1,5 +1,22 @@
 # Core Parse API Evolution メモ
 
+## 2025-12-17: `commit` のレイヤ決定（Cut/Commit の表面整理）
+
+### 結論
+- `cut` / `cut_here` は **コア（最小公理系）**に残す。
+- `commit(p)` は **派生（derived）の関数糖衣**として `Core.Parse` に提供し、意味論は `cut(p)` と同一とする。
+- メソッド糖衣は `p.cut()` を正とし、`p.commit()` は追加しない。
+
+### 判断理由
+- **最小公理系を太らせない**: `commit` は意味論上 `cut` と同一であり、コアへ追加すると「概念の追加ではなく別名の追加」になりやすい（2.2 の方針と衝突）。
+- **読みやすさ（意図の強調）**: `Parse.or(left, Parse.commit(right))` の形は「右枝はバックトラック境界として確定する」という意図が読み取りやすい。Spec.Core の基準ケース `examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml` と整合する。
+- **用語の揺れを抑える**: `cut` / `cut_here` / `commit` の同時提供は必須だが、メソッド糖衣まで増やすと `p.cut()` と `p.commit()` が併存し、スタイルが分裂しやすい。既存の `.cut()`（2.1 ミニ例）を正として固定する。
+- **仕様の一貫性**: `commit` は「別概念」ではなく「別名（糖衣）」として扱い、`Reply{consumed, committed}` と `or` の分岐規則（2.1/2.2/2.5）に影響を与えない。
+
+### 反映先
+- `docs/spec/2-2-core-combinator.md`（派生API一覧に `commit` を追記、実務指針で `cut`/`commit` の関係を明記）
+- `docs/plans/core-parse-improvement/1-0-cut-commit-plan.md`（WS1 Step2 の決定として明文化）
+
 ## Phase 2-5 Step2 Core_parse シグネチャ草案（2025-12-04）
 
 ### 背景
