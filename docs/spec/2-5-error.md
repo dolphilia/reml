@@ -118,6 +118,12 @@ fn Err.custom(at: Span, msg: Str) -> ParseError
 * `cut(p)` 以降の失敗は **`committed=true`**。`or` は**分岐しない**。
 * `expected` は **その地点で“再初期化”**（曖昧な上位の期待は引きずらない）。
 
+**診断キー運用（最小）**
+
+* Cut の導入に伴って新しい診断キー（例: `core.parse.cut.boundary`）を増やすのではなく、原則として **`parser.syntax.expected_tokens` を維持**する。
+* Cut “らしさ”（分岐を打ち切った／誤誘導しなくなった）は、`expected_summary.context_note` と `notes` の短い文脈で表現する。
+  * 例: 「`+` の後に式が必要です」「`(` に対応する `)` が必要です」
+
 **例（誤誘導を防ぐ）**
 
 `attempt` を枝全体へ広げると、`[` のような一意トークンを消費した後でも別枝へ戻れてしまい、期待集合が「別の構文の期待」で汚れやすい。
@@ -380,44 +386,53 @@ note: while parsing expression → term → factor
 
 ## D. 代表エラーの専用処理（品質を上げる“定形”）
 
-1. **括弧ペアの未完**
+### D-1. 括弧ペアの未完（開き括弧の消費で確定） {#d-1}
 
-* `between(open, p, close)` と 2.4 の二項/前置演算子は、**消費した瞬間に cut**。
-* 右が無ければ `FixIt::Insert(")")` など**具体修復**を提示。
-* `notes` に「ここで開きました」を**矢印付き**で併記。
+* `between(open, p, close)` は **`open` を消費した瞬間に cut**（`cut_here()` 相当）し、以降の失敗を `committed=true` として扱う。
+  * 目的: `(` を読んだ後の失敗が別枝へ戻って「誤誘導」しないようにする（B-5）。
+* `close` 欠落時は、`expected` に `Token(")")` を必ず含める（一覧が長い場合も `)` は先頭側に残す）。
+* `expected_summary.context_note`（または notes）に **括弧ペア文脈**を必ず残す。
+  * 例: 「`(` に対応する `)` が必要です」
+* `notes` には「ここで開きました」を 1 件だけ添える（IDE/LSP で矢印表示できるよう `Span` 付き）。
+* FixIt（将来）: `FixIt::Insert{ at: <終端/直前>, text: ")" }` を付与し、IDE が 1 操作で閉じ括弧を補完できるようにする。
 
-2. **非結合演算子の連鎖**（`a < b < c`）
+対応する回帰資産:
+
+* `CH2-PARSE-103`（`examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren.reml`）
+* 比較対象（Cut 無し相当）: `examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren-no-cut.reml`
+
+### D-2. 非結合演算子の連鎖（`a < b < c`）
 
 * 2.4 で**専用コード**：`E2001`。
 * **提案**：「`(a < b) && (b < c)`」など **置換案**を `Replace` で提示。
 
-3. **キーワード vs 識別子の衝突**
+### D-3. キーワード vs 識別子の衝突
 
 * `keyword()` は**直後が識別子継続ならエラー**（2.3 D）。
 * メッセージ：「`ifx` は識別子です。キーワード `if` の後に空白が必要ですか？」。
 
-4. **数値のオーバーフロー**
+### D-4. 数値のオーバーフロー
 
 * 2.3 E の `parseI64/parseF64` で **二次診断**（`secondaries`）を生成。
 * 主エラーに「桁列」「最大/最小値」を併記。
 
-5. **空成功の繰返し**
+### D-5. 空成功の繰返し
 
 * `many` 系で**検出**し、「この繰返しの本体は空成功します」の専用エラー（`E3001`）。
 
-6. **左再帰サポート無効時の自己呼出**
+### D-6. 左再帰サポート無効時の自己呼出
 
 * `RunConfig.left_recursion=false` かつ検出時に `E4001`。
 * 提案：「`precedence` を使う」か「`left_recursion=true` を有効化」。
 
-7. **EOF 必須**
+### D-7. EOF 必須
 
 * `run(..., require_eof=true)` で余剰入力があれば：
 
   * 主エラー：`expected EOF`
   * `notes` に**余剰先頭 32 文字**を抜粋。
 
-8. **数値変換失敗（`as` キャスト／リテラル解決）**
+### D-8. 数値変換失敗（`as` キャスト／リテラル解決）
 
 * 共通方針：`Severity = Error`、`domain = Some(Parser)`、`code = Some("E710x")` を割り当て、`message` に**元の値と対象型**を必ず含める。
 * **`E7101`（整数→整数）**：

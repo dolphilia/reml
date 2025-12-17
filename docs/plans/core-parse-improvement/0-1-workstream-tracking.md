@@ -19,6 +19,9 @@ Core.Parse の強化作業を「追跡可能な成果物」に分割し、`docs/
   - 既存シナリオ: `CH2-PARSE-101`（`core-parse-or-commit-ok`）
   - 追加シナリオ: `CH2-PARSE-102`（`core-parse-cut-branch-mislead` / 演算子右項欠落）
   - 追加シナリオ: `CH2-PARSE-103`（`core-parse-cut-unclosed-paren` / 括弧閉じ忘れ）
+  - 比較対象（Cut 無し相当）:
+    - `core-parse-cut-branch-mislead-no-cut`（誤誘導版の期待集合を保持）
+    - `core-parse-cut-unclosed-paren-no-cut`（括弧ペア未完の巻き戻りを保持）
 
 ### WS2: Error Labeling（文脈・期待集合）
 - 計画: `1-1-error-labeling-plan.md`
