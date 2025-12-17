@@ -371,14 +371,14 @@ impl LlvmFunction {
 
 #[derive(Clone, Debug)]
 struct LlvmBuilder {
-    _type_mapping: TypeMappingContext,
+    type_mapping: TypeMappingContext,
     counter: usize,
 }
 
 impl LlvmBuilder {
     fn new(type_mapping: TypeMappingContext) -> Self {
         Self {
-            _type_mapping: type_mapping,
+            type_mapping,
             counter: 0,
         }
     }
@@ -386,6 +386,10 @@ impl LlvmBuilder {
     fn new_tmp(&mut self, hint: &str) -> String {
         self.counter += 1;
         format!("%{hint}{}", self.counter)
+    }
+
+    fn bool_type(&self) -> String {
+        self.type_mapping.layout_of(&RemlType::Bool).description
     }
 }
 
@@ -540,6 +544,7 @@ pub struct CodegenContext {
     module_metadata: Vec<String>,
     target_context: TargetDiagnosticContext,
     bridge_metadata: BridgeMetadataContext,
+    llvm_ir_builder: LlvmIrBuilder,
 }
 
 impl CodegenContext {
@@ -547,14 +552,16 @@ impl CodegenContext {
     let layout = target_machine.data_layout.clone();
     let target_context = TargetDiagnosticContext::from_target_machine(&target_machine);
     let bridge_metadata = BridgeMetadataContext::new(&target_machine);
+    let type_mapping = TypeMappingContext::new(layout);
     let ffi_lowering = FfiLowering::new(
-      TypeMappingContext::new(target_machine.data_layout.clone()),
+      type_mapping.clone(),
       runtime_symbols,
       target_machine.triple,
       target_machine.backend_abi().to_string(),
     );
     Self {
-      type_mapping: TypeMappingContext::new(layout),
+      llvm_ir_builder: LlvmIrBuilder::new(type_mapping.clone()),
+      type_mapping,
       ffi_lowering,
       target_machine,
       functions: Vec::new(),
@@ -611,6 +618,13 @@ impl CodegenContext {
         } else {
             lower_match_to_blocks(&mir.exprs, &self.type_mapping)
         };
+        let llvm_fn = self.llvm_ir_builder.build_function(
+            &mir.name,
+            &mir.params,
+            mir.ret.as_ref(),
+            llvm_blocks.clone(),
+        );
+        let llvm_ir = self.llvm_ir_builder.render_ir(&llvm_fn);
         let generated = GeneratedFunction {
             name: mir.name.clone(),
             layout: ret_layout,
@@ -620,25 +634,9 @@ impl CodegenContext {
             branch_plans,
             basic_blocks,
             llvm_blocks,
-            llvm_ir: String::new(),
+            llvm_ir,
         };
         self.functions.push(generated.clone());
-        let llvm_fn = LlvmFunction {
-            name: mir.name.clone(),
-            params: mir
-                .params
-                .iter()
-                .map(|ty| self.type_mapping.layout_of(ty).description)
-                .collect(),
-            ret: mir
-                .ret
-                .as_ref()
-                .map(|ty| self.type_mapping.layout_of(ty).description.clone())
-                .unwrap_or_else(|| "void".into()),
-            blocks: generated.llvm_blocks.clone(),
-        };
-        let mut generated = generated;
-        generated.llvm_ir = llvm_fn.describe();
         self.llvm_functions.push(llvm_fn);
         generated
     }
@@ -658,6 +656,43 @@ impl CodegenContext {
             target_context: self.target_context.clone(),
             bridge_metadata: self.bridge_metadata.clone(),
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct LlvmIrBuilder {
+    type_mapping: TypeMappingContext,
+}
+
+impl LlvmIrBuilder {
+    fn new(type_mapping: TypeMappingContext) -> Self {
+        Self { type_mapping }
+    }
+
+    fn build_function(
+        &self,
+        name: &str,
+        params: &[RemlType],
+        ret: Option<&RemlType>,
+        blocks: Vec<LlvmBlock>,
+    ) -> LlvmFunction {
+        let params = params
+            .iter()
+            .map(|ty| self.type_mapping.layout_of(ty).description)
+            .collect();
+        let ret = ret
+            .map(|ty| self.type_mapping.layout_of(ty).description)
+            .unwrap_or_else(|| "void".into());
+        LlvmFunction {
+            name: name.into(),
+            params,
+            ret,
+            blocks,
+        }
+    }
+
+    fn render_ir(&self, func: &LlvmFunction) -> String {
+        func.describe()
     }
 }
 
@@ -916,6 +951,32 @@ fn render_pattern_blocks(
     }
 }
 
+fn synthesize_pattern_check_cond(
+    ssa: &mut LlvmBuilder,
+    check_label: String,
+    target_label: &str,
+    hint: &str,
+) -> (String, Vec<LlvmInstr>) {
+    let mut instrs = Vec::new();
+    instrs.push(LlvmInstr::Comment(check_label));
+    let call_result = ssa.new_tmp(hint);
+    instrs.push(LlvmInstr::Call {
+        result: Some(call_result.clone()),
+        ret_ty: ssa.bool_type(),
+        callee: "@reml_match_check".into(),
+        args: vec![("ptr".into(), target_label.to_string())],
+    });
+    let cond = ssa.new_tmp("cmp");
+    instrs.push(LlvmInstr::Icmp {
+        result: cond.clone(),
+        pred: "ne".into(),
+        ty: ssa.bool_type(),
+        lhs: call_result,
+        rhs: "false".into(),
+    });
+    (cond, instrs)
+}
+
 fn emit_pattern_blocks(
     arm_index: usize,
     pattern: &MirPattern,
@@ -935,21 +996,24 @@ fn emit_pattern_blocks(
                     format!("arm{arm_index}.or{}", idx + 1)
                 };
                 let check = pattern_check_label(variant, target_label, &miss_target);
+                let (cond, llvm_instrs) =
+                    synthesize_pattern_check_cond(ssa, check.clone(), target_label, "or");
                 let label = format!("arm{arm_index}.or{idx}");
                 blocks.push(BasicBlock {
                     label: label.clone(),
                     instrs: vec![format!("check {}", check)],
                     terminator: format!(
-                        "br_if {check} then {success} else {miss}",
+                        "br_if {cond} then {success} else {miss}",
+                        cond = cond,
                         success = success_label,
                         miss = miss_target
                     ),
                 });
                 llvm_blocks.push(LlvmBlock {
                     label: label.clone(),
-                    instrs: vec![LlvmInstr::Comment(check.clone())],
+                    instrs: llvm_instrs,
                     terminator: LlvmTerminator::BrCond {
-                        cond: ssa.new_tmp("or"),
+                        cond,
                         then_bb: success_label.to_string(),
                         else_bb: miss_target.clone(),
                     },
@@ -1139,20 +1203,23 @@ fn emit_pattern_blocks(
         }
         _ => {
             let check = pattern_check_label(pattern, target_label, next_arm_label);
+            let (cond, llvm_instrs) =
+                synthesize_pattern_check_cond(ssa, check.clone(), target_label, "pat");
             let bb = BasicBlock {
                 label: format!("arm{arm_index}.pat"),
                 instrs: vec![format!("check {}", check)],
                 terminator: format!(
-                    "br_if {check} then {success} else {miss}",
+                    "br_if {cond} then {success} else {miss}",
+                    cond = cond,
                     success = success_label,
                     miss = next_arm_label
                 ),
             };
             let llvm_bb = LlvmBlock {
                 label: bb.label.clone(),
-                instrs: vec![LlvmInstr::Comment(check)],
+                instrs: llvm_instrs,
                 terminator: LlvmTerminator::BrCond {
-                    cond: ssa.new_tmp("check"),
+                    cond,
                     then_bb: success_label.to_string(),
                     else_bb: next_arm_label.to_string(),
                 },

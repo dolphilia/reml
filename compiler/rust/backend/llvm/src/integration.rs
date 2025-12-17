@@ -1011,6 +1011,31 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
+    fn dump_llvm_ir_from_mir_path() -> Result<(), MirSnapshotError> {
+        let path = env::var("MIR_PATH")
+            .expect("MIR_PATH 環境変数で MIR JSON のパスを指定してください");
+        let target_machine = TargetMachineBuilder::new()
+            .with_triple(Triple::LinuxGNU)
+            .with_relocation_model(RelocModel::Static)
+            .with_code_model(CodeModel::Small)
+            .with_optimization_level(OptimizationLevel::O1)
+            .with_data_layout(DataLayoutSpec::new("e-m:e-p:64:64-f64:64:64-a:0:64"))
+            .build();
+        let snapshot = generate_snapshot_from_mir_json(
+            &path,
+            target_machine,
+            vec![],
+            vec!["phase=dump".into()],
+            "mir_dump",
+        )?;
+        for func in snapshot.functions {
+            println!("fn {}:\n{}\n", func.name, func.llvm_ir);
+        }
+        Ok(())
+    }
+
+    #[test]
     fn parse_reml_type_synonyms() {
         assert_eq!(parse_reml_type("i32"), RemlType::I32);
         assert_eq!(parse_reml_type("Int64"), RemlType::I64);
