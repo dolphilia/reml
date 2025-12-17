@@ -26,6 +26,7 @@ pub struct BackendFunctionRecord {
     pub attributes: Vec<String>,
     pub lowered_calls: Vec<String>,
     pub branch_plans: Vec<String>,
+    pub basic_blocks: Vec<String>,
 }
 
 impl BackendFunctionRecord {
@@ -41,6 +42,11 @@ impl BackendFunctionRecord {
                 .map(|call| call.describe())
                 .collect(),
             branch_plans: func.branch_plans.clone(),
+            basic_blocks: func
+                .basic_blocks
+                .iter()
+                .map(|block| block.describe())
+                .collect(),
         }
     }
 }
@@ -119,6 +125,13 @@ impl BackendDiffSnapshot {
         buf.push_str("  \"match_branches\": ");
         buf.push_str(&Self::array_of_strings(
             &record.branch_plans,
+            &(indent.to_string() + "  "),
+        ));
+        buf.push_str(",\n");
+        buf.push_str(indent);
+        buf.push_str("  \"basic_blocks\": ");
+        buf.push_str(&Self::array_of_strings(
+            &record.basic_blocks,
             &(indent.to_string() + "  "),
         ));
         buf.push('\n');

@@ -234,6 +234,7 @@ pub struct GeneratedFunction {
     pub attributes: Vec<String>,
     pub lowered_calls: Vec<LoweredFfiCall>,
     pub branch_plans: Vec<String>,
+    pub basic_blocks: Vec<BasicBlock>,
 }
 
 impl GeneratedFunction {
@@ -242,6 +243,29 @@ impl GeneratedFunction {
             "{} -> {} via {} {:?}",
             self.name, self.layout.description, self.calling_conv, self.attributes
         )
+    }
+}
+
+/// LLVM IR への変換に使う簡易 BasicBlock モデル。
+#[derive(Clone, Debug)]
+pub struct BasicBlock {
+    pub label: String,
+    pub instrs: Vec<String>,
+    pub terminator: String,
+}
+
+impl BasicBlock {
+    pub fn describe(&self) -> String {
+        if self.instrs.is_empty() {
+            format!("{}: {}", self.label, self.terminator)
+        } else {
+            format!(
+                "{}: {} | {}",
+                self.label,
+                self.instrs.join("; "),
+                self.terminator
+            )
+        }
     }
 }
 
@@ -357,6 +381,11 @@ impl CodegenContext {
         } else {
             render_branch_plans(&mir.exprs)
         };
+        let basic_blocks = if mir.exprs.is_empty() {
+            Vec::new()
+        } else {
+            lower_match_to_basic_blocks(&mir.exprs)
+        };
         let generated = GeneratedFunction {
             name: mir.name.clone(),
             layout: ret_layout,
@@ -364,6 +393,7 @@ impl CodegenContext {
             attributes: mir.attributes.clone(),
             lowered_calls,
             branch_plans,
+            basic_blocks,
         };
         self.functions.push(generated.clone());
         generated
@@ -450,6 +480,91 @@ fn render_branch_plans(exprs: &[MirExpr]) -> Vec<String> {
     plans
 }
 
+fn lower_match_to_basic_blocks(exprs: &[MirExpr]) -> Vec<BasicBlock> {
+    let mut expr_map = HashMap::new();
+    for expr in exprs {
+        expr_map.insert(expr.id, expr);
+    }
+    let mut blocks = Vec::new();
+    for expr in exprs {
+        if let MirExprKind::Match {
+            target,
+            arms,
+            lowering,
+        } = &expr.kind
+        {
+            let end_label = format!("match{}.end", expr.id);
+            let target_label = expr_map
+                .get(target)
+                .map(|node| match &node.kind {
+                    MirExprKind::Identifier { summary } => summary.clone(),
+                    _ => format!("#{}", target),
+                })
+                .unwrap_or_else(|| format!("#{}", target));
+            for (index, arm) in arms.iter().enumerate() {
+                let next_arm = if index + 1 == arms.len() {
+                    end_label.clone()
+                } else {
+                    format!("arm{}", index + 1)
+                };
+                let guard_label = arm.guard.map(|gid| format!("arm{index}.guard#{gid}"));
+                let alias_label = arm.alias.as_ref().map(|_| format!("arm{index}.alias"));
+                let body_label = format!("arm{index}.body#{}", arm.body);
+                let success_label = guard_label
+                    .clone()
+                    .or(alias_label.clone())
+                    .unwrap_or_else(|| body_label.clone());
+
+                blocks.extend(emit_pattern_blocks(
+                    index,
+                    &arm.pattern,
+                    &success_label,
+                    &next_arm,
+                    &target_label,
+                ));
+
+                if let Some(label) = guard_label {
+                    blocks.push(BasicBlock {
+                        label: label.clone(),
+                        instrs: vec![format!("guard check {}", label)],
+                        terminator: format!(
+                            "br_if {label} then {success} else {next}",
+                            success = success_label,
+                            next = next_arm
+                        ),
+                    });
+                }
+
+                if let Some(alias) = &arm.alias {
+                    let alias_block = alias_label.clone().unwrap_or_else(|| format!("arm{index}.alias"));
+                    blocks.push(BasicBlock {
+                        label: alias_block.clone(),
+                        instrs: vec![format!("alias {alias} = {target_label}")],
+                        terminator: format!("br {body}", body = body_label),
+                    });
+                }
+
+                blocks.push(BasicBlock {
+                    label: body_label.clone(),
+                    instrs: vec![format!("exec body#{}", arm.body)],
+                    terminator: format!("br {}", end_label),
+                });
+            }
+
+            let result_type = lowering
+                .as_ref()
+                .and_then(|plan| plan.target_type.clone())
+                .unwrap_or_else(|| "unknown".into());
+            blocks.push(BasicBlock {
+                label: end_label.clone(),
+                instrs: vec![format!("phi match_result : {}", result_type)],
+                terminator: "ret match_result".into(),
+            });
+        }
+    }
+    blocks
+}
+
 fn arm_success_label(arm: &MirMatchArm) -> String {
     if let Some(guard) = arm.guard {
         format!("guard#{guard}")
@@ -492,6 +607,51 @@ fn render_pattern_blocks(
                 success = success_label,
                 miss = next_arm_label
             )]
+        }
+    }
+}
+
+fn emit_pattern_blocks(
+    arm_index: usize,
+    pattern: &MirPattern,
+    success_label: &str,
+    next_arm_label: &str,
+    target_label: &str,
+) -> Vec<BasicBlock> {
+    match &pattern.kind {
+        MirPatternKind::Or { variants } => {
+            let mut blocks = Vec::new();
+            for (idx, variant) in variants.iter().enumerate() {
+                let miss_target = if idx + 1 == variants.len() {
+                    next_arm_label.to_string()
+                } else {
+                    format!("arm{arm_index}.or{}", idx + 1)
+                };
+                let check = pattern_check_label(variant, target_label, &miss_target);
+                let label = format!("arm{arm_index}.or{idx}");
+                blocks.push(BasicBlock {
+                    label: label.clone(),
+                    instrs: vec![format!("check {}", check)],
+                    terminator: format!(
+                        "br_if {check} then {success} else {miss}",
+                        success = success_label,
+                        miss = miss_target
+                    ),
+                });
+            }
+            blocks
+        }
+        _ => {
+            let check = pattern_check_label(pattern, target_label, next_arm_label);
+            vec![BasicBlock {
+                label: format!("arm{arm_index}.pat"),
+                instrs: vec![format!("check {}", check)],
+                terminator: format!(
+                    "br_if {check} then {success} else {miss}",
+                    success = success_label,
+                    miss = next_arm_label
+                ),
+            }]
         }
     }
 }
