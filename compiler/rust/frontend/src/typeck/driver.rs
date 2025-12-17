@@ -1635,6 +1635,8 @@ fn infer_expr(
             ));
             metrics.record_unify_call();
             let _ = solver.unify(left_result.ty.clone(), right_result.ty.clone());
+            let left_ty = solver.substitution().apply(&left_result.ty);
+            let right_ty = solver.substitution().apply(&right_result.ty);
             if matches!(operator, BinaryOp::And | BinaryOp::Or) {
                 let bool_ty = Type::builtin(BuiltinType::Bool);
                 stats.constraints += 2;
@@ -1648,11 +1650,17 @@ fn infer_expr(
             }
             let ty = match operator {
                 BinaryOp::Add
+                    if matches!(left_ty, Type::Builtin(BuiltinType::Str))
+                        && matches!(right_ty, Type::Builtin(BuiltinType::Str)) =>
+                {
+                    Type::builtin(BuiltinType::Str)
+                }
+                BinaryOp::Add
                 | BinaryOp::Sub
                 | BinaryOp::Mul
                 | BinaryOp::Div
                 | BinaryOp::Mod
-                | BinaryOp::Pow => combine_numeric_types(&left_result.ty, &right_result.ty),
+                | BinaryOp::Pow => combine_numeric_types(&left_ty, &right_ty),
                 BinaryOp::And | BinaryOp::Or => Type::builtin(BuiltinType::Bool),
                 BinaryOp::Eq
                 | BinaryOp::Ne
@@ -1660,7 +1668,7 @@ fn infer_expr(
                 | BinaryOp::Le
                 | BinaryOp::Gt
                 | BinaryOp::Ge => Type::builtin(BuiltinType::Bool),
-                _ => combine_numeric_types(&left_result.ty, &right_result.ty),
+                _ => combine_numeric_types(&left_ty, &right_ty),
             };
             make_typed(
                 expr,
@@ -1675,8 +1683,6 @@ fn infer_expr(
         }
         ExprKind::Call { callee, args } => {
             metrics.record_call_site();
-            stats.constraints += 1;
-            metrics.record_constraint("call.arity");
             let callee_result = infer_expr(
                 callee,
                 env,
@@ -1690,7 +1696,7 @@ fn infer_expr(
                 loop_context,
                 context,
             );
-            let typed_args = args
+            let typed_args: Vec<_> = args
                 .iter()
                 .map(|arg| {
                     infer_expr(
@@ -1708,14 +1714,46 @@ fn infer_expr(
                     )
                 })
                 .collect();
+            let param_types: Vec<Type> = typed_args
+                .iter()
+                .map(|_| var_gen.fresh_type())
+                .collect();
+            let result_type = var_gen.fresh_type();
+
+            // callee が関数型であることを期待して矢印型と一致させる
+            stats.constraints += 1;
+            metrics.record_constraint("call.signature");
+            let callee_arrow = Type::arrow(param_types.clone(), result_type.clone());
+            constraints.push(Constraint::equal(
+                callee_result.ty.clone(),
+                callee_arrow.clone(),
+            ));
+            metrics.record_unify_call();
+            let _ = solver.unify(callee_result.ty.clone(), callee_arrow);
+
+            // 引数とパラメータ型を対応付ける
+            for (arg_result, param_ty) in typed_args.iter().zip(param_types.iter()) {
+                stats.constraints += 1;
+                metrics.record_constraint("call.param");
+                constraints.push(Constraint::equal(arg_result.ty.clone(), param_ty.clone()));
+                metrics.record_unify_call();
+                let _ = solver.unify(arg_result.ty.clone(), param_ty.clone());
+            }
+
+            // dict refs を集約
+            let mut dict_ids = callee_result.dict_ref_ids.clone();
+            for arg in &typed_args {
+                dict_ids.extend(arg.dict_ref_ids.clone());
+            }
+
             make_typed(
                 expr,
                 TypedExprKindDraft::Call {
                     callee: Box::new(callee_result),
                     args: typed_args,
                 },
-                Type::builtin(BuiltinType::Unknown),
-                Vec::new(),
+                solver.substitution().apply(&result_type),
+                dict_ids,
             )
         }
         ExprKind::PerformCall { call } => {
