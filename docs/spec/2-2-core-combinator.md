@@ -280,6 +280,15 @@ fn expr_builder<A>(
 * **繰り返しの本体は空成功禁止**：`many(p)` の `p` が空成功だと**停止しない**。ライブラリが検出してエラーに。
 * **`lookahead` は非消費**：曖昧性の解消・キーワードの後判定に。
 
+* **JSON/YAML の確定トークン境界（短縮）**：
+
+  ```reml
+  sym("[").then(cut_here()).then(elements).then(sym("]"))           // JSON: `[`
+  sym("{").then(cut_here()).then(members).then(sym("}"))            // JSON: `{`
+  key.then(Lex.string(":").then(cut_here())).then(value_or_nested)  // YAML: `:`
+  Lex.string("-").then(cut_here()).then(value)                      // YAML: `-`
+  ```
+
 ---
 
 ## E. 例：四則演算（べき乗右結合、カッコ、単項 -）
