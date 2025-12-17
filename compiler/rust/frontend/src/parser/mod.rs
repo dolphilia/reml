@@ -1469,16 +1469,19 @@ fn module_parser<'src>(
             .allow_trailing()
             .delimited_by(just(TokenKind::Lt), just(TokenKind::Gt));
 
-        let tuple_type = ty
-            .clone()
-            .separated_by(just(TokenKind::Comma))
-            .allow_trailing()
-            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
-            .map_with_span(|elements, span: Range<usize>| TypeAnnot {
-                span: range_to_span(span),
-                kind: TypeKind::Tuple { elements },
-                annotation_kind: None,
-            });
+        let tuple_type = delimited_with_cut(
+            TokenKind::LParen,
+            ty.clone()
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing(),
+            TokenKind::RParen,
+        )
+        .map_with_span(|elements, span: Range<usize>| TypeAnnot {
+            span: range_to_span(span),
+            kind: TypeKind::Tuple { elements },
+            annotation_kind: None,
+        });
 
         let simple = qualified_ident.clone().map(|name| TypeAnnot {
             span: name.span,
@@ -1497,29 +1500,35 @@ fn module_parser<'src>(
         let record_field = ident
             .clone()
             .then_ignore(just(TokenKind::Colon))
-            .then(ty.clone());
+            .then(ty.clone().cut());
 
-        let record_type = record_field
-            .separated_by(just(TokenKind::Comma))
-            .allow_trailing()
-            .delimited_by(just(TokenKind::LBrace), just(TokenKind::RBrace))
-            .map_with_span(|fields, span: Range<usize>| TypeAnnot {
-                span: range_to_span(span),
-                kind: TypeKind::Record { fields },
-                annotation_kind: None,
-            });
+        let record_type = delimited_with_cut(
+            TokenKind::LBrace,
+            record_field
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing(),
+            TokenKind::RBrace,
+        )
+        .map_with_span(|fields, span: Range<usize>| TypeAnnot {
+            span: range_to_span(span),
+            kind: TypeKind::Record { fields },
+            annotation_kind: None,
+        });
 
         let fn_type = just(TokenKind::KeywordFn)
-            .ignore_then(
+            .ignore_then(delimited_with_cut(
+                TokenKind::LParen,
                 ty.clone()
+                    .cut()
                     .separated_by(just(TokenKind::Comma))
                     .allow_trailing()
                     .or_not()
-                    .map(|params| params.unwrap_or_default())
-                    .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen)),
-            )
+                    .map(|params| params.unwrap_or_default()),
+                TokenKind::RParen,
+            ))
             .then_ignore(just(TokenKind::Arrow))
-            .then(ty.clone())
+            .then(ty.clone().cut())
             .map_with_span(|(params, ret_ty), span: Range<usize>| TypeAnnot {
                 span: range_to_span(span),
                 kind: TypeKind::Fn {
@@ -1663,7 +1672,7 @@ fn module_parser<'src>(
             });
 
         let unit_literal_pattern = just(TokenKind::LParen)
-            .ignore_then(just(TokenKind::RParen))
+            .ignore_then(just(TokenKind::RParen).cut())
             .map_with_span(|_, span: Range<usize>| Pattern {
                 span: range_to_span(span),
                 kind: PatternKind::Literal(Literal {
@@ -1679,47 +1688,56 @@ fn module_parser<'src>(
             unit_literal_pattern,
         ));
 
-        let tuple_pattern = pat
-            .clone()
-            .separated_by(just(TokenKind::Comma))
-            .at_least(2)
-            .allow_trailing()
-            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
-            .map_with_span(|elements, span: Range<usize>| Pattern {
-                span: range_to_span(span),
-                kind: PatternKind::Tuple { elements },
-            });
+        let tuple_pattern = delimited_with_cut(
+            TokenKind::LParen,
+            pat.clone()
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .at_least(2)
+                .allow_trailing(),
+            TokenKind::RParen,
+        )
+        .map_with_span(|elements, span: Range<usize>| Pattern {
+            span: range_to_span(span),
+            kind: PatternKind::Tuple { elements },
+        });
 
         let slice_rest = just(TokenKind::DotDot)
             .ignore_then(ident.clone().or_not())
             .map(|ident| SlicePatternItem::Rest { ident });
         let slice_element = slice_rest.or(pat.clone().map(SlicePatternItem::Element));
 
-        let slice_pattern = slice_element
-            .separated_by(just(TokenKind::Comma))
-            .allow_trailing()
-            .delimited_by(just(TokenKind::LBracket), just(TokenKind::RBracket))
-            .map_with_span(|elements, span: Range<usize>| Pattern {
-                span: range_to_span(span),
-                kind: PatternKind::Slice { elements },
-            });
+        let slice_pattern = delimited_with_cut(
+            TokenKind::LBracket,
+            slice_element
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing(),
+            TokenKind::RBracket,
+        )
+        .map_with_span(|elements, span: Range<usize>| Pattern {
+            span: range_to_span(span),
+            kind: PatternKind::Slice { elements },
+        });
 
-        let pattern_ctor = qualified_ident
-            .clone()
-            .then(
+        let pattern_ctor = qualified_ident.clone().then(
+            delimited_with_cut(
+                TokenKind::LParen,
                 pat.clone()
+                    .cut()
                     .separated_by(just(TokenKind::Comma))
-                    .allow_trailing()
-                    .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
-                    .or_not(),
+                    .allow_trailing(),
+                TokenKind::RParen,
             )
-            .map(|(name, args)| Pattern {
-                span: name.span,
-                kind: PatternKind::Constructor {
-                    name,
-                    args: args.unwrap_or_default(),
-                },
-            });
+            .or_not(),
+        )
+        .map(|(name, args)| Pattern {
+            span: name.span,
+            kind: PatternKind::Constructor {
+                name,
+                args: args.unwrap_or_default(),
+            },
+        });
 
         let wildcard_pattern =
             just(TokenKind::Underscore).map_with_span(|_, span: Range<usize>| Pattern {
@@ -1739,7 +1757,7 @@ fn module_parser<'src>(
             .ignore_then(just(TokenKind::Bar))
             .ignore_then(ident.clone())
             .then(active_pattern_suffix)
-            .then_ignore(just(TokenKind::RParen));
+            .then_ignore(just(TokenKind::RParen).cut());
 
         let active_pattern = active_pattern_head
             .then(pat.clone().or_not())
@@ -1761,7 +1779,7 @@ fn module_parser<'src>(
 
         let record_field_with_pattern = ident.clone().then(
             just(TokenKind::Colon)
-                .ignore_then(pat.clone())
+                .ignore_then(pat.clone().cut())
                 .map(|pattern| Box::new(pattern))
                 .or_not(),
         );
@@ -1770,26 +1788,30 @@ fn module_parser<'src>(
             .map(|(key, value)| PatternRecordField { key, value })
             .or(record_field_alias);
 
-        let record_pattern = record_field
-            .map(RecordPatternEntry::Field)
-            .or(just(TokenKind::DotDot).map(|_| RecordPatternEntry::Rest))
-            .separated_by(just(TokenKind::Comma))
-            .allow_trailing()
-            .delimited_by(just(TokenKind::LBrace), just(TokenKind::RBrace))
-            .map_with_span(|entries, span: Range<usize>| {
-                let mut fields = Vec::new();
-                let mut has_rest = false;
-                for entry in entries {
-                    match entry {
-                        RecordPatternEntry::Field(field) => fields.push(field),
-                        RecordPatternEntry::Rest => has_rest = true,
-                    }
+        let record_pattern = delimited_with_cut(
+            TokenKind::LBrace,
+            record_field
+                .map(RecordPatternEntry::Field)
+                .or(just(TokenKind::DotDot).map(|_| RecordPatternEntry::Rest))
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing(),
+            TokenKind::RBrace,
+        )
+        .map_with_span(|entries, span: Range<usize>| {
+            let mut fields = Vec::new();
+            let mut has_rest = false;
+            for entry in entries {
+                match entry {
+                    RecordPatternEntry::Field(field) => fields.push(field),
+                    RecordPatternEntry::Rest => has_rest = true,
                 }
-                Pattern {
-                    span: range_to_span(span),
-                    kind: PatternKind::Record { fields, has_rest },
-                }
-            });
+            }
+            Pattern {
+                span: range_to_span(span),
+                kind: PatternKind::Record { fields, has_rest },
+            }
+        });
 
         let base_pattern = choice((
             active_pattern.clone(),
@@ -1893,16 +1915,19 @@ fn module_parser<'src>(
             kind: PatternKind::Var(name),
         });
 
-        let tuple_pattern = pat
-            .clone()
-            .separated_by(just(TokenKind::Comma))
-            .at_least(2)
-            .allow_trailing()
-            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
-            .map_with_span(|elements, span: Range<usize>| Pattern {
-                span: range_to_span(span),
-                kind: PatternKind::Tuple { elements },
-            });
+        let tuple_pattern = delimited_with_cut(
+            TokenKind::LParen,
+            pat.clone()
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .at_least(2)
+                .allow_trailing(),
+            TokenKind::RParen,
+        )
+        .map_with_span(|elements, span: Range<usize>| Pattern {
+            span: range_to_span(span),
+            kind: PatternKind::Tuple { elements },
+        });
 
         choice((tuple_pattern, var_pattern, wildcard_pattern))
     });
@@ -1941,23 +1966,26 @@ fn module_parser<'src>(
         ))
         .map_with_span(|kind, span: Range<usize>| Expr::fixity(kind, range_to_span(span)));
 
-        let tuple_literal = expr
-            .clone()
-            .separated_by(just(TokenKind::Comma))
-            .at_least(2)
-            .allow_trailing()
-            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
-            .map_with_span(|elements, span: Range<usize>| {
-                Expr::literal(
-                    Literal {
-                        value: LiteralKind::Tuple { elements },
-                    },
-                    range_to_span(span),
-                )
-            });
+        let tuple_literal = delimited_with_cut(
+            TokenKind::LParen,
+            expr.clone()
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .at_least(2)
+                .allow_trailing(),
+            TokenKind::RParen,
+        )
+        .map_with_span(|elements, span: Range<usize>| {
+            Expr::literal(
+                Literal {
+                    value: LiteralKind::Tuple { elements },
+                },
+                range_to_span(span),
+            )
+        });
 
         let unit_literal = just(TokenKind::LParen)
-            .ignore_then(just(TokenKind::RParen))
+            .ignore_then(just(TokenKind::RParen).cut())
             .map_with_span(|_, span: Range<usize>| {
                 Expr::literal(
                     Literal {
@@ -1967,30 +1995,32 @@ fn module_parser<'src>(
                 )
             });
 
-        let paren_expr = expr
-            .clone()
-            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
+        let paren_expr =
+            delimited_with_cut(TokenKind::LParen, expr.clone(), TokenKind::RParen);
 
-        let array_literal = expr
-            .clone()
-            .separated_by(just(TokenKind::Comma))
-            .allow_trailing()
-            .delimited_by(just(TokenKind::LBracket), just(TokenKind::RBracket))
-            .map_with_span(|elements, span: Range<usize>| {
-                Expr::literal(
-                    Literal {
-                        value: LiteralKind::Array { elements },
-                    },
-                    range_to_span(span),
-                )
-            });
+        let array_literal = delimited_with_cut(
+            TokenKind::LBracket,
+            expr.clone()
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing(),
+            TokenKind::RBracket,
+        )
+        .map_with_span(|elements, span: Range<usize>| {
+            Expr::literal(
+                Literal {
+                    value: LiteralKind::Array { elements },
+                },
+                range_to_span(span),
+            )
+        });
 
         let record_literal_field = ident
             .clone()
             .then(
                 just(TokenKind::Assign)
                     .or(just(TokenKind::Colon))
-                    .ignore_then(expr.clone())
+                    .ignore_then(expr.clone().cut())
                     .or_not(),
             )
             .map(|(key, value)| {
@@ -1998,18 +2028,22 @@ fn module_parser<'src>(
                 RecordField { key, value }
             });
 
-        let record_literal = record_literal_field
-            .separated_by(just(TokenKind::Comma))
-            .allow_trailing()
-            .delimited_by(just(TokenKind::LBrace), just(TokenKind::RBrace))
-            .map_with_span(|fields, span: Range<usize>| {
-                Expr::literal(
-                    Literal {
-                        value: LiteralKind::Record { fields },
-                    },
-                    range_to_span(span),
-                )
-            });
+        let record_literal = delimited_with_cut(
+            TokenKind::LBrace,
+            record_literal_field
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing(),
+            TokenKind::RBrace,
+        )
+        .map_with_span(|fields, span: Range<usize>| {
+            Expr::literal(
+                Literal {
+                    value: LiteralKind::Record { fields },
+                },
+                range_to_span(span),
+            )
+        });
 
         let stmt = build_stmt_parser(
             expr.clone(),
@@ -2148,10 +2182,10 @@ fn module_parser<'src>(
             .clone()
             .then(
                 just(TokenKind::Colon)
-                    .ignore_then(type_parser_for_expr.clone())
+                    .ignore_then(type_parser_for_expr.clone().cut())
                     .or_not(),
             )
-            .then(just(TokenKind::Assign).ignore_then(expr.clone()).or_not())
+            .then(just(TokenKind::Assign).ignore_then(expr.clone().cut()).or_not())
             .map(|((pattern, ty), default)| Param {
                 span: pattern.span,
                 pattern,
@@ -2159,12 +2193,16 @@ fn module_parser<'src>(
                 default,
             });
 
-        let handler_param_list = handler_param
-            .separated_by(just(TokenKind::Comma))
-            .allow_trailing()
-            .or_not()
-            .map(|params| params.unwrap_or_default())
-            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
+        let handler_param_list = delimited_with_cut(
+            TokenKind::LParen,
+            handler_param
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing()
+                .or_not()
+                .map(|params| params.unwrap_or_default()),
+            TokenKind::RParen,
+        );
 
         let handler_operation_entry = attr_list
             .clone()
@@ -2232,10 +2270,10 @@ fn module_parser<'src>(
             .clone()
             .then(
                 just(TokenKind::Colon)
-                    .ignore_then(type_parser_for_expr.clone())
+                    .ignore_then(type_parser_for_expr.clone().cut())
                     .or_not(),
             )
-            .then(just(TokenKind::Assign).ignore_then(expr.clone()).or_not())
+            .then(just(TokenKind::Assign).ignore_then(expr.clone().cut()).or_not())
             .map(|((pattern, ty), default)| Param {
                 span: pattern.span,
                 pattern,
@@ -2243,17 +2281,21 @@ fn module_parser<'src>(
                 default,
             });
 
-        let lambda_params = lambda_param
-            .clone()
-            .separated_by(just(TokenKind::Comma))
-            .allow_trailing()
-            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
+        let lambda_params = delimited_with_cut(
+            TokenKind::LParen,
+            lambda_param
+                .clone()
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing(),
+            TokenKind::RParen,
+        );
 
         let fn_lambda_expr = just(TokenKind::KeywordFn)
             .ignore_then(lambda_params.clone())
             .then(
                 just(TokenKind::Arrow)
-                    .ignore_then(type_parser_for_expr.clone())
+                    .ignore_then(type_parser_for_expr.clone().cut())
                     .or_not(),
             )
             .then_ignore(just(TokenKind::DoubleArrow))
@@ -2278,7 +2320,7 @@ fn module_parser<'src>(
             .then_ignore(just(TokenKind::Bar))
             .then(
                 just(TokenKind::Arrow)
-                    .ignore_then(type_parser_for_expr.clone())
+                    .ignore_then(type_parser_for_expr.clone().cut())
                     .or_not(),
             )
             .then(lambda_body_expr.clone())
@@ -2317,12 +2359,15 @@ fn module_parser<'src>(
             Field(Ident, Span),
         }
 
-        let call_args = expr
-            .clone()
-            .separated_by(just(TokenKind::Comma))
-            .allow_trailing()
-            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
-            .map_with_span(|args, span: Range<usize>| (args, range_to_span(span)));
+        let call_args = delimited_with_cut(
+            TokenKind::LParen,
+            expr.clone()
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing(),
+            TokenKind::RParen,
+        )
+        .map_with_span(|args, span: Range<usize>| (args, range_to_span(span)));
 
         let field_ident = choice((
             ident_for_expr.clone(),
@@ -2393,7 +2438,7 @@ fn module_parser<'src>(
                     just(TokenKind::Slash).to("/"),
                     just(TokenKind::Percent).to("%"),
                 ))
-                .then(call.clone())
+                .then(call.clone().cut())
                 .repeated(),
             )
             .map(|(first, rest)| {
@@ -2410,7 +2455,7 @@ fn module_parser<'src>(
                     just(TokenKind::Plus).to("+"),
                     just(TokenKind::Minus).to("-"),
                 ))
-                .then(multiplicative.clone())
+                .then(multiplicative.clone().cut())
                 .repeated(),
             )
             .map(|(first, rest)| {
@@ -2425,7 +2470,7 @@ fn module_parser<'src>(
             .then(
                 just(TokenKind::DotDot)
                     .to("..")
-                    .then(additive.clone())
+                    .then(additive.clone().cut())
                     .repeated(),
             )
             .map(|(first, rest)| {
@@ -2446,7 +2491,7 @@ fn module_parser<'src>(
                     just(TokenKind::EqEq).to("=="),
                     just(TokenKind::NotEqual).to("!="),
                 ))
-                .then(range_expr.clone())
+                .then(range_expr.clone().cut())
                 .repeated(),
             )
             .map(|(first, rest)| {
@@ -2461,7 +2506,7 @@ fn module_parser<'src>(
             .then(
                 just(TokenKind::PipeForward)
                     .to("|>")
-                    .then(comparison.clone())
+                    .then(comparison.clone().cut())
                     .repeated(),
             )
             .map(|(first, rest)| {
@@ -2486,12 +2531,15 @@ fn module_parser<'src>(
                 Expr::if_else(condition, then_branch, else_branch, full_span)
             });
 
-        let effect_args = expr
-            .clone()
-            .separated_by(just(TokenKind::Comma))
-            .allow_trailing()
-            .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
-            .map_with_span(|args, span: Range<usize>| (args, range_to_span(span)));
+        let effect_args = delimited_with_cut(
+            TokenKind::LParen,
+            expr.clone()
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing(),
+            TokenKind::RParen,
+        )
+        .map_with_span(|args, span: Range<usize>| (args, range_to_span(span)));
 
         let perform_expr = just(TokenKind::KeywordPerform)
             .map_with_span(move |_, span: Range<usize>| range_to_span(span))
@@ -2518,7 +2566,7 @@ fn module_parser<'src>(
         let assignment_expr = ident_expr
             .clone()
             .then_ignore(just(TokenKind::Assign))
-            .then(expr.clone())
+            .then(expr.clone().cut())
             .map_with_span(|(target, value), span: Range<usize>| {
                 Expr::assign(target, value, range_to_span(span))
             });
@@ -2550,21 +2598,25 @@ fn module_parser<'src>(
         .clone()
         .then(
             just(TokenKind::Colon)
-                .ignore_then(type_parser.clone())
+                .ignore_then(type_parser.clone().cut())
                 .or_not(),
         )
-        .then(just(TokenKind::Assign).ignore_then(expr.clone()).or_not());
+        .then(just(TokenKind::Assign).ignore_then(expr.clone().cut()).or_not());
 
-    let params = param
-        .map(|((pattern, ty), default)| Param {
-            span: pattern.span,
-            pattern,
-            type_annotation: ty,
-            default,
-        })
-        .separated_by(just(TokenKind::Comma))
-        .allow_trailing()
-        .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
+    let params = delimited_with_cut(
+        TokenKind::LParen,
+        param
+            .map(|((pattern, ty), default)| Param {
+                span: pattern.span,
+                pattern,
+                type_annotation: ty,
+                default,
+            })
+            .cut()
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing(),
+        TokenKind::RParen,
+    );
 
     let generic_params = ident
         .clone()
@@ -2614,15 +2666,17 @@ fn module_parser<'src>(
         .map(|predicates| predicates.unwrap_or_default());
 
     let effect_annotation = just(TokenKind::Not)
-        .ignore_then(
+        .ignore_then(delimited_with_cut(
+            TokenKind::LBrace,
             ident
                 .clone()
+                .cut()
                 .separated_by(just(TokenKind::Comma))
                 .allow_trailing()
                 .or_not()
-                .map(|tags| tags.unwrap_or_default())
-                .delimited_by(just(TokenKind::LBrace), just(TokenKind::RBrace)),
-        )
+                .map(|tags| tags.unwrap_or_default()),
+            TokenKind::RBrace,
+        ))
         .map_with_span(|tags, span: Range<usize>| EffectAnnotation {
             tags,
             span: range_to_span(span),
@@ -2697,24 +2751,32 @@ fn module_parser<'src>(
     let record_decl_field = ident
         .clone()
         .then_ignore(just(TokenKind::Colon))
-        .then(type_parser.clone())
+        .then(type_parser.clone().cut())
         .map(|_| ());
 
     let record_decl_rest = just(TokenKind::DotDot).map(|_| ());
 
-    let record_decl_body = choice((record_decl_field, record_decl_rest))
-        .separated_by(just(TokenKind::Comma))
-        .allow_trailing()
-        .delimited_by(just(TokenKind::LBrace), just(TokenKind::RBrace))
-        .map(|_| ());
+    let record_decl_body = delimited_with_cut(
+        TokenKind::LBrace,
+        choice((record_decl_field, record_decl_rest))
+            .cut()
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing(),
+        TokenKind::RBrace,
+    )
+    .map(|_| ());
 
     let sum_variant_arg = choice((record_decl_body.clone(), type_parser.clone().map(|_| ())));
 
-    let sum_variant_args = sum_variant_arg
-        .separated_by(just(TokenKind::Comma))
-        .allow_trailing()
-        .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
-        .map(|_| ());
+    let sum_variant_args = delimited_with_cut(
+        TokenKind::LParen,
+        sum_variant_arg
+            .cut()
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing(),
+        TokenKind::RParen,
+    )
+    .map(|_| ());
 
     let sum_variant = just(TokenKind::Bar)
         .ignore_then(ident.clone())
@@ -2860,11 +2922,11 @@ fn module_parser<'src>(
             },
         );
 
-    let extern_block = extern_fn_decl
-        .clone()
-        .repeated()
-        .at_least(1)
-        .delimited_by(just(TokenKind::LBrace), just(TokenKind::RBrace));
+    let extern_block = delimited_with_cut(
+        TokenKind::LBrace,
+        extern_fn_decl.clone().cut().repeated().at_least(1),
+        TokenKind::RBrace,
+    );
 
     let extern_decl_raw = just(TokenKind::KeywordExtern)
         .ignore_then(abi_literal.clone())
@@ -3028,7 +3090,7 @@ fn module_parser<'src>(
         ident
             .clone()
             .then_ignore(just(TokenKind::Colon))
-            .then(expr.clone())
+            .then(expr.clone().cut())
             .map_with_span(|(name, value), span: Range<usize>| ConductorArg {
                 name: Some(name),
                 value,
@@ -3045,12 +3107,16 @@ fn module_parser<'src>(
     let conductor_tail = just(TokenKind::PipeForward)
         .ignore_then(ident.clone())
         .then(
-            conductor_arg
-                .clone()
-                .separated_by(just(TokenKind::Comma))
-                .allow_trailing()
-                .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
-                .or_not(),
+            delimited_with_cut(
+                TokenKind::LParen,
+                conductor_arg
+                    .clone()
+                    .cut()
+                    .separated_by(just(TokenKind::Comma))
+                    .allow_trailing(),
+                TokenKind::RParen,
+            )
+            .or_not(),
         )
         .map_with_span(|(stage, args), span: Range<usize>| ConductorDslTail {
             stage,
@@ -3210,7 +3276,7 @@ fn module_parser<'src>(
         .then(ident.clone())
         .then(
             just(TokenKind::Colon)
-                .ignore_then(type_parser.clone())
+                .ignore_then(type_parser.clone().cut())
                 .or_not(),
         )
         .map_with_span(
@@ -3222,10 +3288,11 @@ fn module_parser<'src>(
             },
         );
 
-    let effect_body = effect_operation
-        .repeated()
-        .at_least(1)
-        .delimited_by(just(TokenKind::LBrace), just(TokenKind::RBrace));
+    let effect_body = delimited_with_cut(
+        TokenKind::LBrace,
+        effect_operation.repeated().at_least(1),
+        TokenKind::RBrace,
+    );
 
     let effect_decl = just(TokenKind::KeywordEffect)
         .ignore_then(ident.clone())
@@ -3963,6 +4030,19 @@ fn span_to_range(span: Span) -> Range<usize> {
     (span.start as usize)..(span.end as usize)
 }
 
+fn delimited_with_cut<P, O>(
+    open: TokenKind,
+    parser: P,
+    close: TokenKind,
+) -> impl ChumskyParser<TokenKind, O, Error = Simple<TokenKind>> + Clone
+where
+    P: ChumskyParser<TokenKind, O, Error = Simple<TokenKind>> + Clone,
+{
+    just(open)
+        .ignore_then(parser.cut())
+        .then_ignore(just(close).cut())
+}
+
 fn build_let_decl_parser<P, Q, R>(
     pattern_var: Q,
     type_parser: R,
@@ -4055,7 +4135,7 @@ where
     let assign_stmt = ident_expr
         .clone()
         .then_ignore(just(TokenKind::ColonAssign))
-        .then(expr.clone())
+        .then(expr.clone().cut())
         .map_with_span(|(target, value), span: Range<usize>| Stmt {
             kind: StmtKind::Assign {
                 target: Box::new(target),
@@ -4082,13 +4162,16 @@ where
     P: ChumskyParser<TokenKind, Expr, Error = Simple<TokenKind>> + Clone,
     Q: ChumskyParser<TokenKind, Ident, Error = Simple<TokenKind>> + Clone,
 {
-    let args = expr
-        .clone()
-        .separated_by(just(TokenKind::Comma))
-        .allow_trailing()
-        .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen))
-        .map_with_span(|values, span: Range<usize>| (values, Some(range_to_span(span))))
-        .or_not();
+    let args = delimited_with_cut(
+        TokenKind::LParen,
+        expr.clone()
+            .cut()
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing(),
+        TokenKind::RParen,
+    )
+    .map_with_span(|values, span: Range<usize>| (values, Some(range_to_span(span))))
+    .or_not();
 
     just(TokenKind::At)
         .map_with_span(|_, span: Range<usize>| range_to_span(span))
