@@ -36,5 +36,14 @@ Reml 実装ロードマップや運用計画を集約しています。
 - [0-0-overview.md](core-parse-improvement/0-0-overview.md) — 背景・目的・成功条件
 - [0-1-workstream-tracking.md](core-parse-improvement/0-1-workstream-tracking.md) — 追跡ルールとワークストリーム分割
 
+## FFI 強化計画 (`docs/plans/ffi-improvement/`)
+- [README.md](ffi-improvement/README.md) — FFI 強化計画の目次と位置づけ
+- [0-0-overview.md](ffi-improvement/0-0-overview.md) — 背景・目的・段階整理
+- [0-1-workstream-tracking.md](ffi-improvement/0-1-workstream-tracking.md) — ワークストリーム管理（暫定）
+- [1-0-bindgen-plan.md](ffi-improvement/1-0-bindgen-plan.md) — `reml-bindgen` 設計・仕様化
+- [1-1-ffi-dsl-plan.md](ffi-improvement/1-1-ffi-dsl-plan.md) — `Core.Ffi.Dsl` 設計・仕様化
+- [1-2-build-integration-plan.md](ffi-improvement/1-2-build-integration-plan.md) — `reml build` 連携の設計・仕様化
+- [1-3-wasm-component-model-plan.md](ffi-improvement/1-3-wasm-component-model-plan.md) — WASM Component Model 調査・方針
+
 ---
 計画書を更新する際は、関連する仕様書やガイドのリンクが最新構成になっているか確認し、`docs-migrations.log` に必要な記録を追加してください。
