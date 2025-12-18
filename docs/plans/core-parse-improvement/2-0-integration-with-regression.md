@@ -14,6 +14,19 @@
   → 本ディレクトリで一時 ID（`CP-WS*-NNN`）を振り、転写時に `CH2-PARSE-xxx` 等へ割り当てる
 - **サンプル追加**: `examples/spec_core/chapter2/parser_core/` を基本置き場とし、必要に応じて `expected/spec_core/...` と同期する
 
+## WS6（左再帰）の住み分け方針
+WS6 は Phase8/Phase10（優先度ビルダー/プロファイル）と衝突しないよう、**書き方ガイド**と**安全弁の回帰**に限定して接続する。
+
+- **対象範囲**:
+  - 仕様/ガイド: 左再帰は直接書かず、`precedence` / `expr_builder` / `chainl1` を第一選択とする指針
+  - 回帰: 左再帰混入時の検出（`E4001`）と profile 指標の観測（`left_recursion_guard_hits`）
+- **Phase8/10 との関係**:
+  - `expr_builder` の挙動や `profile` の数値は Phase8/10 側の運用に委ね、WS6 では**存在と位置**のみを固定する
+  - しきい値は Phase4 の計測ログが揃ってから決める
+- **計画起点 ID**:
+  - `CP-WS6-001`（左再帰の検出）→ `CH2-PARSE-xxx` へ転写予定
+  - `CP-WS6-002`（profile 指標の観測）→ `CH2-PARSE-xxx` へ転写予定
+
 ## 運用ルール
 - 本ディレクトリの成果物（仕様追記案/サンプル/回帰登録）が揃い次第、bootstrap-roadmap 側へ次のいずれかで反映する:
   1) 既存 Phase の追記（重複が少ない場合）
