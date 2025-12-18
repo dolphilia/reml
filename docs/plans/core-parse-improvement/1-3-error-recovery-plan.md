@@ -90,14 +90,43 @@ Reml の回帰計画（Phase4）でも、診断品質を継続監視するには
 ### Step 2: “回復の型” を最小セットに整理する（糖衣の設計）
 実装側の都合ではなく、DSL 作者が頻繁に使う形に合わせて最小セットを定義する。
 
-- 糖衣と `recover` への落とし込み
-  - `recover_with_default(value)` → `recover(p, until=..., with=value)`
-  - `recover_until(sync)` → `recover(p, until=sync, with=...)`（with は ErrorNode など）
-  - `recover_with_insert(token)` → FixIt を付与しつつ同期（仕様上の FixIt と整合）
-- 「回復した結果として何を返すか」を例で固定する
-  - AST の穴（ErrorNode）
-  - `Option<T>`（欠落を `None` で表現）
-  - `Result<T, _>`（失敗を値に落とすのは最小限にする、などの指針）
+- Step2 の成果物（出口条件）
+  - `recover_with_default/recover_until/recover_with_insert/recover_with_context` の **糖衣 API** が仕様に記載されている
+  - `recover` 実行時に付与される `Diagnostic.extensions["recover"]` の **最低限スキーマ**（action/sync/insert/context 等）が確定している
+  - DSL 作者が選ぶ「回復後の戻り値方針」（ErrorNode/Option/Result）について、**推奨と禁則**が短くまとまっている
+
+- 糖衣（最小セット）
+  - `recover_with_default(value)`：
+    - 典型: 欠落オペランドを `ErrorNode` で穴埋め、あるいは `None` を返して継続したい
+    - 仕様上は `recover(...)` の薄いラッパであり、回復メタ（`action="default"`）を付与する
+  - `recover_until(sync)`：
+    - 典型: 文末 `;` や `}` 等まで飛ばして “次の構造” から再開したい
+    - `sync` は **DSL が決める**（Step1 の同期点指針に従う）
+  - `recover_with_insert(token)`：
+    - 典型: `")"` / `"}"` / `";"` の欠落を補挿して継続したい（IDE の QuickFix）
+    - `FixIt::InsertToken(token)`（または同等）を付与し、`action="insert"` と `inserted=token` を `extensions["recover"]` に残す
+  - `recover_with_context(message)`：
+    - 典型: 「ここは expression を期待していた」のような回復ヒントを診断へ添付したい
+    - `Diagnostic.notes` または `extensions["recover"].context` として保持する（`notes=true` 運用と整合）
+
+- 回復時メタデータ（最小スキーマ）
+  - `Diagnostic.extensions["recover"]` は最低限次のキーを持つ（詳細は仕様で確定）
+    - `mode`: `"collect"`（回復実行時）
+    - `action`: `"default" | "skip" | "insert" | "context"`
+    - `sync`: `Option<Str>`（同期点の表示用）
+    - `inserted`: `Option<Str>`（補挿トークン）
+    - `context`: `Option<Str>`（回復ヒント）
+
+- 回復後の戻り値方針（推奨）
+  - **推奨 1: ErrorNode**（AST の穴）
+    - すべての主要 AST ノードに `Error(ErrorNode)` を用意し、`recover_with_default(Expr.Error(...))` の形で継続する
+    - IDE は `ErrorNode.span` と `expected` を使って赤波線・FixIt を提示できる
+  - **推奨 2: Option**（欠落を `None` で表現）
+    - 例: optional な `else`、省略可能な注釈などは `recover_with_default(None)` が自然
+    - 禁則: `None` を返したのに診断を残さない（回復と silent success を混同しない）
+  - **非推奨: Result**（失敗を値に落とす）
+    - `Result<T, _>` を戻り値にすると、成功/失敗が二重化しやすく、回復境界が不透明になる
+    - 例外: “部分構文を意図的に緩く受理する” DSL で、失敗もデータとして扱う場合のみ採用
 
 ### Step 3: サンプルと回帰（複数エラーを固定できる最小入力から始める）
 - サンプル

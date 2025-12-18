@@ -62,6 +62,28 @@ fn trace<T>(p: Parser<T>) -> Parser<T>                // 追跡ON時のみスパ
   * \*\*「ここからはこの構文で確定」\*\*という位置に **`cut_here()`**。
   * エラーから**同期**して処理を続けたい時は **`recover`**。
 
+#### A-3-a. 回復糖衣（最小セット）
+
+`recover` は汎用プリミティブであり、DSL 作者が毎回「同期点」「FixIt」「回復ヒント」を手で揃えると冗長になりやすい。
+そこで、よく使う回復パターンを 4 つの糖衣として標準化する。
+
+```reml
+// 既定値で穴埋め（action="default"）
+fn recover_with_default<T>(p: Parser<T>, until: Parser<()>, value: T) -> Parser<T>
+
+// 同期点まで読み飛ばして継続（action="skip"）
+fn recover_until<T>(p: Parser<T>, until: Parser<()>, value: T) -> Parser<T>
+
+// 欠落トークンを補挿し、FixIt を付与して継続（action="insert"）
+fn recover_with_insert<T>(p: Parser<T>, until: Parser<()>, token: Str, value: T) -> Parser<T>
+
+// 回復ヒントを診断へ添付して継続（action="context"）
+fn recover_with_context<T>(p: Parser<T>, until: Parser<()>, message: Str, value: T) -> Parser<T>
+```
+
+* 糖衣は `mode="collect"` のときだけ有効であり、`mode="off"` では `recover` と同様に **失敗を返す**。
+* `until` の設計指針と、`FixIt`／`extensions["recover"]` の最低限スキーマは [2.5 §E](2-5-error.md#e-recoverの仕様) を参照。
+
 ### A-4. 繰り返し・任意
 
 ```reml

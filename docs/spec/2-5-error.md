@@ -482,6 +482,37 @@ fn recover<T>(p: Parser<T>, until: Parser<()>, with: T) -> Parser<T>
 * **Lex ヘルパとの整合**:
   * `symbol("...")` / `keyword("...")` を同期点指定に使えることが望ましい（WS3）。
 
+### E-2. 回復糖衣と FixIt（最小スキーマ）
+
+`recover` を実用にするため、2.2 では `recover_with_default/recover_until/recover_with_insert/recover_with_context` の 4 糖衣を定義する。
+糖衣の目的は「同じ種類の回復を、同じ診断メタと FixIt で再現できる」状態を作ることにある。
+
+#### E-2-1. `Diagnostic.extensions["recover"]` の最小スキーマ
+
+回復が実行された場合（`mode="collect"`）、生成される診断は `extensions["recover"]` に次のキーを持つ。
+
+* `mode: "collect"`（回復が実行されたことの明示）
+* `action: "default" | "skip" | "insert" | "context"`（回復の種類）
+* `sync: Option<Str>`（同期点の表示用。例: `";"` / `"}"` / `"\\n"`）
+* `inserted: Option<Str>`（補挿トークン。`action="insert"` のときのみ）
+* `context: Option<Str>`（回復ヒント。`action="context"` のときのみ）
+
+上記は **最小保証**であり、実装は `hits`（回復回数）や `resync_bytes`（読み飛ばし量）などを追加してよい。
+
+#### E-2-2. FixIt 付与（`recover_with_insert`）
+
+`recover_with_insert(token)` は、欠落トークン補挿を前提に回復する。
+
+* `Diagnostic.fixits` に `FixIt::InsertToken(token)`（または等価な表現）を 1 件以上追加する。
+* 位置は「現在位置」（失敗地点）を既定とし、括弧やブロック終端など境界トークンの場合は E-1 の指針（境界は lookahead 同期）に従って “外側が消費する位置” と衝突しないようにする。
+
+#### E-2-3. 回復ヒント（`recover_with_context`）
+
+`recover_with_context(message)` は、回復に関する説明を診断へ添付する。
+
+* `extensions["recover"].context = Some(message)` を保持する。
+* `extensions["recover"].notes=true` 運用（2-6 §B-2-2）では、同等の情報を `Diagnostic.notes` にも必ず露出させる。
+
 ---
 
 ## F. API（作る・混ぜる・見せる）
