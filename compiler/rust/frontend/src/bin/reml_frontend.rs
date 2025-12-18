@@ -53,6 +53,8 @@ use reml_runtime::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDia
 use reml_runtime::run_config::{
     apply_manifest_overrides, ApplyManifestOverridesArgs, RunConfigManifestOverrides,
 };
+use reml_runtime::parse as runtime_parse;
+use reml_frontend::diagnostic::{ExpectedToken, ExpectedTokenCollector};
 use reml_runtime::stage::StageId as RuntimeStageId;
 use reml_runtime::text::LocaleId;
 use reml_runtime::text::Str as RuntimeStr;
@@ -344,6 +346,9 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
     install_typecheck_config(&args.typecheck_config)?;
     let input_path = args.input.clone();
     let source = fs::read_to_string(&input_path)?;
+    if args.parse_driver {
+        return run_parse_driver_mode(args, &input_path, &source, &started_at);
+    }
     if let Some(path) = &args.emit_tokens {
         let options = LexerOptions {
             identifier_profile: args.run_config.lex_identifier_profile,
@@ -645,6 +650,205 @@ fn determine_exit_code(diagnostics: &[Value]) -> CliExitCode {
     }
 }
 
+fn run_parse_driver_mode(
+    args: &CliArgs,
+    input_path: &Path,
+    source: &str,
+    started_at: &str,
+) -> Result<CliRunResult, Box<dyn std::error::Error>> {
+    let label = args.parse_driver_label.clone().unwrap_or_default();
+    let use_label = !label.trim().is_empty();
+    let parser = build_labelled_expr_parser(use_label.then_some(label.as_str()));
+    let run_config = reml_runtime::run_config::RunConfig::default();
+    let result = runtime_parse::run(&parser, source, &run_config);
+
+    let mut diagnostics = Vec::new();
+    for err in &result.diagnostics {
+        diagnostics.push(build_parse_driver_diagnostic(err, use_label.then_some(&label)));
+    }
+
+    let finished_at = formatter::current_timestamp();
+    let mut stats = Map::new();
+    stats.insert("diagnostic_count".to_string(), json!(diagnostics.len()));
+    let summary = CliSummary {
+        inputs: vec![input_path.display().to_string()],
+        started_at: started_at.to_string(),
+        finished_at,
+        artifact: None,
+        stats,
+    };
+    let exit_code = determine_exit_code(&diagnostics);
+    let diagnostic_count = diagnostics.len();
+    let stage_payload =
+        StageAuditPayload::new(&args.typecheck_config.effect_context, &args.runtime_capabilities, None);
+    let envelope = CliDiagnosticEnvelope::new(
+        &args.command,
+        &args.phase,
+        args.run_id,
+        diagnostics,
+        summary,
+        exit_code.clone(),
+    );
+    Ok(CliRunResult {
+        envelope,
+        exit_code,
+        input_path: input_path.to_path_buf(),
+        diagnostic_count,
+        stage_payload,
+    })
+}
+
+fn build_labelled_expr_parser(label: Option<&str>) -> runtime_parse::Parser<i32> {
+    let int = integer_literal_parser();
+    let plus = symbol_with_ws("+");
+    let body = int
+        .clone()
+        .then(plus)
+        .then(int)
+        .map(|((lhs, _), rhs)| lhs.0 + rhs.0);
+    let wrapped = if let Some(name) = label {
+        runtime_parse::label(name.to_string(), body)
+    } else {
+        body
+    };
+    wrapped.skip_r(symbol_with_ws("").skip_r(runtime_parse::eof()))
+}
+
+fn integer_literal_parser() -> runtime_parse::Parser<(i32, runtime_parse::Span)> {
+    runtime_parse::Parser::new(|state| {
+        let start_input = skip_ascii_whitespace(state.input().clone());
+        let mut rest = start_input.clone();
+        let mut value: i32 = 0;
+        let mut digits = 0;
+        for ch in start_input.remaining().chars() {
+            if ch.is_ascii_digit() {
+                digits += 1;
+                value = value.saturating_mul(10).saturating_add(ch.to_digit(10).unwrap() as i32);
+                rest = rest.advance(ch.len_utf8());
+            } else {
+                break;
+            }
+        }
+        if digits == 0 {
+            return runtime_parse::Reply::Err {
+                error: runtime_parse::ParseError::new(
+                    "value",
+                    start_input.position(),
+                )
+                .with_expected_tokens([
+                    String::from("integer-literal"),
+                    String::from("identifier"),
+                ]),
+                consumed: false,
+                committed: false,
+            };
+        }
+        let span = start_input.span_to(&rest);
+        let span_for_value = span.clone();
+        runtime_parse::Reply::Ok {
+            value: (value, span_for_value),
+            span,
+            consumed: true,
+            rest,
+        }
+    })
+}
+
+fn symbol_with_ws(text: &str) -> runtime_parse::Parser<String> {
+    let expected = text.to_string();
+    runtime_parse::Parser::new(move |state| {
+        let input = skip_ascii_whitespace(state.input().clone());
+        if expected.is_empty() {
+            let pos = input.position();
+            let span = runtime_parse::Span::new(pos, pos);
+            return runtime_parse::Reply::Ok {
+                value: String::new(),
+                span,
+                consumed: false,
+                rest: input,
+            };
+        }
+        if input.remaining().starts_with(&expected) {
+            let rest = input.advance(expected.len());
+            let span = input.span_to(&rest);
+            runtime_parse::Reply::Ok {
+                value: expected.clone(),
+                span,
+                consumed: true,
+                rest,
+            }
+        } else {
+            runtime_parse::Reply::Err {
+                error: runtime_parse::ParseError::new(expected.clone(), input.position())
+                    .with_expected_tokens([expected.clone()]),
+                consumed: false,
+                committed: false,
+            }
+        }
+    })
+}
+
+fn skip_ascii_whitespace(mut input: runtime_parse::Input) -> runtime_parse::Input {
+    let mut bytes = 0usize;
+    for (idx, ch) in input.remaining().char_indices() {
+        if ch.is_ascii_whitespace() {
+            bytes = idx + ch.len_utf8();
+        } else {
+            break;
+        }
+    }
+    if bytes > 0 {
+        input = input.advance(bytes);
+    }
+    input
+}
+
+fn build_parse_driver_diagnostic(err: &runtime_parse::ParseError, label: Option<&str>) -> Value {
+    let mut collector = ExpectedTokenCollector::new();
+    for token in &err.expected_tokens {
+        if let Some(rule) = label {
+            if token == rule {
+                collector.push_rule(token.clone());
+                continue;
+            }
+        }
+        if token == "<eof>" {
+            collector.push(ExpectedToken::eof());
+        } else if token.contains("literal") || token.contains("identifier") {
+            collector.push_class(token.clone());
+        } else if token == "<eof>" {
+            collector.push(ExpectedToken::eof());
+        } else {
+            collector.push_token(token.clone());
+        }
+    }
+    collector.push_class("integer-literal");
+    collector.push_class("identifier");
+    if collector.is_empty() {
+        if let Some(rule) = label {
+            collector.push_rule(rule.to_string());
+        }
+    }
+    let mut summary = collector.summarize();
+    if summary.context_note.is_none() {
+        if let Some(rule) = label {
+            summary.context_note = Some(format!("{rule} が必要です"));
+        }
+    }
+    let message = summary
+        .humanized
+        .clone()
+        .unwrap_or_else(|| "構文エラー: 入力を解釈できません".to_string());
+
+    json!({
+        "severity": "error",
+        "code": "parser.syntax.expected_tokens",
+        "domain": "parser",
+        "message": message,
+        "expected": diag_json::expected_payload_from_summary(&summary),
+    })
+}
+
 fn resolve_completed_stream_outcome(outcome: StreamOutcome) -> ParseResult<Module> {
     match outcome {
         StreamOutcome::Completed { result, .. } => result,
@@ -679,6 +883,9 @@ struct CliArgs {
     emit_effects: bool,
     #[allow(dead_code)]
     emit_diagnostics: bool,
+    #[allow(dead_code)]
+    parse_driver: bool,
+    parse_driver_label: Option<String>,
     emit_audit: bool,
     #[allow(dead_code)]
     show_stage_context: bool,
@@ -1277,6 +1484,8 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut trace_output = None;
     let mut emit_effects = false;
     let mut emit_diagnostics = false;
+    let mut parse_driver = false;
+    let mut parse_driver_label: Option<String> = None;
     let mut emit_audit = false;
     let mut show_stage_context = false;
     let mut diagnostics_stream = false;
@@ -1302,6 +1511,13 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
             }
             "--emit-effects" => emit_effects = true,
             "--emit-diagnostics" => emit_diagnostics = true,
+            "--parse-driver" => parse_driver = true,
+            "--parse-driver-label" => {
+                parse_driver_label = Some(
+                    args.next()
+                        .ok_or_else(|| "--parse-driver-label は値を伴う必要があります")?,
+                )
+            }
             "--emit-audit" | "--emit-audit-log" => emit_audit = true,
             "--show-stage-context" => show_stage_context = true,
             "--diagnostics-stream" => diagnostics_stream = true,
@@ -1738,6 +1954,8 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         trace_output,
         emit_effects,
         emit_diagnostics,
+        parse_driver,
+        parse_driver_label,
         emit_audit,
         show_stage_context,
         diagnostics_stream,
@@ -1769,6 +1987,8 @@ fn print_help(program_name: &str) {
   --config-compat <PROFILE>      設定ファイル互換プロファイルを指定 (strict-json / json-relaxed 等)
   --manifest <PATH>              reml.toml マニフェストを読み込み RunConfig に反映
   --emit-effects-metrics <PATH>  効果メトリクスを JSON で保存
+  --parse-driver                 パース専用ドライバで入力ファイルを評価し、診断を JSON 出力（型検査/Runtime をスキップ）
+  --parse-driver-label <NAME>    上記ドライバで付与するラベル名（既定: expression）
   --emit-diagnostics             標準出力へ診断 JSON を出力
   --emit-audit-log               Audit メタデータを出力（--emit-audit も利用可能）
   --emit-telemetry <KIND>[=PATH] 制約グラフ等のテレメトリを JSON で保存
