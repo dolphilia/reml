@@ -34,6 +34,11 @@
      - `LexPack` record の項目名と型を明文化し、`lex_pack(profile, identifier_profile, layout_profile, safety)` / `lex_pack_toml()` のシグネチャと返却フィールドを決める（RunConfig への書き戻しキー: `space_id`, `profile`, `identifier_profile`, `layout_profile`, `safety`）。
      - `keyword_ci(space, kw)` の境界判定を `identifier_profile` 由来の `is_identifier_continue` に合わせ、`Expectation::Keyword(kw)` を返すことを確認するチェックリストを作成。
      - RunConfig 書き戻しの処理順（`space_id` 採番 → `profile`/`identifier_profile`/`layout_profile`/`safety` 設定 → `lexeme/symbol/keyword` 提供）を決め、サンプル共通ヘルパに適用する段取りを記載。
+   - 実施順（Step1 内の詳細手順）:
+     1) `docs/spec/2-3-lexer.md` と `docs/spec/2-2-core-combinator.md` の `lex_pack`/`with_space`/`autoWhitespace` 記述を再確認し、`space_id` 採番と書き戻し順序を箇条書きで確定する。
+     2) `lex_pack`/`lex_pack_toml` の返却フィールド表を作り、デフォルト値（profile/identifier_profile/layout_profile/safety）を明示。`identifier/number/string` のラベル同梱を表に含める。
+     3) `keyword_ci` 境界チェックのテスト観点をリスト化（大文字小文字揺れ、予約語拒否との共存、返却値は原文 `kw`、Expectation は `Keyword(kw)`）。必要なら `docs/notes/core-parse-api-evolution.md` にチェックリストを転記。
+     4) RunConfig 書き戻しキーを JSON 例で示し、`extensions["lex"]` に最低限必要なフィールドセット（`space_id/profile/identifier_profile/layout_profile/safety`）を固定する。
 2. **サンプル置換（自前 lexeme/symbol の削減）**
    - `basic_interpreter_combinator.reml`: `lexeme/symbol/keyword` 再定義を LexPreset へ置換し、`identifier/number/string` をラベル付きプリセットに揃える。`Parse.fail` の自由文エラーを 2-5 準拠の構造化診断へ移行。
    - `sql_parser.reml`: `keyword_ci` で境界判定を置換し、`reserved(profile, set)` に集約。`RunConfig.extensions["lex"]`（space/profile/identifier_profile/safety）を反映。
