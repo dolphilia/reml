@@ -1,5 +1,11 @@
 # Core Parse API Evolution メモ
 
+## 2026-03-09: parse-driver ラベル整形と CP-WS2-001 固定
+
+- `--parse-driver` が `Parse.run(...)` の文字列引数を拾って簡易 expr パーサへ渡すようにし、B-6/B-7 に沿った `expected.alternatives` / `context_note` を生成。`expected_from_summary` を JSON に展開して humanized/context を CLI/LSP で共有できる形にした。
+- コマンド: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --parse-driver --parse-driver-label expression --output json examples/spec_core/chapter2/parser_core/core-parse-label-vs-token-with-label.reml > expected/spec_core/chapter2/parser_core/core-parse-label-vs-token-with-label.diagnostic.json` / `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --parse-driver --output json examples/spec_core/chapter2/parser_core/core-parse-label-vs-token-no-label.reml > expected/spec_core/chapter2/parser_core/core-parse-label-vs-token-no-label.diagnostic.json`
+- `phase4-scenario-matrix.csv` に `CP-WS2-001` を登録し、with-label で Rule("expression") が残ること / no-label では token/class のみになることを resolution_notes に記録。
+
 ## 2025-12-17: `commit` のレイヤ決定（Cut/Commit の表面整理）
 
 ### 結論

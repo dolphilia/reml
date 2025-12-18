@@ -54,7 +54,7 @@ use reml_runtime::run_config::{
     apply_manifest_overrides, ApplyManifestOverridesArgs, RunConfigManifestOverrides,
 };
 use reml_runtime::parse as runtime_parse;
-use reml_frontend::diagnostic::{ExpectedToken, ExpectedTokenCollector};
+use reml_frontend::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 use reml_runtime::stage::StageId as RuntimeStageId;
 use reml_runtime::text::LocaleId;
 use reml_runtime::text::Str as RuntimeStr;
@@ -660,11 +660,16 @@ fn run_parse_driver_mode(
     let use_label = !label.trim().is_empty();
     let parser = build_labelled_expr_parser(use_label.then_some(label.as_str()));
     let run_config = reml_runtime::run_config::RunConfig::default();
-    let result = runtime_parse::run(&parser, source, &run_config);
+    let driver_source = extract_parse_driver_input(source);
+    let result = runtime_parse::run(&parser, driver_source, &run_config);
 
     let mut diagnostics = Vec::new();
     for err in &result.diagnostics {
-        diagnostics.push(build_parse_driver_diagnostic(err, use_label.then_some(&label)));
+        diagnostics.push(build_parse_driver_diagnostic(
+            err,
+            driver_source,
+            use_label.then_some(&label),
+        ));
     }
 
     let finished_at = formatter::current_timestamp();
@@ -696,6 +701,19 @@ fn run_parse_driver_mode(
         diagnostic_count,
         stage_payload,
     })
+}
+
+fn extract_parse_driver_input(source: &str) -> &str {
+    if let Some(run_pos) = source.find("Parse.run(") {
+        let tail = &source[run_pos..];
+        if let Some(open_quote) = tail.find('"') {
+            let after_quote = run_pos + open_quote + 1;
+            if let Some(end_quote) = source[after_quote..].find('"') {
+                return &source[after_quote..after_quote + end_quote];
+            }
+        }
+    }
+    source
 }
 
 fn build_labelled_expr_parser(label: Option<&str>) -> runtime_parse::Parser<i32> {
@@ -803,50 +821,105 @@ fn skip_ascii_whitespace(mut input: runtime_parse::Input) -> runtime_parse::Inpu
     input
 }
 
-fn build_parse_driver_diagnostic(err: &runtime_parse::ParseError, label: Option<&str>) -> Value {
+fn build_parse_driver_diagnostic(
+    err: &runtime_parse::ParseError,
+    source: &str,
+    label: Option<&str>,
+) -> Value {
     let mut collector = ExpectedTokenCollector::new();
+    let mut label_added = false;
     for token in &err.expected_tokens {
         if let Some(rule) = label {
             if token == rule {
-                collector.push_rule(token.clone());
+                collector.push_rule(token.to_string());
+                label_added = true;
                 continue;
             }
         }
-        if token == "<eof>" {
-            collector.push(ExpectedToken::eof());
-        } else if token.contains("literal") || token.contains("identifier") {
-            collector.push_class(token.clone());
-        } else if token == "<eof>" {
-            collector.push(ExpectedToken::eof());
-        } else {
-            collector.push_token(token.clone());
-        }
+        collector.push(classify_parse_driver_token(token));
     }
-    collector.push_class("integer-literal");
-    collector.push_class("identifier");
-    if collector.is_empty() {
-        if let Some(rule) = label {
+    if let Some(rule) = label {
+        if !label_added {
             collector.push_rule(rule.to_string());
         }
     }
-    let mut summary = collector.summarize();
-    if summary.context_note.is_none() {
+    if collector.is_empty() {
         if let Some(rule) = label {
-            summary.context_note = Some(format!("{rule} が必要です"));
+            collector.push_rule(rule.to_string());
+        } else {
+            collector.push_custom("value");
         }
     }
-    let message = summary
-        .humanized
-        .clone()
+    let context_note = derive_context_note(source, err.position.byte, label);
+    let summary = collector.summarize_with_context(context_note.clone());
+    let message = context_note
+        .or_else(|| summary.humanized.clone())
+        .map(|text| format!("構文エラー: {text}"))
         .unwrap_or_else(|| "構文エラー: 入力を解釈できません".to_string());
+    let expected = expected_from_summary(&summary);
 
     json!({
         "severity": "error",
         "code": "parser.syntax.expected_tokens",
         "domain": "parser",
         "message": message,
-        "expected": diag_json::expected_payload_from_summary(&summary),
+        "expected": expected,
     })
+}
+
+fn classify_parse_driver_token(token: &str) -> ExpectedToken {
+    if token == "<eof>" {
+        ExpectedToken::eof()
+    } else if token.contains("identifier") || token.contains("literal") || token.ends_with("EOF") {
+        ExpectedToken::class(token.to_string())
+    } else if token.chars().all(|ch| ch.is_ascii_lowercase()) && token.chars().all(|ch| ch.is_ascii_alphabetic()) {
+        ExpectedToken::keyword(token.to_string())
+    } else {
+        ExpectedToken::token(token.to_string())
+    }
+}
+
+fn derive_context_note(source: &str, error_byte: usize, label: Option<&str>) -> Option<String> {
+    let context_label = label.unwrap_or("項");
+    let prefix = source.get(..error_byte)?;
+    let trimmed = prefix.trim_end_matches(char::is_whitespace);
+    if let Some(last) = trimmed.chars().rev().next() {
+        if last == '+' {
+            return Some(format!("`+` の後に {context_label} が必要です"));
+        }
+    }
+    label.map(|rule| format!("{rule} が必要です"))
+}
+
+fn expected_from_summary(summary: &ExpectedTokensSummary) -> Value {
+    let alternatives: Vec<Value> = summary
+        .alternatives
+        .iter()
+        .map(|token| {
+            let label = token.raw_label();
+            let kind = token.kind_label();
+            json!({
+                "token": label,
+                "label": label,
+                "hint": kind,
+                "kind": kind,
+            })
+        })
+        .collect();
+    let mut expected = Map::new();
+    expected.insert(
+        "message_key".to_string(),
+        json!(summary.message_key.clone().unwrap_or_else(|| "parse.expected".to_string())),
+    );
+    expected.insert("humanized".to_string(), json!(summary.humanized));
+    expected.insert("locale_args".to_string(), json!(summary.locale_args.clone()));
+    expected.insert("alternatives".to_string(), json!(alternatives));
+    if let Some(context) = summary.context_note.as_ref() {
+        if !context.trim().is_empty() {
+            expected.insert("context_note".to_string(), json!(context));
+        }
+    }
+    Value::Object(expected)
 }
 
 fn resolve_completed_stream_outcome(outcome: StreamOutcome) -> ParseResult<Module> {
