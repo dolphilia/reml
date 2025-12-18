@@ -5,6 +5,11 @@
 - 目標は「サンプル側の自前 `lexeme/symbol/identifier/number/string` を LexPreset で置換し、`RunConfig.extensions["lex"]` とラベル付き期待を統一」すること。`CP-WS3-001`（lexeme/space 共有）を Phase4 シナリオへ昇格させ、`CH2-PARSE-901/902`（autoWhitespace/Profile）と衝突しない形で運用する。
 - 仕様参照: `docs/spec/2-3-lexer.md`（LexPreset/lex_pack）、`docs/spec/2-2-core-combinator.md`（with_space/autoWhitespace と space_id 共有）、`docs/spec/2-5-error.md`（Expectation/label）。
 
+## 今回の実装で手を加える領域（抜粋）
+- **ヘルパ/API**: `lex_pack`（RunConfig 書き戻し込み）、`keyword_ci`、`IdentifierProfile::toml_key`、`ConfigTriviaProfile::toml_relaxed` をサンプル入口で利用できるよう整理し、ラベル付き `identifier/number/string` をプリセット経由で固定。
+- **サンプル**: `basic_interpreter_combinator.reml` / `sql_parser.reml` / `toml_parser.reml` / `yaml_parser.reml` の自前 `lexeme/symbol/...` を LexPreset に置換し、自由文エラーを 2-5 準拠の期待集合へ統一。新規 `core-parse-lexpack-basic.reml` を追加。
+- **回帰/ツール**: Phase4 シナリオマトリクスに `CP-WS3-001` を追加し、`tooling/examples/run_phase4_suite.py` 経由でゴールデンを固定。`RunConfig.extensions["lex"]` キー（`space_id/profile/identifier_profile/layout_profile/safety`）を回帰で再構成できるよう記録。
+
 ## スコープ
 - 対象: Rust フロントエンドで実行するサンプル（`examples/spec_core/chapter2/parser_core/`、`examples/language-impl-comparison/reml/`）、およびそれに紐づく `expected/` ゴールデンと Phase4 シナリオマトリクス登録。
 - RunConfig: `extensions["lex"]` への `space_id/profile/identifier_profile/layout_profile/safety` 書き戻しを必須化し、`keyword_ci`/`reserved`/`identifier(label付き)` をサンプルで利用する。診断キーは既存 `parser.syntax.expected_tokens` を維持（新設しない）。
