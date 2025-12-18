@@ -1,9 +1,8 @@
 # spec_core スイート実行レポート
 
-- 実行時刻: 2025-12-18 02:46:34Z
-- 対象シナリオ: 67 件 / 成功 67 件 / 失敗 0 件
+- 実行時刻: 2025-12-18 07:25:08Z
+- 対象シナリオ: 68 件 / 成功 68 件 / 失敗 0 件
 - 入力ソース: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
-- CP-WS2-001: `--parse-driver` の human/LSP 出力で `expected.humanized` と `context_note` が B-6/B-7 どおり（Rule("expression") を保持、no-label は token/class のみ）になることを 2025-12-18 に再確認。
 
 | Scenario | File | 期待 Diagnostics | 実際 Diagnostics | Exit | 判定 | 備考 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -74,3 +73,4 @@
 | `CH1-FN-103` | `examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml` | `language.inference.return_conflict` | `language.inference.return_conflict` | 1 | ✅ pass | 戻り値注釈無しで分岐戻り型が衝突する推論エラー。 |
 | `CH1-LAMBDA-101` | `examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml` | — | — | 0 | ✅ pass | 外側変数を捕捉するラムダを示す。 |
 | `CH1-LAMBDA-102` | `examples/spec_core/chapter1/lambda/bnf-lambda-arg-pattern.reml` | — | — | 0 | ✅ pass | パターン引数を用いたラムダの短縮形。 |
+| `CP-WS3-001` | `examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml` | `parser.syntax.expected_tokens` | `parser.syntax.expected_tokens` | 1 | ✅ pass | LexPack 入口で space/comment を共有し identifier/number/string ラベルを保持する最小サンプル。 |

@@ -14,12 +14,17 @@
 - 空白・コメント・レイアウト（将来）を `RunConfig` のプロファイルで切替できる
 - 期待/ラベルが字句レイヤでも破綻しない（"expected identifier" 等）
 
+## この計画に含まれる実装変更（影響範囲）
+- **Reml サンプル/ゴールデン**: `examples/`（`.reml`）と `expected/`（`.stdout` / `.diagnostic.json`）を更新し、label/Expectation の語彙を回帰で固定する。
+- **回帰/ツール**: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` と `tooling/examples/run_phase4_suite.py` を更新し、Phase4 スイートで `diagnostic_keys` の一致まで検証する。
+- **Rust フロントエンド（CLI）**: `compiler/rust/frontend/src/bin/reml_frontend.rs` の `--parse-driver` 経路を調整し、サンプルの失敗入力に対して `parser.syntax.expected_tokens`（例: `identifier|number|string`）が安定して出る状態を作る。
+
 ## 進捗状況
 - Step0: 完了（プリセット範囲と RunConfig 連携の方針を確定）
 - Step1: 完了（自前ヘルパ棚卸し、置換方針確定、不足 API の採否決定）
   - 完了済み: 主要サンプル4件の対応表、RunConfig 共有キー未導入の確認、期待ラベル不足の特定、case-insensitive keyword 糖衣/TOML IdentifierProfile/Layout opt-in の扱いを決定
 - Step2: 完了（利用者導線とプリセットの具体化を決定）
-- Step3: 着手（Phase4 実装計画を `docs/plans/bootstrap-roadmap/4-1-core-parse-lex-helpers-impl-plan.md` として起票。サンプル置換と回帰登録は未実施）
+- Step3: 進行中（Phase4 実装計画を `docs/plans/bootstrap-roadmap/4-1-core-parse-lex-helpers-impl-plan.md` として起票し、`CP-WS3-001` の新規サンプル + ゴールデン追加 + Phase4 スイート緑化まで完了。残タスクは既存サンプル4件の置換と追加シナリオの拡張）
 
 ## 提供するヘルパ
 - `lexeme(p)`: `p` 成功後に空白/コメント（trivia）を処理
