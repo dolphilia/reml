@@ -23,6 +23,7 @@ usage: tooling/examples/run_examples.sh --suite <name> [--with-audit] [--update-
 利用可能なスイート:
   spec_core       - docs/spec/1-x 由来の BNF サンプル（phase4-scenario-matrix 参照）
   practical       - docs/spec/3-x 由来の実務サンプル（phase4-scenario-matrix 参照）
+  language_impl_comparison - examples/language-impl-comparison/ の比較サンプル（phase4-scenario-matrix 参照）
   core_io          - examples/core_io/ 以下の Reader/Writer サンプル
   core_path        - examples/core_path/ 以下のセキュリティサンプル
   core_diagnostics - examples/core_diagnostics/ 以下の監査パイプラインサンプル
@@ -61,7 +62,7 @@ if [[ -z "${SUITE}" ]]; then
   exit 1
 fi
 
-if [[ "${SUITE}" == "spec_core" || "${SUITE}" == "practical" ]]; then
+if [[ "${SUITE}" == "spec_core" || "${SUITE}" == "practical" || "${SUITE}" == "language_impl_comparison" ]]; then
   if [[ "${SUITE}" == "spec_core" ]]; then
     missing=()
     for dir in "${SPEC_CORE_REQUIRED_SOURCE_DIRS[@]}"; do

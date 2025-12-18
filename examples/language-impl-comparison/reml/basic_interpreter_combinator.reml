@@ -8,6 +8,10 @@ use ::Core.Parse
 use ::Core.Parse.Lex
 
 fn make_lex_pack() {
+  // LexPreset（scannerless lex helpers）を “サンプル側の共通入口” として束ねる。
+  // 目的:
+  // - `lexeme/symbol/keyword` の自前ロジックを増やさず `Core.Parse.Lex` の標準 API に寄せる
+  // - 期待語彙は `label("identifier"|"number"|"string")` を優先し、自由文 `Parse.fail` を避ける
   let space: Parser<()> =
     (Lex.whitespace())
       |> Lex.skipMany
@@ -15,9 +19,17 @@ fn make_lex_pack() {
   let lexeme = (|p| Lex.lexeme(space, p))
   let symbol = (|text| Lex.symbol(space, text))
   let keyword = (|name| Lex.keyword(space, name))
-  let identifier = lexeme(Lex.identifier())
-  let number_repr = lexeme(Parse.attempt(Lex.float()).or(Lex.integer()))
-  let string_literal = lexeme(Lex.stringLit())
+  let identifier =
+    Parse.label("identifier", lexeme(Lex.identifier()))
+
+  let line_number =
+    Parse.label("number", lexeme(Lex.int(10)))
+
+  let number_token =
+    Parse.label("number", lexeme(Parse.attempt(Lex.float()).or(Lex.integer())))
+
+  let string_literal =
+    Parse.label("string", lexeme(Lex.stringLit()))
 
   {
     space,
@@ -25,7 +37,8 @@ fn make_lex_pack() {
     symbol,
     keyword,
     identifier,
-    number_repr,
+    line_number,
+    number_token,
     string_literal,
   }
 }
@@ -90,11 +103,16 @@ type RuntimeError =
 
 fn line_number() -> Parser<i64> {
   rule("basic.line_number",
-    lex.lexeme(Lex.int(10))
+    lex.line_number
       .andThen(|digits|
         match Lex.parseI64(digits, 10) with
         | Ok(value) -> Parse.ok(value)
-        | Err(_) -> Parse.fail(format("行番号として解釈できません: {digits}"))
+        | Err(_) ->
+          Parse.fail_with_expectations(
+            "行番号として解釈できません",
+            expected = ["number"],
+            found = digits,
+          )
       )
   )
 }
@@ -105,11 +123,16 @@ fn identifier() -> Parser<Text> {
 
 fn number() -> Parser<f64> {
   rule("basic.number",
-    lex.number_repr
+    lex.number_token
       .andThen(|repr|
         match Lex.parseF64(repr) with
         | Ok(value) -> Parse.ok(value)
-        | Err(_) -> Parse.fail(format("数値として解釈できません: {repr}"))
+        | Err(_) ->
+          Parse.fail_with_expectations(
+            "数値として解釈できません",
+            expected = ["number"],
+            found = repr,
+          )
       )
   )
 }
@@ -208,77 +231,13 @@ fn array_access() -> Parser<Expr> {
     )
 }
 
-// Phase 8: 優先度ビルダー版の式パーサ（既定は chainl1 系を継続）
-fn expr_with_builder() -> Parser<Expr> {
-  let atom: Parser<Expr> =
-    rule("expr.atom",
-      Parse.choice([
-        number().map(|n| Number(n)),
-        string_literal().map(|s| String(s)),
-        Parse.attempt(array_access()),
-        identifier().map(|name| Variable(name)),
-        lex.symbol("(")
-          .skipR(rec expr_with_builder)
-          .skipL(lex.symbol(")"))
-      ])
-    )
-
-  let levels: [Parse.ExprOpLevel<Expr>] = [
-    { prefix: [
-        lex.symbol("-").map(|_| (|x| UnaryOp({ op: Neg, operand: x }))),
-        lex.keyword("NOT").map(|_| (|x| UnaryOp({ op: Not, operand: x }))),
-      ],
-      postfix: [],
-      infixl: [],
-      infixr: [],
-      infixn: []
-    },
-    { prefix: [],
-      postfix: [],
-      infixl: [
-        lex.symbol("*").map(|_| (|l, r| BinOp({ op: Mul, left: l, right: r }))),
-        lex.symbol("/").map(|_| (|l, r| BinOp({ op: Div, left: l, right: r }))),
-      ],
-      infixr: [],
-      infixn: []
-    },
-    { prefix: [],
-      postfix: [],
-      infixl: [
-        lex.symbol("+").map(|_| (|l, r| BinOp({ op: Add, left: l, right: r }))),
-        lex.symbol("-").map(|_| (|l, r| BinOp({ op: Sub, left: l, right: r }))),
-      ],
-      infixr: [],
-      infixn: []
-    },
-    { prefix: [],
-      postfix: [],
-      infixl: [
-        lex.keyword("AND").map(|_| (|l, r| BinOp({ op: And, left: l, right: r }))),
-      ],
-      infixr: [],
-      infixn: []
-    },
-    { prefix: [],
-      postfix: [],
-      infixl: [
-        lex.keyword("OR").map(|_| (|l, r| BinOp({ op: Or, left: l, right: r }))),
-      ],
-      infixr: [],
-      infixn: []
-    },
-  ]
-
-  Parse.expr_builder(
-    atom,
-    levels,
-    {
-      space: Some(lex.space),
-      operand_label: Some("expression"),
-      commit_style: Parse.ExprCommit::Preserve,
-    },
-  )
-}
+// Phase 8: 優先度ビルダー版の式パーサ
+//
+// 現行 Rust フロントエンドでは、サンプルで使っていた `rec expr`（Parser 値の遅延参照）構文が
+// 構文解析で落ちるケースがあり、CH2-PARSE-501 の「成功サンプル」回帰を優先して一旦撤去する。
+//
+// TODO: `Parse.expr_builder` を使った再導入は `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan-v2.md`
+//       の Phase8 と、LexPack/RunConfig 共有（WS3）と整合する形で行う。
 
 // 文パーサー
 fn statement() -> Parser<Statement> {

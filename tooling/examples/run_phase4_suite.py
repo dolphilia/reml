@@ -26,6 +26,7 @@ from typing import Iterable, List, Sequence
 SUITE_PREFIXES = {
     "spec_core": ("examples/spec_core/",),
     "practical": ("examples/practical/",),
+    "language_impl_comparison": ("examples/language-impl-comparison/",),
 }
 
 REQUIRED_SUBDIRS = {
@@ -35,11 +36,13 @@ REQUIRED_SUBDIRS = {
         "examples/spec_core/chapter1/lambda/",
     ),
     "practical": (),
+    "language_impl_comparison": (),
 }
 
 SUITE_REPORT = {
     "spec_core": "spec-core-dashboard.md",
     "practical": "practical-suite-index.md",
+    "language_impl_comparison": "language-impl-comparison-dashboard.md",
 }
 
 
