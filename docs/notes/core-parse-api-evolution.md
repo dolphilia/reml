@@ -26,6 +26,65 @@
 - エントリ関数のシグネチャを `lex_pack(profile, identifier_profile, layout_profile, safety)`（既定: `strict_json` + `IdentifierProfile::default` + layout 無効 + `LexSafetyProfile::strict`）とし、TOML 向けに `lex_pack_toml()` を `ConfigTriviaProfile::toml_relaxed` + `IdentifierProfile::toml_key` のショートカットで提供する設計を記録。
 - `keyword_ci` は境界判定を `identifier_profile.is_identifier_continue` に合わせ、`Expectation::Keyword` を返すことをチェックリスト化。`RunConfig.extensions["lex"]` への書き戻し順（`space_id` 採番 → profile 群 → ヘルパ組立）も固定し、`with_space`/`autoWhitespace` と二重スキップしない運用をサンプル共通ヘルパで強制する。
 
+## 2025-12-18: WS5 Step1 Input/Zero-copy 実装監査メモ（Rust runtime）
+
+WS5 Step0 で定義した不変条件チェックリストを用いて、現行 Rust 実装の `Input` と周辺（位置算出・Span ハイライト）を点検した。
+
+- 参照チェックリスト（Phase4 運用用）: `docs/plans/bootstrap-roadmap/checklists/core-parse-input-invariants.md`
+- 監査対象（Rust）:
+  - `compiler/rust/runtime/src/parse/combinator.rs`（`Input`, `ParseState`, `run`）
+  - `compiler/rust/runtime/src/text/span_highlight.rs`（byte offset→行/列ハイライト）
+- 監査対象（OCaml）:
+  - `compiler/ocaml/docs/` 配下には **入力モデル（`Input` 相当）**の設計メモは見当たらない（現状は Menhir + `span={start,end}` で byte offset 管理の記述が中心）
+
+### サマリ（不変条件の満たし具合）
+
+| 観点 | 判定 | 補足 |
+| --- | --- | --- |
+| `rest` がゼロコピー（ビュー派生が O(1)） | **一部 OK** | `Input` 自体は `Arc<str> + byte_offset` でビュー化できるが、`Input::new` が **入力全体を複製**している |
+| `mark/rewind` が O(1) | **OK** | `attempt`/`or` が `Input` の `clone` をスナップショットとして利用（`Arc` 共有） |
+| 行/列/Span が Unicode（列=グラフェム）に整合 | **要注意** | 列は `iter_graphemes().count()` で算出しており意味論は近いが、**キャッシュ無し**で都度走査 |
+| UTF-8 境界の安全性 | **要注意** | `remaining()` が `&str` スライスのため、`byte_offset` が境界でないと panic しうる（現状は呼び出し側が境界を守る前提） |
+| Packrat のキー/保持がメモリ肥大を招かない | **概ね OK** | `MemoKey=(ParserId, byte_offset)` で位置 ID は妥当。`Reply` が `Input` を保持するが部分文字列確保はない |
+
+### 詳細所見（根拠）
+
+#### 1) `Input::new` が入力を複製している（ゼロコピー前提からの逸脱）
+- `Input::new(source: impl AsRef<str>)` は `Arc::<str>::from(source.as_ref())` を呼ぶため、`&str` からの生成で **全体コピーが発生**する。
+  - 影響: 10MB 級入力で「入力サイズの 2 倍以内」という方針（`docs/spec/0-1-project-purpose.md`）に対し、入力バッファを二重保持しやすい。
+  - 実装箇所:
+    - `compiler/rust/runtime/src/parse/combinator.rs` の `Input::new` / `ParseState::new` / `run`
+
+**TODO（WS5 Step1 の是正案）**
+- `Input` の生成を「既存バッファ参照/COW」を前提にできる形へ変更する（例: `Input::from_arc(Arc<str>)`、または仕様どおり `Bytes` を保持する `Input` へ寄せる）。
+- 少なくとも現行の API でも、`run` が `Arc<str>` を受け取れる経路を用意し、二重確保を避けられる導線を作る（Phase4 の大入力回帰に備える）。
+
+#### 2) `advance` が位置更新のたびに走査し、グラフェム境界キャッシュがない
+- `Input::advance(bytes)` は消費範囲 `slice` を `char_indices()` で走査して改行を数え、さらに最終行の `tail` を `Str::from(tail).iter_graphemes().count()` で数えて列を更新する。
+  - 問題: 「列=グラフェム」という意味論は満たしやすいが、`cp_index/g_index` を共有する設計（`docs/spec/2-1-parser-type.md`）になっておらず、**都度セグメンテーション**が走る。
+  - 追加の観点: 多くの字句パーサは「走査して boundary を見つけた後に `advance(boundary)`」をするため、同じ区間を二重に走査しやすい（例: `decode_lex_space` が `remaining().char_indices()` で空白を数えた後に `advance(boundary)`）。
+
+**TODO（WS5 Step1 の是正案）**
+- 仕様の `Input` と同様に `g_index/cp_index`（必要時構築・共有）を導入し、列算出の都度走査を避ける。
+- `advance` の位置更新を “必要時だけ” に遅延させる（byte offset は即時、行/列は診断や `position()` 要求時にまとめて計算する等）か、行頭インデックス（line start table）を共有する方針を検討する。
+
+#### 3) UTF-8 境界の前提が暗黙で、誤用時に panic しうる
+- `Input::remaining()` は `&self.source[self.byte_offset..]` を返すため、`byte_offset` が UTF-8 境界でない場合に panic しうる。
+  - 現状の利用箇所では、`char_indices()` 由来の boundary や ASCII トークン長（`"\n"`, `"\r\n"`, `kw.len()`）で `advance` しているため、実運用では境界に乗りやすい。
+  - ただし、`advance` が「bytes 指定」を許すため、将来の変更で誤用が入りやすい。
+
+**TODO（WS5 Step1 の是正案）**
+- `advance` の境界条件を API で表現する（例: `advance_bytes_unchecked` と `advance_str(&str)` を分ける、あるいは debug で境界検証を入れる）。
+- 仕様どおり `bytes` を保持する `Input` へ寄せる場合は、`remaining()` の返却型を `&[u8]`（または `Bytes`）に寄せ、`Str` 化を境界で明示する。
+
+#### 4) Span ハイライトも都度走査（大入力での診断負荷）
+- `span_highlight(source, start, end)` は、`line_start_index` が `source.char_indices()` を **先頭から**走査し、さらに `prefix_slice`/`highlight_slice` を `iter_graphemes().count()` で計算する。
+  - 影響: 大入力で多数の診断を出すケース（WS4 の `collect`）で、ハイライト生成が O(n*m) に近づく可能性がある。
+  - 実装箇所: `compiler/rust/runtime/src/text/span_highlight.rs`
+
+**TODO（WS5 Step1 の是正案）**
+- `Input` 側で共有する「行頭インデックス」「グラフェム境界キャッシュ」を診断整形にも再利用できる形へ揃える（`docs/spec/3-3-core-text-unicode.md` の方針に合わせる）。
+
 ## 2025-12-17: `commit` のレイヤ決定（Cut/Commit の表面整理）
 
 ### 結論

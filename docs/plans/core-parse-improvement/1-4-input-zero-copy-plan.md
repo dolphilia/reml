@@ -82,6 +82,7 @@
   - Packrat のキーが「入力ビュー」を保持して過剰にメモリを抱え込まないか
 - 記録方法
   - 結果を `docs/notes/core-parse-api-evolution.md` に “監査メモ” として短く追記し、どの不変条件が満たされている/いないかを明記する
+  - 監査メモ（初回）: `docs/notes/core-parse-api-evolution.md` の `2025-12-18: WS5 Step1 Input/Zero-copy 実装監査メモ（Rust runtime）`
 
 ### Step 2: パフォーマンス指標の定義（回帰可能な形へ落とす）
 実測の数値は環境差があるため、初期は「退行検出できる形（オーダー異常）」を優先する。
