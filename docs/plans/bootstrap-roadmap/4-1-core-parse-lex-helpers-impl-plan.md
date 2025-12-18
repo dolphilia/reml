@@ -25,6 +25,10 @@
 1. **LexPack 共通入口と RunConfig 共有の整備**
    - `lex_pack` の record に `space/lexeme/symbol/keyword/keyword_ci/identifier/number/string/profile/identifier_profile/layout_profile/safety/space_id` を揃え、`RunConfig.extensions["lex"]` へ書き戻すヘルパを作成（サンプル側の共通関数）。
    - `keyword_ci` と `reserved` を `identifier_profile` 境界と共有し、`Expectation::Keyword` / `label("identifier")` を保持することをサンプル側で確認。
+   - 具体タスク（Step1 完了条件）:
+     - `LexPack` record の項目名と型を明文化し、`lex_pack(profile, identifier_profile, layout_profile, safety)` / `lex_pack_toml()` のシグネチャと返却フィールドを決める（RunConfig への書き戻しキー: `space_id`, `profile`, `identifier_profile`, `layout_profile`, `safety`）。
+     - `keyword_ci(space, kw)` の境界判定を `identifier_profile` 由来の `is_identifier_continue` に合わせ、`Expectation::Keyword(kw)` を返すことを確認するチェックリストを作成。
+     - RunConfig 書き戻しの処理順（`space_id` 採番 → `profile`/`identifier_profile`/`layout_profile`/`safety` 設定 → `lexeme/symbol/keyword` 提供）を決め、サンプル共通ヘルパに適用する段取りを記載。
 2. **サンプル置換（自前 lexeme/symbol の削減）**
    - `basic_interpreter_combinator.reml`: `lexeme/symbol/keyword` 再定義を LexPreset へ置換し、`identifier/number/string` をラベル付きプリセットに揃える。`Parse.fail` の自由文エラーを 2-5 準拠の構造化診断へ移行。
    - `sql_parser.reml`: `keyword_ci` で境界判定を置換し、`reserved(profile, set)` に集約。`RunConfig.extensions["lex"]`（space/profile/identifier_profile/safety）を反映。
@@ -39,6 +43,7 @@
 
 ## 進捗状況
 - 2025-12-18: 本計画書を起票し、WS3 Step3 の Phase4 側タスクを整理。実装・サンプル更新は未着手。
+- 2025-12-18: Step1 の具体タスク（LexPack record 項目/シグネチャ、RunConfig 書き戻し順、`keyword_ci` 境界チェックリスト）を明文化。実装・ヘルパ作成はこれから。
 
 ## 依存関係
 - 計画: `docs/plans/core-parse-improvement/1-2-lex-helpers-plan.md`、`docs/plans/core-parse-improvement/2-0-integration-with-regression.md`。
