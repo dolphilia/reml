@@ -460,10 +460,8 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             None => break,
         };
         let range = lexer.span();
-        let span = Span::new(
-            (offset + range.start) as u32,
-            (offset + range.end) as u32,
-        );
+        let abs_range = (offset + range.start)..(offset + range.end);
+        let span = Span::new(abs_range.start as u32, abs_range.end as u32);
         let consumed = range.end.max(1);
 
         match result {
@@ -640,7 +638,7 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             Ok(RawToken::StringLiteral) => tokens.push(Token::with_literal(
                 TokenKind::StringLiteral,
                 span,
-                collect_string_lexeme(text, range),
+                collect_string_lexeme(text, abs_range.clone()),
                 LiteralMetadata::String {
                     kind: StringKind::Normal,
                 },
@@ -648,7 +646,7 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             Ok(RawToken::RawStringLiteral) => tokens.push(Token::with_literal(
                 TokenKind::StringLiteral,
                 span,
-                collect_string_lexeme(text, range),
+                collect_string_lexeme(text, abs_range.clone()),
                 LiteralMetadata::String {
                     kind: StringKind::Raw,
                 },
@@ -656,7 +654,7 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             Ok(RawToken::MultilineStringLiteral) => tokens.push(Token::with_literal(
                 TokenKind::StringLiteral,
                 span,
-                collect_string_lexeme(text, range),
+                collect_string_lexeme(text, abs_range.clone()),
                 LiteralMetadata::String {
                     kind: StringKind::Multiline,
                 },
@@ -664,7 +662,7 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             Ok(RawToken::CharLiteral) => tokens.push(Token::with_literal(
                 TokenKind::CharLiteral,
                 span,
-                collect_string_lexeme(text, range),
+                collect_string_lexeme(text, abs_range.clone()),
                 LiteralMetadata::Char,
             )),
             Ok(RawToken::PipeForward) => tokens.push(Token::new(TokenKind::PipeForward, span)),
