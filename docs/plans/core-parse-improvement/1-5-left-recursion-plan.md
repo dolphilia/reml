@@ -67,6 +67,26 @@ Reml では `chainl1` などの典型回避策に加え、OpBuilder/優先度ビ
   - 初期は診断の **存在** と **位置** を固定し、詳細メッセージは段階導入する
   - 性能面は絶対値ではなく profile 指標（backtracks/memo_entries など）の異常増加を監視する（WS5 と整合）
 
+#### Step 3 補足メモ（ドラフト）
+
+- `CP-WS6-001`
+  - 目的: `RunConfig.left_recursion="off"` 時に左再帰（自己呼出）が検出されることを回帰で固定
+  - 想定資産:
+    - サンプル（追加予定）: `examples/spec_core/chapter2/parser_core/core-parse-left-recursion-direct.reml`
+    - 期待出力（追加予定）: `expected/spec_core/chapter2/parser_core/core-parse-left-recursion-direct.expected.md`
+  - 期待:
+    - 診断キー `E4001`（2-5 §D-6）を含む
+    - 位置は左再帰定義の開始位置を指す
+
+- `CP-WS6-002`
+  - 目的: 左再帰ガードが有効でも性能退行が見えるケースを profile 指標で検知
+  - 想定資産:
+    - サンプル（追加予定）: `examples/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.reml`
+    - 期待出力（追加予定）: `expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.expected.md`
+  - 期待:
+    - `ParseResult.profile` に `left_recursion_guard_hits` と `memo_entries` が出力される
+    - しきい値は Phase4 の計測実績で調整し、初期は「0 ではない」ことのみ固定
+
 ### Step 4: 既存計画（bootstrap-roadmap）との住み分けを明文化する
 - Phase8（優先度ビルダー）・Phase10（プロファイル）の成果と衝突しないように、本 WS は
   - “書き方ガイド”

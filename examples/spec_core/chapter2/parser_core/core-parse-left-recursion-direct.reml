@@ -1,0 +1,43 @@
+module Spec.Core.Chapter2.Parser.LeftRecursionDirect
+
+use Core.Parse as Parse
+use Core.Parse.Lex
+use Core.Prelude
+
+// 目的: 左再帰を直接書いた場合の検出（E4001）を固定するためのサンプル。
+// 注意: 実行時は RunConfig.left_recursion="off" を指定して検出を有効化する。
+
+let sc: Parse.Parser<()> =
+  (Lex.spaceOrTabsOrNewlines)
+  |> Lex.skipMany
+
+fn sym(text: Str) -> Parse.Parser<()> {
+  Lex.symbol(sc, text)
+}
+
+fn integer() -> Parse.Parser<Int> {
+  Lex.lexeme(sc, Lex.int(10))
+    .andThen(|digits|
+      match Lex.parseI64(digits, 10) with
+      | Ok(v) -> Parse.ok(v)
+      | Err(_) -> Parse.fail("整数として解釈できません")
+    )
+}
+
+let expr_left_recursion_direct: Parse.Parser<Int> =
+  Parse.rule(
+    "expr_left_recursion_direct",
+    Parse.choice([
+      rec(expr_left_recursion_direct)
+        .then(sym("+"))
+        .then(integer())
+        .map(|((a, _), b)| a + b),
+      integer(),
+    ]),
+  )
+
+fn main() -> Str {
+  match Parse.run(expr_left_recursion_direct, "1 + 2 + 3") with
+  | Ok(value) -> format("result=%d", [value])
+  | Err(diag) -> diag.message
+}
