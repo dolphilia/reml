@@ -162,7 +162,11 @@ let shared =
       map.insert("profile", Any::from(ConfigTriviaProfile::strict_json))
     })
     .with_extension("recover", fn(map) {
+      map.insert("mode", Any::from("collect"));
       map.insert("sync_tokens", Any::from(Set::from([";", "\n"])));
+      map.insert("max_diagnostics", Any::from(64));
+      map.insert("max_resync_bytes", Any::from(4096));
+      map.insert("max_recoveries", Any::from(128));
       map.insert("notes", Any::from(true))
     })
     .with_extension("stream", fn(map) {
@@ -202,7 +206,7 @@ Core.LSP.Parser.attach(project_id, parser, shared);
 | --- | --- | --- | --- |
 | `"lex"` | `space_id: ParserId`, `profile: ConfigTriviaProfile` | `Core.Parse.Lex` による空白・コメント処理を共有し、手書きのスキップ処理を排除する。 | 2-3 §L-4, 3-7 §1.5 |
 | `"config"` | `compat: ConfigCompatibility`, `trivia: ConfigTriviaProfile` | 設定ファイル互換モード（コメント許容・トレーリングカンマ等）と診断メタを一元化。 | 3-7 §1.5, 3-6 §2.4 |
-| `"recover"` | `sync_tokens: Set<TokenClass>`, `notes: Bool` | `recover` 時の同期トークン集合と監査ログ出力を共有し、CLI/LSP が同じ復旧戦略を再現できるようにする。 | 2-5 §B-11, 3-6 §2.2 |
+| `"recover"` | `mode: "off"|"collect"`, `sync_tokens: Set<TokenClass>`, `max_diagnostics: Int`, `max_resync_bytes: Int`, `max_recoveries: Int`, `notes: Bool` | `recover` の有効/無効（Build/CI と IDE/LSP の切替）、同期トークン集合、上限制御を共有し、CLI/LSP/ストリーミングが同じ復旧戦略を再現できるようにする。 | 2-5 §E, 2-6 §B-2-2, 3-6 §2.2 |
 | `"stream"` | `checkpoint: Option<Span>`, `resume_hint: DemandHint` | ストリーミング実行（`run_stream`）で保持した継続情報をバッチランナーへ橋渡しする。 | 2-6 §B-2-3, 2-7 |
 | `"lsp"` | `syntax_highlight: Bool`, `semantic_tokens: Bool` | LSP 拡張でのトークン生成・トレース同期。 | guides/lsp-integration.md |
 

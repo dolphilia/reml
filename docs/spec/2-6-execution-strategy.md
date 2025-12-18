@@ -68,7 +68,9 @@ type RunConfigExtensions = Map<Str, Any>
 
 * **Packrat と左再帰**: `packrat=true` の場合のみ左再帰の実装（C 節）が有効化される。`left_recursion="auto"` は `rule` で直接左再帰が検出されたときだけ種成長ループを開始し、演算子宣言（2.4 参照）には通常必要ない。CI では 10MB クラスの入力で `packrat=false`/`left_recursion="off"` を同時実行し、性能退行と左再帰サポートの両方を監視することを推奨する（0-1 §1.1）。
 * **コメント・空白**: `extensions["lex"].profile = ConfigTriviaProfile` を設定し、`with_space`/`lexeme` を通じて空白・コメント処理を自動化する。`profile` が未設定の場合は `ConfigTriviaProfile::strict_json` を既定とし、サンプルのように手動でコメントスキップを書くことを禁則とする。互換モードは `extensions["config"].compat` に集約し、`RunConfig` を共有する環境（CLI/LSP/テスト）が同じ挙動を保証する。
-* **復旧戦略**: `recover` を利用する場合、`extensions["recover"].sync_tokens` に同期トークン集合を記録し、ストリーミング実行でも同じ集合を利用できるようにする。`merge_warnings=true` のままでも監査ログ（3-6 §2.2）が個別イベントを保持するため、可観測性は損なわれない。
+* **復旧戦略**: `recover` による同期・継続は `extensions["recover"].mode="collect"` のときだけ有効化する（IDE/LSP 向け）。Build/CI では `"off"`（既定）により fail-fast を維持できる。
+  * `extensions["recover"].sync_tokens` に同期トークン集合を記録し、ストリーミング実行でも同じ集合を利用できるようにする。
+  * `merge_warnings=true` のままでも監査ログ（3-6 §2.2）が個別イベントを保持するため、可観測性は損なわれない。
 
 #### B-2-3. ストリーミング連携
 

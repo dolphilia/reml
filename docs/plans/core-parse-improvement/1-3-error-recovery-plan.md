@@ -30,9 +30,38 @@ Reml の回帰計画（Phase4）でも、診断品質を継続監視するには
   - `docs/spec/2-5-error.md`（`ParseError.secondaries`、FixIt、回復時の診断生成）
   - `docs/spec/2-2-core-combinator.md`（`recover(p, until, with)` の定義）
   - `docs/spec/3-6-core-diagnostics-audit.md`（診断キー/Severity 運用）
-- 決めること
-  - **IDE/LSP 向け**：回復を積極利用して複数エラーを収集
-  - **ビルド/CI 向け**：`RunConfig` で「回復無効（fail-fast）」を選べる前提を維持
+- Step0 の成果物（出口条件）
+  - **運用プロファイル**（IDE/LSP と Build/CI）の最小方針が文章化されている
+  - **RunConfig での切替契約**（どのキーを見て、どう振る舞いを切り替えるか）が明確になっている
+  - **性能・安全弁**（無限回復/過剰スキップの抑止）を “仕様ではなく運用契約” として最低限定義している
+  - Step1（cut との整合）へ持ち越す未決事項が列挙されている
+
+- 決めること（暫定決定）
+  - **回復は opt-in**：`recover`（および糖衣）を使った箇所だけ回復し、グローバルな暗黙回復は導入しない。
+    - 目的：誤った AST が予期せず広がるリスクを抑え、DSL 作者が “回復境界” を明示できるようにする。
+  - **IDE/LSP 向け（collect）**：回復を積極利用して複数エラーを収集する。
+    - `RunConfig.extensions["recover"].mode = "collect"` を推奨。
+    - `extensions["recover"].sync_tokens`（同期点）を明示し、復旧の再現性を保つ（CLI/LSP/ストリーミングで同一）。
+  - **ビルド/CI 向け（fail-fast）**：回復は無効化でき、最初のエラーで停止できる前提を維持する。
+    - `RunConfig.extensions["recover"].mode = "off"`（既定）を推奨。
+    - “仕様上は recover を書いてあるが、実行時は回復しない” を許容し、AST の穴埋め（`with`）を発生させない。
+  - **共通の最低保証**：回復した場合は必ず診断を残し、回復の事実が追跡できる。
+    - 例：`Diagnostic.extensions["recover"]` に `{ recovered: true, sync: "...", inserted: "...", ... }` を保持（キー名は Step2 で確定）。
+
+- 責務境界（どこまでを Core.Parse が担うか）
+  - Core.Parse は「同期して継続できる最小プリミティブ（`recover`）」と「RunConfig による運用切替」を提供する。
+  - “どの同期点が妥当か” は DSL/文法ごとの判断であり、`recover_until(";")` のように **呼び出し側が指定**する。
+  - `merge_warnings` は “表示ノイズ抑制” のみを担い、監査ログ（3-6）や内部メタの損失は許さない。
+
+- 性能・安全弁（運用契約）
+  - 回復は「無制限に読み飛ばす」ことができるため、IDE/LSP プロファイルでは上限を必須にする。
+    - 例：`extensions["recover"].max_diagnostics = 64`、`max_resync_bytes = 4096`、`max_recoveries = 128`（値はガイドで推奨し、実装は best-effort）。
+  - 上限超過時は “それ以上回復しない” ことを優先し、パーサを停止（fail-fast へフォールバック）する。
+
+- 未決事項（Step1 へ持ち越し）
+  - committed（`cut`）を越えた失敗でも回復を許すか（優先度）
+  - 回復診断の集約ルール（`merge_warnings` と `ParseError.secondaries` の関係）
+  - `recover_with_insert` の FixIt 生成と、AST へ挿入する `ErrorNode` の正規形
 
 ### Step 1: 仕様上の回復契約を “固定” する（cut との整合が中心）
 - `recover` の契約について、少なくとも次を明文化できる状態にする

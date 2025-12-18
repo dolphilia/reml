@@ -460,7 +460,10 @@ fn recover<T>(p: Parser<T>, until: Parser<()>, with: T) -> Parser<T>
 
 * `p` が失敗したら、**診断を残しつつ** `until` の位置（例：`";"` または行末）まで**読み捨て**、`with` を返す。
 * 返す `with` は AST に **`ErrorNode{span, expected}`** として挿入可能（IDE で赤波線）。
+* `RunConfig.extensions["recover"].mode` が `"collect"` のときのみ同期・継続を行う（IDE/LSP 向け）。
+  * `"off"`（既定）のとき、`recover(p, until, with)` は **`p` と同様に失敗を返す**（読み捨て・挿入は行わない）。Build/CI で誤った AST を先へ流さないための安全弁である。
 * `RunConfig.merge_warnings` が true の場合、連続する回復を**1 つに集約**（ノイズ低減）。
+* `extensions["recover"].max_diagnostics` / `max_resync_bytes` / `max_recoveries` が設定されている場合、実装は best-effort で上限を尊重し、超過時は回復を停止して fail-fast にフォールバックする（性能 0-1 §1.1 の安全弁）。
 
 ---
 

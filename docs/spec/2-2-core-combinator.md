@@ -51,7 +51,8 @@ fn cut<T>(p: Parser<T>) -> Parser<T>                 // p 内の失敗を commit
 fn cut_here() -> Parser<()>                           // ゼロ幅コミット
 fn attempt<T>(p: Parser<T>) -> Parser<T>              // 失敗時に消費を巻き戻す（空失敗化）
 fn recover<T>(p: Parser<T>, until: Parser<()>, with: T) -> Parser<T>
-// p 失敗時、入力を until まで読み捨て with で継続（診断を残す）
+// p 失敗時、extensions["recover"].mode="collect" の場合のみ入力を until まで読み捨て with で継続（診断を残す）。
+// mode="off"（既定）の場合は p と同様に失敗を返す（Build/CI の fail-fast 維持）。
 fn trace<T>(p: Parser<T>) -> Parser<T>                // 追跡ON時のみスパンを収集
 ```
 

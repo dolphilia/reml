@@ -46,6 +46,7 @@ Core.Parse の強化作業を「追跡可能な成果物」に分割し、`docs/
   - サンプル: 1 ファイルに複数エラーを仕込んだ例
   - 回帰: 「1 つ目のエラーで停止しない」ことを期待出力で固定
   - 既存シナリオ: `CH2-PARSE-201`（`core-parse-recover-diagnostic`）
+  - 運用: `RunConfig.extensions["recover"].mode = "collect"|"off"` により IDE/LSP と Build/CI を切り替えられること（WS4 Step0）
 
 ### WS5: Input/Zero-copy（入力抽象と性能）
 - 計画: `1-4-input-zero-copy-plan.md`
