@@ -46,7 +46,7 @@
    - `resolution_notes` に実行コマンドとログパスを記録。
    - `expected/...left-recursion-*.expected.md` に実行ログのリンクと確認結果を追記。
 
-## 進捗状況（2025-12-18）
+## 進捗状況（2025-12-19）
 - ✅ サンプル追加済み:
   - `core-parse-left-recursion-direct.reml`
   - `core-parse-left-recursion-slow.reml`
@@ -59,6 +59,7 @@
 - ✅ `profile_output` 生成済み:
   - `expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json`
   - `left_recursion_guard_hits=1` を確認。
+- ✅ `phase4-scenario-matrix.csv` の `CP-WS6-001/002` を `ok` へ更新済み。
 
 ## 生成経路の確認（2025-12-19）
 - `reml_frontend --output json` は **Reml ソースの構文解析のみ**を行い、`examples/...` 内の `Parse.run(...)` を実行しない。
@@ -66,18 +67,20 @@
 - 生成例:
   - `compiler/rust/frontend/target/debug/reml_frontend --parse-driver --parse-driver-left-recursion-parser --parse-driver-packrat on --parse-driver-left-recursion on --parse-driver-profile-output expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json --output json examples/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.reml`
 
-## 補強タスク（提案）
-Phase4 で profile 指標を取得するため、`parse-driver` に RunConfig を渡せる経路を追加する。
+## 補強タスク（完了）
+Phase4 で profile 指標を取得するため、`parse-driver` に RunConfig を渡せる経路を追加済み。
 
-1. **CLI オプション追加**
-   - 追加案: `--parse-driver-profile-output <path>` / `--parse-driver-left-recursion <off|on|auto>` / `--parse-driver-packrat <on|off>`
-   - 実装: `compiler/rust/frontend/src/bin/reml_frontend.rs` の CLI 引数処理と `CliArgs` にフィールド追加。
-2. **parse-driver 実行時の RunConfig 反映**
+1. **CLI オプション追加**（完了）
+   - 追加: `--parse-driver-profile-output` / `--parse-driver-left-recursion` / `--parse-driver-packrat` / `--parse-driver-left-recursion-parser`
+2. **parse-driver 実行時の RunConfig 反映**（完了）
    - `run_parse_driver_mode` で `run_config` を構築し、`runtime_parse::run_shared` に渡す。
-   - `profile_output` が設定された場合は `ParseResult.profile` を JSON に書き出す（`core-parse-profile-output.reml` と同じ方針）。
-3. **回帰資産の更新**
-   - `expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json` を生成。
-   - `phase4-scenario-matrix.csv` の `resolution_notes` を更新し、採取コマンドを固定する。
+3. **回帰資産の更新**（完了）
+   - `core-parse-left-recursion-slow.profile.json` を生成。
+   - `phase4-scenario-matrix.csv` の `resolution_notes` を更新。
+
+## 未着手・残タスク（推奨順）
+1. `tooling/examples/run_phase4_suite.py` に `CP-WS6-002` の parse-driver フラグを追加し、自動実行で profile 出力を採取する。
+2. `reports/spec-audit/ch4/logs/` に parse-driver 実行ログを保存し、`expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.expected.md` へログパスを追記する。
 
 ## 依存関係
 - 仕様: `docs/spec/2-2-core-combinator.md`, `docs/spec/2-6-execution-strategy.md`, `docs/spec/2-5-error.md`
