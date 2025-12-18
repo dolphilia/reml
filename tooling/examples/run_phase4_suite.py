@@ -136,7 +136,7 @@ def load_scenarios(root: Path, suite: str) -> List[Scenario]:
 
 def run_reml_frontend(root: Path, scenario: Scenario) -> ScenarioResult:
     manifest_path = root / "compiler" / "rust" / "frontend" / "Cargo.toml"
-    cmd: Sequence[str] = (
+    base_cmd: Sequence[str] = (
         "cargo",
         "run",
         "--quiet",
@@ -145,10 +145,24 @@ def run_reml_frontend(root: Path, scenario: Scenario) -> ScenarioResult:
         "--bin",
         "reml_frontend",
         "--",
-        "--output",
-        "json",
-        str(scenario.input_path),
     )
+    if scenario.scenario_id == "CP-WS2-001":
+        cmd: Sequence[str] = (
+            *base_cmd,
+            "--parse-driver",
+            "--parse-driver-label",
+            "expression",
+            "--output",
+            "json",
+            str(scenario.input_path),
+        )
+    else:
+        cmd = (
+            *base_cmd,
+            "--output",
+            "json",
+            str(scenario.input_path),
+        )
     completed = subprocess.run(
         cmd,
         cwd=root,
