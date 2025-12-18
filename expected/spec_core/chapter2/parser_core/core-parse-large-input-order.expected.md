@@ -40,7 +40,13 @@ python3 tooling/examples/gen_ws5_large_input.py --sizes 1kb,100kb,10mb
 - 1MB: `reports/spec-audit/ch4/logs/spec_core-CP-WS5-001-1mb-20251218T203320Z.diagnostic.json`
   - farthest_error_offset: `1048706`
   - packrat_stats: `queries=7`, `hits=6`, `entries=1`, `approx_bytes=893`, `evictions=0`, `budget_drops=0`, `pruned=0`
+- 5MB: `reports/spec-audit/ch4/logs/spec_core-CP-WS5-001-5mb-20251218T212331Z.diagnostic.json`
+  - farthest_error_offset: `5242922`
+  - packrat_stats: `queries=7`, `hits=6`, `entries=1`, `approx_bytes=893`, `evictions=0`, `budget_drops=0`, `pruned=0`
 - 10MB: `reports/spec-audit/ch4/logs/spec_core-CP-WS5-001-10mb-20251218T211703Z.diagnostic.json`
+  - farthest_error_offset: `10485770`
+  - packrat_stats: `queries=7`, `hits=6`, `entries=1`, `approx_bytes=893`, `evictions=0`, `budget_drops=0`, `pruned=0`
+- 10MB（streaming fallback）: `reports/spec-audit/ch4/logs/spec_core-CP-WS5-001-10mb-20251218T212416Z.diagnostic.json`
   - farthest_error_offset: `10485770`
   - packrat_stats: `queries=7`, `hits=6`, `entries=1`, `approx_bytes=893`, `evictions=0`, `budget_drops=0`, `pruned=0`
 
