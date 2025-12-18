@@ -158,6 +158,7 @@ let array =
 3. **文脈付与**：`ParseError.context` と `ExpectationSummary.context_note` を結合し、「`+` の後に式が必要」のような自然文を生成。
 4. **フォールバック**：テンプレートが無い場合は `humanized` を生成（例：「ここで `)` または 数値 が必要です」）。
 5. **LSP 連携**：`toDiagnostics` は `expected_summary.message_key` と `locale_args` を `data.expected` に埋め込み、クライアント側でのローカライズと候補提示を可能にする。
+6. **Human/LSP 共通整形**：CLI の `--output human` / `--output lsp`、parse-driver などすべての経路で `ExpectedTokensSummary` を共有し、`humanized` と `context_note` が一致することを前提にする（例: `Rule("expression")` を含む場合でも humanized/context から落とさない）。
 
 ### B-8. SpanTrace の付与
 

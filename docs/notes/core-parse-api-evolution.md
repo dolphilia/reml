@@ -6,6 +6,11 @@
 - コマンド: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --parse-driver --parse-driver-label expression --output json examples/spec_core/chapter2/parser_core/core-parse-label-vs-token-with-label.reml > expected/spec_core/chapter2/parser_core/core-parse-label-vs-token-with-label.diagnostic.json` / `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --parse-driver --output json examples/spec_core/chapter2/parser_core/core-parse-label-vs-token-no-label.reml > expected/spec_core/chapter2/parser_core/core-parse-label-vs-token-no-label.diagnostic.json`
 - `phase4-scenario-matrix.csv` に `CP-WS2-001` を登録し、with-label で Rule("expression") が残ること / no-label では token/class のみになることを resolution_notes に記録。
 
+## 2025-12-18: LSP/Human 整形の再確認と回帰スイープ
+
+- `--parse-driver` を `--output lsp` / `--output human` で実行し、`expected.humanized` と `context_note` が B-6/B-7 どおり（with-label: Rule("expression") を保持、no-label: token/class のみ）になることを再確認。仕様 2-5 に Human/LSP 共通整形の前提を明記。
+- スポットスイープ: `examples/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.reml` / `core-parse-cut-unclosed-paren.reml` を CLI で再実行し、期待集合の並びと context_note に乱れがないことを確認。
+
 ## 2025-12-17: `commit` のレイヤ決定（Cut/Commit の表面整理）
 
 ### 結論
