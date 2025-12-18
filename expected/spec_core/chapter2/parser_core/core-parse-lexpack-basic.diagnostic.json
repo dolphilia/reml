@@ -1,0 +1,1 @@
+{"command":"Check","phase":"Reporting","run_id":"manual-core-parse-lexpack-basic","diagnostics":[],"summary":{"inputs":["examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml"],"started_at":null,"finished_at":null,"artifact":null,"stats":{"diagnostic_count":0}},"exit_code":{"label":"success","value":0}}

@@ -94,6 +94,11 @@
 3. **新規サンプルと期待ゴールデンの追加**
    - `core-parse-lexpack-basic.reml` を追加し、空白/コメント混在入力の AST/診断を `expected/spec_core/chapter2/parser_core/core-parse-lexpack-basic.{stdout,diagnostic.json}` で固定。
    - 期待条件: `label("identifier"|"number"|"string")` を保持し、`lexeme` が `with_space` と二重スキップしない（`space_id` 共有）。
+   - 実施順（Step3 内の詳細手順）:
+     1) サンプル新規作成: `examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml` を追加し、`lex_pack` 入口を使って「識別子 + 数値 + `=` + `;`」をパースする最小 DSL を記述。空白・コメント（行/ブロック）の混在を許容する入力例をサンプル末尾に含める。
+     2) 期待ゴールデン生成: CLI で `--output stdout` と `--output json` を取得し、`expected/spec_core/chapter2/parser_core/core-parse-lexpack-basic.stdout` と `.diagnostic.json` に保存。`label("identifier"|"number"|"string")` が humanized/JSON のいずれでも保持されることを確認する。
+     3) `CP-WS3-001` と紐付け: 期待ファイルの取得コマンドと前提（`RunConfig.extensions["lex"]` の profile/safety/space_id）を `phase4-scenario-matrix.csv` `resolution_notes` にメモし、空白/コメントを変えたバリエーションでも AST/診断が揺れないことを確認する。
+     4) 影響メモ: 生成したゴールデンの取得方法（コマンド/入力ファイル名）と、`label` 維持を確認した観点を `docs/notes/core-parse-api-evolution.md` に追記する。
 4. **回帰登録と実行パイプライン接続**
    - `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CP-WS3-001` を追加し、`resolution_notes` に CLI/LSP 実行コマンドと `RunConfig.extensions["lex"]` のキーを書き残す。
    - `tooling/examples/run_phase4_suite.py` に CP-WS3-001 の経路を追加し、`CH2-PARSE-901/902` と競合しないことを一度 Phase4 スイートで確認。

@@ -1,0 +1,88 @@
+module Spec.Core.Chapter2.Parser.LexPackBasic
+
+use Core.Parse as Parse
+use Core.Parse.Lex as Lex
+use Core.Prelude
+
+type Assignment = { name: Text, value: f64 }
+
+type LexPack = {
+  space: Parse.Parser<()>,
+  lexeme: fn<A>(Parse.Parser<A>) -> Parse.Parser<A>,
+  symbol: fn(Text) -> Parse.Parser<()>,
+  keyword: fn(Text) -> Parse.Parser<()>,
+  identifier: Parse.Parser<Text>,
+  number_repr: Parse.Parser<Text>,
+  string_literal: Parse.Parser<Text>,
+}
+
+fn lex_pack() -> LexPack {
+  let space: Parse.Parser<()> =
+    (Lex.whitespace()
+      .or(Lex.commentLine("//"))
+      .or(Lex.commentBlock("/*", "*/", nested = false)))
+    |> Lex.skipMany
+
+  let lexeme = (|p| Lex.lexeme(space, p))
+  let symbol = (|text| Lex.symbol(space, text))
+  let keyword = (|name| Lex.keyword(space, name))
+  let identifier = lexeme(Lex.identifier())
+  let number_repr = lexeme(Parse.attempt(Lex.float()).or(Lex.integer()))
+  let string_literal = lexeme(Lex.stringLit())
+
+  {
+    space,
+    lexeme,
+    symbol,
+    keyword,
+    identifier,
+    number_repr,
+    string_literal,
+  }
+}
+
+let lex = lex_pack()
+
+fn number() -> Parse.Parser<f64> {
+  rule("lexpack.number",
+    lex.number_repr.andThen(|repr|
+      match Lex.parseF64(repr) with
+      | Ok(value) -> Parse.ok(value)
+      | Err(_) -> Parse.fail(format("数値として解釈できません: {repr}"))
+    )
+  )
+}
+
+fn assignment() -> Parse.Parser<Assignment> {
+  rule("lexpack.assignment",
+    lex.identifier
+      .skipL(lex.symbol("="))
+      .then(number())
+      .skipL(lex.symbol(";"))
+      .map(|(name, value)| { name, value })
+  )
+}
+
+fn program() -> Parse.Parser<List<Assignment>> {
+  lex.space
+    .skipR(Parse.many(assignment()))
+    .skipL(Parse.eof())
+}
+
+fn format_assignments(assignments: List<Assignment>) -> Text {
+  let parts = assignments
+    |> List.map(|a| format("%s=%g", [a.name, a.value]))
+  format("assignments=[%s]", [Text.join(parts, ",")])
+}
+
+fn main() -> Text {
+  let source =
+    "// leading comment\n\
+     foo = 10 ; /* block */\n\
+     // another comment\n\
+     bar=20; baz = 3;\n"
+
+  match Parse.run(program(), source) with
+  | Ok(assignments) -> format_assignments(assignments)
+  | Err(diag) -> diag.message
+}

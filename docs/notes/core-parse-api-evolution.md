@@ -5,6 +5,7 @@
 - `examples/language-impl-comparison/reml/basic_interpreter_combinator.reml` に局所 `LexPack` を導入し、`lexeme/symbol/keyword` を共通レコード経由で提供する形へ置換。`identifier/number/string` もレコード内で束ね、`number` の値化は既存 `parseF64` に一本化した。
 - RunConfig への書き戻しはサンプル外で未提供だが、`space`/`lexeme`/`keyword`/`symbol` の入口が一つにまとまったため、Phase4 Step2/Step3 の差分確認に備えた。
 - `basic_interpreter.reml` は Core.Parse/Lex を持たない構成のため、今回は変更なし（モック扱い）。SQL/TOML/YAML モックも引き続きノータッチ。
+- 新規サンプル追加: `examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml` を作成し、空白/コメント混在でも `lexeme/identifier/number/string` が安定することを確認。期待出力は `expected/spec_core/chapter2/parser_core/core-parse-lexpack-basic.{stdout,diagnostic.json}` に固定。
 
 ## 2026-03-09: parse-driver ラベル整形と CP-WS2-001 固定
 
