@@ -1,6 +1,6 @@
 # 2.6 実行戦略（Execution Strategy）
 
-> 目的：**最小コアで高い実用性能**（線形時間・ゼロコピー・良質な診断）を実現し、**左再帰・ストリーム**・**インクリメンタル**も無理なく扱える実行系を定義する。
+> 目的：**最小コアで高い実用性能**（線形時間・ゼロコピー・良質な診断）を実現し、**左再帰ガード・ストリーム**・**インクリメンタル**も無理なく扱える実行系を定義する。
 > 前提：2.1 の `State/Reply{consumed, committed}`、2.2 の合成規則、2.3/1.4 の Unicode/入力モデルと整合。
 
 ---
@@ -67,6 +67,7 @@ type RunConfigExtensions = Map<Str, Any>
 #### B-2-2. Packrat/左再帰/コメント設定の運用指針
 
 * **Packrat と左再帰**: `packrat=true` の場合のみ左再帰の実装（C 節）が有効化される。`left_recursion="auto"` は `rule` で直接左再帰が検出されたときだけ種成長ループを開始し、演算子宣言（2.4 参照）には通常必要ない。CI では 10MB クラスの入力で `packrat=false`/`left_recursion="off"` を同時実行し、性能退行と左再帰サポートの両方を監視することを推奨する（0-1 §1.1）。
+  * 左再帰は **安全弁としての補助**と位置付け、DSL 作者は `precedence` / `expr_builder` / `chainl1` への変換を第一選択とする。
 * **コメント・空白**: `extensions["lex"].profile = ConfigTriviaProfile` を設定し、`with_space`/`lexeme` を通じて空白・コメント処理を自動化する。`profile` が未設定の場合は `ConfigTriviaProfile::strict_json` を既定とし、サンプルのように手動でコメントスキップを書くことを禁則とする。互換モードは `extensions["config"].compat` に集約し、`RunConfig` を共有する環境（CLI/LSP/テスト）が同じ挙動を保証する。
 * **復旧戦略**: `recover` による同期・継続は `extensions["recover"].mode="collect"` のときだけ有効化する（IDE/LSP 向け）。Build/CI では `"off"`（既定）により fail-fast を維持できる。
   * `extensions["recover"].sync_tokens` に同期トークン集合を記録し、ストリーミング実行でも同じ集合を利用できるようにする。
@@ -197,6 +198,7 @@ type MemoVal<T> = Reply<T>  // Ok/Err 丸ごと
 
 ### C-3. 左再帰（seed-growing）
 
+* **仕様上の立場**：左再帰文法の直接記述は想定しない。`precedence` / `expr_builder` / `chainl1` への変換を第一選択とし、`left_recursion` は **混入時の安全弁**として無限再帰や極端な退行を防ぐために使う。
 * `left_recursion = on|auto` かつ Packrat 有効のとき、**Warth et al.** の **種成長**を実装：
 
   1. `(A, pos)` に「**評価中**」フラグと \*\*種（失敗）\*\*を入れる。

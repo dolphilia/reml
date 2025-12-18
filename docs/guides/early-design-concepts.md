@@ -139,7 +139,7 @@ let parseExpr () : Parser<Expr> =
   .between(sc) // 先頭/末尾のスキップ
   .ensureEof() // 入力を使い切る
   .withErrorHints() // 期待集合を整形
-  .enableLeftRecursion(false) // 今回は chain* で十分
+  .enableLeftRecursion(false) // 左再帰はガード扱いのため通常はOFF
   .packrat(on = true)         // メモ化で線形時間に
 
 // ── 便利: 評価（おまけ） ──────────────────────────────
@@ -182,7 +182,7 @@ pub fn main(args: List<String>) {
 * \*\*`cut()`\*\*で「この分岐に入ったら戻らない」を明示 → エラーメッセージが素直。
 * **`label("atom")` / `withErrorHints()`**で**期待集合**が「`数字` か `(` か `-` が欲しかった」と出る。
 * \*\*`packrat(true)`\*\*は重いときだけON。小さなDSLならOFFにして軽量化。
-* **`enableLeftRecursion(false)`**：通常は `chainl/chainr` 内部使用。必要になれば **true** にして直接左再帰文法も書ける。
+* **`enableLeftRecursion(false)`**：通常は `chainl/chainr` や `precedence` で回避する。**true** は混入時の安全弁として使う。
 
 ---
 
@@ -192,7 +192,7 @@ pub fn main(args: List<String>) {
 | ----------- | ----------- | ----------------------------- |
 | 少ない記述で文法を合成 | パイプ/中置・型推論  | 極小コアAPI、`precedence`          |
 | 読めるエラー      | ADT/パターンマッチ | 期待集合・位置情報・`cut/label/recover` |
-| 実用性能        | 末尾最適化/軽量ラムダ | Packrat/左再帰切替・部分メモ化           |
+| 実用性能        | 末尾最適化/軽量ラムダ | Packrat/左再帰ガード切替・部分メモ化     |
 | 国際化         | UTF-8/文字階層  | `char/grapheme` パーサ           |
 | IDE/REPL    | 効果分離        | トレース/インクリメンタル                 |
 

@@ -1,6 +1,6 @@
 # 2.2 コア・コンビネータ
 
-> 目的：**小さく強い核**で、書きやすさ・読みやすさ・高品質エラー・実用性能（ゼロコピー／Packrat／左再帰）を同時に満たす。
+> 目的：**小さく強い核**で、書きやすさ・読みやすさ・高品質エラー・実用性能（ゼロコピー／Packrat／左再帰ガード）を同時に満たす。
 > 前提：2.1 の型と実行意味（`Reply{consumed, committed}`）に準拠。**Unicode 前提**。
 > 方針：\*\*最小公理系（12-15個）**を厳選し、残りは**派生（derived）\*\*として提供。
 > 実装状況：Phase 2-5 Step6 で OCaml 実装の `Core_parse` モジュールが `rule`/`label`/`cut` と Packrat 指標を公開し、仕様上のコアコンビネーターと診断メタデータが同期された。Rust ランタイムは 4.1 期でバッチ版コンビネーター（`Parser<T>` / `Reply` / Packrat / 期待集合生成）を導入済みだが、Lex プロファイル共有・Streaming/Plugin 連携は未完である。[^core-parse-progress-ocaml][^core-parse-progress-rust]
@@ -126,6 +126,7 @@ fn chainr1<A>(term: Parser<A>, op: Parser<(A, A) -> A>) -> Parser<A>
 
 * **実装規約**：内部で `attempt` を適切に使い、`term op term op ...` の途中失敗が**手前の選択**へ波及しないようにする。
 * べき乗など右結合は `chainr1`。
+* **左再帰の扱い**：仕様として左再帰文法の直接記述は想定しない。`chainl1/chainr1` または `expr_builder` へ変換する。`RunConfig.left_recursion` は安全弁であり、直接記述の前提ではない。
 
 ### A-8. スパン・位置
 

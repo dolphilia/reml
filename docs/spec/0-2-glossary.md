@@ -29,7 +29,7 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **DemandHint**: ストリーミング実行時に次の入力バッチに必要なサイズ・優先度を伝えるヒント構造体。`Pending` 継続とともに返却され、`Feeder` がバックプレッシャー制御を行う指針となる。[2-7 ストリーミング実行](2-7-core-parse-streaming.md#feeder-demandhint) を参照。
 - **FlowController**: ストリーミングランナーが `resume`／`pump` の進行管理に利用する制御ハンドル。`DemandHint` と組み合わせてチャンク投入タイミングを決め、`RunConfig.extensions["stream"]` とも連携する。[2-7 ストリーミング実行](2-7-core-parse-streaming.md#flow-controller) 参照。
 - **Packrat パース**: 入力位置とパーサ ID をキーとするメモ化でバックトラックを高速化する戦略。[2-6 実行戦略](2-6-execution-strategy.md) がメモテーブルの利用方針を示す。
-- **左再帰サポート**: Packrat と組み合わせて `auto`/`on` 設定で seed-growing を行い、左再帰文法を安全に処理する仕組み。[2-6 実行戦略](2-6-execution-strategy.md) を参照。
+- **左再帰サポート**: Packrat と組み合わせた seed-growing だが、仕様として左再帰文法の直接記述は想定しない。`precedence` / `chainl1` への変換を前提とし、`left_recursion` は無限再帰の安全弁として扱う。[2-6 実行戦略](2-6-execution-strategy.md) を参照。
 - **トランポリン (Trampoline)**: 再帰的なパーサ合成をループに変換し、末尾再帰のスタック消費を抑えるテクニック。[2-6 実行戦略](2-6-execution-strategy.md) に最適化理由が記載される。
 - **`cut` / コミット**: ある地点以降の失敗を `committed=true` にして代替パスを試さないよう指示するコンビネーター。[2-5 エラーハンドリング](2-5-error.md) と [2-1 パーサ型](2-1-parser-type.md#e-コミットと消費の意味論) で使用例が示される。
 - **期待集合 (Expected Set)**: エラー発生時に「何が来るはずだったか」を報告するためのシンボル集合。[2-5 エラーハンドリング](2-5-error.md) で診断メッセージ整形と統合される。
@@ -41,7 +41,7 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **結合力 (Binding Power)**: Pratt パーサーが演算子の優先順位を比較するために用いる数値。高い binding power を持つ演算子ほど強く右項を結び付け、[2-4 演算子優先度ビルダー](2-4-op-builder.md) でレベル順に調整される。
 - **Fixity（結合方向）**: 演算子が左結合 (`infixl`)、右結合 (`infixr`)、非結合 (`infixn`) などどのように束縛されるかを表す属性。DSL では `:infix_left` / `:infix_right` / `:infix_nonassoc` / `:prefix` / `:postfix` / `:ternary` のような Fixity シンボルで記述し、[1-5 形式文法 §2.1](1-5-formal-grammar-bnf.md#21-opbuilder-dsl) でトークンが定義される。[2-4 演算子優先度ビルダー](2-4-op-builder.md) の `level` 宣言で実際の挙動が指定される。
 - **OpBuilder DSL**: `Core.Parse.OpBuilder` が提供する宣言的な優先度テーブル記法。`builder.level(priority, :fixity, ["token", ...])` で複数演算子と結合方向をまとめて定義し、内部で `precedence` API と同じ AST を構築する。`FixitySymbol` の構文は [1-5 形式文法 §2.1](1-5-formal-grammar-bnf.md#21-opbuilder-dsl) に、意味論は [2-4 演算子優先度ビルダー](2-4-op-builder.md#b-使い方api-と-dsl) に記載される。
-- **seed-growing 左再帰**: Packrat メモ化と組み合わせて左再帰規則を安全に展開する手法。`RunConfig.left_recursion="auto"` が必要に応じて適用し、[2-6 実行戦略](2-6-execution-strategy.md#c-メモ化packratと左再帰) に挙動が説明される。
+- **seed-growing 左再帰**: Packrat メモ化と組み合わせて左再帰規則を安全に展開する手法。`RunConfig.left_recursion="auto"` が必要に応じて適用し、左再帰が混入した場合の安全弁として利用する。[2-6 実行戦略](2-6-execution-strategy.md#c-メモ化packratと左再帰) に挙動が説明される。
 
 ## Unicode とテキスト処理
 - **Unicode 3層モデル (Byte / Char / Grapheme)**: Reml はバイト列・Unicode スカラー値・拡張書記素クラスタの 3 レイヤで文字を扱い、API ごとに適切な粒度を選択する。[1-4 Unicode 文字モデル](1-4-test-unicode-model.md) 参照。
@@ -144,9 +144,9 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 
 ## パフォーマンスと最適化
 - **Packrat パース**: 入力位置とパーサ ID をキーとするメモ化でバックトラックを高速化する戦略。[2-6 実行戦略](2-6-execution-strategy.md) がメモテーブルの利用方針を示す。
-- **左再帰サポート**: Packrat と組み合わせて `auto`/`on` 設定で seed-growing を行い、左再帰文法を安全に処理する仕組み。[2-6 実行戦略](2-6-execution-strategy.md) を参照。
+- **左再帰サポート**: Packrat と組み合わせた seed-growing だが、仕様として左再帰文法の直接記述は想定しない。`precedence` / `chainl1` への変換を前提とし、`left_recursion` は無限再帰の安全弁として扱う。[2-6 実行戦略](2-6-execution-strategy.md) を参照。
 - **トランポリン (Trampoline)**: 再帰的なパーサ合成をループに変換し、末尾再帰のスタック消費を抑えるテクニック。[2-6 実行戦略](2-6-execution-strategy.md) に最適化理由が記載される。
-- **seed-growing**: 左再帰パーサで用いる最適化手法。初期値から段階的に結果を成長させ、不動点に到達したら終了する。メモ化と組み合わせて効率的な左再帰処理を実現する。[2-6 実行戦略](2-6-execution-strategy.md) を参照。
+- **seed-growing**: 左再帰パーサで用いる最適化手法。初期値から段階的に結果を成長させ、不動点に到達したら終了する。メモ化と組み合わせて左再帰混入時の安全弁として動作する。[2-6 実行戦略](2-6-execution-strategy.md) を参照。
 - **メモ化 (Memoization)**: パーサ結果をキャッシュして同一入力位置での再計算を避ける最適化。Packrat パーシングの基盤技術として用いられる。[2-6 実行戦略](2-6-execution-strategy.md) を参照。
 
 ## セキュリティと安全性

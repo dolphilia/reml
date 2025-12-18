@@ -1,6 +1,6 @@
 # 2.1 パーサ型
 
-> 目標：**小さく強いコア**で、**高品質エラー**と**実用性能（ゼロコピー・Packrat/左再帰対応）**を両立。
+> 目標：**小さく強いコア**で、**高品質エラー**と**実用性能（ゼロコピー・Packrat/左再帰ガード）**を両立。
 > 原則：**純粋（副作用なし）**・**Unicode前提**・**デフォルト安全**。
 > スコープ：パーサの**型**・**入出力モデル**・**実行時状態**・**コミット/消費の意味論**を確定します（詳細なエラー統合は *2.5* で掘り下げ）。
 
@@ -114,7 +114,7 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
 
 * **RunConfig の主な項目**
   - `require_eof` で余剰入力を許可するかを選択。
-  - `packrat` と `left_recursion` は Packrat メモ化と seed-growing 左再帰の利用可否を制御。
+  - `packrat` と `left_recursion` は Packrat メモ化と seed-growing 左再帰ガードの利用可否を制御。左再帰文法の直接記述は想定しない。
   - `trace` は `SpanTrace` 収集を有効化し、診断に詳細な履歴を残す。
   - `merge_warnings` は連続する回復警告を集約してノイズを抑制する。
   - `legacy_result` は旧 API (`Result<(T, Span), ParseError>`) を返す互換モード（移行期間限定）。
@@ -191,7 +191,7 @@ Core.LSP.Parser.attach(project_id, parser, shared);
 | --- | --- | --- | --- |
 | `require_eof` | 入力全体の消費を強制し、潜在的な設定ミスを即時検出する。 | `false` | 2.2（明確な診断）: 余剰入力を `Diagnostic` 化して早期警告。 |
 | `packrat` | 線形時間を保証するためにメモ化を常時有効化するかを切り替える。 | `false` | 1.1（性能）: 大規模入力での O(n) 維持に寄与。 |
-| `left_recursion` | `"off" | "on" | "auto"` の 3 段階で seed-growing 左再帰を適用。 | `"auto"` | 1.1（性能）: 必要箇所のみ左再帰処理を有効化。 |
+| `left_recursion` | `"off" | "on" | "auto"` の 3 段階で seed-growing 左再帰ガードを適用。 | `"auto"` | 1.1（性能）: 混入時の安全弁として必要箇所のみ左再帰処理を有効化。 |
 | `trace` | `SpanTrace` を収集し、IDE/CLI で解析過程を可視化。 | `false` | 2.2（診断の透明性）: 必要時のみ情報を開示し過剰負荷を回避。 |
 | `merge_warnings` | 回復警告 (`recover`) の連続発生を集約。 | `true` | 2.2: ノイズを抑えつつ要点を共有。 |
 | `legacy_result` | 旧 API (`Result<(T, Span), ParseError>`) を返す互換スイッチ。 | `false` | 3.2（エコシステム連携）: 移行期間の後方互換を確保。 |

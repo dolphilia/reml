@@ -424,8 +424,8 @@ note: while parsing expression → term → factor
 
 ### D-6. 左再帰サポート無効時の自己呼出
 
-* `RunConfig.left_recursion=false` かつ検出時に `E4001`。
-* 提案：「`precedence` を使う」か「`left_recursion=true` を有効化」。
+* `RunConfig.left_recursion="off"` かつ検出時に `E4001`。
+* 提案は **`precedence` / `expr_builder` / `chainl1` への変換**を第一候補とし、`left_recursion="on"` は **レガシー互換の安全弁**として扱う。
 
 ### D-7. EOF 必須
 
