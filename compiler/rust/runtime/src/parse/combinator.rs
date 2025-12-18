@@ -2396,14 +2396,20 @@ where
             }
         }
         Reply::Err {
+            mut error,
             consumed,
             committed,
-            ..
-        } => Reply::Err {
-            error: ParseError::new(label.clone(), state.input().position()),
-            consumed,
-            committed,
-        },
+        } => {
+            error.message = label.clone();
+            if !error.expected_tokens.contains(&label) {
+                error.expected_tokens.push(label.clone());
+            }
+            Reply::Err {
+                error,
+                consumed,
+                committed,
+            }
+        }
     })
 }
 

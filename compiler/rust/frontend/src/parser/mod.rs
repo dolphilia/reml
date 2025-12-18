@@ -663,8 +663,18 @@ fn build_diagnostic_from_error(
 
 fn build_expected_summary(err: &Simple<TokenKind>) -> ExpectedTokensSummary {
     let mut collector = ExpectedTokenCollector::new();
+    let label = err
+        .label()
+        .and_then(|text| {
+            let trimmed = text.trim();
+            (!trimmed.is_empty()).then(|| trimmed.to_string())
+        });
     let expectations: Vec<Option<TokenKind>> = err.expected().cloned().collect();
     let is_expr_context = is_expression_recover_context(&expectations);
+
+    if let Some(label) = &label {
+        collector.push(ExpectedToken::rule(label.clone()));
+    }
     if is_expr_context {
         collector.extend(expression_expected_tokens());
     } else {
@@ -683,7 +693,14 @@ fn build_expected_summary(err: &Simple<TokenKind>) -> ExpectedTokensSummary {
         {
             summary.context_note = Some("`(` に対応する `)` が必要です".to_string());
         } else if is_expr_context {
-            summary.context_note = Some("演算子の後に式が必要です".to_string());
+            summary.context_note = Some(
+                label
+                    .as_ref()
+                    .map(|name| format!("演算子の後に {name} が必要です"))
+                    .unwrap_or_else(|| "演算子の後に式が必要です".to_string()),
+            );
+        } else if let Some(label) = label {
+            summary.context_note = Some(format!("{label} が必要です"));
         }
     }
     summary
