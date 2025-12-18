@@ -139,6 +139,7 @@ Rust 実装を実務レベルの `.reml` シナリオで検証し、セルフホ
 | [4-1-core-parse-error-labeling-impl-plan.md](4-1-core-parse-error-labeling-impl-plan.md) | M1: Core.Parse Label | 期待集合を概念ラベル中心にする実装計画（CP-WS2-001 回帰） | 随時 |
 | [4-1-core-parse-lex-helpers-impl-plan.md](4-1-core-parse-lex-helpers-impl-plan.md) | M1: Core.Parse Lex | LexPreset/lex_pack を用いた WS3 Step3 のサンプル置換と回帰登録計画 | 随時 |
 | [4-1-core-parse-input-zero-copy-impl-plan.md](4-1-core-parse-input-zero-copy-impl-plan.md) | M1: Core.Parse Input | Input/Zero-copy の不変条件チェックと回帰接続（WS5） | 随時 |
+| [4-1-core-parse-left-recursion-impl-plan.md](4-1-core-parse-left-recursion-impl-plan.md) | M1: Core.Parse Left Recursion | 左再帰検出/ガードの回帰接続（WS6） | 随時 |
 | [4-2-practical-execution-pipeline-plan.md](4-2-practical-execution-pipeline-plan.md) | M2: 実行パイプライン | `run_examples.sh`/`cargo test -p reml_e2e` を用いた compile→run→verify の自動化 | 75週 |
 | [4-3-observability-and-metrics-plan.md](4-3-observability-and-metrics-plan.md) | M3: 観測メトリクス | `collect-iterator-audit-metrics.py --section practical` とダッシュボード整備 | 77週 |
 | [4-4-field-regression-and-readiness-plan.md](4-4-field-regression-and-readiness-plan.md) | M4: フィールドデータ | レグレッション管理、`phase4-readiness.md` 作成、Phase 5 へのハンドオーバー | 78週 |
