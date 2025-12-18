@@ -167,6 +167,19 @@ def run_reml_frontend(root: Path, scenario: Scenario) -> ScenarioResult:
             "json",
             str(scenario.input_path),
         )
+    elif scenario.scenario_id == "CP-WS6-001":
+        cmd = (
+            *base_cmd,
+            "--parse-driver",
+            "--parse-driver-left-recursion-parser",
+            "--parse-driver-packrat",
+            "on",
+            "--parse-driver-left-recursion",
+            "off",
+            "--output",
+            "json",
+            str(scenario.input_path),
+        )
     elif scenario.scenario_id == "CP-WS6-002":
         profile_output = (
             root

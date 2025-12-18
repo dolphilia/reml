@@ -1,7 +1,7 @@
 # spec_core スイート実行レポート
 
-- 実行時刻: 2025-12-18 23:41:58Z
-- 対象シナリオ: 73 件 / 成功 71 件 / 失敗 2 件
+- 実行時刻: 2025-12-18 23:44:00Z
+- 対象シナリオ: 73 件 / 成功 72 件 / 失敗 1 件
 - 入力ソース: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
 
 | Scenario | File | 期待 Diagnostics | 実際 Diagnostics | Exit | 判定 | 備考 |
@@ -77,5 +77,5 @@
 | `CH1-LAMBDA-101` | `examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml` | — | — | 0 | ✅ pass | 外側変数を捕捉するラムダを示す。 |
 | `CH1-LAMBDA-102` | `examples/spec_core/chapter1/lambda/bnf-lambda-arg-pattern.reml` | — | — | 0 | ✅ pass | パターン引数を用いたラムダの短縮形。 |
 | `CP-WS3-001` | `examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml` | `parser.syntax.expected_tokens` | `parser.syntax.expected_tokens` | 1 | ✅ pass | LexPack 入口で space/comment を共有し identifier/number/string ラベルを保持する最小サンプル。 |
-| `CP-WS6-001` | `examples/spec_core/chapter2/parser_core/core-parse-left-recursion-direct.reml` | `E4001` | — | 0 | ❌ fail | 左再帰を直接書いた場合の検出（E4001）を固定する。RunConfig.left_recursion=\off\" で実行。" |
+| `CP-WS6-001` | `examples/spec_core/chapter2/parser_core/core-parse-left-recursion-direct.reml` | `E4001` | `E4001` | 1 | ✅ pass | 左再帰を直接書いた場合の検出（E4001）を固定する。RunConfig.left_recursion=\off\" で実行。" |
 | `CP-WS6-002` | `examples/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.reml` | — | — | 0 | ✅ pass | 左再帰ガードの profile 指標を観測する。RunConfig.left_recursion=\on\" と profile を有効化。" |
