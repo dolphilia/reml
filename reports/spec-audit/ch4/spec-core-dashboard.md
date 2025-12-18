@@ -3,6 +3,7 @@
 - 実行時刻: 2025-12-18 02:46:34Z
 - 対象シナリオ: 67 件 / 成功 67 件 / 失敗 0 件
 - 入力ソース: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
+- CP-WS2-001: `--parse-driver` の human/LSP 出力で `expected.humanized` と `context_note` が B-6/B-7 どおり（Rule("expression") を保持、no-label は token/class のみ）になることを 2025-12-18 に再確認。
 
 | Scenario | File | 期待 Diagnostics | 実際 Diagnostics | Exit | 判定 | 備考 |
 | --- | --- | --- | --- | --- | --- | --- |
