@@ -56,6 +56,7 @@ use reml_runtime::run_config::{
     LeftRecursionStrategy,
 };
 use reml_runtime::parse as runtime_parse;
+use reml_runtime::parse::combinator::LEFT_RECURSION_MESSAGE;
 use reml_frontend::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 use reml_runtime::stage::StageId as RuntimeStageId;
 use reml_runtime::text::LocaleId;
@@ -1138,7 +1139,7 @@ fn build_parse_driver_diagnostic(
     source: &str,
     label: Option<&str>,
 ) -> Value {
-    if err.message == runtime_parse::LEFT_RECURSION_MESSAGE {
+    if err.message == LEFT_RECURSION_MESSAGE {
         return json!({
             "severity": "error",
             "code": "E4001",
