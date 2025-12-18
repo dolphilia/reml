@@ -7,6 +7,7 @@
 - `basic_interpreter.reml` は Core.Parse/Lex を持たない構成のため、今回は変更なし（モック扱い）。SQL/TOML/YAML モックも引き続きノータッチ。
 - 新規サンプル追加: `examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml` を作成し、空白/コメント混在でも `lexeme/identifier/number/string` が安定することを確認。期待出力は `expected/spec_core/chapter2/parser_core/core-parse-lexpack-basic.{stdout,diagnostic.json}` に固定。
 - CLI 実行: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json --emit-diagnostics examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml` を実施。診断は 0 件のためラベル確認は未発生。ラベル確認には意図的に失敗する入力（例: 数値欠落）を別途用意して再取得する必要あり。
+- TODO: `CP-WS3-001` 紐付けのため、失敗ケースを追加し `label("identifier"|"number"|"string")` が ExpectedTokens に含まれることを human/JSON で確認する。
 
 ## 2026-03-09: parse-driver ラベル整形と CP-WS2-001 固定
 
