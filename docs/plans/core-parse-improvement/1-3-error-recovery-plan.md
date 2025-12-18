@@ -66,11 +66,23 @@ Reml の回帰計画（Phase4）でも、診断品質を継続監視するには
 ### Step 1: 仕様上の回復契約を “固定” する（cut との整合が中心）
 - `recover` の契約について、少なくとも次を明文化できる状態にする
   - `recover` は「診断を残しつつ同期して継続」する（診断生成は `Err.pretty` 経路に乗る）
-  - 同期点（`until`）の設計方針（例: `;` / `}` / 改行など）をガイド化する
-  - `cut`（committed）を跨いだ失敗でも回復するか（優先度）
-    - 例: 方針案A「committed でも回復は可能（分岐しないだけ）」
-    - 方針案B「committed を越えた失敗は回復しない（fail-fast）」
-  - どちらを採るかは、WS1（Cut）とセットで決定し、判断根拠を残す
+  - `RunConfig.extensions["recover"].mode` により、回復の有効/無効を切り替えられる
+    - `"collect"`: 回復して継続（IDE/LSP 向け）
+    - `"off"`（既定）: `recover(...)` は `p` と同様に失敗を返す（Build/CI の fail-fast 維持）
+  - `cut`（committed）を跨いだ失敗でも回復するか（優先度）を決め、仕様に固定する
+    - **採用（方針案A）**: committed でも回復は可能（ただし分岐はしない）
+      - 根拠: IDE/LSP では「分岐探索」よりも「同期して先へ進む」ことが重要であり、回復は `or` の代替枝選択ではない。
+      - 注意: Build/CI は `mode="off"` で停止するため、誤った AST が次工程へ渡らない。
+  - 回復の観測可能性
+    - 回復が起きたら `ParseResult.recovered=true` を立て、`ParseResult.diagnostics` に診断が蓄積されること（複数回 recover で複数件になる）を最小保証として固定する
+  - 同期点（`until`）の設計方針をガイド化する（Lex ヘルパと整合）
+    - 例: 文末 `;`、ブロック終端 `}`、行末 `"\n"`、括弧閉じ `")"` など
+    - 同期点は「安全に構造を再開できる位置」を優先し、トークン消費を最小化する
+
+- Step1 の成果物（出口条件）
+  - `docs/spec/2-2-core-combinator.md` と `docs/spec/2-5-error.md` に、`mode="collect"|"off"` と committed 超え回復（方針案A）の契約が反映されている
+  - `docs/spec/2-5-error.md` で、回復時の `ParseResult.recovered` と診断蓄積（複数件）の最低保証が明記されている
+  - 同期点ガイド（短い表 or 箇条書き）が仕様に追加され、WS3（Lex）で自然に書ける前提が置かれている
 - 仕様追記が必要な場合の対象
   - `docs/spec/2-5-error.md`: 回復による `secondaries` の扱い、FixIt の位置づけ
   - `docs/spec/2-2-core-combinator.md`: `recover` の推奨同期点パターン（短い表）

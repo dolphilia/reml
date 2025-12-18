@@ -462,8 +462,25 @@ fn recover<T>(p: Parser<T>, until: Parser<()>, with: T) -> Parser<T>
 * 返す `with` は AST に **`ErrorNode{span, expected}`** として挿入可能（IDE で赤波線）。
 * `RunConfig.extensions["recover"].mode` が `"collect"` のときのみ同期・継続を行う（IDE/LSP 向け）。
   * `"off"`（既定）のとき、`recover(p, until, with)` は **`p` と同様に失敗を返す**（読み捨て・挿入は行わない）。Build/CI で誤った AST を先へ流さないための安全弁である。
+* committed（`cut`）を越えた失敗であっても、`recover` はそれを捕捉して同期できる（`mode="collect"` の場合）。
+  * これは **分岐のやり直し**ではなく、同じ枝のまま同期点まで前進して継続するための仕組みである（`or` の右枝を試すことはない）。
 * `RunConfig.merge_warnings` が true の場合、連続する回復を**1 つに集約**（ノイズ低減）。
 * `extensions["recover"].max_diagnostics` / `max_resync_bytes` / `max_recoveries` が設定されている場合、実装は best-effort で上限を尊重し、超過時は回復を停止して fail-fast にフォールバックする（性能 0-1 §1.1 の安全弁）。
+* 回復が 1 回でも発生した場合、ランナーは `ParseResult.recovered=true` を立て、回復のたびに `ParseResult.diagnostics` へ診断を追加する（複数回 recover で複数件になる）。
+
+### E-1. 同期点（`until`）設計指針
+
+`recover` の品質は「どこで同期して再開するか」に強く依存する。同期点は DSL/文法ごとに設計するが、最低限次を推奨する。
+
+* **文の区切り**（例: `";"` / 行末 `"\n"`）:
+  * 同期点は **区切り自体を消費する**設計を推奨（同じ位置での再回復ループを避ける）。
+* **構造境界**（例: `"}"` / `")"` / `"]"`）:
+  * 同期点は **境界トークンを消費しない**設計を推奨（外側の `between`/ブロック終端処理に任せる）。
+  * 例: `lookahead(symbol("}"))` のように先読みで同期する（2.2 参照）。
+* **同期点は “安全に再開できる位置” を優先**:
+  * 例: 式の途中は避け、`let`/`fn`/`type` など先頭キーワードやブロック終端まで飛ばす。
+* **Lex ヘルパとの整合**:
+  * `symbol("...")` / `keyword("...")` を同期点指定に使えることが望ましい（WS3）。
 
 ---
 
@@ -545,6 +562,7 @@ fn toStructuredLog(diag: Diagnostic) -> Json = json!({
 * **`lexeme/symbol/keyword`**：トリビア（空白・コメント）消費後の**実トークン位置**を `Span` にする。
 * **`precedence`**：`config.operand_label` があれば、**欠落オペランドの期待をそれに固定**（「`+` の後に *expression* が必要」）。
 * **`attempt`**：失敗を**空失敗**に変換（`consumed=false, committed=false`）。
+* **`recover`**：失敗（committed を含む）を捕捉し、`mode="collect"` の場合のみ同期点まで前進して継続する。`cut` は **分岐を止める**ためのものであり、回復そのものを禁止しない（Build/CI では `mode="off"` が既定）。
 * **`lookahead/notFollowedBy`**：非消費なので `Span` は**現在位置**。
 
 ---

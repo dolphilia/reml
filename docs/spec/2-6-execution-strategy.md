@@ -71,6 +71,7 @@ type RunConfigExtensions = Map<Str, Any>
 * **復旧戦略**: `recover` による同期・継続は `extensions["recover"].mode="collect"` のときだけ有効化する（IDE/LSP 向け）。Build/CI では `"off"`（既定）により fail-fast を維持できる。
   * `extensions["recover"].sync_tokens` に同期トークン集合を記録し、ストリーミング実行でも同じ集合を利用できるようにする。
   * `merge_warnings=true` のままでも監査ログ（3-6 §2.2）が個別イベントを保持するため、可観測性は損なわれない。
+  * 回復が発生した場合、`ParseResult.recovered=true` とし、回復ごとの診断を `ParseResult.diagnostics` に蓄積する（2-1/2-5 の契約）。
 
 #### B-2-3. ストリーミング連携
 
