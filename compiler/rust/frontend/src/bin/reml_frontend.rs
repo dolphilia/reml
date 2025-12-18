@@ -2512,6 +2512,7 @@ impl RuntimeExecutionPlan {
             severity: DiagnosticSeverity::Error,
             message: "Bridge `telemetry_bridge` は Stage::Beta で、要求 Stage::Stable を満たしていません。"
                 .into(),
+            notes: Vec::new(),
             extensions,
             audit_metadata: Map::new(),
         };

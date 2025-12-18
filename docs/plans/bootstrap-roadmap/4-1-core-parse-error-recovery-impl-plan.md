@@ -72,6 +72,7 @@
    - `examples/spec_core/chapter2/parser_core/core-parse-recover-*.reml` が前提としている `Parse.run_with_recovery(...)` を Phase4 実装で再現可能にする。
      - 方針案: `run_with_recovery(p, src)` は `RunConfig.extensions["recover"].mode="collect"` を有効化した `run(p, src, cfg)` の薄いラッパ。
      - 同期点集合は `extensions["recover"].sync_tokens=[";"]` を既定とするか、サンプル側で注入する。
+     - `extensions["recover"].notes=true` の場合は `recover_with_context` の `context` を `Diagnostic.notes` にも露出し、IDE/LSP の部分診断が欠落しないことを保証する（2-5 §E-2-3、2-6 §B-2-3）。
 5. **ゴールデン更新と Phase4 マトリクス緑化**
    - 実行（例）:
      - `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-recover-multiple-errors-semicolon.reml`

@@ -318,6 +318,7 @@ impl IntoDiagnostic for PathSecurityError {
             domain: "runtime",
             severity: DiagnosticSeverity::Error,
             message,
+            notes: Vec::new(),
             extensions,
             audit_metadata,
         }

@@ -420,6 +420,7 @@ fn glob_diagnostic(
         domain: "runtime",
         severity: DiagnosticSeverity::Error,
         message: format!("Core.Path glob failed: {message}"),
+        notes: Vec::new(),
         extensions,
         audit_metadata,
     }
@@ -434,6 +435,7 @@ fn generic_path_diagnostic(kind: PathErrorKind, message: String) -> GuardDiagnos
         domain: "runtime",
         severity: DiagnosticSeverity::Error,
         message: formatted,
+        notes: Vec::new(),
         extensions,
         audit_metadata: Map::new(),
     }

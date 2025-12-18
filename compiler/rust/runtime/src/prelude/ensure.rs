@@ -1,4 +1,4 @@
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
 use std::{option::Option as RemlOption, result::Result as RemlResult};
 
 type StdOption<T> = std::option::Option<T>;
@@ -150,8 +150,23 @@ pub struct GuardDiagnostic {
     pub domain: &'static str,
     pub severity: DiagnosticSeverity,
     pub message: String,
+    pub notes: Vec<DiagnosticNote>,
     pub extensions: Map<String, Value>,
     pub audit_metadata: Map<String, Value>,
+}
+
+/// 診断の補足情報（notes）。
+#[derive(Debug, Clone)]
+pub struct DiagnosticNote {
+    pub message: String,
+}
+
+impl DiagnosticNote {
+    pub fn plain(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
 }
 
 impl GuardDiagnostic {
@@ -165,6 +180,15 @@ impl GuardDiagnostic {
             Value::String(self.severity.as_str().into()),
         );
         root.insert("message".into(), Value::String(self.message));
+        root.insert(
+            "notes".into(),
+            Value::Array(
+                self.notes
+                    .into_iter()
+                    .map(|note| json!({ "message": note.message }))
+                    .collect(),
+            ),
+        );
         root.insert("extensions".into(), Value::Object(self.extensions));
         root.insert("audit".into(), Value::Object(self.audit_metadata));
         Value::Object(root)
@@ -222,6 +246,7 @@ impl IntoDiagnostic for EnsureError {
             domain: RUNTIME_DOMAIN,
             severity: DiagnosticSeverity::Error,
             message: self.message,
+            notes: Vec::new(),
             extensions,
             audit_metadata: self.metadata.audit_metadata(),
         }

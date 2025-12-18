@@ -356,6 +356,32 @@ fn recover_with_context_records_context_message() {
 }
 
 #[test]
+fn recover_notes_true_exposes_context_in_notes() {
+    let cfg = recover_collect_config(&["\n"], None, None, None).with_extension("recover", |mut ext| {
+        ext.insert("notes".into(), Value::Bool(true));
+        ext
+    });
+    let parser = consume_then_fail("recover me").recover_with_context(
+        tag("\n").map(|_| ()),
+        "ここは式が必要です",
+        (),
+    );
+    let result = run(&parser, "oops\nrest", &cfg);
+    assert_eq!(result.value, Some(()));
+    assert!(result.recovered);
+    assert_eq!(result.diagnostics[0].notes, vec!["ここは式が必要です".to_string()]);
+    let json = result.diagnostics[0].to_guard_diagnostic().into_json();
+    assert_eq!(
+        json.get("notes")
+            .and_then(|value| value.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|value| value.get("message"))
+            .and_then(|value| value.as_str()),
+        Some("ここは式が必要です")
+    );
+}
+
+#[test]
 fn recover_collect_mode_respects_max_recoveries() {
     let cfg = recover_collect_config(&["\n"], None, None, Some(0));
     let parser = consume_then_fail("recover me").recover(tag("\n").map(|_| ()), ());

@@ -452,6 +452,7 @@ pub fn compatibility_violation_diagnostic(
         domain: CONFIG_COMPAT_DOMAIN,
         severity: DiagnosticSeverity::Error,
         message,
+        notes: Vec::new(),
         extensions,
         audit_metadata: audit,
     }

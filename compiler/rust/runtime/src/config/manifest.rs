@@ -1474,6 +1474,7 @@ fn manifest_diagnostic(
         domain: CONFIG_DOMAIN,
         severity: DiagnosticSeverity::Error,
         message,
+        notes: Vec::new(),
         extensions,
         audit_metadata: audit,
     }

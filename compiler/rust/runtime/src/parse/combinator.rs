@@ -1,4 +1,4 @@
-use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic};
+use crate::prelude::ensure::{DiagnosticNote, DiagnosticSeverity, GuardDiagnostic};
 use crate::run_config::RunConfig;
 use crate::text::Str;
 use serde_json::{json, Map, Value};
@@ -379,6 +379,7 @@ struct RecoverConfig {
     max_diagnostics: Option<usize>,
     max_resync_bytes: Option<usize>,
     max_recoveries: Option<usize>,
+    notes: bool,
 }
 
 fn decode_recover_config(run_config: &RunConfig) -> RecoverConfig {
@@ -426,6 +427,11 @@ fn decode_recover_config(run_config: &RunConfig) -> RecoverConfig {
         .get("max_recoveries")
         .and_then(Value::as_u64)
         .and_then(|value| usize::try_from(value).ok());
+
+    config.notes = recover
+        .get("notes")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
 
     config
 }
@@ -1029,6 +1035,7 @@ pub struct ParseError {
     pub expected_tokens: Vec<String>,
     pub recover: Option<RecoverMeta>,
     pub fixits: Vec<ParseFixIt>,
+    pub notes: Vec<String>,
 }
 
 impl ParseError {
@@ -1039,6 +1046,7 @@ impl ParseError {
             expected_tokens: Vec::new(),
             recover: None,
             fixits: Vec::new(),
+            notes: Vec::new(),
         }
     }
 
@@ -1058,6 +1066,11 @@ impl ParseError {
 
     pub fn with_fixit(mut self, fixit: ParseFixIt) -> Self {
         self.fixits.push(fixit);
+        self
+    }
+
+    pub fn with_note(mut self, note: impl Into<String>) -> Self {
+        self.notes.push(note.into());
         self
     }
 
@@ -1131,6 +1144,12 @@ impl ParseError {
             domain: "parser",
             severity: DiagnosticSeverity::Error,
             message: self.message.clone(),
+            notes: self
+                .notes
+                .iter()
+                .cloned()
+                .map(DiagnosticNote::plain)
+                .collect(),
             extensions,
             audit_metadata,
         }
@@ -1684,11 +1703,16 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                                 }
 
                                 let sync = state.match_sync_token(&cursor, &rest);
-                                let mut diagnostic = error
-                                    .clone()
-                                    .with_recover(meta.clone().with_sync(sync));
+                                let recover_meta = meta.clone().with_sync(sync);
+                                let mut diagnostic =
+                                    error.clone().with_recover(recover_meta.clone());
                                 if let Some(fixit) = fixit.clone() {
                                     diagnostic = diagnostic.with_fixit(fixit);
+                                }
+                                if state.recover_config.notes {
+                                    if let Some(context) = recover_meta.context.as_ref() {
+                                        diagnostic = diagnostic.with_note(context.clone());
+                                    }
                                 }
                                 state.push_diagnostic(diagnostic);
                                 state.set_input(rest.clone());
@@ -3420,6 +3444,36 @@ where
     T: Clone + Send + Sync + 'static,
 {
     run(parser, input, &RunConfig::default())
+}
+
+/// `RunConfig.extensions["recover"].mode="collect"` を強制しつつ実行するヘルパ。
+///
+/// * 既定では `sync_tokens=[";"]` を補う（未指定の場合のみ）。
+/// * `extensions["recover"].notes=true` が指定されている場合、`recover_with_context` の
+///   `context` を `ParseError.notes` にも露出する。
+pub fn run_with_recovery<T>(parser: &Parser<T>, input: &str) -> ParseResult<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    run_with_recovery_config(parser, input, &RunConfig::default())
+}
+
+/// 既存の RunConfig をベースに `mode="collect"` を有効化して実行する。
+pub fn run_with_recovery_config<T>(parser: &Parser<T>, input: &str, cfg: &RunConfig) -> ParseResult<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    let cfg = cfg.with_extension("recover", |mut ext| {
+        ext.insert("mode".into(), Value::String("collect".into()));
+        if !ext.contains_key("sync_tokens") {
+            ext.insert(
+                "sync_tokens".into(),
+                Value::Array(vec![Value::String(";".into())]),
+            );
+        }
+        ext
+    });
+    run(parser, input, &cfg)
 }
 
 /// CLI / LSP など外部向け診断形式へ変換する。

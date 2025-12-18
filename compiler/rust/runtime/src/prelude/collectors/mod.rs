@@ -817,6 +817,7 @@ impl IntoDiagnostic for CollectError {
             domain: COLLECTOR_DIAGNOSTIC_DOMAIN,
             severity: DiagnosticSeverity::Error,
             message: format!("{} failed: {}", audit.kind.display_name(), message),
+            notes: Vec::new(),
             extensions: {
                 let mut root = JsonObject::new();
                 root.insert(COLLECTOR_EXTENSION_KEY.into(), Value::Object(extensions));

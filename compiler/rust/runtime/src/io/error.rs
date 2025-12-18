@@ -300,6 +300,7 @@ impl IntoDiagnostic for IoError {
             domain: "runtime",
             severity: DiagnosticSeverity::Error,
             message: diag_message,
+            notes: Vec::new(),
             extensions,
             audit_metadata,
         }
