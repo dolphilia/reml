@@ -1,7 +1,7 @@
 # spec_core スイート実行レポート
 
-- 実行時刻: 2025-12-18 07:25:08Z
-- 対象シナリオ: 68 件 / 成功 68 件 / 失敗 0 件
+- 実行時刻: 2025-12-18 23:24:50Z
+- 対象シナリオ: 73 件 / 成功 71 件 / 失敗 2 件
 - 入力ソース: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
 
 | Scenario | File | 期待 Diagnostics | 実際 Diagnostics | Exit | 判定 | 備考 |
@@ -30,12 +30,15 @@
 | `CH2-PARSE-102` | `examples/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.reml` | `parser.syntax.expected_tokens` | `parser.syntax.expected_tokens` | 1 | ✅ pass | 演算子右項欠落（`(1 +)`）で `cut` 境界による期待集合の再初期化が効き、誤誘導しない `parser.syntax.expected_tokens` を固定する。比較対象（Cut 無し相当）: `examples/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead-no-cut.reml`。 |
 | `CH2-PARSE-103` | `examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren.reml` | `parser.syntax.expected_tokens` | `parser.syntax.expected_tokens` | 1 | ✅ pass | 括弧閉じ忘れ（`(1 + 2`）で `)` への期待が自然に収束することを固定する（括弧ペアの cut 境界）。比較対象（Cut 無し相当）: `examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren-no-cut.reml`。 |
 | `CH2-PARSE-201` | `examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml` | `core.parse.recover.branch` | `core.parse.recover.branch` | 1 | ✅ pass | `Parse.recover` が `core.parse.recover.branch` 診断を生成し Diagnostics chapter と同期することを確認する。 |
+| `CH2-PARSE-202` | `examples/spec_core/chapter2/parser_core/core-parse-recover-multiple-errors-semicolon.reml` | `core.parse.recover.branch`<br>`core.parse.recover.branch` | `core.parse.recover.branch` | 1 | ❌ fail | 文末 `;` 同期で 1 回の実行に複数診断（回復 2 回）を蓄積する最小ケース（計画起点 ID: CP-WS4-001）。 |
 | `CP-WS2-001` | `examples/spec_core/chapter2/parser_core/core-parse-label-vs-token-with-label.reml` | `parser.syntax.expected_tokens` | `parser.syntax.expected_tokens` | 1 | ✅ pass | Parse.run の label 有無で期待集合を比較する基準。with-label は Rule("expression") を含み context_note が `+` の後に expression、no-label は token/class のみ。 |
 | `CH2-STREAM-301` | `examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml` | — | — | 0 | ✅ pass | `run_stream` と `DemandHint::More` の協調を示す Streaming API 基準ケースを chapter2 §C-1 に基づき追加する。 |
 | `CH2-OP-401` | `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml` | `core.parse.opbuilder.level_conflict` | `core.parse.opbuilder.level_conflict` | 1 | ✅ pass | 同一レベルへ異なる fixity を登録した際の `core.parse.opbuilder.level_conflict` 診断をゴールデン化し優先度規則を確認する。 |
 | `CH2-PARSE-801` | `examples/spec_core/chapter2/parser_core/core-parse-precedence-builder-ok.reml` | — | — | 0 | ✅ pass | `expr_builder`（Phase 8 ドラフト）。`operator_table` で OpBuilder/RunConfig から優先度を注入できる経路を追加。zero-copy と streaming resume は対象外。 |
 | `CH2-PARSE-901` | `examples/spec_core/chapter2/parser_core/core-parse-autowhitespace-layout.reml` | — | — | 0 | ✅ pass | autoWhitespace/Layout を RunConfig.extensions["lex"].layout_profile で共有し、未設定時は cfg.profile の layout_space へフォールバックする経路を CLI/LSP/Streaming で回帰監視する。 |
 | `CH2-PARSE-902` | `examples/spec_core/chapter2/parser_core/core-parse-profile-output.reml` | — | — | 0 | ✅ pass | RunConfig.extensions["parse"].profile/profile_output を有効化し、診断 0 のパースで ParserProfile JSON を best-effort 出力する経路をテストする。 |
+| `CP-WS5-001` | `examples/spec_core/chapter2/parser_core/core-parse-large-input-order.reml` | `parser.syntax.expected_tokens` | `parser.syntax.expected_tokens` | 1 | ✅ pass | 大入力（10MB 級）で Input/Span の更新と Packrat がオーダー異常を起こさないことを監視する（WS5 Step3）。 |
+| `CP-WS5-002` | `examples/spec_core/chapter2/parser_core/core-parse-unicode-grapheme-column.reml` | `parser.syntax.expected_tokens` | `parser.syntax.expected_tokens` | 1 | ✅ pass | Unicode（ZWJ 絵文字など）を含む行で列=グラフェムが崩れないことを固定する（WS5 Step3）。 |
 | `CH1-LET-004` | `examples/spec_core/chapter1/let_binding/bnf-valdecl-missing-initializer-error.reml` | `parser.syntax.expected_tokens` | `parser.syntax.expected_tokens` | 1 | ✅ pass | 初期化式を欠落させ parser.syntax.expected_tokens を誘発する。 |
 | `CH1-MATCH-004` | `examples/spec_core/chapter1/match_expr/bnf-matchexpr-missing-arrow-error.reml` | `parser.syntax.expected_tokens` | `parser.syntax.expected_tokens` | 1 | ✅ pass | `->` 欠落により構文エラーを明示する。 |
 | `CH1-MATCH-005` | `examples/spec_core/chapter1/match_expr/bnf-matchexpr-alias-record-ok.reml` | — | — | 0 | ✅ pass | RecordPattern と MatchAlias を併用しレコードの部分束縛と全体参照を両立する受理例。 |
@@ -74,3 +77,5 @@
 | `CH1-LAMBDA-101` | `examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml` | — | — | 0 | ✅ pass | 外側変数を捕捉するラムダを示す。 |
 | `CH1-LAMBDA-102` | `examples/spec_core/chapter1/lambda/bnf-lambda-arg-pattern.reml` | — | — | 0 | ✅ pass | パターン引数を用いたラムダの短縮形。 |
 | `CP-WS3-001` | `examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml` | `parser.syntax.expected_tokens` | `parser.syntax.expected_tokens` | 1 | ✅ pass | LexPack 入口で space/comment を共有し identifier/number/string ラベルを保持する最小サンプル。 |
+| `CP-WS6-001` | `examples/spec_core/chapter2/parser_core/core-parse-left-recursion-direct.reml` | `E4001` | — | 0 | ❌ fail | 左再帰を直接書いた場合の検出（E4001）を固定する。RunConfig.left_recursion=\off\" で実行。" |
+| `CP-WS6-002` | `examples/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.reml` | — | — | 0 | ✅ pass | 左再帰ガードの profile 指標を観測する。RunConfig.left_recursion=\on\" と profile を有効化。" |
