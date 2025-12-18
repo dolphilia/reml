@@ -29,6 +29,28 @@
 - 回帰:
   - `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `CH2-PARSE-202` を `resolution=ok` に更新できる状態にする（コマンドとログを `resolution_notes` に残す）。
 
+## ゴールデン比較ポリシー（曖昧さ解消）
+
+Phase4 の `expected/**.diagnostic.json` は、Rust フロントエンドの `--output json` が返す **CLI 診断エンベロープ**（監査メタ・RunConfig サマリ等を含む）を保存する。
+一方で CLI 出力には **実行ごとに変化する値**（`run_id`、timestamp、監査 ID など）が含まれるため、ゴールデン比較は「完全一致」ではなく **正規化（normalization）を前提**に行う。
+
+### 比較レベル
+
+* **Level 0（最小・必須）**: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `diagnostic_keys`（順序を含む）と `diagnostic_count` が一致する。
+* **Level 1（推奨）**: `diagnostics[]` の主要フィールドが一致する。
+  * 比較対象: `severity` / `code` / `message` / `notes[].message` / `recoverability`
+* **Level 2（回復仕様の固定）**: `extensions["recover"]` と FixIt が仕様どおりに出力される。
+  * 比較対象: `extensions["recover"].mode/action/sync/inserted/context`、`fixits[]`（とくに insert）
+
+### 正規化ルール（比較から除外する項目）
+
+次の項目は **証跡（再実行ログ）として保存するが、差分比較の合否判定には用いない**。
+
+* ルート/サマリの揺れ: `run_id`、`summary.started_at`、`summary.finished_at`
+* 診断 ID/時刻の揺れ: `diagnostics[].id`、`diagnostics[].timestamp`、`extensions["diagnostic.v2"].timestamp`
+* 監査・環境依存: `audit`、`audit_metadata`、`extensions["runconfig"]`（および `run_config`/`parse_result`/`stream_meta` の統計）
+* JSON のキー順序/整形（minified/pretty）は比較対象外（JSON として同値なら許容）
+
 ## 実装ステップ（優先順）
 1. **RunConfig の recover 拡張を実装（mode/sync_tokens/上限）**
    - `extensions["recover"].mode`（`"off"|"collect"`）を解析・既定 `"off"` を保持。
@@ -92,8 +114,9 @@
 ## リスクと対策
 - **回復が既定 ON になって誤 AST が広がる**: `mode="off"` 既定を厳守し、回復は opt-in（WS4 Step0）を維持する。
 - **cut と回復が衝突して診断が不安定になる**: `cut` は分岐抑止、`recover` は同期・継続と責務を分離し、`committed` 超え回復は「同じ枝のまま同期」だけ許す（WS4 Step1）。
-- **期待出力の揺れ**: 初期は `diagnostic_keys`（件数/コード列）中心で固定し、`extensions["recover"]` の詳細固定は段階導入する（WS4 Step3 方針）。
+- **期待出力の揺れ**: CLI 出力は `run_id`/timestamp/監査メタ等が揺れるため、ゴールデン比較は「正規化後一致」を前提に運用する（本書「ゴールデン比較ポリシー」）。
 
 ## 完了判定
-- `CH2-PARSE-201` と `CH2-PARSE-202` の CLI 出力が `expected/` と一致し、`phase4-scenario-matrix.csv` の `CH2-PARSE-202` が `resolution=ok`。
+- `CH2-PARSE-201` と `CH2-PARSE-202` について、CLI 出力を `expected/` へ反映し、**正規化後の比較**で `diagnostic_keys`（順序含む）と主要フィールド（Level1/2）が一致する。
+- `phase4-scenario-matrix.csv` の `CH2-PARSE-202` が `resolution=ok`。
 - `docs/spec/2-5-error.md` E-2（回復糖衣と FixIt 最小スキーマ）の要求を満たす `extensions["recover"]` が出力される。
