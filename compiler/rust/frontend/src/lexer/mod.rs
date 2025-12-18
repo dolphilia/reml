@@ -317,6 +317,44 @@ fn lex_block_comment(lex: &mut LogosLexer<RawToken>) -> Option<()> {
     None
 }
 
+fn consume_skippable(src: &str) -> usize {
+    let bytes = src.as_bytes();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        match bytes[i] {
+            b' ' | b'\t' | b'\r' | b'\n' => i += 1,
+            b'/' if i + 1 < bytes.len() && bytes[i + 1] == b'/' => {
+                i += 2;
+                while i < bytes.len() && bytes[i] != b'\n' {
+                    i += 1;
+                }
+            }
+            b'/' if i + 1 < bytes.len() && bytes[i + 1] == b'*' => {
+                let mut depth = 1usize;
+                i += 2;
+                while i + 1 < bytes.len() {
+                    match (bytes[i], bytes[i + 1]) {
+                        (b'/', b'*') => {
+                            depth += 1;
+                            i += 2;
+                        }
+                        (b'*', b'/') => {
+                            depth -= 1;
+                            i += 2;
+                            if depth == 0 {
+                                break;
+                            }
+                        }
+                        _ => i += 1,
+                    }
+                }
+            }
+            _ => break,
+        }
+    }
+    i
+}
+
 fn lex_string_literal(lex: &mut LogosLexer<RawToken>) -> Option<()> {
     let mut escaped = false;
     for (idx, ch) in lex.remainder().char_indices() {
@@ -404,13 +442,30 @@ pub fn lex_source(text: &str) -> LexOutput {
 
 /// `SourceBuffer` を解析し、`Token` の列を生成する（プロファイル指定版）。
 pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
-    let mut lexer = RawToken::lexer(text);
+    let mut offset = 0usize;
     let mut tokens = Vec::new();
     let mut errors = Vec::new();
 
-    while let Some(result) = lexer.next() {
+    while offset < text.len() {
+        // logos の Skip 再帰を避けるため、空白/コメントは手動でまとめてスキップする。
+        let skipped = consume_skippable(&text[offset..]);
+        if skipped > 0 {
+            offset += skipped;
+            continue;
+        }
+
+        let mut lexer = RawToken::lexer(&text[offset..]);
+        let result = match lexer.next() {
+            Some(token) => token,
+            None => break,
+        };
         let range = lexer.span();
-        let span = Span::new(range.start as u32, range.end as u32);
+        let span = Span::new(
+            (offset + range.start) as u32,
+            (offset + range.end) as u32,
+        );
+        let consumed = range.end.max(1);
+
         match result {
             Ok(RawToken::KeywordModule) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordModule, "module")
@@ -682,6 +737,7 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
                 tokens.push(Token::with_lexeme(TokenKind::Unknown, span, lexer.slice()));
             }
         }
+        offset += consumed;
     }
 
     let eof_span = Span::new(text.len() as u32, text.len() as u32);

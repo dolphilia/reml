@@ -106,8 +106,11 @@ def generate_large_input(anchor_text: str, target_bytes: int) -> str:
     return "".join(out_lines)
 
 
-def run_reml_frontend(root: Path, input_path: Path) -> str:
+def run_reml_frontend(
+    root: Path, input_path: Path, extra_args: Sequence[str] | None = None
+) -> str:
     manifest_path = root / "compiler" / "rust" / "frontend" / "Cargo.toml"
+    extra_args = list(extra_args or [])
     cmd: Sequence[str] = (
         "cargo",
         "run",
@@ -119,6 +122,7 @@ def run_reml_frontend(root: Path, input_path: Path) -> str:
         "--",
         "--output",
         "json",
+        *extra_args,
         str(input_path),
     )
     print(f"==> running CP-WS5-001: {input_path.relative_to(root).as_posix()}")
@@ -192,6 +196,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=f"{NOTES_PATH} へ計測結果を追記する",
     )
+    parser.add_argument(
+        "--streaming-fallback",
+        action="store_true",
+        help="通常実行が失敗した場合に stream.enabled=true で再実行する",
+    )
+    parser.add_argument(
+        "--stream-chunk-size",
+        type=int,
+        default=None,
+        help="fallback 実行時に指定する chunk サイズ（bytes）。未指定なら 65536",
+    )
     return parser.parse_args()
 
 
@@ -226,7 +241,26 @@ def main() -> None:
 
         stamp = utc_stamp()
         log_path = logs_dir / f"spec_core-CP-WS5-001-{size.label}-{stamp}.diagnostic.json"
-        stdout = run_reml_frontend(root, generated_path)
+        stdout: str | None = None
+        try:
+            stdout = run_reml_frontend(root, generated_path)
+        except SystemExit as primary_err:
+            if args.streaming_fallback:
+                chunk = args.stream_chunk_size or 65536
+                fallback_args = [
+                    "--streaming",
+                    "--stream-demand-min-bytes",
+                    str(chunk),
+                    "--stream-demand-preferred-bytes",
+                    str(chunk),
+                ]
+                print(
+                    f"    -> primary run failed; retrying with streaming (chunk={chunk} bytes)"
+                )
+                stdout = run_reml_frontend(root, generated_path, fallback_args)
+            else:
+                raise primary_err
+
         # まずは raw を保存（解析できれば整形して保存）
         try:
             envelope = json.loads(stdout)
