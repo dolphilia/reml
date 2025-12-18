@@ -17,6 +17,8 @@
 ## 進捗状況
 - Step0: 完了（プリセット範囲と RunConfig 連携の方針を確定）
 - Step1: 進行中（自前ヘルパとの対応表と RunConfig/期待ラベルの論点を整理済み、棚卸し継続）
+  - 完了済み: 主要サンプル4件の自前ヘルパ棚卸しと LexPreset 対応表作成、RunConfig 共有キー未導入の確認、期待ラベルの不足を特定
+  - 未了: サンプル横断での置換方針確定と不足 API（case-insensitive keyword 糖衣、TOML 用 IdentifierProfile 等）の採否決定
 - Step2: 未着手
 - Step3: 未着手
 
