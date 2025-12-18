@@ -53,6 +53,7 @@ use reml_runtime::config::{
 use reml_runtime::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
 use reml_runtime::run_config::{
     apply_manifest_overrides, ApplyManifestOverridesArgs, RunConfigManifestOverrides,
+    LeftRecursionStrategy,
 };
 use reml_runtime::parse as runtime_parse;
 use reml_frontend::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
@@ -675,7 +676,21 @@ fn run_parse_driver_mode(
             use_label.then_some(label.as_str()),
         )
     };
-    let run_config = reml_runtime::run_config::RunConfig::default();
+    let mut run_config = reml_runtime::run_config::RunConfig::default();
+    if let Some(packrat) = args.parse_driver_packrat {
+        run_config.packrat = packrat;
+    }
+    if let Some(strategy) = args.parse_driver_left_recursion {
+        run_config.left_recursion = strategy;
+    }
+    if let Some(output) = args.parse_driver_profile_output.as_ref() {
+        run_config.profile = true;
+        let output_path = output.display().to_string();
+        run_config = run_config.with_extension("parse", |mut existing| {
+            existing.insert("profile_output".to_string(), Value::String(output_path));
+            existing
+        });
+    }
     let driver_source = extract_parse_driver_input(source);
     let result = runtime_parse::run_shared(&parser, Arc::clone(&shared_source), &run_config);
 
@@ -1215,6 +1230,9 @@ struct CliArgs {
     #[allow(dead_code)]
     parse_driver: bool,
     parse_driver_label: Option<String>,
+    parse_driver_profile_output: Option<PathBuf>,
+    parse_driver_left_recursion: Option<LeftRecursionStrategy>,
+    parse_driver_packrat: Option<bool>,
     emit_audit: bool,
     #[allow(dead_code)]
     show_stage_context: bool,
@@ -1815,6 +1833,9 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut emit_diagnostics = false;
     let mut parse_driver = false;
     let mut parse_driver_label: Option<String> = None;
+    let mut parse_driver_profile_output: Option<PathBuf> = None;
+    let mut parse_driver_left_recursion: Option<LeftRecursionStrategy> = None;
+    let mut parse_driver_packrat: Option<bool> = None;
     let mut emit_audit = false;
     let mut show_stage_context = false;
     let mut diagnostics_stream = false;
@@ -1846,6 +1867,24 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     args.next()
                         .ok_or_else(|| "--parse-driver-label は値を伴う必要があります")?,
                 )
+            }
+            "--parse-driver-profile-output" => {
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--parse-driver-profile-output は出力パスを伴う必要があります")?;
+                parse_driver_profile_output = Some(PathBuf::from(path));
+            }
+            "--parse-driver-left-recursion" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--parse-driver-left-recursion は値を伴う必要があります")?;
+                parse_driver_left_recursion = Some(parse_left_recursion_strategy(&value)?);
+            }
+            "--parse-driver-packrat" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--parse-driver-packrat は on/off の値を伴う必要があります")?;
+                parse_driver_packrat = Some(parse_on_off(&value)?);
             }
             "--emit-audit" | "--emit-audit-log" => emit_audit = true,
             "--show-stage-context" => show_stage_context = true,
@@ -2285,6 +2324,9 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         emit_diagnostics,
         parse_driver,
         parse_driver_label,
+        parse_driver_profile_output,
+        parse_driver_left_recursion,
+        parse_driver_packrat,
         emit_audit,
         show_stage_context,
         diagnostics_stream,
@@ -2318,6 +2360,9 @@ fn print_help(program_name: &str) {
   --emit-effects-metrics <PATH>  効果メトリクスを JSON で保存
   --parse-driver                 パース専用ドライバで入力ファイルを評価し、診断を JSON 出力（型検査/Runtime をスキップ）
   --parse-driver-label <NAME>    上記ドライバで付与するラベル名（既定: expression）
+  --parse-driver-profile-output <PATH> parse-driver の profile 出力先（JSON）
+  --parse-driver-left-recursion <MODE> parse-driver の左再帰モード（off/on/auto）
+  --parse-driver-packrat <MODE>  parse-driver の Packrat を on/off で切替
   --emit-diagnostics             標準出力へ診断 JSON を出力
   --emit-audit-log               Audit メタデータを出力（--emit-audit も利用可能）
   --emit-telemetry <KIND>[=PATH] 制約グラフ等のテレメトリを JSON で保存
@@ -2347,6 +2392,15 @@ fn parse_on_off(value: &str) -> Result<bool, String> {
         "on" | "true" | "1" => Ok(true),
         "off" | "false" | "0" => Ok(false),
         other => Err(format!("値 `{other}` は on/off ではありません")),
+    }
+}
+
+fn parse_left_recursion_strategy(value: &str) -> Result<LeftRecursionStrategy, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "off" => Ok(LeftRecursionStrategy::Off),
+        "on" => Ok(LeftRecursionStrategy::On),
+        "auto" => Ok(LeftRecursionStrategy::Auto),
+        other => Err(format!("値 `{other}` は off/on/auto ではありません")),
     }
 }
 
