@@ -386,7 +386,10 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         ParserDriver::parse_with_options_and_run_config(&source, parser_options, run_config)
     };
     trace_log(args, "parsing", "finish");
-    let typeck_report = if result.value.is_some() {
+    let parse_only = args.emit_diagnostics;
+    let typeck_report = if parse_only {
+        TypecheckReport::default()
+    } else if result.value.is_some() {
         TypecheckDriver::infer_module(result.value.as_ref(), &args.typecheck_config)
     } else {
         TypecheckReport::default()
@@ -457,18 +460,22 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         &stream_flow_state,
         &stage_payload,
     );
-    let mut type_diagnostics = build_type_diagnostics(
-        &typeck_report,
-        args,
-        &input_path,
-        &source,
-        &result.run_config,
-        &runconfig_summary,
-        &stream_flow_state,
-        &stage_payload,
-    );
+    let mut type_diagnostics = if parse_only {
+        Vec::new()
+    } else {
+        build_type_diagnostics(
+            &typeck_report,
+            args,
+            &input_path,
+            &source,
+            &result.run_config,
+            &runconfig_summary,
+            &stream_flow_state,
+            &stage_payload,
+        )
+    };
     diagnostics_entries.append(&mut type_diagnostics);
-    if diagnostics_entries.is_empty() && args.runtime_phase_enabled {
+    if !parse_only && diagnostics_entries.is_empty() && args.runtime_phase_enabled {
         let mut runtime_diags = execute_runtime_phase(&input_path);
         diagnostics_entries.append(&mut runtime_diags);
     }
