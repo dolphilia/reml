@@ -8,6 +8,7 @@ use std::fs;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Arc;
 
 use reml_adapter::target::{self, TargetInference};
 use reml_frontend::diagnostic::messages;
@@ -345,9 +346,11 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
     let started_at = formatter::current_timestamp();
     install_typecheck_config(&args.typecheck_config)?;
     let input_path = args.input.clone();
-    let source = fs::read_to_string(&input_path)?;
+    let source_text = fs::read_to_string(&input_path)?;
+    let shared_source: Arc<str> = source_text.into_boxed_str().into();
+    let source = shared_source.as_ref();
     if args.parse_driver {
-        return run_parse_driver_mode(args, &input_path, &source, &started_at);
+        return run_parse_driver_mode(args, &input_path, Arc::clone(&shared_source), &started_at);
     }
     if let Some(path) = &args.emit_tokens {
         let options = LexerOptions {
@@ -381,14 +384,14 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
     parser_options.stream_flow = Some(stream_flow_state.clone());
     let result = if args.stream_config.enabled {
         let runner = StreamingRunner::new(
-            source.clone(),
+            source.to_owned(),
             parser_options.clone(),
             run_config.clone(),
             stream_flow_state.clone(),
         );
         resolve_completed_stream_outcome(runner.run_stream())
     } else {
-        ParserDriver::parse_with_options_and_run_config(&source, parser_options, run_config)
+        ParserDriver::parse_with_options_and_run_config(source, parser_options, run_config)
     };
     trace_log(args, "parsing", "finish");
     let parse_only = args.emit_diagnostics;
@@ -653,9 +656,10 @@ fn determine_exit_code(diagnostics: &[Value]) -> CliExitCode {
 fn run_parse_driver_mode(
     args: &CliArgs,
     input_path: &Path,
-    source: &str,
+    shared_source: Arc<str>,
     started_at: &str,
 ) -> Result<CliRunResult, Box<dyn std::error::Error>> {
+    let source = shared_source.as_ref();
     let label = args.parse_driver_label.clone().unwrap_or_default();
     let use_label = !label.trim().is_empty();
     let is_lexpack_basic = input_path
@@ -673,7 +677,7 @@ fn run_parse_driver_mode(
     };
     let run_config = reml_runtime::run_config::RunConfig::default();
     let driver_source = extract_parse_driver_input(source);
-    let result = runtime_parse::run(&parser, driver_source, &run_config);
+    let result = runtime_parse::run_shared(&parser, Arc::clone(&shared_source), &run_config);
 
     let mut diagnostics = Vec::new();
     for err in &result.diagnostics {
