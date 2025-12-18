@@ -125,7 +125,12 @@
   - 計画起点 ID: `CP-WS5-001`（大入力でのオーダー異常がない）
   - 計画起点 ID: `CP-WS5-002`（Unicode を含む入力で列/Span が崩れない）
 - サンプル
-  - `examples/spec_core/chapter2/parser_core/` に、Unicode 混在（全角・結合文字・絵文字）で位置が揃うことを確認できる入力例を追加する
+  - Unicode 位置（CP-WS5-002）:
+    - 入力: `examples/spec_core/chapter2/parser_core/core-parse-unicode-grapheme-column.reml`
+    - 期待: `expected/spec_core/chapter2/parser_core/core-parse-unicode-grapheme-column.diagnostic.json`
+  - 大入力（CP-WS5-001）:
+    - アンカー入力: `examples/spec_core/chapter2/parser_core/core-parse-large-input-order.reml`（生成ベース）
+    - 手順メモ: `expected/spec_core/chapter2/parser_core/core-parse-large-input-order.expected.md`（10MB 生成・観測の暫定手順）
 - 注意
   - 性能回帰は CI 差の影響が強いため、Phase10 の観測結果（hit/miss/backtracks）と併用し、まずは “異常検知” を固定する
 
