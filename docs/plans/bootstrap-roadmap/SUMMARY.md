@@ -125,11 +125,13 @@ Phase 3 では Rust 版 Reml コンパイラを唯一の実装として標準ラ
 ### 重点領域
 1. **[4-0-phase4-migration.md](4-0-phase4-migration.md)**: Phase 4 全体の目的とマイルストーン
 2. **[4-1-scenario-matrix-plan.md](4-1-scenario-matrix-plan.md)**: `.reml` シナリオ分類・`phase4-scenario-matrix.csv` 整備
-3. **[4-2-practical-execution-pipeline-plan.md](4-2-practical-execution-pipeline-plan.md)**: `run_examples.sh`/`cargo test -p reml_e2e` による実行パイプライン
-4. **[4-3-observability-and-metrics-plan.md](4-3-observability-and-metrics-plan.md)**: `collect-iterator-audit-metrics.py --section practical` とダッシュボード
-5. **[4-4-field-regression-and-readiness-plan.md](4-4-field-regression-and-readiness-plan.md)**: レグレッション管理と `phase4-readiness.md`
-6. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`: シナリオ分類表
-7. `reports/spec-audit/ch4/*.md`: 実行ログと性能/診断/監査の集約
+3. **[4-1-core-parse-lex-helpers-impl-plan.md](4-1-core-parse-lex-helpers-impl-plan.md)**: LexPreset/lex_pack 置換と WS3 Step3 回帰接続
+4. **[4-1-core-parse-error-labeling-impl-plan.md](4-1-core-parse-error-labeling-impl-plan.md)**: 期待集合ラベル統一（CP-WS2-001）
+5. **[4-2-practical-execution-pipeline-plan.md](4-2-practical-execution-pipeline-plan.md)**: `run_examples.sh`/`cargo test -p reml_e2e` による実行パイプライン
+6. **[4-3-observability-and-metrics-plan.md](4-3-observability-and-metrics-plan.md)**: `collect-iterator-audit-metrics.py --section practical` とダッシュボード
+7. **[4-4-field-regression-and-readiness-plan.md](4-4-field-regression-and-readiness-plan.md)**: レグレッション管理と `phase4-readiness.md`
+8. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`: シナリオ分類表
+9. `reports/spec-audit/ch4/*.md`: 実行ログと性能/診断/監査の集約
 
 ### 技術的ハイライト
 - `.reml` ベースのエンドツーエンドテスト

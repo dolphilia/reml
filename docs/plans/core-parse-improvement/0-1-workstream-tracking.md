@@ -37,6 +37,7 @@ Core.Parse の強化作業を「追跡可能な成果物」に分割し、`docs/
   - サンプル: リテラル/識別子/コメントの最小 DSL
   - 回帰: whitespace/comment を含む入力での安定挙動
   - 既存シナリオ: `CH2-PARSE-901`（autoWhitespace/Layout）, `CH2-PARSE-902`（profile_output）
+  - 実装計画: `docs/plans/bootstrap-roadmap/4-1-core-parse-lex-helpers-impl-plan.md`（WS3 Step3 の Phase4 反映）
 
 ### WS4: Error Recovery（複数エラー・IDE）
 - 計画: `1-3-error-recovery-plan.md`

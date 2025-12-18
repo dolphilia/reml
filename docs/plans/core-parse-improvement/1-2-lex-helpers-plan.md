@@ -19,7 +19,7 @@
 - Step1: 完了（自前ヘルパ棚卸し、置換方針確定、不足 API の採否決定）
   - 完了済み: 主要サンプル4件の対応表、RunConfig 共有キー未導入の確認、期待ラベル不足の特定、case-insensitive keyword 糖衣/TOML IdentifierProfile/Layout opt-in の扱いを決定
 - Step2: 完了（利用者導線とプリセットの具体化を決定）
-- Step3: 未着手
+- Step3: 着手（Phase4 実装計画を `docs/plans/bootstrap-roadmap/4-1-core-parse-lex-helpers-impl-plan.md` として起票。サンプル置換と回帰登録は未実施）
 
 ## 提供するヘルパ
 - `lexeme(p)`: `p` 成功後に空白/コメント（trivia）を処理
