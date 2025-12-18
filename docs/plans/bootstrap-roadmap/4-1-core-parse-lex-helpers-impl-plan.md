@@ -41,9 +41,22 @@
    - `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CP-WS3-001` を追加し、`resolution_notes` に CLI/LSP 実行コマンドと `RunConfig.extensions["lex"]` のキーを書き残す。
    - `tooling/examples/run_phase4_suite.py` に CP-WS3-001 の経路を追加し、`CH2-PARSE-901/902` と競合しないことを一度 Phase4 スイートで確認。
 
+### Step1 実施記録（LexPack 共通入口と RunConfig 共有）
+- **LexPack 標準形の決定**: `space: Parser<()>`（`with_space` と併用する空白/コメントトリビア）、`lexeme: Parser<T> -> Parser<T>`、`symbol: string -> Parser<string>`、`keyword: string -> Parser<string>`、`keyword_ci: string -> Parser<string>`、`identifier: Parser<Identifier>`（`label("identifier")` 付与済み）、`number: Parser<Number>`（`label("number")` 付与済み）、`string: Parser<StringLiteral>`（`label("string")` 付与済み）、`profile: ConfigTriviaProfile`、`identifier_profile: IdentifierProfile`、`layout_profile: LayoutProfile option`、`safety: LexSafetyProfile`、`space_id: ParserId` を保持する record として固定。`identifier/number/string` は WS2 推奨ラベルを組込み、サンプル側で追加ラップを要求しない。
+- **ヘルパシグネチャの整理**: `lex_pack(profile, identifier_profile, layout_profile, safety)` はすべての引数をオプション指定可能にし、未指定は `profile=ConfigTriviaProfile::strict_json`、`identifier_profile=IdentifierProfile::default`、`layout_profile=None`、`safety=LexSafetyProfile::strict` を既定とする。`lex_pack_toml()` は `lex_pack(ConfigTriviaProfile::toml_relaxed, IdentifierProfile::toml_key, None, LexSafetyProfile::strict)` のショートカットとして扱い、返却 record のフィールドは上記標準形と一致させる。
+- **keyword_ci 境界チェックリスト**:
+  - `keyword_ci(space, kw)` は `identifier_profile.is_identifier_continue` に基づく境界判定を必須とし、大小文字変換はマッチングのみに限定して **返却値は原文 `kw` を維持**する。
+  - 期待集合は `Expectation::Keyword(kw)` を返し、`identifier_profile` と共有する境界判定が `reserved(profile, set)` と衝突しないことを確認する（予約語拒否と同じ境界を共有）。
+  - `space_id` が一致する `space` を内部で利用し、`with_space`/`autoWhitespace` と二重スキップしないことをサンプル側のチェックリストに含める。
+- **RunConfig 書き戻し順序の固定**:
+  1. `space` を構築した時点で `space_id` を採番し、`RunConfig.extensions["lex"].space_id` に格納する。
+  2. `profile` / `identifier_profile` / `layout_profile` / `safety` を `extensions["lex"]` に書き戻し、未指定は既定値を明示する。
+  3. `lexeme`/`symbol`/`keyword`/`keyword_ci`/`identifier`/`number`/`string` のクロージャを構築し、`space_id` を共有した状態でサンプルへ渡す。
+  4. `reserved(profile, set)` を利用するサンプルでは、上記 `identifier_profile` を境界判定に再利用することをチェック項目に含める。
+
 ## 進捗状況
-- 2025-12-18: 本計画書を起票し、WS3 Step3 の Phase4 側タスクを整理。実装・サンプル更新は未着手。
-- 2025-12-18: Step1 の具体タスク（LexPack record 項目/シグネチャ、RunConfig 書き戻し順、`keyword_ci` 境界チェックリスト）を明文化。実装・ヘルパ作成はこれから。
+- 2025-12-18: 本計画書を起票し、WS3 Step3 の Phase4 側タスクを整理。
+- 2025-12-18: Step1 実施。`LexPack` 標準フィールド・`lex_pack/lex_pack_toml` シグネチャ・`keyword_ci` 境界チェックリスト・RunConfig 書き戻し順を確定し、共通ヘルパに含める内容を明文化。
 
 ## 依存関係
 - 計画: `docs/plans/core-parse-improvement/1-2-lex-helpers-plan.md`、`docs/plans/core-parse-improvement/2-0-integration-with-regression.md`。

@@ -11,6 +11,12 @@
 - `--parse-driver` を `--output lsp` / `--output human` で実行し、`expected.humanized` と `context_note` が B-6/B-7 どおり（with-label: Rule("expression") を保持、no-label: token/class のみ）になることを再確認。仕様 2-5 に Human/LSP 共通整形の前提を明記。
 - スポットスイープ: `examples/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.reml` / `core-parse-cut-unclosed-paren.reml` を CLI で再実行し、期待集合の並びと context_note に乱れがないことを確認。
 
+## 2025-12-18: LexPack エントリ標準化（WS3 Step1）
+
+- `docs/plans/bootstrap-roadmap/4-1-core-parse-lex-helpers-impl-plan.md` Step1 で、LexPack record の標準フィールドを確定。`space`/`lexeme`/`symbol`/`keyword`/`keyword_ci`/`identifier`/`number`/`string` に加え、`profile`/`identifier_profile`/`layout_profile`/`safety`/`space_id` を保持する構成に固定し、`identifier`/`number`/`string` は WS2 推奨ラベルを内蔵する方針とした。
+- エントリ関数のシグネチャを `lex_pack(profile, identifier_profile, layout_profile, safety)`（既定: `strict_json` + `IdentifierProfile::default` + layout 無効 + `LexSafetyProfile::strict`）とし、TOML 向けに `lex_pack_toml()` を `ConfigTriviaProfile::toml_relaxed` + `IdentifierProfile::toml_key` のショートカットで提供する設計を記録。
+- `keyword_ci` は境界判定を `identifier_profile.is_identifier_continue` に合わせ、`Expectation::Keyword` を返すことをチェックリスト化。`RunConfig.extensions["lex"]` への書き戻し順（`space_id` 採番 → profile 群 → ヘルパ組立）も固定し、`with_space`/`autoWhitespace` と二重スキップしない運用をサンプル共通ヘルパで強制する。
+
 ## 2025-12-17: `commit` のレイヤ決定（Cut/Commit の表面整理）
 
 ### 結論
