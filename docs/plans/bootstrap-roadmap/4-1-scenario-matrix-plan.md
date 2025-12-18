@@ -81,6 +81,7 @@
 
 - **CH2-PARSE-101**（[2-2 §A-3](../spec/2-2-core-combinator.md#a-3-変換コミット回復)）: `examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml` を新設し、`Core.Parse.or` と `commit` を組み合わせた `.reml` を `expected/...stdout` でゴールデン化する。`phase4-scenario-matrix` では `Runtime × chapter2.parser` として扱う。
 - **CH2-PARSE-201**（[2-5 §E](../spec/2-5-error.md#e-recoverの仕様)）: `chapter2/parser_core/core-parse-recover-diagnostic.reml` を追加し、`Parse.recover` で `core.parse.recover.branch` 診断 JSON を生成する経路をテストする。実行時は `RunConfig.extensions["recover"].mode="collect"` と `sync_tokens=[";","\n"]` を設定し、どの同期点で回復したかを `scenario_notes` に残す。
+- **CH2-PARSE-202**（[2-5 §E-2](../spec/2-5-error.md#e-2-回復糖衣と-fixit最小スキーマ)）: `chapter2/parser_core/core-parse-recover-multiple-errors-semicolon.reml` を追加し、文末 `;` 同期で `core.parse.recover.branch` が 2 件以上蓄積されることを期待出力で固定する（計画起点 ID: `CP-WS4-001`）。実行時は `RunConfig.extensions["recover"].mode="collect"` と `sync_tokens=[";"]` を設定する。
 - **CH2-STREAM-301**（[2-7 §C-1](../spec/2-7-core-parse-streaming.md#c-1-continuation-型)）: `chapter2/streaming/core-parse-runstream-demandhint-ok.reml` を記述し、`run_stream` と `DemandHint::More` の協調を `expected/...stdout` で検証する。
 - **CH2-OP-401**（[2-4 §A-2](../spec/2-4-op-builder.md#a-2-レベル宣言fixity)）: `chapter2/op_builder/core-opbuilder-level-conflict-error.reml` と診断 JSON を作り、同じ優先度レベルに別 fixity を混在させた際の `core.parse.opbuilder.level_conflict` エラーを確認する。
 

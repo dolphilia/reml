@@ -48,7 +48,7 @@ Core.Parse の強化作業を「追跡可能な成果物」に分割し、`docs/
   - 既存シナリオ: `CH2-PARSE-201`（`core-parse-recover-diagnostic`）
   - 運用: `RunConfig.extensions["recover"].mode = "collect"|"off"` により IDE/LSP と Build/CI を切り替えられること（WS4 Step0）
   - 追加シナリオ（計画起点 ID）:
-    - `CP-WS4-001`（`core-parse-recover-multiple-errors-semicolon` / 文末 `;` 同期で複数診断を固定）
+    - `CP-WS4-001`（`core-parse-recover-multiple-errors-semicolon` / 文末 `;` 同期で複数診断を固定 / Phase4: `CH2-PARSE-202`）
 
 ### WS5: Input/Zero-copy（入力抽象と性能）
 - 計画: `1-4-input-zero-copy-plan.md`

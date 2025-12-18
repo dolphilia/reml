@@ -151,7 +151,7 @@ Reml の回帰計画（Phase4）でも、診断品質を継続監視するには
 
 - 回帰登録（計画起点 ID）
   - `CP-WS4-001`（複数診断の収集 / `;` 同期）
-  - 本ディレクトリで計画起点 ID と成果物（入力/期待）を揃えた後、Phase4 のシナリオ ID（`CH2-PARSE-xxx`）へ転写する（`0-1-workstream-tracking.md` のルールに従う）
+  - Phase4 のシナリオ ID（`CH2-PARSE-202`）として `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に転写し、回帰監視対象へ追加する
   - 期待出力の揺れ対策（初期段階の固定方針）
     - `expected/**.diagnostic.json` は **診断件数** と **コード列**（順序を含む）を主に固定し、メッセージは短いテンプレートに留める
     - `extensions["recover"]`（`action` / `sync` / `inserted` / `context`）の詳細固定は Step2/Step3 の次段（Implementation 追随）で段階導入する
