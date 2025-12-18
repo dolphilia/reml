@@ -70,13 +70,25 @@ fn format_assignments(assignments: List<Assignment>) -> Text {
 }
 
 fn main() -> Text {
-  let source =
+  let source_ok =
     "// leading comment\n\
      foo = 10 ; /* block */\n\
      // another comment\n\
      bar=20; baz = 3;\n"
 
-  match Parse.run(program(), source) with
-  | Ok(assignments) -> format_assignments(assignments)
-  | Err(diag) -> diag.message
+  let source_ng =
+    "foo = ;\n\
+     bar = 1;\n"
+
+  let ok_text =
+    match Parse.run(program(), source_ok) with
+    | Ok(assignments) -> format_assignments(assignments)
+    | Err(diag) -> format("ok_parse_failed: %s", [diag.message])
+
+  let err_text =
+    match Parse.run(program(), source_ng) with
+    | Ok(assignments) -> format("err_parse_unexpected_success: %s", [format_assignments(assignments)])
+    | Err(diag) -> format("err_parse_diag: %s", [diag.message])
+
+  format("%s\n%s", [ok_text, err_text])
 }
