@@ -128,6 +128,36 @@ fn chainr1<A>(term: Parser<A>, op: Parser<(A, A) -> A>) -> Parser<A>
 * べき乗など右結合は `chainr1`。
 * **左再帰の扱い**：仕様として左再帰文法の直接記述は想定しない。`chainl1/chainr1` または `expr_builder` へ変換する。`RunConfig.left_recursion` は安全弁であり、直接記述の前提ではない。
 
+#### A-7-a. 左再帰の Do / Don’t（式文法の最小指針）
+
+**Do（推奨）**
+
+* 式は `expr_builder` / `chainl1/chainr1` へ変換して書く。
+* 演算子直後や括弧の内側は `cut_here()` / `expect` を併用して期待集合を絞る。
+* 入口ノードに `label("expression")` などを付け、診断の期待名を揃える。
+
+**Don’t（避ける）**
+
+* `expr = expr "+" term | term` のような左再帰を直接書く。
+* `RunConfig.left_recursion` を「左再帰を通常運用する前提」として使う。
+
+**NG 例**
+
+```reml
+// 左再帰を直接書く: 退行や無限再帰の原因になる
+let expr = rule("expr",
+  expr.then(symbol(sc, "+")).then(term).map(|(a, _, b)| Add(a, b))
+    .or(term)
+)
+```
+
+**OK 例**
+
+```reml
+let op_add = symbol(sc, "+").then(cut_here()).map(|_| (|a, b| Add(a, b)))
+let expr = chainl1(term, op_add).label("expression")
+```
+
 ### A-8. スパン・位置
 
 ```reml
