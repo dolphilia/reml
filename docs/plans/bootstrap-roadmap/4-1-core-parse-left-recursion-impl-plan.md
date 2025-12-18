@@ -35,7 +35,7 @@
 
 2. **CP-WS6-002（profile 指標）の出力確認**
    - 実行コマンド（例）:
-     - `compiler/rust/frontend/target/debug/reml_frontend --output json --packrat --left-recursion on examples/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.reml`
+    - `compiler/rust/frontend/target/debug/reml_frontend --parse-driver --parse-driver-left-recursion-parser --parse-driver-packrat on --parse-driver-left-recursion on --parse-driver-profile-output expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json --output json examples/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.reml`
    - 期待条件:
      - `expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json` が生成される。
      - `left_recursion_guard_hits > 0` と `memo_entries > 0` を満たす。
