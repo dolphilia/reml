@@ -39,6 +39,46 @@
      2) `lex_pack`/`lex_pack_toml` の返却フィールド表を作り、デフォルト値（profile/identifier_profile/layout_profile/safety）を明示。`identifier/number/string` のラベル同梱を表に含める。
      3) `keyword_ci` 境界チェックのテスト観点をリスト化（大文字小文字揺れ、予約語拒否との共存、返却値は原文 `kw`、Expectation は `Keyword(kw)`）。必要なら `docs/notes/core-parse-api-evolution.md` にチェックリストを転記。
      4) RunConfig 書き戻しキーを JSON 例で示し、`extensions["lex"]` に最低限必要なフィールドセット（`space_id/profile/identifier_profile/layout_profile/safety`）を固定する。
+   - Step1 実施メモ（結果）
+     - `space_id` 採番と書き戻し順序（確定）:
+       - ① `space` 構築直後に `space_id` を採番し `extensions["lex"].space_id` に保存  
+       - ② `profile`/`identifier_profile`/`layout_profile`/`safety` を既定値含めて書き戻し  
+       - ③ `lexeme`/`symbol`/`keyword`/`keyword_ci`/`identifier`/`number`/`string` を `space_id` 共有で生成  
+       - ④ `reserved(profile, set)` が `identifier_profile` と同じ境界を使うことをチェックリストに含める
+     - `lex_pack`/`lex_pack_toml` 返却フィールド（デフォルト値込み）:
+       - `space: Parser<()>`（ConfigTriviaProfile に基づく空白/コメント）
+       - `lexeme: Parser<T> -> Parser<T>`（space_id 共有、後続 skip なし）
+       - `symbol: string -> Parser<string>`
+       - `keyword: string -> Parser<string>`（境界判定あり, Expectation::Keyword）
+       - `keyword_ci: string -> Parser<string>`（境界判定に identifier_profile を利用, Expectation::Keyword）
+       - `identifier: Parser<Identifier>`（`label("identifier")` 内蔵, IdentifierProfile 既定 `default`）
+       - `number: Parser<Number>`（`label("number")` 内蔵）
+       - `string: Parser<StringLiteral>`（`label("string")` 内蔵）
+       - `profile: ConfigTriviaProfile`（デフォルト `strict_json`）
+       - `identifier_profile: IdentifierProfile`（デフォルト `default`）
+       - `layout_profile: LayoutProfile option`（デフォルト `None`）
+       - `safety: LexSafetyProfile`（デフォルト `strict`）
+       - `space_id: ParserId`
+       - `lex_pack_toml() = lex_pack(ConfigTriviaProfile::toml_relaxed, IdentifierProfile::toml_key, None, LexSafetyProfile::strict)` としてショートカット
+     - `keyword_ci` 境界チェック観点:
+       - 大文字小文字揺れで一致しつつ返却値は原文 `kw` を返す
+       - 予約語拒否（`reserved(profile, set)}`）と同じ境界判定（`identifier_profile.is_identifier_continue`）で競合しない
+       - `Expectation::Keyword(kw)` を維持し、Rule 名に依存しない
+       - `space_id` が `with_space`/`autoWhitespace` と一致し二重スキップしない
+     - RunConfig への書き戻し例（最低限フィールドセット）:
+       ```json
+       {
+         "extensions": {
+           "lex": {
+             "space_id": "<parser_id>",
+             "profile": "strict_json",
+             "identifier_profile": "default",
+             "layout_profile": null,
+             "safety": "strict"
+           }
+         }
+       }
+       ```
 2. **サンプル置換（自前 lexeme/symbol の削減）**
    - `basic_interpreter_combinator.reml`: `lexeme/symbol/keyword` 再定義を LexPreset へ置換し、`identifier/number/string` をラベル付きプリセットに揃える。`Parse.fail` の自由文エラーを 2-5 準拠の構造化診断へ移行。
    - `sql_parser.reml`: `keyword_ci` で境界判定を置換し、`reserved(profile, set)` に集約。`RunConfig.extensions["lex"]`（space/profile/identifier_profile/safety）を反映。
