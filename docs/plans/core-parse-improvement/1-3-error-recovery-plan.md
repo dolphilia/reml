@@ -129,17 +129,32 @@ Reml の回帰計画（Phase4）でも、診断品質を継続監視するには
     - 例外: “部分構文を意図的に緩く受理する” DSL で、失敗もデータとして扱う場合のみ採用
 
 ### Step 3: サンプルと回帰（複数エラーを固定できる最小入力から始める）
-- サンプル
-  - `examples/spec_core/chapter2/parser_core/` に「複数エラーを含む入力」を追加
-    - 例: `let x = ; let y = 1 + ;` のような “同期点がある” 例
-  - 期待出力で固定する要素（初期の最低保証）
-    - 2 件以上の診断が出ること
-    - 最初の診断位置（Span）と主要メッセージが固定されること
-    - 同期点（例: `;`）以降も解析が進むこと
-- 回帰登録
-  - 計画起点 ID: `CP-WS4-001`（複数診断の収集）
-  - 期待出力の揺れ対策
-    - 初期は「件数/最初の位置/代表キー」中心に固定し、詳細な期待集合は段階導入する
+- サンプル（文末 `;` 同期の最小ケース）
+  - 入力: `let = 1; let x = ; let y = 3;`
+    - 1 件目: 識別子欠落（`let` 直後）
+    - 2 件目: 値欠落（`=` 直後）
+    - 3 件目: 正常
+  - サンプル実装（`.reml`）:
+    - `examples/spec_core/chapter2/parser_core/core-parse-recover-multiple-errors-semicolon.reml`
+  - 期待出力（診断 JSON）:
+    - `expected/spec_core/chapter2/parser_core/core-parse-recover-multiple-errors-semicolon.diagnostic.json`
+  - 同期点方針:
+    - `until = symbol(";")` を **消費**する同期点として使い、同じ位置での再回復ループを避ける（2-5 §E-1）
+  - RunConfig 方針:
+    - `extensions["recover"].mode="collect"`
+    - `extensions["recover"].sync_tokens=[";"]`
+
+- 期待出力で固定する要素（初期の最低保証）
+  - 2 件以上の診断が出ること（回復 2 回）
+  - 診断コード `core.parse.recover.branch` が 2 件出ること（回復の蓄積）
+  - 先頭の診断が「1 件目の欠落（識別子）」を指していること（メッセージ/notes で固定）
+
+- 回帰登録（計画起点 ID）
+  - `CP-WS4-001`（複数診断の収集 / `;` 同期）
+  - 本ディレクトリで計画起点 ID と成果物（入力/期待）を揃えた後、Phase4 のシナリオ ID（`CH2-PARSE-xxx`）へ転写する（`0-1-workstream-tracking.md` のルールに従う）
+  - 期待出力の揺れ対策（初期段階の固定方針）
+    - `expected/**.diagnostic.json` は **診断件数** と **コード列**（順序を含む）を主に固定し、メッセージは短いテンプレートに留める
+    - `extensions["recover"]`（`action` / `sync` / `inserted` / `context`）の詳細固定は Step2/Step3 の次段（Implementation 追随）で段階導入する
 
 ### Step 4: 他 WS との整合チェック（Cut/Label/Lex）
 - WS1（Cut）: committed 失敗と回復の優先度が矛盾していないか

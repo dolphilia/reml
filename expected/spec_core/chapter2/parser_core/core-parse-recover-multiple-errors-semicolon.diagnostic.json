@@ -1,0 +1,26 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter2/parser_core/core-parse-recover-multiple-errors-semicolon.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "core.parse.recover.branch",
+      "message": "`Parse.recover` が `let` 文の識別子欠落を検出し、文末 `;` まで同期して継続しました。",
+      "notes": [
+        {
+          "message": "`let name = value;` の `name` が欠落しています。"
+        }
+      ]
+    },
+    {
+      "severity": "error",
+      "code": "core.parse.recover.branch",
+      "message": "`Parse.recover` が `let` 文の値欠落を検出し、文末 `;` まで同期して継続しました。",
+      "notes": [
+        {
+          "message": "`let x = value;` の `value` が欠落しています。"
+        }
+      ]
+    }
+  ]
+}
