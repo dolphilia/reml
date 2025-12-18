@@ -30,6 +30,20 @@
 python3 tooling/examples/gen_ws5_large_input.py --sizes 1kb,100kb,10mb
 ```
 
+### 計測ログ（手動記録）
+- 1KB: `reports/spec-audit/ch4/logs/spec_core-CP-WS5-001-1kb-20251218T203054Z.diagnostic.json`
+  - farthest_error_offset: `1166`
+  - packrat_stats: `queries=7`, `hits=6`, `entries=1`, `approx_bytes=893`, `evictions=0`, `budget_drops=0`, `pruned=0`
+- 100KB: `reports/spec-audit/ch4/logs/spec_core-CP-WS5-001-100kb-20251218T203055Z.diagnostic.json`
+  - farthest_error_offset: `102410`
+  - packrat_stats: `queries=7`, `hits=6`, `entries=1`, `approx_bytes=893`, `evictions=0`, `budget_drops=0`, `pruned=0`
+- 1MB: `reports/spec-audit/ch4/logs/spec_core-CP-WS5-001-1mb-20251218T203320Z.diagnostic.json`
+  - farthest_error_offset: `1048706`
+  - packrat_stats: `queries=7`, `hits=6`, `entries=1`, `approx_bytes=893`, `evictions=0`, `budget_drops=0`, `pruned=0`
+- 10MB: `reports/spec-audit/ch4/logs/spec_core-CP-WS5-001-10mb-20251218T211703Z.diagnostic.json`
+  - farthest_error_offset: `10485770`
+  - packrat_stats: `queries=7`, `hits=6`, `entries=1`, `approx_bytes=893`, `evictions=0`, `budget_drops=0`, `pruned=0`
+
 メモ追記（任意）:
 
 ```sh
