@@ -19,12 +19,12 @@ fn statement_recovering() -> Parse.Parser<Int> {
     statement_value()
       .skipR(Parse.expect_symbol(";"))
 
-  // 失敗したら `;` まで読み飛ばして -1 で継続（Step2: recover_with_default）。
+  // 失敗したら `;` まで読み飛ばして 0 で継続（Step2: recover_with_default）。
   // `until` は同期点を消費する設計（2-5 §E-1）。
   Parse.recover_with_default(
     stmt,
     Parse.expect_symbol(";").map(|_| ()),
-    -1
+    0
   )
 }
 
@@ -35,7 +35,9 @@ fn program() -> Parse.Parser<List<Int>> {
 
 fn main() -> Str {
   let source = "let = 1; let x = ; let y = 3;"
-  match Parse.run_with_recovery(program(), source) with
+  let first = Parse.run_with_recovery(program(), source)
+  let _second = Parse.run_with_recovery(program(), source)
+  match first with
     Err(diag) -> diag.to_json()
     Ok(values) -> format("ok=%s", [values.to_json()])
 }

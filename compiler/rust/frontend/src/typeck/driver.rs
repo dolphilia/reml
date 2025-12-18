@@ -4049,7 +4049,7 @@ fn detect_iterator_stage_mismatches(
 
 fn detect_spec_core_runtime_violations(module: &Module) -> Vec<TypecheckViolation> {
     let mut violations = Vec::new();
-    if let Some(span) = find_parse_run_with_recovery_call(module) {
+    for span in find_parse_run_with_recovery_calls(module) {
         violations.push(TypecheckViolation::core_parse_recover_branch(span));
     }
     if let Some(call) = find_runtime_bridge_call(module) {
@@ -4067,19 +4067,16 @@ fn detect_spec_core_runtime_violations(module: &Module) -> Vec<TypecheckViolatio
     violations
 }
 
-fn find_parse_run_with_recovery_call(module: &Module) -> Option<Span> {
-    let mut span = None;
+fn find_parse_run_with_recovery_calls(module: &Module) -> Vec<Span> {
+    let mut spans = Vec::new();
     visit_module_exprs(module, &mut |expr| {
-        if span.is_some() {
-            return;
-        }
         if let ExprKind::Call { callee, .. } = &expr.kind {
             if matches_module_member(callee, "Parse", "run_with_recovery") {
-                span = Some(expr.span);
+                spans.push(expr.span);
             }
         }
     });
-    span
+    spans
 }
 
 struct RuntimeBridgeCallInfo {
