@@ -1138,6 +1138,15 @@ fn build_parse_driver_diagnostic(
     source: &str,
     label: Option<&str>,
 ) -> Value {
+    if err.message == runtime_parse::LEFT_RECURSION_MESSAGE {
+        return json!({
+            "severity": "error",
+            "code": "E4001",
+            "domain": "parser",
+            "message": "左再帰を検出しました",
+            "expected": [],
+        });
+    }
     let mut collector = ExpectedTokenCollector::new();
     let mut label_added = false;
     for token in &err.expected_tokens {

@@ -1,10 +1,10 @@
 use crate::prelude::ensure::{DiagnosticNote, DiagnosticSeverity, GuardDiagnostic};
-use crate::run_config::RunConfig;
+use crate::run_config::{LeftRecursionStrategy, RunConfig};
 use crate::text::Str;
 use serde_json::{json, Map, Value};
 use std::any::Any;
 use super::op_builder::FixitySymbol;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -16,6 +16,9 @@ use unicode_normalization::{is_nfc_quick, IsNormalized};
 
 /// Packrat メモキー。
 pub type MemoKey = (ParserId, usize);
+
+/// 左再帰検出で利用するエラー文言。
+pub const LEFT_RECURSION_MESSAGE: &str = "left recursion";
 
 /// Packrat メモ値（型消去して格納する）。
 pub type MemoEntry = Box<dyn Any + Send + Sync>;
@@ -1380,6 +1383,15 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
 
     pub fn parse(&self, state: &mut ParseState) -> Reply<T> {
         let key = (self.id, state.input().byte_offset());
+        if matches!(state.run_config.left_recursion, LeftRecursionStrategy::Off)
+            && state.left_recursion_active(key)
+        {
+            return Reply::Err {
+                error: ParseError::new(LEFT_RECURSION_MESSAGE, state.input().position()),
+                consumed: false,
+                committed: true,
+            };
+        }
         if state.packrat_enabled() {
             if let Some(memo) = state.memo_get::<T>(key) {
                 state.record_packrat_hit();
@@ -1388,7 +1400,9 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                 state.record_packrat_miss();
             }
         }
+        state.enter_parser(key);
         let reply = (self.f)(state);
+        state.exit_parser(key);
         if state.packrat_enabled() {
             state.memo_put(key, &reply);
         }
@@ -3187,6 +3201,7 @@ pub struct ParseState {
     observer: Option<ParseObserver>,
     diagnostics: Vec<ParseError>,
     pub recovered: bool,
+    active_parsers: HashSet<MemoKey>,
     recover_config: RecoverConfig,
     recoveries: usize,
     recover_resync_bytes: usize,
@@ -3226,6 +3241,7 @@ impl ParseState {
             observer,
             diagnostics: Vec::new(),
             recovered: false,
+            active_parsers: HashSet::new(),
             recover_config,
             recoveries: 0,
             recover_resync_bytes: 0,
@@ -3358,6 +3374,18 @@ impl ParseState {
 
     pub fn packrat_enabled(&self) -> bool {
         self.run_config.packrat
+    }
+
+    fn left_recursion_active(&self, key: MemoKey) -> bool {
+        self.active_parsers.contains(&key)
+    }
+
+    fn enter_parser(&mut self, key: MemoKey) {
+        self.active_parsers.insert(key);
+    }
+
+    fn exit_parser(&mut self, key: MemoKey) {
+        self.active_parsers.remove(&key);
     }
 
     pub fn push_diagnostic(&mut self, error: ParseError) {
