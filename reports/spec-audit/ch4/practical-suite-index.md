@@ -1,6 +1,6 @@
 # practical スイート実行レポート
 
-- 実行時刻: 2025-12-17 06:06:21Z
+- 実行時刻: 2025-12-18 02:49:45Z
 - 対象シナリオ: 9 件 / 成功 9 件 / 失敗 0 件
 - 入力ソース: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
 
