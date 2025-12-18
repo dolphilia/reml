@@ -14,6 +14,12 @@
 - 空白・コメント・レイアウト（将来）を `RunConfig` のプロファイルで切替できる
 - 期待/ラベルが字句レイヤでも破綻しない（"expected identifier" 等）
 
+## 進捗状況
+- Step0: 完了（プリセット範囲と RunConfig 連携の方針を確定）
+- Step1: 進行中（自前ヘルパとの対応表と RunConfig/期待ラベルの論点を整理済み、棚卸し継続）
+- Step2: 未着手
+- Step3: 未着手
+
 ## 提供するヘルパ
 - `lexeme(p)`: `p` 成功後に空白/コメント（trivia）を処理
 - `symbol(text)`: `lexeme(string(text))` の糖衣（固定文字列）
