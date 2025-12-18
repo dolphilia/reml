@@ -30,6 +30,11 @@
    - 出力を `expected/spec_core/chapter2/parser_core/core-parse-label-vs-token-*.diagnostic.json` に反映し、`phase4-scenario-matrix.csv` へ `CP-WS2-001` を転記（with-label: Rule を含む / no-label: Token 中心）。`resolution_notes` に上記コマンドと期待条件（Span + Rule("expression") を含む）を記録。
    - `4-1-spec-core-regression-plan.md` に追記（任意）し、Phase4 ダッシュボードへの接続を明示。
 
+## 進捗状況（2025-xx-xx）
+- Step1 実装: `compiler/rust/runtime/src/parse/combinator.rs` の `label` が元エラーの期待集合を保持したままラベル名を追加するように修正済み。`compiler/rust/frontend/src/parser/mod.rs` で chumsky の `label()` を `ExpectedToken::rule` として `alternatives`/`context_note` へ反映する整形を追加済み。
+- 動作確認メモ: 上記修正でビルドは通過したが、CLI (`reml_frontend --output json examples/spec_core/chapter2/parser_core/core-parse-label-vs-token-*.reml`) 実行が現状診断なしで成功終了しており、ゴールデンと突き合わせできていない。パース失敗を発火させる経路（実行フラグや入力経路）を確認した上で Step2/3 で再取得する必要あり。
+- 未完: Step2（表示/LSP データ確認）と Step3（ゴールデン更新・回帰登録）は上記確認後に着手。
+
 ## 依存関係
 - 仕様: `docs/spec/2-2-core-combinator.md`（推奨ラベル語彙・付与ポリシー）、`docs/spec/2-5-error.md`（label と context/expected の扱い、縮約 B-6/B-7）。
 - 計画・サンプル: `docs/plans/core-parse-improvement/1-1-error-labeling-plan.md`（WS2）、`examples/spec_core/chapter2/parser_core/core-parse-label-vs-token-*.reml`、期待ゴールデン2件。
