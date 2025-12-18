@@ -360,6 +360,76 @@ fn decode_profile_config(run_config: &RunConfig) -> ParseProfileConfig {
     config
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RecoverMode {
+    Off,
+    Collect,
+}
+
+impl Default for RecoverMode {
+    fn default() -> Self {
+        Self::Off
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct RecoverConfig {
+    mode: RecoverMode,
+    sync_tokens: Vec<String>,
+    max_diagnostics: Option<usize>,
+    max_resync_bytes: Option<usize>,
+    max_recoveries: Option<usize>,
+}
+
+fn decode_recover_config(run_config: &RunConfig) -> RecoverConfig {
+    let mut config = RecoverConfig::default();
+    let recover = match run_config.extensions.get("recover") {
+        Some(ext) => ext,
+        None => return config,
+    };
+
+    config.mode = recover
+        .get("mode")
+        .and_then(Value::as_str)
+        .map(|raw| match raw.to_ascii_lowercase().as_str() {
+            "collect" => RecoverMode::Collect,
+            _ => RecoverMode::Off,
+        })
+        .unwrap_or_default();
+
+    if let Some(tokens) = recover.get("sync_tokens") {
+        match tokens {
+            Value::Array(values) => {
+                config.sync_tokens = values
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(|token| token.to_string())
+                    .filter(|token| !token.is_empty())
+                    .collect();
+            }
+            Value::String(token) if !token.is_empty() => {
+                config.sync_tokens = vec![token.clone()];
+            }
+            _ => {}
+        }
+    }
+
+    config.max_diagnostics = recover
+        .get("max_diagnostics")
+        .and_then(Value::as_u64)
+        .and_then(|value| usize::try_from(value).ok());
+    config.max_resync_bytes = recover
+        .get("max_resync_bytes")
+        .and_then(Value::as_u64)
+        .and_then(|value| usize::try_from(value).ok());
+    config.max_recoveries = recover
+        .get("max_recoveries")
+        .and_then(Value::as_u64)
+        .and_then(|value| usize::try_from(value).ok());
+
+    config
+}
+
 /// `RunConfig.extensions["lex"].identifier_profile` から派生した識別子プロファイル。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IdentifierProfile {
@@ -957,6 +1027,7 @@ pub struct ParseError {
     pub message: String,
     pub position: InputPosition,
     pub expected_tokens: Vec<String>,
+    pub recover: Option<RecoverMeta>,
 }
 
 impl ParseError {
@@ -965,6 +1036,7 @@ impl ParseError {
             message: message.into(),
             position,
             expected_tokens: Vec::new(),
+            recover: None,
         }
     }
 
@@ -974,6 +1046,11 @@ impl ParseError {
     ) -> Self {
         self.expected_tokens
             .extend(tokens.into_iter().map(Into::into));
+        self
+    }
+
+    pub fn with_recover_sync(mut self, sync: Option<String>) -> Self {
+        self.recover = Some(RecoverMeta { sync });
         self
     }
 
@@ -1006,6 +1083,15 @@ impl ParseError {
                 Value::from(self.expected_tokens.len() as u64),
             );
         }
+        if let Some(recover) = &self.recover {
+            let mut recover_payload = Map::new();
+            if let Some(sync) = recover.sync.as_ref() {
+                recover_payload.insert("sync".into(), Value::String(sync.clone()));
+            }
+            if !recover_payload.is_empty() {
+                extensions.insert("recover".into(), Value::Object(recover_payload));
+            }
+        }
 
         GuardDiagnostic {
             code: if self.expected_tokens.is_empty() {
@@ -1020,6 +1106,11 @@ impl ParseError {
             audit_metadata,
         }
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RecoverMeta {
+    pub sync: Option<String>,
 }
 
 /// Parser から返される Reply。consumed/committed を明示する。
@@ -1429,6 +1520,14 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                     consumed,
                     committed,
                 } => {
+                    if state.recover_config.mode != RecoverMode::Collect {
+                        state.set_input(start_input);
+                        return Reply::Err {
+                            error,
+                            consumed,
+                            committed,
+                        };
+                    }
                     if committed {
                         state.set_input(start_input);
                         return Reply::Err {
@@ -1438,7 +1537,6 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                         };
                     }
 
-                    state.push_diagnostic(error.clone());
                     state.set_input(start_input.clone());
                     let mut cursor = start_input.clone();
                     loop {
@@ -1461,8 +1559,30 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                                         committed: false,
                                     };
                                 }
+                                if state.recover_limits_exceeded() {
+                                    state.set_input(start_input);
+                                    return Reply::Err {
+                                        error,
+                                        consumed,
+                                        committed: false,
+                                    };
+                                }
+                                if let Some(limit) = state.recover_config.max_diagnostics {
+                                    if state.diagnostics.len() >= limit {
+                                        state.set_input(start_input);
+                                        return Reply::Err {
+                                            error,
+                                            consumed,
+                                            committed: false,
+                                        };
+                                    }
+                                }
+
+                                let sync = state.match_sync_token(&cursor, &rest);
+                                state.push_diagnostic(error.clone().with_recover_sync(sync));
                                 state.set_input(rest.clone());
                                 state.record_recovery();
+                                state.recoveries = state.recoveries.saturating_add(1);
                                 state.recovered = true;
                                 let span = span_from_inputs(&start_input, &rest);
                                 return Reply::Ok {
@@ -1499,7 +1619,20 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
 
                         if let Some((idx, ch)) = cursor.remaining().char_indices().next() {
                             let step = ch.len_utf8().max(1);
-                            cursor = cursor.advance(idx + step);
+                            let advance = idx + step;
+                            state.recover_resync_bytes =
+                                state.recover_resync_bytes.saturating_add(advance);
+                            if let Some(limit) = state.recover_config.max_resync_bytes {
+                                if state.recover_resync_bytes >= limit {
+                                    state.set_input(start_input);
+                                    return Reply::Err {
+                                        error,
+                                        consumed,
+                                        committed: false,
+                                    };
+                                }
+                            }
+                            cursor = cursor.advance(advance);
                         } else {
                             state.set_input(start_input);
                             return Reply::Err {
@@ -2814,6 +2947,9 @@ pub struct ParseState {
     observer: Option<ParseObserver>,
     diagnostics: Vec<ParseError>,
     pub recovered: bool,
+    recover_config: RecoverConfig,
+    recoveries: usize,
+    recover_resync_bytes: usize,
     space: Option<Parser<()>>,
     layout_profile: Option<LayoutProfile>,
     layout_pending: VecDeque<String>,
@@ -2834,6 +2970,7 @@ impl ParseState {
         if matches!(layout_profile, Some(ref lp) if lp.offside) {
             layout_stack.push(0);
         }
+        let recover_config = decode_recover_config(&run_config);
         Self {
             input: Input::new(source),
             run_config,
@@ -2841,6 +2978,9 @@ impl ParseState {
             observer,
             diagnostics: Vec::new(),
             recovered: false,
+            recover_config,
+            recoveries: 0,
+            recover_resync_bytes: 0,
             space,
             layout_profile,
             layout_pending: VecDeque::new(),
@@ -2974,6 +3114,42 @@ impl ParseState {
 
     pub fn push_diagnostic(&mut self, error: ParseError) {
         self.diagnostics.push(error);
+    }
+
+    fn recover_limits_exceeded(&self) -> bool {
+        if let Some(limit) = self.recover_config.max_recoveries {
+            if self.recoveries >= limit {
+                return true;
+            }
+        }
+        if let Some(limit) = self.recover_config.max_resync_bytes {
+            if self.recover_resync_bytes >= limit {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn match_sync_token(&self, start: &Input, end: &Input) -> Option<String> {
+        let consumed_bytes = end.byte_offset().saturating_sub(start.byte_offset());
+        let consumed = start.remaining().get(..consumed_bytes)?;
+        if self.recover_config.sync_tokens.is_empty() {
+            return Some(consumed.to_string());
+        }
+        if self
+            .recover_config
+            .sync_tokens
+            .iter()
+            .any(|token| token == consumed)
+        {
+            return Some(consumed.to_string());
+        }
+        self.recover_config
+            .sync_tokens
+            .iter()
+            .find(|token| consumed.starts_with(token.as_str()))
+            .cloned()
+            .or_else(|| Some(consumed.to_string()))
     }
 
     pub fn take_diagnostics(&mut self) -> Vec<ParseError> {

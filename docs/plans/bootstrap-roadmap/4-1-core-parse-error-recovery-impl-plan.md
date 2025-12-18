@@ -34,6 +34,14 @@
    - `extensions["recover"].mode`（`"off"|"collect"`）を解析・既定 `"off"` を保持。
    - `extensions["recover"].sync_tokens` を読み、回復経路がどの同期点を使ったかを `Diagnostic.extensions["recover"].sync` に記録できるようにする。
    - `max_diagnostics/max_resync_bytes/max_recoveries` は best-effort の安全弁として実装し、超過時は回復停止（fail-fast へフォールバック）。
+   - 実装メモ（Rust runtime / Core.Parse）:
+     - 実装箇所: `compiler/rust/runtime/src/parse/combinator.rs`
+       - `decode_recover_config` を追加し、`ParseState` 構築時に `RunConfig.extensions["recover"]` を解釈する。
+       - `Parser::recover` は `mode!="collect"` の場合は回復せず、元の `Err` を返す（fail-fast）。
+       - 同期点は `until` 成功時の消費スライスから推定し、`ParseError.recover.sync` → `GuardDiagnostic.extensions["recover"].sync` に露出する（`sync_tokens` が空なら消費スライスを採用）。
+       - 安全弁: `max_diagnostics`（診断件数）、`max_resync_bytes`（全回復の総スキップ量）、`max_recoveries`（成功回復回数）を超えた場合は回復を打ち切り、元の失敗を返す（best-effort）。
+     - 回帰（ユニットテスト）: `compiler/rust/runtime/tests/parse_combinator.rs`
+       - 既定 `mode="off"` で recover が発火しないこと、`mode="collect"` で回復し `sync` が記録されること、上限で fail-fast に戻ることを固定。
 2. **recover の意味論を仕様通りに揃える（committed 超え回復）**
    - `recover(p, until, with)` が committed 失敗も捕捉して同期できること（`mode="collect"` の場合）。
    - ただし `or` の分岐挙動は `cut` に従い、右枝は試さない（回復は「分岐再探索」ではない）。

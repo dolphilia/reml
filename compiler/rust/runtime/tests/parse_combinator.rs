@@ -208,16 +208,84 @@ fn profile_stays_disabled_by_default() {
 }
 
 #[test]
-fn recover_syncs_and_keeps_diagnostic() {
+fn recover_is_disabled_by_default() {
     let parser = consume_then_fail("recover me").recover(tag("\n").map(|_| ()), ());
     let result = run(&parser, "oops\nrest", &RunConfig::default());
-    assert_eq!(result.value, Some(()));
-    assert!(result.recovered, "recover フラグが立つはず");
+    assert!(result.value.is_none(), "recover は既定では無効のはず");
+    assert!(!result.recovered, "recover 無効時は recovered も立たない");
     assert_eq!(result.diagnostics.len(), 1);
     assert_eq!(result.diagnostics[0].message, "recover me");
+}
+
+fn recover_collect_config(
+    sync_tokens: &[&'static str],
+    max_diagnostics: Option<u64>,
+    max_resync_bytes: Option<u64>,
+    max_recoveries: Option<u64>,
+) -> RunConfig {
+    RunConfig::default().with_extension("recover", |mut ext| {
+        ext.insert("mode".into(), Value::String("collect".into()));
+        if !sync_tokens.is_empty() {
+            ext.insert(
+                "sync_tokens".into(),
+                Value::Array(sync_tokens.iter().map(|token| Value::String((*token).into())).collect()),
+            );
+        }
+        if let Some(value) = max_diagnostics {
+            ext.insert("max_diagnostics".into(), Value::from(value));
+        }
+        if let Some(value) = max_resync_bytes {
+            ext.insert("max_resync_bytes".into(), Value::from(value));
+        }
+        if let Some(value) = max_recoveries {
+            ext.insert("max_recoveries".into(), Value::from(value));
+        }
+        ext
+    })
+}
+
+#[test]
+fn recover_collect_mode_records_sync_token() {
+    let cfg = recover_collect_config(&["\n"], None, None, None);
+    let parser = consume_then_fail("recover me").recover(tag("\n").map(|_| ()), ());
+    let result = run(&parser, "oops\nrest", &cfg);
+    assert_eq!(result.value, Some(()));
+    assert!(result.recovered, "recover 有効時は recovered が立つはず");
+    assert_eq!(result.diagnostics.len(), 1);
+    assert_eq!(result.diagnostics[0].message, "recover me");
+    assert_eq!(
+        result.diagnostics[0]
+            .recover
+            .as_ref()
+            .and_then(|meta| meta.sync.as_deref()),
+        Some("\n")
+    );
     let span = result.span.expect("recover 成功時は span が付与される");
     assert_eq!(span.start.line, 1);
     assert_eq!(span.end.line, 2);
+}
+
+#[test]
+fn recover_collect_mode_respects_max_recoveries() {
+    let cfg = recover_collect_config(&["\n"], None, None, Some(0));
+    let parser = consume_then_fail("recover me").recover(tag("\n").map(|_| ()), ());
+    let result = run(&parser, "oops\nrest", &cfg);
+    assert!(
+        result.value.is_none(),
+        "max_recoveries=0 では回復しない（fail-fast）"
+    );
+    assert!(!result.recovered);
+}
+
+#[test]
+fn recover_collect_mode_respects_max_resync_bytes() {
+    let cfg = recover_collect_config(&["\n"], None, Some(2), None);
+    let parser = consume_then_fail("recover me").recover(tag("\n").map(|_| ()), ());
+    let result = run(&parser, "oops\nrest", &cfg);
+    assert!(
+        result.value.is_none(),
+        "max_resync_bytes が小さい場合は回復を打ち切る（fail-fast）"
+    );
 }
 
 #[test]
