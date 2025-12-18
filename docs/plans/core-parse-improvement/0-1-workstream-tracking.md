@@ -54,6 +54,7 @@ Core.Parse の強化作業を「追跡可能な成果物」に分割し、`docs/
 - 計画: `1-4-input-zero-copy-plan.md`
 - 成果物:
   - 仕様: `docs/spec/2-1-parser-type.md#B-入力モデル-Input` の前提を満たす実装方針
+  - チェックリスト: `docs/plans/bootstrap-roadmap/checklists/core-parse-input-invariants.md`（WS5 Step0、監査/回帰の入口）
   - メトリクス: 10MB 級入力での線形特性（`docs/spec/0-1-project-purpose.md`）
   - 回帰: 期待位置（行/列/Span）が Unicode モデルと一致すること
 

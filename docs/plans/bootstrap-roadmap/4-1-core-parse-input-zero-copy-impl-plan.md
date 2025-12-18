@@ -1,0 +1,33 @@
+# Phase4: Core.Parse Input/Zero-copy 実装計画
+
+## 背景と目的
+`Core.Parse` は仕様上すでに `Input` を「参照共有の不変ビュー（ゼロコピー）」として定義している（`docs/spec/2-1-parser-type.md`）。
+一方で Phase4（spec_core 回帰）では、診断・回復・Packrat 等の改善が進むほど `Input` の派生（`rest`/`mark/rewind`）がホットパス化し、**部分文字列生成**や **Unicode 位置の都度走査**が混入すると性能と診断表示の両方が崩れうる。
+
+本計画は、WS5（Input/Zero-copy）の決定事項を Phase4 実装へ接続し、性能指針（10MB 線形、メモリ 2x 以内）を守れる状態へ段階的に導くための作業導線を提供する。
+
+- 出典（WS5）: `docs/plans/core-parse-improvement/1-4-input-zero-copy-plan.md`
+- 設計指針: `docs/spec/0-1-project-purpose.md`
+
+## スコープ
+- 対象: Rust 実装の `Core.Parse` 入力モデル（`Input`/`Span`/`mark/rewind`/メモ化キー）
+- 非対象: 新しい入力モデルの発明、API の全面置換（まずは仕様前提の「逸脱」をなくす）
+
+## 仕様根拠
+- `docs/spec/2-1-parser-type.md`（入力モデル `Input`、`mark/rewind`、`MemoKey`）
+- `docs/spec/3-3-core-text-unicode.md`（列=グラフェム、`Span` ハイライト整合、`g_index/cp_index` 再利用）
+
+## Step 0（完了条件の先出し）: Input 不変条件チェックリストを確定する
+WS5 Step1 の「実装監査」へ進む前提として、仕様が要求する不変条件を **監査可能なチェック項目**へ落とす。
+
+- 成果物:
+  - `docs/plans/bootstrap-roadmap/checklists/core-parse-input-invariants.md`
+- 完了判定:
+  - `rest`/`mark/rewind`/Unicode 位置/診断整合/Packrat とメモリ上限について、最低限の “逸脱検知” ができる
+  - WS5 計画（`docs/plans/core-parse-improvement/1-4-input-zero-copy-plan.md`）と矛盾しない
+
+## 次のステップ（WS5 との対応）
+- Step1: 実装監査（Rust/OCaml の現状点検）を行い、根拠を `docs/notes/core-parse-api-evolution.md` 等へ記録する
+- Step2: 大入力向けの “オーダー異常検知” を回帰可能な指標へ落とす（絶対値ではなく増え方の監視）
+- Step3: Phase4 シナリオへ接続（大入力 + Unicode 位置の固定）
+
