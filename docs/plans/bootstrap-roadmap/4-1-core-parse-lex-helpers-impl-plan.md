@@ -128,32 +128,31 @@
 - 2025-12-18: Step3 実施。`examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml` と `expected/.../core-parse-lexpack-basic.{stdout,diagnostic.json}` を更新し、`--parse-driver` 経由で `identifier/number/string` のラベル付き `parser.syntax.expected_tokens` をゴールデン化。
 - 2025-12-18: Step4 実施。`docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CP-WS3-001` を登録し、`tooling/examples/run_phase4_suite.py --suite spec_core` で `CP-WS3-001` が `diagnostic_keys` と一致すること（= 緑化）を確認。
 - 2025-12-18: Rust 側の `--parse-driver` 経路を調整し、`core-parse-lexpack-basic.reml` から抽出した失敗入力に対して `expected_tokens` が `identifier|number|string` で揃うようにした（`Parser::or` が期待集合を自動で union しないため、失敗時の期待集合を明示的に構築）。
+- 2025-12-18: Step2-1 実施。`examples/language-impl-comparison/reml/basic_interpreter_combinator.reml` の LexPreset 置換（`identifier/number/string` の label 化、自由文 `Parse.fail` 排除）と `expected/language-impl-comparison/basic_interpreter_combinator.stdout` の更新、`CH2-PARSE-501` の回帰（`language_impl_comparison` スイート追加）まで完了。
 
 ## 現在の達成状況（チェックリスト）
 - [x] `core-parse-lexpack-basic.reml` を追加/整備し、stdout と診断ゴールデンを固定した
 - [x] `CP-WS3-001` を Phase4 マトリクスへ登録し、Phase4 スイートで緑化した
 - [x] `label("identifier"|"number"|"string")` 相当のラベルが `parser.syntax.expected_tokens` に残ることを `--parse-driver` で確認できる
-- [ ] 既存サンプル（`basic_interpreter_combinator/sql_parser/toml_parser/yaml_parser`）の LexPreset 置換（Step2）は未着手/未完了
+- [x] `basic_interpreter_combinator.reml` を LexPreset 置換し、`CH2-PARSE-501` を Phase4 マトリクスに紐付けて回帰化した（`language_impl_comparison` スイートで pass）
+- [ ] 既存サンプル（`sql_parser/toml_parser/yaml_parser`）の LexPreset 置換（Step2 残タスク）は未着手/未完了
 
 ## 次に着手する作業（推奨順）
-1. **Step2-1: `basic_interpreter_combinator.reml` の置換**
-   - 対象: `examples/language-impl-comparison/reml/basic_interpreter_combinator.reml`
-   - 作業: 自前 `space/lexeme/symbol/keyword` を LexPreset（`lex_pack` 相当）へ寄せ、`Parse.fail` 自由文を期待集合（`parser.syntax.expected_tokens`）で表現する
-   - 完了条件: `phase4-scenario-matrix.csv` に紐付く診断が揺れず、自由文エラーが残らない
-2. **Step2-2: `sql_parser.reml` の置換**
+1. **Step2-2: `sql_parser.reml` の置換**
    - 対象: `examples/language-impl-comparison/reml/sql_parser.reml`
    - 作業: `keyword_ci` 導入（境界判定を identifier_profile と共有）、予約語拒否を `reserved(profile, set)` へ集約、RunConfig.lex の書き戻しを導入
    - 完了条件: 予約語/境界の期待表示が `Expectation::Keyword` / `label("identifier")` の語彙で統一される
-3. **Step2-3: `toml_parser.reml` の置換**
+2. **Step2-3: `toml_parser.reml` の置換**
    - 対象: `examples/language-impl-comparison/reml/toml_parser.reml`
    - 作業: `lex_pack_toml`（`ConfigTriviaProfile::toml_relaxed` + `IdentifierProfile::toml_key`）へ切替、複数行文字列をプリセット版へ移行
    - 完了条件: トリビア/ベアキーの揺れが RunConfig.lex で再現でき、期待表示が自由文に依存しない
-4. **Step2-4: `yaml_parser.reml` の最小置換**
+3. **Step2-4: `yaml_parser.reml` の最小置換**
    - 対象: `examples/language-impl-comparison/reml/yaml_parser.reml`
    - 作業: Layout token 生成は維持しつつ、`space_id` 共有と `lexeme/symbol` の置換のみ先行
    - 完了条件: Layout 由来の挙動差を増やさずに LexPreset へ寄せられる
-5. **回帰の拡張**
+4. **回帰の拡張**
    - 作業: Step2 の各サンプルに対応する Phase4 シナリオ（必要なら新規）を `phase4-scenario-matrix.csv` に追加し、`tooling/examples/run_phase4_suite.py` 経由で緑化まで持っていく
+   - 補足: `basic_interpreter_combinator.reml` は `python3 tooling/examples/run_phase4_suite.py --suite language_impl_comparison` で回せる状態になっている
 
 ## 依存関係
 - 計画: `docs/plans/core-parse-improvement/1-2-lex-helpers-plan.md`、`docs/plans/core-parse-improvement/2-0-integration-with-regression.md`。
