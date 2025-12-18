@@ -58,6 +58,24 @@
   - `reports/spec-audit/ch4/logs/spec_core-CP-WS6-002-20251218T225547Z.diagnostic.json`
 - ⚠️ `profile_output` の生成は未確認（`core-parse-left-recursion-slow.profile.json` 未生成）。
 
+## 生成経路の確認（2025-12-18）
+- `reml_frontend --output json` は **Reml ソースの構文解析のみ**を行い、`examples/...` 内の `Parse.run(...)` を実行しない。
+- `--parse-driver` は `run_parse_driver_mode` が `runtime_parse::run_shared` を使うが、`RunConfig` は既定値固定で **profile 出力を設定できない**。
+- したがって `core-parse-left-recursion-slow.profile.json` は現行 CLI 経路では生成されない。
+
+## 補強タスク（提案）
+Phase4 で profile 指標を取得するため、`parse-driver` に RunConfig を渡せる経路を追加する。
+
+1. **CLI オプション追加**
+   - 追加案: `--parse-driver-profile-output <path>` / `--parse-driver-left-recursion <off|on|auto>` / `--parse-driver-packrat <on|off>`
+   - 実装: `compiler/rust/frontend/src/bin/reml_frontend.rs` の CLI 引数処理と `CliArgs` にフィールド追加。
+2. **parse-driver 実行時の RunConfig 反映**
+   - `run_parse_driver_mode` で `run_config` を構築し、`runtime_parse::run_shared` に渡す。
+   - `profile_output` が設定された場合は `ParseResult.profile` を JSON に書き出す（`core-parse-profile-output.reml` と同じ方針）。
+3. **回帰資産の更新**
+   - `expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json` を生成。
+   - `phase4-scenario-matrix.csv` の `resolution_notes` を更新し、採取コマンドを固定する。
+
 ## 依存関係
 - 仕様: `docs/spec/2-2-core-combinator.md`, `docs/spec/2-6-execution-strategy.md`, `docs/spec/2-5-error.md`
 - 計画: `docs/plans/core-parse-improvement/1-5-left-recursion-plan.md`
