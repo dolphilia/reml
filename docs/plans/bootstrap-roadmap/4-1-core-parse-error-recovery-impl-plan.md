@@ -45,6 +45,12 @@
 2. **recover の意味論を仕様通りに揃える（committed 超え回復）**
    - `recover(p, until, with)` が committed 失敗も捕捉して同期できること（`mode="collect"` の場合）。
    - ただし `or` の分岐挙動は `cut` に従い、右枝は試さない（回復は「分岐再探索」ではない）。
+   - 実装メモ（Rust runtime / Core.Parse）:
+     - 実装箇所: `compiler/rust/runtime/src/parse/combinator.rs`
+       - `Parser::recover` の `committed` 早期リターンを廃止し、**committed 失敗でも同期して `Ok(with)` へ回復**できるようにする。
+       - 回復を諦めて `Err` を返す経路（上限超過・EOF 到達など）では、`committed` を潰さず元の値を保持し、`or` が右枝へ進まないことを保証する。
+     - 回帰（ユニットテスト）: `compiler/rust/runtime/tests/parse_combinator.rs`
+       - `recover_collect_mode_can_recover_committed_failure_without_trying_fallback` を追加し、committed 超え回復と `or` の短絡を固定する。
 3. **糖衣 4 種の実装と recover メタ/ FixIt の出力**
    - `recover_with_default`: `action="default"`
    - `recover_until`: `action="skip"`

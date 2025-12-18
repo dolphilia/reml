@@ -69,6 +69,17 @@ fn non_consuming_fail(msg: &'static str) -> Parser<()> {
     })
 }
 
+fn committed_fail(msg: &'static str) -> Parser<i32> {
+    Parser::new(move |state| {
+        let input = state.input().clone();
+        Reply::Err {
+            error: ParseError::new(msg, input.position()),
+            consumed: false,
+            committed: true,
+        }
+    })
+}
+
 fn digit() -> Parser<i32> {
     Parser::new(|state| {
         let input = state.input().clone();
@@ -263,6 +274,19 @@ fn recover_collect_mode_records_sync_token() {
     let span = result.span.expect("recover 成功時は span が付与される");
     assert_eq!(span.start.line, 1);
     assert_eq!(span.end.line, 2);
+}
+
+#[test]
+fn recover_collect_mode_can_recover_committed_failure_without_trying_fallback() {
+    let cfg = recover_collect_config(&["\n"], None, None, None);
+    let parser = committed_fail("hard stop")
+        .recover(tag("\n").map(|_| ()), 10)
+        .or(ok(20));
+    let result = run(&parser, "oops\nrest", &cfg);
+    assert_eq!(result.value, Some(10));
+    assert!(result.recovered, "committed 失敗でも recover できるはず");
+    assert_eq!(result.diagnostics.len(), 1);
+    assert_eq!(result.diagnostics[0].message, "hard stop");
 }
 
 #[test]

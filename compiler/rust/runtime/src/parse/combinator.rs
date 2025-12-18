@@ -1528,14 +1528,6 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                             committed,
                         };
                     }
-                    if committed {
-                        state.set_input(start_input);
-                        return Reply::Err {
-                            error,
-                            consumed,
-                            committed,
-                        };
-                    }
 
                     state.set_input(start_input.clone());
                     let mut cursor = start_input.clone();
@@ -1564,7 +1556,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                                     return Reply::Err {
                                         error,
                                         consumed,
-                                        committed: false,
+                                        committed,
                                     };
                                 }
                                 if let Some(limit) = state.recover_config.max_diagnostics {
@@ -1573,7 +1565,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                                         return Reply::Err {
                                             error,
                                             consumed,
-                                            committed: false,
+                                            committed,
                                         };
                                     }
                                 }
@@ -1613,7 +1605,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                             return Reply::Err {
                                 error,
                                 consumed,
-                                committed: false,
+                                committed,
                             };
                         }
 
@@ -1628,7 +1620,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                                     return Reply::Err {
                                         error,
                                         consumed,
-                                        committed: false,
+                                        committed,
                                     };
                                 }
                             }
@@ -1638,7 +1630,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                             return Reply::Err {
                                 error,
                                 consumed,
-                                committed: false,
+                                committed,
                             };
                         }
                     }
