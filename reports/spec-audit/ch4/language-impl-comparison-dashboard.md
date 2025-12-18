@@ -1,6 +1,6 @@
 # language_impl_comparison スイート実行レポート
 
-- 実行時刻: 2025-12-18 07:41:30Z
+- 実行時刻: 2025-12-18 07:44:29Z
 - 対象シナリオ: 1 件 / 成功 1 件 / 失敗 0 件
 - 入力ソース: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
 

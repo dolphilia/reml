@@ -10,6 +10,7 @@
 ## スコープ
 - **含む**: `docs/spec/1-x`〜`3-x`・`docs/guides/core-parse-streaming.md` のサンプル抽出、`.reml` テストケース作成、`phase4-scenario-matrix.csv` の定義と更新フロー、`examples/spec_core`/`examples/practical` ディレクトリ構成案、`reports/spec-audit/ch4/` へのリンク整備。
 - **含まない**: Rust 実装や CLI の挙動修正、セルフホスト工程そのもの、Phase 4 M2 以降で扱う CI ワークフロー設定（`4-2` 以降で管理）。
+  - ただし、マトリクスの実行導線（`tooling/examples/run_phase4_suite.py` / `tooling/examples/run_examples.sh`）の最小更新は「マトリクス運用」の一部として扱う（スイート追加・レポート出力先追加など）。
 - **前提条件**: Phase 3 の章別資産が `compiler/rust/`・`examples/` に揃っている、`docs/plans/bootstrap-roadmap/0-2-roadmap-structure.md` に沿って新規ファイルの命名・参照が決まっている。
 
 ## 成果物と出口条件
@@ -55,6 +56,7 @@
 - `examples/practical/core_io/file_copy/canonical.reml`, `examples/practical/core_path/security_check/relative_denied.reml`, `examples/practical/core_config/audit_bridge/audit_bridge.reml` を追加し、既存の `expected/practical/*` JSON / stdout / audit ログを新パスへ更新。関連仕様（`docs/spec/3-5-core-io-path.md`, `docs/spec/3-0-core-library-overview.md`）とガイド（`docs/guides/runtime-bridges.md`, `docs/guides/plugin-authoring.md`）の参照先も Practical 配下に揃えた。
 - `examples/README.md`・`examples/practical/README.md` に Phase 4 の `spec_core`/`practical` 階層を追記し、`docs/notes/examples-regression-log.md` へ Practical 反映ログを残した。旧 `examples/core_io/*` などの参照は「実務ケースは `practical/` へ移行した」旨の注記を追加。
 - `phase4-scenario-matrix.csv` へ `runtime_bridge` 列を追加し、`CH3-PLG-310` など Capability を要求する行に `audit_bridge` を登録。IO/Path/Plugin 系の `input_path` を Practical パスへ統一し、`expected/practical/core_io/file_copy/canonical.audit.jsonl` などのゴールデンと 1:1 対応させた。
+- `examples/language-impl-comparison/`（比較サンプル）も Phase4 マトリクスで追跡できるよう、`tooling/examples/run_phase4_suite.py` に `--suite language_impl_comparison` を追加。`CH2-PARSE-501`（`basic_interpreter_combinator.reml`）を 1 件目として回帰実行できる状態にした（レポート出力: `reports/spec-audit/ch4/language-impl-comparison-dashboard.md`）。
 
 #### 🔁 追加バックログ（Chapter 1〜3 `.reml` 拡充計画）
 
