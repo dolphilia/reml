@@ -32,8 +32,8 @@
 
 ## 進捗状況（2025-xx-xx）
 - Step1 実装: `compiler/rust/runtime/src/parse/combinator.rs` の `label` が元エラーの期待集合を保持したままラベル名を追加するように修正済み。`compiler/rust/frontend/src/parser/mod.rs` で chumsky の `label()` を `ExpectedToken::rule` として `alternatives`/`context_note` へ反映する整形を追加済み。
-- 動作確認メモ: 上記修正でビルドは通過したが、CLI (`reml_frontend --output json examples/spec_core/chapter2/parser_core/core-parse-label-vs-token-*.reml`) 実行が現状診断なしで成功終了しており、ゴールデンと突き合わせできていない。パース失敗を発火させる経路（実行フラグや入力経路）を確認した上で Step2/3 で再取得する必要あり。
-- 未完: Step2（表示/LSP データ確認）と Step3（ゴールデン更新・回帰登録）は上記確認後に着手。
+- 動作確認メモ: CLI にパース専用ドライバを追加（`--parse-driver` / `--parse-driver-label`）。これを使うと `core-parse-label-vs-token-*.reml` で期待集合を JSON 出力でき、with-label では Rule("expression") を含み、no-label は identifier/integer-literal のみになることを確認済み。ただし humanized/context は暫定文面のためゴールデンと突き合わせつつ整形調整が必要。
+- 未完: Step2（表示/LSP データ確認）と Step3（ゴールデン更新・回帰登録）は parse-driver 出力を基に実施する。`phase4-scenario-matrix.csv` 反映と文面整形が残タスク。
 
 ## 依存関係
 - 仕様: `docs/spec/2-2-core-combinator.md`（推奨ラベル語彙・付与ポリシー）、`docs/spec/2-5-error.md`（label と context/expected の扱い、縮約 B-6/B-7）。
