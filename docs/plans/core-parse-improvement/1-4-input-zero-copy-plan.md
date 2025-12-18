@@ -87,13 +87,38 @@
 ### Step 2: パフォーマンス指標の定義（回帰可能な形へ落とす）
 実測の数値は環境差があるため、初期は「退行検出できる形（オーダー異常）」を優先する。
 
-- 指標
-  - 入力サイズ別の処理時間（1KB/100KB/10MB）
-  - backtrack 回数・packrat hit/miss（Phase10 の profile と整合）
-  - 最大メモ化エントリ数（入力サイズに対して線形に増えるか）
-- “測り方” の決定
-  - ベンチマーク数値の絶対値ではなく、**大域的な増え方**が異常でないことを確認する
-  - 観測フック（`RunConfig.profile`）の利用を前提にし、デフォルト OFF を維持する
+#### 測る対象（CP-WS5-001/002 に合わせて絞る）
+本 Step2 では、**既存の `RunConfig.profile` 出力（`ParserProfile`）**を優先し、追加カウンタ（例: `advance` 回数、`iter_graphemes` 回数）は次段に回す。
+
+- CP-WS5-001（大入力でのオーダー異常検知）向け: **「増え方」**を観測する
+  - `ParserProfile.backtracks`（巻き戻し回数）
+  - `ParserProfile.memo_entries`（Packrat メモ化エントリ数）
+  - `ParserProfile.packrat_hits` / `ParserProfile.packrat_misses`（Packrat 有効時の挙動）
+  - `ParserProfile.recoveries`（WS4 `collect` 時の回復回数。性能測定は `off`/`collect` を分ける）
+  - `ParserProfile.left_recursion_guard_hits`（左再帰ガードの発火回数。WS6 と切り分ける）
+- CP-WS5-002（Unicode を含む入力で列/Span が崩れない）向け: **位置の正しさ**が主であり、性能指標は補助扱い
+  - Step3 で Unicode 混在入力と `Span`/列（グラフェム）の一致を回帰として固定する
+
+#### 指標（初期の最小セット）
+- 入力サイズ別に `ParserProfile` を取得（例: 1KB / 100KB / 10MB）
+- 退行判定は絶対値ではなく、**大域的な増え方（オーダー異常）**で行う
+  - 例: `memo_entries` が入力サイズに対して概ね線形で増えるか（急増していないか）
+  - 例: `backtracks` が「入力サイズの増加に対して」不自然に跳ね上がらないか
+- 参考（任意）: 壁時計時間は環境差が大きいため、初期は合否の主条件にしない（ログとして残すのは可）
+
+#### 測り方（RunConfig の使い方）
+- 既定は OFF を維持し、**測定時だけ** `RunConfig.profile=true` を有効化する
+  - 追加で `RunConfig.extensions["parse"].profile=true` も許可（既存デコード仕様）
+  - ファイル出力が必要なら `RunConfig.extensions["parse"].profile_output=...` を使う（既存仕様）
+- Packrat の測定は `RunConfig.packrat=true/false` を分け、hit/miss と `memo_entries` を併記する
+- Recovery の測定は `RunConfig.extensions["recover"].mode="off"|"collect"` を分け、`recoveries` の増加が性能へ与える影響を切り分ける
+
+#### 追加カウンタ（次段 / 仕様側の拡張候補）
+`Input` 監査で論点になった `advance`/グラフェム走査のホットパス混入を “直接” 可視化するには、次のカウンタが有効だが本 Step2 の必須とはしない。
+
+- `advance` 呼び出し回数 / 合計 `advance_bytes`
+- グラフェム境界走査回数（`iter_graphemes` 呼び出し回数）や、キャッシュヒット率
+- `Input::new` のコピー量（入力二重確保）を検知するメモリ計測（`record_mem_copy` 等との接続）
 
 ### Step 3: 回帰への接続（大入力と Unicode 位置をセットで固定）
 - 回帰登録
