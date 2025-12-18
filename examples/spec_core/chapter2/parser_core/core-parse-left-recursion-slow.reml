@@ -1,3 +1,4 @@
+// Parse.run("1 + 2")
 module Spec.Core.Chapter2.Parser.LeftRecursionSlow
 
 use Core.Parse as Parse

@@ -23,7 +23,8 @@
 - `reports/spec-audit/ch4/logs/spec_core-CP-WS6-002-20251218T225547Z.diagnostic.json`
 
 ## 備考
-- `reml_frontend --output json` による構文チェックでは `ParseResult.profile` が出力されないため、profile JSON は未生成。実行系ハーネス側での採取手順を別途確定する。
+- `--parse-driver-profile-output` を使って profile JSON を生成済み（`left_recursion_guard_hits=0` のため、左再帰ガードの実測は別途確認が必要）。
+  - 生成物: `expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json`
 
 ## TODO
 - しきい値は Phase4 の実測値に合わせて調整する。

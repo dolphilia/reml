@@ -1,0 +1,8 @@
+{
+  "backtracks": 0,
+  "left_recursion_guard_hits": 0,
+  "memo_entries": 9,
+  "packrat_hits": 0,
+  "packrat_misses": 13,
+  "recoveries": 0
+}

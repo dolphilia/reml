@@ -692,7 +692,8 @@ fn run_parse_driver_mode(
         });
     }
     let driver_source = extract_parse_driver_input(source);
-    let result = runtime_parse::run_shared(&parser, Arc::clone(&shared_source), &run_config);
+    let driver_input = Arc::<str>::from(driver_source);
+    let result = runtime_parse::run_shared(&parser, driver_input, &run_config);
 
     let mut diagnostics = Vec::new();
     for err in &result.diagnostics {
