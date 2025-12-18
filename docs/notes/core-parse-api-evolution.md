@@ -1,5 +1,11 @@
 # Core Parse API Evolution メモ
 
+## 2026-04-10: LexPack 置換の試行（Basic インタープリタサンプル）
+
+- `examples/language-impl-comparison/reml/basic_interpreter_combinator.reml` に局所 `LexPack` を導入し、`lexeme/symbol/keyword` を共通レコード経由で提供する形へ置換。`identifier/number/string` もレコード内で束ね、`number` の値化は既存 `parseF64` に一本化した。
+- RunConfig への書き戻しはサンプル外で未提供だが、`space`/`lexeme`/`keyword`/`symbol` の入口が一つにまとまったため、Phase4 Step2/Step3 の差分確認に備えた。
+- `basic_interpreter.reml` は Core.Parse/Lex を持たない構成のため、今回は変更なし（モック扱い）。SQL/TOML/YAML モックも引き続きノータッチ。
+
 ## 2026-03-09: parse-driver ラベル整形と CP-WS2-001 固定
 
 - `--parse-driver` が `Parse.run(...)` の文字列引数を拾って簡易 expr パーサへ渡すようにし、B-6/B-7 に沿った `expected.alternatives` / `context_note` を生成。`expected_from_summary` を JSON に展開して humanized/context を CLI/LSP で共有できる形にした。

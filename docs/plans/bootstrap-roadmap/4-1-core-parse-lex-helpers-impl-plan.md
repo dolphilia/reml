@@ -84,6 +84,13 @@
    - `sql_parser.reml`: `keyword_ci` で境界判定を置換し、`reserved(profile, set)` に集約。`RunConfig.extensions["lex"]`（space/profile/identifier_profile/safety）を反映。
    - `toml_parser.reml`: `lex_pack_toml` でトリビアとベアキーを吸収し、複数行文字列をプリセット版へ切替。
    - `yaml_parser.reml`: Layout 由来の token 生成は据え置き、`lexeme/symbol` を共通プリセットに寄せ `space_id` を共有。
+   - 実施順（Step2 内の詳細手順）:
+     1) `lex_pack` 共有ヘルパをサンプル共通入口に導入し、`RunConfig.extensions["lex"]` へ `space_id/profile/identifier_profile/layout_profile/safety` を書き戻す雛形を作成（既定値は Step1 に従う）。
+     2) `basic_interpreter_combinator.reml`: 自前 `lexeme/symbol/keyword` を LexPreset に置換し、`identifier/number/string` のラベル付き版へ統一。`Parse.fail` の自由文を 2-5 構造化診断（Expectation ベース）に差し替え。
+     3) `sql_parser.reml`: `keyword_ci` + `reserved(profile, set)` へ置換し、予約語拒否ロジックをプリセットへ集約。`identifier_profile` 共有を導入し、RunConfig を書き戻す。
+     4) `toml_parser.reml`: `lex_pack_toml` に切替え、ベアキーを `IdentifierProfile::toml_key` に寄せる。複数行文字列をプリセット版（`stringMultiline` 相当）へ移行。
+     5) `yaml_parser.reml`: Layout token 生成は触らず、`space_id` 共有と `lexeme/symbol` 置換のみ先行。`RunConfig` への書き戻しで layout_profile を None のまま共有する。
+     6) 影響確認: 各サンプルの expected（stdout/diagnostic）が揺れる場合は Step3 で再生成予定とし、差分の理由をメモ（`docs/notes/core-parse-api-evolution.md`）に追記。
 3. **新規サンプルと期待ゴールデンの追加**
    - `core-parse-lexpack-basic.reml` を追加し、空白/コメント混在入力の AST/診断を `expected/spec_core/chapter2/parser_core/core-parse-lexpack-basic.{stdout,diagnostic.json}` で固定。
    - 期待条件: `label("identifier"|"number"|"string")` を保持し、`lexeme` が `with_space` と二重スキップしない（`space_id` 共有）。

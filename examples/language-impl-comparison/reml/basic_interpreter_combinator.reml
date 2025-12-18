@@ -7,6 +7,31 @@ use ::Core.Text
 use ::Core.Parse
 use ::Core.Parse.Lex
 
+fn make_lex_pack() {
+  let space: Parser<()> =
+    (Lex.whitespace())
+      |> Lex.skipMany
+
+  let lexeme = (|p| Lex.lexeme(space, p))
+  let symbol = (|text| Lex.symbol(space, text))
+  let keyword = (|name| Lex.keyword(space, name))
+  let identifier = lexeme(Lex.identifier())
+  let number_repr = lexeme(Parse.attempt(Lex.float()).or(Lex.integer()))
+  let string_literal = lexeme(Lex.stringLit())
+
+  {
+    space,
+    lexeme,
+    symbol,
+    keyword,
+    identifier,
+    number_repr,
+    string_literal,
+  }
+}
+
+let lex = make_lex_pack()
+
 /// パーサーコンビネーターを使った Basic インタープリタ。
 /// LET, PRINT, IF, FOR, WHILE, GOTO, GOSUB, RETURN, DIM, END をサポート。
 
@@ -63,25 +88,9 @@ type RuntimeError =
 
 // ========== パーサー定義 ==========
 
-let sc: Parser<()> =
-  (Lex.whitespace())
-  |> Lex.skipMany
-
-fn lexeme<A>(p: Parser<A>) -> Parser<A> {
-  Lex.lexeme(sc, p)
-}
-
-fn keyword(name: Text) -> Parser<()> {
-  Lex.keyword(sc, name)
-}
-
-fn symbol(text: Text) -> Parser<()> {
-  Lex.symbol(sc, text)
-}
-
 fn line_number() -> Parser<i64> {
   rule("basic.line_number",
-    lexeme(Lex.int(10))
+    lex.lexeme(Lex.int(10))
       .andThen(|digits|
         match Lex.parseI64(digits, 10) with
         | Ok(value) -> Parse.ok(value)
@@ -91,15 +100,12 @@ fn line_number() -> Parser<i64> {
 }
 
 fn identifier() -> Parser<Text> {
-  rule("basic.identifier", lexeme(Lex.identifier()))
+  rule("basic.identifier", lex.identifier)
 }
 
 fn number() -> Parser<f64> {
   rule("basic.number",
-    lexeme(
-      Parse.attempt(Lex.float())
-        .or(Lex.integer())
-    )
+    lex.number_repr
       .andThen(|repr|
         match Lex.parseF64(repr) with
         | Ok(value) -> Parse.ok(value)
@@ -109,7 +115,7 @@ fn number() -> Parser<f64> {
 }
 
 fn string_literal() -> Parser<Text> {
-  rule("basic.string", lexeme(Lex.stringLit()))
+  rule("basic.string", lex.string_literal)
 }
 
 // 式パーサー
@@ -120,25 +126,25 @@ fn expr() -> Parser<Expr> {
 fn or_expr() -> Parser<Expr> {
   chainl1(
     and_expr(),
-    keyword("OR").map(|_| (|l, r| BinOp({ op: Or, left: l, right: r })))
+    lex.keyword("OR").map(|_| (|l, r| BinOp({ op: Or, left: l, right: r })))
   )
 }
 
 fn and_expr() -> Parser<Expr> {
   chainl1(
     comparison_expr(),
-    keyword("AND").map(|_| (|l, r| BinOp({ op: And, left: l, right: r })))
+    lex.keyword("AND").map(|_| (|l, r| BinOp({ op: And, left: l, right: r })))
   )
 }
 
 fn comparison_expr() -> Parser<Expr> {
   let comp_op: Parser<BinOperator> = Parse.choice([
-    symbol("=").map(|_| Eq),
-    symbol("<>").map(|_| Ne),
-    symbol("<=").map(|_| Le),
-    symbol(">=").map(|_| Ge),
-    symbol("<").map(|_| Lt),
-    symbol(">").map(|_| Gt),
+    lex.symbol("=").map(|_| Eq),
+    lex.symbol("<>").map(|_| Ne),
+    lex.symbol("<=").map(|_| Le),
+    lex.symbol(">=").map(|_| Ge),
+    lex.symbol("<").map(|_| Lt),
+    lex.symbol(">").map(|_| Gt),
   ])
   chainl1(
     additive_expr(),
@@ -148,8 +154,8 @@ fn comparison_expr() -> Parser<Expr> {
 
 fn additive_expr() -> Parser<Expr> {
   let add_op: Parser<BinOperator> = Parse.choice([
-    symbol("+").map(|_| Add),
-    symbol("-").map(|_| Sub),
+    lex.symbol("+").map(|_| Add),
+    lex.symbol("-").map(|_| Sub),
   ])
   chainl1(
     multiplicative_expr(),
@@ -159,8 +165,8 @@ fn additive_expr() -> Parser<Expr> {
 
 fn multiplicative_expr() -> Parser<Expr> {
   let mul_op: Parser<BinOperator> = Parse.choice([
-    symbol("*").map(|_| Mul),
-    symbol("/").map(|_| Div),
+    lex.symbol("*").map(|_| Mul),
+    lex.symbol("/").map(|_| Div),
   ])
   chainl1(
     unary_expr(),
@@ -170,10 +176,10 @@ fn multiplicative_expr() -> Parser<Expr> {
 
 fn unary_expr() -> Parser<Expr> {
   Parse.choice([
-    symbol("-")
+    lex.symbol("-")
       .then(primary_expr())
       .map(|(_, operand)| UnaryOp({ op: Neg, operand })),
-    keyword("NOT")
+    lex.keyword("NOT")
       .then(primary_expr())
       .map(|(_, operand)| UnaryOp({ op: Not, operand })),
     primary_expr()
@@ -186,18 +192,18 @@ fn primary_expr() -> Parser<Expr> {
     string_literal().map(|s| String(s)),
     Parse.attempt(array_access()),
     identifier().map(|name| Variable(name)),
-    symbol("(")
+    lex.symbol("(")
       .skipR(expr())
-      .skipL(symbol(")"))
+      .skipL(lex.symbol(")"))
   ])
 }
 
 fn array_access() -> Parser<Expr> {
   identifier()
     .andThen(|name|
-      symbol("(")
+      lex.symbol("(")
         .skipR(expr())
-        .skipL(symbol(")"))
+        .skipL(lex.symbol(")"))
         .map(|index| ArrayAccess({ name, index }))
     )
 }
@@ -211,16 +217,16 @@ fn expr_with_builder() -> Parser<Expr> {
         string_literal().map(|s| String(s)),
         Parse.attempt(array_access()),
         identifier().map(|name| Variable(name)),
-        symbol("(")
+        lex.symbol("(")
           .skipR(rec expr_with_builder)
-          .skipL(symbol(")"))
+          .skipL(lex.symbol(")"))
       ])
     )
 
   let levels: [Parse.ExprOpLevel<Expr>] = [
     { prefix: [
-        symbol("-").map(|_| (|x| UnaryOp({ op: Neg, operand: x }))),
-        keyword("NOT").map(|_| (|x| UnaryOp({ op: Not, operand: x }))),
+        lex.symbol("-").map(|_| (|x| UnaryOp({ op: Neg, operand: x }))),
+        lex.keyword("NOT").map(|_| (|x| UnaryOp({ op: Not, operand: x }))),
       ],
       postfix: [],
       infixl: [],
@@ -230,8 +236,8 @@ fn expr_with_builder() -> Parser<Expr> {
     { prefix: [],
       postfix: [],
       infixl: [
-        symbol("*").map(|_| (|l, r| BinOp({ op: Mul, left: l, right: r }))),
-        symbol("/").map(|_| (|l, r| BinOp({ op: Div, left: l, right: r }))),
+        lex.symbol("*").map(|_| (|l, r| BinOp({ op: Mul, left: l, right: r }))),
+        lex.symbol("/").map(|_| (|l, r| BinOp({ op: Div, left: l, right: r }))),
       ],
       infixr: [],
       infixn: []
@@ -239,8 +245,8 @@ fn expr_with_builder() -> Parser<Expr> {
     { prefix: [],
       postfix: [],
       infixl: [
-        symbol("+").map(|_| (|l, r| BinOp({ op: Add, left: l, right: r }))),
-        symbol("-").map(|_| (|l, r| BinOp({ op: Sub, left: l, right: r }))),
+        lex.symbol("+").map(|_| (|l, r| BinOp({ op: Add, left: l, right: r }))),
+        lex.symbol("-").map(|_| (|l, r| BinOp({ op: Sub, left: l, right: r }))),
       ],
       infixr: [],
       infixn: []
@@ -248,7 +254,7 @@ fn expr_with_builder() -> Parser<Expr> {
     { prefix: [],
       postfix: [],
       infixl: [
-        keyword("AND").map(|_| (|l, r| BinOp({ op: And, left: l, right: r }))),
+        lex.keyword("AND").map(|_| (|l, r| BinOp({ op: And, left: l, right: r }))),
       ],
       infixr: [],
       infixn: []
@@ -256,7 +262,7 @@ fn expr_with_builder() -> Parser<Expr> {
     { prefix: [],
       postfix: [],
       infixl: [
-        keyword("OR").map(|_| (|l, r| BinOp({ op: Or, left: l, right: r }))),
+        lex.keyword("OR").map(|_| (|l, r| BinOp({ op: Or, left: l, right: r }))),
       ],
       infixr: [],
       infixn: []
@@ -267,7 +273,7 @@ fn expr_with_builder() -> Parser<Expr> {
     atom,
     levels,
     {
-      space: Some(sc),
+      space: Some(lex.space),
       operand_label: Some("expression"),
       commit_style: Parse.ExprCommit::Preserve,
     },
@@ -291,29 +297,29 @@ fn statement() -> Parser<Statement> {
 }
 
 fn let_stmt() -> Parser<Statement> {
-  keyword("LET")
+  lex.keyword("LET")
     .skipR(identifier())
-    .skipL(symbol("="))
+    .skipL(lex.symbol("="))
     .then(expr())
     .map(|(name, expr)| Let({ name, expr }))
 }
 
 fn print_stmt() -> Parser<Statement> {
-  keyword("PRINT")
-    .skipR(Parse.sepBy(expr(), symbol(",")))
+  lex.keyword("PRINT")
+    .skipR(Parse.sepBy(expr(), lex.symbol(",")))
     .map(|exprs| Print(exprs))
 }
 
 fn if_stmt() -> Parser<Statement> {
-  keyword("IF")
+  lex.keyword("IF")
     .skipR(expr())
-    .skipL(keyword("THEN"))
+    .skipL(lex.keyword("THEN"))
     .then(Parse.many(statement()))
     .then(Parse.opt(
-      keyword("ELSE")
+      lex.keyword("ELSE")
         .skipR(Parse.many(statement()))
     ))
-    .skipL(keyword("END"))
+    .skipL(lex.keyword("END"))
     .map(|((cond, then_block), else_opt)| {
       let else_block = else_opt.unwrap_or(List.empty())
       If({ cond, then_block, else_block })
@@ -321,18 +327,18 @@ fn if_stmt() -> Parser<Statement> {
 }
 
 fn for_stmt() -> Parser<Statement> {
-  keyword("FOR")
+  lex.keyword("FOR")
     .skipR(identifier())
-    .skipL(symbol("="))
+    .skipL(lex.symbol("="))
     .then(expr())
-    .skipL(keyword("TO"))
+    .skipL(lex.keyword("TO"))
     .then(expr())
     .then(Parse.opt(
-      keyword("STEP")
+      lex.keyword("STEP")
         .skipR(expr())
     ))
     .then(Parse.many(statement()))
-    .skipL(keyword("NEXT"))
+    .skipL(lex.keyword("NEXT"))
     .map(|((((name, start), end), step_opt), body)| {
       let step = step_opt.unwrap_or(Number(1.0))
       For({ name, start, end, step, body })
@@ -340,41 +346,41 @@ fn for_stmt() -> Parser<Statement> {
 }
 
 fn while_stmt() -> Parser<Statement> {
-  keyword("WHILE")
+  lex.keyword("WHILE")
     .skipR(expr())
     .then(Parse.many(statement()))
-    .skipL(keyword("WEND"))
+    .skipL(lex.keyword("WEND"))
     .map(|(cond, body)| While({ cond, body }))
 }
 
 fn goto_stmt() -> Parser<Statement> {
-  keyword("GOTO")
+  lex.keyword("GOTO")
     .skipR(line_number())
     .map(|line| Goto(line))
 }
 
 fn gosub_stmt() -> Parser<Statement> {
-  keyword("GOSUB")
+  lex.keyword("GOSUB")
     .skipR(line_number())
     .map(|line| Gosub(line))
 }
 
 fn return_stmt() -> Parser<Statement> {
-  keyword("RETURN")
+  lex.keyword("RETURN")
     .map(|_| Return)
 }
 
 fn dim_stmt() -> Parser<Statement> {
-  keyword("DIM")
+  lex.keyword("DIM")
     .skipR(identifier())
-    .skipL(symbol("("))
+    .skipL(lex.symbol("("))
     .then(expr())
-    .skipL(symbol(")"))
+    .skipL(lex.symbol(")"))
     .map(|(name, size)| Dim({ name, size }))
 }
 
 fn end_stmt() -> Parser<Statement> {
-  keyword("END")
+  lex.keyword("END")
     .map(|_| End)
 }
 
@@ -384,7 +390,7 @@ fn program_line() -> Parser<(i64, Statement)> {
 }
 
 fn program() -> Parser<Program> {
-  sc
+  lex.space
     .skipR(Parse.many(program_line()))
     .skipL(Parse.eof())
     .map(|lines| lines)
