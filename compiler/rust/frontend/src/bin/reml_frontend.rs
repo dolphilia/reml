@@ -8,7 +8,7 @@ use std::fs;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use reml_adapter::target::{self, TargetInference};
 use reml_frontend::diagnostic::messages;
@@ -668,7 +668,9 @@ fn run_parse_driver_mode(
         .and_then(|name| name.to_str())
         .map(|name| name == "core-parse-lexpack-basic.reml")
         .unwrap_or(false);
-    let (parser, label_for_diagnostic) = if is_lexpack_basic {
+    let (parser, label_for_diagnostic) = if args.parse_driver_left_recursion_parser {
+        (build_left_recursion_guard_parser().map(|_| ()), None)
+    } else if is_lexpack_basic {
         (build_lexpack_basic_parser(), None)
     } else {
         (
@@ -779,6 +781,46 @@ fn build_lexpack_basic_parser() -> runtime_parse::Parser<()> {
         .skip_r(space)
         .skip_r(runtime_parse::eof())
         .map(|_| ())
+}
+
+fn build_left_recursion_guard_parser() -> runtime_parse::Parser<i32> {
+    let depth = Arc::new(Mutex::new(0usize));
+    let slot: Arc<Mutex<Option<runtime_parse::Parser<i32>>>> = Arc::new(Mutex::new(None));
+    let slot_inner = Arc::clone(&slot);
+    let depth_inner = Arc::clone(&depth);
+    let parser = runtime_parse::Parser::new(move |state| {
+        let mut current = depth_inner.lock().expect("left recursion depth lock");
+        if *current > 0 {
+            if !matches!(state.run_config.left_recursion, LeftRecursionStrategy::Off) {
+                state.record_left_recursion_guard();
+            }
+            return runtime_parse::Reply::Err {
+                error: runtime_parse::ParseError::new("left recursion", state.input().position()),
+                consumed: false,
+                committed: false,
+            };
+        }
+        *current += 1;
+        drop(current);
+        let recursive = slot_inner
+            .lock()
+            .expect("left recursion parser slot")
+            .clone()
+            .expect("left recursion parser initialized");
+        let plus = symbol_with_ws("+");
+        let int = integer_literal_parser().map(|(value, _)| value);
+        let branch = recursive
+            .clone()
+            .then(plus)
+            .then(int.clone())
+            .map(|((lhs, _), rhs)| lhs + rhs);
+        let result = branch.or(int).parse(state);
+        let mut current = depth_inner.lock().expect("left recursion depth lock");
+        *current = current.saturating_sub(1);
+        result
+    });
+    *slot.lock().expect("left recursion parser slot") = Some(parser.clone());
+    parser
 }
 
 fn lexpack_value_parser(
@@ -1234,6 +1276,7 @@ struct CliArgs {
     parse_driver_profile_output: Option<PathBuf>,
     parse_driver_left_recursion: Option<LeftRecursionStrategy>,
     parse_driver_packrat: Option<bool>,
+    parse_driver_left_recursion_parser: bool,
     emit_audit: bool,
     #[allow(dead_code)]
     show_stage_context: bool,
@@ -1837,6 +1880,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut parse_driver_profile_output: Option<PathBuf> = None;
     let mut parse_driver_left_recursion: Option<LeftRecursionStrategy> = None;
     let mut parse_driver_packrat: Option<bool> = None;
+    let mut parse_driver_left_recursion_parser = false;
     let mut emit_audit = false;
     let mut show_stage_context = false;
     let mut diagnostics_stream = false;
@@ -1886,6 +1930,9 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .next()
                     .ok_or_else(|| "--parse-driver-packrat は on/off の値を伴う必要があります")?;
                 parse_driver_packrat = Some(parse_on_off(&value)?);
+            }
+            "--parse-driver-left-recursion-parser" => {
+                parse_driver_left_recursion_parser = true;
             }
             "--emit-audit" | "--emit-audit-log" => emit_audit = true,
             "--show-stage-context" => show_stage_context = true,
@@ -2328,6 +2375,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         parse_driver_profile_output,
         parse_driver_left_recursion,
         parse_driver_packrat,
+        parse_driver_left_recursion_parser,
         emit_audit,
         show_stage_context,
         diagnostics_stream,
@@ -2364,6 +2412,7 @@ fn print_help(program_name: &str) {
   --parse-driver-profile-output <PATH> parse-driver の profile 出力先（JSON）
   --parse-driver-left-recursion <MODE> parse-driver の左再帰モード（off/on/auto）
   --parse-driver-packrat <MODE>  parse-driver の Packrat を on/off で切替
+  --parse-driver-left-recursion-parser parse-driver で左再帰ガード検証用の専用パーサを使用
   --emit-diagnostics             標準出力へ診断 JSON を出力
   --emit-audit-log               Audit メタデータを出力（--emit-audit も利用可能）
   --emit-telemetry <KIND>[=PATH] 制約グラフ等のテレメトリを JSON で保存

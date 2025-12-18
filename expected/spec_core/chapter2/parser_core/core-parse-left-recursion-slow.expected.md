@@ -23,7 +23,7 @@
 - `reports/spec-audit/ch4/logs/spec_core-CP-WS6-002-20251218T225547Z.diagnostic.json`
 
 ## 備考
-- `--parse-driver-profile-output` を使って profile JSON を生成済み（`left_recursion_guard_hits=0` のため、左再帰ガードの実測は別途確認が必要）。
+- `--parse-driver-left-recursion-parser` を使い、left_recursion_guard を 1 回以上記録できることを確認。
   - 生成物: `expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json`
 
 ## TODO

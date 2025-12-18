@@ -58,13 +58,13 @@
   - `reports/spec-audit/ch4/logs/spec_core-CP-WS6-002-20251218T225547Z.diagnostic.json`
 - ✅ `profile_output` 生成済み:
   - `expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json`
-  - `left_recursion_guard_hits=0` のため、左再帰ガード実測は引き続き要確認。
+  - `left_recursion_guard_hits=1` を確認。
 
 ## 生成経路の確認（2025-12-19）
 - `reml_frontend --output json` は **Reml ソースの構文解析のみ**を行い、`examples/...` 内の `Parse.run(...)` を実行しない。
 - `--parse-driver` に profile/left_recursion/packrat を渡す CLI オプションを追加し、抽出入力で profile JSON を生成できるようにした。
 - 生成例:
-  - `compiler/rust/frontend/target/debug/reml_frontend --parse-driver --parse-driver-packrat on --parse-driver-left-recursion on --parse-driver-profile-output expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json --output json examples/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.reml`
+  - `compiler/rust/frontend/target/debug/reml_frontend --parse-driver --parse-driver-left-recursion-parser --parse-driver-packrat on --parse-driver-left-recursion on --parse-driver-profile-output expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json --output json examples/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.reml`
 
 ## 補強タスク（提案）
 Phase4 で profile 指標を取得するため、`parse-driver` に RunConfig を渡せる経路を追加する。
