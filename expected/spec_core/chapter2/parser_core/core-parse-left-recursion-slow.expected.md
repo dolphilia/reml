@@ -19,6 +19,12 @@
 - `expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json`
 - 追加ログ: `reports/spec-audit/ch4/logs/spec_core-CP-WS6-002-<timestamp>.diagnostic.json`
 
+## 実行ログ（採取済み）
+- `reports/spec-audit/ch4/logs/spec_core-CP-WS6-002-20251218T225547Z.diagnostic.json`
+
+## 備考
+- `reml_frontend --output json` による構文チェックでは `ParseResult.profile` が出力されないため、profile JSON は未生成。実行系ハーネス側での採取手順を別途確定する。
+
 ## TODO
 - しきい値は Phase4 の実測値に合わせて調整する。
 - 大入力版（繰返し回数を増やした入力）を別ログとして残す。

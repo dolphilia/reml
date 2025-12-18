@@ -19,5 +19,8 @@
 - 出力: `reports/spec-audit/ch4/logs/spec_core-CP-WS6-001-<timestamp>.diagnostic.json`
 - 参考: `summary.stats.parse_result.farthest_error_offset`
 
+## 実行ログ（採取済み）
+- `reports/spec-audit/ch4/logs/spec_core-CP-WS6-001-20251218T225541Z.diagnostic.json`
+
 ## TODO
 - 実行用の CLI/ランナー手順を Phase4 側で確定し、`phase4-scenario-matrix.csv` に登録する。
