@@ -85,6 +85,12 @@ WS5 Step0 で定義した不変条件チェックリストを用いて、現行 
 **TODO（WS5 Step1 の是正案）**
 - `Input` 側で共有する「行頭インデックス」「グラフェム境界キャッシュ」を診断整形にも再利用できる形へ揃える（`docs/spec/3-3-core-text-unicode.md` の方針に合わせる）。
 
+#### 2025-12-18: WS5 Step1 実装反映メモ（Rust runtime）
+- `Input` に `from_arc_str` を追加し、`ParseState::new_shared` / `run_shared` で共有済みバッファをそのままビュー化できる導線を追加（全体コピーの必須化を回避）。
+- `Input::advance` と `remaining` に UTF-8 境界の `debug_assert` / `get` ベースのガードを入れ、境界前提の誤用を早期検知。ASCII 範囲はバイト走査で列更新する fast path を追加。
+- ハイライト生成 (`span_highlight`) も ASCII fast path と安全な `get` 参照に置き換え、長大入力での二重走査と境界パニックを抑制。
+- 残課題: `g_index/cp_index` 共有や行頭テーブル再利用は未着手（仕様 2-1/3-3 のモデルに寄せる追加修正が必要）。
+
 ## 2025-12-17: `commit` のレイヤ決定（Cut/Commit の表面整理）
 
 ### 結論

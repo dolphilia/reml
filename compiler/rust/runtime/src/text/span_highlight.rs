@@ -23,11 +23,19 @@ pub fn span_highlight(source: &str, start: usize, end: usize) -> Option<SpanHigh
     let line_end = line_end_index(source, line_start);
     let highlight_start = start.min(line_end);
     let highlight_end = end.max(highlight_start).min(line_end);
-    let line_slice = &source[line_start..line_end];
-    let prefix_slice = &source[line_start..highlight_start];
-    let highlight_slice = &source[highlight_start..highlight_end];
-    let prefix_graphemes = Str::from(prefix_slice).iter_graphemes().count() as u32;
-    let highlight_graphemes = Str::from(highlight_slice).iter_graphemes().count() as u32;
+    let line_slice = source.get(line_start..line_end)?;
+    let prefix_slice = source.get(line_start..highlight_start)?;
+    let highlight_slice = source.get(highlight_start..highlight_end)?;
+    let prefix_graphemes = if prefix_slice.is_ascii() {
+        prefix_slice.len() as u32
+    } else {
+        Str::from(prefix_slice).iter_graphemes().count() as u32
+    };
+    let highlight_graphemes = if highlight_slice.is_ascii() {
+        highlight_slice.len() as u32
+    } else {
+        Str::from(highlight_slice).iter_graphemes().count() as u32
+    };
     let column_start = prefix_graphemes + 1;
     let column_end = column_start + highlight_graphemes;
     let marker_len = if highlight_graphemes == 0 {
@@ -50,6 +58,18 @@ pub fn span_highlight(source: &str, start: usize, end: usize) -> Option<SpanHigh
 }
 
 fn line_start_index(source: &str, offset: usize) -> (usize, u32) {
+    if source.is_ascii() {
+        let mut line_start = 0usize;
+        let mut line_number = 1u32;
+        for (idx, b) in source.as_bytes().iter().enumerate().take(offset) {
+            if *b == b'\n' {
+                line_start = idx + 1;
+                line_number += 1;
+            }
+        }
+        return (line_start, line_number);
+    }
+
     let mut line_start = 0usize;
     let mut line_number = 1u32;
     for (idx, ch) in source.char_indices() {

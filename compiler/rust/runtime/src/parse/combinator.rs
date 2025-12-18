@@ -74,7 +74,10 @@ pub struct Input {
 
 impl Input {
     pub fn new(source: impl AsRef<str>) -> Self {
-        let source = Arc::<str>::from(source.as_ref());
+        Self::from_arc_str(Arc::<str>::from(source.as_ref()))
+    }
+
+    pub fn from_arc_str(source: Arc<str>) -> Self {
         Self {
             source,
             byte_offset: 0,
@@ -83,8 +86,14 @@ impl Input {
         }
     }
 
+    pub fn remaining_checked(&self) -> Option<&str> {
+        self.source.get(self.byte_offset..)
+    }
+
     pub fn remaining(&self) -> &str {
-        &self.source[self.byte_offset..]
+        self.remaining_checked().expect(
+            "Input.byte_offset が UTF-8 境界ではありません（Input::advance の誤用の可能性）",
+        )
     }
 
     pub fn is_empty(&self) -> bool {
@@ -115,20 +124,57 @@ impl Input {
     pub fn advance(&self, bytes: usize) -> Self {
         let available = self.source.len().saturating_sub(self.byte_offset);
         let step = bytes.min(available);
-        let slice = &self.source[self.byte_offset..self.byte_offset + step];
+        let start = self.byte_offset;
+        let end = self.byte_offset + step;
+        debug_assert!(
+            self.source.is_char_boundary(start),
+            "Input.byte_offset が UTF-8 境界ではありません: {start}"
+        );
+        debug_assert!(
+            self.source.is_char_boundary(end),
+            "Input.advance(bytes={bytes}) により UTF-8 境界でない位置へ進もうとしました: {end}"
+        );
+        let slice = self.source.get(start..end).expect(
+            "Input.advance の範囲が UTF-8 境界ではありません（advance(bytes) の誤用の可能性）",
+        );
         let mut line = self.line;
         let mut column = self.column;
-        let mut last_break = 0usize;
-        for (idx, ch) in slice.char_indices() {
-            if ch == '\n' {
-                line += 1;
-                column = 1;
-                last_break = idx + ch.len_utf8();
+
+        if slice.is_ascii() {
+            let mut last_newline = None;
+            let mut newline_count = 0usize;
+            for (idx, b) in slice.as_bytes().iter().enumerate() {
+                if *b == b'\n' {
+                    newline_count += 1;
+                    last_newline = Some(idx);
+                }
             }
+            if newline_count > 0 {
+                line += newline_count;
+                column = 1;
+                let tail_len = slice.len().saturating_sub(last_newline.unwrap_or(0) + 1);
+                column += tail_len;
+            } else {
+                column += slice.len();
+            }
+        } else {
+            let mut last_break = 0usize;
+            for (idx, ch) in slice.char_indices() {
+                if ch == '\n' {
+                    line += 1;
+                    column = 1;
+                    last_break = idx + ch.len_utf8();
+                }
+            }
+            let tail = &slice[last_break..];
+            let graphemes = if tail.is_ascii() {
+                tail.len()
+            } else {
+                Str::from(tail).iter_graphemes().count()
+            };
+            column += graphemes;
         }
-        let tail = &slice[last_break..];
-        let graphemes = Str::from(tail).iter_graphemes().count();
-        column += graphemes;
+
         Self {
             source: Arc::clone(&self.source),
             byte_offset: self.byte_offset + step,
@@ -3153,6 +3199,14 @@ pub struct ParseState {
 
 impl ParseState {
     pub fn new(source: &str, run_config: RunConfig) -> Self {
+        Self::new_with_input(Input::new(source), run_config)
+    }
+
+    pub fn new_shared(source: Arc<str>, run_config: RunConfig) -> Self {
+        Self::new_with_input(Input::from_arc_str(source), run_config)
+    }
+
+    pub fn new_with_input(input: Input, run_config: RunConfig) -> Self {
         let identifier_profile = IdentifierProfile::from_run_config(&run_config);
         let space = decode_lex_space(&run_config);
         let layout_profile = decode_layout_profile(&run_config);
@@ -3166,7 +3220,7 @@ impl ParseState {
         }
         let recover_config = decode_recover_config(&run_config);
         Self {
-            input: Input::new(source),
+            input,
             run_config,
             memo: MemoTable::new(),
             observer,
@@ -3406,7 +3460,23 @@ where
     T: Clone + Send + Sync + 'static,
 {
     let mut state = ParseState::new(input, cfg.clone());
-    let reply = parser.parse(&mut state);
+    run_with_state(parser, &mut state, cfg)
+}
+
+/// 入力バッファ（共有済み）を受け取り、余計な全体コピーを避けて実行する。
+pub fn run_shared<T>(parser: &Parser<T>, input: Arc<str>, cfg: &RunConfig) -> ParseResult<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    let mut state = ParseState::new_shared(input, cfg.clone());
+    run_with_state(parser, &mut state, cfg)
+}
+
+fn run_with_state<T>(parser: &Parser<T>, state: &mut ParseState, cfg: &RunConfig) -> ParseResult<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    let reply = parser.parse(state);
     let mut result = match reply {
         Reply::Ok {
             value, span, rest, ..
