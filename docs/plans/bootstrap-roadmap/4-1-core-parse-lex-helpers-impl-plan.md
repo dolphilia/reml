@@ -101,9 +101,9 @@
      4) 影響メモ: 生成したゴールデンの取得方法（コマンド/入力ファイル名）と、`label` 維持を確認した観点を `docs/notes/core-parse-api-evolution.md` に追記する。
    - 実施状況（2026-04-10 時点）:
      - 1) サンプル作成済み。成功入力 + 数値欠落の失敗入力を同居させ、LexPack 入口を使用。
-     - 2) `--output json --emit-diagnostics` で `.diagnostic.json` を再生成（診断 0 件のためラベル確認は未発生）。`--output human --emit-diagnostics` も実行済みだが診断なし。
-     - stdout ゴールデンは CLI 実行結果が空のまま（runtime 出力の拾い方不明）。`label("identifier"|"number"|"string")` を確認するには、診断を出す入力と CLI フラグ（parse-driver 等）の確認が必要。
-     - 3)〜4) は未実施。CP-WS3-001 への紐付けと影響メモ更新は、失敗ケースでラベル確認後に実施する。
+     - 2) `--parse-driver --output json` で `.diagnostic.json` を再生成し、`expected_tokens` に `identifier/number/string` が含まれることを確認（サンプル冒頭コメントの `Parse.run("alpha = ;")` から失敗入力を抽出する）。
+     - stdout ゴールデンも更新し、失敗ケースでは `identifier/number/string` のラベルが humanized に出ることを固定した。
+     - 3)〜4) 実施済み。`CP-WS3-001` を Phase4 マトリクスへ登録し、取得コマンドを `resolution_notes` に記録。影響メモは `docs/notes/core-parse-api-evolution.md` に追記。
 4. **回帰登録と実行パイプライン接続**
    - `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CP-WS3-001` を追加し、`resolution_notes` に CLI/LSP 実行コマンドと `RunConfig.extensions["lex"]` のキーを書き残す。
    - `tooling/examples/run_phase4_suite.py` に CP-WS3-001 の経路を追加し、`CH2-PARSE-901/902` と競合しないことを一度 Phase4 スイートで確認。

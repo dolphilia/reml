@@ -4,9 +4,13 @@ use Core.Parse as Parse
 use Core.Parse.Lex as Lex
 use Core.Prelude
 
+// parse-driver 用入力（Rust 側 `--parse-driver` が最初に見つけた Parse.run 呼び出しの文字列を抜き出して実行する）
+// Parse.run("alpha = ;")
+
 type Value =
   | Num(f64)
   | Str(Text)
+  | Var(Text)
 
 type Assignment = { name: Text, value: Value }
 
@@ -75,6 +79,7 @@ fn lex_run_config(lex) -> RunConfig {
 
 fn value(lex) -> Parse.Parser<Value> {
   Parse.choice([
+    lex.identifier.map(|name| Var(name)),
     lex.number.map(|n| Num(n)),
     lex.string_literal.map(|s| Str(s)),
   ])
@@ -100,6 +105,7 @@ fn format_value(value: Value) -> Text {
   match value with
   | Num(n) -> format("%g", [n])
   | Str(text) -> format("\"%s\"", [text])
+  | Var(name) -> name
 }
 
 fn format_assignments(assignments: List<Assignment>) -> Text {
@@ -136,7 +142,7 @@ fn main() -> Text {
 
   let ok_text = run_case("ok", "identifier|number|string", lex, cfg, source_ok)
   let err_missing_ident = run_case("err.missing_ident", "identifier", lex, cfg, source_missing_ident)
-  let err_missing_value = run_case("err.missing_value", "number|string", lex, cfg, source_ng)
+  let err_missing_value = run_case("err.missing_value", "identifier|number|string", lex, cfg, source_ng)
 
   format("%s\n%s\n%s", [ok_text, err_missing_ident, err_missing_value])
 }

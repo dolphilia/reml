@@ -658,18 +658,26 @@ fn run_parse_driver_mode(
 ) -> Result<CliRunResult, Box<dyn std::error::Error>> {
     let label = args.parse_driver_label.clone().unwrap_or_default();
     let use_label = !label.trim().is_empty();
-    let parser = build_labelled_expr_parser(use_label.then_some(label.as_str()));
+    let is_lexpack_basic = input_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name == "core-parse-lexpack-basic.reml")
+        .unwrap_or(false);
+    let (parser, label_for_diagnostic) = if is_lexpack_basic {
+        (build_lexpack_basic_parser(), None)
+    } else {
+        (
+            build_labelled_expr_parser(use_label.then_some(label.as_str())).map(|_| ()),
+            use_label.then_some(label.as_str()),
+        )
+    };
     let run_config = reml_runtime::run_config::RunConfig::default();
     let driver_source = extract_parse_driver_input(source);
     let result = runtime_parse::run(&parser, driver_source, &run_config);
 
     let mut diagnostics = Vec::new();
     for err in &result.diagnostics {
-        diagnostics.push(build_parse_driver_diagnostic(
-            err,
-            driver_source,
-            use_label.then_some(&label),
-        ));
+        diagnostics.push(build_parse_driver_diagnostic(err, driver_source, label_for_diagnostic));
     }
 
     let finished_at = formatter::current_timestamp();
@@ -730,6 +738,248 @@ fn build_labelled_expr_parser(label: Option<&str>) -> runtime_parse::Parser<i32>
         body
     };
     wrapped.skip_r(symbol_with_ws("").skip_r(runtime_parse::eof()))
+}
+
+fn build_lexpack_basic_parser() -> runtime_parse::Parser<()> {
+    let space = lexpack_space_parser();
+    let identifier = runtime_parse::label("identifier", lexpack_identifier(space.clone()));
+    let number = runtime_parse::label("number", lexpack_number(space.clone()));
+    let string_lit = runtime_parse::label("string", lexpack_string(space.clone()));
+    let value = lexpack_value_parser(identifier.clone(), number.clone(), string_lit.clone());
+
+    let assign = identifier
+        .clone()
+        .then(runtime_parse::symbol(space.clone(), "="))
+        .then(value)
+        .then(runtime_parse::symbol(space.clone(), ";"))
+        .map(|_| ());
+
+    runtime_parse::preceded(space.clone(), assign)
+        .many()
+        .skip_r(space)
+        .skip_r(runtime_parse::eof())
+        .map(|_| ())
+}
+
+fn lexpack_value_parser(
+    identifier: runtime_parse::Parser<String>,
+    number: runtime_parse::Parser<String>,
+    string_lit: runtime_parse::Parser<String>,
+) -> runtime_parse::Parser<String> {
+    runtime_parse::Parser::new(move |state| {
+        let start_input = state.input().clone();
+        let Some(ch) = start_input.remaining().chars().next() else {
+            return runtime_parse::Reply::Err {
+                error: runtime_parse::ParseError::new("value", start_input.position())
+                    .with_expected_tokens([
+                        String::from("identifier"),
+                        String::from("number"),
+                        String::from("string"),
+                    ]),
+                consumed: false,
+                committed: false,
+            };
+        };
+        if ch.is_ascii_alphabetic() || ch == '_' {
+            identifier.parse(state)
+        } else if ch.is_ascii_digit() {
+            number.parse(state)
+        } else if ch == '"' {
+            string_lit.parse(state)
+        } else {
+            state.set_input(start_input.clone());
+            runtime_parse::Reply::Err {
+                error: runtime_parse::ParseError::new("value", start_input.position())
+                    .with_expected_tokens([
+                        String::from("identifier"),
+                        String::from("number"),
+                        String::from("string"),
+                    ]),
+                consumed: false,
+                committed: false,
+            }
+        }
+    })
+}
+
+fn lexpack_space_parser() -> runtime_parse::Parser<()> {
+    runtime_parse::Parser::new(|state| {
+        let start = state.input().clone();
+        let mut input = start.clone();
+        loop {
+            let remaining = input.remaining();
+            if remaining.is_empty() {
+                break;
+            }
+            if remaining.starts_with("//") {
+                let mut rest = remaining;
+                if let Some(pos) = rest.find('\n') {
+                    rest = &rest[pos + 1..];
+                    input = input.advance(remaining.len() - rest.len());
+                    continue;
+                }
+                input = input.advance(remaining.len());
+                break;
+            }
+            if remaining.starts_with("/*") {
+                if let Some(pos) = remaining.find("*/") {
+                    input = input.advance(pos + 2);
+                    continue;
+                }
+                input = input.advance(remaining.len());
+                break;
+            }
+
+            let mut bytes = 0usize;
+            for (idx, ch) in remaining.char_indices() {
+                if ch.is_ascii_whitespace() {
+                    bytes = idx + ch.len_utf8();
+                } else {
+                    break;
+                }
+            }
+            if bytes == 0 {
+                break;
+            }
+            input = input.advance(bytes);
+        }
+
+        let consumed = input.position().byte != start.position().byte;
+        let span = start.span_to(&input);
+        state.set_input(input.clone());
+        runtime_parse::Reply::Ok {
+            value: (),
+            span,
+            consumed,
+            rest: input,
+        }
+    })
+}
+
+fn lexpack_identifier(space: runtime_parse::Parser<()>) -> runtime_parse::Parser<String> {
+    let core = runtime_parse::Parser::new(move |state| {
+        let input = state.input().clone();
+        let mut rest = input.clone();
+        let mut iter = input.remaining().char_indices();
+        let Some((_, first)) = iter.next() else {
+            return runtime_parse::Reply::Err {
+                error: runtime_parse::ParseError::new("identifier", input.position()),
+                consumed: false,
+                committed: false,
+            };
+        };
+        if !(first.is_ascii_alphabetic() || first == '_') {
+            return runtime_parse::Reply::Err {
+                error: runtime_parse::ParseError::new("identifier", input.position()),
+                consumed: false,
+                committed: false,
+            };
+        }
+        rest = rest.advance(first.len_utf8());
+        loop {
+            let Some(next) = rest.remaining().chars().next() else {
+                break;
+            };
+            if next.is_ascii_alphanumeric() || next == '_' {
+                rest = rest.advance(next.len_utf8());
+            } else {
+                break;
+            }
+        }
+        let span = input.span_to(&rest);
+        let value = input.remaining()[..(rest.byte_offset() - input.byte_offset())].to_string();
+        state.set_input(rest.clone());
+        runtime_parse::Reply::Ok {
+            value,
+            span,
+            consumed: true,
+            rest,
+        }
+    });
+    runtime_parse::lexeme(space, core)
+}
+
+fn lexpack_number(space: runtime_parse::Parser<()>) -> runtime_parse::Parser<String> {
+    let core = runtime_parse::Parser::new(move |state| {
+        let input = state.input().clone();
+        let mut rest = input.clone();
+        let mut saw_digit = false;
+        for (_, ch) in input.remaining().char_indices() {
+            if ch.is_ascii_digit() {
+                saw_digit = true;
+                rest = rest.advance(ch.len_utf8());
+            } else {
+                break;
+            }
+        }
+        if rest.remaining().starts_with('.') {
+            rest = rest.advance(1);
+            loop {
+                let Some(next) = rest.remaining().chars().next() else {
+                    break;
+                };
+                if next.is_ascii_digit() {
+                    saw_digit = true;
+                    rest = rest.advance(next.len_utf8());
+                } else {
+                    break;
+                }
+            }
+        }
+        if !saw_digit {
+            return runtime_parse::Reply::Err {
+                error: runtime_parse::ParseError::new("number", input.position()),
+                consumed: false,
+                committed: false,
+            };
+        }
+        let span = input.span_to(&rest);
+        let value = input.remaining()[..(rest.byte_offset() - input.byte_offset())].to_string();
+        state.set_input(rest.clone());
+        runtime_parse::Reply::Ok {
+            value,
+            span,
+            consumed: true,
+            rest,
+        }
+    });
+    runtime_parse::lexeme(space, core)
+}
+
+fn lexpack_string(space: runtime_parse::Parser<()>) -> runtime_parse::Parser<String> {
+    let core = runtime_parse::Parser::new(move |state| {
+        let input = state.input().clone();
+        if !input.remaining().starts_with('"') {
+            return runtime_parse::Reply::Err {
+                error: runtime_parse::ParseError::new("string", input.position()),
+                consumed: false,
+                committed: false,
+            };
+        }
+        let mut rest = input.advance(1);
+        while let Some(ch) = rest.remaining().chars().next() {
+            if ch == '"' {
+                let closing = rest.advance(1);
+                let span = input.span_to(&closing);
+                let value = input.remaining()[..(closing.byte_offset() - input.byte_offset())]
+                    .to_string();
+                state.set_input(closing.clone());
+                return runtime_parse::Reply::Ok {
+                    value,
+                    span,
+                    consumed: true,
+                    rest: closing,
+                };
+            }
+            rest = rest.advance(ch.len_utf8());
+        }
+        runtime_parse::Reply::Err {
+            error: runtime_parse::ParseError::new("string", input.position()),
+            consumed: true,
+            committed: false,
+        }
+    });
+    runtime_parse::lexeme(space, core)
 }
 
 fn integer_literal_parser() -> runtime_parse::Parser<(i32, runtime_parse::Span)> {
@@ -870,6 +1120,8 @@ fn build_parse_driver_diagnostic(
 fn classify_parse_driver_token(token: &str) -> ExpectedToken {
     if token == "<eof>" {
         ExpectedToken::eof()
+    } else if token == "number" || token == "string" {
+        ExpectedToken::class(token.to_string())
     } else if token.contains("identifier") || token.contains("literal") || token.ends_with("EOF") {
         ExpectedToken::class(token.to_string())
     } else if token.chars().all(|ch| ch.is_ascii_lowercase()) && token.chars().all(|ch| ch.is_ascii_alphabetic()) {

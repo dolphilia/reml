@@ -156,6 +156,14 @@ def run_reml_frontend(root: Path, scenario: Scenario) -> ScenarioResult:
             "json",
             str(scenario.input_path),
         )
+    elif scenario.scenario_id == "CP-WS3-001":
+        cmd = (
+            *base_cmd,
+            "--parse-driver",
+            "--output",
+            "json",
+            str(scenario.input_path),
+        )
     else:
         cmd = (
             *base_cmd,

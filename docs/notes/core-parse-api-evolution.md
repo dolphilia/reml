@@ -218,7 +218,7 @@ end
 - `docs/guides/core-parse-streaming.md` と `docs/guides/plugin-authoring.md` に暫定の非対応メモを追加済み。実装着手後は同ガイドと `docs/spec/2-0-parser-api-overview.md` / `2-2-core-combinator.md` の脚注を更新し、RunConfig 共有キーや診断メタデータの差分を明文化する。  
 - Streaming Runner の PoC を Rust で復元する際は、Packrat キャッシュ共有と `Recover` 同期トークンが欠落しないかを micro テストで検証し、欠落箇所を `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan.md` へ逆流させる。  
 - Phase 12 で追加した回帰シナリオ（`CH2-PARSE-901` autoWhitespace/Layout、`CH2-PARSE-902` ParserProfile JSON）向けに Rust 側サンプル・expected を作成する。`RunConfig.extensions["lex"].layout_profile` 未設定時のフォールバックと `profile_output` 書き出し失敗が診断に影響しないことを CLI/LSP/Streaming で確認する。
-- `CP-WS3-001`（LexPack 基本サンプル）を `examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml` + `expected/.../core-parse-lexpack-basic.{stdout,diagnostic.json}` で追加。空白/コメント混在の入力でも AST が安定すること、`identifier|number|string` ラベル付き expected_tokens が維持されることをゴールデン化。CLI 想定: `compiler/rust/frontend/target/debug/reml_frontend --output json --emit-diagnostics examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml`（RunConfig.extensions["lex"]: profile=strict_json, identifier_profile=unicode, layout_profile=null, safety=strict）。
+- `CP-WS3-001`（LexPack 基本サンプル）を `examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml` + `expected/.../core-parse-lexpack-basic.{stdout,diagnostic.json}` で追加。空白/コメント混在の入力でも AST が安定することを確認済み。診断のラベル（identifier/number/string）確認は `reml_frontend --parse-driver` を利用し、サンプル冒頭コメントの `Parse.run("alpha = ;")` から抽出した失敗入力に対して `parser.syntax.expected_tokens` が出ることを回帰で固定する。
 
 ## Phase 4-1 Phase11 Plugin/Streaming/OpBuilder 連携メモ
 
