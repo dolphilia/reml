@@ -1028,6 +1028,7 @@ pub struct ParseError {
     pub position: InputPosition,
     pub expected_tokens: Vec<String>,
     pub recover: Option<RecoverMeta>,
+    pub fixits: Vec<ParseFixIt>,
 }
 
 impl ParseError {
@@ -1037,6 +1038,7 @@ impl ParseError {
             position,
             expected_tokens: Vec::new(),
             recover: None,
+            fixits: Vec::new(),
         }
     }
 
@@ -1049,8 +1051,13 @@ impl ParseError {
         self
     }
 
-    pub fn with_recover_sync(mut self, sync: Option<String>) -> Self {
-        self.recover = Some(RecoverMeta { sync });
+    pub fn with_recover(mut self, meta: RecoverMeta) -> Self {
+        self.recover = Some(meta);
+        self
+    }
+
+    pub fn with_fixit(mut self, fixit: ParseFixIt) -> Self {
+        self.fixits.push(fixit);
         self
     }
 
@@ -1085,12 +1092,34 @@ impl ParseError {
         }
         if let Some(recover) = &self.recover {
             let mut recover_payload = Map::new();
+            if let Some(mode) = recover.mode.as_ref() {
+                recover_payload.insert("mode".into(), Value::String(mode.clone()));
+            }
+            if let Some(action) = recover.action.as_ref() {
+                recover_payload.insert("action".into(), Value::String(action.as_str().into()));
+            }
             if let Some(sync) = recover.sync.as_ref() {
                 recover_payload.insert("sync".into(), Value::String(sync.clone()));
+            }
+            if let Some(inserted) = recover.inserted.as_ref() {
+                recover_payload.insert("inserted".into(), Value::String(inserted.clone()));
+            }
+            if let Some(context) = recover.context.as_ref() {
+                recover_payload.insert("context".into(), Value::String(context.clone()));
             }
             if !recover_payload.is_empty() {
                 extensions.insert("recover".into(), Value::Object(recover_payload));
             }
+        }
+        if !self.fixits.is_empty() {
+            extensions.insert(
+                "fixits".into(),
+                Value::Array(self.fixits.iter().map(ParseFixIt::to_json).collect()),
+            );
+            audit_metadata.insert(
+                "parser.fixits.count".into(),
+                Value::from(self.fixits.len() as u64),
+            );
         }
 
         GuardDiagnostic {
@@ -1109,8 +1138,74 @@ impl ParseError {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ParseFixIt {
+    InsertToken { token: String },
+}
+
+impl ParseFixIt {
+    fn to_json(&self) -> Value {
+        match self {
+            Self::InsertToken { token } => json!({
+                "kind": "insert_token",
+                "token": token,
+            }),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RecoverAction {
+    Default,
+    Skip,
+    Insert,
+    Context,
+}
+
+impl RecoverAction {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::Skip => "skip",
+            Self::Insert => "insert",
+            Self::Context => "context",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RecoverMeta {
+    pub mode: Option<String>,
+    pub action: Option<RecoverAction>,
     pub sync: Option<String>,
+    pub inserted: Option<String>,
+    pub context: Option<String>,
+}
+
+impl RecoverMeta {
+    pub fn collect(action: RecoverAction) -> Self {
+        Self {
+            mode: Some("collect".into()),
+            action: Some(action),
+            sync: None,
+            inserted: None,
+            context: None,
+        }
+    }
+
+    pub fn with_sync(mut self, sync: Option<String>) -> Self {
+        self.sync = sync;
+        self
+    }
+
+    pub fn with_inserted(mut self, inserted: impl Into<String>) -> Self {
+        self.inserted = Some(inserted.into());
+        self
+    }
+
+    pub fn with_context(mut self, context: impl Into<String>) -> Self {
+        self.context = Some(context.into());
+        self
+    }
 }
 
 /// Parser から返される Reply。consumed/committed を明示する。
@@ -1511,6 +1606,24 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
     where
         T: Clone + 'static,
     {
+        self.recover_with_payload(
+            until,
+            with,
+            RecoverMeta::collect(RecoverAction::Skip),
+            None,
+        )
+    }
+
+    fn recover_with_payload(
+        self,
+        until: Parser<()>,
+        with: T,
+        meta: RecoverMeta,
+        fixit: Option<ParseFixIt>,
+    ) -> Parser<T>
+    where
+        T: Clone + 'static,
+    {
         Parser::new(move |state| {
             let start_input = state.input().clone();
             match self.parse(state) {
@@ -1571,7 +1684,13 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                                 }
 
                                 let sync = state.match_sync_token(&cursor, &rest);
-                                state.push_diagnostic(error.clone().with_recover_sync(sync));
+                                let mut diagnostic = error
+                                    .clone()
+                                    .with_recover(meta.clone().with_sync(sync));
+                                if let Some(fixit) = fixit.clone() {
+                                    diagnostic = diagnostic.with_fixit(fixit);
+                                }
+                                state.push_diagnostic(diagnostic);
                                 state.set_input(rest.clone());
                                 state.record_recovery();
                                 state.recoveries = state.recoveries.saturating_add(1);
@@ -1637,6 +1756,65 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
                 }
             }
         })
+    }
+
+    pub fn recover_with_default(self, until: Parser<()>, with: T) -> Parser<T>
+    where
+        T: Clone + 'static,
+    {
+        self.recover_with_payload(
+            until,
+            with,
+            RecoverMeta::collect(RecoverAction::Default),
+            None,
+        )
+    }
+
+    pub fn recover_until(self, until: Parser<()>, with: T) -> Parser<T>
+    where
+        T: Clone + 'static,
+    {
+        self.recover_with_payload(
+            until,
+            with,
+            RecoverMeta::collect(RecoverAction::Skip),
+            None,
+        )
+    }
+
+    pub fn recover_with_insert(
+        self,
+        until: Parser<()>,
+        token: impl Into<String>,
+        with: T,
+    ) -> Parser<T>
+    where
+        T: Clone + 'static,
+    {
+        let token = token.into();
+        self.recover_with_payload(
+            until,
+            with,
+            RecoverMeta::collect(RecoverAction::Insert).with_inserted(token.clone()),
+            Some(ParseFixIt::InsertToken { token }),
+        )
+    }
+
+    pub fn recover_with_context(
+        self,
+        until: Parser<()>,
+        message: impl Into<String>,
+        with: T,
+    ) -> Parser<T>
+    where
+        T: Clone + 'static,
+    {
+        self.recover_with_payload(
+            until,
+            with,
+            RecoverMeta::collect(RecoverAction::Context).with_context(message),
+            None,
+        )
     }
 
     /// トレースフラグを尊重して内側を実行する（現状は透過）。

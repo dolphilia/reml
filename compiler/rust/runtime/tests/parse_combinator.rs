@@ -1,5 +1,6 @@
 use reml_runtime::parse::{
-    cut_here, layout_token, ok, position, run, symbol, ParseError, Parser, Reply, Span,
+    cut_here, layout_token, ok, position, run, symbol, ParseError, ParseFixIt, Parser,
+    RecoverAction, Reply, Span,
 };
 use reml_runtime::run_config::RunConfig;
 use serde_json::{Map, Value};
@@ -268,6 +269,20 @@ fn recover_collect_mode_records_sync_token() {
         result.diagnostics[0]
             .recover
             .as_ref()
+            .and_then(|meta| meta.mode.as_deref()),
+        Some("collect")
+    );
+    assert_eq!(
+        result.diagnostics[0]
+            .recover
+            .as_ref()
+            .and_then(|meta| meta.action.as_ref()),
+        Some(&RecoverAction::Skip)
+    );
+    assert_eq!(
+        result.diagnostics[0]
+            .recover
+            .as_ref()
             .and_then(|meta| meta.sync.as_deref()),
         Some("\n")
     );
@@ -287,6 +302,57 @@ fn recover_collect_mode_can_recover_committed_failure_without_trying_fallback() 
     assert!(result.recovered, "committed 失敗でも recover できるはず");
     assert_eq!(result.diagnostics.len(), 1);
     assert_eq!(result.diagnostics[0].message, "hard stop");
+}
+
+#[test]
+fn recover_with_default_records_action_default() {
+    let cfg = recover_collect_config(&["\n"], None, None, None);
+    let parser = consume_then_fail("recover me").recover_with_default(tag("\n").map(|_| ()), ());
+    let result = run(&parser, "oops\nrest", &cfg);
+    assert_eq!(result.value, Some(()));
+    assert!(result.recovered);
+    let meta = result.diagnostics[0].recover.as_ref().expect("recover meta should be attached");
+    assert_eq!(meta.action.as_ref(), Some(&RecoverAction::Default));
+}
+
+#[test]
+fn recover_with_insert_records_inserted_and_fixit() {
+    let cfg = recover_collect_config(&["\n"], None, None, None);
+    let parser = consume_then_fail("recover me")
+        .recover_with_insert(tag("\n").map(|_| ()), ";", ());
+    let result = run(&parser, "oops\nrest", &cfg);
+    assert_eq!(result.value, Some(()));
+    assert!(result.recovered);
+    let meta = result.diagnostics[0].recover.as_ref().expect("recover meta should be attached");
+    assert_eq!(meta.action.as_ref(), Some(&RecoverAction::Insert));
+    assert_eq!(meta.inserted.as_deref(), Some(";"));
+    assert_eq!(
+        result.diagnostics[0].fixits,
+        vec![ParseFixIt::InsertToken {
+            token: ";".into()
+        }]
+    );
+    let guard = result.diagnostics[0].to_guard_diagnostic();
+    assert!(
+        guard.extensions.get("fixits").is_some(),
+        "to_guard_diagnostic should expose fixits"
+    );
+}
+
+#[test]
+fn recover_with_context_records_context_message() {
+    let cfg = recover_collect_config(&["\n"], None, None, None);
+    let parser = consume_then_fail("recover me").recover_with_context(
+        tag("\n").map(|_| ()),
+        "ここは式が必要です",
+        (),
+    );
+    let result = run(&parser, "oops\nrest", &cfg);
+    assert_eq!(result.value, Some(()));
+    assert!(result.recovered);
+    let meta = result.diagnostics[0].recover.as_ref().expect("recover meta should be attached");
+    assert_eq!(meta.action.as_ref(), Some(&RecoverAction::Context));
+    assert_eq!(meta.context.as_deref(), Some("ここは式が必要です"));
 }
 
 #[test]

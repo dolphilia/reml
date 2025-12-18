@@ -2894,7 +2894,9 @@ fn build_parser_diagnostics(
                 json!({ "timestamp": timestamp }),
             );
             if let Some(recover) = recover_extension {
-                extensions.insert("recover".to_string(), recover);
+                if !extensions.contains_key("recover") {
+                    extensions.insert("recover".to_string(), recover);
+                }
             }
             extensions.insert(
                 "parse".to_string(),

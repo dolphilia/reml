@@ -57,6 +57,17 @@
    - `recover_with_insert`: `action="insert"` + `inserted=token` + `FixIt::InsertToken(token)`（等価表現可）
    - `recover_with_context`: `action="context"` + `context=message`（`notes=true` 運用では `Diagnostic.notes` へも露出）
    - `Diagnostic.extensions["recover"]` は `docs/spec/2-5-error.md` の E-2-1 を最小保証として満たす。
+   - 実装メモ（Rust runtime / Core.Parse）:
+     - 実装箇所: `compiler/rust/runtime/src/parse/combinator.rs`
+       - `RecoverMeta` を `mode/action/sync/inserted/context` に拡張し、回復診断の `extensions["recover"]` へ露出する。
+       - `Parser::recover_with_default/recover_until/recover_with_insert/recover_with_context` を追加し、各糖衣が `action` と追加メタ（`inserted/context`）を固定して `recover` と同じ同期機構を共有する。
+       - `recover_with_insert` は `ParseError.fixits` に `InsertToken` を追加し、`to_guard_diagnostic` 側で `extensions["fixits"]`（暫定）へ露出する。
+     - 実装箇所（CLI 出力の整合）: `compiler/rust/frontend/src/bin/reml_frontend.rs`
+       - 既に `extensions["recover"]` が存在する診断では、期待トークン用の `recover` 拡張で上書きしない（回復メタを保持）。
+     - 回帰（ユニットテスト）: `compiler/rust/runtime/tests/parse_combinator.rs`
+       - `recover_with_default_records_action_default`
+       - `recover_with_insert_records_inserted_and_fixit`
+       - `recover_with_context_records_context_message`
 4. **Runner / CLI 経路の整備（`run_with_recovery` の取り扱い）**
    - `examples/spec_core/chapter2/parser_core/core-parse-recover-*.reml` が前提としている `Parse.run_with_recovery(...)` を Phase4 実装で再現可能にする。
      - 方針案: `run_with_recovery(p, src)` は `RunConfig.extensions["recover"].mode="collect"` を有効化した `run(p, src, cfg)` の薄いラッパ。

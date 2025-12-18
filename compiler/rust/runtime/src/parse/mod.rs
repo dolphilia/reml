@@ -11,8 +11,8 @@ pub use combinator::{
     layout_token, lookahead, not_followed_by, ok, parse_errors_to_guard_diagnostics,
     parse_result_to_guard_diagnostics, position, preceded, rule, run, run_with_default, spanned,
     symbol, terminated, BinaryOp, ExprBuilderConfig, ExprCommit, ExprOpLevel, Input, InputPosition,
-    MemoEntry, MemoKey, MemoTable, ParseError, ParseResult, ParserProfile, ParseState, Parser,
-    ParserId, Reply, Span, UnaryOp,
+    MemoEntry, MemoKey, MemoTable, ParseError, ParseFixIt, ParseResult, ParserProfile, ParseState,
+    Parser, ParserId, RecoverAction, RecoverMeta, Reply, Span, UnaryOp,
 };
 pub use op_builder::{
     FixitySymbol, OpBuilder, OpBuilderError, OpBuilderErrorKind, OpLevel, OpTable, OperatorSpec,
