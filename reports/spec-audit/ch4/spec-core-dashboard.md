@@ -1,6 +1,6 @@
 # spec_core スイート実行レポート
 
-- 実行時刻: 2025-12-18 23:24:50Z
+- 実行時刻: 2025-12-18 23:41:58Z
 - 対象シナリオ: 73 件 / 成功 71 件 / 失敗 2 件
 - 入力ソース: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
 
