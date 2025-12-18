@@ -49,6 +49,10 @@ Reml では `chainl1` などの典型回避策に加え、OpBuilder/優先度ビ
 - サンプル
   - `examples/spec_core/chapter2/parser_core/` に、優先度・結合性・括弧・単項/二項を含む最小式 DSL を追加
   - 既存の優先度ビルダー系サンプル（bootstrap-roadmap 側に存在する場合）と重複しないよう、ここでは「左再帰回避の解説」と「失敗時の期待品質（Label/Cut）」に焦点を当てる
+- 進捗メモ（2025-xx-xx）
+  - 追加済み: `examples/spec_core/chapter2/parser_core/core-parse-left-recursion-avoid.reml`
+    - `expr_builder` + `label/cut` で左再帰回避と期待集合の品質を同時に示す構成
+    - 入力例: `1 + (2 * )`（演算子直後の失敗品質を想定）
 - 品質チェック（WS1/WS2 連動）
   - `+` の直後に式がないケースで、期待が `expression` になる（WS2）
   - 括弧の内側で失敗したときに、別分岐へ逃げない（WS1）
