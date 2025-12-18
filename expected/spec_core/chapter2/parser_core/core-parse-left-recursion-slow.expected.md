@@ -21,6 +21,7 @@
 
 ## 実行ログ（採取済み）
 - `reports/spec-audit/ch4/logs/spec_core-CP-WS6-002-20251218T225547Z.diagnostic.json`
+- `reports/spec-audit/ch4/logs/spec_core-CP-WS6-002-20251218T232113Z.diagnostic.json`
 
 ## 備考
 - `--parse-driver-left-recursion-parser` を使い、left_recursion_guard を 1 回以上記録できることを確認。

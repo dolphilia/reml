@@ -1,0 +1,1 @@
+{"command":"Check","phase":"Reporting","run_id":"b1f772fb-f8ff-49c5-8e04-7d02ba5274ab","diagnostics":[],"summary":{"inputs":["examples/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.reml"],"started_at":"-4657-11-11T23:21:13Z","finished_at":"-4657-11-11T23:21:13Z","artifact":null,"stats":{"diagnostic_count":0}},"exit_code":{"label":"success","value":0}}
