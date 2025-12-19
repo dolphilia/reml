@@ -97,6 +97,14 @@ Phase 4 の `CH3-TEST-401` / `CH3-CLI-401` / `CH3-PRETTY-401` / `CH3-DOC-401` / 
 - 2025-12-19: フェーズA Step1 の最小 API 受け口を Rust Runtime に追加。`compiler/rust/runtime/src/test/mod.rs` で `assert_snapshot`/`table_test`/`fuzz_bytes` 等のスタブ実装と in-memory スナップショット保持を用意。
 - 2025-12-19: フェーズA Step1 の診断/監査連携を追加。`test.failed` の診断生成と `SnapshotUpdated` 監査イベント記録を Rust Runtime に接続。
 - 2025-12-19: `examples/practical/core_test/snapshot/basic_ok.reml` の構文を現行 `match ... with` 形式へ更新し、`CH3-TEST-401` の CLI 実行ログ（`reports/spec-audit/ch4/logs/stdlib-test-20251219.md`）を採取して `phase4-scenario-matrix.csv` を更新。
+- 2025-12-19: `reml_frontend` の audit 出力連携を追加し、`remlc` のビルドエラーを修正。`compiler/rust/runtime/src/ffi/dsl/mod.rs` の OnceLock/再帰型修正、`compiler/rust/runtime/src/test/mod.rs` の `catch_unwind` 安全化、`compiler/rust/frontend/src/bin/remlc.rs` のエラー処理/型派生/manifest_path 修正を実施。
+- 2025-12-19: ビルド警告の整理とパッチ警告の解消を実施。`compiler/rust/runtime` と `compiler/rust/frontend` の dead_code 警告を個別 `#[allow]` で抑制し、`proc-macro-crate` の未使用パッチを削除して `cargo build` を警告なしで通過させた。
+
+## フェーズA 残タスク（チェックリスト）
+- [ ] Core.Test 実行時の stdout と `expected/practical/core_test/snapshot/basic_ok.stdout` の整合を取る（Runtime 実行の stdout 経路を追加、または expected を JSON 出力仕様に合わせて調整）。
+- [ ] `test.failed` 診断の出力経路を CLI 結果に反映する（失敗時に `CliDiagnosticEnvelope.diagnostics` へ流れることを確認）。
+- [ ] `SnapshotUpdated` 監査イベントの出力確認（CLI 実行ログに `snapshot.updated` を含むことを確認し、`reports/spec-audit/ch4/logs/stdlib-test-*.md` に記録）。
+- [ ] `Core.Test` のテーブル駆動とファズ API を利用する追加サンプルを `examples/practical/core_test/` に追加し、Phase 4 マトリクスへ登録する。
 
 ## 参照
 - `docs/plans/stdlib-improvement/README.md`
