@@ -15,3 +15,8 @@ Reml の FFI を実用レベルに引き上げるための計画書群です。
 - 調査メモ: `docs/notes/ffi-improvement-survey.md`
 - 既存仕様: `docs/spec/3-9-core-async-ffi-unsafe.md`
 - 監査・Capability: `docs/spec/3-6-core-diagnostics-audit.md`, `docs/spec/3-8-core-runtime-capability.md`
+
+## WS1 完了サマリ（reml-bindgen）
+- 仕様: `docs/spec/3-9-core-async-ffi-unsafe.md` に型変換表・未対応型の診断キー案・reml-bindgen 節を反映済み。
+- ガイド: `docs/guides/reml-bindgen-guide.md` に診断メタデータ例・ログ形式・レビュー手順詳細を追記済み。
+- サンプル: `examples/ffi/bindgen/minimal` に単一ヘッダの最小サンプルを追加済み。

@@ -761,7 +761,7 @@ fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Res
   `ffi.bindgen.unknown_type` / `ffi.bindgen.parse_failed` / `ffi.bindgen.unresolved_symbol` を使用する。
 - 生成結果のレビューでは `bindings.manifest.json` の差分を一次情報とし、
   `.reml` 側の変更は手書きラッパーと分離された領域のみを対象とする。
-- 生成ログの形式とレビュー手順は `docs/guides/reml-bindgen-guide.md` を参照する。
+- 生成ログの形式とレビュー手順は `docs/guides/reml-bindgen-guide.md` を参照する（ログ例を含む）。
 
 #### 2.8.1 型変換表（確定・一次範囲）
 
