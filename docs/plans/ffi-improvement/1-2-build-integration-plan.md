@@ -30,9 +30,10 @@
    - 生成物の再現性（入力ハッシュの記録）
 
 ## 実装ステップ（ドラフト）
-1. `reml.json` の FFI セクション仕様案を作成
-2. `docs/spec/3-9-core-async-ffi-unsafe.md` にビルド統合セクションを追加
-3. `docs/guides/` に FFI ビルド運用ガイドを追加
+1. `reml.json` の FFI セクション（`libraries`/`headers`/`bindgen`/`linker`）のキー定義と検証ルールを整理する。
+2. `reml build` の実行フロー（ヘッダ解析→生成→キャッシュ→リンク）を図示し、`docs/spec/3-9-core-async-ffi-unsafe.md` に統合セクションとして追加する。
+3. `ffi.build.*` / `ffi.bindgen.*` の監査キーと入力ハッシュの記録方針を `docs/spec/3-6-core-diagnostics-audit.md` に連携記述する。
+4. `docs/guides/` に FFI ビルド運用ガイドを追加し、失敗時の再生成条件とキャッシュ破棄手順を記載する。
 
 ## 依存関係
 - `docs/spec/3-9-core-async-ffi-unsafe.md`

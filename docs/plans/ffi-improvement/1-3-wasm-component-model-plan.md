@@ -23,9 +23,10 @@
    - WIT バインディング生成ツールとの連携方針
 
 ## 実装ステップ（ドラフト）
-1. `docs/notes/` に WIT 連携の調査ログを追加
-2. `docs/spec/3-9-core-async-ffi-unsafe.md` に将来拡張セクションを追記
-3. `docs/guides/` に PoC 手順を整理（必要時）
+1. `docs/notes/` に WIT 連携の調査ログを追加し、WIT 型→Reml 型の対応表（一次案）を含める。
+2. Canonical ABI の境界安全性とメモリ管理差分（Shared Nothing）を整理し、調査ログに論点を明記する。
+3. `docs/spec/3-9-core-async-ffi-unsafe.md` に将来拡張セクションを追記し、Phase 4 は調査範囲であることを明示する。
+4. PoC が必要になった場合の検証手順（WIT 生成→バインディング生成→呼び出し検証）を `docs/guides/` に追加する。
 
 ## 依存関係
 - `docs/notes/ffi-improvement-survey.md`
