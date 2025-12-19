@@ -67,6 +67,19 @@ test_parser(my_parser) {
 3. ゴールデンファイル読み込み/比較の経路を `assert_snapshot` と揃え、`snapshot.updated` の監査イベントを記録する。
 4. CLI で DSL サンプルを実行し、`reports/spec-audit/ch4/logs/stdlib-test-dsl-template.md` に実行ログを追記する。
 
+#### フェーズD 残タスク（優先順）
+1. ゴールデンファイル経路の実装
+   - `examples/**/golden/{case_id}.input` と `expected/**/golden/{case_id}.ast|error` を読み込み、`GoldenCase` から `assert_snapshot_with` 経由で比較する。
+   - `snapshot.name` と `case_id` の整合を必須とし、`snapshot.updated` に `snapshot.mode` / `snapshot.bytes` を記録する。
+2. Error Matcher の拡張
+   - `Diagnostic.codes` 相当のエイリアス一致を追加する。
+   - `AtSpec::LineCol` の一致判定を有効化し、`parser.position` の line/column と整合する。
+   - エラー複数件時の優先順（最遠/先頭）と期待値無し時の許容規則を実装に合わせて明文化する。
+3. AST Matcher の部分一致
+   - `...` の部分一致、`List`/`Record` の順序/キー一致ルールを実装する。
+4. DSL 糖衣構文の復帰
+   - `test_parser { case ... }` の構文を Rust 側で受理し、`DslCase` へ展開する。
+
 ## Rust 実装の現状と API 追加案
 
 ### 既存実装の範囲（`compiler/rust/runtime/src/test/mod.rs`）
