@@ -21,9 +21,25 @@ fn main() -> Str {
 }
 ```
 
+```reml
+use Core.Test
+
+fn main() -> Str {
+  match test "core_test_basic" {
+    Test.assert_snapshot("core_test_basic", "alpha")?
+    Ok(())
+  } {
+    Ok(_) => "snapshot:ok",
+    Err(_) => "snapshot:error",
+  }
+}
+```
+
 ## 3. スナップショット更新ルール
 - `update` モードは **破壊的変更時のみ** 使用する。
+- `verify` は差分があれば失敗、`record` は未存在時のみ作成する。
 - `snapshot.name` は `phase4-scenario-matrix.csv` の `scenario_id` と一致させる。
+- 診断スナップショットは `Diagnostic.code` → `span.start.line/column` の順で安定化し、`run_id`/`timestamp` は比較対象から除外する。
 
 ## 4. 回帰への接続
 - `examples/practical/core_test/` と `expected/practical/core_test/` をセットで追加する。
