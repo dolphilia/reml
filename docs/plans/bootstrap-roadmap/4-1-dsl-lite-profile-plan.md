@@ -386,7 +386,9 @@ Config {
 **CLI 実装範囲**
 - `reml new --template lite` を CLI に追加し、テンプレート一覧とヘルプ文言を更新する。
 - `reml new` 生成物に `reml.toml` と `README.md` の既定値を反映する。
-- `--audit-log <path>` 指定時のみ監査ログを有効化する挙動を確定する。
+- `--audit-log <path>` 指定時のみ監査ログを有効化し、未指定時は `AuditPolicy::None` を既定とする。
+- 生成物は `README.md` / `reml.toml` / `src/main.reml` / `src/parser.reml` / `src/dsl_test.reml` / `templates/sample.input` / `templates/sample.ast` を最低限含む。
+- `reml new --template lite --help` に Lite の用途（学習/試作）と移行導線（`project.stage` 昇格）を明記する。
 
 **既定値の実装ポイント**
 - `project.stage = "lite"` と `dsl.lite.*` を CLI 生成テンプレートに埋め込む。
@@ -394,7 +396,8 @@ Config {
 - `dsl.lite.capabilities = []` を既定にし、Capability 追加は明示的に指定させる。
 
 **テンプレート資産の配置**
-- テンプレート本体は `tooling/` または `docs/` のテンプレート資産ディレクトリに置く案を比較する。
+- テンプレート本体は `tooling/templates/` に配置する（CLI 実装と同一リポジトリ内で管理）。
+- `docs/` は仕様/ガイドの参照に留め、生成物のソースは置かない。
 - `examples/practical/lite_template/` は回帰用資産として固定し、CLI の生成元とは分離する。
 
 **回帰シナリオ運用**
@@ -436,6 +439,7 @@ Config {
 - 2025-12-20: フェーズD（仕様・ガイド更新計画と反映）を追記。
 - 2025-12-20: フェーズE（回帰/サンプル接続判断と構成案）を追記。
 - 2025-12-20: 回帰資産（lite_template）とシナリオマトリクスの更新を完了。
+- 2025-12-20: フェーズF（実装準備と実装計画）を追加。
 
 ## 作業ステータス（更新済み/残タスク）
 
