@@ -413,13 +413,22 @@ pub type ParserMeta = {
 - `rule(name, p)` は `kind = Rule` の `ParserMeta` を登録し、`children` に内部で参照した `rule` の `ParserId` を記録する。
 - `keyword(sc, "let")` / `symbol(sc, "+")` はそれぞれ `kind = Keyword` / `Symbol` を登録する。
 - `token(kind, p)` は `kind = Token` を登録し、`token_kind = Some(kind)` を保持する。
+- `keyword`/`symbol` の `name` は入力された文字列を**そのまま**保持し、正規化・大小変換・空白トリムは行わない。
+- `token` の `name` は `kind` と同一にする（`token_kind` も同じ値を保持する）。
 - `label` は `ParserMeta` を生成しない（診断品質のみを目的とする）。
+
+### G-2-a. ParseMetaRegistry のライフサイクル
+
+- `ParseMetaRegistry` は `ParserId -> ParserMeta` の登録ストレージとし、`ParseState` の生成時に初期化する。
+- レジストリは `Parser` のコピー/共有と同じ寿命を持ち、`run` / `run_with_default` の実行が終了した時点で破棄する（実行間での持ち回りはしない）。
+- `rule`/`keyword`/`symbol`/`token` が最初に登録した `ParserMeta` の `kind`/`name` は不変とし、`children` と `doc` は後続の更新で上書き/追加できる。
 
 ### G-3. Doc comment の付与
 
 - Doc comment は `with_doc(parser, "text")` で付与する（`parser.with_doc("text")` は糖衣）。
 - Doc comment が複数回付与された場合は**最後の値を優先**する。
 - Doc comment は行末空白を除去し、改行は保持する（Markdown を許容）。
+- `with_doc` は `ParserMeta` を生成済みのパーサに対してのみメタデータを更新する。`label` のように `ParserMeta` を持たないパーサへ適用してもエラーにはならず、効果は無い。
 
 ---
 

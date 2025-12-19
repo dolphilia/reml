@@ -92,12 +92,12 @@ conductor my_dsl_server {
 3. [x] `docs/guides/lsp-authoring.md` に `Derive` の最小導入例と落とし穴（`rule`/`keyword` を使わない場合の補完不足）を追記する。
 
 ### フェーズB: メタデータ設計
-1. [ ] `ParserMetaKind`/`ParserMeta` の最小構造（`kind`/`name`/`doc`/`children`/`token_kind`）を確定する。
-2. [ ] `ParserId -> ParserMeta` の登録ストレージ（`ParseMetaRegistry`）のライフサイクルを定義する（生成/共有/破棄）。
-3. [ ] `rule` が内部パーサーの `ParserId` を収集し、`children` に保持する規約を確定する。
-4. [ ] `keyword`/`symbol`/`token` の `name` 表記（文字列そのままか正規化か）を決める。
-5. [ ] Doc comment の付与 API（`with_doc`/`parser.with_doc`）と上書き規則を確定する。
-6. [ ] `label` は `ParserMeta` を生成しない方針を明記する。
+1. [x] `ParserMetaKind`/`ParserMeta` の最小構造（`kind`/`name`/`doc`/`children`/`token_kind`）を確定する。
+2. [x] `ParserId -> ParserMeta` の登録ストレージ（`ParseMetaRegistry`）のライフサイクルを定義する（生成/共有/破棄）。
+3. [x] `rule` が内部パーサーの `ParserId` を収集し、`children` に保持する規約を確定する。
+4. [x] `keyword`/`symbol`/`token` の `name` 表記（文字列そのままか正規化か）を決める。
+5. [x] Doc comment の付与 API（`with_doc`/`parser.with_doc`）と上書き規則を確定する。
+6. [x] `label` は `ParserMeta` を生成しない方針を明記する。
 7. [ ] 完了条件: `docs/spec/2-2-core-combinator.md` の規約と Rust 実装の API 名が一致していることをレビューで確認。
 
 ### フェーズC: Rust 実装追加
