@@ -159,6 +159,16 @@ fn test_parser<T>(parser: Parser<T>, cases: List<DslCase<T>>) -> Result<(), Test
 - `List`/`Record` は順序/キー一致を必須とし、欠落は `AssertionFailed` とする。
 - `Option`/`Result` は `Some(...)` / `Ok(...)` を簡略記法として許可する。
 
+```reml
+test_parser(my_parser) {
+  case "1 + 2" => Ast(Pattern("...Add(Int(1), Int(2))..."))
+  case "1 + 3" => Ast(Record([
+    ("tag", Pattern("\"expr\"")),
+    ("items", List([Pattern("Add(Int(1), Int(3))")])),
+  ]))
+}
+```
+
 ### 7.4 Error Expectation
 - `code`: 診断コード（必須）。`Diagnostic.code` または `Diagnostic.codes` と一致した場合に合格。
 - `at`: 文字位置（`Offset(Int)`）または `LineCol(line: Int, col: Int)`。

@@ -499,7 +499,7 @@ fn matcher_to_pattern_string<T: Debug>(matcher: &AstMatcher<T>) -> String {
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
-            normalize_debug(&format!("{{ {rendered} }}"))
+            normalize_debug(&format!("...{{ {rendered} }}..."))
         }
     }
 }
