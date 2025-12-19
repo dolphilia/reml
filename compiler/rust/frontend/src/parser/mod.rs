@@ -2379,7 +2379,106 @@ fn module_parser<'src>(
                 },
             });
 
+        let test_parser_ident = lower_ident.clone().try_map(|ident, span| {
+            if ident.name == "test_parser" {
+                Ok(ident)
+            } else {
+                Err(Simple::expected_input_found(span, Vec::new(), None))
+            }
+        });
+
+        let case_keyword = lower_ident.clone().try_map(|ident, span| {
+            if ident.name == "case" {
+                Ok(ident)
+            } else {
+                Err(Simple::expected_input_found(span, Vec::new(), None))
+            }
+        });
+
+        let case_source = just(TokenKind::StringLiteral).map_with_span(move |_, span: Range<usize>| {
+            let unescaped = parse_string_literal_value(source, span.clone());
+            Expr::string(unescaped, range_to_span(span))
+        });
+
+        let case_entry = case_keyword
+            .ignore_then(case_source)
+            .then_ignore(just(TokenKind::DoubleArrow).cut())
+            .then(expr.clone())
+            .map_with_span(|(source_expr, expect_expr), span: Range<usize>| {
+                let span = range_to_span(span);
+                let none_ident = Ident {
+                    name: "None".to_string(),
+                    span,
+                };
+                let key_name = Ident {
+                    name: "name".to_string(),
+                    span,
+                };
+                let key_source = Ident {
+                    name: "source".to_string(),
+                    span,
+                };
+                let key_expect = Ident {
+                    name: "expect".to_string(),
+                    span,
+                };
+                let fields = vec![
+                    RecordField {
+                        key: key_name,
+                        value: Expr::identifier(none_ident),
+                    },
+                    RecordField {
+                        key: key_source,
+                        value: source_expr,
+                    },
+                    RecordField {
+                        key: key_expect,
+                        value: expect_expr,
+                    },
+                ];
+                Expr::literal(
+                    Literal {
+                        value: LiteralKind::Record { fields },
+                    },
+                    span,
+                )
+            });
+
+        let case_block = just(TokenKind::LBrace)
+            .ignore_then(
+                case_entry
+                    .then_ignore(just(TokenKind::Semicolon).or_not())
+                    .repeated(),
+            )
+            .then_ignore(just(TokenKind::RBrace))
+            .map_with_span(|cases, span: Range<usize>| (cases, range_to_span(span)));
+
+        let test_parser_expr = test_parser_ident
+            .then(
+                delimited_with_cut(
+                    TokenKind::LParen,
+                    expr.clone().cut(),
+                    TokenKind::RParen,
+                )
+                .map_with_span(|parser_expr, span: Range<usize>| (parser_expr, range_to_span(span))),
+            )
+            .then(case_block.clone())
+            .map_with_span(
+                |((callee_ident, (parser_expr, _parser_span)), (cases, cases_span)),
+                 span: Range<usize>| {
+                    let callee = Expr::identifier(callee_ident);
+                    let cases_expr = Expr::literal(
+                        Literal {
+                            value: LiteralKind::Array { elements: cases },
+                        },
+                        cases_span,
+                    );
+                    Expr::call(callee, vec![parser_expr, cases_expr], range_to_span(span))
+                },
+            );
+
         let atom = choice((
+            test_parser_expr,
             block_expr.clone(),
             match_expr,
             handle_expr,
