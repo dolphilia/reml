@@ -271,6 +271,27 @@ feature_guard = ["json5", "bare_keys", "trailing_comma"]
 2. `docs/spec/5-4-community-content.md` に Lite テンプレートの紹介と用途を追記する。
 3. `docs/guides/manifest-authoring.md` に Lite テンプレートの最小マニフェスト例を追加する。
 
+#### 仕様・ガイド更新の詳細（案）
+
+**更新対象と目的**
+- `docs/spec/5-1-package-manager-cli.md`: `reml new --template lite` の目的、既定ポリシー、README への移行導線を明記する。
+- `docs/spec/5-4-community-content.md`: テンプレート一覧に Lite を追加し、学習/試作向けであることを明示する。
+- `docs/guides/manifest-authoring.md`: Lite 向け最小 `reml.toml` 例と `project.stage` の扱いを補足する。
+
+**追記内容の要点（共通）**
+- Lite は監査ログ省略・診断必須・Capability 空集合が既定であること。
+- `project.stage = "lite"` の位置付けと、`beta`/`stable` への移行導線。
+- `config.compatibility.json.profile = "json-relaxed"` の採用理由と、`stable` への戻し方。
+
+**リンク整合の方針**
+- 追記する各セクションから `docs/plans/bootstrap-roadmap/4-1-dsl-lite-profile-plan.md` を参照し、計画と仕様の差分を追跡できるようにする。
+- `README.md` のテンプレート一覧に変更が出る場合は、フェーズD 完了時に追記する。
+
+**更新時の確認項目**
+- 用語表記（Lite/Standard/Stage/Capability）が 5-1/5-4/manifest ガイド間で一致していること。
+- `reml.toml` のキーが `docs/spec/3-8-core-runtime-capability.md` の Stage/Capability 表記と矛盾しないこと。
+- `docs/spec/3-6-core-diagnostics-audit.md` の `Diagnostic`/`AuditEnvelope` 表現と整合すること。
+
 **追記案の具体テキスト（草案）**
 
 `docs/spec/5-1-package-manager-cli.md` 追記候補（`3.1 reml new` セクション）:
