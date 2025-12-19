@@ -9,7 +9,7 @@ use reml_runtime::config::{
 use reml_runtime::config::{ChangeKind, ConfigChange};
 use reml_runtime::data::schema::Schema;
 use reml_runtime::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{self, Map, Value};
 use std::env;
 use std::fmt;
@@ -40,6 +40,7 @@ fn try_main() -> Result<i32, CliError> {
     match args.remove(0).as_str() {
         "manifest" => handle_manifest(args),
         "config" => handle_config(args),
+        "build" => handle_build(args),
         "--help" | "-h" => {
             print_help();
             Ok(0)
@@ -106,6 +107,33 @@ fn handle_config(mut args: Vec<String>) -> Result<i32, CliError> {
     }
 }
 
+fn handle_build(args: Vec<String>) -> Result<i32, CliError> {
+    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
+        print_build_help();
+        return Ok(0);
+    }
+    let opts = BuildLintOptions::parse(args)?;
+    let mut diagnostics = Vec::new();
+    let config = match load_build_config(&opts.config_path) {
+        Ok(value) => Some(value),
+        Err(diag) => {
+            diagnostics.push(diag);
+            None
+        }
+    };
+    if let Some(config) = config.as_ref() {
+        diagnostics.extend(validate_build_config(config, &opts.config_path));
+    }
+    let report = BuildLintReport::new(
+        &opts,
+        diagnostics.into_iter().map(guard_diag_to_report).collect(),
+        config.is_some(),
+        config.as_ref().and_then(|value| value.ffi.as_ref()).is_some(),
+    );
+    print_build_report(&report, opts.output_format)?;
+    Ok(report.exit_code())
+}
+
 fn config_lint(args: Vec<String>) -> Result<i32, CliError> {
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         print_config_lint_help();
@@ -165,6 +193,250 @@ struct ManifestDumpOptions {
     manifest_path: PathBuf,
     format: OutputFormat,
     output: Option<PathBuf>,
+}
+
+#[derive(Debug)]
+struct BuildLintOptions {
+    config_path: PathBuf,
+    output_format: ReportFormat,
+}
+
+impl Default for BuildLintOptions {
+    fn default() -> Self {
+        Self {
+            config_path: PathBuf::from("reml.json"),
+            output_format: ReportFormat::Json,
+        }
+    }
+}
+
+impl BuildLintOptions {
+    fn parse(args: Vec<String>) -> Result<Self, CliError> {
+        let mut opts = BuildLintOptions::default();
+        let mut iter = args.into_iter();
+        while let Some(arg) = iter.next() {
+            match arg.as_str() {
+                "--config" => {
+                    let value = iter
+                        .next()
+                        .ok_or_else(|| "--config はパスを伴う必要があります")?;
+                    opts.config_path = PathBuf::from(value);
+                }
+                "--format" => {
+                    let value = iter
+                        .next()
+                        .ok_or_else(|| "--format は human|json の値を伴う必要があります")?;
+                    opts.output_format = ReportFormat::parse(&value)?;
+                }
+                other => {
+                    return Err(CliError::Usage(format!(
+                        "build コマンドの未知のオプション `{other}` が指定されました"
+                    )))
+                }
+            }
+        }
+        Ok(opts)
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct BuildLintReport {
+    command: &'static str,
+    config: String,
+    diagnostics: Vec<LintDiagnostic>,
+    stats: BuildLintStats,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct BuildLintStats {
+    validated: bool,
+    config_loaded: bool,
+    ffi_present: bool,
+}
+
+impl BuildLintReport {
+    fn new(
+        opts: &BuildLintOptions,
+        diagnostics: Vec<LintDiagnostic>,
+        config_loaded: bool,
+        ffi_present: bool,
+    ) -> Self {
+        let validated = diagnostics.is_empty() && config_loaded;
+        BuildLintReport {
+            command: "build.lint",
+            config: opts.config_path.display().to_string(),
+            diagnostics,
+            stats: BuildLintStats {
+                validated,
+                config_loaded,
+                ffi_present,
+            },
+        }
+    }
+
+    fn exit_code(&self) -> i32 {
+        if self.stats.validated {
+            0
+        } else {
+            1
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct BuildConfig {
+    #[serde(default)]
+    ffi: Option<FfiSection>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct FfiSection {
+    #[serde(default)]
+    libraries: Vec<String>,
+    #[serde(default)]
+    headers: Vec<String>,
+    #[serde(default)]
+    bindgen: Option<BindgenSection>,
+    #[serde(default)]
+    linker: Option<LinkerSection>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct BindgenSection {
+    #[serde(default)]
+    enabled: bool,
+    #[serde(default)]
+    output: Option<String>,
+    #[serde(default)]
+    config: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct LinkerSection {
+    #[serde(default)]
+    search_paths: Vec<String>,
+    #[serde(default)]
+    frameworks: Vec<String>,
+    #[serde(default)]
+    extra_args: Vec<String>,
+}
+
+fn load_build_config(path: &Path) -> Result<BuildConfig, GuardDiagnostic> {
+    let body = fs::read_to_string(path).map_err(|err| {
+        ffi_build_config_invalid(
+            path,
+            None,
+            format!("reml.json の読み込みに失敗しました: {err}"),
+        )
+    })?;
+    serde_json::from_str(&body).map_err(|err| {
+        ffi_build_config_invalid(
+            path,
+            None,
+            format!("reml.json の解析に失敗しました: {err}"),
+        )
+    })
+}
+
+fn validate_build_config(config: &BuildConfig, path: &Path) -> Vec<GuardDiagnostic> {
+    let mut diagnostics = Vec::new();
+    let Some(ffi) = config.ffi.as_ref() else {
+        return diagnostics;
+    };
+    for (index, library) in ffi.libraries.iter().enumerate() {
+        if library.trim().is_empty() {
+            diagnostics.push(ffi_build_config_invalid(
+                path,
+                Some(format!("ffi.libraries[{index}]")),
+                "ffi.libraries に空のエントリがあります",
+            ));
+        }
+    }
+    for (index, header) in ffi.headers.iter().enumerate() {
+        if header.trim().is_empty() {
+            diagnostics.push(ffi_build_config_invalid(
+                path,
+                Some(format!("ffi.headers[{index}]")),
+                "ffi.headers に空のエントリがあります",
+            ));
+        }
+    }
+    if let Some(bindgen) = ffi.bindgen.as_ref() {
+        if bindgen.enabled {
+            if bindgen.output.as_ref().map_or(true, |v| v.trim().is_empty()) {
+                diagnostics.push(ffi_build_config_invalid(
+                    path,
+                    Some("ffi.bindgen.output".to_string()),
+                    "ffi.bindgen.enabled=true の場合は output が必須です",
+                ));
+            }
+        }
+        if let Some(config_path) = bindgen.config.as_ref() {
+            if config_path.trim().is_empty() {
+                diagnostics.push(ffi_build_config_invalid(
+                    path,
+                    Some("ffi.bindgen.config".to_string()),
+                    "ffi.bindgen.config が空文字列です",
+                ));
+            }
+        }
+    }
+    if let Some(linker) = ffi.linker.as_ref() {
+        for (index, path_value) in linker.search_paths.iter().enumerate() {
+            if path_value.trim().is_empty() {
+                diagnostics.push(ffi_build_config_invalid(
+                    path,
+                    Some(format!("ffi.linker.search_paths[{index}]")),
+                    "ffi.linker.search_paths に空のエントリがあります",
+                ));
+            }
+        }
+        for (index, framework) in linker.frameworks.iter().enumerate() {
+            if framework.trim().is_empty() {
+                diagnostics.push(ffi_build_config_invalid(
+                    path,
+                    Some(format!("ffi.linker.frameworks[{index}]")),
+                    "ffi.linker.frameworks に空のエントリがあります",
+                ));
+            }
+        }
+        for (index, arg) in linker.extra_args.iter().enumerate() {
+            if arg.trim().is_empty() {
+                diagnostics.push(ffi_build_config_invalid(
+                    path,
+                    Some(format!("ffi.linker.extra_args[{index}]")),
+                    "ffi.linker.extra_args に空のエントリがあります",
+                ));
+            }
+        }
+    }
+    diagnostics
+}
+
+fn ffi_build_config_invalid(
+    path: &Path,
+    field: Option<String>,
+    message: impl Into<String>,
+) -> GuardDiagnostic {
+    let mut build_info = Map::new();
+    build_info.insert(
+        "path".into(),
+        Value::String(path.display().to_string()),
+    );
+    if let Some(field) = field {
+        build_info.insert("field".into(), Value::String(field));
+    }
+    let mut extensions = Map::new();
+    extensions.insert("ffi.build".into(), Value::Object(build_info));
+    GuardDiagnostic {
+        code: "ffi.build.config_invalid",
+        domain: "ffi",
+        severity: DiagnosticSeverity::Error,
+        message: message.into(),
+        notes: Vec::new(),
+        extensions,
+        audit_metadata: Map::new(),
+    }
 }
 
 impl Default for ManifestDumpOptions {
@@ -569,6 +841,30 @@ fn print_lint_report(report: &ConfigLintReport, format: ReportFormat) -> Result<
     Ok(())
 }
 
+fn print_build_report(report: &BuildLintReport, format: ReportFormat) -> Result<(), CliError> {
+    match format {
+        ReportFormat::Json => {
+            let body = serde_json::to_string_pretty(report)?;
+            println!("{body}");
+        }
+        ReportFormat::Human => {
+            if report.stats.validated {
+                println!("[build.lint] {} OK", report.config);
+            } else {
+                println!(
+                    "[build.lint] {} で {} 件の問題が見つかりました",
+                    report.config,
+                    report.diagnostics.len()
+                );
+                for diag in &report.diagnostics {
+                    println!("  - [{}] {}: {}", diag.severity, diag.code, diag.message);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 fn print_diff_report(report: &ConfigDiffReport, format: ReportFormat) -> Result<(), CliError> {
     match format {
         ReportFormat::Json => {
@@ -819,6 +1115,7 @@ fn print_help() {
     eprintln!(
         "使い方: remlc <command> [options]\n\nサブコマンド:\n\
   manifest dump         reml.toml を JSON へダンプ\n\
+  build                reml.json の FFI セクションを検証\n\
   config lint           マニフェスト/スキーマを検証して JSON レポートを表示\n\
   config diff <old> <new>  JSON 設定ファイル同士の差分を ChangeSet 形式で出力"
     );
@@ -854,5 +1151,13 @@ fn print_config_diff_help() {
     eprintln!(
         "使い方: remlc config diff <old.json> <new.json> [--format human|json]\n\n\
         --format human|json  ChangeSet 出力を JSON か TTY に切替（既定: json）"
+    );
+}
+
+fn print_build_help() {
+    eprintln!(
+        "使い方: remlc build [--config <path>] [--format human|json]\n\n\
+        --config <path>  読み込む reml.json（既定: ./reml.json）\n\
+        --format human|json  出力形式を切替（既定: json）"
     );
 }
