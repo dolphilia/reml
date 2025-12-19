@@ -667,6 +667,74 @@ let sum: i32 = ffi::decode_result(raw)?;
 
 `ffi::encode_args` / `ffi::decode_result` は `FfiSignature` と互換のシリアライズヘルパで、`Span<u8>` を安全に生成・復元する。低レベル API を直接利用する場合は `span_from_raw_parts` と `CapabilitySecurity.effect_scope` を併用し、境界検査と監査記録を怠らないこと。
 
+### 2.4.1 Core.Ffi.Dsl
+
+> 目的：`reml-bindgen` 生成物や手書き `extern` を DSL で包み、`unsafe` 境界を局所化した安全な FFI 呼び出しを提供する。
+
+```reml
+module Core.Ffi.Dsl
+
+pub enum FfiType =
+  | Void | Bool
+  | I8 | U8 | I16 | U16 | I32 | U32 | I64 | U64
+  | F32 | F64
+  | Ptr(FfiType)
+  | ConstPtr(FfiType)
+  | Struct(FfiStruct)
+  | Enum(FfiEnum)
+  | Fn(FfiFnSig)
+
+pub let int: FfiType = I32
+pub let double: FfiType = F64
+fn ptr(inner: FfiType) -> FfiType
+fn const_ptr(inner: FfiType) -> FfiType
+
+pub type FfiFnSig = {
+  params: List<FfiType>,
+  returns: FfiType,
+  variadic: Bool,
+}
+
+pub type FfiStruct = { name: Str, fields: List<FfiField>, repr: FfiRepr }
+pub type FfiField = { name: Str, ty: FfiType }
+pub enum FfiRepr = C | Transparent | Packed
+
+pub type FfiEnum = { name: Str, repr: FfiIntRepr, variants: List<FfiVariant> }
+pub type FfiVariant = { name: Str, value: Option<I64> }
+pub enum FfiIntRepr = I8 | U8 | I16 | U16 | I32 | U32 | I64 | U64
+
+pub type FfiLibrary = { name: Str }
+pub type FfiRawFn = { symbol: ForeignFunction, signature: FfiFnSig }
+
+pub type FfiWrapSpec = {
+  name: Str,
+  null_check: Bool,
+  ownership: Option<Ownership>,
+  error_map: Option<Str>,
+}
+
+fn fn_sig(params: List<FfiType>, returns: FfiType, variadic: Bool = false) -> FfiFnSig
+fn bind_library(name: Str) -> Result<FfiLibrary, FfiError>              // `effect {ffi}`
+fn FfiLibrary.bind_fn(name: Str, sig: FfiFnSig) -> Result<FfiRawFn, FfiError> // `effect {ffi, unsafe}`
+fn wrap<Args, Ret>(raw: FfiRawFn, spec: FfiWrapSpec) -> Result<fn(Args) -> Result<Ret, FfiError>, FfiError> // `effect {ffi}`
+```
+
+- `FfiType` は `ffi.int` / `ffi.double` といった定数 DSL ではなく **値としての型**を表し、`Ptr` / `ConstPtr` / `Struct` / `Enum` / `Fn` によって複合型を構成する。
+- `FfiLibrary.bind_fn` は `unsafe` 境界を含む低レベル API であり、直接呼び出す場合は `effect {ffi, unsafe}` を明示する。
+- `wrap` は `FfiWrapSpec` を元に引数数・戻り値の `null`・`Ownership` 前提を検証し、`effect {ffi}` のみで呼び出せる安全関数を生成する。
+- `wrap` は診断キー `ffi.wrap.invalid_argument` / `ffi.wrap.null_return` / `ffi.wrap.ownership_violation` を使用し、監査ログでは `ffi.wrapper.*` を必須記録とする（3-6 §5.1.1）。
+
+#### 2.4.1.1 DSL 利用例
+
+```reml
+let cos = effect {ffi, unsafe} {
+  let lib = ffi.bind_library("m")?
+  let raw = lib.bind_fn("cos", ffi.fn_sig([ffi.double], ffi.double, false))?
+  ffi.wrap(raw, { name: "libm.cos", null_check: false, ownership: None, error_map: None })?
+}
+let value = cos(0.5)?
+```
+
 ### 2.5 呼出規約とプラットフォーム適応
 
 ```reml

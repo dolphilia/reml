@@ -1,0 +1,15 @@
+module examples.ffi.dsl.wrapped_safe
+
+use Core.Ffi
+use Core.Ffi.Dsl as ffi
+
+pub fn cos_safe(x: f64) -> Result<f64, FfiError> =
+  let cos = effect {ffi, unsafe} {
+    let lib = ffi.bind_library("m")?
+    let raw = lib.bind_fn("cos", ffi.fn_sig([ffi.double], ffi.double, false))?
+    ffi.wrap(
+      raw,
+      { name: "libm.cos", null_check: false, ownership: None, error_map: None },
+    )?
+  }
+  cos(x)

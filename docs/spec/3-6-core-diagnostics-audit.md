@@ -774,6 +774,7 @@ fn record_change_set<T>(value: T, diff: ChangeSet) -> Result<T, Diagnostic>   //
 | `status` | Str | Required | `success` / `failed` / `stubbed` / `leak` など実行結果を列挙する | `FfiErrorKind`, 3-9 §2.6 |
 | `capability` | Str | Optional | `call_with_capability` を利用した場合の Capability ID | 3-8 §5.2 |
 | `capability_stage` | Str | Optional | 当該 Capability の Stage（`Experimental` / `Beta` / `Stable`） | 3-8 §5.2.1 |
+| `wrapper` | Str | Optional | `ffi.wrap` 経由の場合は `"ffi.wrap"` を設定し、低レベル呼び出しと区別する | 3-9 §2.4.1 |
 
 ```json
 {
@@ -792,6 +793,23 @@ fn record_change_set<T>(value: T, diff: ChangeSet) -> Result<T, Diagnostic>   //
 - `status = "failed"` の場合は `Diagnostic.code = Some("ffi.call.failed")` を必須とし、`FfiErrorKind` と `message` を `AuditEnvelope.change_set` へ複写する。
 - `status = "stubbed"` は 3-9 §2.3 の効果ハンドラ経由であることを示す。Stage 情報を `capability_stage` に記録し、CI は `Beta` 以上でない場合に警告を発行する。
 - `capability` が設定されていない場合でも、`effect_flags` を `CapabilitySecurity.effect_scope` と突き合わせ、`audit_required = true` の Capability では監査漏れを CI が検出できるようにする。
+- `wrapper = "ffi.wrap"` の場合は §5.1.1 の `ffi.wrapper` メタデータを必須とし、未設定の場合は `ffi.wrap.audit_missing` 診断を `Warning` で記録する。
+
+#### 5.1.1 FFI ラッパ監査メタデータ
+
+`AuditEnvelope.metadata["ffi.wrapper"]` に次の JSON オブジェクトを格納する。
+
+| フィールド | 型 | 必須 | 説明 | 参照 |
+| --- | --- | --- | --- | --- |
+| `name` | Str | Required | ラッパー名（例: `"libm.cos"`） | 3-9 §2.4.1 |
+| `null_check` | Bool | Required | 戻り値の NULL 検査を有効化したか | 3-9 §2.4.1 |
+| `ownership` | Str | Optional | `Ownership` を文字列化した値。未指定時は省略 | 3-9 §2.6 |
+| `error_map` | Str | Optional | `FfiWrapSpec.error_map` を識別するキー | 3-9 §2.4.1 |
+| `call_mode` | Str | Required | `wrapped` / `raw` のいずれか。`wrap` 生成物では `wrapped` | 3-9 §2.4.1 |
+
+- `ffi.wrap` が引数数や型に失敗した場合は `Diagnostic.code = Some("ffi.wrap.invalid_argument")` を使用し、`extensions["ffi.wrap"].expected_signature` に `FfiFnSig` をシリアライズした値を格納する。
+- `null_check = true` で NULL が返った場合は `Diagnostic.code = Some("ffi.wrap.null_return")` を設定し、`extensions["ffi.wrap"].symbol` と `extensions["ffi.wrap"].ownership` を含める。
+- `ownership` の前提が満たされない場合は `Diagnostic.code = Some("ffi.wrap.ownership_violation")` とし、監査ログへ `ffi.wrapper.ownership` と `ffi.wrapper.call_mode` を複写する。
 
 ## 6. DSLオーケストレーション向け可観測性
 
