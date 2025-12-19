@@ -1318,6 +1318,7 @@ struct CliArgs {
     stream_config: StreamSettings,
     runtime_capabilities: Vec<RuntimeCapability>,
     config_path: Option<PathBuf>,
+    #[allow(dead_code)]
     manifest_path: Option<PathBuf>,
     telemetry_requests: Vec<TelemetryRequest>,
 }

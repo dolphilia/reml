@@ -134,6 +134,7 @@ pub fn reset_leak_tracker() {
 #[derive(Debug)]
 pub struct TempDirGuard {
     path: PathBuf,
+    #[allow(dead_code)]
     tracker: ResourceGuard,
 }
 
@@ -159,6 +160,7 @@ impl Drop for TempDirGuard {
 
 #[derive(Debug)]
 pub(crate) struct FileHandleGuard {
+    #[allow(dead_code)]
     tracker: ResourceGuard,
 }
 

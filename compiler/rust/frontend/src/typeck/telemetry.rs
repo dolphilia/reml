@@ -314,6 +314,7 @@ pub struct ResolutionDictionary {
 }
 
 impl ResolutionDictionary {
+    #[allow(dead_code)]
     fn none() -> Self {
         Self {
             kind: "none".to_string(),

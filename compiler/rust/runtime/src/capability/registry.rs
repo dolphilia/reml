@@ -364,6 +364,7 @@ impl CapabilityRegistry {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn descriptor_for(&self, capability: &str) -> Option<CapabilityDescriptor> {
         let entries = self.entries.read().unwrap();
         entries

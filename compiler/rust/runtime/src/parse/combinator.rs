@@ -3286,6 +3286,7 @@ impl ParseState {
         matches!(self.layout_profile, Some(ref lp) if lp.offside)
     }
 
+    #[allow(dead_code)]
     fn layout_peek_token(&self) -> Option<String> {
         self.layout_pending.front().cloned()
     }

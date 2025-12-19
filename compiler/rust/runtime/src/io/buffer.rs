@@ -42,6 +42,7 @@ impl IoCopyBuffer {
         self.buffer.as_ref().map(|buf| buf.len()).unwrap_or(0)
     }
 
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

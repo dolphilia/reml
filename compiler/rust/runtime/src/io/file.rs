@@ -19,6 +19,7 @@ use super::{
 pub struct File {
     handle: std::fs::File,
     path: PathBuf,
+    #[allow(dead_code)]
     handle_guard: FileHandleGuard,
 }
 
@@ -125,10 +126,12 @@ impl File {
         })
     }
 
+    #[allow(dead_code)]
     pub(crate) fn as_std(&self) -> &std::fs::File {
         &self.handle
     }
 
+    #[allow(dead_code)]
     fn operation_context(&self, operation: &'static str, capability: &'static str) -> IoContext {
         IoContext::new(operation)
             .with_path(self.path.clone())

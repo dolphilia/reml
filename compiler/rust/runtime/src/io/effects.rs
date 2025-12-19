@@ -56,6 +56,7 @@ pub(crate) fn record_async_io_operation() {
 }
 
 /// セキュリティポリシー関連の効果を記録する。
+#[allow(dead_code)]
 pub(crate) fn record_security_event() {
     IO_EFFECTS.with(|slot| {
         let mut current = slot.get();

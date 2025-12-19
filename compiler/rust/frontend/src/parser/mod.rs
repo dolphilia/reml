@@ -623,6 +623,7 @@ fn build_parser_reply(
 }
 
 impl ParseResult<Module> {
+    #[allow(dead_code)]
     pub(crate) fn ast_render(&self) -> Option<String> {
         self.value.as_ref().map(Module::render)
     }
