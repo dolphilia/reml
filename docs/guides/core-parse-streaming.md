@@ -267,6 +267,44 @@ let outcome =
 - **観測フラグの扱い**: `RunConfig.profile` / `extensions["parse"].profile_output` が有効な場合は、バッチと同じ `ParserProfile` を `StreamOutcome` に含める。`profile_output` の書き出しは best-effort（失敗しても診断に影響しない）であり、Phase 4 シナリオ `CH2-PARSE-902` で JSON 出力経路を監視する。
 - **既知の制約**: Rust ランタイムでは Streaming Runner が未実装のため、上記方針は OCaml 実装と将来の Rust 実装の整合指針として扱う。Packrat 共有や `resume` のバックプレッシャ制御は `docs/notes/core-parse-api-evolution.md#todo-rust-lex-streaming-plugin` に記録し、実装時に本節を最新の API 契約へ更新する。
 
+#### Rust 例: layout_token の利用
+
+Rust ランタイムでは `layout_token` を使って Layout 由来の仮想トークンを消費する。`RunConfig.extensions["lex"].layout_profile` で Layout を有効化した上で、`indent`/`dedent` などのトークン名を明示する。
+
+```rust
+use reml_runtime::parse::{layout_token, rule, Parser};
+
+fn block(stmt: Parser<Stmt>) -> Parser<Stmt> {
+    rule(
+        "block",
+        layout_token("<indent>")
+            .skip_l(stmt)
+            .skip_r(layout_token("<dedent>")),
+    )
+}
+```
+
+Rust 側では `RunConfig.extensions["lex"].layout_profile` に `LayoutProfile` を設定して Layout を有効化する。
+
+```rust
+use reml_runtime::run_config::RunConfig;
+use serde_json::json;
+
+let run_config = RunConfig::default().with_extension("lex", |mut ext| {
+    ext.insert(
+        "layout_profile".to_string(),
+        json!({
+            "indent_token": "<indent>",
+            "dedent_token": "<dedent>",
+            "newline_token": "<newline>",
+            "offside": true,
+            "allow_mixed_tabs": false
+        }),
+    );
+    ext
+});
+```
+
 ## 10. Phase 2-5 PoC 状態と既知制限
 
 - 2026-01-24 時点で OCaml 実装は `Parser_driver.Streaming.run_stream` / `resume` を実装し、CLI (`--streaming` フラグ)・LSP・CI へ統合済み。`streaming_runner_tests.ml` と `streaming-outcome.json.golden` によりバッチ結果との一致を継続的に検証している。[^exec001-step4]

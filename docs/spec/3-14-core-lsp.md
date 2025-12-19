@@ -9,7 +9,7 @@
 | ステータス | ドラフト（Phase 4 対象） |
 | 効果タグ | `effect {io}` |
 | 依存モジュール | `Core.IO`, `Core.Diagnostics`, `Core.Text` |
-| 相互参照 | [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [2-7 Core Parse Streaming](2-7-core-parse-streaming.md), Guides: [lsp-authoring](../guides/lsp-authoring.md) |
+| 相互参照 | [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [2-7 Core Parse Streaming](2-7-core-parse-streaming.md), [2-2 Core Combinator](2-2-core-combinator.md), Guides: [lsp-authoring](../guides/lsp-authoring.md) |
 
 ## 1. 基本型
 
@@ -88,6 +88,7 @@ fn Derive.apply_standard_capabilities(model: DeriveModel, server: LspServer) -> 
 - `Derive.standard_capabilities` は補完/アウトライン/セマンティックトークン/ホバーの有効化フラグを生成する。
 - `Derive.apply_standard_capabilities` は `DeriveModel` を LSP サーバーへ接続する。
 - Doc comment の付与は `with_doc` を用いる（[2-2 コア・コンビネータ](2-2-core-combinator.md#G-3-doc-comment-の付与)）。
+- Layout 由来の仮想トークンは `layout_token` を通じて扱い、字句連携は [2-2 コア・コンビネータ](2-2-core-combinator.md#b-2-a-layout_tokenlayout-連携) を参照する。
 
 ## 5. LspDerive 出力仕様
 

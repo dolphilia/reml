@@ -223,6 +223,16 @@ fn autoWhitespace<A>(p: Parser<A>, cfg: AutoWhitespaceConfig = {}) -> Parser<A>
 * フォールバック: RunConfig/`cfg.profile` のどちらも無い場合は `whitespace()` + `commentLine("//")` を `skipMany` した簡易空白を用いる（0-1 §1.2 の安全側フォールバック）。レイアウトが無効な環境でも構文意味は変えず、空白/コメントの共有率だけが低下する。
 * 回帰登録: `phase4-scenario-matrix.csv` の `CH2-PARSE-901` に autoWhitespace + Layout 共有を、`CH2-PARSE-902` に観測フラグ付きの ParserProfile 出力を登録し、PhaseF トラッカーで CLI/LSP/Streaming の再実行ログを残す。Rust 実装では `RunConfig.extensions["lex"].layout_profile` と `extensions["parse"].profile_output` が未指定でも安全側フォールバックに倒れることを確認する。[^phase12-autowhitespace-regression]
 
+### B-2-a. layout_token（Layout 連携）
+
+```reml
+fn layout_token(name: Str) -> Parser<()>
+```
+
+* `LayoutProfile` により生成された仮想トークン（`<indent>`/`<dedent>`/`<newline>` など）を消費する。トークン名は `LayoutProfile` の `indent_token` / `dedent_token` / `newline_token` を参照する。
+* Layout が無効な状態で呼び出された場合はエラーとし、期待集合に `name` を追加する。
+* 消費は**入力を進めず**、レイアウトキューから一致したトークンのみを取り出す。
+
 ### B-3. 観測/プロファイル（Phase 10 実験フラグ）
 
 ```reml
