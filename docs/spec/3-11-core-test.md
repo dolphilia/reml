@@ -68,6 +68,7 @@ test "core_test_basic" {
 - `snapshot.name` は `phase4-scenario-matrix.csv` の `scenario_id` と一致させる。
 - 診断スナップショットは `Diagnostic.code` → `span.start.line/column` の順で安定化し、`run_id`/`timestamp` は比較対象から除外する。
 - パスはワークスペース相対表記へ正規化し、環境差異での揺れを抑制する。
+- Phase 4 の `examples/practical/core_test/` は暫定的に CLI JSON 出力を `expected/` に合わせる（Runtime の stdout 経路整備後に `snapshot:ok` へ戻す）。
 
 ## 4. テーブル駆動テスト
 
