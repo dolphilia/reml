@@ -36,8 +36,19 @@
 
 ### フェーズB: Core.Ffi.Dsl ランタイム実装
 1. `compiler/rust/runtime/ffi` に `dsl` モジュールを追加し、`ffi.bind_library` / `ffi.bind_fn` / `ffi.wrap` の API を実装する。
+   - `compiler/rust/runtime/src/ffi/dsl/mod.rs` を追加し、`bind_library` / `bind_fn` / `wrap` の公開 API を定義する。
+   - `compiler/rust/runtime/src/ffi/mod.rs` に `dsl` の `pub mod` を追加し、`Core.Ffi.Dsl` の公開経路を確立する。
+   - `bind_library` の最小実装（ライブラリ解決、`FfiLibraryHandle` 生成、失敗時の診断変換）を追加する。
+   - `bind_fn` の最小実装（シンボル解決、`FfiFnSig` 検証、失敗時の診断変換）を追加する。
+   - `wrap` の最小実装（引数数/型検証、戻り値の `null` 判定、`Result` 返却）を追加する。
 2. `ffi.wrap` の監査メタデータ（`ffi.wrap.*`）を `AuditEnvelope` に記録し、`docs/spec/3-6-core-diagnostics-audit.md` と一致させる。
+   - `AuditEnvelope.metadata["ffi.wrapper"]` を埋める処理を追加する（`name` / `null_check` / `ownership` / `error_map` / `call_mode`）。
+   - `ffi.wrap.invalid_argument` / `ffi.wrap.null_return` / `ffi.wrap.ownership_violation` の診断拡張を実装する。
+   - `ffi.call` 監査テンプレートへ `wrapper = "ffi.wrap"` を付与する経路を追加する。
 3. `examples/ffi/dsl` を CLI 実行可能にし、`unsafe` 直呼びと `ffi.wrap` の差分を `expected/` に固定する。
+   - `examples/ffi/dsl/unsafe_direct.reml` と `examples/ffi/dsl/wrapped_safe.reml` のランタイム呼び出し経路を整理する。
+   - `expected/ffi/dsl/` に `unsafe` 直呼びと `ffi.wrap` の出力差分を固定する。
+   - 実行ログの診断キーが `ffi.wrap.*` / `ffi.call` に揃っているかを確認する。
 
 ### フェーズC: reml build 統合
 1. `reml.json` の `ffi` セクション（`libraries`/`headers`/`bindgen`/`linker`）を `tooling/cli` でパースし、検証エラーを `ffi.build.*` で出力する。
