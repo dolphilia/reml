@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value};
 use std::{
     fmt,
-    sync::{Arc, OnceLock},
+    sync::Arc,
 };
+use once_cell::sync::OnceCell;
 
 use crate::{
     audit::AuditEnvelope,
@@ -20,7 +21,7 @@ const FFI_WRAP_OWNERSHIP_VIOLATION_CODE: &str = "ffi.wrap.ownership_violation";
 const FFI_CALL_EXECUTOR_MISSING_CODE: &str = "ffi.call.executor_missing";
 const FFI_CALL_EXECUTOR_ALREADY_SET_CODE: &str = "ffi.call.executor_already_set";
 
-static FFI_CALL_EXECUTOR: OnceLock<Arc<dyn FfiCallExecutor>> = OnceLock::new();
+static FFI_CALL_EXECUTOR: OnceCell<Arc<dyn FfiCallExecutor>> = OnceCell::new();
 
 /// FFI 型表現。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -41,7 +42,7 @@ pub enum FfiType {
     ConstPtr(Box<FfiType>),
     Struct(FfiStruct),
     Enum(FfiEnum),
-    Fn(FfiFnSig),
+    Fn(Box<FfiFnSig>),
 }
 
 /// 代表的なプリミティブ型定数。
@@ -62,7 +63,7 @@ pub fn const_ptr(inner: FfiType) -> FfiType {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FfiFnSig {
     pub params: Vec<FfiType>,
-    pub returns: FfiType,
+    pub returns: Box<FfiType>,
     pub variadic: bool,
 }
 
@@ -70,7 +71,7 @@ pub struct FfiFnSig {
 pub fn fn_sig(params: Vec<FfiType>, returns: FfiType, variadic: bool) -> FfiFnSig {
     FfiFnSig {
         params,
-        returns,
+        returns: Box::new(returns),
         variadic,
     }
 }

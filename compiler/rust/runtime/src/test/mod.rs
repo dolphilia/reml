@@ -244,7 +244,7 @@ pub fn fuzz_bytes(
     let max_bytes = config.max_bytes.max(1);
     for _ in 0..max_cases {
         let bytes = generator.next_bytes(max_bytes);
-        let result = std::panic::catch_unwind(|| f(&bytes));
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&bytes)));
         match result {
             Ok(Ok(())) => {}
             Ok(Err(err)) => return Err(err),
