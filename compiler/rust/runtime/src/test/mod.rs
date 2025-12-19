@@ -2,17 +2,25 @@
 //! スナップショットの保持はプロセス内メモリに限定し、IO 連携は後続フェーズで実装する。
 
 use once_cell::sync::Lazy;
+use serde_json::{Map as JsonMap, Value};
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::panic::UnwindSafe;
 use std::sync::Mutex;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
+
+use crate::audit::{AuditEnvelope, AuditEvent, AuditEventKind};
+use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic};
 
 const DEFAULT_SNAPSHOT_MAX_BYTES: usize = 1024 * 1024;
 
 type SnapshotStore = HashMap<String, SnapshotEntry>;
 
 static SNAPSHOTS: Lazy<Mutex<SnapshotStore>> = Lazy::new(|| Mutex::new(HashMap::new()));
+static TEST_AUDIT_EVENTS: Lazy<Mutex<Vec<AuditEvent>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static TEST_DIAGNOSTICS: Lazy<Mutex<Vec<GuardDiagnostic>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 /// テスト API の結果型。
 pub type TestResult = Result<(), TestError>;
@@ -41,6 +49,26 @@ impl TestError {
 
     pub fn with_case_name(self, case_name: impl Into<String>) -> Self {
         self.with_context("case_name", case_name)
+    }
+
+    pub fn into_diagnostic(&self) -> GuardDiagnostic {
+        let mut extensions = JsonMap::new();
+        let mut test_payload = JsonMap::new();
+        if let Some(case_name) = self.context.get("case_name") {
+            test_payload.insert("case_name".into(), Value::String(case_name.clone()));
+        }
+        if !test_payload.is_empty() {
+            extensions.insert("test".into(), Value::Object(test_payload));
+        }
+        GuardDiagnostic {
+            code: "test.failed",
+            domain: "test",
+            severity: DiagnosticSeverity::Error,
+            message: self.message.clone(),
+            notes: Vec::new(),
+            extensions,
+            audit_metadata: JsonMap::new(),
+        }
     }
 }
 
@@ -182,7 +210,11 @@ pub fn test_with(
     body: impl Fn() -> TestResult,
 ) -> TestResult {
     let name = name.into();
-    body().map_err(|err| err.with_case_name(name))
+    body().map_err(|err| {
+        let err = err.with_case_name(name);
+        record_test_diagnostic(&err);
+        err
+    })
 }
 
 /// テーブル駆動テストを実行する。
@@ -267,24 +299,28 @@ fn record_snapshot(store: &mut SnapshotStore, name: &str, value: &str) -> TestRe
     if store.contains_key(name) {
         return verify_snapshot(store, name, value);
     }
+    let hash = snapshot_hash(value);
     store.insert(
         name.to_string(),
         SnapshotEntry {
             value: value.to_string(),
-            hash: snapshot_hash(value),
+            hash,
         },
     );
+    record_snapshot_updated(name, hash);
     Ok(())
 }
 
 fn update_snapshot(store: &mut SnapshotStore, name: &str, value: &str) -> TestResult {
+    let hash = snapshot_hash(value);
     store.insert(
         name.to_string(),
         SnapshotEntry {
             value: value.to_string(),
-            hash: snapshot_hash(value),
+            hash,
         },
     );
+    record_snapshot_updated(name, hash);
     Ok(())
 }
 
@@ -292,6 +328,57 @@ fn snapshot_hash(value: &str) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     value.hash(&mut hasher);
     hasher.finish()
+}
+
+fn record_snapshot_updated(name: &str, hash: u64) {
+    let timestamp = OffsetDateTime::now_utc()
+        .format(&Rfc3339)
+        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".into());
+    let mut metadata = JsonMap::new();
+    metadata.insert(
+        "event.kind".into(),
+        Value::String(AuditEventKind::SnapshotUpdated.as_str().into_owned()),
+    );
+    metadata.insert(
+        "event.domain".into(),
+        Value::String("test".into()),
+    );
+    metadata.insert("snapshot.name".into(), Value::String(name.to_string()));
+    metadata.insert("snapshot.hash".into(), Value::String(hash.to_string()));
+    let envelope = AuditEnvelope::from_parts(metadata, None, None, Some("core.test".into()));
+    let event = AuditEvent::new(timestamp, envelope);
+    let mut events = TEST_AUDIT_EVENTS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    events.push(event);
+}
+
+fn record_test_diagnostic(error: &TestError) {
+    let diagnostic = error.into_diagnostic();
+    let mut diagnostics = TEST_DIAGNOSTICS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    diagnostics.push(diagnostic);
+}
+
+/// 記録済みのテスト診断を取得してクリアする。
+pub fn take_test_diagnostics() -> Vec<GuardDiagnostic> {
+    let mut diagnostics = TEST_DIAGNOSTICS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let drained = diagnostics.clone();
+    diagnostics.clear();
+    drained
+}
+
+/// 記録済みの監査イベントを取得してクリアする。
+pub fn take_test_audit_events() -> Vec<AuditEvent> {
+    let mut events = TEST_AUDIT_EVENTS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let drained = events.clone();
+    events.clear();
+    drained
 }
 
 struct FuzzGenerator {

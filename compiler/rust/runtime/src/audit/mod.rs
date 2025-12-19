@@ -80,6 +80,7 @@ const CONFIG_COMPAT_CHANGED_KEYS: &[&str] = &[
     "config.compatibility",
 ];
 const ENV_MUTATION_KEYS: &[&str] = &["env.operation", "env.key", "env.scope", "requested_by"];
+const SNAPSHOT_UPDATED_KEYS: &[&str] = &["snapshot.name", "snapshot.hash"];
 
 /// Core Diagnostics で利用する監査イベント種別。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,6 +96,7 @@ pub enum AuditEventKind {
     CapabilityCheck,
     BridgeReload,
     BridgeRollback,
+    SnapshotUpdated,
     Custom(String),
 }
 
@@ -113,6 +115,7 @@ impl AuditEventKind {
             AuditEventKind::CapabilityCheck => Cow::Borrowed("capability_check"),
             AuditEventKind::BridgeReload => Cow::Borrowed("bridge.reload"),
             AuditEventKind::BridgeRollback => Cow::Borrowed("bridge.rollback"),
+            AuditEventKind::SnapshotUpdated => Cow::Borrowed("snapshot.updated"),
             AuditEventKind::Custom(value) => Cow::Owned(value.clone()),
         }
     }
@@ -131,6 +134,7 @@ impl AuditEventKind {
             "env_mutation" => AuditEventKind::EnvMutation,
             "bridge.reload" => AuditEventKind::BridgeReload,
             "bridge.rollback" => AuditEventKind::BridgeRollback,
+            "snapshot.updated" => AuditEventKind::SnapshotUpdated,
             other => AuditEventKind::Custom(other.to_string()),
         }
     }
@@ -150,6 +154,7 @@ impl AuditEventKind {
             AuditEventKind::BridgeReload | AuditEventKind::BridgeRollback => {
                 Some(BRIDGE_RELOAD_KEYS)
             }
+            AuditEventKind::SnapshotUpdated => Some(SNAPSHOT_UPDATED_KEYS),
             AuditEventKind::Custom(_) => None,
         }
     }
