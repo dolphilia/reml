@@ -1,0 +1,46 @@
+module Examples.Practical.LiteTemplate.Parser
+
+use Core.Parse
+use Core.Diagnostics
+
+pub type Config = {
+  entries: List<Entry>
+}
+
+pub type Entry = {
+  key: Str,
+  value: Value
+}
+
+pub type Value =
+  | StrValue(Str)
+  | IntValue(Int)
+
+pub fn parse_config(input: Str) -> Result<Config, Diagnostic> {
+  let parser = config_parser()
+  Parse.run(parser, input)
+}
+
+fn config_parser() -> Parser<Config> {
+  let key = ident
+  let value =
+    choice([
+      int.map(IntValue),
+      string.map(StrValue)
+    ])
+  let entry =
+    key
+      .skip(symbol("="))
+      .and_then(value)
+      .map(|(k, v)| Entry { key: k, value: v })
+  let entries =
+    entry
+      .sep_by(symbol("\n"))
+      .map(|items| Config { entries: items })
+  with_space(
+    keyword("config")
+      .skip(symbol("{"))
+      .and_then(entries)
+      .skip(symbol("}"))
+  )
+}

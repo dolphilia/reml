@@ -372,7 +372,7 @@ Config {
 
 **Phase 4 シナリオ登録の判断**
 - Lite テンプレートの仕様が安定した時点で `phase4-scenario-matrix.csv` に追加する。
-- 追加時のシナリオ名は `lite_template_smoke` とし、用途は「テンプレート生成後の最短実行」を想定する。
+- 追加時のシナリオIDは `CH5-LITE-001` とし、用途は「テンプレート生成後の最短実行」を想定する。
 - 監査ログ必須のシナリオ群とは分離し、`audit = none` の条件で実行できる行を用意する。
 
 ## 参照
@@ -405,4 +405,29 @@ Config {
 ## 進捗状況
 - 2025-12-20: フェーズA（Lite プロファイル定義案）を追記。
 - 2025-12-20: フェーズB（テンプレート設計詳細案）を追記。
+- 2025-12-20: フェーズC（監査/Capability/効果の導線整理）を追記。
+- 2025-12-20: フェーズD（仕様・ガイド更新計画と反映）を追記。
 - 2025-12-20: フェーズE（回帰/サンプル接続判断と構成案）を追記。
+- 2025-12-20: 回帰資産（lite_template）とシナリオマトリクスの更新を完了。
+
+## 作業ステータス（更新済み/残タスク）
+
+**完了（計画更新済み）**
+- フェーズA: Lite プロファイル定義（対象ユーザー/既定値/安全性境界の明文化）
+- フェーズB: テンプレート設計詳細（構成/DSL例/AST/擬似パース/期待出力）
+- フェーズC: 監査/Capability/効果の導線整理（Lite 省略/必須/移行導線）
+- フェーズD: 仕様・ガイド更新案の整理
+- フェーズE: 回帰/サンプル接続の判断と配置方針
+
+**完了（仕様/ガイド反映）**
+- `docs/spec/5-1-package-manager-cli.md` に Lite テンプレート追記（README 移行導線を含む）
+- `docs/spec/5-4-community-content.md` に Lite テンプレート説明を反映
+- `docs/guides/manifest-authoring.md` に Lite 最小例と移行補足を追記
+- `docs/guides/dsl-gallery.md` に Lite テンプレートの既定値を反映
+
+**完了（回帰資産）**
+- `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH5-LITE-001` を追加
+- `examples/practical/lite_template/` と `expected/lite_template/` を追加（最小構成）
+
+**未着手/残タスク**
+- なし

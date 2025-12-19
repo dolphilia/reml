@@ -1,0 +1,17 @@
+module Examples.Practical.LiteTemplate.DslTest
+
+use Core.Test
+use Examples.Practical.LiteTemplate.Parser
+
+fn test_table() -> TestResult {
+  table_test("lite_template:table")
+    .case("ok", "config { port = 8080 }")
+    .expect(|input| Parser.parse_config(input))
+}
+
+fn test_snapshot() -> TestResult {
+  let input = "config { host = \"localhost\" }"
+  match Parser.parse_config(input) with
+    | Ok(ast) -> assert_snapshot("lite_template:ast", ast)
+    | Err(diag) -> fail(diag.message)
+}

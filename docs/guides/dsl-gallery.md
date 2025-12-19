@@ -11,7 +11,7 @@
 - ソース配置とライセンス表示。
 
 ### 2.1 テンプレート例
-- `lite`: 学習/試作用の最小テンプレート。`Core.Parse` と `Core.Test` の最小構成を含み、`config.compatibility.json = json-relaxed` で開始する。
+- `lite`: 学習/試作用の最小テンプレート。`Core.Parse` と `Core.Test` の最小構成を含み、`project.stage = "lite"`、`config.compatibility.json = json-relaxed`、`capabilities = []` を既定とし、監査ログは省略される。
 
 ## 3. 寄稿フロー
 - PR テンプレート、レビュー観点。

@@ -1,0 +1,7 @@
+Config {
+  entries: [
+    Entry { key: "port", value: IntValue(8080) },
+    Entry { key: "host", value: StrValue("localhost") },
+    Entry { key: "mode", value: StrValue("lite") }
+  ]
+}

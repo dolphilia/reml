@@ -1,0 +1,13 @@
+module Examples.Practical.LiteTemplate.Main
+
+use Core.Parse
+use Core.Diagnostics
+
+use Examples.Practical.LiteTemplate.Parser
+
+fn main() -> Result<Str, Diagnostic> {
+  let input = Parse.read_stdin()
+  match Parser.parse_config(input) with
+    | Ok(ast) -> Ok(Debug.show(ast))
+    | Err(diag) -> Err(diag)
+}
