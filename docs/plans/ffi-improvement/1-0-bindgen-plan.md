@@ -1,4 +1,4 @@
-# Phase 1: reml-bindgen 設計・仕様化（ドラフト）
+# Phase 1: reml-bindgen 設計・仕様化
 
 ## 背景
 - `extern "C"` を手書きする現行フローは大規模ライブラリ運用に耐えない。
@@ -45,7 +45,7 @@
    - 生成時に `ffi.bindgen.*` の診断キーを定義
    - `docs/spec/3-6-core-diagnostics-audit.md` と整合
 
-## 実装ステップ（ドラフト）
+## 実装ステップ
 1. `reml-bindgen.toml` のキー一覧（include パス、入力ヘッダ、出力先、除外パターン）を確定し、CLI オプション対応表を作成する。
 2. 型変換表（確定・一次範囲）と修飾子扱いを `docs/spec/3-9-core-async-ffi-unsafe.md` に反映し、未対応型の診断キー案を併記する。
 3. 生成コードの最小サンプル（単一ヘッダ + `bindings.manifest.json`）を `examples/ffi` に追加し、生成物と手書きラッパーを分離する構成を示す。

@@ -762,6 +762,12 @@ fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Res
 - 生成結果のレビューでは `bindings.manifest.json` の差分を一次情報とし、
   `.reml` 側の変更は手書きラッパーと分離された領域のみを対象とする。
 
+#### 2.8.1 例の範囲
+
+- `reml-bindgen.toml` の最小構成例（`headers` / `include_paths` / `output` / `manifest`）。
+- `bindings.manifest.json` の最小例（型変換と `qualifiers` の記録）。
+- 生成された `extern "C"` ブロックの抜粋（1〜2 関数の宣言）。
+
 ```json
 // bindings.manifest.json（要点）
 {
@@ -793,6 +799,12 @@ fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Res
 - 監査ログは `ffi.call` テンプレートに `wrapper = "ffi.wrap"` を追記し、
   `unsafe` を隠蔽した経路を識別できるようにする。
 
+#### 2.9.1 例の範囲
+
+- `bind_library` / `bind_fn` / `wrap` の最小利用例。
+- `unsafe` 直呼びと `ffi.wrap` の対比例。
+- `Result` を返す失敗例（`null` 返却の扱い）。
+
 ### 2.10 reml build 統合（仕様反映セクション）
 
 - `reml.json` の FFI セクションは次のキーを持つ。
@@ -806,6 +818,11 @@ fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Res
 - 失敗時は `ffi.build.config_invalid` / `ffi.build.link_failed` を基本診断とし、
   `extensions["ffi.build"]` に `input_hash` を記録する。
 
+#### 2.10.1 例の範囲
+
+- `reml.json` の FFI セクション例（`libraries` / `headers` / `bindgen` / `linker`）。
+- `reml build` 実行時のフロー図（テキスト手順で可）。
+
 ### 2.11 WASM Component Model（将来拡張セクション）
 
 - WIT の `string` / `record` / `variant` / `list` を Reml 型へ写像する一次案を整理する。
@@ -815,6 +832,10 @@ fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Res
   - `list<T>` → `List<T>`（境界でのコピー規約を明記）
 - Canonical ABI では Shared Nothing を前提とし、所有権の移譲とコピー境界を厳密化する。
 - Phase 4 は **調査と設計整理のみ**とし、実装・ツール統合は別計画に分離する。
+
+#### 2.11.1 例の範囲
+
+- WIT の最小 `record` / `variant` 定義と Reml 型の対応例（抜粋）。
 
 ## 3. Core.Unsafe.Ptr API
 

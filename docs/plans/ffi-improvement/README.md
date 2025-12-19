@@ -1,4 +1,4 @@
-# Reml FFI 強化計画（ドラフト）
+# Reml FFI 強化計画
 
 Reml の FFI を実用レベルに引き上げるための計画書群です。
 `docs/notes/ffi-improvement-survey.md` の調査結果を起点に、短期・中期・長期の具体的タスクを段階化します。

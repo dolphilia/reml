@@ -1,4 +1,4 @@
-# Phase 4: WASM Component Model 連携計画（ドラフト）
+# Phase 4: WASM Component Model 連携計画
 
 ## 背景
 - WASM Component Model / WIT は高レベル型で相互運用でき、
@@ -22,7 +22,7 @@
 3. **ツール連携**
    - WIT バインディング生成ツールとの連携方針
 
-## 実装ステップ（ドラフト）
+## 実装ステップ
 1. `docs/notes/` に WIT 連携の調査ログを追加し、WIT 型→Reml 型の対応表（一次案）を含める。
 2. Canonical ABI の境界安全性とメモリ管理差分（Shared Nothing）を整理し、調査ログに論点を明記する。
 3. `docs/spec/3-9-core-async-ffi-unsafe.md` に将来拡張セクションを追記し、Phase 4 は調査範囲であることを明示する。

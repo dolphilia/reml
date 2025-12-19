@@ -1,4 +1,4 @@
-# Phase 2: Core.Ffi.Dsl 設計・仕様化（ドラフト）
+# Phase 2: Core.Ffi.Dsl 設計・仕様化
 
 ## 背景
 - `reml-bindgen` が生成する低レベル定義は `unsafe` であり、
@@ -33,7 +33,7 @@
    - `Result` ベースの変換（ヌルポインタ、戻り値検証）
    - 失敗時の診断キー定義
 
-## 実装ステップ（ドラフト）
+## 実装ステップ
 1. `Core.Ffi.Dsl` の API 一覧（`bind_library` / `bind_fn` / `wrap` / 型 DSL）と型定義を `docs/spec/3-9-core-async-ffi-unsafe.md` に追記する。
 2. `ffi.wrap` の責務（エラーチェック、所有権/ライフタイムの前提）と監査ログ要件を `docs/spec/3-6-core-diagnostics-audit.md` に整理する。
 3. `examples/ffi` に DSL 例を追加し、`unsafe` 直呼びと `ffi.wrap` の対比サンプルを用意する。

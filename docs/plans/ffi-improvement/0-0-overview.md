@@ -1,4 +1,4 @@
-# FFI 強化計画の概要（ドラフト）
+# FFI 強化計画の概要
 
 ## 背景と目的
 - `docs/notes/ffi-improvement-survey.md` で、Reml の FFI が低レベル `extern "C"` に偏り、
@@ -40,7 +40,7 @@
   FFI 仕様の改善方針を確定し、関連する仕様更新をまとめて行う。
 - 仕様変更に伴う監査・診断のキーは `docs/spec/3-6-core-diagnostics-audit.md` と整合を取る。
 
-## 成果物（ドラフト）
+## 成果物
 - Phase 1〜4 の計画書と依存関係の明文化
 - 仕様更新項目の一覧化（差分チェック表）
 - FFI サンプル更新案（`examples/ffi`）

@@ -1,4 +1,4 @@
-# Phase 3: reml build 統合設計（ドラフト）
+# Phase 3: reml build 統合設計
 
 ## 背景
 - 既存 FFI はライブラリパス解決やリンクが手作業で、運用負荷が高い。
@@ -29,7 +29,7 @@
    - `ffi.build.*` / `ffi.bindgen.*` の監査キー
    - 生成物の再現性（入力ハッシュの記録）
 
-## 実装ステップ（ドラフト）
+## 実装ステップ
 1. `reml.json` の FFI セクション（`libraries`/`headers`/`bindgen`/`linker`）のキー定義と検証ルールを整理する。
 2. `reml build` の実行フロー（ヘッダ解析→生成→キャッシュ→リンク）を図示し、`docs/spec/3-9-core-async-ffi-unsafe.md` に統合セクションとして追加する。
 3. `ffi.build.*` / `ffi.bindgen.*` の監査キーと入力ハッシュの記録方針を `docs/spec/3-6-core-diagnostics-audit.md` に連携記述する。
