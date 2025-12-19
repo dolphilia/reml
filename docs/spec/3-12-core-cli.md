@@ -70,6 +70,42 @@ fn get_arg(values: CliValues, name: Str) -> Option<Str>
 - `CliSpec` から使用法を自動生成し、未知のフラグや引数不足の際は `CliError.hint` へ提案文を入れる。
 - CLI 出力は `Core.Diagnostics` の CLI フォーマット規約に従い、`CliError` 由来の診断は `cli.parse.failed` を既定とする。
 
+### 3.1 ヘルプ整形規則
+- **出力構造**: `Usage` → `Summary` → `Commands` → `Arguments` → `Flags` → `Examples` の順で出力する。
+- **Usage 行**: `name` が指定されている場合は `name` を使用し、未指定の場合は `cli` を表示する。
+- **Summary**: `description` があれば 1 行で表示し、無い場合は省略する。
+- **Commands**: `CliEntry::Command` を宣言順で列挙し、`name` と `help` を表示する。
+- **Arguments**: `CliEntry::Arg` を宣言順で列挙し、`name` と `help` を表示する。
+- **Flags**: `CliEntry::Flag` を宣言順で列挙し、`--` 付きの `name` と `help` を表示する。
+- **Examples**: 仕様例の `argv` をそのまま使える形で 1 行ずつ表示する。例が無い場合は省略する。
+
+#### ヘルプ出力の最小形（例）
+```
+Usage:
+  reml-dsl <command> [args]
+
+Summary:
+  DSL ツールの実行エントリ
+
+Commands:
+  parse     parse input
+  validate  validate input
+  format    format input
+
+Arguments:
+  input     input file
+
+Flags:
+  --verbose verbose log
+```
+
+### 3.2 エラー整形規則
+- **先頭行**: `error: <CliError.message>` を 1 行で出力する。
+- **ヒント行**: `CliError.hint` がある場合は `hint: <hint>` を 1 行で出力する。
+- **使用法**: `Usage:` を短縮形で 1 行表示し、最小引数・フラグを示す（`CliSpec` の宣言順）。
+- **ヘルプ誘導**: `help: --help を参照` の固定文言を末尾に出力する。
+- **診断連携**: 上記の文字列は `Core.Diagnostics` の CLI 表示に統合され、`cli.parse.failed` の `Diagnostic.message` と `notes` に反映される。
+
 ## 4. 診断と監査
 
 - 解析失敗は `Diagnostic.code = "cli.parse.failed"` を既定とする。
