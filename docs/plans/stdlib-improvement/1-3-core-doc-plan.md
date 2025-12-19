@@ -13,13 +13,13 @@
 - HTML/Markdown 生成の最小 API とテンプレート規約。
 - Doctest 実行ポリシー（成功条件/失敗時の診断）。
 
-## 仕様更新（ドラフト）
-- 新設: `docs/spec/3-15-core-doc.md`（仮）
+## 仕様更新
+- 新設: `docs/spec/3-15-core-doc.md`
 - 更新: `docs/spec/3-0-core-library-overview.md`
 - 連携: `docs/spec/3-6-core-diagnostics-audit.md`（診断出力）
 
 ## ガイド/サンプル
-- 新設候補: `docs/guides/doc-authoring.md`（仮）
+- 新設: `docs/guides/doc-authoring.md`
 - サンプル方針: DSL ライブラリのドキュメント生成例と Doctest 例を追加する。
 
 ## リスクと対策

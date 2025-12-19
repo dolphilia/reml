@@ -26,6 +26,28 @@
   - `reports/spec-audit/ch4/logs/ffi-bindgen-*.md`
 - WIT 調査は `docs/notes/ffi-wasm-component-model-log.md` と `docs/guides/ffi-wit-poc.md` の更新内容を対象とし、PoC 実施後に外部ツール名と生成物パスを追記する。
 
+## 標準ライブラリ回帰接続（Phase 4 追加）
+
+- `phase4-scenario-matrix.csv` に標準ライブラリ系のシナリオ（`CH3-TEST-401` / `CH3-CLI-401` / `CH3-PRETTY-401` / `CH3-DOC-401` / `CH3-LSP-401`）を追加し、Phase 4 の実行対象として追跡する。
+- 参照仕様（新章）:
+  - `docs/spec/3-11-core-test.md`
+  - `docs/spec/3-12-core-cli.md`
+  - `docs/spec/3-13-core-text-pretty.md`
+  - `docs/spec/3-14-core-lsp.md`
+  - `docs/spec/3-15-core-doc.md`
+- 実行コマンド（案）:
+  - Core.Test: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_test/snapshot/basic_ok.reml`
+  - Core.Cli: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_cli/parse_flags/basic_ok.reml`
+  - Core.Text.Pretty: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_text/pretty/layout_width_basic.reml`
+  - Core.Doc: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_doc/basic_generate_ok.reml`
+  - Core.Lsp: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_lsp/basic_diagnostics_ok.reml`
+- 実行ログの保存先:
+  - `reports/spec-audit/ch4/logs/stdlib-test-*.md`
+  - `reports/spec-audit/ch4/logs/stdlib-cli-*.md`
+  - `reports/spec-audit/ch4/logs/stdlib-pretty-*.md`
+  - `reports/spec-audit/ch4/logs/stdlib-doc-*.md`
+  - `reports/spec-audit/ch4/logs/stdlib-lsp-*.md`
+
 ## スコープ
 
 - **含む**: Rust フロントエンド (`compiler/rust/frontend`) の Parser/Typeck/CLI オプション是正、`run_phase4_suite.py` の診断差分検知を活かしたレポーティング改善、`reports/spec-audit/ch4/` の定期更新。必要に応じて `RunConfig` / `ParseRunner` / `DiagnosticFilter` の既定値も調整する。

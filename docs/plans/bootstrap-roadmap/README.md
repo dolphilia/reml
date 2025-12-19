@@ -137,6 +137,7 @@ Rust 実装を実務レベルの `.reml` シナリオで検証し、セルフホ
 | [4-1-scenario-matrix-plan.md](4-1-scenario-matrix-plan.md) | M1: シナリオマトリクス | `.reml` 入力分類、`phase4-scenario-matrix` 整備、例示コード移植 | 72週 |
 | [4-1-spec-core-regression-plan.md](4-1-spec-core-regression-plan.md) | M1: 回帰是正 | spec_core/practical スイートで判明した Parser/Typeck 不一致の是正計画 | 随時 |
 | [4-1-ffi-improvement-implementation-plan.md](4-1-ffi-improvement-implementation-plan.md) | M1: FFI 実装 | reml-bindgen/FFI DSL/build 統合と回帰接続 | 随時 |
+| [4-1-stdlib-improvement-implementation-plan.md](4-1-stdlib-improvement-implementation-plan.md) | M1: Stdlib 改善 | Core.Test/Cli/Text.Pretty/Doc/Lsp の実装と回帰接続 | 随時 |
 | [4-1-core-parse-error-labeling-impl-plan.md](4-1-core-parse-error-labeling-impl-plan.md) | M1: Core.Parse Label | 期待集合を概念ラベル中心にする実装計画（CP-WS2-001 回帰） | 随時 |
 | [4-1-core-parse-lex-helpers-impl-plan.md](4-1-core-parse-lex-helpers-impl-plan.md) | M1: Core.Parse Lex | LexPreset/lex_pack を用いた WS3 Step3 のサンプル置換と回帰登録計画 | 随時 |
 | [4-1-core-parse-input-zero-copy-impl-plan.md](4-1-core-parse-input-zero-copy-impl-plan.md) | M1: Core.Parse Input | Input/Zero-copy の不変条件チェックと回帰接続（WS5） | 随時 |

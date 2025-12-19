@@ -1,0 +1,84 @@
+# Phase4: 標準ライブラリ改善実装計画（DSL 開発者体験）
+
+## 背景と決定事項
+- `docs/plans/stdlib-improvement/` で DSL 開発者体験を支える標準モジュール（Core.Test/Cli/Text.Pretty/Doc/Lsp）の計画をドラフト化した。
+- Phase 4 の回帰計画（`4-1-spec-core-regression-plan.md`）を再開する前に、標準ライブラリ側の欠落を埋め、回帰シナリオと KPI を追加する必要がある。
+- `docs/spec/0-1-project-purpose.md` に基づき、診断の明瞭性・安全性・実用性能を最優先とする。
+
+## 目的
+1. `Core.Test`/`Core.Cli`/`Core.Text.Pretty`/`Core.Doc`/`Core.Lsp` を Rust 実装へ落とし込み、仕様と一致した API を提供する。
+2. DSL 由来の実用シナリオを Phase 4 の回帰マトリクスへ登録し、診断・監査ログの整合を検証する。
+3. Phase 5 以降のセルフホストで必要となる CLI/ドキュメント/LSP の基盤を先行整備する。
+
+## スコープ
+- **含む**: 標準ライブラリモジュールの実装方針、仕様差分の反映先、サンプル/期待出力の整備、回帰シナリオ登録。
+- **含まない**: リリースパイプライン整備、エコシステム配布、LSP クライアント実装。
+
+## 成果物
+- `Core.Test`/`Core.Cli`/`Core.Text.Pretty`/`Core.Doc`/`Core.Lsp` の最小 API が Rust 実装に反映される。
+- `examples/` と `expected/` の DSL サンプルが Phase 4 の回帰対象として登録される。
+- `docs/spec/3-0-core-library-overview.md` に新モジュールの概要が追記される。
+
+## 作業ステップ
+
+### フェーズA: Core.Test 実装と回帰接続
+1. `Core.Test` の最小 API（`test` ブロック/スナップショット/テーブル駆動）を Rust 実装へ追加する。
+2. スナップショット更新ポリシーと診断安定化のルールを明文化する。
+3. DSL のパーサー/変換結果を対象としたサンプルを `examples/` と `expected/` に追加し、回帰シナリオへ登録する。
+
+### フェーズB: Core.Cli 実装と CLI サンプル
+1. 宣言的 CLI ビルダー（フラグ/引数/サブコマンド）を Rust 実装へ追加する。
+2. `Core.Env` との役割分担を整理し、エラー出力のフォーマットを統一する。
+3. DSL ツールの CLI サンプル（解析/検証/整形）を `examples/` に追加し、回帰シナリオへ登録する。
+
+### フェーズC: Core.Text.Pretty 実装と整形サンプル
+1. `text/line/softline/group/nest` などのコンビネータを実装する。
+2. ページ幅とレイアウト選択の規則を `Core.Text.Unicode` と整合させる。
+3. DSL フォーマッタのサンプルを用意し、幅差の出力を `expected/` に固定する。
+
+### フェーズD: Core.Lsp/Core.Doc の最小実装
+1. LSP 基本型と JSON-RPC ループの最小実装を追加する。
+2. ドキュメントコメント抽出と Doctest の最小 API を追加する。
+3. LSP/Doc のサンプルを `examples/` に配置し、Phase 5 への引き継ぎ資料を整理する。
+
+### フェーズE: Phase 4 回帰接続
+1. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に DSL/標準ライブラリのシナリオを追加する。
+2. `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に参照先と実行コマンドの方針を追記する。
+3. `reports/spec-audit/ch4/` に実行ログの登録方針を記録する。
+
+## タイムライン（目安）
+
+| 週 | タスク |
+| --- | --- |
+| 72 週 | フェーズA: Core.Test 実装 |
+| 73 週 | フェーズB: Core.Cli 実装 |
+| 74 週 | フェーズC: Core.Text.Pretty 実装 |
+| 75 週 | フェーズD: Core.Lsp/Core.Doc 最小実装 |
+| 76 週 | フェーズE: Phase 4 回帰接続 |
+
+## リスクと緩和策
+
+| リスク | 影響 | 緩和策 |
+| --- | --- | --- |
+| スナップショット差分が膨張する | 回帰差分が追跡不能 | 更新基準とレビュー手順を Core.Test で明文化し、`expected/` の更新条件を統一する |
+| LSP/Doc の仕様が肥大化 | Phase 4 の進行遅延 | 最小 API のみ実装し、拡張は Phase 5 へ移管する |
+| Unicode 幅差で整形が不安定 | フォーマッタの回帰が不安定 | `Core.Text.Unicode` の幅計算ルールと同一の基準を採用する |
+
+## 進捗状況
+- ドラフト作成時点では未着手。各フェーズの完了時に日付を追記する。
+
+## 参照
+- `docs/plans/stdlib-improvement/README.md`
+- `docs/plans/stdlib-improvement/0-0-overview.md`
+- `docs/plans/stdlib-improvement/0-1-workstream-tracking.md`
+- `docs/plans/stdlib-improvement/1-0-core-test-plan.md`
+- `docs/plans/stdlib-improvement/1-1-core-cli-plan.md`
+- `docs/plans/stdlib-improvement/1-2-core-text-pretty-plan.md`
+- `docs/plans/stdlib-improvement/1-3-core-doc-plan.md`
+- `docs/plans/stdlib-improvement/1-4-core-lsp-plan.md`
+- `docs/spec/0-1-project-purpose.md`
+- `docs/spec/3-0-core-library-overview.md`
+- `docs/spec/3-3-core-text-unicode.md`
+- `docs/spec/3-5-core-io-path.md`
+- `docs/spec/3-6-core-diagnostics-audit.md`
+- `docs/spec/3-10-core-env.md`

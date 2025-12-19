@@ -13,13 +13,13 @@
 - ページ幅とレイアウト選択の規則、評価戦略。
 - AST の `Format` 相当インターフェイス（仮）と連携方法。
 
-## 仕様更新（ドラフト）
-- 新設: `docs/spec/3-13-core-text-pretty.md`（仮）
+## 仕様更新
+- 新設: `docs/spec/3-13-core-text-pretty.md`
 - 更新: `docs/spec/3-0-core-library-overview.md`
 - 連携: `docs/spec/3-3-core-text-unicode.md`（テキストモデル/グラフェム整合）
 
 ## ガイド/サンプル
-- 新設候補: `docs/guides/formatter-authoring.md`（仮）
+- 新設: `docs/guides/formatter-authoring.md`
 - サンプル方針: 代表的な DSL のフォーマッタ例と幅変更の比較出力を準備する。
 
 ## リスクと対策

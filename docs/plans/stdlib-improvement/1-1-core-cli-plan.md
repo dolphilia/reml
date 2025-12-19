@@ -13,13 +13,13 @@
 - `Core.Env` と連携する引数解決とエラー表示の統一。
 - 型付きレコードへの自動マッピング。
 
-## 仕様更新（ドラフト）
-- 新設: `docs/spec/3-12-core-cli.md`（仮）
+## 仕様更新
+- 新設: `docs/spec/3-12-core-cli.md`
 - 更新: `docs/spec/3-0-core-library-overview.md`
 - 連携: `docs/spec/3-10-core-env.md`（環境取得との役割分担）
 
 ## ガイド/サンプル
-- 新設候補: `docs/guides/cli-authoring.md`（仮）
+- 新設: `docs/guides/cli-authoring.md`
 - サンプル方針: DSL 用 CLI のサンプル（解析/フォーマット/検証）を `examples/` に整理する。
 
 ## リスクと対策

@@ -13,13 +13,13 @@
 - テーブル駆動テスト（入力→期待出力）を簡潔に記述可能にする。
 - ファジング入力の責務分界（生成/縮小/再現）を明記する。
 
-## 仕様更新（ドラフト）
-- 新設: `docs/spec/3-11-core-test.md`（仮）
+## 仕様更新
+- 新設: `docs/spec/3-11-core-test.md`
 - 更新: `docs/spec/3-0-core-library-overview.md`（モジュール一覧の追加）
 - 連携: `docs/spec/3-6-core-diagnostics-audit.md`（診断/監査の検証経路）
 
 ## ガイド/サンプル
-- 新設候補: `docs/guides/testing.md`（仮）
+- 新設: `docs/guides/testing.md`
 - サンプル方針: `examples/` に DSL 解析結果のスナップショット例を配置し、Phase 4 回帰へ登録する。
 
 ## リスクと対策

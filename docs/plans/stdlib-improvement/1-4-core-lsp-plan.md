@@ -13,13 +13,13 @@
 - メッセージループと IO 連携（標準入出力、ストリーム）。
 - 位置情報/テキスト操作のユーティリティ。
 
-## 仕様更新（ドラフト）
-- 新設: `docs/spec/3-14-core-lsp.md`（仮）
+## 仕様更新
+- 新設: `docs/spec/3-14-core-lsp.md`
 - 更新: `docs/spec/3-0-core-library-overview.md`
 - 連携: `docs/spec/3-5-core-io-path.md`, `docs/spec/3-6-core-diagnostics-audit.md`
 
 ## ガイド/サンプル
-- 新設候補: `docs/guides/lsp-authoring.md`（仮）
+- 新設: `docs/guides/lsp-authoring.md`
 - サンプル方針: JSON DSL の LSP サンプル（診断/補完）を `examples/` に置く。
 
 ## リスクと対策
