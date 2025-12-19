@@ -24,7 +24,12 @@
 ## 作業ステップ
 
 ### フェーズA: reml-bindgen 実装
-1. `reml-bindgen` 本体を新設（候補: `tooling/ffi/reml-bindgen`）し、`reml-bindgen.toml` と CLI オプションの優先順位を実装する。
+1. `reml-bindgen` 本体を新設（`compiler/rust/ffi_bindgen/` 新規 crate + bin `reml-bindgen`）し、`reml-bindgen.toml` と CLI オプションの優先順位を実装する。
+   - ディレクトリ構成案:
+     - `compiler/rust/ffi_bindgen/Cargo.toml`（crate 名: `reml_ffi_bindgen`）
+     - `compiler/rust/ffi_bindgen/src/lib.rs`（設定読み込み・型変換・出力生成）
+     - `compiler/rust/ffi_bindgen/src/main.rs`（bin 名: `reml-bindgen`）
+     - `compiler/rust/Cargo.toml` に workspace 追加
 2. `bindings.manifest.json` に `qualifiers` / 入力ハッシュ / 診断メタデータを記録し、`docs/spec/3-6-core-diagnostics-audit.md` と整合する形式を固定する。
 3. `ffi.bindgen.*` 診断キーを出力し、`docs/guides/reml-bindgen-guide.md` のログ例と一致させる。
 4. `examples/ffi/bindgen/minimal` を CLI 実行で再生成し、`expected/` へ出力ゴールデンを追加する。
@@ -46,6 +51,9 @@
 
 ### フェーズE: Phase 4 回帰接続
 1. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に FFI シナリオを追加（例: `FFI-BINDGEN-001` / `FFI-DSL-001` / `FFI-BUILD-001` / `FFI-WIT-001`）。
+   - `FFI-BINDGEN-001` の expected パス:
+     - `expected/ffi/bindgen/minimal/bindings.reml`
+     - `expected/ffi/bindgen/minimal/bindings.manifest.json`
 2. `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に FFI 回帰の参照先と実行コマンドを追記する。
 3. `reports/spec-audit/ch4/spec-core-dashboard.md` に FFI 実行ログを登録し、Phase 5 へ引き継げるよう KPI を整理する。
 
