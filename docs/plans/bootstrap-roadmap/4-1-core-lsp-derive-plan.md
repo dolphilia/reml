@@ -92,15 +92,25 @@ conductor my_dsl_server {
 3. [x] `docs/guides/lsp-authoring.md` に `Derive` の最小導入例と落とし穴（`rule`/`keyword` を使わない場合の補完不足）を追記する。
 
 ### フェーズB: メタデータ設計
-1. [ ] `ParserId` に紐づく `ParserMeta` を追加し、`rule`/`keyword`/`symbol`/`token` の定義を登録できるようにする。
-2. [ ] `rule` が内部パーサーの ID を保持し、Outline の階層生成に使えるようにする。
-3. [ ] Doc comment を `ParserMeta` へ紐づける API（`with_doc` など）を設計する。
+1. [ ] `ParserMetaKind`/`ParserMeta` の最小構造（`kind`/`name`/`doc`/`children`/`token_kind`）を確定する。
+2. [ ] `ParserId -> ParserMeta` の登録ストレージ（`ParseMetaRegistry`）のライフサイクルを定義する（生成/共有/破棄）。
+3. [ ] `rule` が内部パーサーの `ParserId` を収集し、`children` に保持する規約を確定する。
+4. [ ] `keyword`/`symbol`/`token` の `name` 表記（文字列そのままか正規化か）を決める。
+5. [ ] Doc comment の付与 API（`with_doc`/`parser.with_doc`）と上書き規則を確定する。
+6. [ ] `label` は `ParserMeta` を生成しない方針を明記する。
+7. [ ] 完了条件: `docs/spec/2-2-core-combinator.md` の規約と Rust 実装の API 名が一致していることをレビューで確認。
 
 ### フェーズC: Rust 実装追加
-1. [ ] `compiler/rust/runtime/src/parse/` にメタデータ収集モジュールを追加する。
-2. [ ] `compiler/rust/runtime/src/parse/combinator.rs` の `rule`/`keyword`/`symbol`/`token` で `ParserMeta` を登録する。
-3. [ ] `compiler/rust/runtime/src/lsp/derive.rs` を追加し、`Derive.collect` / `Derive.standard_capabilities` を実装する。
-4. [ ] `compiler/rust/frontend` の CLI に `OutputFormat::LspDerive` と `--output lsp-derive` を追加し、導出アーティファクトを JSON で出力する。
+1. [ ] `compiler/rust/runtime/src/parse/meta.rs` を追加し、`ParserMeta`/`ParserMetaKind` と登録 API を実装する。
+2. [ ] `ParseState` に `ParseMetaRegistry` を保持し、`run`/`run_with_default` で初期化されるようにする。
+3. [ ] `rule` で `ParserMeta` を登録し、子 `ParserId` の収集フックを追加する。
+4. [ ] `keyword`/`symbol`/`token` の生成時に `ParserMeta` を登録する。
+5. [ ] `Parser::with_doc`（および関数版 `with_doc`）を追加し、`ParserMeta.doc` を更新する。
+6. [ ] `compiler/rust/runtime/src/lsp/derive.rs` を追加し、`Derive.collect` を実装する。
+7. [ ] `Derive.standard_capabilities` を実装し、`DeriveModel` の内容に応じた boolean を返す。
+8. [ ] `compiler/rust/frontend/src/output/cli.rs` に `OutputFormat::LspDerive` を追加し、`--output lsp-derive` を受理する。
+9. [ ] CLI の JSON 出力に `format="lsp-derive"` / `version=1` を付与し、`DeriveModel` をエンコードする。
+10. [ ] 完了条件: `examples/practical/core_lsp/auto_derive_basic.reml` の導出結果が `expected/practical/core_lsp/auto_derive_basic.stdout` と一致することを確認。
 
 ### フェーズD: サンプル/回帰接続
 1. [ ] `examples/practical/core_lsp/auto_derive_basic.reml` と `expected/practical/core_lsp/auto_derive_basic.stdout` を追加する。
