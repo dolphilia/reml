@@ -75,7 +75,7 @@ test_parser(my_parser) {
    - `Diagnostic.codes` 相当のエイリアス一致を追加する。
    - `AtSpec::LineCol` の一致判定を有効化し、`parser.position` の line/column と整合する。
    - エラー複数件時の優先順（最遠/先頭）と期待値無し時の許容規則を実装に合わせて明文化する。
-3. [ ] AST Matcher の部分一致
+3. [x] AST Matcher の部分一致
    - `...` の部分一致、`List`/`Record` の順序/キー一致ルールを実装する。
 4. [ ] DSL 糖衣構文の復帰
    - `test_parser { case ... }` の構文を Rust 側で受理し、`DslCase` へ展開する。
