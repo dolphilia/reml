@@ -229,20 +229,24 @@ impl BuildLintOptions {
                 "--config" => {
                     let value = iter
                         .next()
-                        .ok_or_else(|| "--config はパスを伴う必要があります")?;
+                        .ok_or_else(|| CliError::Usage("--config はパスを伴う必要があります".into()))?;
                     opts.config_path = PathBuf::from(value);
                 }
                 "--format" => {
                     let value = iter
                         .next()
-                        .ok_or_else(|| "--format は human|json の値を伴う必要があります")?;
+                        .ok_or_else(|| {
+                            CliError::Usage("--format は human|json の値を伴う必要があります".into())
+                        })?;
                     opts.output_format = ReportFormat::parse(&value)?;
                 }
                 "--emit-bindgen" => opts.emit_bindgen = true,
                 "--cache-dir" => {
                     let value = iter
                         .next()
-                        .ok_or_else(|| "--cache-dir はパスを伴う必要があります")?;
+                        .ok_or_else(|| {
+                            CliError::Usage("--cache-dir はパスを伴う必要があります".into())
+                        })?;
                     opts.cache_dir = Some(PathBuf::from(value));
                 }
                 other => {
@@ -465,6 +469,18 @@ fn run_bindgen_if_enabled(
             return (diagnostics, audit_entries);
         }
     };
+    let manifest_path = bindgen
+        .manifest
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| {
+            Path::new(&output)
+                .with_file_name("bindings.manifest.json")
+                .to_string_lossy()
+                .to_string()
+        });
     let input_hash = compute_bindgen_input_hash(ffi, bindgen);
     let cache_path = cache_path_for_input_hash(opts.cache_dir.as_ref(), &input_hash);
     let tool_version = reml_bindgen_version();
@@ -534,18 +550,6 @@ fn run_bindgen_if_enabled(
         ));
         return (diagnostics, audit_entries);
     }
-    let manifest_path = bindgen
-        .manifest
-        .as_ref()
-        .map(|value| value.trim())
-        .filter(|value| !value.is_empty())
-        .map(|value| value.to_string())
-        .unwrap_or_else(|| {
-            Path::new(&output)
-                .with_file_name("bindings.manifest.json")
-                .to_string_lossy()
-                .to_string()
-        });
     let mut error_code: Option<String> = None;
     let mut error_message: Option<String> = None;
     let status = match invoke_reml_bindgen(bindgen, ffi, &output, &manifest_path) {
@@ -1082,7 +1086,7 @@ struct LintStats {
     schema_checked: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 struct LintDiagnostic {
     code: String,
     domain: String,
