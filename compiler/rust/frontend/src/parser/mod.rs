@@ -481,7 +481,7 @@ fn parse_tokens(
     Option<ParseError>,
     Vec<ParserTraceEvent>,
 ) {
-    let mut prefix = parse_top_level_prefix(tokens);
+    let prefix = parse_top_level_prefix(tokens);
     let token_pairs: Vec<_> = tokens
         .iter()
         .enumerate()

@@ -113,7 +113,7 @@ impl SchemaBuilder {
         self
     }
 
-    pub fn field_with(mut self, builder: FieldBuilder) -> Self {
+    pub fn field_with(self, builder: FieldBuilder) -> Self {
         self.field(builder.finish())
     }
 

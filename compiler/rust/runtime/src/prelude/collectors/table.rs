@@ -90,7 +90,7 @@ where
     where
         Self: Sized,
     {
-        let mut collector = Self::new();
+        let collector = Self::new();
         let _ = capacity;
         collector
     }

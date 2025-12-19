@@ -18,9 +18,12 @@ use std::{
 };
 
 use super::collectors::{
-    CollectError, CollectOutcome, Collector, CollectorAuditTrail, CollectorEffectMarkers,
-    CollectorKind, CollectorStageProfile, List, ListCollector, Map, MapCollector, NumericCollector,
-    Set, SetCollector, Table, TableCollector, VecCollector,
+    CollectError, CollectOutcome, Collector, CollectorAuditTrail, List, ListCollector, Map,
+    MapCollector, Set, SetCollector, Table, TableCollector, VecCollector,
+};
+#[cfg(feature = "core_numeric")]
+use super::collectors::{
+    CollectorEffectMarkers, CollectorKind, CollectorStageProfile, NumericCollector,
 };
 use crate::collections::mutable::CoreVec;
 #[cfg(feature = "core_numeric")]

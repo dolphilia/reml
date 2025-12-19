@@ -2,7 +2,7 @@ use serde::Serialize;
 use serde_json::{json, Number, Value};
 
 use crate::{
-    collections::audit_bridge::{self, AuditBridgeError, ChangeSet, ChangeSetKind},
+    collections::audit_bridge::{AuditBridgeError, ChangeSet, ChangeSetKind},
     prelude::iter::EffectLabels,
 };
 

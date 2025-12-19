@@ -168,14 +168,16 @@ impl OperatorCollection {
             (FixitySymbol::Ternary, OperatorCollection::Ternary(existing)) => {
                 existing.push(TernaryToken::try_from(tokens)?);
             }
+            (FixitySymbol::Ternary, OperatorCollection::Operators(_)) => {
+                unreachable!("OpBuilder level fixity mismatch should be caught earlier");
+            }
             (_, OperatorCollection::Operators(existing)) => {
                 if tokens.is_empty() {
                     return Err(OpBuilderErrorKind::EmptyTokenList { fixity }.into());
                 }
                 existing.extend(tokens);
             }
-            (FixitySymbol::Ternary, OperatorCollection::Operators(_))
-            | (_, OperatorCollection::Ternary(_)) => {
+            (_, OperatorCollection::Ternary(_)) => {
                 unreachable!("OpBuilder level fixity mismatch should be caught earlier");
             }
         }

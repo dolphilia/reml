@@ -33,7 +33,7 @@ pub use migration::{
 };
 
 use std::{
-    fs, io, mem,
+    fs, io,
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},

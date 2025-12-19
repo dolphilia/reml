@@ -2530,7 +2530,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
             let start_input = state.input().clone();
             let mut current_input = start_input.clone();
             state.set_input(current_input.clone());
-            let mut reply = match self.parse(state) {
+            let reply = match self.parse(state) {
                 Reply::Ok {
                     value,
                     span,
