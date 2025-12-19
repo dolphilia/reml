@@ -24,9 +24,9 @@ Phase 2-5 および Phase 4.1 の計画（`4-1-core-parse-combinator-plan-v2`）
 パーサーのテストを宣言的かつ簡潔に記述するための DSL です。`Core.Test` の拡張として実装します。
 
 **機能:**
-*   **AST Matcher:** 構造体や列挙型を簡略記法で記述し、AST とパターンマッチさせる。
-*   **Error Expectation:** エラーコード、発生位置（行:列）、メッセージの一部を簡潔に検証。
-*   **Golden File Support:** 入力ファイルと期待される AST/エラー出力をペアで管理するフローの標準化。
+*   **AST Matcher:** 構造体や列挙型を簡略記法で記述し、AST とパターンマッチさせる。`...` の部分一致や `List(...)` / `Record(...)` の構文を前提とする。
+*   **Error Expectation:** エラーコード、発生位置（行:列）、メッセージの一部を簡潔に検証。`Diagnostic.codes` の別名と複数診断の優先順を含む。
+*   **Golden File Support:** 入力ファイルと期待される AST/エラー出力をペアで管理するフローの標準化。`snapshot.updated` に `snapshot.mode` / `snapshot.bytes` を記録する。
 
 ```reml
 use Core.Test.Dsl
@@ -42,6 +42,12 @@ test_parser(my_parser) {
   case "fn main() {}" => Func(name="main", ...)
 }
 ```
+
+**進捗メモ（2025-12）:**
+*   `test_parser { case ... }` の糖衣構文を Rust 側で復帰し、`DslCase` 展開を実装済み。
+*   `AstMatcher` に `Pattern(...)` / `List(...)` / `Record(...)` を追加し、部分一致と順序/キー一致をサポート。
+*   `ErrorExpectation` の `Diagnostic.codes` 対応、`LineCol` 判定、複数診断の優先順を実装済み。
+*   ゴールデン経路は `examples/**/golden/{case_id}.input` と `expected/**/golden/{case_id}.ast|error` を読み込み、`snapshot.updated` を記録する。
 
 ### 3.2 Auto-LSP Derivation (`Core.Lsp.Derive`)
 
@@ -134,7 +140,7 @@ let code_block =
 
 本提案の機能は、Bootstrap Roadmap の以下のフェーズと連携して進めます。
 
-*   **Phase 4 (Migration/Extension):** `Core.Test.Dsl`、`Core.Lsp.Derive` のドラフト実装。`Core.Parse` v2 (`autoWhitespace`) の完了を待って CST 検討。
+*   **Phase 4 (Migration/Extension):** `Core.Test.Dsl` を Rust 実装まで完了し、`Core.Lsp.Derive` はドラフトのまま継続検討。`Core.Parse` v2 (`autoWhitespace`) の完了を待って CST を検討。
 *   **Phase 5 (Self-Host):** コンパイラ自身が Reml で書き直される際、これらの機能をドッグフーディングする。特に CST は自身のフォーマッタ実装に必須。
 *   **Future:** Visualizer や Composability はエコシステムの成熟に合わせて展開。
 
