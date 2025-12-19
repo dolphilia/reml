@@ -63,6 +63,7 @@
 - 入力
   - `reml new <path>`：指定パスに新規プロジェクトを生成。
   - `--template <name>`：`../guides/dsl-gallery.md` に列挙されたテンプレートを選択（`lite`, `core-app`, `pipeline`, `conductor` など）。
+  - `--template lite`：学習/試作向けの最小構成テンプレートを生成する。CLI ヘルプには用途と `project.stage` 昇格の導線を含める。
   - `--dsl-entry <module::name>`：メイン DSL エクスポートを上書き。
 - 処理
   - 雛形の `reml.toml` と `src/main.reml` を生成し、`[dsl.capabilities]` はテンプレート定義を初期値とする。

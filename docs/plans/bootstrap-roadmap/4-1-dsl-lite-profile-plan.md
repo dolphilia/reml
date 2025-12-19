@@ -397,8 +397,31 @@ Config {
 
 **テンプレート資産の配置**
 - テンプレート本体は `tooling/templates/` に配置する（CLI 実装と同一リポジトリ内で管理）。
+- Lite の配置パスは `tooling/templates/lite/` とし、CLI からは `lite` 名称で参照する。
 - `docs/` は仕様/ガイドの参照に留め、生成物のソースは置かない。
 - `examples/practical/lite_template/` は回帰用資産として固定し、CLI の生成元とは分離する。
+
+**`tooling/templates/lite/` の確定構成**
+```
+tooling/templates/lite/
+  README.md
+  reml.toml
+  src/
+    main.reml
+    parser.reml
+    dsl_test.reml
+  templates/
+    sample.input
+    sample.ast
+```
+
+**テンプレート内容の確定方針**
+- `README.md` は Lite の目的/制約/移行導線（`project.stage` 昇格）を記載する。
+- `reml.toml` は Lite 既定値（`project.stage = "lite"`, `dsl.lite.capabilities = []`, `config.compatibility.json = json-relaxed`）を反映する。
+- `src/main.reml` は文字列入力の最短実行パス（IO 非使用）を維持する。
+- `src/parser.reml` は `Core.Parse.Lex` の最小構成で `key = value` DSL を解析する。
+- `src/dsl_test.reml` は `Core.Test` の `table_test`/`assert_snapshot` を併記する。
+- `templates/sample.*` は `examples/practical/lite_template/templates/` と同内容で同期する。
 
 **回帰シナリオ運用**
 - `CH5-LITE-001` を CI の Phase 4 回帰に含めるかを判断し、含める場合は入力/期待値の同期手順を定義する。

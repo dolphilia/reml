@@ -1,0 +1,53 @@
+module Examples.Practical.LiteTemplate.Parser
+
+use Core.Parse
+use Core.Parse.Lex
+
+pub type Config = {
+  entries: List<Entry>
+}
+
+pub type Entry = {
+  key: Str,
+  value: Value
+}
+
+pub type Value =
+  | StrValue(String)
+  | IntValue(Int)
+
+let sc: Parser<()> =
+  Lex.whitespace()
+    |> Lex.skipMany
+
+let lexeme<A>(p: Parser<A>) -> Parser<A> = Lex.lexeme(sc, p)
+let sym(text: Str) -> Parser<()> = Lex.symbol(sc, text)
+let kw(text: Str) -> Parser<()> = Lex.keyword(sc, text)
+
+pub fn parse_config(input: String) -> ParseResult<Config> {
+  Parse.run(config_parser(), input)
+}
+
+fn config_parser() -> Parser<Config> {
+  let key = lexeme(Lex.identifier())
+  let int_value =
+    lexeme(Lex.int10())
+      .andThen(|digits| match Lex.parseI64(digits) with
+        | Ok(value) -> ok(IntValue(value))
+        | Err(_) -> fail(format("数値として解釈できません: {digits}"))
+      )
+  let str_value = lexeme(Lex.stringLit()).map(StrValue)
+  let value = choice([int_value, str_value])
+  let entry =
+    key
+      .then(skipL(sym("="), value))
+      .map(|(k, v)| Entry { key: k, value: v })
+  rule("lite.config",
+    skipR(
+      kw("config")
+        .then(skipL(sym("{"), many(entry))),
+      sym("}")
+    )
+      .map(|entries| Config { entries: entries })
+  )
+}
