@@ -81,6 +81,7 @@
 ## 実装ステップ進捗
 - Step 2 完了: `docs/spec/3-9-core-async-ffi-unsafe.md` に型変換表と未対応型の診断キー案を反映済み。
 - Step 3 完了: `examples/ffi/bindgen/minimal` に最小サンプル（単一ヘッダ + `bindings.manifest.json`）を追加済み。
+- Step 4 完了: `docs/guides/reml-bindgen-guide.md` にログ形式とレビュー手順の詳細を追記済み。
 
 ## 依存関係
 - `docs/spec/3-9-core-async-ffi-unsafe.md`

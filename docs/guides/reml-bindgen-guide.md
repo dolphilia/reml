@@ -33,6 +33,29 @@ manifest = "generated/bindings.manifest.json"
 - `ffi.bindgen.parse_failed`: ヘッダ解析に失敗した
 - `ffi.bindgen.unresolved_symbol`: シンボル解決に失敗した
 
+## ログ形式（要点）
+- 生成ログは JSON Lines（1行1イベント）を基本とする。
+- 主要イベント: `bindgen.start`, `bindgen.parse`, `bindgen.generate`, `bindgen.finish`
+- 診断は `diagnostics` 配列として出力し、`code` / `symbol` / `c_type` / `reason` / `hint` を保持する。
+
+```json
+{
+  "event": "bindgen.finish",
+  "status": "success",
+  "generated": "generated/bindings.reml",
+  "manifest": "generated/bindings.manifest.json",
+  "diagnostics": [
+    {
+      "code": "ffi.bindgen.unknown_type",
+      "symbol": "my_callback",
+      "c_type": "int (*)(const char*, size_t)",
+      "reason": "unsupported_fn_ptr",
+      "hint": "phase2"
+    }
+  ]
+}
+```
+
 ## 未対応型の診断メタデータ例
 ```json
 {
@@ -44,7 +67,9 @@ manifest = "generated/bindings.manifest.json"
 }
 ```
 
-## レビュー手順（要点）
-1. `bindings.manifest.json` の差分を確認する。
-2. 生成された `.reml` の `extern "C"` 宣言のみを確認する。
-3. 手書きラッパーの API が維持されているかを確認する。
+## レビュー手順（詳細）
+1. `bindings.manifest.json` の差分を確認し、`types` / `diagnostics` / `qualifiers` の変化を整理する。
+2. `diagnostics` の `code` と `reason` が想定どおりか、未対応型が増えていないかを確認する。
+3. 生成 `.reml` は `extern "C"` と `repr(C)` 定義だけを確認し、手書き領域を触っていないかを確認する。
+4. 手書きラッパーの API 変更が必要な場合は、差分理由を `bindings.manifest.json` の変更と対応づける。
+5. `headers` / `include_paths` / `defines` の変更があった場合は再生成条件として記録する。

@@ -12,3 +12,8 @@
 ## 生成の想定
 `reml-bindgen.toml` を使って `generated/` を再生成し、差分レビューは
 `bindings.manifest.json` を一次情報として扱います。
+
+## 実行例
+```bash
+reml-bindgen --config reml-bindgen.toml
+```
