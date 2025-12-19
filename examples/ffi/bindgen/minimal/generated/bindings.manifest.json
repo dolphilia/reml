@@ -1,0 +1,10 @@
+{
+  "version": "0.1",
+  "headers": ["headers/counter.h"],
+  "generated": "generated/counter_bindings.reml",
+  "types": [
+    { "c": "int", "reml": "I32" },
+    { "c": "void", "reml": "Unit" }
+  ],
+  "diagnostics": []
+}
