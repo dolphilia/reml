@@ -28,3 +28,21 @@ Phase 4 の `.reml` シナリオを自動実行し、`docs/plans/bootstrap-roadm
   - `impl_fix`: 期待診断が空 (`[]`) のシナリオで Diagnostics や CLI エラーが発生したケース、または JSON 出力の解析に失敗したケース。Rust Frontend/Runtime の修正が必要です。
   - `spec_fix`: 期待診断と実測診断のどちらも存在するものの、コード集合が一致しないケース。仕様または `phase4-scenario-matrix.csv` の `diagnostic_keys` を見直します。
 - `resolution_notes` には `triage_spec_core_failures.py` が自動で `log=`（解析した Markdown ログ）、`CLI=`（`run_phase4_suite.py` が実行したコマンド）、期待/実測の診断コード集合を追記します。これにより、後続タスクで Example Fix / Compiler Fix / Spec Fix の根拠が追跡できます。
+
+## 標準ライブラリ実行ログ（Phase 4）
+
+標準ライブラリの回帰シナリオは、以下のログに実行結果を記録します。
+
+- 保存先: `reports/spec-audit/ch4/logs/stdlib-*.md`
+- 対象ログ:
+  - `reports/spec-audit/ch4/logs/stdlib-test-YYYYMMDD.md`
+  - `reports/spec-audit/ch4/logs/stdlib-cli-YYYYMMDD.md`
+  - `reports/spec-audit/ch4/logs/stdlib-pretty-YYYYMMDD.md`
+  - `reports/spec-audit/ch4/logs/stdlib-doc-YYYYMMDD.md`
+  - `reports/spec-audit/ch4/logs/stdlib-lsp-YYYYMMDD.md`
+- 記録項目:
+  - 実行コマンド全文と実行日時
+  - `diagnostics[].code` の集合（空の場合は `[]` を明記）
+  - stdout の先頭 1 行と `expected/` との一致確認
+  - `run_id` が含まれる場合は比較対象から除外する旨を記載
+- `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `resolution_notes` には、該当ログファイル名と実行コマンドを併記する。

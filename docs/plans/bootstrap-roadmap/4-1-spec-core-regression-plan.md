@@ -47,6 +47,7 @@
   - `reports/spec-audit/ch4/logs/stdlib-pretty-*.md`
   - `reports/spec-audit/ch4/logs/stdlib-doc-*.md`
   - `reports/spec-audit/ch4/logs/stdlib-lsp-*.md`
+- ログに残す項目は `reports/spec-audit/ch4/README.md` の「標準ライブラリ実行ログ（Phase 4）」を参照する。
 
 ## スコープ
 
