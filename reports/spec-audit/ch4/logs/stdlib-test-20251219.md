@@ -21,3 +21,17 @@
 
 - expected: `expected/practical/core_test/snapshot/basic_ok.stdout` は CLI JSON 出力に合わせて暫定更新。
 - 備考: CLI は JSON 出力のため stdout は診断サマリ。Runtime 実行による `snapshot:ok` 出力は未実装。
+
+## 監査イベント確認（snapshot.updated）
+
+- CLI: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --emit-audit --output json examples/practical/core_test/snapshot/basic_ok.reml`
+- event.kind: `snapshot.updated`
+
+```
+{"timestamp":"2025-12-19T08:05:28.715929Z","envelope":{"capability":"core.test","metadata":{"event.domain":"test","event.kind":"snapshot.updated","snapshot.hash":"4361722783805985690","snapshot.name":"core_test_basic"}}}
+```
+
+## 診断確認（test.failed）
+
+- CLI: `REML_CORE_TEST_FORCE_FAIL=1 cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_test/snapshot/basic_ok.reml`
+- diagnostics: `["test.failed"]`（exit_code=failure）

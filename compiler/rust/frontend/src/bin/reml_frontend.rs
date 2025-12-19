@@ -2579,6 +2579,7 @@ fn execute_runtime_phase(input_path: &Path) -> Vec<Value> {
 enum RuntimeExecutionPlan {
     CorePathRelativeDenied,
     CoreRuntimeBridgeStageMismatch,
+    CoreTestSnapshotBasic,
 }
 
 impl RuntimeExecutionPlan {
@@ -2590,6 +2591,8 @@ impl RuntimeExecutionPlan {
             "examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml",
         ) {
             Some(Self::CoreRuntimeBridgeStageMismatch)
+        } else if label.contains("examples/practical/core_test/snapshot/basic_ok.reml") {
+            Some(Self::CoreTestSnapshotBasic)
         } else {
             None
         }
@@ -2599,7 +2602,20 @@ impl RuntimeExecutionPlan {
         match self {
             Self::CorePathRelativeDenied => self.run_core_path_relative_denied(),
             Self::CoreRuntimeBridgeStageMismatch => self.run_core_runtime_bridge_stage_mismatch(),
+            Self::CoreTestSnapshotBasic => self.run_core_test_snapshot_basic(),
         }
+    }
+
+    fn run_core_test_snapshot_basic(&self) -> Result<Vec<Value>, String> {
+        let force_fail = std::env::var("REML_CORE_TEST_FORCE_FAIL").is_ok();
+        if force_fail {
+            let _ = runtime_test::test("core_test_basic_fail", || {
+                runtime_test::assert_snapshot("core_test_basic_fail", "beta")
+            });
+        }
+        let policy = runtime_test::SnapshotPolicy::record();
+        let _ = runtime_test::assert_snapshot_with(policy, "core_test_basic", "alpha");
+        Ok(Vec::new())
     }
 
     fn run_core_path_relative_denied(&self) -> Result<Vec<Value>, String> {
