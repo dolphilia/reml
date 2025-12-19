@@ -18,6 +18,9 @@
 - [algebraic-effects-handlers-assessment.md](algebraic-effects-handlers-assessment.md)
 - [algebraic-effects-handlers-spec-proposal.md](algebraic-effects-handlers-spec-proposal.md)
 
+## FFI / WASM
+- [ffi-wasm-component-model-log.md](ffi-wasm-component-model-log.md)
+
 ## クロスコンパイル・LLVM・パフォーマンス
 - [cross-compilation-spec-intro.md](cross-compilation-spec-intro.md)
 - [cross-compilation-spec-update-plan.md](cross-compilation-spec-update-plan.md)

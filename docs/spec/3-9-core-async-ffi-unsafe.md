@@ -1399,4 +1399,12 @@ fn simulate_memory_corruption(pattern: CorruptionPattern) -> ()                 
 fn test_unsafe_invariants(invariants: List<UnsafeInvariant>) -> TestResult<()> // `effect {unsafe, test}`
 ```
 
-> 関連: [guides/runtime-bridges.md](../guides/runtime-bridges.md), [guides/reml-ffi-handbook.md](../guides/reml-ffi-handbook.md), [2.6 実行戦略](2-6-execution-strategy.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md)
+## 10. 将来拡張: WASM Component Model / WIT（調査段階）
+
+- Phase 4 は調査と設計整理のみを対象とし、現行の FFI 仕様・ABI を変更しない。
+- WIT 型と Reml 型の対応表は `docs/notes/ffi-wasm-component-model-log.md` に一次案を整理する。
+- Shared Nothing 前提のため、境界コピー・所有権移譲・エラーの `Result` マッピングを明文化する必要がある。
+- WIT 経由であっても `effect {ffi}` と監査ログの対象範囲は維持する（`unsafe` 境界の緩和は別途検討）。
+- WIT 監査キーの命名方針は `docs/spec/3-6-core-diagnostics-audit.md` の `ffi.wit.*` を参照する。
+
+> 関連: [guides/runtime-bridges.md](../guides/runtime-bridges.md), [guides/reml-ffi-handbook.md](../guides/reml-ffi-handbook.md), [guides/ffi-wit-poc.md](../guides/ffi-wit-poc.md), [notes/ffi-wasm-component-model-log.md](../notes/ffi-wasm-component-model-log.md), [2.6 実行戦略](2-6-execution-strategy.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md)

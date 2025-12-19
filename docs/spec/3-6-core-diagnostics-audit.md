@@ -104,6 +104,25 @@ pub type AuditEnvelope = {
 - `capability` はランタイム機能（Core.Runtime）との整合に利用。
 - `metadata` は拡張用の自由領域で、プラグインが追加情報を埋め込む。
 
+#### 1.1.1 WIT 監査キー命名方針
+
+WASM Component Model / WIT 連携に関する監査メタデータは、`AuditEnvelope.metadata` と `Diagnostic.audit_metadata` の両方に同一キーで出力する。キーは `ffi.wit.*` をプレフィックスに持ち、短い名詞を `snake_case` で連結する。
+
+必須キー（WIT 経由の FFI 呼び出し時）:
+- `ffi.wit.package`: WIT パッケージ名（例: `vendor:module`）
+- `ffi.wit.world`: `world` 名
+- `ffi.wit.interface`: `interface` 名
+- `ffi.wit.direction`: `import` / `export`
+
+推奨キー（型・所有権の監査用）:
+- `ffi.wit.function`: 呼び出し対象の関数名
+- `ffi.wit.type.kind`: `record` / `variant` / `list` / `resource` など主要型種別
+- `ffi.wit.resource`: `resource` 名（対象が resource の場合のみ）
+- `ffi.wit.ownership`: `own` / `borrow` / `copy`
+- `ffi.wit.lift_lower`: `lift` / `lower`
+
+不足キーがある場合は `Diagnostic.code = Some("ffi.wit.audit_missing")` を推奨し、`AuditPolicy` により警告または失敗として扱う。
+
 ### 1.2 Rust Frontend CLI 更新（Phase 2-8）
 
 - `reml_frontend` CLI は `schema_version = "3.0.0-alpha"` を `Diagnostic.audit_metadata["schema.version"]` と `typeck/typeck-debug.*.json` の双方で宣言し、Stage/Audit の記録形式を Phase 3 以降の監査基準へ合わせる。`StageAuditPayload` から収集した `stage_trace`・`runtime_capabilities`・`bridge` メタデータは `typeck-debug` にも同梱され、`reports/spec-audit/ch1/<sample>-YYYYMMDD-typeck.json` で直接参照できる。
