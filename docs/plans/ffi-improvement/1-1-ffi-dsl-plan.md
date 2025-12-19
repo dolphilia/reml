@@ -39,6 +39,13 @@
 3. `examples/ffi` に DSL 例を追加し、`unsafe` 直呼びと `ffi.wrap` の対比サンプルを用意する。
 4. `docs/guides/ffi-dsl-guide.md` に FFI DSL 導入ガイドを新設し、Phase 1 の `reml-bindgen` 生成物との併用フローを明記する。
 
+## 進捗
+- ステータス: `confirmed`
+- 実装ステップ 1: `docs/spec/3-9-core-async-ffi-unsafe.md` に `Core.Ffi.Dsl` 節と API/型定義、利用例を追加済み。
+- 実装ステップ 2: `docs/spec/3-6-core-diagnostics-audit.md` に `ffi.wrap` の監査メタデータ・診断キーを追加済み。
+- 実装ステップ 3: `examples/ffi/dsl` に `unsafe` 直呼びと `ffi.wrap` の対比サンプルを追加済み。
+- 実装ステップ 4: `docs/guides/ffi-dsl-guide.md` を更新し、`reml-bindgen` 併用フローを明記済み。
+
 ## 依存関係
 - `docs/spec/3-9-core-async-ffi-unsafe.md`
 - `docs/spec/3-6-core-diagnostics-audit.md`
