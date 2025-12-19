@@ -491,3 +491,8 @@ tooling/templates/lite/
 
 **未着手/残タスク**
 - フェーズF: 実装準備と実装計画の実作業（CLI/テンプレート/回帰運用の確定）
+
+**実行ログ（CLI 検証）**
+- `remlc new tmp/remlc_new_test/empty --template lite` で生成に成功。
+- `remlc new tmp/remlc_new_test/non_empty --template lite` で非空ディレクトリエラーを確認。
+- `REML_TEMPLATE_ROOT=tooling/templates remlc new tmp/remlc_new_test/with_env --template lite` で環境変数指定時の生成を確認。
