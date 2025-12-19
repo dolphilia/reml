@@ -1241,7 +1241,3 @@ dependencies = [
  "quote",
  "syn",
 ]
-
-[[patch.unused]]
-name = "proc-macro-crate"
-version = "3.4.0"

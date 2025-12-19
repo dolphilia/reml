@@ -41,9 +41,6 @@ reml_adapter = { path = "../adapter" }
 reml_runtime = { path = "../runtime" }
 schemars = { version = "0.8", optional = true }
 
-[patch.crates-io]
-proc-macro-crate = { path = "../../../third_party/proc_macro_crate" }
-
 [dev-dependencies]
 insta = { version = "1.44", features = ["yaml"] }
 tempfile = "3.9"

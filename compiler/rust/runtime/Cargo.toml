@@ -54,9 +54,6 @@ num-bigint = { version = "0.4", optional = true, features = ["serde"] }
 num-rational = { version = "0.4", optional = true }
 thiserror = "1.0"
 
-[patch.crates-io]
-proc-macro-crate = { path = "../../../third_party/proc_macro_crate" }
-
 [dev-dependencies]
 humantime = "2.1"
 criterion = { version = "0.3", default-features = false }
