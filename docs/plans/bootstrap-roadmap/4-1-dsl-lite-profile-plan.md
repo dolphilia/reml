@@ -401,6 +401,12 @@ Config {
 - `docs/` は仕様/ガイドの参照に留め、生成物のソースは置かない。
 - `examples/practical/lite_template/` は回帰用資産として固定し、CLI の生成元とは分離する。
 
+**同期ルール（tooling/templates/lite/ と examples/practical/lite_template/）**
+- 生成テンプレートのソース・オブ・トゥルースは `tooling/templates/lite/` とする。
+- `examples/practical/lite_template/` は回帰用のミラーであり、内容は `tooling/templates/lite/` と同一に保つ。
+- 回帰専用の補助ファイル（例: `src/main_io.reml`）は `examples/practical/lite_template/` のみに置き、テンプレート本体へは含めない。
+- 同期は手動コピーで行い、更新時は README と `reml.toml` の差分が無いことを確認する。
+
 **`tooling/templates/lite/` の確定構成**
 ```
 tooling/templates/lite/

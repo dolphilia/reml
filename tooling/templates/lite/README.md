@@ -1,7 +1,6 @@
 # Lite テンプレート回帰サンプル
 
-Lite テンプレートの最小構成を回帰資産として固定するためのサンプルです。
-`templates/sample.input` と `expected/lite_template/sample.ast.expected` の対応を基準とします。
+学習/試作向けの最小構成テンプレートを生成する。CLI ヘルプには用途と `project.stage` 昇格の導線を含める。
 
 ## 目的
 - Lite テンプレートの最短実行フロー（入力→AST）を固定する
