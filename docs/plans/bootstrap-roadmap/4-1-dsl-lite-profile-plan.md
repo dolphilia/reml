@@ -39,7 +39,7 @@
 
 **既定値の方針（Lite 既定）**
 - `project.stage = "lite"` を明示し、正式運用向けの `beta`/`stable` とは区別する。
-- `AuditPolicy::None` を既定とするが、診断出力は必ず有効化する（監査ログのみ省略）。
+- `AuditPolicy::None` を既定とするが、`Diagnostic` と `AuditEnvelope` は生成し、監査ログの出力のみ省略する。
 - `SecurityPolicy::Permissive` を既定とし、ローカル実行と試作用途に限定する。
 - `dsl.lite.expect_effects = []` / `dsl.lite.capabilities = []` を既定とし、追加は明示的に宣言する。
 - `config.compatibility.json.profile = "json-relaxed"` を既定とし、後から `stable` へ移行可能にする。
@@ -47,9 +47,10 @@
 
 **安全性の境界（必須条件）**
 - 0-1 §1.2 の安全性方針は Lite でも緩和しない（型安全性、`Result` による例外防止を維持）。
-- 監査ログを省略しても `Core.Diagnostics` のエラー/警告は必ず出力する。
+- 監査ログを省略しても `Core.Diagnostics` の `Diagnostic` は必ず出力し、`AuditEnvelope` と `audit_metadata` を欠落させない。
 - Capability は既定で空とし、Lite では暗黙追加しない（必要時に明示宣言が必須）。
 - 効果タグは Lite でも明示する方針とし、未宣言の効果を隠蔽しない。
+- Capability を追加する場合は `StageRequirement`（`Exact`/`AtLeast`）を明示し、`verify_capability_stage` の検証対象とする。
 - Lite プロファイルの範囲外（外部配布・運用）では `project.stage` の昇格と監査ログ有効化を必須とする。
 
 ### フェーズB: テンプレート設計
