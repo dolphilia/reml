@@ -13,6 +13,8 @@ Core.Text/Unicode 関連の文書更新を時系列で追跡し、`docs/plans/bo
 | 2025-12-19 | `reports/spec-audit/ch4/logs/stdlib-test-dsl-template.md` / `examples/practical/core_test/dsl/ast_matcher_basic.reml` | DSL Test Kit の CLI 実行ログとサンプルを更新 | reports/spec-audit/ch4/logs/stdlib-test-dsl-template.md | 完了 |
 | 2025-12-19 | `compiler/rust/frontend/src/parser/mod.rs` / `examples/practical/core_test/dsl/ast_matcher_basic.reml` | `test_parser { case ... }` 糖衣構文の導入とサンプル更新 | compiler/rust/frontend/src/parser/mod.rs | 完了 |
 | 2025-12-19 | `reports/spec-audit/ch4/logs/stdlib-test-dsl-template.md` | DSL Test Kit の CLI 実行ログ（糖衣構文更新後）を追記 | reports/spec-audit/ch4/logs/stdlib-test-dsl-template.md | 完了 |
+| 2025-12-19 | `examples/practical/core_test/dsl/error_expectation_basic.reml` | error_expectation の DSL を糖衣構文へ移行 | examples/practical/core_test/dsl/error_expectation_basic.reml | 完了 |
+| 2025-12-19 | `reports/spec-audit/ch4/logs/stdlib-test-dsl-template.md` | DSL Test Kit の CLI 実行ログ（error_expectation 更新後）を更新 | reports/spec-audit/ch4/logs/stdlib-test-dsl-template.md | 完了 |
 
 ## TODO
 - [ ] Core.Text サンプル (`examples/core-text`) 追加後にログへ記入。
