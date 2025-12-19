@@ -12,6 +12,7 @@ use std::sync::{Arc, Mutex};
 
 use reml_adapter::target::{self, TargetInference};
 use reml_frontend::diagnostic::messages;
+use reml_frontend::ffi_executor::install_cli_ffi_executor;
 use reml_frontend::diagnostic::{
     effects,
     filter::{
@@ -285,6 +286,9 @@ fn format_permission(permission: &CapabilityPermission) -> String {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if let Err(err) = install_cli_ffi_executor() {
+        eprintln!("[FFI] 実行エンジンの初期化に失敗しました: {err}");
+    }
     let capability_command_executed = match try_run_capability_command() {
         Ok(executed) => executed,
         Err(err) => {

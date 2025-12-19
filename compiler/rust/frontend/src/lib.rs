@@ -6,6 +6,7 @@
 pub mod diagnostic;
 pub mod effects;
 pub mod error;
+pub mod ffi_executor;
 pub mod lexer;
 pub mod output;
 pub mod parser;

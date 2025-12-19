@@ -16,8 +16,12 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::{collections::BTreeMap, process};
+use reml_frontend::ffi_executor::install_cli_ffi_executor;
 
 fn main() {
+    if let Err(err) = install_cli_ffi_executor() {
+        eprintln!("[FFI] 実行エンジンの初期化に失敗しました: {err}");
+    }
     match try_main() {
         Ok(code) => process::exit(code),
         Err(err) => {

@@ -39,20 +39,23 @@
 - `Core.Ffi.Dsl` の実装は `compiler/rust/runtime/src` 直下（`ffi` モジュール配下）に配置し、Core の公開 API として整理する。
 - `ffi.wrap` の監査キーは `AuditEnvelope` に統合し、`docs/spec/3-6-core-diagnostics-audit.md` の `ffi.wrapper` / `ffi.wrap.*` を Core 監査ログとして扱う。
 
-1. `compiler/rust/runtime/ffi` に `dsl` モジュールを追加し、`ffi.bind_library` / `ffi.bind_fn` / `ffi.wrap` の API を実装する。
+1. `compiler/rust/runtime/ffi` に `dsl` モジュールを追加し、`ffi.bind_library` / `ffi.bind_fn` / `ffi.wrap` の API を実装する。（完了）
    - `compiler/rust/runtime/src/ffi/dsl/mod.rs` を追加し、`bind_library` / `bind_fn` / `wrap` の公開 API を定義する。
    - `compiler/rust/runtime/src/ffi/mod.rs` に `dsl` の `pub mod` を追加し、`Core.Ffi.Dsl` の公開経路を確立する。
    - `bind_library` の最小実装（ライブラリ解決、`FfiLibraryHandle` 生成、失敗時の診断変換）を追加する。
    - `bind_fn` の最小実装（シンボル解決、`FfiFnSig` 検証、失敗時の診断変換）を追加する。
    - `wrap` の最小実装（引数数/型検証、戻り値の `null` 判定、`Result` 返却）を追加する。
-2. `ffi.wrap` の監査メタデータ（`ffi.wrap.*`）を `AuditEnvelope` に記録し、`docs/spec/3-6-core-diagnostics-audit.md` と一致させる。
+2. `ffi.wrap` の監査メタデータ（`ffi.wrap.*`）を `AuditEnvelope` に記録し、`docs/spec/3-6-core-diagnostics-audit.md` と一致させる。（完了）
    - `AuditEnvelope.metadata["ffi.wrapper"]` を埋める処理を追加する（`name` / `null_check` / `ownership` / `error_map` / `call_mode`）。
    - `ffi.wrap.invalid_argument` / `ffi.wrap.null_return` / `ffi.wrap.ownership_violation` の診断拡張を実装する。
    - `ffi.call` 監査テンプレートへ `wrapper = "ffi.wrap"` を付与する経路を追加する。
-3. `examples/ffi/dsl` を CLI 実行可能にし、`unsafe` 直呼びと `ffi.wrap` の差分を `expected/` に固定する。
-   - `examples/ffi/dsl/unsafe_direct.reml` と `examples/ffi/dsl/wrapped_safe.reml` のランタイム呼び出し経路を整理する。
-   - `expected/ffi/dsl/` に `unsafe` 直呼びと `ffi.wrap` の出力差分を固定する。
-   - 実行ログの診断キーが `ffi.wrap.*` / `ffi.call` に揃っているかを確認する。
+3. `examples/ffi/dsl` を CLI 実行可能にし、`unsafe` 直呼びと `ffi.wrap` の差分を `expected/` に固定する。（完了）
+   - `examples/ffi/dsl/unsafe_direct.reml` と `examples/ffi/dsl/wrapped_safe.reml` のランタイム呼び出し経路を整理する。（完了）
+   - `expected/ffi/dsl/` に `unsafe` 直呼びと `ffi.wrap` の出力差分を固定する。（完了）
+   - 実行ログの診断キーが `ffi.wrap.*` / `ffi.call` に揃っているかを確認する。（完了）
+   - 実行ログ生成手順:
+     - `reml_frontend` / `remlc` 起動時に `set_ffi_call_executor` が初期化されるため、CLI 実行に合わせて `ffi.call` の監査メタデータを生成する。（完了）
+     - `expected/ffi/dsl/unsafe_direct.audit.json` と `expected/ffi/dsl/wrapped_safe.audit.json` に `ffi.call` / `ffi.wrapper` を反映し、`docs/spec/3-6-core-diagnostics-audit.md` の必須キーに合わせて更新する。（完了）
 
 ### フェーズC: reml build 統合
 1. `reml.json` の `ffi` セクション（`libraries`/`headers`/`bindgen`/`linker`）を `tooling/cli` でパースし、検証エラーを `ffi.build.*` で出力する。
@@ -92,6 +95,7 @@
 
 ## 進捗状況
 - 2025-12-19: フェーズA 完了（`reml-bindgen` 実装/manifest 更新/`expected/` 追加/仕様・ガイド反映）。
+- 2025-12-19: フェーズB 完了（`Core.Ffi.Dsl` ランタイム API/監査メタデータ/FFI 実行エンジン接続/`expected/ffi/dsl` 反映）。
 
 ## 参照
 - `docs/plans/ffi-improvement/0-0-overview.md`

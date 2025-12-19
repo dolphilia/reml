@@ -222,6 +222,11 @@ impl FfiRawFn {
         &self.symbol
     }
 
+    /// ライブラリ識別子を返す。
+    pub fn library_label(&self) -> &str {
+        self.library.audit_label()
+    }
+
     /// シグネチャを返す。
     pub fn signature(&self) -> &FfiFnSig {
         &self.signature
@@ -599,6 +604,10 @@ impl FfiError {
     pub fn with_audit_metadata(mut self, audit_metadata: JsonMap<String, Value>) -> Self {
         self.audit_metadata = audit_metadata;
         self
+    }
+
+    pub fn diagnostic_code(&self) -> Option<&'static str> {
+        self.diagnostic_code
     }
 
     /// Guard 診断へ変換する。
