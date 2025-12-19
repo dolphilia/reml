@@ -35,6 +35,7 @@
   - 推奨ツールチェーン（`target`/`toolchain`）
   - 学習に要する時間
 - ギャラリーは JSON メタデータを公開し、CLI が `reml new --template` で取得できるようにする。
+- テンプレート例: `lite`（学習/試作用。`Core.Parse` と `Core.Test` の最小構成を含み、`config.compatibility.json = json-relaxed` で開始する）。
 
 ### 2.3 フィードバック収集
 - チュートリアル完了後に `reml feedback submit`（計画中）で匿名メトリクスを収集し、`../guides/community-handbook.md` のプライバシーポリシーに基づき保存期間を 90 日とする。

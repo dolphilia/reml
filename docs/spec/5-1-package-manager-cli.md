@@ -62,10 +62,11 @@
 ### 3.1 `reml new`
 - 入力
   - `reml new <path>`：指定パスに新規プロジェクトを生成。
-  - `--template <name>`：`../guides/dsl-gallery.md` に列挙されたテンプレートを選択（`core-app`, `pipeline`, `conductor` など）。
+  - `--template <name>`：`../guides/dsl-gallery.md` に列挙されたテンプレートを選択（`lite`, `core-app`, `pipeline`, `conductor` など）。
   - `--dsl-entry <module::name>`：メイン DSL エクスポートを上書き。
 - 処理
   - 雛形の `reml.toml` と `src/main.reml` を生成し、`[dsl.capabilities]` はテンプレート定義を初期値とする。
+  - `lite` テンプレートは `config.compatibility.json.profile = "json-relaxed"` を既定とし、`dsl.lite.capabilities = []` で開始する。監査は `audit = none` を既定とし、必要時に `--audit-log <path>` で有効化する。
   - `.reml/targets` に既定プロファイル `desktop-x86_64` を配置し、`CliDiagnosticEnvelope.summary.stats.templates_used` を更新する。
 - 出力
   - 成功時は `cli.new.success` 診断を `severity = Info` で出力。

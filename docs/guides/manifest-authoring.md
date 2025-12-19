@@ -26,4 +26,31 @@
 - `reml new` が生成する既定テンプレート。
 - DSL タイプ別テンプレート例（config, template, query）。
 
+### 6.1 Lite テンプレート最小例（草案）
+
+Lite テンプレートは学習/試作向けに最小構成で開始し、`config.compatibility.json` を緩和した状態で提供する。
+
+```toml
+[project]
+name = "reml-lite-sample"
+version = "0.1.0"
+stage = "lite"
+
+[dsl.lite]
+entry = "src/main.reml"
+exports = ["LiteDsl"]
+kind = "config"
+expect_effects = []
+capabilities = []
+allow_prerelease = true
+summary = "Lite DSL template"
+
+[config.compatibility.json]
+profile = "json-relaxed"
+trailing_comma = "arrays_and_objects"
+unquoted_key = "allow_alpha_numeric"
+duplicate_key = "last_write_wins"
+feature_guard = ["json5", "bare_keys", "trailing_comma"]
+```
+
 > 本ガイドはドラフト。Chapter 4 完成に合わせて詳細化する。
