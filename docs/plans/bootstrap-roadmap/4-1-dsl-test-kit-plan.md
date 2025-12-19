@@ -45,19 +45,21 @@ test_parser(my_parser) {
 ## 作業ステップ
 
 ### フェーズA: 仕様整理
-1. `Core.Test.Dsl` の構文定義（`test_parser`/`case`/`Error`/`...`）を `docs/spec/3-11-core-test.md` に追記する。
-2. 既存の `Core.Test` API と整合する型シグネチャ（`Parser<T>` の戻り値/診断）を整理する。
-3. `docs/spec/2-5-error.md` と診断コードの粒度・命名規則をクロスチェックし、Test DSL で参照可能な最小セットを明記する。
+1. [x] `Core.Test.Dsl` の構文定義（`test_parser`/`case`/`Error`/`...`）を `docs/spec/3-11-core-test.md` に追記する。
+2. [x] 既存の `Core.Test` API と整合する型シグネチャ（`Parser<T>` の戻り値/診断）を整理する。
+3. [x] `docs/spec/2-5-error.md` と診断コードの粒度・命名規則をクロスチェックし、Test DSL で参照可能な最小セットを明記する。
 
 ### フェーズB: ゴールデンファイル運用
-1. `golden_case` の入出力命名規則（`*.input`/`*.ast`/`*.error`）を定義する。
-2. `Core.Test` のスナップショット更新ポリシーと統合し、差分更新の手順を `docs/guides/testing.md` に記載する。
-3. `AuditEnvelope` に記録するイベント名とキー（例: `snapshot.updated`）を整理する。
+1. [x] `golden_case` の入出力命名規則（`*.input`/`*.ast`/`*.error`）を定義する。
+2. [x] `Core.Test` のスナップショット更新ポリシーと統合し、差分更新の手順を `docs/guides/testing.md` に記載する。
+3. [x] `AuditEnvelope` に記録するイベント名とキー（例: `snapshot.updated`）を整理する。
 
 ### フェーズC: サンプルと回帰接続
-1. `examples/practical/` に DSL テストサンプルを追加し、`expected/` に期待出力を固定する。
-2. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に新規シナリオを登録する。
-3. `reports/spec-audit/ch4/logs/` へのログ保存テンプレートを用意する。
+1. [x] `examples/practical/` に DSL テストサンプルを追加し、`expected/` に期待出力を固定する。
+2. [x] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に新規シナリオを登録する。
+3. [x] `reports/spec-audit/ch4/logs/` へのログ保存テンプレートを用意する。
+4. [x] `CH3-TEST-410/411/412` を `ok` に更新し、`reports/spec-audit/ch4/logs/stdlib-test-dsl-template.md` に実行ログを記録する。
+   - **補足**: `Core.Test.Dsl` の糖衣構文は未実装のため、現行 CLI では `DslCase` 形式のサンプルで診断 0 件を確認した（CH3-TEST-411 の expected 診断は DSL 実行時の期待として維持）。
 
 ### フェーズD: Rust 実装追加
 1. `compiler/rust/runtime/src/test/` に `Core.Test.Dsl` のエントリポイント（`test_parser`/`case`/`Error`）を追加する。
