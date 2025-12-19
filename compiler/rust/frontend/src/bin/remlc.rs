@@ -470,6 +470,7 @@ fn run_bindgen_if_enabled(
     let tool_version = reml_bindgen_version();
     let cache_status = handle_bindgen_cache(cache_path.as_ref());
     if cache_status == "cache_hit" {
+        let mut status = cache_status;
         if let Some(cache_path) = cache_path.as_ref() {
             if let Err(err) = restore_bindgen_cache(
                 cache_path,
@@ -479,6 +480,7 @@ fn run_bindgen_if_enabled(
                 diagnostics.push(ffi_build_bindgen_failed(format!(
                     "生成物キャッシュの復元に失敗しました: {err}"
                 )));
+                status = "failed";
             }
         }
         audit_entries.push(ffi_bindgen_audit_entry(
@@ -486,7 +488,7 @@ fn run_bindgen_if_enabled(
             bindgen,
             ffi,
             &input_hash,
-            cache_status,
+            status,
             cache_path.as_ref(),
             Some(&output),
             &tool_version,
@@ -733,12 +735,21 @@ fn reml_bindgen_version() -> String {
         return "unknown".to_string();
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let trimmed = stdout.trim();
+    parse_bindgen_version(&stdout)
+}
+
+fn parse_bindgen_version(raw: &str) -> String {
+    let trimmed = raw.trim();
     if trimmed.is_empty() {
-        "unknown".to_string()
-    } else {
-        trimmed.to_string()
+        return "unknown".to_string();
     }
+    if let Some(candidate) = trimmed
+        .split_whitespace()
+        .find(|token| token.chars().any(|ch| ch.is_ascii_digit()))
+    {
+        return candidate.trim_matches(|ch: char| ch == 'v' || ch == ':').to_string();
+    }
+    trimmed.to_string()
 }
 
 fn ffi_build_bindgen_failed(message: impl Into<String>) -> GuardDiagnostic {
