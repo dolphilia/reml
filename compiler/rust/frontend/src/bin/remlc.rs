@@ -38,6 +38,7 @@ fn try_main() -> Result<i32, CliError> {
         return Ok(0);
     }
     match args.remove(0).as_str() {
+        "new" => handle_new(args),
         "manifest" => handle_manifest(args),
         "config" => handle_config(args),
         "build" => handle_build(args),
@@ -87,6 +88,34 @@ fn manifest_dump(args: Vec<String>) -> Result<i32, CliError> {
             Ok(0)
         }
     }
+}
+
+fn handle_new(args: Vec<String>) -> Result<i32, CliError> {
+    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
+        print_new_help();
+        return Ok(0);
+    }
+    let opts = NewOptions::parse(args)?;
+    let template_root = template_root_path()?;
+    let source = template_root.join(&opts.template);
+    if !source.is_dir() {
+        return Err(CliError::Usage(format!(
+            "テンプレート `{}` が見つかりませんでした（探索先: {}）",
+            opts.template,
+            template_root.display()
+        )));
+    }
+    if opts.output_path.exists() && !is_dir_empty(&opts.output_path)? {
+        return Err(CliError::Usage(format!(
+            "出力先 `{}` が空ではありません",
+            opts.output_path.display()
+        )));
+    }
+    if !opts.output_path.exists() {
+        fs::create_dir_all(&opts.output_path)?;
+    }
+    copy_dir_all(&source, &opts.output_path)?;
+    Ok(0)
 }
 
 fn handle_config(mut args: Vec<String>) -> Result<i32, CliError> {
@@ -192,6 +221,55 @@ fn read_manifest(path: &Path) -> Result<Manifest, CliError> {
     let manifest = load_manifest(path)?;
     validate_manifest(&manifest)?;
     Ok(manifest)
+}
+
+#[derive(Debug)]
+struct NewOptions {
+    output_path: PathBuf,
+    template: String,
+}
+
+impl NewOptions {
+    fn parse(args: Vec<String>) -> Result<Self, CliError> {
+        let mut output_path: Option<PathBuf> = None;
+        let mut template = "lite".to_string();
+        let mut iter = args.into_iter();
+        while let Some(arg) = iter.next() {
+            match arg.as_str() {
+                "--template" => {
+                    let value = iter.next().ok_or_else(|| {
+                        CliError::Usage("--template にはテンプレート名が必要です".to_string())
+                    })?;
+                    template = value;
+                }
+                other if other.starts_with("--") => {
+                    return Err(CliError::Usage(format!(
+                        "new コマンドに未知のオプション `{other}` が指定されました"
+                    )));
+                }
+                other => {
+                    if output_path.is_some() {
+                        return Err(CliError::Usage(format!(
+                            "出力先は 1 つだけ指定してください（追加: `{other}`）"
+                        )));
+                    }
+                    output_path = Some(PathBuf::from(other));
+                }
+            }
+        }
+        let output_path = output_path.ok_or_else(|| {
+            CliError::Usage("出力先のパスを指定してください".to_string())
+        })?;
+        if template != "lite" {
+            return Err(CliError::Usage(format!(
+                "テンプレート `{template}` は未対応です（利用可能: lite）"
+            )));
+        }
+        Ok(Self {
+            output_path,
+            template,
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -1572,13 +1650,55 @@ impl From<AuditBridgeError> for CliError {
     }
 }
 
+fn template_root_path() -> Result<PathBuf, CliError> {
+    if let Ok(value) = env::var("REML_TEMPLATE_ROOT") {
+        return Ok(PathBuf::from(value));
+    }
+    let cwd = env::current_dir()?;
+    Ok(cwd.join("tooling").join("templates"))
+}
+
+fn is_dir_empty(path: &Path) -> Result<bool, CliError> {
+    if !path.exists() {
+        return Ok(true);
+    }
+    let mut entries = fs::read_dir(path)?;
+    Ok(entries.next().is_none())
+}
+
+fn copy_dir_all(src: &Path, dst: &Path) -> Result<(), CliError> {
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if file_type.is_dir() {
+            fs::create_dir_all(&dst_path)?;
+            copy_dir_all(&src_path, &dst_path)?;
+        } else if file_type.is_file() {
+            fs::copy(&src_path, &dst_path)?;
+        }
+    }
+    Ok(())
+}
+
 fn print_help() {
     eprintln!(
         "使い方: remlc <command> [options]\n\nサブコマンド:\n\
+  new <path>           テンプレートから新規プロジェクトを生成\n\
   manifest dump         reml.toml を JSON へダンプ\n\
   build                reml.json の FFI セクションを検証\n\
   config lint           マニフェスト/スキーマを検証して JSON レポートを表示\n\
   config diff <old> <new>  JSON 設定ファイル同士の差分を ChangeSet 形式で出力"
+    );
+}
+
+fn print_new_help() {
+    eprintln!(
+        "使い方: remlc new <path> [--template <name>]\n\n\
+        --template <name>  既定: lite（学習/試作向けの最小構成テンプレート）。\n\
+                         CLI ヘルプには用途と project.stage 昇格の導線を含める。\n\
+        環境変数 REML_TEMPLATE_ROOT を指定するとテンプレート探索先を変更できます。"
     );
 }
 
