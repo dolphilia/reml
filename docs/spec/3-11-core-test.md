@@ -101,7 +101,35 @@ fn fuzz_bytes(config: FuzzConfig, f: fn(Bytes) -> Result<(), TestError>) -> Resu
 - 失敗時は `Diagnostic.code = "test.failed"` を既定とし、`extensions["test"].case_name` を必須とする。
 - スナップショット更新時は `AuditEvent::SnapshotUpdated` を発行し、`snapshot.name` / `snapshot.hash` を記録する。
 
-## 7. 例
+## 7. DSL Test Kit（Core.Test.Dsl）
+
+`Core.Test.Dsl` は DSL パーサー向けのテスト記述を簡潔化するための糖衣構文と Matcher 群を提供する。`Core.Test` のスナップショット/診断ポリシーと同一の更新規則に従う。
+
+### 7.1 最小構文
+
+```reml
+use Core.Test.Dsl
+
+test_parser(my_parser) {
+  case "1 + 2" => Add(Int(1), Int(2))
+  case "1 + " => Error(code="parser.unexpected_eof", at=4)
+  case "fn main() {}" => Func(name="main", ...)
+}
+```
+
+### 7.2 Matcher 仕様（最小セット）
+- `...` は構造的部分一致を示し、未指定フィールドを無視する。
+- `List`/`Record` は順序/キー一致を必須とし、欠落は `AssertionFailed` とする。
+- `Option`/`Result` は `Some(...)` / `Ok(...)` を簡略記法として許可する。
+
+### 7.3 Error Expectation
+- `code`: 診断コード（必須）
+- `at`: 文字位置（整数）または `line:col`
+- `message`: 部分一致（省略可）
+
+`Error(...)` は `Core.Diagnostics` の `Diagnostic` と突き合わせ、`test.failed` へ集約する。
+
+## 8. 例
 
 ```reml
 use Core.Test
