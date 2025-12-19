@@ -59,6 +59,26 @@ test_parser(my_parser) {
 2. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に新規シナリオを登録する。
 3. `reports/spec-audit/ch4/logs/` へのログ保存テンプレートを用意する。
 
+### フェーズD: Rust 実装追加
+1. `compiler/rust/runtime/src/test/` に `Core.Test.Dsl` のエントリポイント（`test_parser`/`case`/`Error`）を追加する。
+2. AST Matcher と Error Expectation の最小ロジックを実装し、`TestError`/`Diagnostic` への橋渡しを統一する。
+3. ゴールデンファイル読み込み/比較の経路を `assert_snapshot` と揃え、`snapshot.updated` の監査イベントを記録する。
+
+## Rust 実装の現状と API 追加案
+
+### 既存実装の範囲（`compiler/rust/runtime/src/test/mod.rs`）
+- `assert_eq`/`assert_snapshot`/`test`/`table_test`/`fuzz_bytes` の最小 API を提供。
+- スナップショットはプロセス内メモリ保持で、`snapshot.updated` の監査イベントを記録。
+- `test.failed` 診断の生成と `AuditEnvelope` への橋渡しを実装済み。
+
+### Core.Test.Dsl の追加 API 案（Rust 側）
+- `test_parser(parser, cases) -> TestResult` の導入（`test_with` と同等の診断収集経路を使用）。
+- `DslCase` 型（`source: Text` + `expectation` を保持）と `DslExpectation` enum。
+- `DslExpectation::Ast(AstMatcher)` / `DslExpectation::Error(ErrorExpectation)` / `DslExpectation::Golden(GoldenCase)` を用意。
+- `AstMatcher` の最小比較器（`...` による部分一致、Record/List の順序一致）を提供。
+- `ErrorExpectation` の最小比較器（`code`/`at`/`message`）を提供。
+- `GoldenCase` で `assert_snapshot_with` を流用し、`snapshot.name` と `scenario_id` を一致させる。
+
 ## 依存関係
 - `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md` の Core.Test 実装ロードマップに依存。
 - `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan-v2.md` の `Parser<T>` 仕様と整合させる。

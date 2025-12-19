@@ -375,6 +375,32 @@ Config {
 - 追加時のシナリオIDは `CH5-LITE-001` とし、用途は「テンプレート生成後の最短実行」を想定する。
 - 監査ログ必須のシナリオ群とは分離し、`audit = none` の条件で実行できる行を用意する。
 
+### フェーズF: 実装準備と実装計画
+1. `reml new --template lite` の CLI 実装範囲を確定する。
+2. Lite 既定値（監査/Capability/互換プロファイル）の実装ポイントを整理する。
+3. テンプレート資産の配置と配布フローを定義する。
+4. 回帰シナリオ（`CH5-LITE-001`）の自動実行条件を決める。
+
+#### 実装準備と実装計画（案）
+
+**CLI 実装範囲**
+- `reml new --template lite` を CLI に追加し、テンプレート一覧とヘルプ文言を更新する。
+- `reml new` 生成物に `reml.toml` と `README.md` の既定値を反映する。
+- `--audit-log <path>` 指定時のみ監査ログを有効化する挙動を確定する。
+
+**既定値の実装ポイント**
+- `project.stage = "lite"` と `dsl.lite.*` を CLI 生成テンプレートに埋め込む。
+- `config.compatibility.json.profile = "json-relaxed"` をテンプレート既定値として反映する。
+- `dsl.lite.capabilities = []` を既定にし、Capability 追加は明示的に指定させる。
+
+**テンプレート資産の配置**
+- テンプレート本体は `tooling/` または `docs/` のテンプレート資産ディレクトリに置く案を比較する。
+- `examples/practical/lite_template/` は回帰用資産として固定し、CLI の生成元とは分離する。
+
+**回帰シナリオ運用**
+- `CH5-LITE-001` を CI の Phase 4 回帰に含めるかを判断し、含める場合は入力/期待値の同期手順を定義する。
+- 監査ログを省略する Lite 既定では `*.audit.jsonl` を必須としない。
+
 ## 参照
 - `docs/notes/dsl-enhancement-proposal.md`
 - `docs/spec/0-1-project-purpose.md`
@@ -393,6 +419,7 @@ Config {
 | 74 週 | フェーズC: 監査/Capability 導線整理 |
 | 75 週 | フェーズD: 仕様・ガイド更新 |
 | 76 週 | フェーズE: 回帰/サンプル接続判断 |
+| 77 週 | フェーズF: 実装準備と実装計画 |
 
 ## リスクと緩和策
 
@@ -430,4 +457,4 @@ Config {
 - `examples/practical/lite_template/` と `expected/lite_template/` を追加（最小構成）
 
 **未着手/残タスク**
-- なし
+- フェーズF: 実装準備と実装計画の実作業（CLI/テンプレート/回帰運用の確定）

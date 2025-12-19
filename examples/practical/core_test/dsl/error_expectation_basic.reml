@@ -1,0 +1,21 @@
+module Examples.Practical.CoreTest.Dsl.ErrorExpectationBasic
+
+use Core.Parse as Parse
+use Core.Test.Dsl
+
+type Expr =
+  | Int(Int)
+  | Add(Expr, Expr)
+
+fn expr_parser() -> Parse.Parser<Expr> {
+  Parse.fail("dsl-test-kit-pending")
+}
+
+fn main() -> Str {
+  let outcome = test_parser(expr_parser()) {
+    case "1 +" => Error(code = "parser.unexpected_eof", at = 3)
+  }
+  match outcome with
+    | Ok(_) -> "dsl:ok"
+    | Err(_) -> "dsl:error"
+}
