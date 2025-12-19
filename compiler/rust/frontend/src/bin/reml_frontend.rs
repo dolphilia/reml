@@ -70,6 +70,8 @@ use reml_runtime::{
     CapabilityDescriptor, CapabilityIsolationLevel, CapabilityPermission, CapabilityProvider,
     CapabilityRegistry, CapabilityTimestamp,
 };
+use reml_runtime::audit::AuditEvent;
+use reml_runtime::test as runtime_test;
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -85,6 +87,7 @@ struct CliRunResult {
     input_path: PathBuf,
     diagnostic_count: usize,
     stage_payload: StageAuditPayload,
+    test_audit_events: Vec<AuditEvent>,
 }
 
 #[derive(Default)]
@@ -328,6 +331,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(result) => {
             let outcome =
                 PipelineOutcome::success(1, result.diagnostic_count, result.exit_code.label());
+            for event in &result.test_audit_events {
+                if let Err(err) = audit_emitter.emit_external_event(event) {
+                    eprintln!("[AUDIT] test イベントの書き出しに失敗しました: {err}");
+                }
+            }
             if let Err(err) =
                 audit_emitter.pipeline_completed(&descriptor, &outcome, Some(&result.stage_payload))
             {
@@ -493,6 +501,12 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         let mut runtime_diags = execute_runtime_phase(&input_path);
         diagnostics_entries.append(&mut runtime_diags);
     }
+    let mut test_diags = runtime_test::take_test_diagnostics()
+        .into_iter()
+        .map(|diag| diag.into_json())
+        .collect::<Vec<_>>();
+    diagnostics_entries.append(&mut test_diags);
+    let test_audit_events = runtime_test::take_test_audit_events();
     let mut filter_stats = FilterStats::default();
     if let Some(filter) = args.diagnostic_filter() {
         let mut retained = Vec::with_capacity(diagnostics_entries.len());
@@ -596,6 +610,7 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         input_path,
         diagnostic_count,
         stage_payload: stage_payload.clone(),
+        test_audit_events,
     })
 }
 
@@ -735,6 +750,7 @@ fn run_parse_driver_mode(
         input_path: input_path.to_path_buf(),
         diagnostic_count,
         stage_payload,
+        test_audit_events: Vec::new(),
     })
 }
 

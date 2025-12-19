@@ -106,9 +106,10 @@ fn fuzz_bytes(config: FuzzConfig, f: fn(Bytes) -> Result<(), TestError>) -> Resu
 use Core.Test
 
 fn main() -> Str {
-  match Test.assert_snapshot("core_test_basic", "alpha") {
-    Ok(_) => "snapshot:ok",
-    Err(_) => "snapshot:error",
+  let outcome = Test.assert_snapshot("core_test_basic", "alpha")
+  match outcome with
+    | Ok(_) -> "snapshot:ok"
+    | Err(_) -> "snapshot:error"
   }
 }
 ```
@@ -122,9 +123,10 @@ fn main() -> Str {
     { input: "beta", expected: "beta" },
   ]
 
-  match Test.table_test(cases, |value| value) {
-    Ok(_) => "table:ok",
-    Err(_) => "table:error",
+  let outcome = Test.table_test(cases, |value| value)
+  match outcome with
+    | Ok(_) -> "table:ok"
+    | Err(_) -> "table:error"
   }
 }
 ```

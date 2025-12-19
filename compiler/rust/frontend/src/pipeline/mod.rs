@@ -256,6 +256,20 @@ impl<W: Write> AuditEmitter<W> {
         self.emit_event(AuditEventKind::ConfigCompatChanged, metadata, timestamp)
     }
 
+    pub fn emit_external_event(&mut self, event: &AuditEvent) -> io::Result<()> {
+        let writer = match self.writer.as_mut() {
+            Some(writer) => writer,
+            None => return Ok(()),
+        };
+        event
+            .validate()
+            .map_err(|err| io::Error::new(ErrorKind::InvalidData, err))?;
+        let payload =
+            serde_json::to_vec(event).map_err(|err| io::Error::new(ErrorKind::Other, err))?;
+        writer.write_all(&payload)?;
+        writer.write_all(b"\n")
+    }
+
     pub fn into_inner(self) -> Option<W> {
         self.writer
     }

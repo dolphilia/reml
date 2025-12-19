@@ -3,8 +3,8 @@ module Examples.Practical.CoreTest.Snapshot.BasicOk
 use Core.Test
 
 fn main() -> Str {
-  match Test.assert_snapshot("core_test_basic", "alpha") {
-    Ok(_) => "snapshot:ok",
-    Err(_) => "snapshot:error",
-  }
+  let outcome = Test.assert_snapshot("core_test_basic", "alpha")
+  match outcome with
+    | Ok(_) -> "snapshot:ok"
+    | Err(_) -> "snapshot:error"
 }

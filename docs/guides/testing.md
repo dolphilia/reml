@@ -14,9 +14,10 @@
 use Core.Test
 
 fn main() -> Str {
-  match Test.assert_snapshot("core_test_basic", "alpha") {
-    Ok(_) => "snapshot:ok",
-    Err(_) => "snapshot:error",
+  let outcome = Test.assert_snapshot("core_test_basic", "alpha")
+  match outcome with
+    | Ok(_) -> "snapshot:ok"
+    | Err(_) -> "snapshot:error"
   }
 }
 ```
@@ -25,12 +26,13 @@ fn main() -> Str {
 use Core.Test
 
 fn main() -> Str {
-  match test "core_test_basic" {
+  let outcome = test "core_test_basic" {
     Test.assert_snapshot("core_test_basic", "alpha")?
     Ok(())
-  } {
-    Ok(_) => "snapshot:ok",
-    Err(_) => "snapshot:error",
+  }
+  match outcome with
+    | Ok(_) -> "snapshot:ok"
+    | Err(_) -> "snapshot:error"
   }
 }
 ```
