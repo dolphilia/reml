@@ -67,6 +67,7 @@
 - 処理
   - 雛形の `reml.toml` と `src/main.reml` を生成し、`[dsl.capabilities]` はテンプレート定義を初期値とする。
   - `lite` テンプレートは `config.compatibility.json.profile = "json-relaxed"` を既定とし、`dsl.lite.capabilities = []` で開始する。監査は `audit = none` を既定とし、必要時に `--audit-log <path>` で有効化する。
+  - `lite` テンプレートの `README.md` には、監査ログ省略の前提と `project.stage` 昇格（`beta`/`stable`）を含む移行手順を記載する。
   - `.reml/targets` に既定プロファイル `desktop-x86_64` を配置し、`CliDiagnosticEnvelope.summary.stats.templates_used` を更新する。
 - 出力
   - 成功時は `cli.new.success` 診断を `severity = Info` で出力。

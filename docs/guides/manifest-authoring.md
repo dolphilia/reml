@@ -53,4 +53,6 @@ duplicate_key = "last_write_wins"
 feature_guard = ["json5", "bare_keys", "trailing_comma"]
 ```
 
+Lite では監査ログ出力を省略する前提だが、`project.stage` を `beta`/`stable` に昇格する場合は `--audit-log <path>` の指定と `capabilities`/`expect_effects` の明示を推奨する。
+
 > 本ガイドはドラフト。Chapter 4 完成に合わせて詳細化する。
