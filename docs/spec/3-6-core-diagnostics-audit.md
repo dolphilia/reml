@@ -850,6 +850,8 @@ fn record_change_set<T>(value: T, diff: ChangeSet) -> Result<T, Diagnostic>   //
 | `cache_path` | Str | Optional | キャッシュ格納先ディレクトリ | 3-9 §2.10.3 |
 | `duration_ms` | u64 | Optional | 実行に要した時間（ミリ秒） | 3-9 §2.10 |
 | `tool_version` | Str | Optional | `reml-bindgen` のバージョン | 3-9 §2.10.3 |
+| `error.code` | Str | Optional | 失敗時の診断コード（例: `ffi.bindgen.generate_failed`） | 3-9 §2.10.3 |
+| `error.message` | Str | Optional | 失敗時のメッセージ | 3-9 §2.10.3 |
 
 #### 5.2.2 `ffi.build` 監査メタデータ
 

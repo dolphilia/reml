@@ -471,34 +471,52 @@ fn run_bindgen_if_enabled(
     let cache_status = handle_bindgen_cache(cache_path.as_ref());
     if cache_status == "cache_hit" {
         let mut status = cache_status;
+        let mut error_code: Option<String> = None;
+        let mut error_message: Option<String> = None;
         if let Some(cache_path) = cache_path.as_ref() {
             if let Err(err) = restore_bindgen_cache(
                 cache_path,
                 Path::new(&output),
                 Path::new(&manifest_path),
             ) {
-                let diag = match err {
+                let (diag, code, message) = match err {
                     BindgenCacheRestoreError::OutputOverwrite(path) => {
-                        ffi_bindgen_output_overwrite(path)
+                        let diag = ffi_bindgen_output_overwrite(path);
+                        let message = diag.message.clone();
+                        (diag, "ffi.bindgen.output_overwrite".to_string(), message)
                     }
                     BindgenCacheRestoreError::ManifestOverwrite(path) => {
-                        ffi_bindgen_output_overwrite(path)
+                        let diag = ffi_bindgen_output_overwrite(path);
+                        let message = diag.message.clone();
+                        (diag, "ffi.bindgen.output_overwrite".to_string(), message)
                     }
                     BindgenCacheRestoreError::CacheMissing(path) => {
-                        ffi_build_bindgen_failed(format!(
+                        let message = format!(
                             "生成物キャッシュが見つかりません: {}",
                             path.display()
-                        ))
+                        );
+                        (
+                            ffi_build_bindgen_failed(message.clone()),
+                            "ffi.bindgen.generate_failed".to_string(),
+                            message,
+                        )
                     }
                     BindgenCacheRestoreError::Io(path, err) => {
-                        ffi_build_bindgen_failed(format!(
+                        let message = format!(
                             "生成物キャッシュの復元に失敗しました: {} ({})",
                             path.display(),
                             err
-                        ))
+                        );
+                        (
+                            ffi_build_bindgen_failed(message.clone()),
+                            "ffi.bindgen.generate_failed".to_string(),
+                            message,
+                        )
                     }
                 };
                 diagnostics.push(diag);
+                error_code = Some(code);
+                error_message = Some(message);
                 status = "failed";
             }
         }
@@ -511,6 +529,8 @@ fn run_bindgen_if_enabled(
             cache_path.as_ref(),
             Some(&output),
             &tool_version,
+            error_code.as_deref(),
+            error_message.as_deref(),
         ));
         return (diagnostics, audit_entries);
     }
@@ -526,9 +546,13 @@ fn run_bindgen_if_enabled(
                 .to_string_lossy()
                 .to_string()
         });
+    let mut error_code: Option<String> = None;
+    let mut error_message: Option<String> = None;
     let status = match invoke_reml_bindgen(bindgen, ffi, &output, &manifest_path) {
         Ok(()) => "success",
         Err(err) => {
+            error_code = Some("ffi.bindgen.generate_failed".to_string());
+            error_message = Some(err.message.clone());
             diagnostics.push(err);
             "failed"
         }
@@ -553,6 +577,8 @@ fn run_bindgen_if_enabled(
         cache_path.as_ref(),
         Some(&output),
         &tool_version,
+        error_code.as_deref(),
+        error_message.as_deref(),
     ));
     (diagnostics, audit_entries)
 }
@@ -637,6 +663,8 @@ fn ffi_bindgen_audit_entry(
     cache_path: Option<&PathBuf>,
     output: Option<&str>,
     tool_version: &str,
+    error_code: Option<&str>,
+    error_message: Option<&str>,
 ) -> Value {
     let mut meta = Map::new();
     let mut bindgen_meta = Map::new();
@@ -680,6 +708,15 @@ fn ffi_bindgen_audit_entry(
         "tool_version".into(),
         Value::String(tool_version.to_string()),
     );
+    if let Some(code) = error_code {
+        bindgen_meta.insert("error.code".into(), Value::String(code.to_string()));
+    }
+    if let Some(message) = error_message {
+        bindgen_meta.insert(
+            "error.message".into(),
+            Value::String(message.to_string()),
+        );
+    }
     meta.insert("ffi.bindgen".into(), Value::Object(bindgen_meta));
     let mut entry = Map::new();
     entry.insert("metadata".into(), Value::Object(meta));
