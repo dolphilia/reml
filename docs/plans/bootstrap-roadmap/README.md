@@ -139,6 +139,7 @@ Rust 実装を実務レベルの `.reml` シナリオで検証し、セルフホ
 | [4-1-ffi-improvement-implementation-plan.md](4-1-ffi-improvement-implementation-plan.md) | M1: FFI 実装 | reml-bindgen/FFI DSL/build 統合と回帰接続 | 随時 |
 | [4-1-stdlib-improvement-implementation-plan.md](4-1-stdlib-improvement-implementation-plan.md) | M1: Stdlib 改善 | Core.Test/Cli/Text.Pretty/Doc/Lsp の実装と回帰接続 | 随時 |
 | [4-1-dsl-lite-profile-plan.md](4-1-dsl-lite-profile-plan.md) | M1: Lite 入口 | Reml Lite プロファイルとテンプレートの仕様化 | 随時 |
+| [4-1-dsl-test-kit-plan.md](4-1-dsl-test-kit-plan.md) | M1: DSL Test Kit | Core.Test.Dsl の仕様化と回帰接続 | 随時 |
 | [4-1-core-parse-error-labeling-impl-plan.md](4-1-core-parse-error-labeling-impl-plan.md) | M1: Core.Parse Label | 期待集合を概念ラベル中心にする実装計画（CP-WS2-001 回帰） | 随時 |
 | [4-1-core-parse-lex-helpers-impl-plan.md](4-1-core-parse-lex-helpers-impl-plan.md) | M1: Core.Parse Lex | LexPreset/lex_pack を用いた WS3 Step3 のサンプル置換と回帰登録計画 | 随時 |
 | [4-1-core-parse-input-zero-copy-impl-plan.md](4-1-core-parse-input-zero-copy-impl-plan.md) | M1: Core.Parse Input | Input/Zero-copy の不変条件チェックと回帰接続（WS5） | 随時 |
