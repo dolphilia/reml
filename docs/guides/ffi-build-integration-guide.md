@@ -40,3 +40,14 @@ ffi {
 - `ffi.build.*` と `ffi.bindgen.*` を分離して監査する。
 - 失敗時は `input_hash` をログに残し、再生成条件の確認に利用する。
 - `ffi.build.config_invalid` / `ffi.build.link_failed` が出た場合は `reml.json` の `ffi` セクションを優先的に確認する。
+
+## `tool_version` の解釈例
+`reml-bindgen --version` の出力は実装や配布形態で差があるため、監査ログの `tool_version` は次のルールで正規化する。
+
+- 文字列内の「数字を含むトークン」を優先して採用する。
+- 該当トークンが見つからない場合は `unknown` を記録する。
+
+例:
+- `reml-bindgen 0.3.1` → `0.3.1`
+- `reml-bindgen version v0.3.1` → `0.3.1`
+- `dev build` → `unknown`

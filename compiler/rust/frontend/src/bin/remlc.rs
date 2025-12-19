@@ -477,9 +477,28 @@ fn run_bindgen_if_enabled(
                 Path::new(&output),
                 Path::new(&manifest_path),
             ) {
-                diagnostics.push(ffi_build_bindgen_failed(format!(
-                    "生成物キャッシュの復元に失敗しました: {err}"
-                )));
+                let diag = match err {
+                    BindgenCacheRestoreError::OutputOverwrite(path) => {
+                        ffi_bindgen_output_overwrite(path)
+                    }
+                    BindgenCacheRestoreError::ManifestOverwrite(path) => {
+                        ffi_bindgen_output_overwrite(path)
+                    }
+                    BindgenCacheRestoreError::CacheMissing(path) => {
+                        ffi_build_bindgen_failed(format!(
+                            "生成物キャッシュが見つかりません: {}",
+                            path.display()
+                        ))
+                    }
+                    BindgenCacheRestoreError::Io(path, err) => {
+                        ffi_build_bindgen_failed(format!(
+                            "生成物キャッシュの復元に失敗しました: {} ({})",
+                            path.display(),
+                            err
+                        ))
+                    }
+                };
+                diagnostics.push(diag);
                 status = "failed";
             }
         }
@@ -667,11 +686,29 @@ fn ffi_bindgen_audit_entry(
     Value::Object(entry)
 }
 
+#[derive(Debug)]
+enum BindgenCacheRestoreError {
+    OutputOverwrite(PathBuf),
+    ManifestOverwrite(PathBuf),
+    CacheMissing(PathBuf),
+    Io(PathBuf, std::io::Error),
+}
+
 fn restore_bindgen_cache(
     cache_path: &Path,
     output: &Path,
     manifest: &Path,
-) -> Result<(), std::io::Error> {
+) -> Result<(), BindgenCacheRestoreError> {
+    if output.exists() {
+        return Err(BindgenCacheRestoreError::OutputOverwrite(
+            output.to_path_buf(),
+        ));
+    }
+    if manifest.exists() {
+        return Err(BindgenCacheRestoreError::ManifestOverwrite(
+            manifest.to_path_buf(),
+        ));
+    }
     let output_name = output
         .file_name()
         .map(|value| value.to_string_lossy().to_string())
@@ -682,18 +719,28 @@ fn restore_bindgen_cache(
         .unwrap_or_else(|| "bindings.manifest.json".to_string());
     let cached_output = cache_path.join(output_name);
     let cached_manifest = cache_path.join(manifest_name);
+    if !cached_output.exists() {
+        return Err(BindgenCacheRestoreError::CacheMissing(cached_output));
+    }
+    if !cached_manifest.exists() {
+        return Err(BindgenCacheRestoreError::CacheMissing(cached_manifest));
+    }
     if let Some(parent) = output.parent() {
         if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)?;
+            fs::create_dir_all(parent)
+                .map_err(|err| BindgenCacheRestoreError::Io(parent.to_path_buf(), err))?;
         }
     }
     if let Some(parent) = manifest.parent() {
         if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)?;
+            fs::create_dir_all(parent)
+                .map_err(|err| BindgenCacheRestoreError::Io(parent.to_path_buf(), err))?;
         }
     }
-    let _ = fs::copy(cached_output, output)?;
-    let _ = fs::copy(cached_manifest, manifest)?;
+    let _ = fs::copy(&cached_output, output)
+        .map_err(|err| BindgenCacheRestoreError::Io(cached_output.clone(), err))?;
+    let _ = fs::copy(&cached_manifest, manifest)
+        .map_err(|err| BindgenCacheRestoreError::Io(cached_manifest.clone(), err))?;
     Ok(())
 }
 
@@ -760,6 +807,22 @@ fn ffi_build_bindgen_failed(message: impl Into<String>) -> GuardDiagnostic {
         message: message.into(),
         notes: Vec::new(),
         extensions: Map::new(),
+        audit_metadata: Map::new(),
+    }
+}
+
+fn ffi_bindgen_output_overwrite(path: PathBuf) -> GuardDiagnostic {
+    let mut extensions = Map::new();
+    let mut payload = Map::new();
+    payload.insert("path".into(), Value::String(path.display().to_string()));
+    extensions.insert("ffi.bindgen".into(), Value::Object(payload));
+    GuardDiagnostic {
+        code: "ffi.bindgen.output_overwrite",
+        domain: "ffi",
+        severity: DiagnosticSeverity::Error,
+        message: "キャッシュ復元先が既に存在するため上書きを中止しました".to_string(),
+        notes: Vec::new(),
+        extensions,
         audit_metadata: Map::new(),
     }
 }
