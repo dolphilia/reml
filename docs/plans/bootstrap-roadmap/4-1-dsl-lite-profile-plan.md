@@ -58,6 +58,56 @@
 2. テンプレート内に含める DSL サンプル（簡易パーサ、テスト、最小 conductor）を定義する。
 3. `reml new --template` の既存テンプレート体系と整合する名称・説明文を確定する。
 
+#### Lite テンプレート設計詳細（案）
+
+**設計方針**
+- 初回起動までの手順を 3 ステップ以内に抑える（`reml new` → `reml run` → `reml test`）。
+- `Core.Parse`/`Core.Test`/`Core.Diagnostics` の最小セットのみ使用し、他モジュールは README の「次の一歩」に送る。
+- Lite 既定は「監査ログ省略・診断必須・Capability 空集合」の状態を明示し、`reml.toml` と README に同じ文言を置く。
+- ファイル間の依存方向を固定する（`main.reml` → `parser.reml` / `dsl_test.reml`、逆依存を作らない）。
+
+**ファイル別の内容設計（ドラフト）**
+- `README.md`:
+  - Lite の目的/制約/対象外（運用・配布は標準プロファイルへ移行）を冒頭に明記。
+  - 実行手順（`reml run`/`reml test`）と期待出力の最小例を 1 画面以内に記載。
+  - 監査ログは省略されるが `Diagnostic` は出力されることを明記。
+  - 移行手順に `project.stage` 昇格と監査ログ有効化（`--audit-log <path>`）を含める。
+- `reml.toml`:
+  - `project.stage = "lite"` と `dsl.lite` ブロックを必須とし、`capabilities = []` を既定にする。
+  - `config.compatibility.json.profile = "json-relaxed"` を設定し、`feature_guard` に移行対象を列挙する。
+  - テンプレート内で `allow_prerelease = true` を付け、`beta`/`stable` への移行を README で示す。
+- `src/main.reml`:
+  - `Core.Parse` を呼び出し、成功時は AST を最小限に表示、失敗時は `Diagnostic` を出力する。
+  - `AuditPolicy::None` の前提でも `Diagnostic` が生成されることを確認できる構成にする。
+- `src/parser.reml`:
+  - `lex_pack`/`with_space` を使った最小 DSL（例: `key = value` の設定 DSL）を実装。
+  - 解析結果は小さな AST 型で表現し、テストとスナップショットに流用できる形にする。
+- `src/dsl_test.reml`:
+  - `table_test` による正常系・異常系の 2 パターンを含める。
+  - `assert_snapshot` で AST 出力を固定化し、`templates/sample.*` と整合させる。
+- `templates/sample.input` / `templates/sample.ast`:
+  - `sample.input` は 3 行程度の最小 DSL 入力。
+  - `sample.ast` はスナップショットの期待値を示し、差分確認に利用する。
+
+**テンプレートに含める最小 DSL（案）**
+- 形式: `key = value` の 1 行設定 DSL
+- データ型: `Str` と `Int` のみ（解析失敗時に `Diagnostic.code` を出す）
+- 余白: `with_space` による空白スキップ（コメントは含めない）
+
+**最小 DSL の例（Reml 構文）**
+```reml
+config {
+  port = 8080
+  host = "localhost"
+  mode = "lite"
+}
+```
+
+**CLI 既定動作との整合**
+- `reml new --template lite` の説明文は「学習/試作向け最小構成」を明示。
+- `reml run` では `Diagnostic` を標準出力へ表示することを期待し、README に表記。
+- `reml test` では `table_test`/`assert_snapshot` が動作する前提で記述する。
+
 **テンプレート構成案（v0）**
 
 ```
@@ -204,3 +254,4 @@ feature_guard = ["json5", "bare_keys", "trailing_comma"]
 
 ## 進捗状況
 - 2025-12-20: フェーズA（Lite プロファイル定義案）を追記。
+- 2025-12-20: フェーズB（テンプレート設計詳細案）を追記。
