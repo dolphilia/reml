@@ -12,8 +12,13 @@ let sc: Parser<()> =
   Lex.whitespace()
     |> Lex.skipMany
 
-let lexeme<A>(p: Parser<A>) -> Parser<A> = Lex.lexeme(sc, p)
-let sym(text: Str) -> Parser<()> = Lex.symbol(sc, text)
+fn lexeme<A>(p: Parser<A>) -> Parser<A> {
+  Lex.lexeme(sc, p)
+}
+
+fn sym(text: Str) -> Parser<()> {
+  Lex.symbol(sc, text)
+}
 
 fn int_expr() -> Parser<Expr> {
   lexeme(Lex.int10())
@@ -32,9 +37,14 @@ fn expr_parser() -> Parser<Expr> {
 }
 
 fn main() -> Str {
-  let outcome = test_parser(expr_parser()) {
-    case "1 +" => Error(code = "parser.unexpected_eof", at = 3)
-  }
+  let cases = [
+    {
+      name: None,
+      source: "1 +",
+      expect: Error({ code: "parser.unexpected_eof", at: Some(Offset(3)), message: None }),
+    },
+  ]
+  let outcome = test_parser(expr_parser(), cases)
   match outcome with
     | Ok(_) -> "dsl:ok"
     | Err(_) -> "dsl:error"
