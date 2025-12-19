@@ -117,17 +117,54 @@ test_parser(my_parser) {
 }
 ```
 
-### 7.2 Matcher 仕様（最小セット）
+### 7.2 型とシグネチャ（Core.Parse / Core.Test との整合）
+
+```reml
+pub type DslCase<T> = {
+  name: Option<Str>,
+  source: Str,
+  expect: DslExpectation<T>,
+}
+
+pub enum DslExpectation<T> =
+  | Ast(AstMatcher<T>)
+  | Error(ErrorExpectation)
+
+pub type ErrorExpectation = {
+  code: Str,
+  at: Option<AtSpec>,
+  message: Option<Str>,
+}
+
+pub enum AtSpec =
+  | Offset(Int)
+  | LineCol(line: Int, col: Int)
+
+fn test_parser<T>(parser: Parser<T>, cases: List<DslCase<T>>) -> Result<(), TestError>
+```
+
+- `test_parser` は `Core.Parse` が返す `ParseResult<T>`（2-1）を入力にし、`Result<(), TestError>` で失敗を返す。
+- `AtSpec.Offset` は `Diagnostic.at.byte_start`（0-origin）、`AtSpec.LineCol` は `Diagnostic.at.line_start` / `col_start`（1-origin）と一致判定する。
+- `DslExpectation::Ast` は `ParseResult.value = Some(_)` かつ `diagnostics` に `Severity::Error` が無い場合のみ評価する。
+- `DslExpectation::Error` は `ParseResult.diagnostics` から `Severity::Error` の診断を抽出し、`ErrorExpectation` と突き合わせる。
+
+### 7.3 Matcher 仕様（最小セット）
 - `...` は構造的部分一致を示し、未指定フィールドを無視する。
 - `List`/`Record` は順序/キー一致を必須とし、欠落は `AssertionFailed` とする。
 - `Option`/`Result` は `Some(...)` / `Ok(...)` を簡略記法として許可する。
 
-### 7.3 Error Expectation
-- `code`: 診断コード（必須）
-- `at`: 文字位置（整数）または `line:col`
-- `message`: 部分一致（省略可）
+### 7.4 Error Expectation
+- `code`: 診断コード（必須）。`Diagnostic.code` または `Diagnostic.codes` と一致した場合に合格。
+- `at`: 文字位置（`Offset(Int)`）または `LineCol(line: Int, col: Int)`。
+- `message`: 部分一致（省略可）。
 
-`Error(...)` は `Core.Diagnostics` の `Diagnostic` と突き合わせ、`test.failed` へ集約する。
+`Error(...)` は `Core.Diagnostics` の `Diagnostic` と突き合わせ、失敗時は `test.failed` へ集約する。
+
+### 7.5 診断コード最小セットと命名
+- 診断コードは 2-5 §C-1 の `message_key` と同じく **小文字ドット区切り**を採用し、未登録コードは 3-6 §2 の `DiagnosticCatalog` に登録してから利用する。
+- `Core.Test.Dsl` が参照する最小セットは以下とする。
+  - `parser.syntax.expected_tokens`: 既定の構文期待値エラー（2-5 §B-5 の規約に従う）。
+  - `parser.unexpected_eof`: 入力終端で期待集合が満たせない場合の EOF 失敗。`at` は入力末尾を指すこと。
 
 ## 8. 例
 
@@ -139,7 +176,6 @@ fn main() -> Str {
   match outcome with
     | Ok(_) -> "snapshot:ok"
     | Err(_) -> "snapshot:error"
-  }
 }
 ```
 
@@ -156,6 +192,5 @@ fn main() -> Str {
   match outcome with
     | Ok(_) -> "table:ok"
     | Err(_) -> "table:error"
-  }
 }
 ```
