@@ -158,6 +158,7 @@ impl AuditEventKind {
                 Some(BRIDGE_RELOAD_KEYS)
             }
             AuditEventKind::SnapshotUpdated => Some(SNAPSHOT_UPDATED_KEYS),
+            AuditEventKind::DocTest => None,
             AuditEventKind::Custom(_) => None,
         }
     }
