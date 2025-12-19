@@ -237,6 +237,35 @@ feature_guard = ["json5", "bare_keys", "trailing_comma"]
 2. Capability/Stage の最低限要件と、Lite から本番プロファイルへ移行するためのチェックリストを作成する。
 3. `Core.Diagnostics` の最低限の診断出力が残ることを保証する。
 
+#### 監査・Capability・効果の導線整理（案）
+
+**Lite で省略される項目（明示）**
+- 監査ログ出力（`AuditPolicy::None` によりログ出力は省略）
+- Capability の事前登録（`dsl.lite.capabilities = []` のため既定では無効）
+- Stage 監査の強制（`reml test` では簡易確認に留める）
+
+**Lite でも維持する項目（必須）**
+- `Diagnostic` と `AuditEnvelope` の生成（ログは省略しても構造体は生成）
+- 効果タグの明示（未宣言効果は許容せず、診断対象とする）
+- `verify_capability_stage` による Stage 整合（Capability 追加時は必須）
+
+**移行導線（Lite → 標準プロファイル）**
+1. `project.stage` を `beta` もしくは `stable` に更新する。
+2. `--audit-log <path>` を指定して監査ログ出力を有効化する。
+3. `dsl.lite.expect_effects` と `dsl.lite.capabilities` を DSL 実装に合わせて明示する。
+4. Capability ごとに `StageRequirement`（`Exact`/`AtLeast`）を定義し、`verify_capability_stage` を通過させる。
+5. `config.compatibility.json.profile` を `stable` へ戻し、`feature_guard` の依存を解消する。
+
+**Capability/Stage の最低限要件（Lite からの差分）**
+- Lite では `capabilities = []` を既定とし、追加する場合は必ず `CapabilityDescriptor.stage` を確認する。
+- `StageRequirement::AtLeast` を基本とし、特定用途で `Exact` を採用する際は README に理由を記載する。
+- `effects.contract.stage_mismatch` が発生した場合は Lite でも `Diagnostic` を `Error` として扱う。
+
+**診断出力の最低限保証**
+- `Diagnostic.severity = Error | Warning` は常に表示対象とする。
+- `Diagnostic.audit_metadata` を空にしない（`schema.version` など最小キーは維持）。
+- `AuditEnvelope.metadata` に `event.kind` など最低限のパイプライン情報を残す方針を維持する。
+
 ### フェーズD: 仕様・ガイドの更新計画
 1. `docs/spec/5-1-package-manager-cli.md` に Lite テンプレートを追記する。
 2. `docs/spec/5-4-community-content.md` に Lite テンプレートの紹介と用途を追記する。
