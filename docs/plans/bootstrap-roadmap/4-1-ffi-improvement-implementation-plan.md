@@ -58,9 +58,15 @@
      - `expected/ffi/dsl/unsafe_direct.audit.json` と `expected/ffi/dsl/wrapped_safe.audit.json` に `ffi.call` / `ffi.wrapper` を反映し、`docs/spec/3-6-core-diagnostics-audit.md` の必須キーに合わせて更新する。（完了）
 
 ### フェーズC: reml build 統合
-1. `reml.json` の `ffi` セクション（`libraries`/`headers`/`bindgen`/`linker`）を `tooling/cli` でパースし、検証エラーを `ffi.build.*` で出力する。
+1. `reml.json` の `ffi` セクション（`libraries`/`headers`/`bindgen`/`linker`）を `tooling/cli` でパースし、検証エラーを `ffi.build.*` で出力する。（着手済み: `remlc build` で最小検証を追加）
 2. `reml build` に `reml-bindgen` 呼び出しとキャッシュ層を追加し、入力ハッシュと生成物の一致を監査ログへ記録する。
 3. Linux/macOS/Windows の差分を `docs/spec/3-10-core-env.md` と照合し、`docs/guides/ffi-build-integration-guide.md` に合わせた出力を維持する。
+
+補足: bindgen 呼び出し/キャッシュ層のフック地点（案）
+- 入口: `remlc build` サブコマンドに `--emit-bindgen` / `--cache-dir` を追加し、`reml.json` の `ffi.bindgen` を解釈して `reml-bindgen` を起動する。
+- キャッシュ鍵: `ffi.headers` / `ffi.bindgen.config` / `TargetProfile` / `reml-bindgen` バージョンを正規化した `input_hash` を算出し、`expected/` と同じ構造で `cache_dir/ffi/{input_hash}` に生成物を保存する。
+- 監査ログ: `ffi.bindgen` 実行ごとに `ffi.bindgen.status` と `input_hash` を `AuditEnvelope.metadata["ffi.bindgen"]` に記録し、`cache_hit` の場合は `headers` を省略可とする。
+- 呼び出し制御: `ffi.bindgen.enabled = true` の場合のみ実行し、`output` が未指定なら `ffi.build.config_invalid` を返す。
 
 ### フェーズD: WIT 調査ログと PoC
 1. `docs/notes/ffi-wasm-component-model-log.md` を更新し、WIT 型→Reml 型対応表の一次案を追加する。
@@ -96,6 +102,7 @@
 ## 進捗状況
 - 2025-12-19: フェーズA 完了（`reml-bindgen` 実装/manifest 更新/`expected/` 追加/仕様・ガイド反映）。
 - 2025-12-19: フェーズB 完了（`Core.Ffi.Dsl` ランタイム API/監査メタデータ/FFI 実行エンジン接続/`expected/ffi/dsl` 反映）。
+- 2025-12-19: フェーズC 着手（`remlc build` で `reml.json` の FFI セクション検証を追加）。
 
 ## 参照
 - `docs/plans/ffi-improvement/0-0-overview.md`
