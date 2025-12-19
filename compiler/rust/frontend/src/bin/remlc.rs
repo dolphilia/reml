@@ -466,13 +466,16 @@ fn run_bindgen_if_enabled(
         }
     };
     let input_hash = compute_bindgen_input_hash(ffi, bindgen);
-    let cache_status = handle_bindgen_cache(&input_hash, opts.cache_dir.as_ref());
+    let cache_path = cache_path_for_input_hash(opts.cache_dir.as_ref(), &input_hash);
+    let cache_status = handle_bindgen_cache(cache_path.as_ref());
     if cache_status == "cache_hit" {
         audit_entries.push(ffi_bindgen_audit_entry(
             &opts.config_path,
             bindgen,
+            ffi,
             &input_hash,
             cache_status,
+            cache_path.as_ref(),
             None,
         ));
         return (diagnostics, audit_entries);
@@ -496,11 +499,24 @@ fn run_bindgen_if_enabled(
             "failed"
         }
     };
+    if status == "success" {
+        if let Some(cache_path) = cache_path.as_ref() {
+            if let Err(err) =
+                cache_bindgen_outputs(cache_path, Path::new(&output), Path::new(&manifest_path))
+            {
+                diagnostics.push(ffi_build_bindgen_failed(format!(
+                    "生成物キャッシュの格納に失敗しました: {err}"
+                )));
+            }
+        }
+    }
     audit_entries.push(ffi_bindgen_audit_entry(
         &opts.config_path,
         bindgen,
+        ffi,
         &input_hash,
         status,
+        cache_path.as_ref(),
         Some(&output),
     ));
     (diagnostics, audit_entries)
@@ -540,15 +556,21 @@ fn invoke_reml_bindgen(
     }
 }
 
-fn handle_bindgen_cache(input_hash: &str, cache_dir: Option<&PathBuf>) -> &'static str {
-    let Some(cache_dir) = cache_dir else {
+fn cache_path_for_input_hash(
+    cache_dir: Option<&PathBuf>,
+    input_hash: &str,
+) -> Option<PathBuf> {
+    cache_dir.map(|root| root.join("ffi").join(input_hash))
+}
+
+fn handle_bindgen_cache(cache_path: Option<&PathBuf>) -> &'static str {
+    let Some(cache_path) = cache_path else {
         return "success";
     };
-    let cache_path = cache_dir.join("ffi").join(input_hash);
     if cache_path.exists() {
         return "cache_hit";
     }
-    let _ = fs::create_dir_all(&cache_path);
+    let _ = fs::create_dir_all(cache_path);
     "success"
 }
 
@@ -574,8 +596,10 @@ fn compute_bindgen_input_hash(ffi: &FfiSection, bindgen: &BindgenSection) -> Str
 fn ffi_bindgen_audit_entry(
     config_path: &Path,
     bindgen: &BindgenSection,
+    ffi: &FfiSection,
     input_hash: &str,
     status: &str,
+    cache_path: Option<&PathBuf>,
     output: Option<&str>,
 ) -> Value {
     let mut meta = Map::new();
@@ -583,6 +607,17 @@ fn ffi_bindgen_audit_entry(
     bindgen_meta.insert("event".into(), Value::String("ffi.bindgen".into()));
     bindgen_meta.insert("status".into(), Value::String(status.to_string()));
     bindgen_meta.insert("input_hash".into(), Value::String(input_hash.to_string()));
+    if status != "cache_hit" {
+        bindgen_meta.insert(
+            "headers".into(),
+            Value::Array(
+                ffi.headers
+                    .iter()
+                    .map(|header| Value::String(header.clone()))
+                    .collect(),
+            ),
+        );
+    }
     bindgen_meta.insert(
         "config_path".into(),
         Value::String(
@@ -596,13 +631,48 @@ fn ffi_bindgen_audit_entry(
         "manifest_path".into(),
         Value::String(config_path.display().to_string()),
     );
+    if let Some(cache_path) = cache_path {
+        bindgen_meta.insert(
+            "cache_path".into(),
+            Value::String(cache_path.display().to_string()),
+        );
+    }
     if let Some(output) = output {
         bindgen_meta.insert("output_path".into(), Value::String(output.to_string()));
     }
+    bindgen_meta.insert(
+        "tool_version".into(),
+        Value::String(reml_bindgen_version()),
+    );
     meta.insert("ffi.bindgen".into(), Value::Object(bindgen_meta));
     let mut entry = Map::new();
     entry.insert("metadata".into(), Value::Object(meta));
     Value::Object(entry)
+}
+
+fn cache_bindgen_outputs(
+    cache_path: &Path,
+    output: &Path,
+    manifest: &Path,
+) -> Result<(), std::io::Error> {
+    fs::create_dir_all(cache_path)?;
+    let output_name = output
+        .file_name()
+        .map(|value| value.to_string_lossy().to_string())
+        .unwrap_or_else(|| "bindings.reml".to_string());
+    let manifest_name = manifest
+        .file_name()
+        .map(|value| value.to_string_lossy().to_string())
+        .unwrap_or_else(|| "bindings.manifest.json".to_string());
+    let cached_output = cache_path.join(output_name);
+    let cached_manifest = cache_path.join(manifest_name);
+    let _ = fs::copy(output, cached_output)?;
+    let _ = fs::copy(manifest, cached_manifest)?;
+    Ok(())
+}
+
+fn reml_bindgen_version() -> String {
+    std::env::var("REML_BINDGEN_VERSION").unwrap_or_else(|_| "unknown".to_string())
 }
 
 fn ffi_build_bindgen_failed(message: impl Into<String>) -> GuardDiagnostic {
