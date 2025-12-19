@@ -42,7 +42,7 @@ fn expr_parser() -> Parser<Expr> {
 }
 
 fn ast_parser() -> Parser<Ast> {
-  expr_parser().map(|expr| Ast { tag: "expr", items: [expr] })
+  expr_parser().map(|expr| { tag: "expr", items: [expr] })
 }
 
 fn main() -> Str {
