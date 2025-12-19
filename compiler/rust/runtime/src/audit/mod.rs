@@ -97,6 +97,7 @@ pub enum AuditEventKind {
     BridgeReload,
     BridgeRollback,
     SnapshotUpdated,
+    DocTest,
     Custom(String),
 }
 
@@ -116,6 +117,7 @@ impl AuditEventKind {
             AuditEventKind::BridgeReload => Cow::Borrowed("bridge.reload"),
             AuditEventKind::BridgeRollback => Cow::Borrowed("bridge.rollback"),
             AuditEventKind::SnapshotUpdated => Cow::Borrowed("snapshot.updated"),
+            AuditEventKind::DocTest => Cow::Borrowed("doc.doctest"),
             AuditEventKind::Custom(value) => Cow::Owned(value.clone()),
         }
     }
@@ -135,6 +137,7 @@ impl AuditEventKind {
             "bridge.reload" => AuditEventKind::BridgeReload,
             "bridge.rollback" => AuditEventKind::BridgeRollback,
             "snapshot.updated" => AuditEventKind::SnapshotUpdated,
+            "doc.doctest" => AuditEventKind::DocTest,
             other => AuditEventKind::Custom(other.to_string()),
         }
     }

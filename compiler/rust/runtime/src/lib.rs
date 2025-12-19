@@ -9,10 +9,12 @@ pub mod cli;
 pub mod collections;
 pub mod config;
 pub mod data;
+pub mod doc;
 #[cfg(feature = "metrics")]
 pub mod diagnostics;
 pub mod ffi;
 pub mod io;
+pub mod lsp;
 #[cfg(feature = "core_numeric")]
 pub mod numeric;
 pub mod parse;
