@@ -103,22 +103,49 @@ Reml の仕様は非常に高機能（監査、セキュリティ、効果シス
 *   **簡易テンプレート:** `reml new --template lite` のように、最小構成のプロジェクトテンプレートを提供します（`docs/spec/5-1-package-manager-cli.md` のテンプレート機構に追加）。
 *   **安全性の明示:** 0-1 §1.2 の安全性方針に抵触しないよう、Lite は「学習/試作」向けであることと、監査/Capability を段階的に有効化する導線を併記します。
 
-## 2.5 仕様反映の整理
+### 2.5 DSL Lifecycle & Observability (Phase 4.1+)
+
+**現状:**
+`RunConfig.trace` による実行追跡や `Core.Diagnostics` による診断出力は備わっていますが、DSL の「実行性能」や「複雑な不一致の原因」を開発者が視覚的に把握する手段が不足しています。
+
+**提案:**
+DSL のライフサイクル全体を支援するための「観測性」と「可搬性」の強化を追加します。
+
+#### 1. Interactive Parser Explorer (`Core.Parse.Visualizer`)
+*   **内容**: `RunConfig.trace` が出力する詳細なトレースログ（どのルールがどこで試行され、成功/失敗したか）を可視化するツール、または LSP 経由のインタラクティブ・デバッガ。
+*   **メリット**: 巨大なバックトラックや、予期せぬルールでの停滞（Performance Leak）を視覚的に特定できます。
+
+#### 2. DSL Performance Metrics (`Core.Benchmark.Dsl`)
+*   **内容**: `0-1 §1.1` の性能基準（10MB/s, 低メモリ消費）を DSL 単位で自動計測し、回帰を検知する標準テストスイート、および `collect-iterator-audit-metrics.py` との連携。
+*   **メリット**: 「実用に耐える性能」を客観的に保証し続けることができます。
+
+#### 3. Portable DSL Runtime (WASM / Zero-dep C)
+*   **内容**: Reml で記述した DSL パーサーを、ランタイムライブラリなし（または極小のランタイム付き）で WebAssembly や C 言語から呼び出し可能な形式でエクスポートする機能。
+*   **メリット**: 「プログラミング言語を作るための言語」として、作成した DSL をブラウザや他言語のエコシステムへ手軽に持ち出せるようになります。
+
+#### 4. Effect-Aware DSL Contracts
+*   **内容**: DSL 内で使用可能な「効果（Effects）」を制限し、Capability Registry と連動させる仕組み。
+*   **メリット**: 「この DSL はファイル IO を行わない」といった安全性の契約をコンパイル時に保証し、サンドボックス実行を容易にします。
+
+## 3. 仕様反映の整理（更新）
 
 | 項目 | 既存仕様の有無 | ギャップ | 本提案での扱い |
 | --- | --- | --- | --- |
 | DSL テスト | `Core.Test`（3-11） | パーサー専用アサーションがない | `Core.Test.Dsl` として拡張 |
 | LSP 自動導出 | `Core.Lsp`（3-14） | `Core.Parse` からの導出が未定義 | `Core.Lsp.Derive` 追加 |
-| CST/Lossless | フォーマッタ基盤のみ | Trivia 保持/CST が未定義 | `Core.Parse` 拡張 |
-| Lite プロファイル | `reml new --template` | Lite の仕様が未定義 | 新テンプレート/ガイドを追加 |
+| CST/Lossless | `ConfigTriviaProfile` あり | Trivia 保持の共通規約/CST が未定義 | `Core.Parse` 拡張（CST モード） |
+| Lite プロファイル | `reml new` テンプレートのみ | 最小構成の言語プロファイルが未定義 | 新テンプレート/ガイドを追加 |
+| 可視化・計測 | `RunConfig.trace` のみ | 標準の分析ツール/ベンチャーマークがない | `Core.Parse.Visualizer` / `Core.Benchmark` |
+| ポータビリティ | `Core.Ffi` はある | DSL 単位での独立出力（WASM等）が未定義 | `reml build --target wasm` 等の整備 |
 
-## 3. まとめ
+## 4. まとめ
 
-Reml の強力な基盤の上に、これらの「開発者体験（DX）」を向上させるレイヤーを追加することで、Reml は真に "DSL-First" な言語となります。
+Reml の強力な基盤の上に、これらの「開発者体験（DX）」と「実用的な運用性（Ops）」を向上させるレイヤーを追加することで、Reml は真に "DSL-First" な言語となります。
 
 1.  **書く (Write):** `Core.Parse` + "Lite" Profile で手軽に開始。
 2.  **試す (Test):** `Core.Test.Dsl` で即座に検証。
-3.  **使う (Use):** `Core.Lsp.Derive` でエディタ支援を自動生成。
-4.  **整える (Polish):** CST サポートでフォーマッタを提供。
+3.  **使う (Use):** `Core.Lsp.Derive` でエディタ支援、WASM 出力で配布。
+4.  **守る (Safe):** Effect-Aware な契約で安全なサンドボックス実行。
+5.  **磨く (Polish):** CST サポートでのフォーマッタ提供と、計測ツールによる性能向上。
 
 このサイクルを Reml エコシステム内で完結させることで、言語開発の民主化を加速できると考えます。
