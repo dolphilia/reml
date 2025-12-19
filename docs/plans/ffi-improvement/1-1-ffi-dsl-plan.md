@@ -37,7 +37,7 @@
 1. `Core.Ffi.Dsl` の API 一覧（`bind_library` / `bind_fn` / `wrap` / 型 DSL）と型定義を `docs/spec/3-9-core-async-ffi-unsafe.md` に追記する。
 2. `ffi.wrap` の責務（エラーチェック、所有権/ライフタイムの前提）と監査ログ要件を `docs/spec/3-6-core-diagnostics-audit.md` に整理する。
 3. `examples/ffi` に DSL 例を追加し、`unsafe` 直呼びと `ffi.wrap` の対比サンプルを用意する。
-4. `docs/guides/` に FFI DSL 導入ガイドを新設し、Phase 1 の `reml-bindgen` 生成物との併用フローを明記する。
+4. `docs/guides/ffi-dsl-guide.md` に FFI DSL 導入ガイドを新設し、Phase 1 の `reml-bindgen` 生成物との併用フローを明記する。
 
 ## 依存関係
 - `docs/spec/3-9-core-async-ffi-unsafe.md`

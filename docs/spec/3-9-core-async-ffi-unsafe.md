@@ -742,6 +742,30 @@ fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Res
 - `status = "stubbed"` の場合は §2.3 の効果ハンドラ経由であることを示し、`CapabilityRegistry::stage` が `Experimental`/`Beta` のいずれかを返したかを `Diagnostic.extensions["effects"].stage` に複写する。
 - Capability レジストリと連携する場合は、`call_with_capability` の戻り値に含まれる `FfiCapability.audit` を介して上記テンプレートを自動転送し、`CapabilitySecurity` チェックリスト（3-8 §5.2.1）で効果タグ・Stage の整合を検証する。
 
+### 2.8 reml-bindgen（仕様反映セクション）
+
+- `reml-bindgen` の CLI / `reml-bindgen.toml` 構成、`bindings.manifest.json` の形式を整理する。
+- C 型→Reml 型の変換表（確定・一次範囲）と `const` / `volatile` / `restrict` の記録方式を記述する。
+- 生成時の診断キー（`ffi.bindgen.*`）とレビュー手順の要点を記載する。
+
+### 2.9 Core.Ffi.Dsl（仕様反映セクション）
+
+- `bind_library` / `bind_fn` / `wrap` と型 DSL の API 仕様を整理する。
+- `effect {ffi, unsafe}` の境界と `ffi.wrap` の責務（安全化、監査）を明記する。
+- `Result` ベースのエラーハンドリングと診断キーの対応を記述する。
+
+### 2.10 reml build 統合（仕様反映セクション）
+
+- `reml.json` の FFI セクション（`libraries` / `headers` / `bindgen` / `linker`）を定義する。
+- `reml build` のヘッダ解析→生成→キャッシュ→リンクのフローを整理する。
+- 監査キー（`ffi.build.*` / `ffi.bindgen.*`）と入力ハッシュの取り扱いを記述する。
+
+### 2.11 WASM Component Model（将来拡張セクション）
+
+- WIT の型体系と Reml 型の対応表（一次案）を整理する。
+- Canonical ABI の境界安全性と Shared Nothing モデルの前提を記述する。
+- 実装ではなく調査フェーズであることを明記する。
+
 ## 3. Core.Unsafe.Ptr API
 
 > 目的：`unsafe` 境界で扱う生ポインタ操作を公式 API として定義し、FFI・低レベルバッファ操作・GC 連携に必要な安全策と監査契約を明文化する。
