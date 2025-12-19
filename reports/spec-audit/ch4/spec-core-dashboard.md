@@ -4,6 +4,17 @@
 - 対象シナリオ: 73 件 / 成功 73 件 / 失敗 0 件
 - 入力ソース: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
 
+## FFI シナリオ（未実行）
+
+FFI 系シナリオは `spec_core` スイートとは別に回帰監視する。
+
+| Scenario | Input | Expected | Status | Notes |
+| --- | --- | --- | --- | --- |
+| `FFI-BINDGEN-001` | `examples/ffi/bindgen/minimal/reml-bindgen.toml` | `expected/ffi/bindgen/minimal/counter_bindings.reml` | 未実行 | manifest は `expected/ffi/bindgen/minimal/bindings.manifest.json` を参照 |
+| `FFI-DSL-001` | `examples/ffi/dsl/wrapped_safe.reml` | `expected/ffi/dsl/wrapped_safe.audit.json` | 未実行 | unsafe 直呼びは `expected/ffi/dsl/unsafe_direct.audit.json` を参照 |
+| `FFI-BUILD-001` | `docs/guides/ffi-build-integration-guide.md` | `reports/spec-audit/ch4/logs/ffi-build-*.md` | 未実行 | `ffi.build.*` の監査ログを記録する |
+| `FFI-WIT-001` | `docs/notes/ffi-wasm-component-model-log.md` | `docs/guides/ffi-wit-poc.md` | 未実行 | PoC 実施後に外部ツール名と生成物パスを追記する |
+
 | Scenario | File | 期待 Diagnostics | 実際 Diagnostics | Exit | 判定 | 備考 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `CH1-LET-001` | `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-simple-ok.reml` | — | — | 0 | ✅ pass | 基本的な let 束縛。Result/Option を含まない純粋ケースで、Phase4TestCase における基準入力。 |

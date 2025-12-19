@@ -12,6 +12,20 @@
 2. `phase4-scenario-matrix.csv` に登録された `diagnostic_keys` と CLI 出力を照合し、`reports/spec-audit/ch4/*.md` で Pass/Fail を追跡できるようにする。
 3. 解析の障害を修正する過程で、仕様側の不足が判明した場合は `docs/spec/1-x`〜`3-x` へ追記する判断材料（spec_fix/impl_fix）を明確にする。
 
+## FFI 回帰接続（Phase 4 追加）
+
+- `phase4-scenario-matrix.csv` に FFI シナリオを追加し、`FFI-BINDGEN-001` / `FFI-DSL-001` / `FFI-BUILD-001` / `FFI-WIT-001` を回帰対象として追跡する。
+- 生成物の参照先:
+  - `expected/ffi/bindgen/minimal/counter_bindings.reml`
+  - `expected/ffi/bindgen/minimal/bindings.manifest.json`
+  - `expected/ffi/dsl/wrapped_safe.audit.json`
+  - `expected/ffi/dsl/unsafe_direct.audit.json`
+- 実行ログの保存先:
+  - `reports/spec-audit/ch4/logs/ffi-build-*.md`
+  - `reports/spec-audit/ch4/logs/ffi-dsl-*.md`
+  - `reports/spec-audit/ch4/logs/ffi-bindgen-*.md`
+- WIT 調査は `docs/notes/ffi-wasm-component-model-log.md` と `docs/guides/ffi-wit-poc.md` の更新内容を対象とし、PoC 実施後に外部ツール名と生成物パスを追記する。
+
 ## スコープ
 
 - **含む**: Rust フロントエンド (`compiler/rust/frontend`) の Parser/Typeck/CLI オプション是正、`run_phase4_suite.py` の診断差分検知を活かしたレポーティング改善、`reports/spec-audit/ch4/` の定期更新。必要に応じて `RunConfig` / `ParseRunner` / `DiagnosticFilter` の既定値も調整する。

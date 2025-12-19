@@ -70,17 +70,17 @@
 - 呼び出し制御: `ffi.bindgen.enabled = true` の場合のみ実行し、`output` が未指定なら `ffi.build.config_invalid` を返す。
 
 ### フェーズD: WIT 調査ログと PoC
-1. `docs/notes/ffi-wasm-component-model-log.md` を更新し、WIT 型→Reml 型対応表の一次案を追加する。
-2. Canonical ABI のメモリ境界（Shared Nothing）と FFI との差分を調査ログに追記する。
-3. `docs/guides/ffi-wit-poc.md` に PoC 手順（WIT 生成→バインディング生成→呼び出し検証）を明記する。
+1. `docs/notes/ffi-wasm-component-model-log.md` を更新し、WIT 型→Reml 型対応表の一次案を追加する。（完了）
+2. Canonical ABI のメモリ境界（Shared Nothing）と FFI との差分を調査ログに追記する。（完了）
+3. `docs/guides/ffi-wit-poc.md` に PoC 手順（WIT 生成→バインディング生成→呼び出し検証）を明記する。（完了）
 
 ### フェーズE: Phase 4 回帰接続
-1. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に FFI シナリオを追加（例: `FFI-BINDGEN-001` / `FFI-DSL-001` / `FFI-BUILD-001` / `FFI-WIT-001`）。
+1. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に FFI シナリオを追加（例: `FFI-BINDGEN-001` / `FFI-DSL-001` / `FFI-BUILD-001` / `FFI-WIT-001`）。（完了）
    - `FFI-BINDGEN-001` の expected パス:
-     - `expected/ffi/bindgen/minimal/bindings.reml`
+     - `expected/ffi/bindgen/minimal/counter_bindings.reml`
      - `expected/ffi/bindgen/minimal/bindings.manifest.json`
-2. `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に FFI 回帰の参照先と実行コマンドを追記する。
-3. `reports/spec-audit/ch4/spec-core-dashboard.md` に FFI 実行ログを登録し、Phase 5 へ引き継げるよう KPI を整理する。
+2. `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に FFI 回帰の参照先と実行コマンドを追記する。（完了）
+3. `reports/spec-audit/ch4/spec-core-dashboard.md` に FFI 実行ログを登録し、Phase 5 へ引き継げるよう KPI を整理する。（完了）
 
 ## タイムライン（目安）
 
@@ -104,6 +104,8 @@
 - 2025-12-19: フェーズA 完了（`reml-bindgen` 実装/manifest 更新/`expected/` 追加/仕様・ガイド反映）。
 - 2025-12-19: フェーズB 完了（`Core.Ffi.Dsl` ランタイム API/監査メタデータ/FFI 実行エンジン接続/`expected/ffi/dsl` 反映）。
 - 2025-12-19: フェーズC 進行中（`remlc build` で `reml.json` 検証/`reml-bindgen` 起動/キャッシュ格納・復元/`ffi.bindgen` 監査ログ出力を追加）。
+- 2025-12-19: フェーズD 完了（WIT 調査ログの対応表更新/Shared Nothing 差分整理/PoC 手順の明文化）。
+- 2025-12-19: フェーズE 完了（FFI シナリオ追加/回帰計画反映/ダッシュボード追記）。
 
 ## 参照
 - `docs/plans/ffi-improvement/0-0-overview.md`
