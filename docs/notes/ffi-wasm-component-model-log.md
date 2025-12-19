@@ -24,9 +24,17 @@ WASM Component Model（WIT）の導入可能性を調査し、Reml FFI の将来
 | `list<T>` | `List<T>` | `T = u8` の場合は `Core.Text.Bytes` も候補。 |
 | `record` | `{ field: T, ... }` | フィールド名は WIT を優先。 |
 | `variant` | `enum` | タグ順序とラベル名の保持が必須。 |
+| `flags` | `Set<FlagEnum>` | `FlagEnum` は WIT の flags 名を列挙した enum。生ビット保持は要検討。 |
+| `enum` | `enum` | 文字列表現ではなくタグ順を維持する。 |
+| `union` | `variant`（暫定） | 共有レイアウト前提のため、境界検証とタグ付けの方式を要検討。 |
 | `option<T>` | `Option<T>` | `None` は WIT の `null` 相当。 |
 | `result<Ok, Err>` | `Result<Ok, Err>` | `Err` は FFI 監査ログへ付随情報を保持。 |
 | `tuple<T...>` | `(T1, T2, ...)` | 要素順を維持する。 |
+| `resource` | `FfiResourceHandle` | 不透明ハンドル型として扱い、内部表現は Capability と結合する。 |
+| `own<T>` | `Owned<T>` | `Ownership::Owned` と対応させ、解放責務を Reml 側へ移譲する。 |
+| `borrow<T>` | `Borrow<T>` | 既存の借用型に合わせ、`Ownership::Borrowed` と対応させる。 |
+| `future<T>` | `Future<T>` | `Core.Async` の型と効果タグに接続する。 |
+| `stream<T>` | `AsyncStream<T>` | `Core.Async` のストリーム型へ写像する。 |
 
 ## 境界安全性とメモリモデルの論点
 - Shared Nothing 前提のため、境界を跨ぐデータはコピーまたはシリアライズを伴う。
@@ -38,6 +46,13 @@ WASM Component Model（WIT）の導入可能性を調査し、Reml FFI の将来
 - 文字列は UTF-8 を前提とし、境界でのバッファ確保と解放責務を明示する。
 - `record` / `variant` の 레イアウトは Canonical ABI の lift/lower ルールへ合わせる。
 - `list<T>` は長さと要素サイズの検証を必須とし、上限超過時の診断キーを設計する。
+
+## Canonical ABI と既存 FFI の差分（Shared Nothing 観点）
+- 既存 FFI はプロセス内 ABI 前提でポインタ共有が可能だが、WIT は境界越えをコピー前提とする。
+- WIT は `resource` をハンドルで管理し、ライフサイクルが Canonical ABI で明文化される。既存 FFI の生ポインタとは扱いが異なる。
+- `string` / `list<T>` は境界でのメモリ確保と解放責務が規定され、所有権移譲が暗黙にならない。
+- 例外・パニックは境界を越えないため、`result` を前提としたエラー変換が必須になる。
+- ABI 互換は言語間の安定性を優先し、プラットフォーム差異は ABI 層で吸収する必要がある。
 
 ## ツール連携の想定フロー（一次案）
 1. WIT 定義を受け取り、Reml 向けのバインディング草案を生成する。
