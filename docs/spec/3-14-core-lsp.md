@@ -55,7 +55,69 @@ fn decode_message(payload: Str) -> Result<JsonRpcMessage, LspError>
 - `Core.Diagnostics` の `Diagnostic` を `LspDiagnostic` へ変換する `to_lsp` を提供する。
 - 変換時に `code` を `diagnostic.code` へ同期する。
 
-## 4. 例
+## 4. Core.Lsp.Derive
+
+> 目的：`Core.Parse` のメタデータから LSP 機能を自動導出する。
+
+```reml
+pub type DeriveModel = {
+  completions: List<CompletionItem>,
+  outline: List<OutlineNode>,
+  semantic_tokens: List<SemanticToken>,
+  hovers: List<HoverEntry>,
+}
+
+pub type CompletionItem = { label: Str, kind: Str }
+
+pub type OutlineNode = {
+  name: Str,
+  kind: Str,
+  children: List<OutlineNode>,
+}
+
+pub type SemanticToken = { kind: Str, range: Range }
+
+pub type HoverEntry = { name: Str, doc: Str }
+
+fn Derive.collect<T>(parser: Parser<T>) -> DeriveModel
+fn Derive.standard_capabilities(model: DeriveModel) -> LspCapabilities
+fn Derive.apply_standard_capabilities(model: DeriveModel, server: LspServer) -> LspServer
+```
+
+- `Derive.collect` は `keyword`/`symbol`/`rule`/`token` と Doc comment を収集し、`DeriveModel` を構築する。
+- `Derive.standard_capabilities` は補完/アウトライン/セマンティックトークン/ホバーの有効化フラグを生成する。
+- `Derive.apply_standard_capabilities` は `DeriveModel` を LSP サーバーへ接続する。
+- Doc comment の付与は `with_doc` を用いる（[2-2 コア・コンビネータ](2-2-core-combinator.md#G-3-doc-comment-の付与)）。
+
+## 5. LspDerive 出力仕様
+
+CLI で `--output lsp-derive` を指定した場合、`DeriveModel` を JSON で出力する。
+
+```reml
+pub type LspDeriveEnvelope = {
+  format: Str,    // "lsp-derive"
+  version: Int,   // 1
+  source: Str,
+  capabilities: LspDeriveCapabilities,
+  completions: List<CompletionItem>,
+  outline: List<OutlineNode>,
+  semantic_tokens: List<SemanticToken>,
+  hovers: List<HoverEntry>,
+}
+
+pub type LspDeriveCapabilities = {
+  completion: Bool,
+  outline: Bool,
+  semantic_tokens: Bool,
+  hover: Bool,
+}
+```
+
+- `format` は常に `"lsp-derive"` とする。
+- `version` は互換性管理のため `1` を固定する。
+- `source` は入力ファイルのパスまたは URI を格納する。
+
+## 6. 例
 
 ```reml
 use Core.Lsp

@@ -389,7 +389,41 @@ let factor: Parser<i64> = rule("factor",
 
 ---
 
-## G. 仕様チェックリスト
+## G. ParserMeta と Doc comment 収集規約
+
+> 目的：`Core.Lsp.Derive` が参照できる最小メタデータを `Parser` に紐づける。
+
+### G-1. ParserMeta の最小構造
+
+```reml
+pub enum ParserMetaKind = Rule | Keyword | Symbol | Token
+
+pub type ParserMeta = {
+  id: ParserId,
+  kind: ParserMetaKind,
+  name: Str,
+  doc: Option<Str>,
+  children: List<ParserId>,
+  token_kind: Option<Str>,
+}
+```
+
+### G-2. 収集規約
+
+- `rule(name, p)` は `kind = Rule` の `ParserMeta` を登録し、`children` に内部で参照した `rule` の `ParserId` を記録する。
+- `keyword(sc, "let")` / `symbol(sc, "+")` はそれぞれ `kind = Keyword` / `Symbol` を登録する。
+- `token(kind, p)` は `kind = Token` を登録し、`token_kind = Some(kind)` を保持する。
+- `label` は `ParserMeta` を生成しない（診断品質のみを目的とする）。
+
+### G-3. Doc comment の付与
+
+- Doc comment は `with_doc(parser, "text")` で付与する（`parser.with_doc("text")` は糖衣）。
+- Doc comment が複数回付与された場合は**最後の値を優先**する。
+- Doc comment は行末空白を除去し、改行は保持する（Markdown を許容）。
+
+---
+
+## H. 仕様チェックリスト
 
 * [ ] コア 8 群（基本／直列選択／変換・コミット／繰返し／括り／先読み／チェーン／スパン・位置）。
 * [ ] `attempt` を含め、**消費／コミットの 2bit**と整合する選択規則。
@@ -409,11 +443,11 @@ let factor: Parser<i64> = rule("factor",
 
 ---
 
-## H. Core.Regex 連携ガイド
+## I. Core.Regex 連携ガイド
 
 > 目的：正規表現エンジン（`Core.Regex`）を `Parser` 上で安全かつ高速に利用できるよう、責務境界と既定ポリシーを明確化する。
 
-### H-1. 派生コンビネータ（`Core.Parse.Regex` 名前空間）
+### I-1. 派生コンビネータ（`Core.Parse.Regex` 名前空間）
 
 | API | 説明 | 効果 |
 | --- | --- | --- |
@@ -425,14 +459,14 @@ let factor: Parser<i64> = rule("factor",
 * `RegexHandle` の取得は [3.3 §9 Regex エンジン](3-3-core-text-unicode.md#regex-engine) の `Core.Regex.compile` を通じて行う。
 * `regex_token` は [2.3 字句レイヤ](2-3-lexer.md) の `Lex.token` と組み合わせ、字句層での効率的なパターン処理を提供する。
 
-### H-2. 責務境界
+### I-2. 責務境界
 
 1. **`Core.Regex`**（[3.3 §9](3-3-core-text-unicode.md#regex-engine)）はパターン解析・オートマトン構築・Unicode クラス互換性を担当する。
 2. **`Core.Parse`** は `RegexHandle` を受け取り、入力スライスと `Span` を管理する。`Parser` の `Reply` 契約（2.1）を尊重し、消費位置とコミットビットを正しく更新する。
 3. **`RunConfig`**（[2.6 §F](2-6-execution-strategy.md#regex-run-policy)）は Packrat/メモ化ポリシーとエンジン選択を制御し、既定値として `memo = Auto` を採用する。`Auto` は `regex_capture` が 3 段以上ネストしたケースでのみ Packrat を要求し、通常の字句認識ではキャッシュを使わない。
 4. JIT ベースのエンジンは [3.8 §1.4](3-8-core-runtime-capability.md#regex-capability) の Capability を満たすプラットフォームでのみ有効化される。Capability が無い場合は安全な NFA 実装にフォールバックする。
 
-### H-3. Unicode クラスの互換保証
+### I-3. Unicode クラスの互換保証
 
 * `RegexHandle` は常に `UnicodeClassProfile`（3.3 §9-2）を保持し、`Core.Parse` は入力側の `UnicodeVersion` と一致するか検証する。差異がある場合は `DiagnosticDomain::Regex` の `regex.unicode.mismatch` を即時報告し、解析を中断する。
 * `RunConfig.extensions["regex"].unicode_profile` を指定すると、`Core.Regex.compile` が互換性チェックを行う。未指定時は `Unicode 15.0` を既定値とし、将来の更新は `feature {unicode-next}` フラグ経由で試験導入する。
@@ -442,7 +476,7 @@ let factor: Parser<i64> = rule("factor",
 
 ---
 
-## I. Capability 要求パターン
+## J. Capability 要求パターン
 
 Reml のパーサープラグインは、登録時に `Core.Parse.Plugin` 拡張が提供する `register_capability` API を介して機能を公開し、利用側は `with_capabilities` で必要機能を要求する。以下は **拡張モジュールが定義する Capability** と対応するコンビネータである（純粋なコアのみを使用する場合は読み飛ばしてよい）。
 

@@ -127,10 +127,11 @@ Phase 3 では Rust 版 Reml コンパイラを唯一の実装として標準ラ
 2. **[4-1-scenario-matrix-plan.md](4-1-scenario-matrix-plan.md)**: `.reml` シナリオ分類・`phase4-scenario-matrix.csv` 整備
 3. **[4-1-ffi-improvement-implementation-plan.md](4-1-ffi-improvement-implementation-plan.md)**: FFI 強化（reml-bindgen/FFI DSL/build 統合）
 4. **[4-1-stdlib-improvement-implementation-plan.md](4-1-stdlib-improvement-implementation-plan.md)**: 標準ライブラリ改善（Core.Test/Cli/Text.Pretty/Doc/Lsp）
-5. **[4-1-core-parse-lex-helpers-impl-plan.md](4-1-core-parse-lex-helpers-impl-plan.md)**: LexPreset/lex_pack 置換と WS3 Step3 回帰接続
-6. **[4-1-core-parse-error-labeling-impl-plan.md](4-1-core-parse-error-labeling-impl-plan.md)**: 期待集合ラベル統一（CP-WS2-001）
-7. **[4-1-core-parse-input-zero-copy-impl-plan.md](4-1-core-parse-input-zero-copy-impl-plan.md)**: Input/Zero-copy の不変条件チェックと回帰接続（WS5）
-8. **[4-1-core-parse-left-recursion-impl-plan.md](4-1-core-parse-left-recursion-impl-plan.md)**: 左再帰検出/ガードの回帰接続（WS6）
+5. **[4-1-core-lsp-derive-plan.md](4-1-core-lsp-derive-plan.md)**: Auto-LSP Derive（補完/アウトライン/ハイライト導出）
+6. **[4-1-core-parse-lex-helpers-impl-plan.md](4-1-core-parse-lex-helpers-impl-plan.md)**: LexPreset/lex_pack 置換と WS3 Step3 回帰接続
+7. **[4-1-core-parse-error-labeling-impl-plan.md](4-1-core-parse-error-labeling-impl-plan.md)**: 期待集合ラベル統一（CP-WS2-001）
+8. **[4-1-core-parse-input-zero-copy-impl-plan.md](4-1-core-parse-input-zero-copy-impl-plan.md)**: Input/Zero-copy の不変条件チェックと回帰接続（WS5）
+9. **[4-1-core-parse-left-recursion-impl-plan.md](4-1-core-parse-left-recursion-impl-plan.md)**: 左再帰検出/ガードの回帰接続（WS6）
 9. **[4-2-practical-execution-pipeline-plan.md](4-2-practical-execution-pipeline-plan.md)**: `run_examples.sh`/`cargo test -p reml_e2e` による実行パイプライン
 10. **[4-3-observability-and-metrics-plan.md](4-3-observability-and-metrics-plan.md)**: `collect-iterator-audit-metrics.py --section practical` とダッシュボード
 11. **[4-4-field-regression-and-readiness-plan.md](4-4-field-regression-and-readiness-plan.md)**: レグレッション管理と `phase4-readiness.md`
