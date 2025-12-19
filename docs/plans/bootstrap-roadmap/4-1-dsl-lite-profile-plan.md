@@ -103,6 +103,63 @@ config {
 }
 ```
 
+**最小 AST 例（parser.reml 向け）**
+```reml
+type Config = {
+  entries: List<Entry>
+}
+
+type Entry = {
+  key: Str,
+  value: Value
+}
+
+type Value =
+  | StrValue(Str)
+  | IntValue(Int)
+```
+
+**parser.reml のパース規則（擬似コード）**
+```reml
+use Core.Parse
+
+let config_parser =
+  lex_pack {
+    let key = ident
+    let value =
+      choice [
+        int.map(IntValue),
+        string.map(StrValue)
+      ]
+    let entry =
+      key
+        .skip(symbol("="))
+        .and_then(value)
+        .map(|(k, v)| Entry { key: k, value: v })
+    let entries =
+      entry
+        .sep_by(symbol("\n"))
+        .map(|items| Config { entries: items })
+    with_space(
+      keyword("config")
+        .skip(symbol("{"))
+        .and_then(entries)
+        .skip(symbol("}"))
+    )
+  }
+```
+
+**templates/sample.ast 期待出力フォーマット案**
+```reml
+Config {
+  entries: [
+    Entry { key: "port", value: IntValue(8080) },
+    Entry { key: "host", value: StrValue("localhost") },
+    Entry { key: "mode", value: StrValue("lite") }
+  ]
+}
+```
+
 **CLI 既定動作との整合**
 - `reml new --template lite` の説明文は「学習/試作向け最小構成」を明示。
 - `reml run` では `Diagnostic` を標準出力へ表示することを期待し、README に表記。
