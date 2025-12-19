@@ -124,11 +124,17 @@ fn handle_build(args: Vec<String>) -> Result<i32, CliError> {
     if let Some(config) = config.as_ref() {
         diagnostics.extend(validate_build_config(config, &opts.config_path));
     }
+    let (mut bindgen_diagnostics, audit_entries) = match config.as_ref() {
+        Some(config) => run_bindgen_if_enabled(config, &opts),
+        None => (Vec::new(), Vec::new()),
+    };
+    diagnostics.append(&mut bindgen_diagnostics);
     let report = BuildLintReport::new(
         &opts,
         diagnostics.into_iter().map(guard_diag_to_report).collect(),
         config.is_some(),
         config.as_ref().and_then(|value| value.ffi.as_ref()).is_some(),
+        audit_entries,
     );
     print_build_report(&report, opts.output_format)?;
     Ok(report.exit_code())
@@ -199,6 +205,8 @@ struct ManifestDumpOptions {
 struct BuildLintOptions {
     config_path: PathBuf,
     output_format: ReportFormat,
+    emit_bindgen: bool,
+    cache_dir: Option<PathBuf>,
 }
 
 impl Default for BuildLintOptions {
@@ -206,6 +214,8 @@ impl Default for BuildLintOptions {
         Self {
             config_path: PathBuf::from("reml.json"),
             output_format: ReportFormat::Json,
+            emit_bindgen: false,
+            cache_dir: None,
         }
     }
 }
@@ -228,6 +238,13 @@ impl BuildLintOptions {
                         .ok_or_else(|| "--format は human|json の値を伴う必要があります")?;
                     opts.output_format = ReportFormat::parse(&value)?;
                 }
+                "--emit-bindgen" => opts.emit_bindgen = true,
+                "--cache-dir" => {
+                    let value = iter
+                        .next()
+                        .ok_or_else(|| "--cache-dir はパスを伴う必要があります")?;
+                    opts.cache_dir = Some(PathBuf::from(value));
+                }
                 other => {
                     return Err(CliError::Usage(format!(
                         "build コマンドの未知のオプション `{other}` が指定されました"
@@ -244,6 +261,7 @@ struct BuildLintReport {
     command: &'static str,
     config: String,
     diagnostics: Vec<LintDiagnostic>,
+    audit: Vec<Value>,
     stats: BuildLintStats,
 }
 
@@ -260,12 +278,14 @@ impl BuildLintReport {
         diagnostics: Vec<LintDiagnostic>,
         config_loaded: bool,
         ffi_present: bool,
+        audit: Vec<Value>,
     ) -> Self {
         let validated = diagnostics.is_empty() && config_loaded;
         BuildLintReport {
             command: "build.lint",
             config: opts.config_path.display().to_string(),
             diagnostics,
+            audit,
             stats: BuildLintStats {
                 validated,
                 config_loaded,
@@ -309,6 +329,8 @@ struct BindgenSection {
     output: Option<String>,
     #[serde(default)]
     config: Option<String>,
+    #[serde(default)]
+    manifest: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -411,6 +433,188 @@ fn validate_build_config(config: &BuildConfig, path: &Path) -> Vec<GuardDiagnost
         }
     }
     diagnostics
+}
+
+fn run_bindgen_if_enabled(
+    config: &BuildConfig,
+    opts: &BuildLintOptions,
+) -> (Vec<GuardDiagnostic>, Vec<Value>) {
+    let mut diagnostics = Vec::new();
+    let mut audit_entries = Vec::new();
+    if !opts.emit_bindgen {
+        return (diagnostics, audit_entries);
+    }
+    let Some(ffi) = config.ffi.as_ref() else {
+        return (diagnostics, audit_entries);
+    };
+    let Some(bindgen) = ffi.bindgen.as_ref() else {
+        return (diagnostics, audit_entries);
+    };
+    if !bindgen.enabled {
+        return (diagnostics, audit_entries);
+    }
+    let output = match bindgen.output.as_ref().map(|value| value.trim()).filter(|v| !v.is_empty())
+    {
+        Some(value) => value.to_string(),
+        None => {
+            diagnostics.push(ffi_build_config_invalid(
+                &opts.config_path,
+                Some("ffi.bindgen.output".to_string()),
+                "ffi.bindgen.enabled=true の場合は output が必須です",
+            ));
+            return (diagnostics, audit_entries);
+        }
+    };
+    let input_hash = compute_bindgen_input_hash(ffi, bindgen);
+    let cache_status = handle_bindgen_cache(&input_hash, opts.cache_dir.as_ref());
+    if cache_status == "cache_hit" {
+        audit_entries.push(ffi_bindgen_audit_entry(
+            &opts.config_path,
+            bindgen,
+            &input_hash,
+            cache_status,
+            None,
+        ));
+        return (diagnostics, audit_entries);
+    }
+    let manifest_path = bindgen
+        .manifest
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| {
+            Path::new(&output)
+                .with_file_name("bindings.manifest.json")
+                .to_string_lossy()
+                .to_string()
+        });
+    let status = match invoke_reml_bindgen(bindgen, ffi, &output, &manifest_path) {
+        Ok(()) => "success",
+        Err(err) => {
+            diagnostics.push(err);
+            "failed"
+        }
+    };
+    audit_entries.push(ffi_bindgen_audit_entry(
+        &opts.config_path,
+        bindgen,
+        &input_hash,
+        status,
+        Some(&output),
+    ));
+    (diagnostics, audit_entries)
+}
+
+fn invoke_reml_bindgen(
+    bindgen: &BindgenSection,
+    ffi: &FfiSection,
+    output: &str,
+    manifest: &str,
+) -> Result<(), GuardDiagnostic> {
+    let mut cmd = std::process::Command::new("reml-bindgen");
+    if let Some(config) = bindgen
+        .config
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+    {
+        cmd.arg("--config").arg(config);
+    }
+    for header in &ffi.headers {
+        if !header.trim().is_empty() {
+            cmd.arg("--header").arg(header);
+        }
+    }
+    cmd.arg("--output").arg(output);
+    cmd.arg("--manifest").arg(manifest);
+    let status = cmd.status().map_err(|err| {
+        ffi_build_bindgen_failed(format!("reml-bindgen の起動に失敗しました: {err}"))
+    })?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(ffi_build_bindgen_failed(format!(
+            "reml-bindgen が失敗しました (status={status})"
+        )))
+    }
+}
+
+fn handle_bindgen_cache(input_hash: &str, cache_dir: Option<&PathBuf>) -> &'static str {
+    let Some(cache_dir) = cache_dir else {
+        return "success";
+    };
+    let cache_path = cache_dir.join("ffi").join(input_hash);
+    if cache_path.exists() {
+        return "cache_hit";
+    }
+    let _ = fs::create_dir_all(&cache_path);
+    "success"
+}
+
+fn compute_bindgen_input_hash(ffi: &FfiSection, bindgen: &BindgenSection) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut state = std::collections::hash_map::DefaultHasher::new();
+    "reml-bindgen".hash(&mut state);
+    for header in &ffi.headers {
+        header.hash(&mut state);
+    }
+    for library in &ffi.libraries {
+        library.hash(&mut state);
+    }
+    if let Some(config) = bindgen.config.as_ref() {
+        config.hash(&mut state);
+    }
+    if let Some(output) = bindgen.output.as_ref() {
+        output.hash(&mut state);
+    }
+    format!("{:016x}", state.finish())
+}
+
+fn ffi_bindgen_audit_entry(
+    config_path: &Path,
+    bindgen: &BindgenSection,
+    input_hash: &str,
+    status: &str,
+    output: Option<&str>,
+) -> Value {
+    let mut meta = Map::new();
+    let mut bindgen_meta = Map::new();
+    bindgen_meta.insert("event".into(), Value::String("ffi.bindgen".into()));
+    bindgen_meta.insert("status".into(), Value::String(status.to_string()));
+    bindgen_meta.insert("input_hash".into(), Value::String(input_hash.to_string()));
+    bindgen_meta.insert(
+        "config_path".into(),
+        Value::String(
+            bindgen
+                .config
+                .clone()
+                .unwrap_or_else(|| "reml-bindgen.toml".to_string()),
+        ),
+    );
+    bindgen_meta.insert(
+        "manifest_path".into(),
+        Value::String(config_path.display().to_string()),
+    );
+    if let Some(output) = output {
+        bindgen_meta.insert("output_path".into(), Value::String(output.to_string()));
+    }
+    meta.insert("ffi.bindgen".into(), Value::Object(bindgen_meta));
+    let mut entry = Map::new();
+    entry.insert("metadata".into(), Value::Object(meta));
+    Value::Object(entry)
+}
+
+fn ffi_build_bindgen_failed(message: impl Into<String>) -> GuardDiagnostic {
+    GuardDiagnostic {
+        code: "ffi.bindgen.generate_failed",
+        domain: "ffi",
+        severity: DiagnosticSeverity::Error,
+        message: message.into(),
+        notes: Vec::new(),
+        extensions: Map::new(),
+        audit_metadata: Map::new(),
+    }
 }
 
 fn ffi_build_config_invalid(
@@ -860,6 +1064,12 @@ fn print_build_report(report: &BuildLintReport, format: ReportFormat) -> Result<
                     println!("  - [{}] {}: {}", diag.severity, diag.code, diag.message);
                 }
             }
+            if !report.audit.is_empty() {
+                println!(
+                    "[build.lint] ffi.bindgen の監査ログを {} 件生成しました",
+                    report.audit.len()
+                );
+            }
         }
     }
     Ok(())
@@ -1156,8 +1366,10 @@ fn print_config_diff_help() {
 
 fn print_build_help() {
     eprintln!(
-        "使い方: remlc build [--config <path>] [--format human|json]\n\n\
+        "使い方: remlc build [--config <path>] [--emit-bindgen] [--cache-dir <path>] [--format human|json]\n\n\
         --config <path>  読み込む reml.json（既定: ./reml.json）\n\
+        --emit-bindgen  reml-bindgen を起動して生成を行う\n\
+        --cache-dir <path>  生成キャッシュを格納するルートディレクトリ\n\
         --format human|json  出力形式を切替（既定: json）"
     );
 }
