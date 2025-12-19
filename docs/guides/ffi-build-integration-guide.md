@@ -40,6 +40,7 @@ ffi {
 - `ffi.build.*` と `ffi.bindgen.*` を分離して監査する。
 - 失敗時は `input_hash` をログに残し、再生成条件の確認に利用する。
 - `ffi.build.config_invalid` / `ffi.build.link_failed` が出た場合は `reml.json` の `ffi` セクションを優先的に確認する。
+- `ffi.bindgen.output_overwrite` は、`cache_hit` 復元時に `output_path` / `manifest_path` が既に存在し、上書きが中止された場合に発火する。
 
 ## `tool_version` の解釈例
 `reml-bindgen --version` の出力は実装や配布形態で差があるため、監査ログの `tool_version` は次のルールで正規化する。

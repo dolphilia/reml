@@ -60,7 +60,7 @@
 ### フェーズC: reml build 統合
 1. `reml.json` の `ffi` セクション（`libraries`/`headers`/`bindgen`/`linker`）を `tooling/cli` でパースし、検証エラーを `ffi.build.*` で出力する。（完了: `remlc build` で最小検証を追加）
 2. `reml build` に `reml-bindgen` 呼び出しとキャッシュ層を追加し、入力ハッシュと生成物の一致を監査ログへ記録する。（進行中: `--emit-bindgen` / `--cache-dir` で起動・キャッシュ格納・復元・`ffi.bindgen` 監査ログを追加）
-   - 検討: `cache_hit` からの復元失敗時に `ffi.bindgen.output_overwrite` などの診断コードへ分岐するかを整理する（要検討）。
+   - 検討: `cache_hit` 復元失敗時に `AuditEnvelope.metadata` へ `error.code` / `error.message` を追記するか整理する（要検討）。
 3. Linux/macOS/Windows の差分を `docs/spec/3-10-core-env.md` と照合し、`docs/guides/ffi-build-integration-guide.md` に合わせた出力を維持する。
 
 補足: bindgen 呼び出し/キャッシュ層のフック地点（案）
