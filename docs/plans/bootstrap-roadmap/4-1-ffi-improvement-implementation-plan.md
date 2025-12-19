@@ -24,15 +24,15 @@
 ## 作業ステップ
 
 ### フェーズA: reml-bindgen 実装
-1. `reml-bindgen` 本体を新設（`compiler/rust/ffi_bindgen/` 新規 crate + bin `reml-bindgen`）し、`reml-bindgen.toml` と CLI オプションの優先順位を実装する。
+1. `reml-bindgen` 本体を新設（`compiler/rust/ffi_bindgen/` 新規 crate + bin `reml-bindgen`）し、`reml-bindgen.toml` と CLI オプションの優先順位を実装する。（完了）
    - ディレクトリ構成案:
      - `compiler/rust/ffi_bindgen/Cargo.toml`（crate 名: `reml_ffi_bindgen`）
      - `compiler/rust/ffi_bindgen/src/lib.rs`（設定読み込み・型変換・出力生成）
      - `compiler/rust/ffi_bindgen/src/main.rs`（bin 名: `reml-bindgen`）
      - `compiler/rust/Cargo.toml` に workspace 追加
-2. `bindings.manifest.json` に `qualifiers` / 入力ハッシュ / 診断メタデータを記録し、`docs/spec/3-6-core-diagnostics-audit.md` と整合する形式を固定する。
-3. `ffi.bindgen.*` 診断キーを出力し、`docs/guides/reml-bindgen-guide.md` のログ例と一致させる。
-4. `examples/ffi/bindgen/minimal` を CLI 実行で再生成し、`expected/` へ出力ゴールデンを追加する。
+2. `bindings.manifest.json` に `qualifiers` / 入力ハッシュ / 診断メタデータを記録し、`docs/spec/3-6-core-diagnostics-audit.md` と整合する形式を固定する。（完了）
+3. `ffi.bindgen.*` 診断キーを出力し、`docs/guides/reml-bindgen-guide.md` のログ例と一致させる。（完了）
+4. `examples/ffi/bindgen/minimal` を CLI 実行で再生成し、`expected/` へ出力ゴールデンを追加する。（完了）
 
 ### フェーズB: Core.Ffi.Dsl ランタイム実装
 1. `compiler/rust/runtime/ffi` に `dsl` モジュールを追加し、`ffi.bind_library` / `ffi.bind_fn` / `ffi.wrap` の API を実装する。
@@ -76,7 +76,7 @@
 | ビルド環境差分が膨らむ | Windows/macOS で再現性が落ちる | `docs/spec/3-10-core-env.md` で差分表を維持し、`ffi-build-integration-guide.md` の手順を更新 |
 
 ## 進捗状況
-- 2026-XX-XX: 未着手（本計画作成時点）。
+- 2025-12-19: フェーズA 完了（`reml-bindgen` 実装/manifest 更新/`expected/` 追加/仕様・ガイド反映）。
 
 ## 参照
 - `docs/plans/ffi-improvement/0-0-overview.md`

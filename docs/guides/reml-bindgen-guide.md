@@ -26,7 +26,7 @@ manifest = "generated/bindings.manifest.json"
 
 ## 生成物の扱い
 - `.reml` は自動生成領域として扱い、手書き編集を避ける。
-- `bindings.manifest.json` に型変換と修飾子の情報が記録される。
+- `bindings.manifest.json` に型変換・修飾子・入力ハッシュの情報が記録される。
 
 ## 診断キーの使い方
 - `ffi.bindgen.unknown_type`: 型変換表にない型が見つかった
@@ -72,4 +72,4 @@ manifest = "generated/bindings.manifest.json"
 2. `diagnostics` の `code` と `reason` が想定どおりか、未対応型が増えていないかを確認する。
 3. 生成 `.reml` は `extern "C"` と `repr(C)` 定義だけを確認し、手書き領域を触っていないかを確認する。
 4. 手書きラッパーの API 変更が必要な場合は、差分理由を `bindings.manifest.json` の変更と対応づける。
-5. `headers` / `include_paths` / `defines` の変更があった場合は再生成条件として記録する。
+5. `input_hash` と `headers` / `include_paths` / `defines` の差分を確認し、再生成条件として記録する。

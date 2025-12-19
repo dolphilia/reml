@@ -822,7 +822,7 @@ fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Res
   - `exclude`: 除外パターン（正規表現、任意）
 - 生成物は次の 2 点を必須とする。
   - `.reml`: `extern "C"` ブロックと `repr(C)` 定義
-  - `bindings.manifest.json`: 生成元・型変換・診断のメタデータ
+  - `bindings.manifest.json`: 生成元・型変換・診断・入力ハッシュのメタデータ
 - C 型→Reml 型の変換表（一次範囲）は Phase 1 で確定し、`const` / `volatile` / `restrict` は
   `bindings.manifest.json` の `qualifiers` に記録する（型変換自体は `T` に準拠）。
 - `ffi.bindgen.*` の診断キーを固定し、未対応型・解析失敗・未解決シンボルは
@@ -881,6 +881,7 @@ fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Res
   "version": "0.1",
   "headers": ["openssl/ssl.h"],
   "generated": "generated/openssl.reml",
+  "input_hash": "b3a1c9d4b65f1f27",
   "types": [
     { "c": "size_t", "reml": "USize" },
     { "c": "const char*", "reml": "Ptr<I8>", "qualifiers": ["const"] }
