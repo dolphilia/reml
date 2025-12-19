@@ -762,7 +762,45 @@ fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Res
 - 生成結果のレビューでは `bindings.manifest.json` の差分を一次情報とし、
   `.reml` 側の変更は手書きラッパーと分離された領域のみを対象とする。
 
-#### 2.8.1 例の範囲
+#### 2.8.1 型変換表（確定・一次範囲）
+
+| C 型 | Reml 型 | 補足 |
+| --- | --- | --- |
+| `bool` | `Bool` | - |
+| `char` | `I8` | `signed char` / `unsigned char` は下記を優先 |
+| `signed char` | `I8` | - |
+| `unsigned char` | `U8` | - |
+| `short` | `I16` | - |
+| `unsigned short` | `U16` | - |
+| `int` | `I32` | - |
+| `unsigned int` | `U32` | - |
+| `long` | `I64` | LP64 を基準 |
+| `unsigned long` | `U64` | LP64 を基準 |
+| `long long` | `I64` | - |
+| `unsigned long long` | `U64` | - |
+| `size_t` | `USize` | - |
+| `intptr_t` | `ISize` | - |
+| `uintptr_t` | `USize` | - |
+| `float` | `F32` | - |
+| `double` | `F64` | - |
+| `void` | `Unit` | - |
+| `char*` | `Ptr<I8>` | 文字列の安全化は Phase 2 で定義 |
+| `void*` | `Ptr<Unit>` | - |
+| `T*` | `Ptr<T>` | - |
+| `struct` | `repr(C)` レコード | フィールド順固定 |
+| `enum` | 整数型 | 基底型指定がない場合は `I32` |
+
+- `const` / `volatile` / `restrict` は Reml 型へ反映せず、`bindings.manifest.json` の `qualifiers` に記録する。
+- 配列型・可変長引数・関数ポインタは Phase 1 の対象外とし、未対応型診断へ送る。
+
+#### 2.8.2 未対応型の診断キー案
+
+- 未対応型は `ffi.bindgen.unknown_type` を使用し、`bindings.manifest.json` に以下のメタデータを残す。
+  - `c_type`: 変換に失敗した C 型表現
+  - `reason`: `unsupported_array` / `unsupported_variadic` / `unsupported_fn_ptr` / `unsupported_bitfield` など
+  - `hint`: 対応予定（例: `phase2`）または手書きラッパー誘導の短い文言
+
+#### 2.8.3 例の範囲
 
 - `reml-bindgen.toml` の最小構成例（`headers` / `include_paths` / `output` / `manifest`）。
 - `bindings.manifest.json` の最小例（型変換と `qualifiers` の記録）。

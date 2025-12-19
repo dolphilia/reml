@@ -45,11 +45,41 @@
    - 生成時に `ffi.bindgen.*` の診断キーを定義
    - `docs/spec/3-6-core-diagnostics-audit.md` と整合
 
+## `reml-bindgen.toml` キー一覧（確定）
+
+| キー | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| `headers` | `string[]` | Required | 解析対象のヘッダファイル配列 |
+| `include_paths` | `string[]` | Required | `-I` 相当の include パス配列 |
+| `compile_commands` | `string` | Optional | `compile_commands.json` のパス（指定時は `include_paths` / `defines` を上書き可能） |
+| `defines` | `string[]` | Optional | `-D` 相当の定義（`NAME` または `NAME=VALUE`） |
+| `output` | `string` | Required | 生成する `.reml` の出力先 |
+| `manifest` | `string` | Required | `bindings.manifest.json` の出力先 |
+| `exclude` | `string[]` | Optional | 除外パターン（正規表現） |
+
+## CLI オプション対応表（確定）
+
+| CLI オプション | 対応キー | 説明 |
+| --- | --- | --- |
+| `--config <path>` | - | 設定ファイルを明示指定（既定: `reml-bindgen.toml`） |
+| `--header <path>` | `headers` | ヘッダを追加（複数指定可） |
+| `--include-path <path>` / `-I <path>` | `include_paths` | include パスを追加（複数指定可） |
+| `--compile-commands <path>` | `compile_commands` | `compile_commands.json` を指定 |
+| `--define <name[=value]>` / `-D <name[=value]>` | `defines` | プリプロセッサ定義を追加（複数指定可） |
+| `--output <path>` | `output` | 生成 `.reml` の出力先 |
+| `--manifest <path>` | `manifest` | `bindings.manifest.json` の出力先 |
+| `--exclude <pattern>` | `exclude` | 除外パターンを追加（複数指定可） |
+
+- CLI 指定は `reml-bindgen.toml` より優先し、配列系は **追加マージ**、単一値は **上書き** とする。
+
 ## 実装ステップ
 1. `reml-bindgen.toml` のキー一覧（include パス、入力ヘッダ、出力先、除外パターン）を確定し、CLI オプション対応表を作成する。
 2. 型変換表（確定・一次範囲）と修飾子扱いを `docs/spec/3-9-core-async-ffi-unsafe.md` に反映し、未対応型の診断キー案を併記する。
 3. 生成コードの最小サンプル（単一ヘッダ + `bindings.manifest.json`）を `examples/ffi` に追加し、生成物と手書きラッパーを分離する構成を示す。
 4. `ffi.bindgen.*` の診断キーとログ形式を整理し、レビュー手順（差分確認/再生成条件）を `docs/guides/reml-bindgen-guide.md` に記述する。
+
+## 実装ステップ進捗
+- Step 2 完了: `docs/spec/3-9-core-async-ffi-unsafe.md` に型変換表と未対応型の診断キー案を反映済み。
 
 ## 依存関係
 - `docs/spec/3-9-core-async-ffi-unsafe.md`

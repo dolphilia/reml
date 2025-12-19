@@ -33,6 +33,17 @@ manifest = "generated/bindings.manifest.json"
 - `ffi.bindgen.parse_failed`: ヘッダ解析に失敗した
 - `ffi.bindgen.unresolved_symbol`: シンボル解決に失敗した
 
+## 未対応型の診断メタデータ例
+```json
+{
+  "code": "ffi.bindgen.unknown_type",
+  "symbol": "my_callback",
+  "c_type": "int (*)(const char*, size_t)",
+  "reason": "unsupported_fn_ptr",
+  "hint": "phase2"
+}
+```
+
 ## レビュー手順（要点）
 1. `bindings.manifest.json` の差分を確認する。
 2. 生成された `.reml` の `extern "C"` 宣言のみを確認する。
