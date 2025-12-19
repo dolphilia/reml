@@ -3,7 +3,10 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value};
-use std::{fmt, sync::Arc};
+use std::{
+    fmt,
+    sync::{Arc, OnceLock},
+};
 
 use crate::{
     audit::AuditEnvelope,
@@ -14,7 +17,10 @@ const FFI_DIAGNOSTIC_DOMAIN: &str = "ffi";
 const FFI_WRAP_INVALID_ARGUMENT_CODE: &str = "ffi.wrap.invalid_argument";
 const FFI_WRAP_NULL_RETURN_CODE: &str = "ffi.wrap.null_return";
 const FFI_WRAP_OWNERSHIP_VIOLATION_CODE: &str = "ffi.wrap.ownership_violation";
-const FFI_CALL_FAILED_CODE: &str = "ffi.call.failed";
+const FFI_CALL_EXECUTOR_MISSING_CODE: &str = "ffi.call.executor_missing";
+const FFI_CALL_EXECUTOR_ALREADY_SET_CODE: &str = "ffi.call.executor_already_set";
+
+static FFI_CALL_EXECUTOR: OnceLock<Arc<dyn FfiCallExecutor>> = OnceLock::new();
 
 /// FFI 型表現。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -226,11 +232,40 @@ impl FfiRawFn {
         if let Some(handler) = &self.call_handler {
             return handler(args);
         }
+        if let Some(executor) = FFI_CALL_EXECUTOR.get() {
+            return executor.call(self, args);
+        }
         Err(FfiError::new(
             FfiErrorKind::CallFailed,
-            "FFI 呼び出しハンドラが未設定です",
+            "FFI 呼び出しエンジンが未登録です",
         )
-        .with_code(FFI_CALL_FAILED_CODE))
+        .with_code(FFI_CALL_EXECUTOR_MISSING_CODE))
+    }
+
+    /// 監査ログを付与して呼び出す。
+    pub fn call_with_audit(
+        &self,
+        args: Vec<FfiValue>,
+        envelope: &mut AuditEnvelope,
+        effect_flags: &[&str],
+    ) -> Result<FfiValue, FfiError> {
+        let result = self.call(&args);
+        let status = if result.is_ok() { "success" } else { "failed" };
+        insert_call_audit_metadata(
+            envelope,
+            &FfiCallAuditInfo {
+                library: self.library.audit_label(),
+                symbol: &self.symbol,
+                effect_flags,
+                status,
+                wrapper: None,
+                call_site: None,
+                capability: None,
+                capability_stage: None,
+                latency_ns: None,
+            },
+        );
+        result
     }
 
     /// 呼び出しハンドラを差し替える。
@@ -306,6 +341,33 @@ impl FfiWrappedFn {
         let result = self.raw.call(&args)?;
         self.validate_return_value(&result)?;
         Ok(result)
+    }
+
+    /// 監査ログを付与して呼び出す。
+    pub fn call_with_audit(
+        &self,
+        args: Vec<FfiValue>,
+        envelope: &mut AuditEnvelope,
+        effect_flags: &[&str],
+    ) -> Result<FfiValue, FfiError> {
+        self.apply_audit_metadata(envelope);
+        let result = self.call(args);
+        let status = if result.is_ok() { "success" } else { "failed" };
+        insert_call_audit_metadata(
+            envelope,
+            &FfiCallAuditInfo {
+                library: self.raw.library.audit_label(),
+                symbol: &self.raw.symbol,
+                effect_flags,
+                status,
+                wrapper: Some("ffi.wrap"),
+                call_site: None,
+                capability: None,
+                capability_stage: None,
+                latency_ns: None,
+            },
+        );
+        result
     }
 
     fn validate_arguments(&self, args: &[FfiValue]) -> Result<(), FfiError> {
@@ -471,6 +533,24 @@ impl FfiType {
     }
 }
 
+/// FFI 呼び出しの実行エンジン。
+pub trait FfiCallExecutor: Send + Sync {
+    fn call(&self, raw: &FfiRawFn, args: &[FfiValue]) -> Result<FfiValue, FfiError>;
+}
+
+/// FFI 呼び出しエンジンを登録する。
+pub fn set_ffi_call_executor(executor: Arc<dyn FfiCallExecutor>) -> Result<(), FfiError> {
+    FFI_CALL_EXECUTOR
+        .set(executor)
+        .map_err(|_| {
+            FfiError::new(
+                FfiErrorKind::CallFailed,
+                "FFI 呼び出しエンジンは既に登録されています",
+            )
+            .with_code(FFI_CALL_EXECUTOR_ALREADY_SET_CODE)
+        })
+}
+
 /// FFI エラーの種別。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FfiErrorKind {
@@ -580,4 +660,52 @@ pub fn mark_call_wrapper(envelope: &mut AuditEnvelope) {
             envelope.metadata.insert("ffi".into(), Value::Object(obj));
         }
     }
+}
+
+/// `ffi.call` 用の監査メタデータ。
+pub struct FfiCallAuditInfo<'a> {
+    pub library: &'a str,
+    pub symbol: &'a str,
+    pub effect_flags: &'a [&'a str],
+    pub status: &'a str,
+    pub wrapper: Option<&'a str>,
+    pub call_site: Option<&'a str>,
+    pub capability: Option<&'a str>,
+    pub capability_stage: Option<&'a str>,
+    pub latency_ns: Option<u64>,
+}
+
+/// `ffi.call` 監査メタデータを挿入する。
+pub fn insert_call_audit_metadata(envelope: &mut AuditEnvelope, info: &FfiCallAuditInfo<'_>) {
+    let mut effect_flags = info
+        .effect_flags
+        .iter()
+        .map(|flag| Value::String((*flag).to_string()))
+        .collect::<Vec<_>>();
+    effect_flags.sort_by(|a, b| a.as_str().cmp(&b.as_str()));
+    let mut obj = JsonMap::new();
+    obj.insert("event".into(), Value::String("ffi.call".into()));
+    obj.insert("library".into(), Value::String(info.library.to_string()));
+    obj.insert("symbol".into(), Value::String(info.symbol.to_string()));
+    if let Some(call_site) = info.call_site {
+        obj.insert("call_site".into(), Value::String(call_site.to_string()));
+    }
+    obj.insert("effect_flags".into(), Value::Array(effect_flags));
+    if let Some(latency) = info.latency_ns {
+        obj.insert(
+            "latency_ns".into(),
+            Value::Number(serde_json::Number::from(latency)),
+        );
+    }
+    obj.insert("status".into(), Value::String(info.status.to_string()));
+    if let Some(capability) = info.capability {
+        obj.insert("capability".into(), Value::String(capability.to_string()));
+    }
+    if let Some(stage) = info.capability_stage {
+        obj.insert("capability_stage".into(), Value::String(stage.to_string()));
+    }
+    if let Some(wrapper) = info.wrapper {
+        obj.insert("wrapper".into(), Value::String(wrapper.to_string()));
+    }
+    envelope.metadata.insert("ffi".into(), Value::Object(obj));
 }

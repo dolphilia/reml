@@ -1,0 +1,15 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/ffi/dsl/unsafe_direct.reml",
+  "audit": {
+    "metadata": {
+      "ffi": {
+        "event": "ffi.call",
+        "library": "m",
+        "symbol": "cos",
+        "effect_flags": ["ffi", "unsafe"],
+        "status": "success"
+      }
+    }
+  }
+}
