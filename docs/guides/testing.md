@@ -48,6 +48,13 @@ test_parser(my_parser) {
 }
 ```
 
+### 3.1 AtSpec と診断コードの最小セット
+- `at` は `Offset(Int)`（0-origin, `Diagnostic.at.byte_start`）または `LineCol(line: Int, col: Int)`（1-origin, `Diagnostic.at.line_start`/`col_start`）を指定する。
+- 診断コードは **小文字ドット区切り**を採用し、未登録コードは `DiagnosticCatalog` に登録してから利用する。
+- Test DSL が参照する最小セットは以下。
+  - `parser.syntax.expected_tokens`: 既定の構文期待値エラー。
+  - `parser.unexpected_eof`: 入力終端で期待集合が満たせない場合の EOF 失敗（`at` は入力末尾）。
+
 ## 4. スナップショット更新ルール
 - `update` モードは **破壊的変更時のみ** 使用する。
 - `verify` は差分があれば失敗、`record` は未存在時のみ作成する。
