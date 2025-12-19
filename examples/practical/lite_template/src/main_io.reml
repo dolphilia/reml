@@ -1,0 +1,35 @@
+module Examples.Practical.LiteTemplate.MainIo
+
+use Core
+use Core.IO
+use Core.Path
+use Core.Parse
+use Core.Diagnostics
+
+use Examples.Practical.LiteTemplate.Parser
+
+fn read_input(path_text: Str) -> Result<String, Diagnostic> {
+  let file_path = path(path_text)?
+  let content = with_reader(file_path.clone(), |reader| {
+    let lines =
+      reader
+        |> buffered(capacity=64 * 1024)
+        |> read_line
+        |> Iter.from
+        |> Iter.take_while(|line| line.is_some())
+        |> Iter.map(|line| line.expect("line"))
+    Ok(lines |> Iter.fold("", |acc, line| if acc == "" { line } else { acc + "\n" + line }))
+  })
+    .map_err(|err| err.into_diagnostic())?
+  Ok(content)
+}
+
+fn main() -> Str {
+  let input = match read_input("templates/sample.input") with
+    | Ok(text) -> text
+    | Err(_) -> "io:error"
+  let result = Parser.parse_config(input)
+  match result.value with
+    | Some(ast) -> Debug.show(ast)
+    | None -> "parse:error"
+}

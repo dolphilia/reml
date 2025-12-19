@@ -10,3 +10,8 @@ Lite テンプレートの最小構成を回帰資産として固定するため
 ## 実行メモ
 - `reml run` で `templates/sample.input` を入力し、AST 出力を `sample.ast.expected` と比較する
 - `templates/sample.invalid` は `sample.invalid.diagnostic.json` を期待値とする
+
+## 入力取り扱い
+- Lite 既定では IO Capability を要求しないため、`src/main.reml` は入力を文字列リテラルで保持する
+- ファイル入力に拡張する場合は `Core.IO` を利用し、`io.fs.read` の Capability を宣言する
+- `src/main_io.reml` はファイル入力版のサンプルとして利用する

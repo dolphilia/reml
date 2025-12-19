@@ -5,7 +5,7 @@
     {
       "severity": "error",
       "code": "parser.syntax.expected_tokens",
-      "message": "値が必要な位置で入力が終了しました。"
+      "message": "構文エラー: 入力を解釈できません"
     }
   ]
 }
