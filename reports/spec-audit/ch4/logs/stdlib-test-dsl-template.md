@@ -1,6 +1,6 @@
 # Phase 4 stdlib Core.Test.Dsl ログ
 
-- 生成時刻: 2025-12-19 19:48:30Z
+- 生成時刻: 2025-12-19 19:57:36Z
 - 対象: CH3-TEST-410 / CH3-TEST-411 / CH3-TEST-412
 
 ## 実行詳細
@@ -12,7 +12,7 @@
 - 実際 Diagnostics: `[]`
 - Exit code: 0
 - CLI: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_test/dsl/ast_matcher_basic.reml`
-- run_id: `afc1980e-4213-45eb-a5cd-d5e011d8f84e`
+- run_id: `42e8b5cf-80ae-4ab6-916a-5744bd2a11b6`
 
 ### CH3-TEST-411
 
@@ -21,7 +21,7 @@
 - 実際 Diagnostics: `[]`
 - Exit code: 0
 - CLI: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_test/dsl/error_expectation_basic.reml`
-- run_id: `930c829f-bd68-4e56-a4f7-a0b76717c8a0`
+- run_id: `172f60d5-9e35-45da-b5ed-59003551678d`
 
 ### CH3-TEST-412
 

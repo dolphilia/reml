@@ -65,6 +65,7 @@ test_parser(my_parser) {
 1. `compiler/rust/runtime/src/test/` に `Core.Test.Dsl` のエントリポイント（`test_parser`/`case`/`Error`）を追加する。
 2. AST Matcher と Error Expectation の最小ロジックを実装し、`TestError`/`Diagnostic` への橋渡しを統一する。
 3. ゴールデンファイル読み込み/比較の経路を `assert_snapshot` と揃え、`snapshot.updated` の監査イベントを記録する。
+4. CLI で DSL サンプルを実行し、`reports/spec-audit/ch4/logs/stdlib-test-dsl-template.md` に実行ログを追記する。
 
 ## Rust 実装の現状と API 追加案
 
