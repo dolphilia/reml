@@ -34,6 +34,10 @@ Reml の実装・運用に関するガイドをカテゴリ別に整理してい
 ## ランタイム / システム連携
 - [runtime-bridges.md](runtime-bridges.md)
 - [reml-ffi-handbook.md](reml-ffi-handbook.md)
+- [reml-bindgen-guide.md](reml-bindgen-guide.md)
+- [ffi-dsl-guide.md](ffi-dsl-guide.md)
+- [ffi-build-integration-guide.md](ffi-build-integration-guide.md)
+- [ffi-wit-poc.md](ffi-wit-poc.md)
 - [core-unsafe-ptr-api-draft.md](core-unsafe-ptr-api-draft.md)
 - [core-parse-streaming.md](core-parse-streaming.md)
 - [cross-compilation.md](cross-compilation.md)

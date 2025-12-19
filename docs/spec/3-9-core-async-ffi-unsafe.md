@@ -744,27 +744,77 @@ fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Res
 
 ### 2.8 reml-bindgen（仕様反映セクション）
 
-- `reml-bindgen` の CLI / `reml-bindgen.toml` 構成、`bindings.manifest.json` の形式を整理する。
-- C 型→Reml 型の変換表（確定・一次範囲）と `const` / `volatile` / `restrict` の記録方式を記述する。
-- 生成時の診断キー（`ffi.bindgen.*`）とレビュー手順の要点を記載する。
+- `reml-bindgen` は C/C++ ヘッダから `extern` 定義を自動生成する CLI であり、生成物は **低レベル・`unsafe` 前提**とする。
+- 設定ファイルは `reml-bindgen.toml` とし、最小構成は次のキーを持つ。
+  - `headers`: 対象ヘッダの配列
+  - `include_paths`: include パスの配列
+  - `defines`: `-D` 相当の定義（任意）
+  - `output`: 生成 `.reml` の出力先
+  - `manifest`: `bindings.manifest.json` の出力先
+  - `exclude`: 除外パターン（正規表現、任意）
+- 生成物は次の 2 点を必須とする。
+  - `.reml`: `extern "C"` ブロックと `repr(C)` 定義
+  - `bindings.manifest.json`: 生成元・型変換・診断のメタデータ
+- C 型→Reml 型の変換表（一次範囲）は Phase 1 で確定し、`const` / `volatile` / `restrict` は
+  `bindings.manifest.json` の `qualifiers` に記録する（型変換自体は `T` に準拠）。
+- `ffi.bindgen.*` の診断キーを固定し、未対応型・解析失敗・未解決シンボルは
+  `ffi.bindgen.unknown_type` / `ffi.bindgen.parse_failed` / `ffi.bindgen.unresolved_symbol` を使用する。
+- 生成結果のレビューでは `bindings.manifest.json` の差分を一次情報とし、
+  `.reml` 側の変更は手書きラッパーと分離された領域のみを対象とする。
+
+```json
+// bindings.manifest.json（要点）
+{
+  "version": "0.1",
+  "headers": ["openssl/ssl.h"],
+  "generated": "generated/openssl.reml",
+  "types": [
+    { "c": "size_t", "reml": "USize" },
+    { "c": "const char*", "reml": "Ptr<I8>", "qualifiers": ["const"] }
+  ],
+  "diagnostics": [
+    { "code": "ffi.bindgen.unknown_type", "symbol": "EVP_MD_CTX" }
+  ]
+}
+```
 
 ### 2.9 Core.Ffi.Dsl（仕様反映セクション）
 
-- `bind_library` / `bind_fn` / `wrap` と型 DSL の API 仕様を整理する。
-- `effect {ffi, unsafe}` の境界と `ffi.wrap` の責務（安全化、監査）を明記する。
-- `Result` ベースのエラーハンドリングと診断キーの対応を記述する。
+- `Core.Ffi.Dsl` は `reml-bindgen` 生成物の上に **安全な利用レイヤ**を提供する。
+- API は `bind_library` / `bind_fn` / `wrap` と型 DSL を中心に構成する。
+  - `bind_library`: ライブラリ探索とハンドル取得（`effect {ffi}`）
+  - `bind_fn`: 低レベル関数の束縛（`effect {ffi, unsafe}`）
+  - `wrap`: `unsafe` な呼び出しを安全 API へ昇格（監査・検証込み）
+- 型 DSL は `ffi.int` / `ffi.double` / `ffi.ptr(ffi.char)` のような表現を基本とし、
+  `struct` / `enum` については Phase 2 で最小セットを定義する。
+- `ffi.wrap` は **引数検証・戻り値検証・NULL チェック**を担当し、
+  失敗時は `Result` を返す。診断キーは `ffi.wrap.invalid_argument` /
+  `ffi.wrap.null_return` を基本とする。
+- 監査ログは `ffi.call` テンプレートに `wrapper = "ffi.wrap"` を追記し、
+  `unsafe` を隠蔽した経路を識別できるようにする。
 
 ### 2.10 reml build 統合（仕様反映セクション）
 
-- `reml.json` の FFI セクション（`libraries` / `headers` / `bindgen` / `linker`）を定義する。
-- `reml build` のヘッダ解析→生成→キャッシュ→リンクのフローを整理する。
-- 監査キー（`ffi.build.*` / `ffi.bindgen.*`）と入力ハッシュの取り扱いを記述する。
+- `reml.json` の FFI セクションは次のキーを持つ。
+  - `libraries`: 依存ライブラリ名の配列
+  - `headers`: ヘッダパスの配列
+  - `bindgen`: `{ enabled, output, config }`
+  - `linker`: `{ search_paths, frameworks, extra_args }`
+- `reml build` は「ヘッダ解析 → 生成 → キャッシュ → コンパイル/リンク」を単一フローで実行し、
+  生成物キャッシュには **入力ハッシュ**（ヘッダ、設定、ターゲット）を保存する。
+- 監査キーは `ffi.build.*` と `ffi.bindgen.*` を分離し、生成・リンクの責務を明確化する。
+- 失敗時は `ffi.build.config_invalid` / `ffi.build.link_failed` を基本診断とし、
+  `extensions["ffi.build"]` に `input_hash` を記録する。
 
 ### 2.11 WASM Component Model（将来拡張セクション）
 
-- WIT の型体系と Reml 型の対応表（一次案）を整理する。
-- Canonical ABI の境界安全性と Shared Nothing モデルの前提を記述する。
-- 実装ではなく調査フェーズであることを明記する。
+- WIT の `string` / `record` / `variant` / `list` を Reml 型へ写像する一次案を整理する。
+  - `string` → `Text`
+  - `record` → `struct` 相当
+  - `variant` → `enum` 相当
+  - `list<T>` → `List<T>`（境界でのコピー規約を明記）
+- Canonical ABI では Shared Nothing を前提とし、所有権の移譲とコピー境界を厳密化する。
+- Phase 4 は **調査と設計整理のみ**とし、実装・ツール統合は別計画に分離する。
 
 ## 3. Core.Unsafe.Ptr API
 
