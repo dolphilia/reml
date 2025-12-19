@@ -99,6 +99,7 @@ conductor my_dsl_server {
 5. [x] Doc comment の付与 API（`with_doc`/`parser.with_doc`）と上書き規則を確定する。
 6. [x] `label` は `ParserMeta` を生成しない方針を明記する。
 7. [ ] 完了条件: `docs/spec/2-2-core-combinator.md` の規約と Rust 実装の API 名が一致していることをレビューで確認。
+   - 2026-02-15 時点のレビューでは `ParserMeta`/`ParseMetaRegistry`/`with_doc`/`token` が Rust 実装に未導入のため、API 名一致は未達。追跡はフェーズCへ移管する。
 
 ### フェーズC: Rust 実装追加
 1. [ ] `compiler/rust/runtime/src/parse/meta.rs` を追加し、`ParserMeta`/`ParserMetaKind` と登録 API を実装する。
