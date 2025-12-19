@@ -16,6 +16,8 @@ use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic};
 
 const DEFAULT_SNAPSHOT_MAX_BYTES: usize = 1024 * 1024;
 
+pub mod dsl;
+
 type SnapshotStore = HashMap<String, SnapshotEntry>;
 
 static SNAPSHOTS: Lazy<Mutex<SnapshotStore>> = Lazy::new(|| Mutex::new(HashMap::new()));
@@ -353,7 +355,7 @@ fn record_snapshot_updated(name: &str, hash: u64) {
     events.push(event);
 }
 
-fn record_test_diagnostic(error: &TestError) {
+pub(crate) fn record_test_diagnostic(error: &TestError) {
     let diagnostic = error.into_diagnostic();
     let mut diagnostics = TEST_DIAGNOSTICS
         .lock()
