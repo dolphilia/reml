@@ -355,7 +355,7 @@ feature_guard = ["json5", "bare_keys", "trailing_comma"]
 
 **expected 出力形式の命名規則**
 `expected/lite_template/`:
-- `sample.ast.expected`（AST スナップショット）
+- `sample.ast.expected`（AST スナップショット。Reml 表記で保持）
 - `sample.invalid.diagnostic.json`（異常系の `Diagnostic` 期待値）
 - `sample.invalid.audit.jsonl`（監査ログの任意出力。Lite 既定では省略可）
 
@@ -394,3 +394,4 @@ feature_guard = ["json5", "bare_keys", "trailing_comma"]
 ## 進捗状況
 - 2025-12-20: フェーズA（Lite プロファイル定義案）を追記。
 - 2025-12-20: フェーズB（テンプレート設計詳細案）を追記。
+- 2025-12-20: フェーズE（回帰/サンプル接続判断と構成案）を追記。
