@@ -64,9 +64,12 @@ test_parser(my_parser) {
 ## 5. ゴールデン運用と更新ポリシー
 - 入力/期待値は `*.input`/`*.ast`/`*.error` の 3 点セットを基本とする。
 - `*.ast` は AST のレンダリング結果、`*.error` は `Diagnostic` JSON を想定する。
+- `case_id` は `snapshot.name` と `phase4-scenario-matrix.csv` の `scenario_id` に一致させる。
+- 既定の配置は `examples/**/golden/{case_id}.input` と `expected/**/golden/{case_id}.ast` / `expected/**/golden/{case_id}.error`。
 - `update` モードは互換性破壊時のみ使用し、`resolution_notes` に更新理由を残す。
 - 期待値の差分確認は `snapshot.name` と `scenario_id` の一致を必須とする。
 - `run_id`/`timestamp`/環境依存パスは比較対象から除外する。
+- 更新時の監査イベントは `snapshot.updated` を使用し、`snapshot.name` / `snapshot.hash` / `snapshot.mode` / `snapshot.bytes` を記録する。
 
 ## 6. 回帰への接続
 - `examples/practical/core_test/` と `expected/practical/core_test/` をセットで追加する。

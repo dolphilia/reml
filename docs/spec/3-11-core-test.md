@@ -70,6 +70,12 @@ test "core_test_basic" {
 - パスはワークスペース相対表記へ正規化し、環境差異での揺れを抑制する。
 - Phase 4 の `examples/practical/core_test/` は暫定的に CLI JSON 出力を `expected/` に合わせる（Runtime の stdout 経路整備後に `snapshot:ok` へ戻す）。
 
+### 3.1 ゴールデンファイル命名（golden_case）
+
+- `golden_case` は `case_id` を基準に入力と期待値を 3 点セットで管理する。
+- `case_id` は `snapshot.name` と `phase4-scenario-matrix.csv` の `scenario_id` に一致させる。
+- 入力は `examples/**/golden/{case_id}.input`、期待値は `expected/**/golden/{case_id}.ast` / `expected/**/golden/{case_id}.error` に保存する。
+
 ## 4. テーブル駆動テスト
 
 ```reml
@@ -99,7 +105,7 @@ fn fuzz_bytes(config: FuzzConfig, f: fn(Bytes) -> Result<(), TestError>) -> Resu
 ## 6. 診断と監査
 
 - 失敗時は `Diagnostic.code = "test.failed"` を既定とし、`extensions["test"].case_name` を必須とする。
-- スナップショット更新時は `AuditEvent::SnapshotUpdated` を発行し、`snapshot.name` / `snapshot.hash` を記録する。
+- スナップショット更新時は `AuditEvent::SnapshotUpdated`（イベント名は `snapshot.updated`）を発行し、`snapshot.name` / `snapshot.hash` / `snapshot.mode` / `snapshot.bytes` を記録する。
 
 ## 7. DSL Test Kit（Core.Test.Dsl）
 
