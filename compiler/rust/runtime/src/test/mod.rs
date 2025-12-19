@@ -275,7 +275,7 @@ struct SnapshotEntry {
     hash: u64,
 }
 
-fn normalize_snapshot(value: &str) -> String {
+pub(crate) fn normalize_snapshot(value: &str) -> String {
     value.replace("\r\n", "\n").replace('\r', "\n")
 }
 
@@ -309,7 +309,7 @@ fn record_snapshot(store: &mut SnapshotStore, name: &str, value: &str) -> TestRe
             hash,
         },
     );
-    record_snapshot_updated(name, hash);
+    record_snapshot_updated(name, hash, SnapshotMode::Record, value.len());
     Ok(())
 }
 
@@ -322,17 +322,22 @@ fn update_snapshot(store: &mut SnapshotStore, name: &str, value: &str) -> TestRe
             hash,
         },
     );
-    record_snapshot_updated(name, hash);
+    record_snapshot_updated(name, hash, SnapshotMode::Update, value.len());
     Ok(())
 }
 
-fn snapshot_hash(value: &str) -> u64 {
+pub(crate) fn snapshot_hash(value: &str) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     value.hash(&mut hasher);
     hasher.finish()
 }
 
-fn record_snapshot_updated(name: &str, hash: u64) {
+pub(crate) fn record_snapshot_updated(
+    name: &str,
+    hash: u64,
+    mode: SnapshotMode,
+    bytes: usize,
+) {
     let timestamp = OffsetDateTime::now_utc()
         .format(&Rfc3339)
         .unwrap_or_else(|_| "1970-01-01T00:00:00Z".into());
@@ -347,6 +352,16 @@ fn record_snapshot_updated(name: &str, hash: u64) {
     );
     metadata.insert("snapshot.name".into(), Value::String(name.to_string()));
     metadata.insert("snapshot.hash".into(), Value::String(hash.to_string()));
+    metadata.insert(
+        "snapshot.mode".into(),
+        Value::String(match mode {
+            SnapshotMode::Verify => "verify",
+            SnapshotMode::Update => "update",
+            SnapshotMode::Record => "record",
+        }
+        .into()),
+    );
+    metadata.insert("snapshot.bytes".into(), Value::String(bytes.to_string()));
     let envelope = AuditEnvelope::from_parts(metadata, None, None, Some("core.test".into()));
     let event = AuditEvent::new(timestamp, envelope);
     let mut events = TEST_AUDIT_EVENTS

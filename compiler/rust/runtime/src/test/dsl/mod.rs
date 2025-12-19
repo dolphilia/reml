@@ -1,9 +1,16 @@
 use std::fmt::Debug;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use serde_json;
 
 use crate::parse::{run_with_default, ParseResult, Parser};
 use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic};
 
-use super::{assert_snapshot_with, record_test_diagnostic, SnapshotPolicy, TestError, TestErrorKind, TestResult};
+use super::{
+    normalize_snapshot, record_snapshot_updated, record_test_diagnostic, snapshot_hash,
+    SnapshotMode, SnapshotPolicy, TestError, TestErrorKind, TestResult,
+};
 
 #[derive(Clone, Debug)]
 pub struct DslCase<T> {
@@ -49,16 +56,44 @@ pub enum AtSpec {
 
 #[derive(Clone, Debug)]
 pub struct GoldenCase {
-    pub name: String,
-    pub value: String,
+    pub case_id: String,
+    pub input_path: PathBuf,
+    pub expected_ast_path: PathBuf,
+    pub expected_error_path: PathBuf,
     pub policy: SnapshotPolicy,
 }
 
 impl GoldenCase {
-    pub fn new(name: impl Into<String>, value: impl Into<String>) -> Self {
+    pub fn new(
+        case_id: impl Into<String>,
+        input_path: impl Into<PathBuf>,
+        expected_ast_path: impl Into<PathBuf>,
+        expected_error_path: impl Into<PathBuf>,
+    ) -> Self {
         Self {
-            name: name.into(),
-            value: value.into(),
+            case_id: case_id.into(),
+            input_path: input_path.into(),
+            expected_ast_path: expected_ast_path.into(),
+            expected_error_path: expected_error_path.into(),
+            policy: SnapshotPolicy::verify(),
+        }
+    }
+
+    pub fn from_case_id(
+        case_id: impl Into<String>,
+        input_root: impl Into<PathBuf>,
+        expected_root: impl Into<PathBuf>,
+    ) -> Self {
+        let case_id = case_id.into();
+        let input_path = input_root.into().join(format!("{case_id}.input"));
+        let expected_root = expected_root.into();
+        let expected_ast_path = expected_root.join(format!("{case_id}.ast"));
+        let expected_error_path = expected_root.join(format!("{case_id}.error"));
+        Self {
+            case_id,
+            input_path,
+            expected_ast_path,
+            expected_error_path,
             policy: SnapshotPolicy::verify(),
         }
     }
@@ -73,13 +108,16 @@ where
             .name
             .clone()
             .unwrap_or_else(|| format!("case_{index}"));
-        let result = run_with_default(&parser, &case.source);
         let outcome = match &case.expect {
-            DslExpectation::Ast(matcher) => match_ast(&result, matcher, &case.source),
+            DslExpectation::Ast(matcher) => {
+                let result = run_with_default(&parser, &case.source);
+                match_ast(&result, matcher, &case.source)
+            }
             DslExpectation::Error(expectation) => {
+                let result = run_with_default(&parser, &case.source);
                 match_error(&result, expectation, &case.source)
             }
-            DslExpectation::Golden(golden) => match_golden(golden),
+            DslExpectation::Golden(golden) => match_golden(&parser, golden),
         };
         if let Err(err) = outcome {
             let err = err.with_case_name(case_name);
@@ -163,8 +201,60 @@ where
     }
 }
 
-fn match_golden(golden: &GoldenCase) -> TestResult {
-    assert_snapshot_with(golden.policy.clone(), &golden.name, &golden.value)
+fn match_golden<T>(parser: &Parser<T>, golden: &GoldenCase) -> TestResult
+where
+    T: Clone + PartialEq + Debug + Send + Sync + 'static,
+{
+    let input = read_text(&golden.input_path)?;
+    let result = run_with_default(parser, &input);
+    let diagnostics = result.guard_diagnostics();
+    let error_json = render_error_json(&golden.input_path, &diagnostics);
+    let mut updated = false;
+
+    if diagnostics.is_empty() {
+        let Some(value) = result.value.as_ref() else {
+            return Err(TestError::new(
+                TestErrorKind::AssertionFailed,
+                "golden case expected value but parser returned none",
+            ));
+        };
+        let ast_text = format!("{value:#?}");
+        updated |= apply_golden_snapshot(
+            &golden.expected_ast_path,
+            &ast_text,
+            &golden.policy,
+        )?;
+        updated |= apply_golden_snapshot(
+            &golden.expected_error_path,
+            &error_json,
+            &golden.policy,
+        )?;
+        if updated {
+            let combined = format!("{ast_text}\n{error_json}");
+            record_snapshot_updated(
+                &golden.case_id,
+                snapshot_hash(&combined),
+                golden.policy.mode,
+                combined.len(),
+            );
+        }
+        Ok(())
+    } else {
+        updated |= apply_golden_snapshot(
+            &golden.expected_error_path,
+            &error_json,
+            &golden.policy,
+        )?;
+        if updated {
+            record_snapshot_updated(
+                &golden.case_id,
+                snapshot_hash(&error_json),
+                golden.policy.mode,
+                error_json.len(),
+            );
+        }
+        Ok(())
+    }
 }
 
 fn matches_error_code(expected: &str, diag: &GuardDiagnostic, source_len: usize) -> bool {
@@ -201,4 +291,81 @@ fn extract_position(diag: &GuardDiagnostic) -> Option<(usize, usize, usize)> {
     let line = position.get("line")?.as_u64()? as usize;
     let column = position.get("column")?.as_u64()? as usize;
     Some((byte, line, column))
+}
+
+fn read_text(path: &Path) -> Result<String, TestError> {
+    fs::read_to_string(path).map_err(|err| {
+        TestError::new(
+            TestErrorKind::HarnessFailure,
+            format!("failed to read golden file: {err}"),
+        )
+        .with_context("path", path.display().to_string())
+    })
+}
+
+fn apply_golden_snapshot(path: &Path, value: &str, policy: &SnapshotPolicy) -> Result<bool, TestError> {
+    let value = if policy.normalize {
+        normalize_snapshot(value)
+    } else {
+        value.to_string()
+    };
+    match policy.mode {
+        SnapshotMode::Verify => {
+            let expected = read_text(path)?;
+            if expected == value {
+                Ok(false)
+            } else {
+                Err(TestError::new(TestErrorKind::SnapshotMismatch, "golden mismatch")
+                    .with_context("path", path.display().to_string()))
+            }
+        }
+        SnapshotMode::Record => {
+            if path.exists() {
+                let expected = read_text(path)?;
+                if expected == value {
+                    Ok(false)
+                } else {
+                    Err(TestError::new(TestErrorKind::SnapshotMismatch, "golden mismatch")
+                        .with_context("path", path.display().to_string()))
+                }
+            } else {
+                write_text(path, &value)?;
+                Ok(true)
+            }
+        }
+        SnapshotMode::Update => {
+            write_text(path, &value)?;
+            Ok(true)
+        }
+    }
+}
+
+fn write_text(path: &Path, value: &str) -> Result<(), TestError> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| {
+            TestError::new(
+                TestErrorKind::HarnessFailure,
+                format!("failed to create golden directory: {err}"),
+            )
+            .with_context("path", parent.display().to_string())
+        })?;
+    }
+    fs::write(path, value).map_err(|err| {
+        TestError::new(
+            TestErrorKind::HarnessFailure,
+            format!("failed to write golden file: {err}"),
+        )
+        .with_context("path", path.display().to_string())
+    })
+}
+
+fn render_error_json(path: &Path, diagnostics: &[GuardDiagnostic]) -> String {
+    let payload = serde_json::json!({
+        "schema_version": "3.0.0-alpha",
+        "scenario": path.display().to_string(),
+        "diagnostics": diagnostics.iter().cloned().map(GuardDiagnostic::into_json).collect::<Vec<_>>(),
+    });
+    serde_json::to_string_pretty(&payload).unwrap_or_else(|_| {
+        "{\"schema_version\":\"3.0.0-alpha\",\"scenario\":\"\",\"diagnostics\":[]}".to_string()
+    })
 }
