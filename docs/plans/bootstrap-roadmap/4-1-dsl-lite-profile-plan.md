@@ -332,6 +332,38 @@ feature_guard = ["json5", "bare_keys", "trailing_comma"]
 1. Lite テンプレートのサンプルを `examples/` と `expected/` に置く場合の方針を記述する。
 2. Phase 4 シナリオへの登録要否を判断し、必要なら `phase4-scenario-matrix.csv` への追加方針を定義する。
 
+#### 回帰/サンプル接続の判断（案）
+
+**サンプル配置の方針**
+- Lite テンプレートのサンプルは `examples/` 直下に新規追加せず、テンプレート内 `templates/` のみに保持する。
+- ただし回帰検証が必要になった場合は `examples/practical/lite_template/` と `expected/lite_template/` を追加し、入力/期待値を対で管理する。
+- 監査ログを省略する Lite 既定に合わせ、`expected/` 側は `*.diagnostic.json` のみを必須とし、`*.audit.jsonl` は任意とする。
+
+**回帰検証の最小対象**
+- `templates/sample.input` → `templates/sample.ast` の変換結果が一致すること。
+- `Diagnostic` の `severity` と `code` がスナップショットと一致すること（最低 1 つの異常系を含む）。
+
+**回帰用サンプル構成（案）**
+`examples/practical/lite_template/`:
+- `README.md`（Lite テンプレート回帰の目的と実行手順）
+- `reml.toml`（Lite 既定値を反映した最小マニフェスト）
+- `src/main.reml`（テンプレートと同一のエントリ）
+- `src/parser.reml`（最小 DSL パーサ）
+- `src/dsl_test.reml`（テーブルテスト + スナップショット）
+- `templates/sample.input`（正常系サンプル）
+- `templates/sample.invalid`（異常系サンプル）
+
+**expected 出力形式の命名規則**
+`expected/lite_template/`:
+- `sample.ast.expected`（AST スナップショット）
+- `sample.invalid.diagnostic.json`（異常系の `Diagnostic` 期待値）
+- `sample.invalid.audit.jsonl`（監査ログの任意出力。Lite 既定では省略可）
+
+**Phase 4 シナリオ登録の判断**
+- Lite テンプレートの仕様が安定した時点で `phase4-scenario-matrix.csv` に追加する。
+- 追加時のシナリオ名は `lite_template_smoke` とし、用途は「テンプレート生成後の最短実行」を想定する。
+- 監査ログ必須のシナリオ群とは分離し、`audit = none` の条件で実行できる行を用意する。
+
 ## 参照
 - `docs/notes/dsl-enhancement-proposal.md`
 - `docs/spec/0-1-project-purpose.md`
