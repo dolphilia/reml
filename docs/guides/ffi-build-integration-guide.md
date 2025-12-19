@@ -23,6 +23,20 @@ ffi {
 3. 生成物キャッシュ（入力ハッシュ保存）
 4. コンパイル/リンク
 
+## 再生成条件
+次のいずれかが変化した場合は `input_hash` が更新され、再生成が必要になる。
+
+- `headers` の内容（ヘッダ自体の更新、インクルードパスの差分）
+- `reml-bindgen.toml` の内容
+- `TargetProfile`（クロスコンパイル時の `target`）
+- `reml-bindgen` のバージョン
+
+## キャッシュ破棄の手順
+- キャッシュは `cache_dir("reml")/ffi/{input_hash}` に格納される。運用上の目安は `.reml/cache/ffi`。
+- キャッシュを破棄する場合は `ffi` 配下を削除し、次回 `reml build` で再生成する。
+- CI では `ffi.bindgen` 監査ログの `status = cache_hit` を確認し、意図しないキャッシュ再利用を検知する。
+
 ## 監査と失敗時の扱い
 - `ffi.build.*` と `ffi.bindgen.*` を分離して監査する。
-- 失敗時は `input_hash` をログに残し、再生成条件を明確化する。
+- 失敗時は `input_hash` をログに残し、再生成条件の確認に利用する。
+- `ffi.build.config_invalid` / `ffi.build.link_failed` が出た場合は `reml.json` の `ffi` セクションを優先的に確認する。

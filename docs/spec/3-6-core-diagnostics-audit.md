@@ -811,6 +811,77 @@ fn record_change_set<T>(value: T, diff: ChangeSet) -> Result<T, Diagnostic>   //
 - `null_check = true` で NULL が返った場合は `Diagnostic.code = Some("ffi.wrap.null_return")` を設定し、`extensions["ffi.wrap"].symbol` と `extensions["ffi.wrap"].ownership` を含める。
 - `ownership` の前提が満たされない場合は `Diagnostic.code = Some("ffi.wrap.ownership_violation")` とし、監査ログへ `ffi.wrapper.ownership` と `ffi.wrapper.call_mode` を複写する。
 
+### 5.2 FFI ビルド・生成監査テンプレート {#ffi-ビルド生成監査テンプレート}
+
+> 目的：`reml build` が行う FFI 生成・リンクを監査可能にし、入力ハッシュと生成物キャッシュの再現性を保証する。
+
+`AuditEnvelope.metadata["ffi.bindgen"]` と `AuditEnvelope.metadata["ffi.build"]` に次の JSON オブジェクトを格納する。
+
+#### 5.2.1 `ffi.bindgen` 監査メタデータ
+
+| フィールド | 型 | 必須 | 説明 | 参照 |
+| --- | --- | --- | --- | --- |
+| `event` | Str | Required | 常に `"ffi.bindgen"` を設定 | 3-9 §2.10 |
+| `status` | Str | Required | `success` / `failed` / `cache_hit` / `skipped` | 3-9 §2.10.3 |
+| `input_hash` | Str | Required | `headers`/`bindgen.config`/`TargetProfile`/`reml-bindgen` バージョンを正規化したハッシュ | 3-9 §2.10.3 |
+| `manifest_path` | Str | Optional | `reml.json` の相対パス | 3-9 §2.10 |
+| `headers` | List<Str> | Optional | 実際に解決されたヘッダパス。`cache_hit` の場合は省略可 | 3-9 §2.10.1 |
+| `config_path` | Str | Optional | `reml-bindgen.toml` のパス | 3-9 §2.8 |
+| `output_path` | Str | Optional | 出力 `.reml` ファイルのパス | 3-9 §2.10.1 |
+| `cache_path` | Str | Optional | キャッシュ格納先ディレクトリ | 3-9 §2.10.3 |
+| `duration_ms` | u64 | Optional | 実行に要した時間（ミリ秒） | 3-9 §2.10 |
+| `tool_version` | Str | Optional | `reml-bindgen` のバージョン | 3-9 §2.10.3 |
+
+#### 5.2.2 `ffi.build` 監査メタデータ
+
+| フィールド | 型 | 必須 | 説明 | 参照 |
+| --- | --- | --- | --- | --- |
+| `event` | Str | Required | 常に `"ffi.build"` を設定 | 3-9 §2.10 |
+| `status` | Str | Required | `success` / `failed` | 3-9 §2.10.3 |
+| `input_hash` | Str | Required | `libraries`/`linker`/`TargetProfile` を正規化したハッシュ | 3-9 §2.10.3 |
+| `manifest_path` | Str | Optional | `reml.json` の相対パス | 3-9 §2.10 |
+| `libraries` | List<Str> | Optional | 解決対象のライブラリ名 | 3-9 §2.10.1 |
+| `linker_paths` | List<Str> | Optional | `linker.search_paths` の解決結果 | 3-9 §2.10.1 |
+| `frameworks` | List<Str> | Optional | `linker.frameworks` の解決結果 | 3-9 §2.10.1 |
+| `extra_args` | List<Str> | Optional | `linker.extra_args` の最終値 | 3-9 §2.10.1 |
+| `duration_ms` | u64 | Optional | リンクに要した時間（ミリ秒） | 3-9 §2.10 |
+
+```json
+{
+  "ffi.bindgen": {
+    "event": "ffi.bindgen",
+    "status": "cache_hit",
+    "input_hash": "b3a1c9d4b65f1f27",
+    "manifest_path": "reml.json",
+    "output_path": "generated/openssl.reml",
+    "cache_path": ".reml/cache/ffi/b3a1c9d4b65f1f27",
+    "tool_version": "0.4.2"
+  }
+}
+```
+
+```json
+{
+  "ffi.build": {
+    "event": "ffi.build",
+    "status": "failed",
+    "input_hash": "9a77e14271d0e8aa",
+    "manifest_path": "reml.json",
+    "libraries": ["ssl", "crypto"],
+    "linker_paths": ["/usr/lib", "/opt/local/lib"],
+    "frameworks": [],
+    "extra_args": ["-Wl,-rpath,/opt/local/lib"],
+    "duration_ms": 310
+  }
+}
+```
+
+- `input_hash` は `ffi.bindgen` / `ffi.build` ともに必須であり、`Diagnostic.extensions["ffi.build"].input_hash` と同じ値を保存する。
+- `ffi.bindgen` が `cache_hit` の場合でも監査イベントは出力し、`headers` は省略可能とする。
+- `Diagnostic.code` は以下を既定とする。
+  - `ffi.build.config_invalid` / `ffi.build.link_failed` / `ffi.build.path_outside_project` / `ffi.build.framework_unsupported`
+  - `ffi.bindgen.config_invalid` / `ffi.bindgen.generate_failed` / `ffi.bindgen.output_overwrite`
+
 ## 6. DSLオーケストレーション向け可観測性
 
 ### 6.1 メトリクスプリセット

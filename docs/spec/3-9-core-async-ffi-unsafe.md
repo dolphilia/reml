@@ -914,18 +914,62 @@ fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Res
 
 ### 2.10 reml build 統合（仕様反映セクション）
 
-- `reml.json` の FFI セクションは次のキーを持つ。
-  - `libraries`: 依存ライブラリ名の配列
-  - `headers`: ヘッダパスの配列
-  - `bindgen`: `{ enabled, output, config }`
-  - `linker`: `{ search_paths, frameworks, extra_args }`
-- `reml build` は「ヘッダ解析 → 生成 → キャッシュ → コンパイル/リンク」を単一フローで実行し、
-  生成物キャッシュには **入力ハッシュ**（ヘッダ、設定、ターゲット）を保存する。
-- 監査キーは `ffi.build.*` と `ffi.bindgen.*` を分離し、生成・リンクの責務を明確化する。
-- 失敗時は `ffi.build.config_invalid` / `ffi.build.link_failed` を基本診断とし、
-  `extensions["ffi.build"]` に `input_hash` を記録する。
+`reml build` は `reml.json` に定義された FFI 依存を取り込み、ヘッダ解析・生成・リンクまでを単一フローで統合する。
 
-#### 2.10.1 例の範囲
+#### 2.10.1 `reml.json` FFI セクション定義
+
+`ffi` セクションは次のキーを持つ。キーの省略時は空配列 / `None` を既定とする。
+
+| キー | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| `libraries` | `List<Str>` | Optional | リンク対象のライブラリ名。プラットフォーム解決時に `lib{name}` 接頭辞や拡張子は自動補完する。 |
+| `headers` | `List<Path>` | Optional | `reml-bindgen` に渡すヘッダパス。相対パスは `project_root` を基準に解決する。 |
+| `bindgen` | `BindgenConfig` | Optional | `reml-bindgen` 実行の制御。 |
+| `linker` | `LinkerConfig` | Optional | リンク検索パス・Framework 指定などプラットフォーム固有の設定を束ねる。 |
+
+`BindgenConfig` と `LinkerConfig` は次の形を取る。
+
+| キー | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| `bindgen.enabled` | `Bool` | Optional | `true` の場合に `reml-bindgen` を実行する。既定は `false`。 |
+| `bindgen.output` | `Path` | Conditional | `enabled = true` の場合は必須。生成される `.reml` 出力先。 |
+| `bindgen.config` | `Path` | Optional | `reml-bindgen.toml` のパス。省略時は既定の探索規則に従う。 |
+| `linker.search_paths` | `List<Path>` | Optional | ライブラリ検索パス。相対パスは `project_root` 起点で解決する。 |
+| `linker.frameworks` | `List<Str>` | Optional | macOS での Framework 名。macOS 以外では警告診断を発行する。 |
+| `linker.extra_args` | `List<Str>` | Optional | 追加のリンカ引数。CLI が `--link-arg` を受け取る場合はここへ正規化する。 |
+
+#### 2.10.2 検証ルール
+
+- `bindgen.enabled = true` の場合は `headers` を空にできない。空配列の場合は `ffi.build.config_invalid` を返す。
+- `bindgen.output` は拡張子 `.reml` を要求し、既存ファイルを上書きする場合は `ffi.bindgen.output_overwrite` を `Warning` で記録する。
+- `headers` / `linker.search_paths` は `Core.Path.normalize_path` に通し、`project_root` 外のパスは `ffi.build.path_outside_project` で拒否できる。
+- `linker.frameworks` は `TargetProfile.os = "macos"` 以外の場合 `ffi.build.framework_unsupported` を記録し、ビルドは継続する。
+- `libraries` は重複を除去し、解決不能なライブラリは `ffi.build.link_failed` に昇格する。
+
+#### 2.10.3 `reml build` 実行フロー
+
+```
+manifest 読み込み
+  → FFI 設定検証
+  → headers 解決
+  → bindgen 入力ハッシュ計算
+  → キャッシュ判定 (hit/miss)
+  → reml-bindgen 実行 (miss の場合)
+  → 生成物キャッシュ保存
+  → コンパイル/リンク
+  → 監査ログ出力
+```
+
+- 入力ハッシュは `headers` 実体・`bindgen.config`・`TargetProfile`・`reml-bindgen` バージョンを正規化して連結した値とし、`ffi.bindgen.input_hash` として監査に残す。
+- 生成物キャッシュは `cache_dir("reml")/ffi/{input_hash}` を既定パスとし、`reml build --no-cache` が指定された場合は常に `miss` とする。
+- `ffi.build.*` と `ffi.bindgen.*` の監査イベントは責務を分離し、`ffi.bindgen.*` は生成、`ffi.build.*` はリンク・パッケージングに限定する。
+
+#### 2.10.4 監査・診断の要点
+
+- `ffi.build.config_invalid` / `ffi.build.link_failed` を基本診断とし、詳細は `extensions["ffi.build"]` に格納する。
+- `ffi.bindgen.*` の監査イベントは [3-6](3-6-core-diagnostics-audit.md#ffi-ビルド生成監査テンプレート) に従い、`input_hash` を必須フィールドとして記録する。
+
+#### 2.10.5 例の範囲
 
 - `reml.json` の FFI セクション例（`libraries` / `headers` / `bindgen` / `linker`）。
 - `reml build` 実行時のフロー図（テキスト手順で可）。
