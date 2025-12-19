@@ -180,14 +180,15 @@ where
     }
 
     let source_len = source.as_bytes().len();
-    if diagnostics.iter().any(|diag| {
+    let candidates = select_preferred_diagnostics(&diagnostics);
+    if candidates.iter().any(|diag| {
         matches_error_code(&expectation.code, diag, source_len)
             && matches_error_position(expectation.at.as_ref(), diag)
             && matches_error_message(expectation.message.as_ref(), diag)
     }) {
         Ok(())
     } else {
-        let codes = diagnostics
+        let codes = candidates
             .iter()
             .map(|diag| diag.code)
             .collect::<Vec<_>>()
@@ -258,7 +259,7 @@ where
 }
 
 fn matches_error_code(expected: &str, diag: &GuardDiagnostic, source_len: usize) -> bool {
-    if diag.code == expected {
+    if diagnostic_codes(diag).iter().any(|code| code == expected) {
         return true;
     }
     if expected == "parser.unexpected_eof" && diag.code == "parser.syntax.expected_tokens" {
@@ -291,6 +292,45 @@ fn extract_position(diag: &GuardDiagnostic) -> Option<(usize, usize, usize)> {
     let line = position.get("line")?.as_u64()? as usize;
     let column = position.get("column")?.as_u64()? as usize;
     Some((byte, line, column))
+}
+
+fn diagnostic_codes(diag: &GuardDiagnostic) -> Vec<String> {
+    let mut codes = vec![diag.code.to_string()];
+    for key in ["codes", "diagnostic.codes"] {
+        if let Some(value) = diag.extensions.get(key) {
+            if let Some(items) = value.as_array() {
+                for item in items {
+                    if let Some(code) = item.as_str() {
+                        codes.push(code.to_string());
+                    }
+                }
+            }
+        }
+    }
+    codes.sort();
+    codes.dedup();
+    codes
+}
+
+fn select_preferred_diagnostics(diags: &[GuardDiagnostic]) -> Vec<&GuardDiagnostic> {
+    let mut max_byte: Option<usize> = None;
+    for diag in diags {
+        if let Some((byte, _, _)) = extract_position(diag) {
+            max_byte = Some(max_byte.map_or(byte, |current| current.max(byte)));
+        }
+    }
+    if let Some(max_byte) = max_byte {
+        diags
+            .iter()
+            .filter(|diag| {
+                extract_position(diag)
+                    .map(|(byte, _, _)| byte == max_byte)
+                    .unwrap_or(false)
+            })
+            .collect()
+    } else {
+        diags.iter().collect()
+    }
 }
 
 fn read_text(path: &Path) -> Result<String, TestError> {
