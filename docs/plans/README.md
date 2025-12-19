@@ -36,6 +36,17 @@ Reml 実装ロードマップや運用計画を集約しています。
 - [0-0-overview.md](core-parse-improvement/0-0-overview.md) — 背景・目的・成功条件
 - [0-1-workstream-tracking.md](core-parse-improvement/0-1-workstream-tracking.md) — 追跡ルールとワークストリーム分割
 
+## 標準ライブラリ改善計画 (`docs/plans/stdlib-improvement/`)
+- [README.md](stdlib-improvement/README.md) — 計画の目次と位置づけ
+- [0-0-overview.md](stdlib-improvement/0-0-overview.md) — 背景・目的・成功条件
+- [0-1-workstream-tracking.md](stdlib-improvement/0-1-workstream-tracking.md) — 追跡ルールとワークストリーム分割
+- [1-0-core-test-plan.md](stdlib-improvement/1-0-core-test-plan.md) — `Core.Test` 計画
+- [1-1-core-cli-plan.md](stdlib-improvement/1-1-core-cli-plan.md) — `Core.Cli` 計画
+- [1-2-core-text-pretty-plan.md](stdlib-improvement/1-2-core-text-pretty-plan.md) — `Core.Text.Pretty` 計画
+- [1-3-core-doc-plan.md](stdlib-improvement/1-3-core-doc-plan.md) — `Core.Doc` 計画
+- [1-4-core-lsp-plan.md](stdlib-improvement/1-4-core-lsp-plan.md) — `Core.Lsp` 計画
+- [2-0-bootstrap-integration.md](stdlib-improvement/2-0-bootstrap-integration.md) — ブートストラップ統合
+
 ## FFI 強化計画 (`docs/plans/ffi-improvement/`)
 - [README.md](ffi-improvement/README.md) — FFI 強化計画の目次と位置づけ
 - [0-0-overview.md](ffi-improvement/0-0-overview.md) — 背景・目的・段階整理
