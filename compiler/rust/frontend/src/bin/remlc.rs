@@ -467,8 +467,20 @@ fn run_bindgen_if_enabled(
     };
     let input_hash = compute_bindgen_input_hash(ffi, bindgen);
     let cache_path = cache_path_for_input_hash(opts.cache_dir.as_ref(), &input_hash);
+    let tool_version = reml_bindgen_version();
     let cache_status = handle_bindgen_cache(cache_path.as_ref());
     if cache_status == "cache_hit" {
+        if let Some(cache_path) = cache_path.as_ref() {
+            if let Err(err) = restore_bindgen_cache(
+                cache_path,
+                Path::new(&output),
+                Path::new(&manifest_path),
+            ) {
+                diagnostics.push(ffi_build_bindgen_failed(format!(
+                    "生成物キャッシュの復元に失敗しました: {err}"
+                )));
+            }
+        }
         audit_entries.push(ffi_bindgen_audit_entry(
             &opts.config_path,
             bindgen,
@@ -476,7 +488,8 @@ fn run_bindgen_if_enabled(
             &input_hash,
             cache_status,
             cache_path.as_ref(),
-            None,
+            Some(&output),
+            &tool_version,
         ));
         return (diagnostics, audit_entries);
     }
@@ -518,6 +531,7 @@ fn run_bindgen_if_enabled(
         status,
         cache_path.as_ref(),
         Some(&output),
+        &tool_version,
     ));
     (diagnostics, audit_entries)
 }
@@ -601,6 +615,7 @@ fn ffi_bindgen_audit_entry(
     status: &str,
     cache_path: Option<&PathBuf>,
     output: Option<&str>,
+    tool_version: &str,
 ) -> Value {
     let mut meta = Map::new();
     let mut bindgen_meta = Map::new();
@@ -642,12 +657,42 @@ fn ffi_bindgen_audit_entry(
     }
     bindgen_meta.insert(
         "tool_version".into(),
-        Value::String(reml_bindgen_version()),
+        Value::String(tool_version.to_string()),
     );
     meta.insert("ffi.bindgen".into(), Value::Object(bindgen_meta));
     let mut entry = Map::new();
     entry.insert("metadata".into(), Value::Object(meta));
     Value::Object(entry)
+}
+
+fn restore_bindgen_cache(
+    cache_path: &Path,
+    output: &Path,
+    manifest: &Path,
+) -> Result<(), std::io::Error> {
+    let output_name = output
+        .file_name()
+        .map(|value| value.to_string_lossy().to_string())
+        .unwrap_or_else(|| "bindings.reml".to_string());
+    let manifest_name = manifest
+        .file_name()
+        .map(|value| value.to_string_lossy().to_string())
+        .unwrap_or_else(|| "bindings.manifest.json".to_string());
+    let cached_output = cache_path.join(output_name);
+    let cached_manifest = cache_path.join(manifest_name);
+    if let Some(parent) = output.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)?;
+        }
+    }
+    if let Some(parent) = manifest.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)?;
+        }
+    }
+    let _ = fs::copy(cached_output, output)?;
+    let _ = fs::copy(cached_manifest, manifest)?;
+    Ok(())
 }
 
 fn cache_bindgen_outputs(
@@ -672,7 +717,28 @@ fn cache_bindgen_outputs(
 }
 
 fn reml_bindgen_version() -> String {
-    std::env::var("REML_BINDGEN_VERSION").unwrap_or_else(|_| "unknown".to_string())
+    if let Ok(value) = std::env::var("REML_BINDGEN_VERSION") {
+        if !value.trim().is_empty() {
+            return value;
+        }
+    }
+    let output = match std::process::Command::new("reml-bindgen")
+        .arg("--version")
+        .output()
+    {
+        Ok(value) => value,
+        Err(_) => return "unknown".to_string(),
+    };
+    if !output.status.success() {
+        return "unknown".to_string();
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let trimmed = stdout.trim();
+    if trimmed.is_empty() {
+        "unknown".to_string()
+    } else {
+        trimmed.to_string()
+    }
 }
 
 fn ffi_build_bindgen_failed(message: impl Into<String>) -> GuardDiagnostic {
