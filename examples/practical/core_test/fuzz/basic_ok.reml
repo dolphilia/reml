@@ -1,0 +1,16 @@
+module Examples.Practical.CoreTest.Fuzz.BasicOk
+
+use Core.Test
+use Core.Text
+
+fn main() -> Str {
+  let config = {
+    seed = Text.as_bytes("seed"),
+    max_cases = 4,
+    max_bytes = 8,
+  }
+  let outcome = Test.fuzz_bytes(config, |_| Ok(()))
+  match outcome with
+    | Ok(_) -> "fuzz:ok"
+    | Err(_) -> "fuzz:error"
+}

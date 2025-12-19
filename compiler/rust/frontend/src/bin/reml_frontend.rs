@@ -2580,6 +2580,8 @@ enum RuntimeExecutionPlan {
     CorePathRelativeDenied,
     CoreRuntimeBridgeStageMismatch,
     CoreTestSnapshotBasic,
+    CoreTestTableBasic,
+    CoreTestFuzzBasic,
 }
 
 impl RuntimeExecutionPlan {
@@ -2593,6 +2595,10 @@ impl RuntimeExecutionPlan {
             Some(Self::CoreRuntimeBridgeStageMismatch)
         } else if label.contains("examples/practical/core_test/snapshot/basic_ok.reml") {
             Some(Self::CoreTestSnapshotBasic)
+        } else if label.contains("examples/practical/core_test/table/basic_ok.reml") {
+            Some(Self::CoreTestTableBasic)
+        } else if label.contains("examples/practical/core_test/fuzz/basic_ok.reml") {
+            Some(Self::CoreTestFuzzBasic)
         } else {
             None
         }
@@ -2603,6 +2609,8 @@ impl RuntimeExecutionPlan {
             Self::CorePathRelativeDenied => self.run_core_path_relative_denied(),
             Self::CoreRuntimeBridgeStageMismatch => self.run_core_runtime_bridge_stage_mismatch(),
             Self::CoreTestSnapshotBasic => self.run_core_test_snapshot_basic(),
+            Self::CoreTestTableBasic => self.run_core_test_table_basic(),
+            Self::CoreTestFuzzBasic => self.run_core_test_fuzz_basic(),
         }
     }
 
@@ -2615,6 +2623,31 @@ impl RuntimeExecutionPlan {
         }
         let policy = runtime_test::SnapshotPolicy::record();
         let _ = runtime_test::assert_snapshot_with(policy, "core_test_basic", "alpha");
+        Ok(Vec::new())
+    }
+
+    fn run_core_test_table_basic(&self) -> Result<Vec<Value>, String> {
+        let cases = vec![
+            runtime_test::TableCase {
+                input: "alpha".to_string(),
+                expected: "alpha".to_string(),
+            },
+            runtime_test::TableCase {
+                input: "beta".to_string(),
+                expected: "beta".to_string(),
+            },
+        ];
+        let _ = runtime_test::table_test(&cases, |value| value.clone());
+        Ok(Vec::new())
+    }
+
+    fn run_core_test_fuzz_basic(&self) -> Result<Vec<Value>, String> {
+        let config = runtime_test::FuzzConfig {
+            seed: b"seed".to_vec(),
+            max_cases: 4,
+            max_bytes: 8,
+        };
+        let _ = runtime_test::fuzz_bytes(&config, |_| Ok(()));
         Ok(Vec::new())
     }
 

@@ -35,3 +35,21 @@
 
 - CLI: `REML_CORE_TEST_FORCE_FAIL=1 cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_test/snapshot/basic_ok.reml`
 - diagnostics: `["test.failed"]`（exit_code=failure）
+
+### CH3-TEST-402
+
+- ファイル: `examples/practical/core_test/table/basic_ok.reml`
+- 期待 Diagnostics: `[]`
+- 実際 Diagnostics: `[]`
+- Exit code: 0
+- CLI: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_test/table/basic_ok.reml`
+- run_id: `5e1fa446-ac8a-4e12-9e06-44dc23ad5fc1`
+
+### CH3-TEST-403
+
+- ファイル: `examples/practical/core_test/fuzz/basic_ok.reml`
+- 期待 Diagnostics: `[]`
+- 実際 Diagnostics: `[]`
+- Exit code: 0
+- CLI: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_test/fuzz/basic_ok.reml`
+- run_id: `14427c89-24d8-417f-9ee6-90925c1ed1f8`

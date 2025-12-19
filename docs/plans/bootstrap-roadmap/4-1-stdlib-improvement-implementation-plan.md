@@ -104,7 +104,7 @@ Phase 4 の `CH3-TEST-401` / `CH3-CLI-401` / `CH3-PRETTY-401` / `CH3-DOC-401` / 
 - [x] Core.Test 実行時の stdout と `expected/practical/core_test/snapshot/basic_ok.stdout` の整合を取る（暫定的に CLI JSON 出力に合わせた）。
 - [x] `test.failed` 診断の出力経路を CLI 結果に反映する（失敗時に `CliDiagnosticEnvelope.diagnostics` へ流れることを確認）。
 - [x] `SnapshotUpdated` 監査イベントの出力確認（CLI 実行ログに `snapshot.updated` を含むことを確認し、`reports/spec-audit/ch4/logs/stdlib-test-20251219.md` に記録）。
-- [ ] `Core.Test` のテーブル駆動とファズ API を利用する追加サンプルを `examples/practical/core_test/` に追加し、Phase 4 マトリクスへ登録する。
+- [x] `Core.Test` のテーブル駆動とファズ API を利用する追加サンプルを `examples/practical/core_test/` に追加し、Phase 4 マトリクスへ登録する。
 
 ## 参照
 - `docs/plans/stdlib-improvement/README.md`
