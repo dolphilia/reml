@@ -94,6 +94,7 @@ Phase 4 の `CH3-TEST-401` / `CH3-CLI-401` / `CH3-PRETTY-401` / `CH3-DOC-401` / 
 ## 進捗状況
 - ドラフト作成時点では未着手。各フェーズの完了時に日付を追記する。
 - 2025-12-19: フェーズA Step2 を実施。`docs/spec/3-11-core-test.md` にテストブロック糖衣構文とスナップショット安定化ポリシーを追記し、`docs/guides/testing.md` に更新ルールを反映。
+- 2025-12-19: フェーズA Step1 の最小 API 受け口を Rust Runtime に追加。`compiler/rust/runtime/src/test/mod.rs` で `assert_snapshot`/`table_test`/`fuzz_bytes` 等のスタブ実装と in-memory スナップショット保持を用意。
 
 ## 参照
 - `docs/plans/stdlib-improvement/README.md`

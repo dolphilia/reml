@@ -34,6 +34,8 @@ pub mod core_prelude;
 pub use core_prelude as prelude;
 #[path = "../../src/io/mod.rs"]
 pub mod io;
+#[path = "../../src/test/mod.rs"]
+pub mod test;
 pub mod stage {
     pub use crate::capability_metadata::{StageId, StageParseError, StageRequirement};
 }
