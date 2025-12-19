@@ -38,6 +38,11 @@
 - [3-8-core-runtime-capability.md](3-8-core-runtime-capability.md) — Stage 管理と `-Z` フラグ運用（効果構文 Capability は Phase 2-5 時点で Experimental と明記）
 - [3-9-core-async-ffi-unsafe.md](3-9-core-async-ffi-unsafe.md)
 - [3-10-core-env.md](3-10-core-env.md)
+- [3-11-core-test.md](3-11-core-test.md)
+- [3-12-core-cli.md](3-12-core-cli.md)
+- [3-13-core-text-pretty.md](3-13-core-text-pretty.md)
+- [3-14-core-lsp.md](3-14-core-lsp.md)
+- [3-15-core-doc.md](3-15-core-doc.md)
 
 ## 4.x 公式プラグイン仕様（Draft）
 - [4-0-official-plugins-overview.md](4-0-official-plugins-overview.md)

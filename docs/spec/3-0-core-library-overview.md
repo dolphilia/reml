@@ -14,5 +14,10 @@
 - [3.8 ランタイムと Capability レジストリ](3-8-core-runtime-capability.md): Capability Registry の構造、セキュリティモデル、各 Capability の概要と DSL プロファイル生成フローに加え、Runtime Bridge 契約と Stage/監査ポリシー、外部マニフェストを Reml 形式へ正規化する `transform_capability_manifest_to_reml` ユーティリティを解説します。`reml_capability list --format json` の出力（`reports/spec-audit/ch3/capability_list-20251205.json`）を `scripts/capability/generate_md.py` で再利用することで、本章のテーブルと README のスナップショットを常に最新 Stage/Provider 情報に揃えられるようになっています。
 - [3.9 非同期・FFI・アンセーフ](3-9-core-async-ffi-unsafe.md): 非同期実行モデル、FFI サンドボックス、`Core.Unsafe` 指針と Capability 連携、`ExecutionPlan` 静的検証とセキュリティ/性能最適化を扱います。`SupervisorSpec` / `RestartStrategy` による標準 Supervisor パターンと診断・監査の連携手順もここで定義します。
 - [3.10 環境機能とプラットフォーム連携](3-10-core-env.md): 環境変数アクセス、プラットフォーム情報取得、`REML_CONFIG_*` による互換フラグ供給、`@cfg` 連携ガイドラインと将来拡張メモを提供します。
+- [3.11 テスト基盤](3-11-core-test.md): ゴールデン/スナップショット/ファジングの標準 API と診断・監査の連携を定義します。
+- [3.12 CLI 基盤](3-12-core-cli.md): 宣言的 CLI 仕様、ヘルプ生成、解析エラーの診断ルールをまとめます。
+- [3.13 プリティプリンタ](3-13-core-text-pretty.md): `Doc` コンビネータとレイアウト規則を定義し、フォーマッタ実装の基盤とします。
+- [3.14 LSP ツールキット](3-14-core-lsp.md): LSP 型と JSON-RPC ヘルパを標準化し、診断ブリッジの経路を整理します。
+- [3.15 ドキュメント生成](3-15-core-doc.md): ドキュメントコメント抽出・レンダリング・Doctest の最小仕様を定義します。
 
 標準ライブラリの再エクスポートは `use Core.Parse.{Lex, Op.{Infix, Prefix}}` のような多段ネスト `use` を前提に整理されており、Phase 2-5 `SYNTAX-002` 計画 S5（2025-11-12 更新）で OCaml 実装・テスト・測定指標が揃った。詳細は [`../plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md`](../plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md) と [0-3-audit-and-metrics.md](../plans/bootstrap-roadmap/0-3-audit-and-metrics.md) の `parser.use_nested_support` を参照して最新状態を確認すること。Capability Stage の検証や `effects.contract.stage_mismatch` のサンプルは `examples/core_diagnostics/pipeline_branch.reml` と `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` に収録されており、Core.Runtime が記録する `capability.*` / `effect.stage.*` メタデータの流れを Chapter 3.6/3.8 から一貫して追跡できる。

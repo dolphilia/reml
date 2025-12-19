@@ -134,6 +134,13 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **遅延評価 (Lazy Evaluation)**: `Iter` チェーンが終端操作まで評価されない仕組み。メモリ効率と必要時計算を両立し、大量データ処理で威力を発揮する。[3-1 Core Prelude & Iteration](3-1-core-prelude-iteration.md) を参照。
 - **短絡型 (Try Types)**: `Result<T, E>` や `Option<T>` など、`?` 演算子による早期リターンをサポートする型。`Core.Prelude` が定義する `Try` トレイトにより実装される。[3-1 Core Prelude & Iteration](3-1-core-prelude-iteration.md) を参照。
 
+## 標準ライブラリ支援モジュール
+- **Core.Test**: DSL のスナップショット/ゴールデン/ファジングを標準化するテスト基盤。`TestError` と監査イベントで失敗理由を集約する。[3-11 Core Test](3-11-core-test.md) を参照。
+- **Core.Cli**: DSL 用 CLI を宣言的に構築するモジュール。`CliSpec` と `CliValues` を分離し、診断出力を統一する。[3-12 Core Cli](3-12-core-cli.md) を参照。
+- **Core.Text.Pretty**: プリティプリンタの `Doc` コンビネータとレイアウト規則を提供し、フォーマッタやコード生成の基盤とする。[3-13 Core Text Pretty](3-13-core-text-pretty.md) を参照。
+- **Core.Lsp**: LSP の基本型と JSON-RPC ヘルパを提供し、DSL 作者が最小実装を構築できるようにする。[3-14 Core Lsp](3-14-core-lsp.md) を参照。
+- **Core.Doc**: ドキュメントコメント抽出とレンダリング、Doctest 実行の標準 API を提供する。[3-15 Core Doc](3-15-core-doc.md) を参照。
+
 ## DSL・エコシステム・ツール
 - **DSL (Domain-Specific Language)**: `Core.Parse` を使って特定領域向けの言語を宣言的に構築するアプローチ。プロジェクト全体が DSL ファーストを掲げ、[0-1 プロジェクト目的](0-1-project-purpose.md#32-エコシステム統合とdslファーストアプローチ) に背景がまとめられる。
 - **Conductor パターン**: 複数の DSL を組み合わせてパイプライン化するための構文で、`conductor` ブロックとして宣言する。[1-1 構文](1-1-syntax.md#b11-dslエントリーポイント宣言) と [guides/conductor-pattern.md](../guides/conductor-pattern.md) に運用指針がある。

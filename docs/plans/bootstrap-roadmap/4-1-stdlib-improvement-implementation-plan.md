@@ -46,6 +46,33 @@
 2. `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に参照先と実行コマンドの方針を追記する。
 3. `reports/spec-audit/ch4/` に実行ログの登録方針を記録する。
 
+### Phase 4 実行ログ方針（標準ライブラリ）
+Phase 4 の `CH3-TEST-401` / `CH3-CLI-401` / `CH3-PRETTY-401` / `CH3-DOC-401` / `CH3-LSP-401` を `ok` へ更新するため、以下の手順で実行ログを残す。
+
+1. **実行コマンドの固定**  
+   - `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_test/snapshot/basic_ok.reml`  
+   - `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_cli/parse_flags/basic_ok.reml`  
+   - `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_text/pretty/layout_width_basic.reml`  
+   - `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_doc/basic_generate_ok.reml`  
+   - `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_lsp/basic_diagnostics_ok.reml`
+
+2. **ログ保存先の統一**  
+   - `reports/spec-audit/ch4/logs/stdlib-test-YYYYMMDD.md`  
+   - `reports/spec-audit/ch4/logs/stdlib-cli-YYYYMMDD.md`  
+   - `reports/spec-audit/ch4/logs/stdlib-pretty-YYYYMMDD.md`  
+   - `reports/spec-audit/ch4/logs/stdlib-doc-YYYYMMDD.md`  
+   - `reports/spec-audit/ch4/logs/stdlib-lsp-YYYYMMDD.md`
+
+3. **ログに残す項目**  
+   - 実行コマンド全文と実行日時  
+   - `diagnostics[].code` の集合（空の場合は `[]` を明記）  
+   - stdout の先頭 1 行と `expected/` の一致確認  
+   - `run_id` が含まれる場合は比較対象から除外する旨を記載
+
+4. **`phase4-scenario-matrix.csv` 更新基準**  
+   - `expected/` の stdout と CLI 出力が一致し、診断コード集合が `diagnostic_keys` と一致した時点で `resolution=ok` に更新する。  
+   - `resolution_notes` にログファイル名と実行コマンドを記載する。
+
 ## タイムライン（目安）
 
 | 週 | タスク |

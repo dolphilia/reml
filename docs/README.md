@@ -9,7 +9,7 @@
 | 0.x | 導入資料・プロジェクト方針 | [0-0-overview.md](spec/0-0-overview.md), [0-1-project-purpose.md](spec/0-1-project-purpose.md), [0-2-glossary.md](spec/0-2-glossary.md), [0-3-code-style-guide.md](spec/0-3-code-style-guide.md) |
 | 1.x | 言語コア仕様 | [1-0-language-core-overview.md](spec/1-0-language-core-overview.md) 〜 [1-5-formal-grammar-bnf.md](spec/1-5-formal-grammar-bnf.md) |
 | 2.x | 標準パーサー API | [2-0-parser-api-overview.md](spec/2-0-parser-api-overview.md) 〜 [2-7-core-parse-streaming.md](spec/2-7-core-parse-streaming.md) |
-| 3.x | 標準ライブラリ | [3-0-core-library-overview.md](spec/3-0-core-library-overview.md) 〜 [3-10-core-env.md](spec/3-10-core-env.md) |
+| 3.x | 標準ライブラリ | [3-0-core-library-overview.md](spec/3-0-core-library-overview.md) 〜 [3-15-core-doc.md](spec/3-15-core-doc.md) |
 | 4.x | 公式プラグイン仕様（Draft） | [4-0-official-plugins-overview.md](spec/4-0-official-plugins-overview.md) 〜 [4-7-core-parse-plugin.md](spec/4-7-core-parse-plugin.md) |
 | 5.x | エコシステム仕様（Draft） | [5-0-ecosystem-overview.md](spec/5-0-ecosystem-overview.md) 〜 [5-6-risk-governance.md](spec/5-6-risk-governance.md) |
 

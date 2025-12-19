@@ -5,11 +5,14 @@ Reml の実装・運用に関するガイドをカテゴリ別に整理してい
 ## 開発ワークフロー & ツールチェーン
 - [cli-workflow.md](cli-workflow.md)
 - [cli-help-template.md](cli-help-template.md)
+- [cli-authoring.md](cli-authoring.md)
 - [man/remlc-ocaml.1.md](man/remlc-ocaml.1.md)
+- [testing.md](testing.md)
 - [trace-output.md](trace-output.md)
 - [config-cli.md](config-cli.md)
 - [ci-strategy.md](ci-strategy.md)
 - [lsp-integration.md](lsp-integration.md)
+- [lsp-authoring.md](lsp-authoring.md)
 - [llvm-integration-notes.md](llvm-integration-notes.md)
 - [system-programming-primer.md](system-programming-primer.md)
 
@@ -21,6 +24,8 @@ Reml の実装・運用に関するガイドをカテゴリ別に整理してい
 - [dsl-performance-playbook.md](dsl-performance-playbook.md)
 - [conductor-pattern.md](conductor-pattern.md)
 - [constraint-dsl-best-practices.md](constraint-dsl-best-practices.md)
+- [formatter-authoring.md](formatter-authoring.md)
+- [doc-authoring.md](doc-authoring.md)
 
 ## エコシステム & コミュニティ
 - [ai-integration.md](ai-integration.md)
