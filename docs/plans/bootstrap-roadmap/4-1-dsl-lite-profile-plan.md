@@ -242,7 +242,7 @@ feature_guard = ["json5", "bare_keys", "trailing_comma"]
 **Lite で省略される項目（明示）**
 - 監査ログ出力（`AuditPolicy::None` によりログ出力は省略）
 - Capability の事前登録（`dsl.lite.capabilities = []` のため既定では無効）
-- Stage 監査の強制（`reml test` では簡易確認に留める）
+- Stage 検証の強制（`reml test` では簡易確認に留める）
 
 **Lite でも維持する項目（必須）**
 - `Diagnostic` と `AuditEnvelope` の生成（ログは省略しても構造体は生成）
@@ -288,7 +288,7 @@ feature_guard = ["json5", "bare_keys", "trailing_comma"]
 - `README.md` のテンプレート一覧に変更が出る場合は、フェーズD 完了時に追記する。
 
 **更新時の確認項目**
-- 用語表記（Lite/Standard/Stage/Capability）が 5-1/5-4/manifest ガイド間で一致していること。
+- 用語表記（Lite/標準/Stage/Capability）が 5-1/5-4/manifest ガイド間で一致していること。
 - `reml.toml` のキーが `docs/spec/3-8-core-runtime-capability.md` の Stage/Capability 表記と矛盾しないこと。
 - `docs/spec/3-6-core-diagnostics-audit.md` の `Diagnostic`/`AuditEnvelope` 表現と整合すること。
 
@@ -358,6 +358,17 @@ feature_guard = ["json5", "bare_keys", "trailing_comma"]
 - `sample.ast.expected`（AST スナップショット。Reml 表記で保持）
 - `sample.invalid.diagnostic.json`（異常系の `Diagnostic` 期待値）
 - `sample.invalid.audit.jsonl`（監査ログの任意出力。Lite 既定では省略可）
+
+**sample.ast.expected フォーマット例**
+```reml
+Config {
+  entries: [
+    Entry { key: "port", value: IntValue(8080) },
+    Entry { key: "host", value: StrValue("localhost") },
+    Entry { key: "mode", value: StrValue("lite") }
+  ]
+}
+```
 
 **Phase 4 シナリオ登録の判断**
 - Lite テンプレートの仕様が安定した時点で `phase4-scenario-matrix.csv` に追加する。
