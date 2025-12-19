@@ -9,6 +9,10 @@
 
 参照: [3-12 Core Cli](../spec/3-12-core-cli.md)
 
+## 1.1 Core.Env との分担
+- `Core.Cli` は `argv` の解析とヘルプ/診断整形を担い、環境変数やプラットフォーム情報は `Core.Env` に委譲する。
+- CLI オプションの決定後に `Core.Env` の設定解決を行い、`RunConfig` へ反映する。
+
 ## 2. 最小例
 
 ```reml

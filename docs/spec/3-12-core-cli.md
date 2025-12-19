@@ -60,10 +60,15 @@ fn get_flag(values: CliValues, name: Str) -> Bool
 fn get_arg(values: CliValues, name: Str) -> Option<Str>
 ```
 
+### 2.1 Core.Env との役割分担
+- `Core.Cli` は `argv`（引数配列）の解析とヘルプ/診断整形を担当し、環境変数・実行中プラットフォーム情報の取得は `Core.Env` に委ねる。
+- `Core.Env` で取得した設定値（互換プロファイル、ターゲット情報など）は CLI 側が優先されるため、CLI オプションの解決後に `RunConfig` へ反映する。
+- `Core.Cli` は環境変数を直接読み込まず、必要な値は `Core.Env` に委譲することで責務を明確にする。
+
 ## 3. ヘルプ生成
 
 - `CliSpec` から使用法を自動生成し、未知のフラグや引数不足の際は `CliError.hint` へ提案文を入れる。
-- CLI 出力は `Core.Diagnostics` の CLI フォーマット規約に従う。
+- CLI 出力は `Core.Diagnostics` の CLI フォーマット規約に従い、`CliError` 由来の診断は `cli.parse.failed` を既定とする。
 
 ## 4. 診断と監査
 

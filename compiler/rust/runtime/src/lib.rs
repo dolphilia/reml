@@ -5,6 +5,7 @@
 mod anyhow;
 pub mod audit;
 pub mod capability;
+pub mod cli;
 pub mod collections;
 pub mod config;
 pub mod data;

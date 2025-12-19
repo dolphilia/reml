@@ -1,0 +1,28 @@
+module Examples.Practical.CoreCli.Format.BasicOk
+
+use Core.Cli
+
+fn main() -> Str {
+  let format_spec = Cli.builder()
+    .arg("input", help = "input file")
+    .arg("output", help = "output file")
+    .build()
+
+  let spec = Cli.builder()
+    .command("format", help = "format input", spec = format_spec)
+    .build()
+
+  match Cli.parse(spec, ["format", "sample.reml", "out.reml"]) with
+    | Ok(values) -> {
+      let input = Cli.get_arg(values, "input")
+      let output = Cli.get_arg(values, "output")
+      match input with
+        | Some(path) -> {
+          match output with
+            | Some(dest) -> "format:" + path + "->" + dest
+            | None -> "missing_output"
+        }
+        | None -> "missing_input"
+    }
+    | Err(_) -> "cli:error"
+}
