@@ -30,6 +30,7 @@ pub enum DslExpectation<T> {
 pub enum AstMatcher<T> {
     Exact(T),
     Any,
+    Pattern(String),
 }
 
 impl<T: PartialEq + Debug> AstMatcher<T> {
@@ -37,6 +38,11 @@ impl<T: PartialEq + Debug> AstMatcher<T> {
         match self {
             AstMatcher::Exact(expected) => expected == actual,
             AstMatcher::Any => true,
+            AstMatcher::Pattern(pattern) => {
+                let actual = normalize_debug(&format!("{actual:#?}"));
+                let pattern = normalize_debug(pattern);
+                matches_pattern(&actual, &pattern)
+            }
         }
     }
 }
@@ -408,4 +414,52 @@ fn render_error_json(path: &Path, diagnostics: &[GuardDiagnostic]) -> String {
     serde_json::to_string_pretty(&payload).unwrap_or_else(|_| {
         "{\"schema_version\":\"3.0.0-alpha\",\"scenario\":\"\",\"diagnostics\":[]}".to_string()
     })
+}
+
+fn normalize_debug(value: &str) -> String {
+    value.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn matches_pattern(actual: &str, pattern: &str) -> bool {
+    if pattern == "..." {
+        return true;
+    }
+    let parts: Vec<&str> = pattern.split("...").collect();
+    let mut index = 0usize;
+    let mut start = 0usize;
+
+    if !pattern.starts_with("...") {
+        if let Some(first) = parts.first() {
+            if !actual.starts_with(first) {
+                return false;
+            }
+            index = first.len();
+            start = 1;
+        }
+    }
+
+    let end_anchor = !pattern.ends_with("...");
+    let last_index = if end_anchor && parts.len() > start {
+        parts.len() - 1
+    } else {
+        parts.len()
+    };
+
+    for part in &parts[start..last_index] {
+        if part.is_empty() {
+            continue;
+        }
+        if let Some(found) = actual[index..].find(part) {
+            index += found + part.len();
+        } else {
+            return false;
+        }
+    }
+
+    if end_anchor {
+        if let Some(last) = parts.last() {
+            return actual[index..].ends_with(last);
+        }
+    }
+    true
 }
