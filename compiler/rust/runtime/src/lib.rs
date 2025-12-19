@@ -10,6 +10,7 @@ pub mod config;
 pub mod data;
 #[cfg(feature = "metrics")]
 pub mod diagnostics;
+pub mod ffi;
 pub mod io;
 #[cfg(feature = "core_numeric")]
 pub mod numeric;
