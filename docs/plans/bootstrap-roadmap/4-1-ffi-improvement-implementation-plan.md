@@ -35,6 +35,10 @@
 4. `examples/ffi/bindgen/minimal` を CLI 実行で再生成し、`expected/` へ出力ゴールデンを追加する。（完了）
 
 ### フェーズB: Core.Ffi.Dsl ランタイム実装
+方針:
+- `Core.Ffi.Dsl` の実装は `compiler/rust/runtime/src` 直下（`ffi` モジュール配下）に配置し、Core の公開 API として整理する。
+- `ffi.wrap` の監査キーは `AuditEnvelope` に統合し、`docs/spec/3-6-core-diagnostics-audit.md` の `ffi.wrapper` / `ffi.wrap.*` を Core 監査ログとして扱う。
+
 1. `compiler/rust/runtime/ffi` に `dsl` モジュールを追加し、`ffi.bind_library` / `ffi.bind_fn` / `ffi.wrap` の API を実装する。
    - `compiler/rust/runtime/src/ffi/dsl/mod.rs` を追加し、`bind_library` / `bind_fn` / `wrap` の公開 API を定義する。
    - `compiler/rust/runtime/src/ffi/mod.rs` に `dsl` の `pub mod` を追加し、`Core.Ffi.Dsl` の公開経路を確立する。
