@@ -79,6 +79,13 @@ test_parser(my_parser) {
 - `ErrorExpectation` の最小比較器（`code`/`at`/`message`）を提供。
 - `GoldenCase` で `assert_snapshot_with` を流用し、`snapshot.name` と `scenario_id` を一致させる。
 
+### モジュール分割案（`compiler/rust/runtime/src/test/`）
+- `mod.rs`: 既存の `Core.Test` API と共通型を保持し、`dsl` サブモジュールを公開する。
+- `dsl/mod.rs`: `test_parser`/`DslCase`/`DslExpectation` のエントリポイントを提供する。
+- `dsl/matcher.rs`: `AstMatcher` と `ErrorExpectation` の最小比較器を実装する。
+- `dsl/golden.rs`: `GoldenCase` とスナップショット連携（`assert_snapshot_with` 経由）を集約する。
+- `dsl/render.rs`: AST レンダリングの補助（`Str` へ正規化する関数群）を置く。
+
 ## 依存関係
 - `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md` の Core.Test 実装ロードマップに依存。
 - `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan-v2.md` の `Parser<T>` 仕様と整合させる。
