@@ -31,6 +31,8 @@ pub enum AstMatcher<T> {
     Exact(T),
     Any,
     Pattern(String),
+    List(Vec<AstMatcher<T>>),
+    Record(Vec<(String, AstMatcher<T>)>),
 }
 
 impl<T: PartialEq + Debug> AstMatcher<T> {
@@ -38,13 +40,25 @@ impl<T: PartialEq + Debug> AstMatcher<T> {
         match self {
             AstMatcher::Exact(expected) => expected == actual,
             AstMatcher::Any => true,
-            AstMatcher::Pattern(pattern) => {
+            _ => {
                 let actual = normalize_debug(&format!("{actual:#?}"));
-                let pattern = normalize_debug(pattern);
+                let pattern = matcher_to_pattern_string(self);
                 matches_pattern(&actual, &pattern)
             }
         }
     }
+}
+
+pub fn pattern<T>(pattern: impl Into<String>) -> AstMatcher<T> {
+    AstMatcher::Pattern(pattern.into())
+}
+
+pub fn list<T>(items: Vec<AstMatcher<T>>) -> AstMatcher<T> {
+    AstMatcher::List(items)
+}
+
+pub fn record<T>(fields: Vec<(String, AstMatcher<T>)>) -> AstMatcher<T> {
+    AstMatcher::Record(fields)
 }
 
 #[derive(Clone, Debug)]
@@ -462,4 +476,30 @@ fn matches_pattern(actual: &str, pattern: &str) -> bool {
         }
     }
     true
+}
+
+fn matcher_to_pattern_string<T: Debug>(matcher: &AstMatcher<T>) -> String {
+    match matcher {
+        AstMatcher::Exact(value) => normalize_debug(&format!("{value:#?}")),
+        AstMatcher::Any => "...".to_string(),
+        AstMatcher::Pattern(pattern) => normalize_debug(pattern),
+        AstMatcher::List(items) => {
+            let rendered = items
+                .iter()
+                .map(matcher_to_pattern_string)
+                .collect::<Vec<_>>()
+                .join(", ");
+            normalize_debug(&format!("[{rendered}]"))
+        }
+        AstMatcher::Record(fields) => {
+            let rendered = fields
+                .iter()
+                .map(|(key, value)| {
+                    format!("{key}: {}", matcher_to_pattern_string(value))
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            normalize_debug(&format!("{{ {rendered} }}"))
+        }
+    }
 }
