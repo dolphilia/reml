@@ -393,6 +393,21 @@ let embedded = embedded_dsl(
 
 埋め込み DSL の実行契約と診断キーは [2-2 Core Combinator](2-2-core-combinator.md) と [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) の草案節に合わせて更新する。
 
+#### B.8.3.2 `with_embedded` の合成契約（草案）
+
+```reml
+conductor docs_pipeline {
+  markdown: Markdown.Parser.main
+    |> with_embedded([embedded])
+    |> with_capabilities(["core.parse", "core.lsp"])
+}
+```
+
+- `with_embedded` は `embedded_dsl` の配列を受け取り、親 DSL のパース/実行コンテキストに境界情報を登録する。
+- `with_embedded` 経由で登録された埋め込み DSL は `dsl_id` を必須とし、境界内診断に `source_dsl` を付与する。
+- 親 DSL の診断は `source_dsl = None` を維持し、親/子 DSL の診断が混在しないことを保証する。
+- `dsl_id` は `conductor` 内で一意でなければならず、重複した場合は `conductor.dsl_id.duplicate` 診断を発行する。
+
 ### B.8.4 テンプレート DSL 安全設計指針
 
 - **Core.Text.Template の活用**: テンプレート構文を DSL として公開する際は、`Core.Text.Template` の `TemplateSegment`/`TemplateFilter` を利用し、レンダリング面の機能を標準APIに委譲する。これにより Unicode 幅計算・正規化・ストリーム処理の最適化が既定で有効になり、0-1章で定義した性能基準（10MB 線形処理など）を満たす経路を保持できる。[^purpose-perf]

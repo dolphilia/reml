@@ -320,6 +320,7 @@ fn embedded_dsl<T>(spec: EmbeddedDslSpec<T>) -> Parser<EmbeddedNode<T>>
 - `lsp` の型は Core.Lsp の `LspServer`（[3-14 Core Lsp](3-14-core-lsp.md)）を参照する。
 - `start`/`end` は境界トークンとして扱い、`embedded_dsl` は境界内の入力を子パーサに渡す。
 - `dsl_id` は必須であり、`Diagnostic.source_dsl` と `AuditEnvelope.metadata["dsl.id"]` に同一値を出力する。
+- `embedded_dsl` は子パーサの診断に `source_dsl` が欠落している場合、`dsl_id` を自動補完する（親 DSL の診断と混ざらないこと）。
 - `end` 未検出の場合は `parser.unexpected_eof` を優先し、`expected` に `end` を含める。
 - `mode=ParallelSafe` の場合、`ExecutionPlan` で並列実行が許可される。`SequentialOnly` は親 DSL の順序実行に固定し、`Exclusive` は子 DSL の実行中に他 DSL の実行を停止する。
 - `ContextBridge::Inherit` は `keys` で指定された文脈のみを子 DSL へ渡す。指定外の文脈は既定値とし、親への副作用を禁止する。

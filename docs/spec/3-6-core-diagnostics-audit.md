@@ -123,7 +123,7 @@ WASM Component Model / WIT 連携に関する監査メタデータは、`AuditEn
 
 #### 1.1.2 埋め込み DSL 監査キー（草案）
 
-埋め込み DSL の境界と発生源を追跡するため、`AuditEnvelope.metadata` と `Diagnostic.audit_metadata` に以下のキーを同一値で出力する。
+埋め込み DSL の境界と発生源を追跡するため、`AuditEnvelope.metadata` と `Diagnostic.audit_metadata` に以下のキーを同一値で出力する。`dsl.id` は標準キーとして扱い、埋め込み DSL の診断では省略不可とする。
 
 必須キー:
 - `dsl.id`: 子 DSL の `dsl_id`

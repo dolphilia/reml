@@ -101,6 +101,40 @@ conductor pipeline_app {
 {"event":"parse_diagnostic","dsl.id":"reml","dsl.parent_id":"markdown","dsl.embedding.span":{"start":120,"end":240},"dsl.embedding.mode":"ParallelSafe","dsl.embedding.start":"```reml","dsl.embedding.end":"```"}
 ```
 
+### 2.6 Markdown + Reml の埋め込み例
+
+```reml
+let reml_block = embedded_dsl(
+  dsl_id = "reml",
+  start = "```reml",
+  end = "```",
+  parser = Reml.Parser.main,
+  lsp = Reml.Lsp.server,
+  mode = EmbeddedMode::SequentialOnly,
+  context = ContextBridge::inherit(["scope", "type_env", "config"])
+)
+
+conductor docs_pipeline {
+  markdown: Markdown.Parser.main
+    |> with_embedded([reml_block])
+    |> with_capabilities(["core.parse", "core.lsp"])
+
+  execution {
+    parallel markdown
+  }
+}
+```
+
+`with_embedded` は埋め込み DSL の境界情報を親 DSL に登録し、境界内の診断を `source_dsl` 付きで分離する。`EmbeddedMode::SequentialOnly` は親 DSL の順序実行を優先し、`execution` の並列戦略と衝突しない構成を確保する。
+
+### 2.7 埋め込み DSL 運用チェックリスト
+
+- 境界トークン（`start`/`end`）は他の DSL と衝突しない形式に固定し、入力側のエスケープ規約も合わせて定義する。
+- `end` 欠落時は `parser.unexpected_eof` を出し、`source_dsl` と `dsl.embedding.*` を含む診断で境界の復帰位置を特定できるようにする。
+- `ContextBridge::inherit` は最小限のキーだけ渡し、親 DSL の状態が子 DSL に汚染されないことを確認する。
+- `EmbeddedMode` と `execution` の戦略を一致させ、並列不可 DSL を `ParallelSafe` として登録しない。
+- `dsl_id` は `conductor` 内で一意に保ち、`Diagnostic.source_dsl` と `AuditEnvelope.metadata["dsl.id"]` の追跡が切れないようにする。
+
 ## 3. ベストプラクティス
 
 1. **小さな DSL から統合** — 大規模な DSL を一度に導入せず、段階的に Conductor へ組み込む。

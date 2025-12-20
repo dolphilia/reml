@@ -109,10 +109,10 @@ conductor docs_pipeline {
 ## 進捗チェックリスト
 
 ### フェーズA: 仕様整理
-- [ ] `docs/spec/1-1-syntax.md` に `embedded_dsl`/`with_embedded` の契約と診断境界を追記
-- [ ] `docs/spec/2-2-core-combinator.md` に `embedded_dsl` API と `EmbeddedMode`/`ContextBridge` を追記
-- [ ] `docs/spec/3-6-core-diagnostics-audit.md` に `Diagnostic.source_dsl` と `dsl.*` 監査キーを追記
-- [ ] `docs/guides/conductor-pattern.md` に埋め込み DSL の運用例を追記
+- [x] `docs/spec/1-1-syntax.md` に `embedded_dsl`/`with_embedded` の契約と診断境界を追記
+- [x] `docs/spec/2-2-core-combinator.md` に `embedded_dsl` API と `EmbeddedMode`/`ContextBridge` を追記
+- [x] `docs/spec/3-6-core-diagnostics-audit.md` に `Diagnostic.source_dsl` と `dsl.*` 監査キーを追記
+- [x] `docs/guides/conductor-pattern.md` に埋め込み DSL の運用例を追記
 
 ### フェーズB: 実行/委譲契約の整理
 - [ ] `docs/spec/3-8-core-runtime-capability.md` に `dsl_id` 連携ルールを追記
