@@ -107,6 +107,16 @@ type BackpressureSpec = {
 - `pull` モードは IDE の差分適用など、必要な時だけチャンクを取得したいケースで利用する。
 - `hybrid` は実行時にモードをスイッチするための妥協案。`BackpressureSpec` は遅延やバッファ占有率を監視して自動的に調整する。
 
+### 4.1 親子 DSL のバックプレッシャ協調ベストプラクティス
+
+埋め込み DSL を含むストリーミング解析では、親 DSL と子 DSL の `FlowController` が競合しやすいため、以下の運用を推奨する。
+
+- **DemandHint の伝播**: 親 DSL が `Pending` を返す際、子 DSL の `DemandHint` を統合し `min_bytes` の最大値を採用する。`frame_boundary` は親子で矛盾しない境界のみを保持する。
+- **水位共有の最小単位**: `high_watermark` / `low_watermark` は親 DSL のバッファ単位で統一し、子 DSL が独自に拡張バッファを持つ場合は上限を明示してメモリ総量を固定する。
+- **Pending 理由の連鎖**: 子 DSL が `PendingReason::Backpressure` で停止した場合、親 DSL も同理由として `StreamEvent::Pending` に記録し、IDE/LSP が二重に待機しないようにする。
+- **境界ごとの隔離**: 子 DSL の解析が長時間化する場合は `FlowMode::pull` に切り替え、親 DSL が先に進みすぎないよう `commit_watermark` を境界で固定する。
+- **監査メタデータ統合**: `StreamMeta.buffer_fill_ratio` と `lag_nanos` は親子 DSL の最大値を採用し、`Diagnostic.extensions["stream.parent_dsl"]` / `["stream.child_dsl"]` に由来を記録する。
+
 ## 5. StreamDriver ヘルパ
 
 *仕様参照: [2-7 §E](../spec/2-7-core-parse-streaming.md#streamdriver-helper)*

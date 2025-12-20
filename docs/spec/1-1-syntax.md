@@ -367,6 +367,9 @@ ConductorMonitoring ::= "monitoring" (Ident | ConductorQualifiedName) Block
 - **価値**: 型安全な DSL 合成、再利用可能なドメイン抽象、Core.Diagnostics による高い可観測性。
 - **主な課題**: 初期構築コストと学習曲線、DSL層とアプリ層のデバッグ複雑性、エコシステム断片化リスク。
 - **軽減策**: テンプレート・ジェネレータによる段階的導入、`label`/`recover` など標準エラー機構の活用、Capability/プラグイン標準での横断連携。
+- **埋め込み DSL 契約**: `conductor` に登録する埋め込み DSL は `dsl_id` を持ち、Capability/効果/スコープ引き継ぎの契約を明示する。親子 DSL の境界は診断情報に記録し、`Diagnostic.source_dsl` で発生源を追跡できるようにする。
+- **並列安全性フラグ**: 埋め込み DSL が独立区間で並列解析可能かを `EmbeddedMode::ParallelSafe` のようなフラグで宣言し、`execution` の並列戦略と整合させる。並列不可の DSL は順序保証を優先する。
+- **関連ノート**: 埋め込み DSL の標準化方針は [dsl-enhancement-proposal.md](../notes/dsl-enhancement-proposal.md) の 3.6 を参照。
 
 ### B.8.4 テンプレート DSL 安全設計指針
 
