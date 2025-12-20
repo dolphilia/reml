@@ -95,7 +95,7 @@ match result.value {
 - `CstBuilder` を `combinator.rs` もしくは `cst.rs` に配置し、ノード確定タイミングで Trivia を付着。
 
 ### モジュール分割案
-- `parse/mod.rs`: `cst` モジュールの公開と `run_with_cst` の再公開。
+- `parse/mod.rs`: `cst` モジュールの公開と `run_with_cst` / `run_with_cst_shared` の再公開。
 - `parse/cst.rs`: CST 型、付着ルール、`CstBuilder` を実装。
 - `text/pretty.rs`: `CstPrinter` を実装し、`Doc` 生成の標準経路を提供。
 
