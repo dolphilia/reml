@@ -92,7 +92,3 @@ pub(crate) fn shift_position(base: InputPosition, relative: InputPosition) -> In
         column,
     }
 }
-
-pub(crate) fn shift_span(base: InputPosition, span: Span) -> Span {
-    Span::new(shift_position(base, span.start), shift_position(base, span.end))
-}
