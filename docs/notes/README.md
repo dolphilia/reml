@@ -26,6 +26,7 @@
 - [cross-compilation-spec-update-plan.md](cross-compilation-spec-update-plan.md)
 - [llvm-spec-status-survey.md](llvm-spec-status-survey.md)
 - [a-jit.md](a-jit.md)
+- [performance-optimization-research-20251221.md](performance-optimization-research-20251221.md)
 - [rem-experimental-updates-summary.md](rem-experimental-updates-summary.md)
 
 ## エコシステム・運用
