@@ -3272,6 +3272,27 @@ fn build_type_diagnostics(
                     diag_json::recover_extension_payload_from_summary(summary),
                 );
             }
+            if let Some(recover_hint) = violation.recover_hint() {
+                let mut recover_payload = match extensions.remove("recover") {
+                    Some(Value::Object(map)) => map,
+                    _ => Map::new(),
+                };
+                if let Some(mode) = recover_hint.mode.as_ref() {
+                    recover_payload.insert("mode".to_string(), json!(mode));
+                }
+                if let Some(action) = recover_hint.action.as_ref() {
+                    recover_payload.insert("action".to_string(), json!(action));
+                }
+                if let Some(sync) = recover_hint.sync.as_ref() {
+                    recover_payload.insert("sync".to_string(), json!(sync));
+                }
+                if let Some(context) = recover_hint.context.as_ref() {
+                    recover_payload.insert("context".to_string(), json!(context));
+                }
+                if !recover_payload.is_empty() {
+                    extensions.insert("recover".to_string(), Value::Object(recover_payload));
+                }
+            }
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
             extensions.insert("cfg".to_string(), args.target_cfg_extension.clone());
             let mut severity_label = messages::find_pattern_message(violation.code)

@@ -18,8 +18,8 @@ pub use constraint::iterator::{
 };
 pub use constraint::{Constraint, ConstraintSolver, ConstraintSolverError, Substitution};
 pub use driver::{
-    IteratorStageViolationInfo, TypecheckDriver, TypecheckReport, TypecheckViolation,
-    TypecheckViolationKind, TypedFunctionSummary,
+    IteratorStageViolationInfo, TypecheckDriver, TypecheckRecoverHint, TypecheckReport,
+    TypecheckViolation, TypecheckViolationKind, TypedFunctionSummary,
 };
 pub use env::{
     config, install_config, Binding, DualWriteGuards, InstallConfigError, RecoverConfig,

@@ -441,9 +441,19 @@ pub struct TypecheckViolation {
     #[serde(skip_serializing)]
     expected: Option<ExpectedTokensSummary>,
     #[serde(skip_serializing)]
+    pub recover: Option<TypecheckRecoverHint>,
+    #[serde(skip_serializing)]
     pub iterator_stage: Option<IteratorStageViolationInfo>,
     #[serde(skip_serializing)]
     pub capability_mismatch: Option<CapabilityMismatch>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct TypecheckRecoverHint {
+    pub mode: Option<String>,
+    pub action: Option<String>,
+    pub sync: Option<String>,
+    pub context: Option<String>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -549,6 +559,7 @@ impl TypecheckViolation {
             capability: None,
             function,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -568,6 +579,7 @@ impl TypecheckViolation {
             capability: None,
             function,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -587,6 +599,7 @@ impl TypecheckViolation {
             capability,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -605,6 +618,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -636,6 +650,7 @@ impl TypecheckViolation {
             capability: Some(capability_label.clone()),
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: Some(CapabilityMismatch::new(
                 capability_label,
@@ -676,6 +691,7 @@ impl TypecheckViolation {
             capability: Some(capability.clone()),
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: Some(IteratorStageViolationInfo {
                 required: snapshot.required.clone(),
                 actual,
@@ -700,6 +716,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -719,6 +736,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -736,6 +754,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -763,6 +782,7 @@ impl TypecheckViolation {
             capability: None,
             function,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -790,6 +810,7 @@ impl TypecheckViolation {
             capability: None,
             function: name,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -826,6 +847,7 @@ impl TypecheckViolation {
             capability: None,
             function: Some(name.to_string()),
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -852,6 +874,7 @@ impl TypecheckViolation {
             capability: None,
             function: Some(name.to_string()),
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -869,6 +892,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -884,6 +908,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -924,6 +949,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -939,6 +965,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -954,6 +981,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -971,6 +999,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -988,6 +1017,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -1005,6 +1035,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -1026,12 +1057,13 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
     }
 
-    fn core_parse_recover_branch(span: Span) -> Self {
+    fn core_parse_recover_branch(span: Span, recover: Option<TypecheckRecoverHint>) -> Self {
         Self {
             kind: TypecheckViolationKind::CoreParseRecoverBranch,
             code: "core.parse.recover.branch",
@@ -1044,6 +1076,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -1071,6 +1104,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -1098,6 +1132,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -1120,6 +1155,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -1137,6 +1173,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            recover: None,
             iterator_stage: None,
             capability_mismatch: None,
         }
@@ -1181,6 +1218,10 @@ impl TypecheckViolation {
 
     pub fn expected_summary(&self) -> Option<&ExpectedTokensSummary> {
         self.expected.as_ref()
+    }
+
+    pub fn recover_hint(&self) -> Option<&TypecheckRecoverHint> {
+        self.recover.as_ref()
     }
 }
 
@@ -4049,8 +4090,12 @@ fn detect_iterator_stage_mismatches(
 
 fn detect_spec_core_runtime_violations(module: &Module) -> Vec<TypecheckViolation> {
     let mut violations = Vec::new();
+    let recover_hint = find_core_parse_recover_hint(module);
     for span in find_parse_run_with_recovery_calls(module) {
-        violations.push(TypecheckViolation::core_parse_recover_branch(span));
+        violations.push(TypecheckViolation::core_parse_recover_branch(
+            span,
+            recover_hint.clone(),
+        ));
     }
     if let Some(call) = find_runtime_bridge_call(module) {
         if let (Some(required), Some(provided)) = (call.required_stage, call.provided_stage) {
@@ -4077,6 +4122,81 @@ fn find_parse_run_with_recovery_calls(module: &Module) -> Vec<Span> {
         }
     });
     spans
+}
+
+fn find_core_parse_recover_hint(module: &Module) -> Option<TypecheckRecoverHint> {
+    if let Some(hint) = find_panic_block_hint(module) {
+        return Some(hint);
+    }
+    if let Some(hint) = find_panic_until_hint(module) {
+        return Some(hint);
+    }
+    if let Some(sync) = find_sync_to_hint(module) {
+        return Some(TypecheckRecoverHint {
+            mode: Some("collect".to_string()),
+            action: Some("skip".to_string()),
+            sync: Some(sync),
+            context: None,
+        });
+    }
+    None
+}
+
+fn find_panic_block_hint(module: &Module) -> Option<TypecheckRecoverHint> {
+    let mut hint = None;
+    visit_module_exprs(module, &mut |expr| {
+        if hint.is_some() {
+            return;
+        }
+        if let ExprKind::Call { callee, args } = &expr.kind {
+            if matches_module_member(callee, "Parse", "panic_block") {
+                let sync = args.get(2).and_then(extract_sync_token);
+                hint = Some(TypecheckRecoverHint {
+                    mode: Some("collect".to_string()),
+                    action: Some("skip".to_string()),
+                    sync,
+                    context: Some("panic_block".to_string()),
+                });
+            }
+        }
+    });
+    hint
+}
+
+fn find_panic_until_hint(module: &Module) -> Option<TypecheckRecoverHint> {
+    let mut hint = None;
+    visit_module_exprs(module, &mut |expr| {
+        if hint.is_some() {
+            return;
+        }
+        if let ExprKind::Call { callee, args } = &expr.kind {
+            if matches_module_member(callee, "Parse", "panic_until") {
+                let sync = args.get(1).and_then(extract_sync_token);
+                hint = Some(TypecheckRecoverHint {
+                    mode: Some("collect".to_string()),
+                    action: Some("skip".to_string()),
+                    sync,
+                    context: Some("panic".to_string()),
+                });
+            }
+        }
+    });
+    hint
+}
+
+fn find_sync_to_hint(module: &Module) -> Option<String> {
+    let mut token = None;
+    visit_module_exprs(module, &mut |expr| {
+        if token.is_some() {
+            return;
+        }
+        if let ExprKind::Call { callee, args } = &expr.kind {
+            if matches_module_member(callee, "Parse", "sync_to") {
+                token = args.get(0).and_then(extract_sync_token);
+            }
+        }
+    });
+    token
 }
 
 struct RuntimeBridgeCallInfo {
@@ -4328,6 +4448,23 @@ fn matches_module_member(expr: &Expr, module_name: &str, member_name: &str) -> b
             }
         }
         _ => false,
+    }
+}
+
+fn extract_sync_token(expr: &Expr) -> Option<String> {
+    match &expr.kind {
+        ExprKind::Call { callee, args } => {
+            if matches_module_member(callee, "Parse", "sync_to") {
+                return args.get(0).and_then(extract_sync_token);
+            }
+            if matches_module_member(callee, "Parse", "expect_symbol")
+                || matches_module_member(callee, "Parse", "symbol")
+            {
+                return args.get(0).and_then(extract_string_literal);
+            }
+            None
+        }
+        _ => extract_string_literal(expr),
     }
 }
 
