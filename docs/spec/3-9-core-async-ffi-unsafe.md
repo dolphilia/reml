@@ -125,6 +125,7 @@ enum AdaptiveStrategy = DropNewest | SlowProducer | SignalDownstream
 - `with_plan` は `AsyncStream` に実行計画を適用し、上流で構築した `ExecutionPlan` の `strategy`/`backpressure`/`error`/`scheduling` 設定をストリームの実行器と共有する。適用時に `ExecutionPlan::validate_capabilities` を呼び出し、対応するスケジューラ Capability が不足している場合は即座に `AsyncErrorKind::InvalidConfiguration` を返す。
 - `ResourceLimitSet` は `with_resource_limits` 経由で DSL ノードへ適用され、3.5 §9 の `MemoryLimit` / `CpuQuota` を保持する。`ResourceLimitSet::new` は `annotations = {}` を既定化し、typed 値のみを指定したいケースで簡潔に構築できる。`annotations` はベンダー固有拡張（IO 制限や GPU クォータ等）を JSON で記録し、監査ログにそのまま渡す用途に限定する。
 - `with_execution_plan` / `with_resource_limits` で指定した情報は `Runtime::execution_scope` によって統合され、未指定項目は `RunConfig.extensions["runtime"].resource_limits` を既定値として補完する。スコープは `ResourceLimitSet` を正規化した `ResourceLimitDigest` を保持し、`ExecutionPlan` とともに 3-6 §6.1 の診断へ転写されるため、0-1 §1.1（性能）と §1.2（安全性）の評価が漏れなく行える。
+- 埋め込み DSL の `EmbeddedMode` は `ExecutionPlan` の `strategy` に反映する。`ParallelSafe` のみが `ExecutionStrategy::Parallel` を許容し、`SequentialOnly` は `Serial` に固定する。`Exclusive` は埋め込み区間の実行中に他 DSL のタスクを停止する前提とし、`ExecutionPlan` の整合性検証で違反があれば `async.plan.invalid` を返す。
 
 #### 1.4.1 Codec 契約
 

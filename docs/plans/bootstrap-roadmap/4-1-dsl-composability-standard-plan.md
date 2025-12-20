@@ -115,9 +115,9 @@ conductor docs_pipeline {
 - [x] `docs/guides/conductor-pattern.md` に埋め込み DSL の運用例を追記
 
 ### フェーズB: 実行/委譲契約の整理
-- [ ] `docs/spec/3-8-core-runtime-capability.md` に `dsl_id` 連携ルールを追記
-- [ ] `docs/spec/3-9-core-async-ffi-unsafe.md` に `EmbeddedMode` と `ExecutionPlan` の対応を追記
-- [ ] `docs/guides/core-parse-streaming.md` にバックプレッシャ共有ルールを追記
+- [x] `docs/spec/3-8-core-runtime-capability.md` に `dsl_id` 連携ルールを追記
+- [x] `docs/spec/3-9-core-async-ffi-unsafe.md` に `EmbeddedMode` と `ExecutionPlan` の対応を追記
+- [x] `docs/guides/core-parse-streaming.md` にバックプレッシャ共有ルールを追記
 
 ### フェーズC: Rust 実装追加
 - [ ] `compiler/rust/runtime/src/parse/embedded.rs` を追加し `EmbeddedDslSpec` などを定義

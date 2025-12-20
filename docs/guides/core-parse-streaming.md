@@ -115,6 +115,7 @@ type BackpressureSpec = {
 - **水位共有の最小単位**: `high_watermark` / `low_watermark` は親 DSL のバッファ単位で統一し、子 DSL が独自に拡張バッファを持つ場合は上限を明示してメモリ総量を固定する。
 - **Pending 理由の連鎖**: 子 DSL が `PendingReason::Backpressure` で停止した場合、親 DSL も同理由として `StreamEvent::Pending` に記録し、IDE/LSP が二重に待機しないようにする。
 - **境界ごとの隔離**: 子 DSL の解析が長時間化する場合は `FlowMode::pull` に切り替え、親 DSL が先に進みすぎないよう `commit_watermark` を境界で固定する。
+- **EmbeddedMode の整合**: 子 DSL が `SequentialOnly` または `Exclusive` の場合、親 DSL は同一境界で並列フェッチを行わず、`FlowMode::pull` と `commit_watermark` 固定で順序実行を維持する。
 - **監査メタデータ統合**: `StreamMeta.buffer_fill_ratio` と `lag_nanos` は親子 DSL の最大値を採用し、`Diagnostic.extensions["stream.parent_dsl"]` / `["stream.child_dsl"]` に由来を記録する。
 
 ## 5. StreamDriver ヘルパ

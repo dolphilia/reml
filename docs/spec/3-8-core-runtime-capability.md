@@ -167,6 +167,7 @@ fn verify_conductor_contract(contract: ConductorCapabilityContract) -> Result<()
 - `verify_capability` は Capability の存在検証のみを行い、Stage 条件は評価しない。`verify_capability_stage` は Stage 条件と `effect_scope` の両方を検査し、不足時は `CapabilityError::StageViolation` を返す。このバリアントには `required_stage`・`actual_stage`・`capability_metadata` が必須で含まれ、`Diag.EffectDiagnostic.stage_violation`（3-6 §2.4.1）と `effects.contract.stage_mismatch` 診断が直ちに生成できるようになっている。
 - `verify_conductor_contract` は `with_capabilities`（1-1 §B.8.5）から生成された契約集合を受け取り、各要素に `verify_capability_stage` を適用する。`manifest_path` が存在する場合は `reml.toml` の `run.target.capabilities` と突き合わせ、CLI/IDE が同一結果を共有できるようにする。
 - `@cfg(capability = "...")` で除外された分岐は契約から自動的に削除されるが、`verify_conductor_contract` は `ConductorCapabilityRequirement.source_span` を監査ログに残すため、実行環境ごとの差異を追跡できる。差分は `AuditEvent::CapabilityMismatch`（3-6 §1.1.1 / §6.1.2）に集約され、0-1 §1.2 の安全性レビュー資料に添付する。
+- `verify_conductor_contract` は `dsl_id` ごとの契約境界を保持し、監査ログの `dsl.id` と整合する形で Capability 検証結果を記録する。`dsl_id` が重複する場合は契約生成段階で拒否し、`conductor.dsl_id.duplicate` 診断を優先する。
 
 ```reml
 pub type CapabilityDescriptor = {
