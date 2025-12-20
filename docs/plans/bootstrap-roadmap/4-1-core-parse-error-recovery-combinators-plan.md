@@ -51,30 +51,30 @@ let block =
 ## 作業ステップ
 
 ### フェーズA: 仕様整理
-1. `docs/spec/2-2-core-combinator.md` に回復ヘルパの API 追加と使用指針を追記する。
-2. `docs/spec/2-5-error.md` の E-1/E-2 に `sync_to` とパニック回復の運用例を追記する。
-3. `docs/spec/2-6-execution-strategy.md` に `recover` 既定 OFF の前提とパニック回復が opt-in である旨を明記する。
+1. `docs/spec/2-2-core-combinator.md` に回復ヘルパの API 追加と使用指針を追記する。（着手済み）
+2. `docs/spec/2-5-error.md` の E-1/E-2 に `sync_to` とパニック回復の運用例を追記する。（着手済み）
+3. `docs/spec/2-6-execution-strategy.md` に `recover` 既定 OFF の前提とパニック回復が opt-in である旨を明記する。（着手済み）
 
 ### フェーズB: Rust 実装
-1. `compiler/rust/runtime/src/parse/combinator.rs` に以下を追加する。
+1. `compiler/rust/runtime/src/parse/combinator.rs` に以下を追加する。（完了）
    - `sync_to(sync: Parser<()>) -> Parser<()>`（同期点まで読み飛ばし + 同期点消費）
    - `panic_until<T>(p: Parser<T>, sync: Parser<()>, value: T) -> Parser<T>`（`recover_until` + `context="panic"`）
    - `panic_block<T>(p: Parser<T>, open: Parser<()>, close: Parser<()>, value: T) -> Parser<T>`（ネストを考慮した同期）
    - `recover_missing<T>(p: Parser<T>, sync: Parser<()>, token: Str, value: T) -> Parser<T>`（`recover_with_insert` の別名）
-2. `RecoverMeta` に `context` 付与の経路を揃え、`panic_*` が `extensions["recover"].context` を必ず埋めるようにする。
-3. `compiler/rust/runtime/tests/parse_combinator.rs` に単体テストを追加する。
+2. `RecoverMeta` に `context` 付与の経路を揃え、`panic_*` が `extensions["recover"].context` を必ず埋めるようにする。（完了）
+3. `compiler/rust/runtime/tests/parse_combinator.rs` に単体テストを追加する。（完了）
    - `sync_to_consumes_sync_token`
    - `panic_block_skips_nested_block`
    - `recover_missing_inserts_token_and_fixit`
 
 ### フェーズC: サンプル/回帰接続
-1. `examples/spec_core/chapter2/parser_core/` に回復ヘルパのサンプルを追加する。
+1. `examples/spec_core/chapter2/parser_core/` に回復ヘルパのサンプルを追加する。（未着手）
    - `core-parse-recover-sync-to.reml`
    - `core-parse-recover-panic-block.reml`
-2. `expected/spec_core/chapter2/parser_core/` に診断出力を追加する。
+2. `expected/spec_core/chapter2/parser_core/` に診断出力を追加する。（未着手）
    - `core-parse-recover-sync-to.diagnostic.json`
    - `core-parse-recover-panic-block.diagnostic.json`
-3. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH2-PARSE-203/204` を登録し、`diagnostic_keys` と `resolution_notes` を更新する。
+3. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH2-PARSE-203/204` を登録し、`diagnostic_keys` と `resolution_notes` を更新する。（未着手）
 
 ## リスクと緩和策
 | リスク | 影響 | 緩和策 |
