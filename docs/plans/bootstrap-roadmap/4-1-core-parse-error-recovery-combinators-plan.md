@@ -91,6 +91,7 @@ let block =
 - `sync_to`/`panic_*`/`recover_missing` が `docs/spec/2-2-core-combinator.md` と一致する。
 - 回復ヘルパの単体テストが追加され、`parse_combinator` の基礎テストに統合される。
 - Phase4 マトリクスに `CH2-PARSE-203/204` が登録され、CLI 出力の期待値が揃う。
+- `core.parse.recover.branch` の Typeck 診断に `extensions["recover"]`（`sync`/`context`）が出力される。
 
 ## 参照
 - `docs/notes/dsl-enhancement-proposal.md`

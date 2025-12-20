@@ -174,6 +174,7 @@
 - `compiler/rust/frontend/src/parser/mod.rs` の `field_ident` と `parse_module_path_segment` を拡張し、`Parse.then` のように予約語を含むメソッド呼び出しでも FieldAccess / ModulePath を構築できるようにした。`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml` を再実行し、`parser.syntax.expected_tokens` が解消されたことを確認。
 - `compiler/rust/frontend/src/typeck/driver.rs` へ Core.Parse/Runtime 専用の検出ロジックを追加し、`Parse.run_with_recovery` が含まれるモジュールで `core.parse.recover.branch`、`RuntimeBridge.verify_stage` に Stage 不整合がある場合は `runtime.bridge.stage_mismatch` を生成するようにした。実行確認は `examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml` および `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml` を CLI で解析して実施。
 - `compiler/rust/frontend/tests/spec_core/mod.rs` に `CH2-PARSE-201` / `CH3-RUNTIME-601` 相当のテストを追加し、`cargo test --manifest-path compiler/rust/frontend/Cargo.toml --test spec_core` で `core.parse.recover.branch` と `runtime.bridge.stage_mismatch` の回帰が再現されることを保証。
+- Typeck 診断でも `extensions["recover"]` を出力する経路を追加し、`core-parse-recover-sync-to`/`core-parse-recover-panic-block` の CLI で `sync` と `context` の拡張が含まれることを確認した（`phase4-scenario-matrix.csv` の `CH2-PARSE-203/204` に反映）。
 
 ### フェーズC: 自動実行とレポートの固定化
 6. **`run_phase4_suite.py` のサマリ強化と CI 組み込み**（5.4 週）  
