@@ -19,6 +19,13 @@
   次ノード生成時に `trivia_leading` へ移送する（改行/コメントで境界を作る）。
 - `Layout` トークンは `Trivia.kind=Layout` として同じ付着ルールを適用する。
 
+## AST ノード生成時の紐付け規約（暫定）
+- **ノード境界**: AST ノードを生成するパーサー単位で CST ノード境界を確定する。`rule("name", ...)` を基本境界とし、`label` は診断向けのため CST の `kind` には使わない。
+- **kind の命名**: `CstNode.kind` は `rule` 名を使用する。短く安定した命名を優先し、リネーム時は AST/仕様側の用語更新と同時に行う。
+- **子要素の確定**: 同一 `rule` 内で成功したサブパーサーの結果を `children` に順序通りに格納する。Token と子ノードの順序は入力順に一致させる。
+- **スパンの算定**: AST ノードの span が確定する場合は `CstNode.span` と一致させる。span を合成できない場合は空Spanを許容する。
+- **フォールバック**: ルール境界が曖昧な場合（例: `map` のみで AST を生成する）でも CST はトークン列を保持し、後続の整形器は `children` の順序を信頼して復元する。
+
 ## 参照
 - `docs/plans/bootstrap-roadmap/4-1-core-parse-cst-plan.md`
 - `docs/notes/dsl-enhancement-proposal.md`

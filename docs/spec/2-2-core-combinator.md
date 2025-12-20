@@ -278,6 +278,12 @@ type CstOutput<T> = {
 * `autoWhitespace` が消費した Trivia は直近の確定ノードの `trivia_trailing` に付着し、次ノード生成時に `trivia_leading` へ移送する。
 * `Layout` トークンは `Trivia.kind=Layout` として同じ付着ルールを適用する。
 
+### C-4. AST 紐付け規約（要約）
+
+* AST ノード境界は `rule("name", ...)` を基本にし、`CstNode.kind` には `rule` 名を使う（`label` は診断用のため CST には使わない）。
+* `rule` 内で成功したサブパーサーの結果を入力順に `children` へ並べ、Token と子ノードの順序が一致することを保証する。
+* AST 側の span が確定する場合は `CstNode.span` と一致させ、合成できない場合は空Spanを許容する。
+
 ### B-2-a. layout_token（Layout 連携）
 
 ```reml
