@@ -663,6 +663,7 @@ fn build_cli_summary(
         finished_at: finished_at.to_string(),
         artifact: None,
         stats,
+        dsl_embeddings: Vec::new(),
     }
 }
 
@@ -751,6 +752,7 @@ fn run_parse_driver_mode(
         finished_at,
         artifact: None,
         stats,
+        dsl_embeddings: Vec::new(),
     };
     let exit_code = determine_exit_code(&diagnostics);
     let diagnostic_count = diagnostics.len();

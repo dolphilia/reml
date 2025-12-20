@@ -109,12 +109,20 @@ pub struct CliSummary {
     pub finished_at: String,
     pub artifact: Option<String>,
     pub stats: Map<String, Value>,
+    pub dsl_embeddings: Vec<CliDslEmbedding>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CliExitCode {
     label: String,
     value: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CliDslEmbedding {
+    pub dsl_id: String,
+    pub span: Option<Value>,
+    pub mode: Option<String>,
 }
 
 impl CliExitCode {

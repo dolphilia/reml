@@ -120,16 +120,16 @@ conductor docs_pipeline {
 - [x] `docs/guides/core-parse-streaming.md` にバックプレッシャ共有ルールを追記
 
 ### フェーズC: Rust 実装追加
-- [ ] `compiler/rust/runtime/src/parse/embedded.rs` を追加し `EmbeddedDslSpec` などを定義
-- [ ] `compiler/rust/runtime/src/parse/mod.rs` に `embedded` を追加して公開
-- [ ] `compiler/rust/runtime/src/parse/combinator.rs` に `embedded_dsl` を実装
-- [ ] `ParseState` に `dsl_stack`/`context_bridge` を追加
-- [ ] `ParseError` に `source_dsl` を追加し自動付与
-- [ ] `compiler/rust/runtime/src/diagnostics/dsl.rs` を追加し `dsl.*` を監査へ反映
-- [ ] `compiler/rust/runtime/src/lsp/embedded.rs` を追加し委譲ルートを管理
-- [ ] `compiler/rust/runtime/src/lsp/mod.rs` へ埋め込み LSP を接続
-- [ ] `compiler/rust/frontend/src/output/cli.rs` に composability 監査ログを出力
-- [ ] `compiler/rust/runtime/tests/parse_embedded.rs` に単体テストを追加
+- [x] `compiler/rust/runtime/src/parse/embedded.rs` を追加し `EmbeddedDslSpec` などを定義
+- [x] `compiler/rust/runtime/src/parse/mod.rs` に `embedded` を追加して公開
+- [x] `compiler/rust/runtime/src/parse/combinator.rs` に `embedded_dsl` を実装
+- [x] `ParseState` に `dsl_stack`/`context_bridge` を追加
+- [x] `ParseError` に `source_dsl` を追加し自動付与
+- [x] `compiler/rust/runtime/src/diagnostics/dsl.rs` を追加し `dsl.*` を監査へ反映
+- [x] `compiler/rust/runtime/src/lsp/embedded.rs` を追加し委譲ルートを管理
+- [x] `compiler/rust/runtime/src/lsp/mod.rs` へ埋め込み LSP を接続
+- [x] `compiler/rust/frontend/src/output/cli.rs` に composability 監査ログを出力
+- [x] `compiler/rust/runtime/tests/parse_embedded.rs` に単体テストを追加
 
 ### フェーズD: サンプル/回帰接続
 - [ ] `examples/practical/embedded_dsl/` に複合サンプルを追加

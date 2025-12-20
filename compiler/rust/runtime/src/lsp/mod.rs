@@ -8,6 +8,9 @@ use crate::prelude::ensure::DiagnosticSeverity as CoreSeverity;
 use crate::prelude::ensure::GuardDiagnostic;
 
 pub mod derive;
+pub mod embedded;
+
+pub use embedded::{EmbeddedLspRegistry, EmbeddedLspRoute};
 
 /// 0-based の位置情報。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

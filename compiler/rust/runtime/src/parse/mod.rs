@@ -5,6 +5,7 @@
 
 pub mod combinator;
 pub mod cst;
+pub mod embedded;
 pub mod meta;
 pub mod op_builder;
 
@@ -16,9 +17,13 @@ pub use combinator::{
     spanned, symbol, terminated, BinaryOp, token, with_doc, ExprBuilderConfig, ExprCommit,
     ExprOpLevel, Input, InputPosition, MemoEntry, MemoKey, MemoTable, ParseError, ParseFixIt,
     ParseResult, ParserProfile, ParseState, Parser, ParserId, RecoverAction, RecoverMeta, Reply,
-    Span, UnaryOp,
+    Span, UnaryOp, embedded_dsl,
 };
 pub use cst::{CstBuilder, CstChild, CstNode, CstOutput, Token as CstToken, Trivia, TriviaKind};
+pub use embedded::{
+    ContextBridge, ContextBridgeHandler, EmbeddedBoundary, EmbeddedDslSpec, EmbeddedMode,
+    EmbeddedNode,
+};
 pub use meta::{normalize_doc, ObservedToken, ParseMetaRegistry, ParserMeta, ParserMetaKind};
 pub use op_builder::{
     FixitySymbol, OpBuilder, OpBuilderError, OpBuilderErrorKind, OpLevel, OpTable, OperatorSpec,

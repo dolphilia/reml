@@ -4,6 +4,7 @@ use crate::text::{Str, String as TextString};
 use serde_json::{json, Map, Value};
 use std::any::Any;
 use super::cst::{CstBuilder, CstNode, CstOutput, Token as CstToken, Trivia, TriviaKind};
+use super::embedded::{shift_position, ContextBridge, EmbeddedDslSpec, EmbeddedNode};
 use super::meta::{normalize_doc, ObservedToken, ParseMetaRegistry, ParserMetaKind};
 use super::op_builder::FixitySymbol;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -15,6 +16,58 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use unicode_ident::{is_xid_continue, is_xid_start};
 use unicode_normalization::{is_nfc_quick, IsNormalized};
+
+#[cfg(feature = "metrics")]
+use crate::diagnostics::apply_dsl_metadata;
+
+#[cfg(not(feature = "metrics"))]
+fn apply_dsl_metadata(
+    diagnostic: &mut GuardDiagnostic,
+    dsl_id: &str,
+    parent_id: Option<&str>,
+    span: Span,
+) {
+    let mut span_obj = Map::new();
+    let mut start_obj = Map::new();
+    start_obj.insert("byte".into(), Value::from(span.start.byte as u64));
+    start_obj.insert("line".into(), Value::from(span.start.line as u64));
+    start_obj.insert("column".into(), Value::from(span.start.column as u64));
+    let mut end_obj = Map::new();
+    end_obj.insert("byte".into(), Value::from(span.end.byte as u64));
+    end_obj.insert("line".into(), Value::from(span.end.line as u64));
+    end_obj.insert("column".into(), Value::from(span.end.column as u64));
+    span_obj.insert("start".into(), Value::Object(start_obj));
+    span_obj.insert("end".into(), Value::Object(end_obj));
+    let span_payload = Value::Object(span_obj);
+
+    diagnostic
+        .extensions
+        .insert("source_dsl".into(), Value::String(dsl_id.to_string()));
+    let mut dsl_extension = Map::new();
+    dsl_extension.insert("id".into(), Value::String(dsl_id.to_string()));
+    dsl_extension.insert(
+        "parent_id".into(),
+        parent_id
+            .map(|value| Value::String(value.to_string()))
+            .unwrap_or(Value::Null),
+    );
+    dsl_extension.insert("embedding_span".into(), span_payload.clone());
+    diagnostic
+        .extensions
+        .insert("dsl".into(), Value::Object(dsl_extension));
+    diagnostic
+        .audit_metadata
+        .insert("dsl.id".into(), Value::String(dsl_id.to_string()));
+    if let Some(parent_id) = parent_id {
+        diagnostic.audit_metadata.insert(
+            "dsl.parent_id".into(),
+            Value::String(parent_id.to_string()),
+        );
+    }
+    diagnostic
+        .audit_metadata
+        .insert("dsl.embedding.span".into(), span_payload);
+}
 
 /// Packrat メモキー。
 pub type MemoKey = (ParserId, usize);
@@ -1109,6 +1162,7 @@ fn decode_layout_profile(run_config: &RunConfig) -> Option<LayoutProfile> {
 pub struct ParseError {
     pub message: String,
     pub position: InputPosition,
+    pub source_dsl: Option<String>,
     pub expected_tokens: Vec<String>,
     pub recover: Option<RecoverMeta>,
     pub fixits: Vec<ParseFixIt>,
@@ -1120,11 +1174,17 @@ impl ParseError {
         Self {
             message: message.into(),
             position,
+            source_dsl: None,
             expected_tokens: Vec::new(),
             recover: None,
             fixits: Vec::new(),
             notes: Vec::new(),
         }
+    }
+
+    pub fn with_source_dsl(mut self, dsl_id: impl Into<String>) -> Self {
+        self.source_dsl = Some(dsl_id.into());
+        self
     }
 
     pub fn with_expected_tokens(
@@ -1212,7 +1272,7 @@ impl ParseError {
             );
         }
 
-        GuardDiagnostic {
+        let mut diagnostic = GuardDiagnostic {
             code: if self.expected_tokens.is_empty() {
                 "parser.syntax.error"
             } else {
@@ -1229,7 +1289,16 @@ impl ParseError {
                 .collect(),
             extensions,
             audit_metadata,
+        };
+        if let Some(source_dsl) = self.source_dsl.as_deref() {
+            apply_dsl_metadata(
+                &mut diagnostic,
+                source_dsl,
+                None,
+                Span::new(self.position, self.position),
+            );
         }
+        diagnostic
     }
 }
 
@@ -3402,6 +3471,115 @@ where
     parser.spanned()
 }
 
+/// 埋め込み DSL をパースするコンビネータ。
+pub fn embedded_dsl<T>(spec: EmbeddedDslSpec<T>) -> Parser<EmbeddedNode<T>>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    let spec = Arc::new(spec);
+    Parser::new(move |state| {
+        let input = state.input().clone();
+        let Some(after_start) = spec.boundary.match_start(&input) else {
+            return Reply::Err {
+                error: ParseError::new(
+                    "埋め込み DSL の開始境界が見つかりません",
+                    input.position(),
+                ),
+                consumed: false,
+                committed: false,
+            };
+        };
+
+        let content_start = after_start.clone();
+        let remaining = after_start.remaining();
+        let end_index = match remaining.find(spec.boundary.end.as_str()) {
+            Some(index) => index,
+            None => {
+                return Reply::Err {
+                    error: ParseError::new(
+                        "埋め込み DSL の終了境界が見つかりません",
+                        after_start.position(),
+                    ),
+                    consumed: true,
+                    committed: false,
+                };
+            }
+        };
+        let content = &remaining[..end_index];
+        let after_content = after_start.advance(end_index);
+        let after_end = after_content.advance(spec.boundary.end.len());
+        let span = input.span_to(&after_end);
+
+        let mut embedded_state = ParseState::new(content, state.run_config.clone());
+        embedded_state.enter_dsl(&spec.dsl_id);
+        embedded_state.set_context_bridge(Some(spec.context.clone()));
+        let embedded_reply = spec.parser.parse(&mut embedded_state);
+        embedded_state.exit_dsl();
+        let mut diagnostics = embedded_state.take_diagnostics();
+        let base_pos = content_start.position();
+
+        for diag in diagnostics.iter_mut() {
+            diag.position = shift_position(base_pos, diag.position);
+            if diag.source_dsl.is_none() {
+                diag.source_dsl = Some(spec.dsl_id.clone());
+            }
+        }
+        for diag in diagnostics.iter().cloned() {
+            state.push_diagnostic(diag);
+        }
+
+        match embedded_reply {
+            Reply::Ok {
+                value,
+                span: _embedded_span,
+                rest,
+                ..
+            } => {
+                if state.run_config.require_eof && !rest.is_empty() {
+                    let mut error = ParseError::new(
+                        "未消費の入力が残っています",
+                        rest.position(),
+                    )
+                    .with_source_dsl(spec.dsl_id.clone());
+                    error.position = shift_position(base_pos, error.position);
+                    return Reply::Err {
+                        error,
+                        consumed: true,
+                        committed: false,
+                    };
+                }
+                Reply::Ok {
+                    value: EmbeddedNode {
+                        dsl_id: spec.dsl_id.clone(),
+                        span,
+                        ast: value,
+                        cst: None,
+                        diagnostics,
+                    },
+                    span,
+                    consumed: true,
+                    rest: after_end,
+                }
+            }
+            Reply::Err {
+                mut error,
+                committed,
+                ..
+            } => {
+                if error.source_dsl.is_none() {
+                    error.source_dsl = Some(spec.dsl_id.clone());
+                }
+                error.position = shift_position(base_pos, error.position);
+                Reply::Err {
+                    error,
+                    consumed: true,
+                    committed,
+                }
+            }
+        }
+    })
+}
+
 /// 左結合チェーン。
 pub fn chainl1<T, F>(term: Parser<T>, op: Parser<F>) -> Parser<T>
 where
@@ -3428,6 +3606,8 @@ pub struct ParseState {
     pub memo: MemoTable,
     observer: Option<ParseObserver>,
     diagnostics: Vec<ParseError>,
+    dsl_stack: Vec<String>,
+    context_bridge: Option<ContextBridge>,
     pub recovered: bool,
     active_parsers: HashSet<MemoKey>,
     recover_config: RecoverConfig,
@@ -3474,6 +3654,8 @@ impl ParseState {
             memo: MemoTable::new(),
             observer,
             diagnostics: Vec::new(),
+            dsl_stack: Vec::new(),
+            context_bridge: None,
             recovered: false,
             active_parsers: HashSet::new(),
             recover_config,
@@ -3497,6 +3679,26 @@ impl ParseState {
 
     pub fn set_input(&mut self, input: Input) {
         self.input = input;
+    }
+
+    pub fn enter_dsl(&mut self, dsl_id: &str) {
+        self.dsl_stack.push(dsl_id.to_string());
+    }
+
+    pub fn exit_dsl(&mut self) {
+        self.dsl_stack.pop();
+    }
+
+    pub fn current_dsl_id(&self) -> Option<&str> {
+        self.dsl_stack.last().map(String::as_str)
+    }
+
+    pub fn set_context_bridge(&mut self, bridge: Option<ContextBridge>) {
+        self.context_bridge = bridge;
+    }
+
+    pub fn context_bridge(&self) -> Option<&ContextBridge> {
+        self.context_bridge.as_ref()
     }
 
     pub fn space(&self) -> Option<Parser<()>> {
@@ -3715,7 +3917,12 @@ impl ParseState {
         self.active_parsers.remove(&key);
     }
 
-    pub fn push_diagnostic(&mut self, error: ParseError) {
+    pub fn push_diagnostic(&mut self, mut error: ParseError) {
+        if error.source_dsl.is_none() {
+            if let Some(dsl_id) = self.current_dsl_id() {
+                error.source_dsl = Some(dsl_id.to_string());
+            }
+        }
         self.diagnostics.push(error);
     }
 
