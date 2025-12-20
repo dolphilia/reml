@@ -106,6 +106,37 @@ conductor docs_pipeline {
 - `expected/practical/embedded_dsl/markdown_reml_basic.audit.jsonl`
 - `expected/practical/embedded_dsl/markdown_reml_error.diagnostic.json`
 
+## 進捗チェックリスト
+
+### フェーズA: 仕様整理
+- [ ] `docs/spec/1-1-syntax.md` に `embedded_dsl`/`with_embedded` の契約と診断境界を追記
+- [ ] `docs/spec/2-2-core-combinator.md` に `embedded_dsl` API と `EmbeddedMode`/`ContextBridge` を追記
+- [ ] `docs/spec/3-6-core-diagnostics-audit.md` に `Diagnostic.source_dsl` と `dsl.*` 監査キーを追記
+- [ ] `docs/guides/conductor-pattern.md` に埋め込み DSL の運用例を追記
+
+### フェーズB: 実行/委譲契約の整理
+- [ ] `docs/spec/3-8-core-runtime-capability.md` に `dsl_id` 連携ルールを追記
+- [ ] `docs/spec/3-9-core-async-ffi-unsafe.md` に `EmbeddedMode` と `ExecutionPlan` の対応を追記
+- [ ] `docs/guides/core-parse-streaming.md` にバックプレッシャ共有ルールを追記
+
+### フェーズC: Rust 実装追加
+- [ ] `compiler/rust/runtime/src/parse/embedded.rs` を追加し `EmbeddedDslSpec` などを定義
+- [ ] `compiler/rust/runtime/src/parse/mod.rs` に `embedded` を追加して公開
+- [ ] `compiler/rust/runtime/src/parse/combinator.rs` に `embedded_dsl` を実装
+- [ ] `ParseState` に `dsl_stack`/`context_bridge` を追加
+- [ ] `ParseError` に `source_dsl` を追加し自動付与
+- [ ] `compiler/rust/runtime/src/diagnostics/dsl.rs` を追加し `dsl.*` を監査へ反映
+- [ ] `compiler/rust/runtime/src/lsp/embedded.rs` を追加し委譲ルートを管理
+- [ ] `compiler/rust/runtime/src/lsp/mod.rs` へ埋め込み LSP を接続
+- [ ] `compiler/rust/frontend/src/output/cli.rs` に composability 監査ログを出力
+- [ ] `compiler/rust/runtime/tests/parse_embedded.rs` に単体テストを追加
+
+### フェーズD: サンプル/回帰接続
+- [ ] `examples/practical/embedded_dsl/` に複合サンプルを追加
+- [ ] `expected/practical/embedded_dsl/` に期待出力を追加
+- [ ] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH4-DSL-COMP-*` を登録
+- [ ] `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加
+
 ## Rust 実装の現状と追加案
 
 ### 既存実装の範囲
