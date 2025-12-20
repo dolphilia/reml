@@ -76,6 +76,10 @@ let block =
    - `core-parse-recover-panic-block.diagnostic.json`
 3. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH2-PARSE-203/204` を登録し、`diagnostic_keys` と `resolution_notes` を更新する。（完了）
 
+#### フェーズC 追補（Recover 拡張）
+- Typeck 診断でも `extensions["recover"]` が出力されるように経路を追加し、`sync`/`context` を含む JSON を CLI で確認した。
+- `CH2-PARSE-203/204` は `resolution=ok` とし、`run_id` と recover 拡張の要点をマトリクスへ記録済み。
+
 ## リスクと緩和策
 | リスク | 影響 | 緩和策 |
 | --- | --- | --- |
