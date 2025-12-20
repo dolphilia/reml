@@ -100,9 +100,9 @@ match result.value {
 - [x] `docs/spec/3-13-core-text-pretty.md` に `CstPrinter` を追記した
 
 ### フェーズD: サンプルと回帰接続
-- [ ] `examples/practical/` に CST/Formatter サンプルを追加した
-- [ ] `expected/` に Doc 出力のゴールデンを保存した
-- [ ] `phase4-scenario-matrix.csv` に CST シナリオを登録した
+- [x] `examples/practical/` に CST/Formatter サンプルを追加した
+- [x] `expected/` に Doc 出力のゴールデンを保存した
+- [x] `phase4-scenario-matrix.csv` に CST シナリオを登録した
 
 ### フェーズE: ドキュメントと運用整理
 - [ ] `docs/guides/formatter-authoring.md` に CST 利用注意点を追記した

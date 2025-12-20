@@ -9,6 +9,7 @@ Phase 4 のシナリオマトリクスで「実務投入」「監査ログ付き
 - `core_text/pretty/`: Core.Text.Pretty のレイアウト最小例
 - `core_test/snapshot/`: Core.Test のスナップショット最小例
 - `core_cli/parse_flags/`: Core.Cli のフラグ/引数解析最小例
+- `core_parse/cst_lossless/`: Core.Parse の CST/Pretty ロスレス経路の最小例
 - `core_doc/`: Core.Doc のドキュメント生成最小例
 - `core_lsp/`: Core.Lsp の診断送信最小例
 - `core_diagnostics/audit_envelope/`: `AuditEnvelope.metadata` に `scenario.id` と Stage 情報を記録するログ例

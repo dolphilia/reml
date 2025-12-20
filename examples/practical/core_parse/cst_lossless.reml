@@ -1,0 +1,40 @@
+module Examples.Practical.CoreParse.CstLossless
+
+use Core.Parse
+use Core.Parse.Lex
+use Core.Text.Pretty
+
+let sc =
+  whitespace()
+    .or(commentLine("//"))
+    .or(commentBlock("/*", "*/", true))
+    |> skipMany
+
+let sym(s) = symbol(sc, s)
+let kw(s) = keyword(sc, s)
+
+let ident = token("identifier", lexeme(sc, identifier(DefaultId)))
+let number = token("number", lexeme(sc, int10()))
+
+let let_stmt: Parser<()> =
+  rule(
+    "let_stmt",
+    kw("let")
+      .then(ident)
+      .then(sym("="))
+      .then(number)
+      .map(|_| ())
+  )
+
+fn main() -> Str {
+  let input = "let  answer =  42\n"
+  let result = Parse.run_with_cst(let_stmt, input, RunConfig.default())
+  match result.value {
+    Some(output) => {
+      let printer = Pretty.cst_printer()
+      let doc = Pretty.cst_doc(printer, output.cst)
+      Pretty.render(doc, 80)
+    }
+    None => ""
+  }
+}
