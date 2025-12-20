@@ -3551,7 +3551,7 @@ where
                 Reply::Ok {
                     value: EmbeddedNode {
                         dsl_id: spec.dsl_id.clone(),
-                        span,
+                        span: span.clone(),
                         ast: value,
                         cst: None,
                         diagnostics,

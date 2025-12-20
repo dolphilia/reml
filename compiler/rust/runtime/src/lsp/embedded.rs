@@ -33,11 +33,13 @@ impl EmbeddedLspRegistry {
     }
 
     pub fn resolve_route(&self, position: InputPosition) -> Option<&EmbeddedLspRoute> {
-        self.routes.iter().find(|route| span_contains(route.span, position))
+        self.routes
+            .iter()
+            .find(|route| span_contains(&route.span, position))
     }
 }
 
-fn span_contains(span: Span, position: InputPosition) -> bool {
+fn span_contains(span: &Span, position: InputPosition) -> bool {
     let start = span.start;
     let end = span.end;
     if position.line < start.line || position.line > end.line {
