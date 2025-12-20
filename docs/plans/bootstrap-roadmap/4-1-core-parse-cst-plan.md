@@ -105,9 +105,9 @@ match result.value {
 - [x] `phase4-scenario-matrix.csv` に CST シナリオを登録した
 
 ### フェーズE: ドキュメントと運用整理
-- [ ] `docs/guides/formatter-authoring.md` に CST 利用注意点を追記した
-- [ ] `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に回帰条件を追記した
-- [ ] `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加した
+- [x] `docs/guides/formatter-authoring.md` に CST 利用注意点を追記した
+- [x] `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に回帰条件を追記した
+- [x] `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加した
 
 ## Rust 実装の現状と追加案
 

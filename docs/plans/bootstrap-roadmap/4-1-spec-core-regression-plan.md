@@ -29,6 +29,7 @@
 ## 標準ライブラリ回帰接続（Phase 4 追加）
 
 - `phase4-scenario-matrix.csv` に標準ライブラリ系のシナリオ（`CH3-TEST-401` / `CH3-CLI-401` / `CH3-PRETTY-401` / `CH3-DOC-401` / `CH3-LSP-401`）を追加し、Phase 4 の実行対象として追跡する。
+- Core.Parse.Cst のロスレス経路は `CH2-PARSE-930` として登録し、CstPrinter の既定スタイル（空白/改行/コメント保持）を回帰対象に含める。
 - 参照仕様（新章）:
   - `docs/spec/3-11-core-test.md`
   - `docs/spec/3-12-core-cli.md`
@@ -41,12 +42,14 @@
   - Core.Text.Pretty: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_text/pretty/layout_width_basic.reml`
   - Core.Doc: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_doc/basic_generate_ok.reml`
   - Core.Lsp: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_lsp/basic_diagnostics_ok.reml`
+  - Core.Parse.Cst: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_parse/cst_lossless.reml`
 - 実行ログの保存先:
   - `reports/spec-audit/ch4/logs/stdlib-test-*.md`
   - `reports/spec-audit/ch4/logs/stdlib-cli-*.md`
   - `reports/spec-audit/ch4/logs/stdlib-pretty-*.md`
   - `reports/spec-audit/ch4/logs/stdlib-doc-*.md`
   - `reports/spec-audit/ch4/logs/stdlib-lsp-*.md`
+  - `reports/spec-audit/ch4/logs/stdlib-parse-cst-*.md`
 - ログに残す項目は `reports/spec-audit/ch4/README.md` の「標準ライブラリ実行ログ（Phase 4）」を参照する。
 
 ## スコープ
