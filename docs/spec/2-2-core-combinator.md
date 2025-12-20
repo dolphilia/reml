@@ -284,6 +284,42 @@ type CstOutput<T> = {
 * `rule` 内で成功したサブパーサーの結果を入力順に `children` へ並べ、Token と子ノードの順序が一致することを保証する。
 * AST 側の span が確定する場合は `CstNode.span` と一致させ、合成できない場合は空Spanを許容する。
 
+### C-5. 埋め込み DSL インターフェイス（Phase 4 草案）
+
+```reml
+type EmbeddedDslSpec<T> = {
+  dsl_id: Str,
+  start: Str,
+  end: Str,
+  parser: Parser<T>,
+  lsp: Option<LspEndpoint>,
+  mode: EmbeddedMode,
+  context: ContextBridge,
+}
+
+enum EmbeddedMode { ParallelSafe, SequentialOnly, Exclusive }
+
+enum ContextBridge
+  = Inherit { keys: [Str] }
+  | Custom { handler: ContextBridgeHandler }
+
+type EmbeddedNode<T> = {
+  dsl_id: Str,
+  span: Span,
+  ast: T,
+  cst: Option<CstNode>,
+  diagnostics: List<Diagnostic>,
+}
+
+fn embedded_dsl<T>(spec: EmbeddedDslSpec<T>) -> Parser<EmbeddedNode<T>>
+```
+
+- `start`/`end` は境界トークンとして扱い、`embedded_dsl` は境界内の入力を子パーサに渡す。
+- `dsl_id` は必須であり、`Diagnostic.source_dsl` と `AuditEnvelope.metadata["dsl.id"]` に同一値を出力する。
+- `end` 未検出の場合は `parser.unexpected_eof` を優先し、`expected` に `end` を含める。
+- `mode=ParallelSafe` の場合、`ExecutionPlan` で並列実行が許可される。`SequentialOnly` は親 DSL の順序実行に固定し、`Exclusive` は子 DSL の実行中に他 DSL の実行を停止する。
+- `ContextBridge::Inherit` は `keys` で指定された文脈のみを子 DSL へ渡す。指定外の文脈は既定値とし、親への副作用を禁止する。
+
 ### B-2-a. layout_token（Layout 連携）
 
 ```reml

@@ -25,6 +25,7 @@ pub type Diagnostic = {
   severity: Severity,
   severity_hint: Option<SeverityHint>,
   domain: Option<DiagnosticDomain>,
+  source_dsl: Option<Str>,
   code: Option<Str>,
   codes: List<Str>,
   primary: Span,
@@ -76,6 +77,7 @@ pub type TraceFrame = { label: Option<Str>, span: Span }
 - `severity` は CLI・LSP・監査ログで共通の 4 値（`Error` / `Warning` / `Info` / `Hint`）を採用し、情報診断とヒント診断を区別したフィルタリングを可能にする。Phase 2-5 の DIAG-001 で OCaml 実装側の列挙型と JSON/LSP 変換を全面的に更新し、旧来の `Note` バリアントは `Info` へ統合された[^diag001-phase25]。
 - `schema_version` は `Diagnostic` JSON の互換性を示す識別子であり、Rust Frontend CLI/LSP では `3.0.0-alpha` を固定で書き込む（`CliDiagnosticEnvelope.schema_version` と同じ値を共有する）。
 - `domain` は診断が属する責務領域（構文、型、ターゲット等）を表す。`None` の場合はコンポーネント既定値を利用する。Phase 2-5 の DIAG-003 で CLI/LSP/監査ログの語彙拡張が実装反映され、脚注に進捗を記録している[^diag003-phase25-domain]。
+- `source_dsl` は埋め込み DSL で発生した診断の発生源を明示する識別子。`embedded_dsl` 実行中は `dsl_id` を記録し、親 DSL 由来の診断は `None` とする。
 - `primary` はハイライト付きの範囲情報、`location` は IDE/LSP 互換の簡易座標（`file`/`line`/`column`/`endLine`/`endColumn`）であり、双方を揃えておくことで CLI/LSP/監査ログから同じ座標へジャンプできる。
 - `severity_hint` は CLI/LSP/AI が「Retry 可能か」「即時 Rollback が必要か」を判断するための追加ヒント。`collect-iterator-audit-metrics.py --section diagnostics` は `severity_hint` を必須フィールドとして統計を収集する。
 - `codes` は補助的なエイリアスを持つ診断コード（例: `parser.syntax_error` + `syntax.eof`）を全て列挙したリストであり、`code` がメイン識別子、`codes` が LSP/AI 向けの全文検索対象となる。
@@ -118,6 +120,20 @@ WASM Component Model / WIT 連携に関する監査メタデータは、`AuditEn
 - `ffi.wit.function`: 呼び出し対象の関数名
 - `ffi.wit.type.kind`: `record` / `variant` / `list` / `resource` など主要型種別
 - `ffi.wit.resource`: `resource` 名（対象が resource の場合のみ）
+
+#### 1.1.2 埋め込み DSL 監査キー（草案）
+
+埋め込み DSL の境界と発生源を追跡するため、`AuditEnvelope.metadata` と `Diagnostic.audit_metadata` に以下のキーを同一値で出力する。
+
+必須キー:
+- `dsl.id`: 子 DSL の `dsl_id`
+- `dsl.embedding.span`: 埋め込み区間の `Span`（`start`/`end` の範囲を含む）
+- `dsl.embedding.mode`: `ParallelSafe` / `SequentialOnly` / `Exclusive`
+
+推奨キー:
+- `dsl.parent_id`: 親 DSL の `dsl_id`（複数階層の場合は直近の親）
+- `dsl.embedding.start`: 境界開始トークン（`start` の原文）
+- `dsl.embedding.end`: 境界終了トークン（`end` の原文）
 - `ffi.wit.ownership`: `own` / `borrow` / `copy`
 - `ffi.wit.lift_lower`: `lift` / `lower`
 

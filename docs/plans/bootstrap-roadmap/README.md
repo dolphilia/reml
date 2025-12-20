@@ -140,6 +140,7 @@ Rust 実装を実務レベルの `.reml` シナリオで検証し、セルフホ
 | [4-1-stdlib-improvement-implementation-plan.md](4-1-stdlib-improvement-implementation-plan.md) | M1: Stdlib 改善 | Core.Test/Cli/Text.Pretty/Doc/Lsp の実装と回帰接続 | 随時 |
 | [4-1-dsl-lite-profile-plan.md](4-1-dsl-lite-profile-plan.md) | M1: Lite 入口 | Reml Lite プロファイルとテンプレートの仕様化 | 随時 |
 | [4-1-dsl-test-kit-plan.md](4-1-dsl-test-kit-plan.md) | M1: DSL Test Kit | Core.Test.Dsl の仕様化と回帰接続 | 随時 |
+| [4-1-dsl-composability-standard-plan.md](4-1-dsl-composability-standard-plan.md) | M1: DSL 合成 | DSL Composability Standard の仕様化と Rust 実装計画 | 随時 |
 | [4-1-core-lsp-derive-plan.md](4-1-core-lsp-derive-plan.md) | M1: Auto-LSP | Core.Lsp.Derive の仕様化と Rust 実装計画 | 随時 |
 | [4-1-core-parse-cst-plan.md](4-1-core-parse-cst-plan.md) | M1: CST | CST サポートとロスレスパース計画 | 随時 |
 | [4-1-core-parse-error-labeling-impl-plan.md](4-1-core-parse-error-labeling-impl-plan.md) | M1: Core.Parse Label | 期待集合を概念ラベル中心にする実装計画（CP-WS2-001 回帰） | 随時 |

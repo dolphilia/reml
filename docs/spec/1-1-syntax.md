@@ -371,6 +371,27 @@ ConductorMonitoring ::= "monitoring" (Ident | ConductorQualifiedName) Block
 - **並列安全性フラグ**: 埋め込み DSL が独立区間で並列解析可能かを `EmbeddedMode::ParallelSafe` のようなフラグで宣言し、`execution` の並列戦略と整合させる。並列不可の DSL は順序保証を優先する。
 - **関連ノート**: 埋め込み DSL の標準化方針は [dsl-enhancement-proposal.md](../notes/dsl-enhancement-proposal.md) の 3.6 を参照。
 
+#### B.8.3.1 埋め込み DSL の最小契約（草案）
+
+```reml
+let embedded = embedded_dsl(
+  dsl_id = "reml",
+  start = "```reml",
+  end = "```",
+  parser = Reml.Parser.main,
+  lsp = Reml.Lsp.server,
+  mode = EmbeddedMode::ParallelSafe,
+  context = ContextBridge::inherit(["scope", "type_env"])
+)
+```
+
+- `dsl_id` は必須であり、`Diagnostic.source_dsl` と `AuditEnvelope.metadata["dsl.id"]` に同一の値を記録する。
+- `start`/`end` は境界トークンとして扱い、境界内で発生した診断は親 DSL の診断と混在しないよう `source_dsl` で分離する。
+- `EmbeddedMode::ParallelSafe` が指定された場合、`execution` の並列戦略に反映され、監査ログに `dsl.embedding.mode` を記録する。
+- `ContextBridge::inherit` は `scope`/`type_env`/`config` のうち指定された要素のみを継承する。未指定の値は親 DSL へ逆流しない。
+
+埋め込み DSL の実行契約と診断キーは [2-2 Core Combinator](2-2-core-combinator.md) と [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) の草案節に合わせて更新する。
+
 ### B.8.4 テンプレート DSL 安全設計指針
 
 - **Core.Text.Template の活用**: テンプレート構文を DSL として公開する際は、`Core.Text.Template` の `TemplateSegment`/`TemplateFilter` を利用し、レンダリング面の機能を標準APIに委譲する。これにより Unicode 幅計算・正規化・ストリーム処理の最適化が既定で有効になり、0-1章で定義した性能基準（10MB 線形処理など）を満たす経路を保持できる。[^purpose-perf]
