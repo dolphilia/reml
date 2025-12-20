@@ -95,9 +95,9 @@ match result.value {
 - [x] `autoWhitespace` 由来の Trivia 収集を実装した
 
 ### フェーズC: Core.Text.Pretty 連携
-- [ ] `compiler/rust/runtime/src/text/pretty.rs` に `CstPrinter` を追加した
-- [ ] `CstPrinter` の既定スタイル（空白/改行/コメント）を定義した
-- [ ] `docs/spec/3-13-core-text-pretty.md` に `CstPrinter` を追記した
+- [x] `compiler/rust/runtime/src/text/pretty.rs` に `CstPrinter` を追加した
+- [x] `CstPrinter` の既定スタイル（空白/改行/コメント）を定義した
+- [x] `docs/spec/3-13-core-text-pretty.md` に `CstPrinter` を追記した
 
 ### フェーズD: サンプルと回帰接続
 - [ ] `examples/practical/` に CST/Formatter サンプルを追加した

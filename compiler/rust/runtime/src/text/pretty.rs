@@ -1,6 +1,7 @@
 use unicode_width::UnicodeWidthStr;
 
 use super::Str;
+use crate::parse::cst::{CstChild, CstNode, Token as CstToken, Trivia, TriviaKind};
 
 /// プリティプリント用のドキュメント構造。
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -11,6 +12,65 @@ pub enum Doc {
     Concat(Box<Doc>, Box<Doc>),
     Nest(usize, Box<Doc>),
     Group(Box<Doc>),
+}
+
+/// CST から Doc を生成する標準プリンタ。
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CstPrinter;
+
+impl CstPrinter {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn doc(&self, node: &CstNode) -> Doc {
+        self.doc_from_node(node)
+    }
+
+    fn doc_from_node(&self, node: &CstNode) -> Doc {
+        let mut docs = Vec::new();
+        self.extend_trivia_docs(&mut docs, &node.trivia_leading);
+        for child in node.children.iter() {
+            docs.push(self.doc_from_child(child));
+        }
+        self.extend_trivia_docs(&mut docs, &node.trivia_trailing);
+        concat_all(docs)
+    }
+
+    fn doc_from_child(&self, child: &CstChild) -> Doc {
+        match child {
+            CstChild::Node(node) => self.doc_from_node(node),
+            CstChild::Token(token) => self.doc_from_token(token),
+        }
+    }
+
+    fn doc_from_token(&self, token: &CstToken) -> Doc {
+        text(token.text.as_str())
+    }
+
+    fn extend_trivia_docs(&self, docs: &mut Vec<Doc>, trivia: &[Trivia]) {
+        for entry in trivia.iter() {
+            docs.push(self.doc_from_trivia(entry));
+        }
+    }
+
+    fn doc_from_trivia(&self, trivia: &Trivia) -> Doc {
+        match trivia.kind {
+            TriviaKind::Whitespace | TriviaKind::Comment | TriviaKind::Layout => {
+                text(trivia.text.as_str())
+            }
+        }
+    }
+}
+
+/// CST プリンタを生成する。
+pub fn cst_printer() -> CstPrinter {
+    CstPrinter::new()
+}
+
+/// CST から Doc を生成する。
+pub fn cst_doc(printer: CstPrinter, node: &CstNode) -> Doc {
+    printer.doc(node)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -55,6 +115,14 @@ pub fn nest(indent: i64, doc: Doc) -> Doc {
 /// ドキュメントを連結する。
 pub fn concat(left: Doc, right: Doc) -> Doc {
     Doc::Concat(Box::new(left), Box::new(right))
+}
+
+fn concat_all(mut docs: Vec<Doc>) -> Doc {
+    let mut iter = docs.drain(..);
+    let Some(first) = iter.next() else {
+        return text("");
+    };
+    iter.fold(first, concat)
 }
 
 /// 指定幅でドキュメントをレンダリングする。

@@ -38,7 +38,9 @@ pub use grapheme::{
 pub use identifier::{prepare_identifier, prepare_identifier_with_locale};
 pub use locale::LocaleId;
 pub use normalize::{is_normalized, normalize, NormalizationForm};
-pub use pretty::{concat, group, line, nest, render, softline, text, Doc};
+pub use pretty::{
+    concat, cst_doc, cst_printer, group, line, nest, render, softline, text, CstPrinter, Doc,
+};
 pub use span_highlight::{span_highlight, SpanHighlight};
 pub use str_ref::Str;
 pub use text_string::String;
