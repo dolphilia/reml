@@ -135,7 +135,7 @@ conductor docs_pipeline {
 - [x] `examples/practical/embedded_dsl/` に複合サンプルを追加
 - [x] `expected/practical/embedded_dsl/` に期待出力を追加
 - [x] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH4-DSL-COMP-*` を登録
-- [ ] `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加
+- [x] `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加
 
 ## Rust 実装の現状と追加案
 
