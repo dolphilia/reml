@@ -132,9 +132,9 @@ conductor docs_pipeline {
 - [x] `compiler/rust/runtime/tests/parse_embedded.rs` に単体テストを追加
 
 ### フェーズD: サンプル/回帰接続
-- [ ] `examples/practical/embedded_dsl/` に複合サンプルを追加
-- [ ] `expected/practical/embedded_dsl/` に期待出力を追加
-- [ ] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH4-DSL-COMP-*` を登録
+- [x] `examples/practical/embedded_dsl/` に複合サンプルを追加
+- [x] `expected/practical/embedded_dsl/` に期待出力を追加
+- [x] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH4-DSL-COMP-*` を登録
 - [ ] `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加
 
 ## Rust 実装の現状と追加案

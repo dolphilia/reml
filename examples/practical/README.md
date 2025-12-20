@@ -12,6 +12,7 @@ Phase 4 のシナリオマトリクスで「実務投入」「監査ログ付き
 - `core_parse/cst_lossless/`: Core.Parse の CST/Pretty ロスレス経路の最小例
 - `core_doc/`: Core.Doc のドキュメント生成最小例
 - `core_lsp/`: Core.Lsp の診断送信最小例
+- `embedded_dsl/`: Markdown + Reml の埋め込み DSL 合成例
 - `core_diagnostics/audit_envelope/`: `AuditEnvelope.metadata` に `scenario.id` と Stage 情報を記録するログ例
 - `core_runtime/capability/`: Runtime Bridge Stage の整合性チェック (`runtime.bridge.stage_mismatch`) を再現
 - `core_env/envcfg/`: `core.env.merge_profiles` と `@cfg` プロファイル同期の成功例
