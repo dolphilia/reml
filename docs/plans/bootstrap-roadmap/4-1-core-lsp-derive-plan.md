@@ -115,9 +115,9 @@ conductor my_dsl_server {
     - `auto_derive_basic.reml` は `rule`/`keyword`/`symbol`/`token` を含まず、導出モデルが空になる前提で期待出力と一致していることを確認済み。
 
 ### フェーズD: サンプル/回帰接続
-1. [ ] `examples/practical/core_lsp/auto_derive_basic.reml` と `expected/practical/core_lsp/auto_derive_basic.stdout` を追加する。
-2. [ ] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に Auto-LSP 導出シナリオを登録する。
-3. [ ] `reports/spec-audit/ch4/logs/` に実行ログのテンプレートを追加する。
+1. [x] `examples/practical/core_lsp/auto_derive_basic.reml` と `expected/practical/core_lsp/auto_derive_basic.stdout` を追加する。
+2. [x] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に Auto-LSP 導出シナリオを登録する。
+3. [x] `reports/spec-audit/ch4/logs/` に実行ログのテンプレートを追加する。
 
 ## Rust 実装の現状と追加案
 
