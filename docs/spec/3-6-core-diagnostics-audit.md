@@ -134,6 +134,21 @@ WASM Component Model / WIT 連携に関する監査メタデータは、`AuditEn
 - `dsl.parent_id`: 親 DSL の `dsl_id`（複数階層の場合は直近の親）
 - `dsl.embedding.start`: 境界開始トークン（`start` の原文）
 - `dsl.embedding.end`: 境界終了トークン（`end` の原文）
+
+`dsl.embedding.span` の JSON 形式は `Span` と同じ `{ "start": Int, "end": Int }` とする。
+
+例:
+
+```json
+{
+  "dsl.id": "reml",
+  "dsl.parent_id": "markdown",
+  "dsl.embedding.span": { "start": 120, "end": 240 },
+  "dsl.embedding.mode": "ParallelSafe",
+  "dsl.embedding.start": "```reml",
+  "dsl.embedding.end": "```"
+}
+```
 - `ffi.wit.ownership`: `own` / `borrow` / `copy`
 - `ffi.wit.lift_lower`: `lift` / `lower`
 

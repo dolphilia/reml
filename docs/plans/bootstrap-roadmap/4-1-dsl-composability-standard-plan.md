@@ -97,6 +97,15 @@ conductor docs_pipeline {
 3. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH4-DSL-COMP-*` シナリオを登録する。
 4. `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加する。
 
+#### 期待出力テンプレート（命名規則）
+
+- `expected/practical/embedded_dsl/{case_id}.audit.jsonl`
+- `expected/practical/embedded_dsl/{case_id}.diagnostic.json`
+
+例:
+- `expected/practical/embedded_dsl/markdown_reml_basic.audit.jsonl`
+- `expected/practical/embedded_dsl/markdown_reml_error.diagnostic.json`
+
 ## Rust 実装の現状と追加案
 
 ### 既存実装の範囲

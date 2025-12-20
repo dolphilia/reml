@@ -89,7 +89,7 @@ conductor pipeline_app {
   "audit_metadata": {
     "dsl.id": "reml",
     "dsl.parent_id": "markdown",
-    "dsl.embedding.span": "120..240",
+    "dsl.embedding.span": { "start": 120, "end": 240 },
     "dsl.embedding.mode": "ParallelSafe"
   }
 }
@@ -98,7 +98,7 @@ conductor pipeline_app {
 監査ログ（JSON Lines）の例:
 
 ```json
-{"event":"parse_diagnostic","dsl.id":"reml","dsl.parent_id":"markdown","dsl.embedding.span":"120..240","dsl.embedding.mode":"ParallelSafe","dsl.embedding.start":"```reml","dsl.embedding.end":"```"}
+{"event":"parse_diagnostic","dsl.id":"reml","dsl.parent_id":"markdown","dsl.embedding.span":{"start":120,"end":240},"dsl.embedding.mode":"ParallelSafe","dsl.embedding.start":"```reml","dsl.embedding.end":"```"}
 ```
 
 ## 3. ベストプラクティス

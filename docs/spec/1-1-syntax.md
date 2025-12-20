@@ -389,6 +389,7 @@ let embedded = embedded_dsl(
 - `start`/`end` は境界トークンとして扱い、境界内で発生した診断は親 DSL の診断と混在しないよう `source_dsl` で分離する。
 - `EmbeddedMode::ParallelSafe` が指定された場合、`execution` の並列戦略に反映され、監査ログに `dsl.embedding.mode` を記録する。
 - `ContextBridge::inherit` は `scope`/`type_env`/`config` のうち指定された要素のみを継承する。未指定の値は親 DSL へ逆流しない。
+- `dsl.embedding.span` は `Span` の JSON 形式 `{ "start": Int, "end": Int }` で監査ログへ出力する。
 
 埋め込み DSL の実行契約と診断キーは [2-2 Core Combinator](2-2-core-combinator.md) と [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) の草案節に合わせて更新する。
 
