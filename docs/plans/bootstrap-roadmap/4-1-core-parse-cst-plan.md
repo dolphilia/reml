@@ -81,6 +81,34 @@ match result.value {
 2. `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に CST の回帰条件を追記する。
 3. `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加し、更新方針を明記する。
 
+## 進捗チェックリスト
+
+### フェーズA: 仕様整理と用語統一
+- [ ] `docs/spec/2-2-core-combinator.md` に CST/Trivia と `run_with_cst` 契約を追記した
+- [ ] `docs/spec/2-0-parser-api-overview.md` に `RunConfig.extensions["parse"].cst` 方針を追記した
+- [x] `docs/notes/core-parse-cst-design.md` に付着ルールと判断根拠を記録した
+
+### フェーズB: Rust 実装の追加
+- [ ] `compiler/rust/runtime/src/parse/cst.rs` を追加し CST 型を定義した
+- [ ] `ParseState` に CST 収集フラグと Trivia バッファを追加した
+- [ ] `run_with_cst` / `run_with_cst_shared` を追加した
+- [ ] `autoWhitespace` 由来の Trivia 収集を実装した
+
+### フェーズC: Core.Text.Pretty 連携
+- [ ] `compiler/rust/runtime/src/text/pretty.rs` に `CstPrinter` を追加した
+- [ ] `CstPrinter` の既定スタイル（空白/改行/コメント）を定義した
+- [ ] `docs/spec/3-13-core-text-pretty.md` に `CstPrinter` を追記した
+
+### フェーズD: サンプルと回帰接続
+- [ ] `examples/practical/` に CST/Formatter サンプルを追加した
+- [ ] `expected/` に Doc 出力のゴールデンを保存した
+- [ ] `phase4-scenario-matrix.csv` に CST シナリオを登録した
+
+### フェーズE: ドキュメントと運用整理
+- [ ] `docs/guides/formatter-authoring.md` に CST 利用注意点を追記した
+- [ ] `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に回帰条件を追記した
+- [ ] `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加した
+
 ## Rust 実装の現状と追加案
 
 ### 既存実装の範囲
