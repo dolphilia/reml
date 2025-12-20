@@ -40,13 +40,14 @@ impl ParseMetaRegistry {
         token_kind: Option<String>,
     ) {
         let name = name.into();
+        let token_kind_value = token_kind.clone();
         let entry = self.entries.entry(id).or_insert_with(|| ParserMeta {
             id,
             kind,
             name,
             doc: None,
             children: Vec::new(),
-            token_kind,
+            token_kind: token_kind_value,
         });
         if entry.token_kind.is_none() {
             entry.token_kind = token_kind;

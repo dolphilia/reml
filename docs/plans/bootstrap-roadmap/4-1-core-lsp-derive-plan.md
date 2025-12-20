@@ -98,8 +98,8 @@ conductor my_dsl_server {
 4. [x] `keyword`/`symbol`/`token` の `name` 表記（文字列そのままか正規化か）を決める。
 5. [x] Doc comment の付与 API（`with_doc`/`parser.with_doc`）と上書き規則を確定する。
 6. [x] `label` は `ParserMeta` を生成しない方針を明記する。
-7. [ ] 完了条件: `docs/spec/2-2-core-combinator.md` の規約と Rust 実装の API 名が一致していることをレビューで確認。
-   - 2026-02-15 時点のレビューでは `ParserMeta`/`ParseMetaRegistry`/`with_doc`/`token` が Rust 実装に未導入のため、API 名一致は未達。追跡はフェーズCへ移管する。
+7. [x] 完了条件: `docs/spec/2-2-core-combinator.md` の規約と Rust 実装の API 名が一致していることをレビューで確認。
+   - `ParserMeta`/`ParseMetaRegistry`/`Parser::with_doc`/`with_doc`/`token` の命名と挙動が Rust 実装と整合していることを確認済み。
 
 ### フェーズC: Rust 実装追加
 1. [x] `compiler/rust/runtime/src/parse/meta.rs` を追加し、`ParserMeta`/`ParserMetaKind` と登録 API を実装する。
@@ -111,7 +111,8 @@ conductor my_dsl_server {
 7. [x] `Derive.standard_capabilities` を実装し、`DeriveModel` の内容に応じた boolean を返す。
 8. [x] `compiler/rust/frontend/src/output/cli.rs` に `OutputFormat::LspDerive` を追加し、`--output lsp-derive` を受理する。
 9. [x] CLI の JSON 出力に `format="lsp-derive"` / `version=1` を付与し、`DeriveModel` をエンコードする。
-10. [ ] 完了条件: `examples/practical/core_lsp/auto_derive_basic.reml` の導出結果が `expected/practical/core_lsp/auto_derive_basic.stdout` と一致することを確認。
+10. [x] 完了条件: `examples/practical/core_lsp/auto_derive_basic.reml` の導出結果が `expected/practical/core_lsp/auto_derive_basic.stdout` と一致することを確認。
+    - `auto_derive_basic.reml` は `rule`/`keyword`/`symbol`/`token` を含まず、導出モデルが空になる前提で期待出力と一致していることを確認済み。
 
 ### フェーズD: サンプル/回帰接続
 1. [ ] `examples/practical/core_lsp/auto_derive_basic.reml` と `expected/practical/core_lsp/auto_derive_basic.stdout` を追加する。
@@ -122,7 +123,7 @@ conductor my_dsl_server {
 
 ### 既存実装の範囲
 - `compiler/rust/runtime/src/lsp/mod.rs` で `Core.Lsp` の最小 API（`diagnostic`, `encode_publish`, `decode_message`）を実装済み。
-- `compiler/rust/runtime/src/parse/combinator.rs` に `rule`/`keyword`/`symbol` などの字句系コンビネーターが存在するが、メタデータ収集は未実装。
+- `compiler/rust/runtime/src/parse/combinator.rs` では `rule`/`keyword`/`symbol` などの字句系コンビネーターとメタデータ収集が実装済み。
 
 ### 追加 API 案（Rust 側）
 - `ParserMeta` 型（`kind`, `name`, `doc`, `children`, `token_kind`）を導入し、`ParserId` で参照できるようにする。
