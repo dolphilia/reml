@@ -68,13 +68,13 @@ let block =
    - `recover_missing_inserts_token_and_fixit`
 
 ### フェーズC: サンプル/回帰接続
-1. `examples/spec_core/chapter2/parser_core/` に回復ヘルパのサンプルを追加する。（未着手）
+1. `examples/spec_core/chapter2/parser_core/` に回復ヘルパのサンプルを追加する。（完了）
    - `core-parse-recover-sync-to.reml`
    - `core-parse-recover-panic-block.reml`
-2. `expected/spec_core/chapter2/parser_core/` に診断出力を追加する。（未着手）
+2. `expected/spec_core/chapter2/parser_core/` に診断出力を追加する。（完了）
    - `core-parse-recover-sync-to.diagnostic.json`
    - `core-parse-recover-panic-block.diagnostic.json`
-3. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH2-PARSE-203/204` を登録し、`diagnostic_keys` と `resolution_notes` を更新する。（未着手）
+3. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH2-PARSE-203/204` を登録し、`diagnostic_keys` と `resolution_notes` を更新する。（完了）
 
 ## リスクと緩和策
 | リスク | 影響 | 緩和策 |

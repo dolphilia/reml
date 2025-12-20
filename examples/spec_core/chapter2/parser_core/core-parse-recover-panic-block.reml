@@ -1,0 +1,46 @@
+module Spec.Core.Chapter2.Parser.RecoverPanicBlock
+
+use Core.Parse as Parse
+use Core.Prelude
+
+// 目的: `panic_block` がネストした `{` `}` を数えて同期し、次のブロックへ継続する。
+
+fn let_statement() -> Parse.Parser<()> {
+  Parse.expect_keyword("let")
+    .skipL(Parse.expect_ident())
+    .skipL(Parse.expect_symbol("="))
+    .skipL(Parse.expect_int())
+    .map(|_| ())
+    .skipR(Parse.expect_symbol(";"))
+}
+
+fn block() -> Parse.Parser<()> {
+  let body = Parse.many(let_statement())
+    .map(|_| ())
+
+  let parser =
+    Parse.between(
+      Parse.expect_symbol("{"),
+      body,
+      Parse.expect_symbol("}")
+    )
+
+  Parse.panic_block(
+    parser,
+    Parse.expect_symbol("{"),
+    Parse.expect_symbol("}"),
+    ()
+  )
+}
+
+fn program() -> Parse.Parser<List<()>> {
+  Parse.many(block())
+    .skipR(Parse.expect_eof())
+}
+
+fn main() -> Str {
+  let source = "{ let x = ; { let y = 1; } let z = 2; } { let ok = 4; }"
+  match Parse.run_with_recovery(program(), source) with
+    Err(diag) -> diag.to_json()
+    Ok(_) -> "ok"
+}

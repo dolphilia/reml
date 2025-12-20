@@ -1,0 +1,1 @@
+{"command":"Check","phase":"Reporting","run_id":"pending","diagnostics":[{"code":"core.parse.recover.branch","domain":"parser","message":"回復: panic_block がブロック終端まで同期しました。","severity":"error"}],"summary":{"inputs":["examples/spec_core/chapter2/parser_core/core-parse-recover-panic-block.reml"],"stats":{"diagnostic_count":1}},"exit_code":{"label":"failure","value":1}}
