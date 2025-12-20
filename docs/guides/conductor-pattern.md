@@ -72,6 +72,35 @@ conductor pipeline_app {
 - `health_check` は Capability Registry 経由で提供されるプローブを利用する。
 - `Runtime::execution_scope` を通じて `ExecutionMetricsScope` を取得し、`register_dsl_metrics` と `channel_metrics` を同一スコープで呼び出す。これにより DSL メトリクスとチャネルメトリクスのリソース文脈が一致し、監査ログに `ResourceLimitDigest` が自動連携される。
 
+### 2.5 埋め込み DSL の診断/監査ログ例
+
+`embedded_dsl` で発生した診断は `source_dsl` を持ち、監査ログには `dsl.*` メタデータが付与される。
+
+診断 JSON の例:
+
+```json
+{
+  "schema_version": "3.0.0-alpha",
+  "message": "parser.unexpected_eof",
+  "severity": "Error",
+  "code": "parser.unexpected_eof",
+  "source_dsl": "reml",
+  "primary": { "start": 120, "end": 120 },
+  "audit_metadata": {
+    "dsl.id": "reml",
+    "dsl.parent_id": "markdown",
+    "dsl.embedding.span": "120..240",
+    "dsl.embedding.mode": "ParallelSafe"
+  }
+}
+```
+
+監査ログ（JSON Lines）の例:
+
+```json
+{"event":"parse_diagnostic","dsl.id":"reml","dsl.parent_id":"markdown","dsl.embedding.span":"120..240","dsl.embedding.mode":"ParallelSafe","dsl.embedding.start":"```reml","dsl.embedding.end":"```"}
+```
+
 ## 3. ベストプラクティス
 
 1. **小さな DSL から統合** — 大規模な DSL を一度に導入せず、段階的に Conductor へ組み込む。

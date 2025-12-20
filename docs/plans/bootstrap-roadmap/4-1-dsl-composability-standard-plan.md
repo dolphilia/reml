@@ -68,10 +68,10 @@ conductor docs_pipeline {
 
 ### フェーズC: Rust 実装追加
 1. `compiler/rust/runtime/src/parse/embedded.rs` を追加し、基礎型を定義する。
-   - `pub struct EmbeddedDslSpec<T> { dsl_id: String, boundary: EmbeddedBoundary, parser: Parser<T>, lsp: Option<EmbeddedLspEndpoint>, mode: EmbeddedMode, context: ContextBridge }`
+   - `pub struct EmbeddedDslSpec<T> { dsl_id: String, boundary: EmbeddedBoundary, parser: Parser<T>, lsp: Option<LspServer>, mode: EmbeddedMode, context: ContextBridge }`
    - `pub struct EmbeddedBoundary { start: String, end: String }`
    - `pub enum EmbeddedMode { ParallelSafe, SequentialOnly, Exclusive }`
-   - `pub enum ContextBridge { Inherit(Vec<String>), Custom(ContextBridgeFn) }`
+   - `pub enum ContextBridge { Inherit(Vec<String>), Custom(ContextBridgeHandler) }`
    - `pub struct EmbeddedNode<T> { dsl_id: String, span: Span, ast: T, cst: Option<CstNode>, diagnostics: Vec<ParseError> }`
 2. `compiler/rust/runtime/src/parse/mod.rs` に `pub mod embedded;` を追加し、`EmbeddedDslSpec`/`EmbeddedMode`/`ContextBridge`/`EmbeddedNode` を re-export する。
 3. `compiler/rust/runtime/src/parse/combinator.rs` に `pub fn embedded_dsl<T>(spec: EmbeddedDslSpec<T>) -> Parser<EmbeddedNode<T>>` を追加する。
@@ -85,7 +85,7 @@ conductor docs_pipeline {
 6. `compiler/rust/runtime/src/diagnostics/dsl.rs` を追加し、`apply_dsl_metadata(diag: &mut Diagnostic, dsl_id: &str, parent_id: Option<&str>, span: Span)` を実装する。
    - `AuditEnvelope.metadata["dsl.id"]` / `["dsl.parent_id"]` / `["dsl.embedding.span"]` を共通キーとして埋め込む。
 7. `compiler/rust/runtime/src/lsp/embedded.rs` を追加し、`EmbeddedLspRoute` と `EmbeddedLspRegistry` を実装する。
-   - `register_route(span, dsl_id, endpoint)` と `resolve_route(position)` を用意する。
+   - `register_route(span, dsl_id, server)` と `resolve_route(position)` を用意する。
 8. `compiler/rust/runtime/src/parse/embedded.rs` と `compiler/rust/runtime/src/lsp/embedded.rs` を `compiler/rust/runtime/src/lsp/mod.rs` に接続し、`Core.Lsp` 側の委譲情報として取得できるようにする。
 9. `compiler/rust/frontend/src/output/cli.rs` に composability 監査ログ出力を追加する。
    - `CliDiagnosticEnvelope.summary.dsl_embeddings` に `dsl_id`/`span`/`mode` を出力する。

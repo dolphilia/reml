@@ -292,7 +292,7 @@ type EmbeddedDslSpec<T> = {
   start: Str,
   end: Str,
   parser: Parser<T>,
-  lsp: Option<LspEndpoint>,
+  lsp: Option<LspServer>,
   mode: EmbeddedMode,
   context: ContextBridge,
 }
@@ -302,6 +302,9 @@ enum EmbeddedMode { ParallelSafe, SequentialOnly, Exclusive }
 enum ContextBridge
   = Inherit { keys: [Str] }
   | Custom { handler: ContextBridgeHandler }
+
+type ContextBridgePayload = Map<Str, Json>
+type ContextBridgeHandler = fn(ContextBridgePayload) -> ContextBridgePayload
 
 type EmbeddedNode<T> = {
   dsl_id: Str,
