@@ -84,8 +84,8 @@ match result.value {
 ## 進捗チェックリスト
 
 ### フェーズA: 仕様整理と用語統一
-- [ ] `docs/spec/2-2-core-combinator.md` に CST/Trivia と `run_with_cst` 契約を追記した
-- [ ] `docs/spec/2-0-parser-api-overview.md` に `RunConfig.extensions["parse"].cst` 方針を追記した
+- [x] `docs/spec/2-2-core-combinator.md` に CST/Trivia と `run_with_cst` 契約を追記した
+- [x] `docs/spec/2-0-parser-api-overview.md` に `RunConfig.extensions["parse"].cst` 方針を追記した
 - [x] `docs/notes/core-parse-cst-design.md` に付着ルールと判断根拠を記録した
 
 ### フェーズB: Rust 実装の追加

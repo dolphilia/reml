@@ -223,6 +223,61 @@ fn autoWhitespace<A>(p: Parser<A>, cfg: AutoWhitespaceConfig = {}) -> Parser<A>
 * フォールバック: RunConfig/`cfg.profile` のどちらも無い場合は `whitespace()` + `commentLine("//")` を `skipMany` した簡易空白を用いる（0-1 §1.2 の安全側フォールバック）。レイアウトが無効な環境でも構文意味は変えず、空白/コメントの共有率だけが低下する。
 * 回帰登録: `phase4-scenario-matrix.csv` の `CH2-PARSE-901` に autoWhitespace + Layout 共有を、`CH2-PARSE-902` に観測フラグ付きの ParserProfile 出力を登録し、PhaseF トラッカーで CLI/LSP/Streaming の再実行ログを残す。Rust 実装では `RunConfig.extensions["lex"].layout_profile` と `extensions["parse"].profile_output` が未指定でも安全側フォールバックに倒れることを確認する。[^phase12-autowhitespace-regression]
 
+---
+
+## C. CST と Trivia（Phase 4）
+
+> **目的**: AST パスを維持したまま、空白・コメントを保持するロスレスパース経路を追加する。
+
+### C-1. CST ノードと Trivia
+
+```reml
+type CstNode = {
+  kind: Str,
+  children: [CstChild],
+  trivia_leading: [Trivia],
+  trivia_trailing: [Trivia],
+  span: Span,
+}
+
+type CstChild
+  = Node(CstNode)
+  | Token(Token)
+
+type Trivia = {
+  kind: TriviaKind,
+  text: Str,
+  span: Span,
+}
+
+enum TriviaKind { Whitespace, Comment, Layout }
+```
+
+* `span` は必須。合成ノードで位置が確定しない場合は空Spanを許容する（`Span::empty` 相当）。
+* `CstChild.Token` は Lex/Parse の既存トークン表現に従う。
+
+### C-2. ロスレスパース API
+
+```reml
+fn run_with_cst<T>(parser: Parser<T>, input: Str, config: RunConfig) -> ParseResult<CstOutput<T>>
+fn run_with_cst_shared<T>(parser: Parser<T>, input: Arc<str>, config: RunConfig) -> ParseResult<CstOutput<T>>
+
+type CstOutput<T> = {
+  ast: T,
+  cst: CstNode,
+}
+```
+
+* `run_with_cst` は `run` / `run_with_recovery` と並列の実行経路として提供する。
+* `CstOutput` は AST と CST を並列で返し、追加メタデータは `CstNode.span` と `ParseResult.diagnostics` に集約する。
+* `RunConfig.extensions["parse"].cst` が opt-in の場合のみ Trivia を収集し、既定は OFF とする（0-1 §1.1 の性能要件を維持）。
+
+### C-3. Trivia 付着ルール（要約）
+
+* 先頭 Trivia は `trivia_leading` に付着。
+* `autoWhitespace` が消費した Trivia は直近の確定ノードの `trivia_trailing` に付着し、次ノード生成時に `trivia_leading` へ移送する。
+* `Layout` トークンは `Trivia.kind=Layout` として同じ付着ルールを適用する。
+
 ### B-2-a. layout_token（Layout 連携）
 
 ```reml

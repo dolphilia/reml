@@ -14,7 +14,8 @@
 - [2.6 実行戦略](2-6-execution-strategy.md): トランポリンによる末尾最適化、Packrat/左再帰ガード、計測とターゲット適応を含むランナー設計をまとめます。
 - [2.7 ストリーミング実行](2-7-core-parse-streaming.md): `run_stream`/`resume` API、継続メタデータ、バックプレッシャ制御、RunConfig 連携を定義し、バッチランナーと同等の診断品質を保つストリーミング処理の契約を示します。
 
-## Phase 8〜10 の拡張ドラフト（脚注）
+## Phase 4〜10 の拡張ドラフト（脚注）
+- `RunConfig.extensions["parse"].cst`（Phase 4）: CST/Trivia 収集の opt-in フラグ。既定は OFF とし、`run_with_cst` / `run_with_cst_shared` が `CstOutput` を返す際にのみ収集する。AST-only 経路は影響を受けない。
 - `RunConfig.extensions["parse"].operator_table`（Phase 8）: `Core.Parse.expr_builder`/`OpBuilder` が利用する優先度・結合性テーブルを外部から注入するためのオプション。未指定時は各パーサーが埋め込む `levels` を採用し、既存のチェーン/ビルダー挙動は変わらない。
 - `RunConfig.extensions["lex"].profile` / `layout_profile`（Phase 9）: autoWhitespace/Layout が空白・コメント・オフサイド仮想トークンを共有するための Lex ブリッジ。未設定時は簡易空白へフォールバックし構文意味は変えない。`phase4-scenario-matrix.csv` の `CH2-PARSE-901` でレイアウト共有経路を監視する。
 - `RunConfig.profile` / `RunConfig.extensions["parse"].profile` / `profile_output`（Phase 10）: Packrat/バックトラック/回復の計測を opt-in で有効化し、`ParseResult.profile` に集計する観測フラグ。`profile_output` を与えると JSON を `reports/` 等へ書き出す（デフォルト OFF、安全側フォールバック）。`phase4-scenario-matrix.csv` の `CH2-PARSE-902` でベストエフォート書き出し経路を監視する。
