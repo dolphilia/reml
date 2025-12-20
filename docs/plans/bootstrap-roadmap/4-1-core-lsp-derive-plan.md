@@ -102,15 +102,15 @@ conductor my_dsl_server {
    - 2026-02-15 時点のレビューでは `ParserMeta`/`ParseMetaRegistry`/`with_doc`/`token` が Rust 実装に未導入のため、API 名一致は未達。追跡はフェーズCへ移管する。
 
 ### フェーズC: Rust 実装追加
-1. [ ] `compiler/rust/runtime/src/parse/meta.rs` を追加し、`ParserMeta`/`ParserMetaKind` と登録 API を実装する。
-2. [ ] `ParseState` に `ParseMetaRegistry` を保持し、`run`/`run_with_default` で初期化されるようにする。
-3. [ ] `rule` で `ParserMeta` を登録し、子 `ParserId` の収集フックを追加する。
-4. [ ] `keyword`/`symbol`/`token` の生成時に `ParserMeta` を登録する。
-5. [ ] `Parser::with_doc`（および関数版 `with_doc`）を追加し、`ParserMeta.doc` を更新する。
-6. [ ] `compiler/rust/runtime/src/lsp/derive.rs` を追加し、`Derive.collect` を実装する。
-7. [ ] `Derive.standard_capabilities` を実装し、`DeriveModel` の内容に応じた boolean を返す。
-8. [ ] `compiler/rust/frontend/src/output/cli.rs` に `OutputFormat::LspDerive` を追加し、`--output lsp-derive` を受理する。
-9. [ ] CLI の JSON 出力に `format="lsp-derive"` / `version=1` を付与し、`DeriveModel` をエンコードする。
+1. [x] `compiler/rust/runtime/src/parse/meta.rs` を追加し、`ParserMeta`/`ParserMetaKind` と登録 API を実装する。
+2. [x] `ParseState` に `ParseMetaRegistry` を保持し、`run`/`run_with_default` で初期化されるようにする。
+3. [x] `rule` で `ParserMeta` を登録し、子 `ParserId` の収集フックを追加する。
+4. [x] `keyword`/`symbol`/`token` の生成時に `ParserMeta` を登録する。
+5. [x] `Parser::with_doc`（および関数版 `with_doc`）を追加し、`ParserMeta.doc` を更新する。
+6. [x] `compiler/rust/runtime/src/lsp/derive.rs` を追加し、`Derive.collect` を実装する。
+7. [x] `Derive.standard_capabilities` を実装し、`DeriveModel` の内容に応じた boolean を返す。
+8. [x] `compiler/rust/frontend/src/output/cli.rs` に `OutputFormat::LspDerive` を追加し、`--output lsp-derive` を受理する。
+9. [x] CLI の JSON 出力に `format="lsp-derive"` / `version=1` を付与し、`DeriveModel` をエンコードする。
 10. [ ] 完了条件: `examples/practical/core_lsp/auto_derive_basic.reml` の導出結果が `expected/practical/core_lsp/auto_derive_basic.stdout` と一致することを確認。
 
 ### フェーズD: サンプル/回帰接続

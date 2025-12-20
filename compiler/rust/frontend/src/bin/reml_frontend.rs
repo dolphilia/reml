@@ -71,6 +71,7 @@ use reml_runtime::{
     CapabilityRegistry, CapabilityTimestamp,
 };
 use reml_runtime::audit::AuditEvent;
+use reml_runtime::lsp::derive::{Derive, DeriveModel};
 use reml_runtime::test as runtime_test;
 use serde::Serialize;
 use uuid::Uuid;
@@ -88,6 +89,7 @@ struct CliRunResult {
     diagnostic_count: usize,
     stage_payload: StageAuditPayload,
     test_audit_events: Vec<AuditEvent>,
+    lsp_derive: Option<DeriveModel>,
 }
 
 #[derive(Default)]
@@ -119,7 +121,7 @@ fn try_run_capability_command() -> Result<bool, Box<dyn std::error::Error>> {
                 match arg.as_str() {
                     "--output" => {
                         let value = iter.next().ok_or(
-                            "--capability describe --output には human/json を指定してください",
+                            "--capability describe --output には human/json/lsp/lsp-derive を指定してください",
                         )?;
                         format = OutputFormat::parse(value)?;
                     }
@@ -155,6 +157,9 @@ fn run_capability_describe(
         OutputFormat::Human => print_capability_descriptor_human(&descriptor),
         OutputFormat::Lsp => {
             return Err("--capability describe では LSP 出力をサポートしていません".into())
+        }
+        OutputFormat::LspDerive => {
+            return Err("--capability describe では lsp-derive 出力をサポートしていません".into())
         }
     }
     Ok(())
@@ -341,7 +346,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 eprintln!("[AUDIT] pipeline_completed の書き出しに失敗しました: {err}");
             }
-            emit_cli_output(args.output_format, &result.envelope, &result.input_path)?;
+            emit_cli_output(
+                args.output_format,
+                &result.envelope,
+                &result.input_path,
+                result.lsp_derive.as_ref(),
+            )?;
             std::process::exit(result.exit_code.value());
         }
         Err(err) => {
@@ -611,6 +621,7 @@ fn run_frontend(args: &CliArgs) -> Result<CliRunResult, Box<dyn std::error::Erro
         diagnostic_count,
         stage_payload: stage_payload.clone(),
         test_audit_events,
+        lsp_derive: None,
     })
 }
 
@@ -716,6 +727,15 @@ fn run_parse_driver_mode(
     let driver_source = extract_parse_driver_input(source);
     let driver_input = Arc::<str>::from(driver_source);
     let result = runtime_parse::run_shared(&parser, driver_input, &run_config);
+    let lsp_derive = if matches!(args.output_format, OutputFormat::LspDerive) {
+        Some(Derive::collect_with_source(
+            &parser,
+            driver_source,
+            &run_config,
+        ))
+    } else {
+        None
+    };
 
     let mut diagnostics = Vec::new();
     for err in &result.diagnostics {
@@ -751,6 +771,7 @@ fn run_parse_driver_mode(
         diagnostic_count,
         stage_payload,
         test_audit_events: Vec::new(),
+        lsp_derive,
     })
 }
 
@@ -2089,7 +2110,9 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
             "--output" | "--format" => {
                 let value = args
                     .next()
-                    .ok_or_else(|| "--output は human|json|lsp のいずれかを指定してください")?;
+                    .ok_or_else(|| {
+                        "--output は human|json|lsp|lsp-derive のいずれかを指定してください"
+                    })?;
                 output_format = OutputFormat::parse(&value)?;
             }
             "--emit-tokens" => {

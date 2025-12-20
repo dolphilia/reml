@@ -7,6 +7,8 @@ use std::collections::BTreeMap;
 use crate::prelude::ensure::DiagnosticSeverity as CoreSeverity;
 use crate::prelude::ensure::GuardDiagnostic;
 
+pub mod derive;
+
 /// 0-based の位置情報。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct Position {
@@ -19,6 +21,38 @@ pub struct Position {
 pub struct Range {
     pub start: Position,
     pub end: Position,
+}
+
+/// LSP 機能フラグ。
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct LspCapabilities {
+    pub completion: bool,
+    pub outline: bool,
+    pub semantic_tokens: bool,
+    pub hover: bool,
+}
+
+/// 最小 LSP サーバー表現。
+#[derive(Debug, Clone)]
+pub struct LspServer {
+    capabilities: LspCapabilities,
+}
+
+impl LspServer {
+    pub fn new() -> Self {
+        Self {
+            capabilities: LspCapabilities::default(),
+        }
+    }
+
+    pub fn with_capabilities(mut self, capabilities: LspCapabilities) -> Self {
+        self.capabilities = capabilities;
+        self
+    }
+
+    pub fn capabilities(&self) -> &LspCapabilities {
+        &self.capabilities
+    }
 }
 
 /// LSP 診断の Severity。

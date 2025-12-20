@@ -3,6 +3,7 @@ use crate::run_config::{LeftRecursionStrategy, RunConfig};
 use crate::text::Str;
 use serde_json::{json, Map, Value};
 use std::any::Any;
+use super::meta::{normalize_doc, ObservedToken, ParseMetaRegistry, ParserMetaKind};
 use super::op_builder::FixitySymbol;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
@@ -1420,6 +1421,16 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
         })
     }
 
+    /// Doc comment を紐付ける。
+    pub fn with_doc(self, doc: impl AsRef<str>) -> Parser<T> {
+        let doc = normalize_doc(doc.as_ref());
+        Parser::with_id(self.id, move |state| {
+            let result = self.parse(state);
+            state.update_meta_doc(self.id, doc.clone());
+            result
+        })
+    }
+
     /// 値を変換する。
     pub fn map<U, F>(self, f: F) -> Parser<U>
     where
@@ -2757,8 +2768,15 @@ pub fn rule<T>(name: impl AsRef<str>, parser: Parser<T>) -> Parser<T>
 where
     T: Clone + Send + Sync + 'static,
 {
-    let id = parser_id_from_name(name.as_ref());
-    Parser::with_id(id, move |state| parser.parse(state))
+    let name = name.as_ref().to_string();
+    let id = parser_id_from_name(&name);
+    Parser::with_id(id, move |state| {
+        state.register_meta(id, ParserMetaKind::Rule, name.clone(), None);
+        state.enter_rule_meta(id);
+        let reply = parser.parse(state);
+        state.exit_rule_meta(id);
+        reply
+    })
 }
 
 /// エラー時のラベルを差し替える。
@@ -2796,6 +2814,52 @@ where
                 consumed,
                 committed,
             }
+        }
+    })
+}
+
+/// Doc comment を付与する。
+pub fn with_doc<T>(parser: Parser<T>, doc: impl AsRef<str>) -> Parser<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    parser.with_doc(doc)
+}
+
+/// トークン種別を付与する。
+pub fn token<T>(kind: impl AsRef<str>, parser: Parser<T>) -> Parser<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    let kind = kind.as_ref().to_string();
+    let id = ParserId::fresh();
+    Parser::with_id(id, move |state| {
+        state.register_meta(id, ParserMetaKind::Token, kind.clone(), Some(kind.clone()));
+        match parser.parse(state) {
+            Reply::Ok {
+                value,
+                span,
+                consumed,
+                rest,
+            } => {
+                state.set_input(rest.clone());
+                state.record_semantic_token(kind.clone(), span.clone());
+                Reply::Ok {
+                    value,
+                    span,
+                    consumed,
+                    rest,
+                }
+            }
+            Reply::Err {
+                error,
+                consumed,
+                committed,
+            } => Reply::Err {
+                error,
+                consumed,
+                committed,
+            },
         }
     })
 }
@@ -3045,43 +3109,75 @@ where
 {
     let text = text.as_ref().to_string();
     let space = space.into();
-    lexeme(
-        space,
-        Parser::new(move |state| {
-            if text.is_empty() {
-                return Reply::Err {
-                    error: ParseError::new(
-                        "空の記号は許可されていません",
-                        state.input().position(),
-                    ),
-                    consumed: false,
-                    committed: false,
-                };
-            }
-            let start_input = state.input().clone();
-            let remaining = start_input.remaining();
-            if remaining.starts_with(&text) {
-                let rest = start_input.advance(text.len());
-                state.set_input(rest.clone());
-                Reply::Ok {
-                    value: (),
-                    span: span_from_inputs(&start_input, &rest),
-                    consumed: true,
-                    rest,
+    let id = ParserId::fresh();
+    Parser::with_id(id, move |state| {
+        state.register_meta(id, ParserMetaKind::Symbol, text.clone(), None);
+        if text.is_empty() {
+            return Reply::Err {
+                error: ParseError::new(
+                    "空の記号は許可されていません",
+                    state.input().position(),
+                ),
+                consumed: false,
+                committed: false,
+            };
+        }
+        let start_input = state.input().clone();
+        let remaining = start_input.remaining();
+        if remaining.starts_with(&text) {
+            let rest = start_input.advance(text.len());
+            let span = span_from_inputs(&start_input, &rest);
+            state.set_input(rest.clone());
+            let mut tail_input = rest.clone();
+            let mut consumed_flag = true;
+            if !state.layout_active() {
+                if let Some(space_parser) = space.clone().or_else(|| state.space()) {
+                    state.set_input(tail_input.clone());
+                    match space_parser.parse(state) {
+                        Reply::Ok {
+                            rest: space_rest,
+                            consumed: space_consumed,
+                            ..
+                        } => {
+                            consumed_flag = consumed_flag || space_consumed;
+                            tail_input = space_rest.clone();
+                            state.set_input(space_rest);
+                        }
+                        Reply::Err {
+                            error,
+                            consumed: space_consumed,
+                            committed,
+                        } => {
+                            if space_consumed || committed {
+                                state.set_input(start_input);
+                                return Reply::Err {
+                                    error,
+                                    consumed: true,
+                                    committed,
+                                };
+                            } else {
+                                state.set_input(tail_input.clone());
+                            }
+                        }
+                    }
                 }
-            } else {
-                Reply::Err {
-                    error: ParseError::new(
-                        format!("期待した記号: {}", text),
-                        state.input().position(),
-                    )
+            }
+            state.record_semantic_token("operator", span.clone());
+            Reply::Ok {
+                value: (),
+                span,
+                consumed: consumed_flag,
+                rest: tail_input,
+            }
+        } else {
+            Reply::Err {
+                error: ParseError::new(format!("期待した記号: {}", text), state.input().position())
                     .with_expected_tokens([text.clone()]),
-                    consumed: false,
-                    committed: false,
-                }
+                consumed: false,
+                committed: false,
             }
-        }),
-    )
+        }
+    })
 }
 
 /// キーワードを読み取り、識別子境界を検査する。
@@ -3091,66 +3187,101 @@ where
 {
     let kw = kw.as_ref().to_string();
     let space = space.into();
-    lexeme(
-        space,
-        Parser::new(move |state| {
-            if kw.is_empty() {
-                return Reply::Err {
-                    error: ParseError::new(
-                        "空のキーワードは許可されていません",
-                        state.input().position(),
-                    ),
-                    consumed: false,
-                    committed: false,
-                };
-            }
-            let start_input = state.input().clone();
-            let remaining = start_input.remaining();
-            if remaining.starts_with(&kw) {
-                let rest = start_input.advance(kw.len());
-                if let Some(ch) = rest.remaining().chars().next() {
-                    if let Err(msg) = state.identifier_profile().validate_char(ch) {
-                        state.set_input(start_input);
-                        return Reply::Err {
-                            error: ParseError::new(msg, rest.position()),
-                            consumed: true,
-                            committed: false,
-                        };
-                    }
-                    if is_ident_continue(ch, state.identifier_profile())
-                        || is_ident_start(ch, state.identifier_profile())
-                    {
-                        state.set_input(start_input);
-                        return Reply::Err {
-                            error: ParseError::new(
-                                format!("キーワード '{}' の後ろに識別子が続いています", kw),
-                                rest.position(),
-                            ),
-                            consumed: true,
-                            committed: false,
-                        };
-                    }
+    let id = ParserId::fresh();
+    Parser::with_id(id, move |state| {
+        state.register_meta(id, ParserMetaKind::Keyword, kw.clone(), None);
+        if kw.is_empty() {
+            return Reply::Err {
+                error: ParseError::new(
+                    "空のキーワードは許可されていません",
+                    state.input().position(),
+                ),
+                consumed: false,
+                committed: false,
+            };
+        }
+        let start_input = state.input().clone();
+        let remaining = start_input.remaining();
+        if remaining.starts_with(&kw) {
+            let rest = start_input.advance(kw.len());
+            if let Some(ch) = rest.remaining().chars().next() {
+                if let Err(msg) = state.identifier_profile().validate_char(ch) {
+                    state.set_input(start_input);
+                    return Reply::Err {
+                        error: ParseError::new(msg, rest.position()),
+                        consumed: true,
+                        committed: false,
+                    };
                 }
-                state.set_input(rest.clone());
-                Reply::Ok {
-                    value: (),
-                    span: span_from_inputs(&start_input, &rest),
-                    consumed: true,
-                    rest,
-                }
-            } else {
-                Reply::Err {
-                    error: ParseError::new(
-                        format!("期待したキーワード: {}", kw),
-                        state.input().position(),
-                    )
-                    .with_expected_tokens([kw.clone()]),
-                    consumed: false,
-                    committed: false,
+                if is_ident_continue(ch, state.identifier_profile())
+                    || is_ident_start(ch, state.identifier_profile())
+                {
+                    state.set_input(start_input);
+                    return Reply::Err {
+                        error: ParseError::new(
+                            format!("キーワード '{}' の後ろに識別子が続いています", kw),
+                            rest.position(),
+                        ),
+                        consumed: true,
+                        committed: false,
+                    };
                 }
             }
-        }),
-    )
+            let span = span_from_inputs(&start_input, &rest);
+            state.set_input(rest.clone());
+            let mut tail_input = rest.clone();
+            let mut consumed_flag = true;
+            if !state.layout_active() {
+                if let Some(space_parser) = space.clone().or_else(|| state.space()) {
+                    state.set_input(tail_input.clone());
+                    match space_parser.parse(state) {
+                        Reply::Ok {
+                            rest: space_rest,
+                            consumed: space_consumed,
+                            ..
+                        } => {
+                            consumed_flag = consumed_flag || space_consumed;
+                            tail_input = space_rest.clone();
+                            state.set_input(space_rest);
+                        }
+                        Reply::Err {
+                            error,
+                            consumed: space_consumed,
+                            committed,
+                        } => {
+                            if space_consumed || committed {
+                                state.set_input(start_input);
+                                return Reply::Err {
+                                    error,
+                                    consumed: true,
+                                    committed,
+                                };
+                            } else {
+                                state.set_input(tail_input.clone());
+                            }
+                        }
+                    }
+                }
+            }
+            state.record_semantic_token("keyword", span.clone());
+            Reply::Ok {
+                value: (),
+                span,
+                consumed: consumed_flag,
+                rest: tail_input,
+            }
+        } else {
+            Reply::Err {
+                error: ParseError::new(
+                    format!("期待したキーワード: {}", kw),
+                    state.input().position(),
+                )
+                .with_expected_tokens([kw.clone()]),
+                consumed: false,
+                committed: false,
+            }
+        }
+    })
 }
 
 /// 位置パーサー。
@@ -3210,6 +3341,9 @@ pub struct ParseState {
     layout_pending: VecDeque<String>,
     layout_stack: Vec<usize>,
     identifier_profile: IdentifierProfile,
+    meta_registry: ParseMetaRegistry,
+    meta_rule_stack: Vec<ParserId>,
+    observed_tokens: Vec<ObservedToken>,
 }
 
 impl ParseState {
@@ -3250,6 +3384,9 @@ impl ParseState {
             layout_pending: VecDeque::new(),
             layout_stack,
             identifier_profile,
+            meta_registry: ParseMetaRegistry::default(),
+            meta_rule_stack: Vec::new(),
+            observed_tokens: Vec::new(),
         }
     }
 
@@ -3373,8 +3510,69 @@ impl ParseState {
         self.identifier_profile
     }
 
+    pub fn meta_registry(&self) -> &ParseMetaRegistry {
+        &self.meta_registry
+    }
+
+    pub fn observed_tokens(&self) -> &[ObservedToken] {
+        &self.observed_tokens
+    }
+
+    pub fn take_meta_registry(&mut self) -> ParseMetaRegistry {
+        std::mem::take(&mut self.meta_registry)
+    }
+
+    pub fn take_observed_tokens(&mut self) -> Vec<ObservedToken> {
+        std::mem::take(&mut self.observed_tokens)
+    }
+
     pub fn packrat_enabled(&self) -> bool {
         self.run_config.packrat
+    }
+
+    fn register_meta(
+        &mut self,
+        id: ParserId,
+        kind: ParserMetaKind,
+        name: String,
+        token_kind: Option<String>,
+    ) {
+        self.meta_registry.register(id, kind, name, token_kind);
+    }
+
+    fn update_meta_doc(&mut self, id: ParserId, doc: String) {
+        self.meta_registry.update_doc(id, doc);
+    }
+
+    fn enter_rule_meta(&mut self, id: ParserId) {
+        if let Some(parent) = self.meta_rule_stack.last().copied() {
+            if parent != id {
+                self.meta_registry.add_child(parent, id);
+            }
+        }
+        self.meta_rule_stack.push(id);
+    }
+
+    fn exit_rule_meta(&mut self, id: ParserId) {
+        if let Some(last) = self.meta_rule_stack.pop() {
+            if last != id {
+                self.meta_rule_stack.push(last);
+                if let Some(pos) = self
+                    .meta_rule_stack
+                    .iter()
+                    .rposition(|entry| *entry == id)
+                {
+                    self.meta_rule_stack.remove(pos);
+                }
+            }
+        }
+    }
+
+    fn record_semantic_token(&mut self, kind: impl Into<String>, span: Span) {
+        self.observed_tokens.push(ObservedToken {
+            kind: kind.into(),
+            span,
+        });
     }
 
     fn left_recursion_active(&self, key: MemoKey) -> bool {

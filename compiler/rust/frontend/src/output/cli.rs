@@ -1,4 +1,5 @@
 use super::localization::LocalizationKey;
+use reml_runtime::lsp::derive::{DeriveModel, LspDeriveEnvelope};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::io::{self, Write};
@@ -10,6 +11,7 @@ pub enum OutputFormat {
     Human,
     Json,
     Lsp,
+    LspDerive,
 }
 
 impl OutputFormat {
@@ -18,8 +20,9 @@ impl OutputFormat {
             "human" => Ok(Self::Human),
             "json" => Ok(Self::Json),
             "lsp" => Ok(Self::Lsp),
+            "lsp-derive" => Ok(Self::LspDerive),
             other => Err(format!(
-                "--output に指定した値 `{other}` は human/json/lsp のいずれかである必要があります"
+                "--output に指定した値 `{other}` は human/json/lsp/lsp-derive のいずれかである必要があります"
             )),
         }
     }
@@ -149,6 +152,7 @@ pub fn emit_cli_output(
     format: OutputFormat,
     envelope: &CliDiagnosticEnvelope,
     input_path: &Path,
+    lsp_derive: Option<&DeriveModel>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match format {
         OutputFormat::Json => {
@@ -160,6 +164,7 @@ pub fn emit_cli_output(
             render_human_output(&mut stderr, envelope)?;
         }
         OutputFormat::Lsp => emit_lsp_output(envelope, input_path)?,
+        OutputFormat::LspDerive => emit_lsp_derive_output(lsp_derive, input_path)?,
     }
     Ok(())
 }
@@ -243,6 +248,16 @@ fn emit_lsp_output(
         }
     });
     println!("{}", serde_json::to_string(&log_message)?);
+    Ok(())
+}
+
+fn emit_lsp_derive_output(
+    model: Option<&DeriveModel>,
+    input_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let model = model.ok_or("--output lsp-derive は parse driver 実行時のみ利用できます")?;
+    let envelope = LspDeriveEnvelope::from_model(input_path.display().to_string(), model);
+    println!("{}", serde_json::to_string(&envelope)?);
     Ok(())
 }
 
