@@ -1,8 +1,9 @@
 use crate::prelude::ensure::{DiagnosticNote, DiagnosticSeverity, GuardDiagnostic};
 use crate::run_config::{LeftRecursionStrategy, RunConfig};
-use crate::text::Str;
+use crate::text::{Str, String as TextString};
 use serde_json::{json, Map, Value};
 use std::any::Any;
+use super::cst::{CstBuilder, CstNode, CstOutput, Token as CstToken, Trivia, TriviaKind};
 use super::meta::{normalize_doc, ObservedToken, ParseMetaRegistry, ParserMetaKind};
 use super::op_builder::FixitySymbol;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -214,6 +215,16 @@ fn span_from_inputs(start: &Input, end: &Input) -> Span {
     Span::new(start.position(), end.position())
 }
 
+fn slice_input_text(start: &Input, end: &Input) -> Option<TextString> {
+    if start.byte_offset > end.byte_offset {
+        return None;
+    }
+    start
+        .source
+        .get(start.byte_offset..end.byte_offset)
+        .map(TextString::from)
+}
+
 fn parser_id_from_name(name: &str) -> ParserId {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     name.hash(&mut hasher);
@@ -408,6 +419,22 @@ fn decode_profile_config(run_config: &RunConfig) -> ParseProfileConfig {
         }
     }
     config
+}
+
+fn decode_cst_mode(run_config: &RunConfig) -> bool {
+    run_config
+        .extensions
+        .get("parse")
+        .and_then(|parse| parse.get("cst"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+}
+
+fn enable_cst_config(run_config: &RunConfig) -> RunConfig {
+    run_config.with_extension("parse", |mut ext| {
+        ext.insert("cst".into(), Value::Bool(true));
+        ext
+    })
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2835,6 +2862,7 @@ where
     let id = ParserId::fresh();
     Parser::with_id(id, move |state| {
         state.register_meta(id, ParserMetaKind::Token, kind.clone(), Some(kind.clone()));
+        let start_input = state.input().clone();
         match parser.parse(state) {
             Reply::Ok {
                 value,
@@ -2843,6 +2871,15 @@ where
                 rest,
             } => {
                 state.set_input(rest.clone());
+                if state.cst_enabled() && start_input.byte_offset() < rest.byte_offset() {
+                    if let Some(text) = slice_input_text(&start_input, &rest) {
+                        state.record_cst_token(
+                            TextString::from(kind.clone()),
+                            text,
+                            span.clone(),
+                        );
+                    }
+                }
                 state.record_semantic_token(kind.clone(), span.clone());
                 Reply::Ok {
                     value,
@@ -2956,6 +2993,15 @@ pub fn layout_token(text: impl AsRef<str>) -> Parser<()>
         state.produce_layout_tokens();
         if let Some(token) = state.layout_pop_token() {
             if token == expected {
+                if state.cst_enabled() {
+                    let span = empty_span(state.input());
+                    state.record_cst_trivia(
+                        TriviaKind::Layout,
+                        TextString::from(token),
+                        span,
+                        true,
+                    );
+                }
                 return Reply::Ok {
                     value: (),
                     span: empty_span(state.input()),
@@ -3053,6 +3099,7 @@ where
                 if !state.layout_active() {
                     if let Some(space_parser) = space.clone().or_else(|| state.space()) {
                         state.set_input(tail_input.clone());
+                        let space_start = tail_input.clone();
                         match space_parser.parse(state) {
                             Reply::Ok {
                                 rest: space_rest,
@@ -3062,6 +3109,18 @@ where
                                 consumed_flag = consumed_flag || space_consumed;
                                 tail_input = space_rest.clone();
                                 state.set_input(space_rest);
+                                if space_consumed && state.cst_enabled() {
+                                    if let Some(text) = slice_input_text(&space_start, &tail_input)
+                                    {
+                                        let span = span_from_inputs(&space_start, &tail_input);
+                                        state.record_cst_trivia(
+                                            TriviaKind::Whitespace,
+                                            text,
+                                            span,
+                                            true,
+                                        );
+                                    }
+                                }
                             }
                             Reply::Err {
                                 error,
@@ -3128,11 +3187,19 @@ where
             let rest = start_input.advance(text.len());
             let span = span_from_inputs(&start_input, &rest);
             state.set_input(rest.clone());
+            if state.cst_enabled() {
+                state.record_cst_token(
+                    TextString::from("symbol"),
+                    TextString::from(text.clone()),
+                    span.clone(),
+                );
+            }
             let mut tail_input = rest.clone();
             let mut consumed_flag = true;
             if !state.layout_active() {
                 if let Some(space_parser) = space.clone().or_else(|| state.space()) {
                     state.set_input(tail_input.clone());
+                    let space_start = tail_input.clone();
                     match space_parser.parse(state) {
                         Reply::Ok {
                             rest: space_rest,
@@ -3142,6 +3209,17 @@ where
                             consumed_flag = consumed_flag || space_consumed;
                             tail_input = space_rest.clone();
                             state.set_input(space_rest);
+                            if space_consumed && state.cst_enabled() {
+                                if let Some(text) = slice_input_text(&space_start, &tail_input) {
+                                    let span = span_from_inputs(&space_start, &tail_input);
+                                    state.record_cst_trivia(
+                                        TriviaKind::Whitespace,
+                                        text,
+                                        span,
+                                        true,
+                                    );
+                                }
+                            }
                         }
                         Reply::Err {
                             error,
@@ -3229,11 +3307,19 @@ where
             }
             let span = span_from_inputs(&start_input, &rest);
             state.set_input(rest.clone());
+            if state.cst_enabled() {
+                state.record_cst_token(
+                    TextString::from("keyword"),
+                    TextString::from(kw.clone()),
+                    span.clone(),
+                );
+            }
             let mut tail_input = rest.clone();
             let mut consumed_flag = true;
             if !state.layout_active() {
                 if let Some(space_parser) = space.clone().or_else(|| state.space()) {
                     state.set_input(tail_input.clone());
+                    let space_start = tail_input.clone();
                     match space_parser.parse(state) {
                         Reply::Ok {
                             rest: space_rest,
@@ -3243,6 +3329,17 @@ where
                             consumed_flag = consumed_flag || space_consumed;
                             tail_input = space_rest.clone();
                             state.set_input(space_rest);
+                            if space_consumed && state.cst_enabled() {
+                                if let Some(text) = slice_input_text(&space_start, &tail_input) {
+                                    let span = span_from_inputs(&space_start, &tail_input);
+                                    state.record_cst_trivia(
+                                        TriviaKind::Whitespace,
+                                        text,
+                                        span,
+                                        true,
+                                    );
+                                }
+                            }
                         }
                         Reply::Err {
                             error,
@@ -3344,6 +3441,7 @@ pub struct ParseState {
     meta_registry: ParseMetaRegistry,
     meta_rule_stack: Vec<ParserId>,
     observed_tokens: Vec<ObservedToken>,
+    cst_builder: Option<CstBuilder>,
 }
 
 impl ParseState {
@@ -3363,6 +3461,8 @@ impl ParseState {
         let observer = profile_config
             .enabled
             .then(|| ParseObserver::new(true, profile_config.profile_output));
+        let cst_enabled = decode_cst_mode(&run_config);
+        let cst_builder = cst_enabled.then(|| CstBuilder::new(input.position()));
         let mut layout_stack = Vec::new();
         if matches!(layout_profile, Some(ref lp) if lp.offside) {
             layout_stack.push(0);
@@ -3387,6 +3487,7 @@ impl ParseState {
             meta_registry: ParseMetaRegistry::default(),
             meta_rule_stack: Vec::new(),
             observed_tokens: Vec::new(),
+            cst_builder,
         }
     }
 
@@ -3526,6 +3627,15 @@ impl ParseState {
         std::mem::take(&mut self.observed_tokens)
     }
 
+    pub fn cst_enabled(&self) -> bool {
+        self.cst_builder.is_some()
+    }
+
+    pub fn take_cst(&mut self) -> Option<CstNode> {
+        let end = self.input.position();
+        self.cst_builder.take().map(|builder| builder.finish(end))
+    }
+
     pub fn packrat_enabled(&self) -> bool {
         self.run_config.packrat
     }
@@ -3573,6 +3683,24 @@ impl ParseState {
             kind: kind.into(),
             span,
         });
+    }
+
+    fn record_cst_token(&mut self, kind: TextString, text: TextString, span: Span) {
+        if let Some(builder) = self.cst_builder.as_mut() {
+            builder.push_token(CstToken { kind, text, span });
+        }
+    }
+
+    fn record_cst_trivia(
+        &mut self,
+        kind: TriviaKind,
+        text: TextString,
+        span: Span,
+        trailing: bool,
+    ) {
+        if let Some(builder) = self.cst_builder.as_mut() {
+            builder.push_trivia(Trivia { kind, text, span }, trailing);
+        }
     }
 
     fn left_recursion_active(&self, key: MemoKey) -> bool {
@@ -3699,6 +3827,34 @@ where
     run_with_state(parser, &mut state, cfg)
 }
 
+/// CST を収集しながら実行する。
+pub fn run_with_cst<T>(
+    parser: &Parser<T>,
+    input: &str,
+    cfg: &RunConfig,
+) -> ParseResult<CstOutput<T>>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    let cst_cfg = enable_cst_config(cfg);
+    let mut state = ParseState::new(input, cst_cfg.clone());
+    run_with_state_cst(parser, &mut state, &cst_cfg)
+}
+
+/// 入力バッファ（共有済み）を受け取り、CST を収集しながら実行する。
+pub fn run_with_cst_shared<T>(
+    parser: &Parser<T>,
+    input: Arc<str>,
+    cfg: &RunConfig,
+) -> ParseResult<CstOutput<T>>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    let cst_cfg = enable_cst_config(cfg);
+    let mut state = ParseState::new_shared(input, cst_cfg.clone());
+    run_with_state_cst(parser, &mut state, &cst_cfg)
+}
+
 fn run_with_state<T>(parser: &Parser<T>, state: &mut ParseState, cfg: &RunConfig) -> ParseResult<T>
 where
     T: Clone + Send + Sync + 'static,
@@ -3731,6 +3887,51 @@ where
             }
         }
         result.profile = Some(profile);
+    }
+    result
+}
+
+fn run_with_state_cst<T>(
+    parser: &Parser<T>,
+    state: &mut ParseState,
+    cfg: &RunConfig,
+) -> ParseResult<CstOutput<T>>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    let reply = parser.parse(state);
+    let mut result = match reply {
+        Reply::Ok {
+            value, span, rest, ..
+        } => {
+            state.set_input(rest);
+            if cfg.require_eof && !state.input().is_empty() {
+                let error = ParseError::new("未消費の入力が残っています", state.input().position());
+                ParseResult::from_error(error, cfg.legacy_result)
+            } else {
+                ParseResult::from_value(value, span)
+            }
+        }
+        Reply::Err { error, .. } => ParseResult::from_error(error, cfg.legacy_result),
+    };
+
+    let diagnostics = state.take_diagnostics();
+    if !diagnostics.is_empty() {
+        result.extend_diagnostics(diagnostics);
+    }
+    result.recovered |= state.recovered;
+    if let Some((profile, output)) = state.take_profile() {
+        if let Some(path) = output {
+            if let Err(err) = write_profile_report(&profile, &path) {
+                eprintln!("parse profile 出力に失敗しました: {err}");
+            }
+        }
+        result.profile = Some(profile);
+    }
+
+    if let Some(ast) = result.value.take() {
+        let cst = state.take_cst().unwrap_or_else(CstNode::empty);
+        result.value = Some(CstOutput { ast, cst });
     }
     result
 }

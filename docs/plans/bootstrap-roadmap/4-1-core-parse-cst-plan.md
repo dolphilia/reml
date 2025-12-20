@@ -89,10 +89,10 @@ match result.value {
 - [x] `docs/notes/core-parse-cst-design.md` に付着ルールと判断根拠を記録した
 
 ### フェーズB: Rust 実装の追加
-- [ ] `compiler/rust/runtime/src/parse/cst.rs` を追加し CST 型を定義した
-- [ ] `ParseState` に CST 収集フラグと Trivia バッファを追加した
-- [ ] `run_with_cst` / `run_with_cst_shared` を追加した
-- [ ] `autoWhitespace` 由来の Trivia 収集を実装した
+- [x] `compiler/rust/runtime/src/parse/cst.rs` を追加し CST 型を定義した
+- [x] `ParseState` に CST 収集フラグと Trivia バッファを追加した
+- [x] `run_with_cst` / `run_with_cst_shared` を追加した
+- [x] `autoWhitespace` 由来の Trivia 収集を実装した
 
 ### フェーズC: Core.Text.Pretty 連携
 - [ ] `compiler/rust/runtime/src/text/pretty.rs` に `CstPrinter` を追加した
