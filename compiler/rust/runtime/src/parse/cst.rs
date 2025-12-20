@@ -81,13 +81,15 @@ impl CstBuilder {
 
     pub fn push_token(&mut self, token: Token) {
         let leading = std::mem::take(&mut self.pending_trivia);
-        self.end = Some(token.span.end);
+        let span = token.span.clone();
+        let kind = token.kind.clone();
+        self.end = Some(span.end);
         self.nodes.push(CstNode {
-            kind: token.kind.clone(),
+            kind,
             children: vec![CstChild::Token(token)],
             trivia_leading: leading,
             trivia_trailing: Vec::new(),
-            span: token.span.clone(),
+            span,
         });
     }
 

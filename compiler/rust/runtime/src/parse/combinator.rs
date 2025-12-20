@@ -3909,7 +3909,8 @@ where
                 let error = ParseError::new("未消費の入力が残っています", state.input().position());
                 ParseResult::from_error(error, cfg.legacy_result)
             } else {
-                ParseResult::from_value(value, span)
+                let cst = state.take_cst().unwrap_or_else(CstNode::empty);
+                ParseResult::from_value(CstOutput { ast: value, cst }, span)
             }
         }
         Reply::Err { error, .. } => ParseResult::from_error(error, cfg.legacy_result),
@@ -3927,11 +3928,6 @@ where
             }
         }
         result.profile = Some(profile);
-    }
-
-    if let Some(ast) = result.value.take() {
-        let cst = state.take_cst().unwrap_or_else(CstNode::empty);
-        result.value = Some(CstOutput { ast, cst });
     }
     result
 }
