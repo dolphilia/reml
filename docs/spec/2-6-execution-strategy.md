@@ -71,6 +71,8 @@ type RunConfigExtensions = Map<Str, Any>
   * **短いガイド**：左再帰は「書かない」ことを前提とし、式は `precedence` / `expr_builder` / `chainl1` で表現する。`left_recursion` は混入時の安全弁として使い、通常運用の前提にしない。
 * **コメント・空白**: `extensions["lex"].profile = ConfigTriviaProfile` を設定し、`with_space`/`lexeme` を通じて空白・コメント処理を自動化する。`profile` が未設定の場合は `ConfigTriviaProfile::strict_json` を既定とし、サンプルのように手動でコメントスキップを書くことを禁則とする。互換モードは `extensions["config"].compat` に集約し、`RunConfig` を共有する環境（CLI/LSP/テスト）が同じ挙動を保証する。
 * **復旧戦略**: `recover` による同期・継続は `extensions["recover"].mode="collect"` のときだけ有効化する（IDE/LSP 向け）。Build/CI では `"off"`（既定）により fail-fast を維持できる。
+  * `extensions["recover"].mode` が未設定の場合は `"off"` とみなし、`recover`/`panic_*` は **opt-in** でのみ動作する。
+  * `panic_until` / `panic_block` も `recover` の糖衣であり、`mode="collect"` のときだけ診断を残して継続する。
   * `extensions["recover"].sync_tokens` に同期トークン集合を記録し、ストリーミング実行でも同じ集合を利用できるようにする。
   * `merge_warnings=true` のままでも監査ログ（3-6 §2.2）が個別イベントを保持するため、可観測性は損なわれない。
   * 回復が発生した場合、`ParseResult.recovered=true` とし、回復ごとの診断を `ParseResult.diagnostics` に蓄積する（2-1/2-5 の契約）。

@@ -84,6 +84,29 @@ fn recover_with_context<T>(p: Parser<T>, until: Parser<()>, message: Str, value:
 * 糖衣は `mode="collect"` のときだけ有効であり、`mode="off"` では `recover` と同様に **失敗を返す**。
 * `until` の設計指針と、`FixIt`／`extensions["recover"]` の最低限スキーマは [2.5 §E](2-5-error.md#e-recoverの仕様) を参照。
 
+#### A-3-b. 回復ヘルパ（同期点／パニック／欠落補挿）
+
+回復の典型パターンをさらに簡潔にするため、同期点指定・パニック回復・欠落補挿を最小ヘルパとして定義する。
+
+```reml
+// 同期点まで読み飛ばし、同期点自身を消費する
+fn sync_to(sync: Parser<()>) -> Parser<()>
+
+// recover_until の糖衣（action="skip", context="panic"）
+fn panic_until<T>(p: Parser<T>, sync: Parser<()>, value: T) -> Parser<T>
+
+// ブロック境界を意識したパニック回復（ネストを考慮）
+fn panic_block<T>(p: Parser<T>, open: Parser<()>, close: Parser<()>, value: T) -> Parser<T>
+
+// recover_with_insert の別名（欠落トークン補挿）
+fn recover_missing<T>(p: Parser<T>, sync: Parser<()>, token: Str, value: T) -> Parser<T>
+```
+
+* `sync_to` は **同期点まで読み捨てて同期点自身を消費**する。再回復ループを避けるため、文末区切り（`;` / 改行）に使う。
+* `panic_until` / `panic_block` は `recover_until` の糖衣であり、`extensions["recover"].action="skip"` としつつ `context="panic"` を必ず付与する。
+* `panic_block` は `open`/`close` のネストを数えて同期する。`close` 自身の消費は回復側で行い、外側の `between` と競合しないように設計する。
+* `recover_missing` は `recover_with_insert` と同一動作とし、FixIt の補挿トークンを標準化する。
+
 ### A-4. 繰り返し・任意
 
 ```reml

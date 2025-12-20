@@ -474,9 +474,11 @@ fn recover<T>(p: Parser<T>, until: Parser<()>, with: T) -> Parser<T>
 
 * **文の区切り**（例: `";"` / 行末 `"\n"`）:
   * 同期点は **区切り自体を消費する**設計を推奨（同じ位置での再回復ループを避ける）。
+  * `sync_to(symbol(";"))` のように **同期点消費を内包**したヘルパを使うと、`recover_until` の意図が明確になる。
 * **構造境界**（例: `"}"` / `")"` / `"]"`）:
   * 同期点は **境界トークンを消費しない**設計を推奨（外側の `between`/ブロック終端処理に任せる）。
   * 例: `lookahead(symbol("}"))` のように先読みで同期する（2.2 参照）。
+  * `recover_until(p, lookahead(symbol("}")), value)` のように 0 幅同期を使う場合、外側が必ず境界を消費する構成でループを避ける。
 * **同期点は “安全に再開できる位置” を優先**:
   * 例: 式の途中は避け、`let`/`fn`/`type` など先頭キーワードやブロック終端まで飛ばす。
 * **Lex ヘルパとの整合**:
@@ -486,6 +488,7 @@ fn recover<T>(p: Parser<T>, until: Parser<()>, with: T) -> Parser<T>
 
 `recover` を実用にするため、2.2 では `recover_with_default/recover_until/recover_with_insert/recover_with_context` の 4 糖衣を定義する。
 糖衣の目的は「同じ種類の回復を、同じ診断メタと FixIt で再現できる」状態を作ることにある。
+さらに `sync_to`（同期点消費）、`panic_until`/`panic_block`（パニック回復糖衣）、`recover_missing`（欠落補挿の別名）を最小ヘルパとして追加する。
 
 #### E-2-1. `Diagnostic.extensions["recover"]` の最小スキーマ
 
@@ -512,6 +515,14 @@ fn recover<T>(p: Parser<T>, until: Parser<()>, with: T) -> Parser<T>
 
 * `extensions["recover"].context = Some(message)` を保持する。
 * `extensions["recover"].notes=true` 運用（2-6 §B-2-2）では、同等の情報を `Diagnostic.notes` にも必ず露出させる。
+
+#### E-2-4. パニック回復（`panic_until` / `panic_block`）
+
+`panic_until` / `panic_block` は `recover_until` の糖衣であり、次の運用を固定する。
+
+* `extensions["recover"].action = "skip"` を維持し、**通常の回復と同じ診断形式**で扱う。
+* `extensions["recover"].context = Some("panic")` を必ず付与し、パニック回復であることを示す。
+* `mode="off"`（既定）では無効であり、opt-in の回復ポリシーでのみ有効化する。
 
 ---
 
