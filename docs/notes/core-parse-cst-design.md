@@ -29,3 +29,8 @@
 ## 参照
 - `docs/plans/bootstrap-roadmap/4-1-core-parse-cst-plan.md`
 - `docs/notes/dsl-enhancement-proposal.md`
+
+## フェーズE完了メモ（簡易）
+- formatter-authoring に CST 連携の最小記述を追加。
+- regression plan に `CH2-PARSE-930` の回帰条件とログ保存先を追記。
+- `reports/spec-audit/ch4/logs/stdlib-parse-cst-*.md` を運用対象に追加。
