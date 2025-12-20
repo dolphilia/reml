@@ -2008,6 +2008,48 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
         )
     }
 
+    pub fn recover_missing(
+        self,
+        until: Parser<()>,
+        token: impl Into<String>,
+        with: T,
+    ) -> Parser<T>
+    where
+        T: Clone + 'static,
+    {
+        self.recover_with_insert(until, token, with)
+    }
+
+    pub fn panic_until(self, until: Parser<()>, with: T) -> Parser<T>
+    where
+        T: Clone + 'static,
+    {
+        self.recover_with_payload(
+            until,
+            with,
+            RecoverMeta::collect(RecoverAction::Skip).with_context("panic"),
+            None,
+        )
+    }
+
+    pub fn panic_block(
+        self,
+        open: Parser<()>,
+        close: Parser<()>,
+        with: T,
+    ) -> Parser<T>
+    where
+        T: Clone + 'static,
+    {
+        let sync = panic_block_sync(open, close);
+        self.recover_with_payload(
+            sync,
+            with,
+            RecoverMeta::collect(RecoverAction::Skip).with_context("panic_block"),
+            None,
+        )
+    }
+
     /// トレースフラグを尊重して内側を実行する（現状は透過）。
     pub fn trace(self) -> Parser<T> {
         Parser::with_id(self.id, move |state| self.parse(state))
@@ -2988,6 +3030,214 @@ pub fn cut_here() -> Parser<()> {
         span: empty_span(state.input()),
         consumed: true,
         rest: state.input().clone(),
+    })
+}
+
+pub fn sync_to(sync: Parser<()>) -> Parser<()> {
+    Parser::new(move |state| {
+        let start_input = state.input().clone();
+        let mut cursor = start_input.clone();
+        loop {
+            state.set_input(cursor.clone());
+            match sync.parse(state) {
+                Reply::Ok {
+                    rest,
+                    consumed,
+                    ..
+                } => {
+                    let progressed = start_input.byte_offset() != rest.byte_offset();
+                    if !progressed {
+                        let err = ParseError::new("sync_to が空成功しました", cursor.position());
+                        state.set_input(start_input);
+                        return Reply::Err {
+                            error: err,
+                            consumed: false,
+                            committed: false,
+                        };
+                    }
+                    let span = span_from_inputs(&start_input, &rest);
+                    state.set_input(rest.clone());
+                    return Reply::Ok {
+                        value: (),
+                        span,
+                        consumed: true,
+                        rest,
+                    };
+                }
+                Reply::Err {
+                    error,
+                    consumed,
+                    committed,
+                } => {
+                    if consumed || committed {
+                        state.set_input(start_input);
+                        return Reply::Err {
+                            error,
+                            consumed,
+                            committed,
+                        };
+                    }
+                }
+            }
+
+            if cursor.is_empty() {
+                let err =
+                    ParseError::new("sync_to が同期点を見つけられませんでした", cursor.position());
+                state.set_input(start_input);
+                return Reply::Err {
+                    error: err,
+                    consumed: false,
+                    committed: false,
+                };
+            }
+
+            if let Some((idx, ch)) = cursor.remaining().char_indices().next() {
+                let step = ch.len_utf8().max(1);
+                cursor = cursor.advance(idx + step);
+            } else {
+                let err =
+                    ParseError::new("sync_to が同期点を見つけられませんでした", cursor.position());
+                state.set_input(start_input);
+                return Reply::Err {
+                    error: err,
+                    consumed: false,
+                    committed: false,
+                };
+            }
+        }
+    })
+}
+
+fn panic_block_sync(open: Parser<()>, close: Parser<()>) -> Parser<()> {
+    Parser::new(move |state| {
+        let start_input = state.input().clone();
+        let mut cursor = start_input.clone();
+        let mut depth = 0usize;
+
+        loop {
+            state.set_input(cursor.clone());
+            match open.parse(state) {
+                Reply::Ok {
+                    rest,
+                    consumed,
+                    ..
+                } => {
+                    if !consumed || cursor.byte_offset() == rest.byte_offset() {
+                        let err =
+                            ParseError::new("panic_block が空成功しました", cursor.position());
+                        state.set_input(start_input);
+                        return Reply::Err {
+                            error: err,
+                            consumed: false,
+                            committed: false,
+                        };
+                    }
+                    depth = depth.saturating_add(1);
+                    cursor = rest.clone();
+                    continue;
+                }
+                Reply::Err {
+                    error,
+                    consumed,
+                    committed,
+                } => {
+                    if consumed || committed {
+                        state.set_input(start_input);
+                        return Reply::Err {
+                            error,
+                            consumed,
+                            committed,
+                        };
+                    }
+                }
+            }
+
+            state.set_input(cursor.clone());
+            match close.parse(state) {
+                Reply::Ok {
+                    rest,
+                    consumed,
+                    ..
+                } => {
+                    if !consumed || cursor.byte_offset() == rest.byte_offset() {
+                        let err =
+                            ParseError::new("panic_block が空成功しました", cursor.position());
+                        state.set_input(start_input);
+                        return Reply::Err {
+                            error: err,
+                            consumed: false,
+                            committed: false,
+                        };
+                    }
+                    if depth == 0 {
+                        let span = span_from_inputs(&start_input, &rest);
+                        state.set_input(rest.clone());
+                        return Reply::Ok {
+                            value: (),
+                            span,
+                            consumed: true,
+                            rest,
+                        };
+                    }
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        let span = span_from_inputs(&start_input, &rest);
+                        state.set_input(rest.clone());
+                        return Reply::Ok {
+                            value: (),
+                            span,
+                            consumed: true,
+                            rest,
+                        };
+                    }
+                    cursor = rest.clone();
+                    continue;
+                }
+                Reply::Err {
+                    error,
+                    consumed,
+                    committed,
+                } => {
+                    if consumed || committed {
+                        state.set_input(start_input);
+                        return Reply::Err {
+                            error,
+                            consumed,
+                            committed,
+                        };
+                    }
+                }
+            }
+
+            if cursor.is_empty() {
+                let err = ParseError::new(
+                    "panic_block が同期点を見つけられませんでした",
+                    cursor.position(),
+                );
+                state.set_input(start_input);
+                return Reply::Err {
+                    error: err,
+                    consumed: false,
+                    committed: false,
+                };
+            }
+
+            if let Some((idx, ch)) = cursor.remaining().char_indices().next() {
+                let step = ch.len_utf8().max(1);
+                cursor = cursor.advance(idx + step);
+            } else {
+                let err = ParseError::new(
+                    "panic_block が同期点を見つけられませんでした",
+                    cursor.position(),
+                );
+                state.set_input(start_input);
+                return Reply::Err {
+                    error: err,
+                    consumed: false,
+                    committed: false,
+                };
+            }
+        }
     })
 }
 

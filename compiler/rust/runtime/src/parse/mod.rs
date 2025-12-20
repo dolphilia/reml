@@ -14,10 +14,10 @@ pub use combinator::{
     layout_token, lookahead, not_followed_by, ok, parse_errors_to_guard_diagnostics,
     parse_result_to_guard_diagnostics, position, preceded, rule, run, run_with_default,
     run_shared, run_with_cst, run_with_cst_shared, run_with_recovery, run_with_recovery_config,
-    spanned, symbol, terminated, BinaryOp, token, with_doc, ExprBuilderConfig, ExprCommit,
-    ExprOpLevel, Input, InputPosition, MemoEntry, MemoKey, MemoTable, ParseError, ParseFixIt,
-    ParseResult, ParserProfile, ParseState, Parser, ParserId, RecoverAction, RecoverMeta, Reply,
-    Span, UnaryOp, embedded_dsl,
+    spanned, symbol, sync_to, terminated, BinaryOp, token, with_doc, ExprBuilderConfig,
+    ExprCommit, ExprOpLevel, Input, InputPosition, MemoEntry, MemoKey, MemoTable, ParseError,
+    ParseFixIt, ParseResult, ParserProfile, ParseState, Parser, ParserId, RecoverAction,
+    RecoverMeta, Reply, Span, UnaryOp, embedded_dsl,
 };
 pub use cst::{CstBuilder, CstChild, CstNode, CstOutput, Token as CstToken, Trivia, TriviaKind};
 pub use embedded::{

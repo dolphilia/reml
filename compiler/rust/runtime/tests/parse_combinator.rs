@@ -1,5 +1,5 @@
 use reml_runtime::parse::{
-    cut_here, layout_token, ok, position, run, symbol, ParseError, ParseFixIt, Parser,
+    cut_here, layout_token, ok, position, run, symbol, sync_to, ParseError, ParseFixIt, Parser,
     RecoverAction, Reply, Span,
 };
 use reml_runtime::run_config::RunConfig;
@@ -353,6 +353,48 @@ fn recover_with_context_records_context_message() {
     let meta = result.diagnostics[0].recover.as_ref().expect("recover meta should be attached");
     assert_eq!(meta.action.as_ref(), Some(&RecoverAction::Context));
     assert_eq!(meta.context.as_deref(), Some("ここは式が必要です"));
+}
+
+#[test]
+fn sync_to_consumes_sync_token() {
+    let parser = sync_to(symbol(None, ";")).skip_l(tag("rest"));
+    let result = run(&parser, "oops;rest", &RunConfig::default());
+    assert_eq!(result.value, Some("rest"));
+}
+
+#[test]
+fn panic_block_skips_nested_block() {
+    let cfg = recover_collect_config(&["}"], None, None, None);
+    let parser = symbol(None, "{")
+        .skip_l(non_consuming_fail("panic"))
+        .panic_block(symbol(None, "{"), symbol(None, "}"), ())
+        .skip_l(tag("tail"));
+    let result = run(&parser, "{ { } }tail", &cfg);
+    assert_eq!(result.value, Some("tail"));
+    assert!(result.recovered);
+    assert_eq!(result.diagnostics.len(), 1);
+}
+
+#[test]
+fn recover_missing_inserts_token_and_fixit() {
+    let cfg = recover_collect_config(&["\n"], None, None, None);
+    let parser = consume_then_fail("recover me")
+        .recover_missing(tag("\n").map(|_| ()), ";", ());
+    let result = run(&parser, "oops\nrest", &cfg);
+    assert_eq!(result.value, Some(()));
+    assert!(result.recovered);
+    let meta = result.diagnostics[0]
+        .recover
+        .as_ref()
+        .expect("recover meta should be attached");
+    assert_eq!(meta.action.as_ref(), Some(&RecoverAction::Insert));
+    assert_eq!(meta.inserted.as_deref(), Some(";"));
+    assert_eq!(
+        result.diagnostics[0].fixits,
+        vec![ParseFixIt::InsertToken {
+            token: ";".into()
+        }]
+    );
 }
 
 #[test]
