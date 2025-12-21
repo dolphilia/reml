@@ -62,6 +62,7 @@ fn setup_manager() -> PluginRuntimeManager {
 
 #[test]
 fn plugin_manager_records_signature_and_install_audit() {
+    let _guard = reml_runtime::test_support::lock();
     reset_for_tests();
     RuntimeBridgeRegistry::global().clear();
     let _ = take_plugin_audit_events();
@@ -98,6 +99,7 @@ fn plugin_manager_records_signature_and_install_audit() {
 
 #[test]
 fn plugin_manager_stage_record_matches_capability_descriptor() {
+    let _guard = reml_runtime::test_support::lock();
     reset_for_tests();
     RuntimeBridgeRegistry::global().clear();
 
@@ -125,6 +127,7 @@ fn plugin_manager_stage_record_matches_capability_descriptor() {
 
 #[test]
 fn plugin_manager_unload_allows_reload() {
+    let _guard = reml_runtime::test_support::lock();
     reset_for_tests();
     RuntimeBridgeRegistry::global().clear();
 

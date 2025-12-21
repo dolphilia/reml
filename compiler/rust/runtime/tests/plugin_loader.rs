@@ -1,8 +1,8 @@
 use reml_runtime::{
     capability::{registry::reset_for_tests, CapabilityProvider, CapabilityRegistry},
     config::manifest::{
-        Manifest, PackageName, ProjectKind, ProjectSection, RunCapabilityEntry, RunSection,
-        RunTargetSection, SemanticVersion,
+        CapabilityId, Manifest, PackageName, ProjectKind, ProjectSection, RunCapabilityEntry,
+        RunSection, RunTargetSection, SemanticVersion,
     },
     runtime::plugin::{
         take_plugin_audit_events, PluginBundleManifest, PluginLoader, PluginSignature,
@@ -11,30 +11,30 @@ use reml_runtime::{
 };
 
 fn sample_manifest() -> Manifest {
-    Manifest {
-        project: ProjectSection {
-            name: PackageName("plugin.demo".to_string()),
-            version: SemanticVersion("1.2.3".to_string()),
-            kind: ProjectKind::Plugin,
-            ..ProjectSection::default()
+    let mut manifest = Manifest::default();
+    manifest.project = ProjectSection {
+        name: PackageName("plugin.demo".to_string()),
+        version: SemanticVersion("1.2.3".to_string()),
+        kind: ProjectKind::Plugin,
+        ..ProjectSection::default()
+    };
+    manifest.run = RunSection {
+        target: RunTargetSection {
+            capabilities: vec![RunCapabilityEntry {
+                id: CapabilityId("plugin.demo.audit".to_string()),
+                stage: Some("beta".to_string()),
+                declared_effects: vec!["audit".to_string()],
+                source_span: None,
+                provider: None,
+            }],
         },
-        run: RunSection {
-            target: RunTargetSection {
-                capabilities: vec![RunCapabilityEntry {
-                    id: "plugin.demo.audit".into(),
-                    stage: Some("beta".to_string()),
-                    declared_effects: vec!["audit".to_string()],
-                    source_span: None,
-                    provider: None,
-                }],
-            },
-        },
-        ..Manifest::default()
-    }
+    };
+    manifest
 }
 
 #[test]
 fn plugin_loader_registers_manifest_capabilities() {
+    let _guard = reml_runtime::test_support::lock();
     reset_for_tests();
     let loader = PluginLoader::new();
     let manifest = sample_manifest();
@@ -47,8 +47,8 @@ fn plugin_loader_registers_manifest_capabilities() {
     let descriptor = CapabilityRegistry::registry()
         .describe("plugin.demo.audit")
         .expect("plugin capability should be registered");
-    match descriptor.metadata().provider {
-        CapabilityProvider::Plugin { ref package, ref version } => {
+    match &descriptor.metadata().provider {
+        CapabilityProvider::Plugin { package, version } => {
             assert_eq!(package, "plugin.demo");
             assert_eq!(version.as_deref(), Some("1.2.3"));
         }
@@ -58,6 +58,7 @@ fn plugin_loader_registers_manifest_capabilities() {
 
 #[test]
 fn plugin_bundle_requires_signature_in_strict_mode() {
+    let _guard = reml_runtime::test_support::lock();
     reset_for_tests();
     let loader = PluginLoader::new();
     let bundle = PluginBundleManifest {
@@ -78,6 +79,7 @@ fn plugin_bundle_requires_signature_in_strict_mode() {
 
 #[test]
 fn plugin_bundle_accepts_signature_in_strict_mode() {
+    let _guard = reml_runtime::test_support::lock();
     reset_for_tests();
     let loader = PluginLoader::new();
     let bundle = PluginBundleManifest {

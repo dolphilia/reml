@@ -17,7 +17,6 @@ use crate::{
     config::manifest::{
         load_manifest, Manifest, ManifestCapabilities, ManifestCapabilityError, ProjectKind,
     },
-    diagnostics::audit_bridge::stage_requirement_label,
     prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic},
     runtime::bridge::attach_bridge_stage_metadata,
     stage::{StageId, StageRequirement},
@@ -463,6 +462,13 @@ fn stage_from_requirement(requirement: StageRequirement) -> StageId {
     }
 }
 
+fn stage_requirement_label(requirement: StageRequirement) -> String {
+    match requirement {
+        StageRequirement::Exact(stage) => stage.as_str().into(),
+        StageRequirement::AtLeast(stage) => format!("at_least {}", stage.as_str()),
+    }
+}
+
 fn verify_plugin_signature(
     bundle: &PluginBundleManifest,
     policy: VerificationPolicy,
@@ -758,7 +764,7 @@ pub(crate) fn record_revoke_audit(
 }
 
 #[derive(Debug, Clone)]
-struct BundleContext {
+pub(crate) struct BundleContext {
     bundle_id: String,
     bundle_version: String,
     signature_status: SignatureStatus,

@@ -1,10 +1,8 @@
-#[cfg(test)]
-use std::sync::Mutex;
 use std::{
     collections::{HashMap, HashSet},
     ops::{Deref, DerefMut},
     path::PathBuf,
-    sync::{RwLock, RwLockReadGuard},
+    sync::{Mutex, RwLock, RwLockReadGuard},
 };
 
 use once_cell::sync::Lazy;
@@ -38,7 +36,6 @@ static REGISTRY: Lazy<RwLock<Option<&'static CapabilityRegistry>>> =
 #[cfg(test)]
 static LEAKED_FOR_TESTS: Lazy<Mutex<Vec<Box<CapabilityRegistry>>>> =
     Lazy::new(|| Mutex::new(Vec::new()));
-#[cfg(test)]
 static REGISTRY_TEST_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 const CAPABILITY_SCHEMA_VERSION: &str = "3.0.0-alpha";
 
@@ -52,7 +49,6 @@ pub struct CapabilityRegistry {
 impl CapabilityRegistry {
     /// シングルトンのレジストリを取得する。
     pub fn registry() -> &'static Self {
-        #[cfg(test)]
         let _test_guard = REGISTRY_TEST_LOCK.lock().unwrap();
         if let Some(instance) = Self::try_get_cached(REGISTRY.read().unwrap()) {
             return instance;
@@ -1091,7 +1087,6 @@ where
 }
 
 pub fn reset_for_tests() {
-    #[cfg(test)]
     let _test_guard = REGISTRY_TEST_LOCK.lock().unwrap();
     if let Some(instance) = REGISTRY.write().unwrap().take() {
         unsafe {
