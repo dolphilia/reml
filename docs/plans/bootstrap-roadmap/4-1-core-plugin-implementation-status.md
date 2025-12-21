@@ -194,6 +194,7 @@
 - [ ] `reml plugin install` 実行時に `plugin.verify_signature` と `plugin.install` が監査ログへ出力される
 - [ ] `reml plugin verify` 実行時に Capability が登録されず、`signature_status` が JSON 出力へ反映される
 - [ ] `reml_capability list` が plugin 由来 Capability の `provider=plugin` を表示できる
+  - 検証メモ: `cargo test --manifest-path compiler/rust/runtime/Cargo.toml plugin_` はパス済み
 
 ### H. WASM 実行基盤（PoC）
 
