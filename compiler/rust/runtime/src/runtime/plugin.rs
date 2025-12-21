@@ -1,4 +1,8 @@
-use std::{fs, path::{Path, PathBuf}, sync::Mutex};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -13,6 +17,8 @@ use crate::{
     config::manifest::{
         load_manifest, Manifest, ManifestCapabilities, ManifestCapabilityError, ProjectKind,
     },
+    prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic},
+    runtime::bridge::attach_bridge_stage_metadata,
     stage::{StageId, StageRequirement},
 };
 
@@ -126,6 +132,79 @@ pub enum PluginError {
     NotLoaded { plugin_id: String },
     #[error("plugin bridge error: {message}")]
     Bridge { message: String },
+}
+
+impl PluginError {
+    pub fn into_diagnostic_with_bridge(
+        self,
+        bridge_id: Option<&str>,
+        capability: Option<&str>,
+    ) -> GuardDiagnostic {
+        let (code, kind, message) = match &self {
+            PluginError::Load(error) => ("runtime.plugin.load_failed", "load", error.to_string()),
+            PluginError::Capability(error) => (error.code(), "capability", error.detail().into()),
+            PluginError::VerificationFailed { message } => {
+                ("runtime.plugin.verify_failed", "verify", message.clone())
+            }
+            PluginError::Io { message } => ("runtime.plugin.io_error", "io", message.clone()),
+            PluginError::AlreadyLoaded { plugin_id } => (
+                "runtime.plugin.already_loaded",
+                "already_loaded",
+                format!("plugin already loaded: {plugin_id}"),
+            ),
+            PluginError::NotLoaded { plugin_id } => (
+                "runtime.plugin.not_loaded",
+                "not_loaded",
+                format!("plugin not loaded: {plugin_id}"),
+            ),
+            PluginError::Bridge { message } => ("runtime.plugin.bridge_error", "bridge", message.clone()),
+        };
+
+        let mut extensions = JsonMap::new();
+        let mut plugin_meta = JsonMap::new();
+        plugin_meta.insert("kind".into(), Value::String(kind.to_string()));
+        plugin_meta.insert("message".into(), Value::String(message.clone()));
+        if let Some(capability) = capability {
+            plugin_meta.insert("capability".into(), Value::String(capability.to_string()));
+        }
+        if let Some(bridge_id) = bridge_id {
+            plugin_meta.insert("bridge_id".into(), Value::String(bridge_id.to_string()));
+        }
+        extensions.insert("plugin".into(), Value::Object(plugin_meta));
+        extensions.insert("message".into(), Value::String(message.clone()));
+
+        let mut audit_metadata = JsonMap::new();
+        audit_metadata.insert(
+            "plugin.error.kind".into(),
+            Value::String(kind.to_string()),
+        );
+        audit_metadata.insert(
+            "plugin.error.message".into(),
+            Value::String(message.clone()),
+        );
+        if let Some(capability) = capability {
+            let bridge_id = bridge_id
+                .map(str::to_string)
+                .unwrap_or_else(|| format!("plugin::{capability}"));
+            attach_bridge_stage_metadata(&bridge_id, capability, &mut audit_metadata);
+        }
+
+        GuardDiagnostic {
+            code,
+            domain: "runtime",
+            severity: DiagnosticSeverity::Error,
+            message,
+            notes: Vec::new(),
+            extensions,
+            audit_metadata,
+        }
+    }
+}
+
+impl IntoDiagnostic for PluginError {
+    fn into_diagnostic(self) -> GuardDiagnostic {
+        self.into_diagnostic_with_bridge(None, None)
+    }
 }
 
 /// プラグイン登録のローダ。
