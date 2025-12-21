@@ -1,6 +1,9 @@
 use serde_json::{Map as JsonMap, Value};
 
-use crate::runtime::bridge::RuntimeBridgeRegistry;
+use crate::runtime::bridge::{
+    attach_bridge_stage_metadata as attach_runtime_bridge_stage_metadata,
+    RuntimeBridgeRegistry,
+};
 use crate::stage::{StageId, StageRequirement};
 
 /// Capability 検証で得られた Stage をブリッジ監査用に記録する。
@@ -17,38 +20,8 @@ pub(crate) fn attach_bridge_stage_metadata(
     capability: &str,
     metadata: &mut JsonMap<String, Value>,
 ) {
-    let snapshot = RuntimeBridgeRegistry::global().latest_stage_record(capability);
-    let Some(snapshot) = snapshot else {
-        return;
-    };
-
-    if metadata.contains_key("bridge.stage.required") {
-        return;
-    }
-
-    metadata.insert(
-        "bridge.id".into(),
-        Value::String(format!("io::{capability}")),
-    );
-    metadata.insert(
-        "bridge.capability".into(),
-        Value::String(capability.to_string()),
-    );
-    metadata.insert(
-        "bridge.stage.required".into(),
-        Value::String(requirement_label(snapshot.required)),
-    );
-    metadata.insert(
-        "bridge.stage.actual".into(),
-        Value::String(snapshot.actual.as_str().into()),
-    );
-}
-
-fn requirement_label(requirement: StageRequirement) -> String {
-    match requirement {
-        StageRequirement::Exact(stage) => stage.as_str().into(),
-        StageRequirement::AtLeast(stage) => format!("at_least {}", stage.as_str()),
-    }
+    let bridge_id = format!("io::{capability}");
+    attach_runtime_bridge_stage_metadata(&bridge_id, capability, metadata);
 }
 
 #[cfg(test)]

@@ -1,5 +1,6 @@
 use once_cell::sync::Lazy;
 use serde::Serialize;
+use serde_json::{Map as JsonMap, Value};
 use std::sync::Mutex;
 use std::time::SystemTime;
 
@@ -88,6 +89,43 @@ impl RuntimeBridgeRegistry {
     #[cfg(test)]
     pub(crate) fn test_lock() -> &'static Mutex<()> {
         &BRIDGE_TEST_LOCK
+    }
+}
+
+/// Runtime Bridge の Stage 記録を監査メタデータへ転写する。
+pub fn attach_bridge_stage_metadata(
+    bridge_id: &str,
+    capability: &str,
+    metadata: &mut JsonMap<String, Value>,
+) {
+    let snapshot = RuntimeBridgeRegistry::global().latest_stage_record(capability);
+    let Some(snapshot) = snapshot else {
+        return;
+    };
+
+    if metadata.contains_key("bridge.stage.required") {
+        return;
+    }
+
+    metadata.insert("bridge.id".into(), Value::String(bridge_id.to_string()));
+    metadata.insert(
+        "bridge.capability".into(),
+        Value::String(capability.to_string()),
+    );
+    metadata.insert(
+        "bridge.stage.required".into(),
+        Value::String(requirement_label(snapshot.required)),
+    );
+    metadata.insert(
+        "bridge.stage.actual".into(),
+        Value::String(snapshot.actual.as_str().into()),
+    );
+}
+
+fn requirement_label(requirement: StageRequirement) -> String {
+    match requirement {
+        StageRequirement::Exact(stage) => stage.as_str().into(),
+        StageRequirement::AtLeast(stage) => format!("at_least {}", stage.as_str()),
     }
 }
 

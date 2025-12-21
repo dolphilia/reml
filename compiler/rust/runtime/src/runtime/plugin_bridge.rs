@@ -71,9 +71,21 @@ impl PluginExecutionBridge for NativePluginExecutionBridge {
         _instance: &PluginInstance,
         request: PluginInvokeRequest,
     ) -> Result<PluginInvokeResponse, PluginError> {
-        Ok(PluginInvokeResponse {
-            payload: request.payload,
-        })
+        match request.entrypoint.as_str() {
+            "plugin.echo" => Ok(PluginInvokeResponse {
+                payload: request.payload,
+            }),
+            "plugin.noop" => Ok(PluginInvokeResponse { payload: Vec::new() }),
+            "plugin.io_error" => Err(PluginError::Io {
+                message: io_error("native bridge io error").to_string(),
+            }),
+            "plugin.fail" => Err(PluginError::VerificationFailed {
+                message: "native bridge verify failure".to_string(),
+            }),
+            other => Err(PluginError::VerificationFailed {
+                message: format!("unknown entrypoint: {other}"),
+            }),
+        }
     }
 
     fn unload(&self, _instance: PluginInstance) -> Result<(), PluginError> {
@@ -85,4 +97,8 @@ fn stage_from_requirement(requirement: StageRequirement) -> StageId {
     match requirement {
         StageRequirement::Exact(stage) | StageRequirement::AtLeast(stage) => stage,
     }
+}
+
+fn io_error(message: &str) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::Other, message)
 }
