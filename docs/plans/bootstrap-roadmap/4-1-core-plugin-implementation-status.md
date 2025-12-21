@@ -167,12 +167,55 @@
   - `compiler/rust/runtime/tests/plugin_manager.rs`
 
 ### G. CLI/運用導線
-- [ ] `reml plugin install/verify` の最小 CLI
-- [ ] `reml_capability list` に plugin 由来の出力を統合
+
+#### G.1 目的とスコープ
+- [ ] Phase 4 で必要な **最小導線**（`install`/`verify` と Capability の可視化）を固め、運用ログと監査キーを揃える
+- [ ] 仕様/ガイド（`docs/spec/4-7-core-parse-plugin.md`, `docs/guides/cli-workflow.md`）と整合する CLI 挙動を確定する
+
+#### G.2 CLI 仕様（MVP）
+- [ ] `reml plugin install --bundle <path> --policy <strict|permissive> [--output human|json]`
+  - `PluginLoader::register_bundle_path` までを通し、登録結果（`PluginBundleRegistration` 相当）を返す
+  - `--output json` は `docs/schemas/plugin-bundle-registration.schema.json` に準拠
+- [ ] `reml plugin verify --bundle <path> --policy <strict|permissive> [--output human|json]`
+  - 署名/ハッシュ検証まで実行し、**Capability 登録は行わない**
+  - 出力は `bundle_id`/`bundle_version`/`signature_status`/`bundle_hash`/`manifest_paths` を最小セットとする
+- [ ] `reml_capability list` に plugin 由来の情報を統合
+  - `provider=plugin` / `plugin_id` / `bundle_id` / `stage` / `registered_at` を表示
+  - `--format json` では `CapabilityDescriptor` 相当を返す
+
+#### G.3 実装タスク
+- [ ] CLI 側で `PluginLoader` / `PluginRuntimeManager` を呼び出す最小ラッパを追加し、`VerificationPolicy` を引き回す
+- [ ] エラーは `PluginError` を日本語メッセージへ変換し、終了コードを `0/1` に統一
+- [ ] 監査ログのキーを CLI の出力と一致させる  
+  - `plugin.verify_signature` / `plugin.signature.failure` / `plugin.install` / `plugin.revoke`
+- [ ] 既存ガイドの記述に合わせ、`--output json` のサンプルを更新する（必要時）
+
+#### G.4 受け入れ条件（最小）
+- [ ] `reml plugin install` 実行時に `plugin.verify_signature` と `plugin.install` が監査ログへ出力される
+- [ ] `reml plugin verify` 実行時に Capability が登録されず、`signature_status` が JSON 出力へ反映される
+- [ ] `reml_capability list` が plugin 由来 Capability の `provider=plugin` を表示できる
 
 ### H. WASM 実行基盤（PoC）
-- [ ] Wasmtime による最小ロード/実行 PoC
-- [ ] WASM 実行時の Capability/監査転写検証
+
+#### H.1 目的とスコープ
+- [ ] `PluginExecutionBridge` の WASM 実装を PoC で検証し、**ロード/呼び出し/アンロード** が動作することを確認する
+- [ ] 監査・Stage 検証の転写を確認し、`RuntimeBridgeRegistry` の記録が揃うことを確認する
+- [ ] 本格実装は Phase 5 以降とし、**WASI/ホスト I/O の解放は行わない**（PoC は最小権限）
+
+#### H.2 実装タスク（PoC）
+- [ ] `PluginExecutionBridge` の WASM 版（例: `PluginWasmBridge`）を追加し、Wasmtime で `load`/`invoke`/`unload` を実装する
+- [ ] `PluginInvokeRequest.entrypoint` を WASM export 名へ対応づけ、`payload` はバイナリ引数として渡す
+- [ ] WASM モジュールのロード時に `bundle_hash` と `module_hash` を監査メタデータへ転写する
+- [ ] `bridge.kind=wasm` / `bridge.engine=wasmtime` を `RuntimeBridgeRegistry` に記録する
+
+#### H.3 監査/Capability 連携
+- [ ] `plugin.verify_signature` / `plugin.install` の監査イベントに WASM モジュール情報を追加する
+- [ ] `verify_capability_stage` の結果と `RuntimeBridgeRegistry` の Stage 記録が一致することを確認する
+
+#### H.4 受け入れ条件（PoC）
+- [ ] テスト用 bundle から WASM プラグインをロードし、1 回の `invoke` が成功する
+- [ ] `RuntimeBridgeRegistry` に `bridge.kind=wasm` が記録され、`CapabilityRegistry::describe` と Stage が一致する
+- [ ] 監査ログに `plugin.verify_signature` と `plugin.install` が揃い、`bundle_hash` が残る
 
 ## 実装計画（次のステップ）
 1. **PluginLoader と実行経路の接続**  
