@@ -73,8 +73,8 @@ use reml_runtime::{
 use reml_runtime::audit::AuditEvent;
 use reml_runtime::lsp::derive::{Derive, DeriveModel};
 use reml_runtime::runtime::plugin::{
-    PluginBundleRegistration, PluginBundleVerification, PluginError, PluginLoadError, PluginLoader,
-    SignatureStatus, VerificationPolicy,
+    take_plugin_audit_events, PluginBundleRegistration, PluginBundleVerification, PluginError,
+    PluginLoadError, PluginLoader, SignatureStatus, VerificationPolicy,
 };
 use reml_runtime::runtime::plugin_bridge::NativePluginExecutionBridge;
 use reml_runtime::runtime::plugin_manager::PluginRuntimeManager;
@@ -200,8 +200,14 @@ fn try_run_plugin_command() -> Result<bool, Box<dyn std::error::Error>> {
             }
             let bundle_path =
                 bundle_path.ok_or("plugin install には --bundle <path> が必要です")?;
-            let registration = run_plugin_install(bundle_path, policy)
-                .map_err(|err| format_plugin_error(&err))?;
+            let registration = match run_plugin_install(bundle_path, policy) {
+                Ok(registration) => registration,
+                Err(err) => {
+                    emit_plugin_audit_events();
+                    return Err(format_plugin_error(&err).into());
+                }
+            };
+            emit_plugin_audit_events();
             match output {
                 OutputFormat::Human => {
                     print_plugin_install_human(&registration);
@@ -254,8 +260,14 @@ fn try_run_plugin_command() -> Result<bool, Box<dyn std::error::Error>> {
             }
             let bundle_path =
                 bundle_path.ok_or("plugin verify には --bundle <path> が必要です")?;
-            let verification = run_plugin_verify(bundle_path, policy)
-                .map_err(|err| format_plugin_load_error(&err))?;
+            let verification = match run_plugin_verify(bundle_path, policy) {
+                Ok(verification) => verification,
+                Err(err) => {
+                    emit_plugin_audit_events();
+                    return Err(format_plugin_load_error(&err).into());
+                }
+            };
+            emit_plugin_audit_events();
             match output {
                 OutputFormat::Human => {
                     print_plugin_verification_human(&verification);
@@ -368,6 +380,19 @@ fn signature_status_label(status: &SignatureStatus) -> &'static str {
     match status {
         SignatureStatus::Verified => "verified",
         SignatureStatus::Skipped => "skipped",
+    }
+}
+
+fn emit_plugin_audit_events() {
+    let events = take_plugin_audit_events();
+    if events.is_empty() {
+        return;
+    }
+    let mut emitter = AuditEmitter::stderr(true);
+    for event in events {
+        if let Err(err) = emitter.emit_external_event(&event) {
+            eprintln!("[AUDIT] plugin 監査イベントの書き出しに失敗しました: {err}");
+        }
     }
 }
 

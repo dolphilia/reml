@@ -129,15 +129,15 @@ fn emit_markdown_table(handles: Vec<reml_runtime::capability::CapabilityHandle>)
 
 fn format_provider(descriptor: &CapabilityDescriptor) -> String {
     match descriptor.metadata().provider {
-        CapabilityProvider::Core => "Core".to_string(),
+        CapabilityProvider::Core => "core".to_string(),
         CapabilityProvider::Plugin {
             ref package,
             ref version,
         } => {
             if let Some(version) = version {
-                format!("Plugin `{package}@{version}`")
+                format!("plugin:{package}@{version}")
             } else {
-                format!("Plugin `{package}`")
+                format!("plugin:{package}")
             }
         }
         CapabilityProvider::ExternalBridge {
@@ -145,13 +145,13 @@ fn format_provider(descriptor: &CapabilityDescriptor) -> String {
             ref version,
         } => {
             if let Some(version) = version {
-                format!("Bridge `{name}@{version}`")
+                format!("bridge:{name}@{version}")
             } else {
-                format!("Bridge `{name}`")
+                format!("bridge:{name}")
             }
         }
         CapabilityProvider::RuntimeComponent { ref name } => {
-            format!("Runtime `{name}`")
+            format!("runtime:{name}")
         }
     }
 }
