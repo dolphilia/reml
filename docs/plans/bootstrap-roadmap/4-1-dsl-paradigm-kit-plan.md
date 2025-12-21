@@ -42,9 +42,9 @@
 ## 作業ステップ
 
 ### フェーズA: 仕様ドラフトと概要更新
-1. [ ] `docs/spec/3-16-core-dsl-paradigm-kits.md` を新規作成し、4 キットの最小 API を整理する。
-2. [ ] `docs/spec/3-0-core-library-overview.md` にパラダイムキットの概要と到達目標を追記する。
-3. [ ] `README.md` と `docs/spec/README.md` の章構成へ新規仕様を登録する。
+1. [x] `docs/spec/3-16-core-dsl-paradigm-kits.md` を新規作成し、4 キットの最小 API を整理する。
+2. [x] `docs/spec/3-0-core-library-overview.md` にパラダイムキットの概要と到達目標を追記する。
+3. [x] `README.md` と `docs/spec/README.md` の章構成へ新規仕様を登録する。
 
 ### フェーズB: Rust ランタイム設計
 1. [ ] `compiler/rust/runtime/src/dsl/` を新設し、`object`/`gc`/`actor`/`vm` のサブモジュールを作る。

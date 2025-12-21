@@ -43,6 +43,7 @@
 - [3-13-core-text-pretty.md](3-13-core-text-pretty.md)
 - [3-14-core-lsp.md](3-14-core-lsp.md)
 - [3-15-core-doc.md](3-15-core-doc.md)
+- [3-16-core-dsl-paradigm-kits.md](3-16-core-dsl-paradigm-kits.md)
 
 ## 4.x 公式プラグイン仕様（Draft）
 - [4-0-official-plugins-overview.md](4-0-official-plugins-overview.md)
