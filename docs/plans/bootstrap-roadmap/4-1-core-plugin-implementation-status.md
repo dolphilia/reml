@@ -65,6 +65,21 @@
   - `docs/guides/cli-workflow.md`
   - `docs/schemas/plugin-bundle-registration.schema.json`
 
+### F. 実装安定化・テスト実行
+- [x] プラグイン系テストの並列干渉を抑止するテストロックを追加  
+  - `compiler/rust/runtime/src/test_support.rs`  
+  - `compiler/rust/runtime/tests/plugin_loader.rs`  
+  - `compiler/rust/runtime/tests/plugin_manager.rs`
+- [x] `PluginLoader` 系テストの構築ミス修正（`CapabilityId`/`Manifest` 初期化）
+  - `compiler/rust/runtime/tests/plugin_loader.rs`
+- [x] `stage_requirement_label` 参照を `runtime/plugin.rs` 内に集約し、`metrics` 依存を回避  
+  - `compiler/rust/runtime/src/runtime/plugin.rs`
+- [x] `BundleContext` を `plugin_manager` から参照可能に調整  
+  - `compiler/rust/runtime/src/runtime/plugin.rs`
+- [x] テスト実行（対象: `plugin_`）  
+  - `cargo test plugin_`  
+  - `cargo test plugin_ -- --test-threads=1`
+
 ## 未実装（次フェーズ）
 
 ### F. 実行時ロード経路
