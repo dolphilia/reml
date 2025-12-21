@@ -8,7 +8,7 @@ use crate::stage::{StageId, StageRequirement};
 /// Stage 検証の記録。
 #[derive(Debug, Clone, Serialize)]
 pub struct BridgeStageRecord {
-    pub capability: &'static str,
+    pub capability: String,
     pub required: StageRequirement,
     pub actual: StageId,
     pub timestamp: SystemTime,
@@ -41,10 +41,11 @@ impl RuntimeBridgeRegistry {
 
     pub fn record_stage_probe(
         &self,
-        capability: &'static str,
+        capability: impl Into<String>,
         requirement: StageRequirement,
         actual: StageId,
     ) {
+        let capability = capability.into();
         let mut records = self
             .stage_records
             .lock()

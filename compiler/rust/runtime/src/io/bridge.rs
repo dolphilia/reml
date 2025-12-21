@@ -5,7 +5,7 @@ use crate::stage::{StageId, StageRequirement};
 
 /// Capability 検証で得られた Stage をブリッジ監査用に記録する。
 pub(crate) fn record_bridge_stage_probe(
-    capability: &'static str,
+    capability: &str,
     requirement: StageRequirement,
     actual: StageId,
 ) {

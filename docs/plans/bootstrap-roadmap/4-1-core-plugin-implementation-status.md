@@ -97,8 +97,11 @@
 #### F.2 実行ブリッジ統合（ネイティブ/将来の WASM）
 1. [x] `PluginExecutionBridge`（仮）トレイトを追加し、`load` / `invoke` / `unload` の責務を統一する。  
    - `compiler/rust/runtime/src/runtime/plugin_bridge.rs`
-2. [ ] ネイティブ実装は最小のスタブで開始し、`RuntimeBridgeRegistry` に Stage 検証記録を残す。
-3. [ ] 失敗時は `PluginError::VerificationFailed` / `PluginError::IO` に寄せ、Diagnostics へ変換できるようにする。
+2. [x] ネイティブ実装は最小のスタブで開始し、`RuntimeBridgeRegistry` に Stage 検証記録を残す。  
+   - `compiler/rust/runtime/src/runtime/plugin_bridge.rs`
+3. [x] 失敗時は `PluginError::VerificationFailed` / `PluginError::IO` に寄せ、Diagnostics へ変換できるようにする。  
+   - `compiler/rust/runtime/src/runtime/plugin.rs`  
+   - `compiler/rust/runtime/src/runtime/plugin_bridge.rs`
 
 **配置先と公開 API（確定）**
 - 配置先: `compiler/rust/runtime/src/runtime/plugin_bridge.rs`

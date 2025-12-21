@@ -116,6 +116,10 @@ pub enum PluginError {
     Load(#[from] PluginLoadError),
     #[error("plugin capability error: {0}")]
     Capability(#[from] CapabilityError),
+    #[error("plugin verification failed: {message}")]
+    VerificationFailed { message: String },
+    #[error("plugin io error: {message}")]
+    Io { message: String },
     #[error("plugin already loaded: {plugin_id}")]
     AlreadyLoaded { plugin_id: String },
     #[error("plugin not loaded: {plugin_id}")]
