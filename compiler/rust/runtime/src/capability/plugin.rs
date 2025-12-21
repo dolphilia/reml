@@ -32,6 +32,8 @@ impl PluginCapability {
 pub struct PluginCapabilityMetadata {
     pub package: String,
     pub version: Option<String>,
+    pub bundle_id: Option<String>,
+    pub bundle_version: Option<String>,
     pub exposed_capabilities: Vec<String>,
 }
 
@@ -44,6 +46,8 @@ impl PluginCapabilityMetadata {
         Self {
             package: package.into(),
             version: version.map(Into::into),
+            bundle_id: None,
+            bundle_version: None,
             exposed_capabilities,
         }
     }
@@ -54,6 +58,8 @@ impl Default for PluginCapabilityMetadata {
         Self {
             package: "plugin".to_string(),
             version: None,
+            bundle_id: None,
+            bundle_version: None,
             exposed_capabilities: Vec::new(),
         }
     }
