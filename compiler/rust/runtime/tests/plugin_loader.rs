@@ -36,6 +36,7 @@ fn sample_manifest() -> Manifest {
 fn plugin_loader_registers_manifest_capabilities() {
     let _guard = reml_runtime::test_support::lock();
     reset_for_tests();
+    let _ = take_plugin_audit_events();
     let loader = PluginLoader::new();
     let manifest = sample_manifest();
     let registration = loader
@@ -60,6 +61,7 @@ fn plugin_loader_registers_manifest_capabilities() {
 fn plugin_bundle_requires_signature_in_strict_mode() {
     let _guard = reml_runtime::test_support::lock();
     reset_for_tests();
+    let _ = take_plugin_audit_events();
     let loader = PluginLoader::new();
     let bundle = PluginBundleManifest {
         bundle_id: "bundle.demo".to_string(),
@@ -81,6 +83,7 @@ fn plugin_bundle_requires_signature_in_strict_mode() {
 fn plugin_bundle_accepts_signature_in_strict_mode() {
     let _guard = reml_runtime::test_support::lock();
     reset_for_tests();
+    let _ = take_plugin_audit_events();
     let loader = PluginLoader::new();
     let bundle = PluginBundleManifest {
         bundle_id: "bundle.demo".to_string(),

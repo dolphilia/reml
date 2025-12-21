@@ -11,6 +11,7 @@ use reml_runtime::{
         plugin_bridge::NativePluginExecutionBridge,
         plugin_manager::PluginRuntimeManager,
     },
+    stage::StageRequirement,
 };
 
 fn write_plugin_manifest(dir: &Path) -> PathBuf {
@@ -118,6 +119,11 @@ fn plugin_manager_stage_record_matches_capability_descriptor() {
     let record = RuntimeBridgeRegistry::global()
         .latest_stage_record("plugin.demo.audit")
         .expect("bridge stage record should exist");
+    assert_eq!(
+        record.required,
+        StageRequirement::Exact(descriptor.stage()),
+        "bridge stage requirement should align with capability stage"
+    );
     assert_eq!(
         record.actual,
         descriptor.stage(),
