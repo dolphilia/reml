@@ -73,10 +73,15 @@
 - [ ] 実行時ロード経路の責務分離（ロード管理・実行ブリッジ・監査/診断）
 
 #### F.1 ライフサイクル設計（ロード/アンロード/再ロード）
-1. `PluginRuntimeManager`（仮）を追加し、ロード状態 (`Loaded`/`Failed`/`Unloaded`) を管理する。
-2. `PluginLoader` と実行ブリッジを接続する `load_bundle_and_attach`（仮）を用意する。
-3. `unload` 時に登録済み Capability を整理し、再ロード時に重複登録を防ぐ。
-4. 監査ログは `plugin.install` / `plugin.revoke` / `plugin.verify_signature` / `plugin.signature.failure` を優先し、`plugin.register_capability` と相互参照できるキーを揃える。
+1. [x] `PluginRuntimeManager`（仮）を追加し、ロード状態 (`Loaded`/`Failed`/`Unloaded`) を管理する。  
+   - `compiler/rust/runtime/src/runtime/plugin_manager.rs`
+2. [x] `PluginLoader` と実行ブリッジを接続する `load_bundle_and_attach`（仮）を用意する。  
+   - `compiler/rust/runtime/src/runtime/plugin_manager.rs`
+3. [x] `unload` 時に登録済み Capability を整理し、再ロード時に重複登録を防ぐ。  
+   - `compiler/rust/runtime/src/runtime/plugin_manager.rs`  
+   - `compiler/rust/runtime/src/capability/registry.rs`（`unregister` 追加）
+4. [x] 監査ログは `plugin.install` / `plugin.revoke` / `plugin.verify_signature` / `plugin.signature.failure` を優先し、`plugin.register_capability` と相互参照できるキーを揃える。  
+   - `compiler/rust/runtime/src/runtime/plugin.rs`
 
 **配置先と公開 API（確定）**
 - 配置先: `compiler/rust/runtime/src/runtime/plugin_manager.rs`
@@ -90,9 +95,10 @@
   - `pub fn state_of(&self, plugin_id: &str) -> Option<PluginRuntimeState>`
 
 #### F.2 実行ブリッジ統合（ネイティブ/将来の WASM）
-1. `PluginExecutionBridge`（仮）トレイトを追加し、`load` / `invoke` / `unload` の責務を統一する。
-2. ネイティブ実装は最小のスタブで開始し、`RuntimeBridgeRegistry` に Stage 検証記録を残す。
-3. 失敗時は `PluginError::VerificationFailed` / `PluginError::IO` に寄せ、Diagnostics へ変換できるようにする。
+1. [x] `PluginExecutionBridge`（仮）トレイトを追加し、`load` / `invoke` / `unload` の責務を統一する。  
+   - `compiler/rust/runtime/src/runtime/plugin_bridge.rs`
+2. [ ] ネイティブ実装は最小のスタブで開始し、`RuntimeBridgeRegistry` に Stage 検証記録を残す。
+3. [ ] 失敗時は `PluginError::VerificationFailed` / `PluginError::IO` に寄せ、Diagnostics へ変換できるようにする。
 
 **配置先と公開 API（確定）**
 - 配置先: `compiler/rust/runtime/src/runtime/plugin_bridge.rs`

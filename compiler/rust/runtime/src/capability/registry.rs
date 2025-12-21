@@ -101,6 +101,17 @@ impl CapabilityRegistry {
         Ok(())
     }
 
+    /// Capability を登録解除する。
+    pub fn unregister(&self, capability: &str) -> Result<(), CapabilityError> {
+        let mut entries = self.entries.write().unwrap();
+        let capability_id = capability.to_string();
+        if entries.entries.remove(&capability_id).is_none() {
+            return Err(CapabilityError::not_registered(capability));
+        }
+        entries.ordered_keys.retain(|id| id != &capability_id);
+        Ok(())
+    }
+
     /// Plugin Capability を登録する。
     pub fn register_plugin_capability(
         &self,

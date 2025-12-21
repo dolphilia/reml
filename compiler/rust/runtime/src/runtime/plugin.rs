@@ -19,7 +19,9 @@ use crate::{
 static PLUGIN_AUDIT_EVENTS: Lazy<Mutex<Vec<AuditEvent>>> = Lazy::new(|| Mutex::new(Vec::new()));
 const PLUGIN_DOMAIN: &str = "plugin";
 const PLUGIN_EVENT_INSTALL: &str = "plugin.install";
+const PLUGIN_EVENT_REVOKE: &str = "plugin.revoke";
 const PLUGIN_EVENT_VERIFY_SIGNATURE: &str = "plugin.verify_signature";
+const PLUGIN_EVENT_SIGNATURE_FAILURE: &str = "plugin.signature.failure";
 
 /// 署名検証の方針。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -107,6 +109,21 @@ pub enum PluginLoadError {
     SignatureInvalid { reason: String },
 }
 
+/// プラグイン実行時のエラー。
+#[derive(Debug, Error)]
+pub enum PluginError {
+    #[error("plugin load error: {0}")]
+    Load(#[from] PluginLoadError),
+    #[error("plugin capability error: {0}")]
+    Capability(#[from] CapabilityError),
+    #[error("plugin already loaded: {plugin_id}")]
+    AlreadyLoaded { plugin_id: String },
+    #[error("plugin not loaded: {plugin_id}")]
+    NotLoaded { plugin_id: String },
+    #[error("plugin bridge error: {message}")]
+    Bridge { message: String },
+}
+
 /// プラグイン登録のローダ。
 #[derive(Debug, Clone)]
 pub struct PluginLoader {
@@ -126,11 +143,7 @@ impl PluginLoader {
         bundle: PluginBundleManifest,
         policy: VerificationPolicy,
     ) -> Result<PluginBundleRegistration, PluginLoadError> {
-        let signature_status = verify_plugin_signature(
-            bundle.signature.as_ref(),
-            policy,
-            bundle.bundle_hash.as_deref(),
-        )?;
+        let signature_status = verify_plugin_signature(&bundle, policy)?;
         record_signature_audit(&bundle, &signature_status);
         let mut registered = Vec::new();
         let context = BundleContext::new(&bundle, signature_status.clone());
@@ -153,6 +166,14 @@ impl PluginLoader {
     ) -> Result<PluginBundleRegistration, PluginLoadError> {
         let bundle = load_bundle_from_path(path)?;
         self.register_bundle(bundle, policy)
+    }
+
+    /// バンドルファイルを読み込む（登録は行わない）。
+    pub fn load_bundle_manifest(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Result<PluginBundleManifest, PluginLoadError> {
+        load_bundle_from_path(path)
     }
 
     /// マニフェストファイルからプラグイン Capability を登録する。
@@ -234,21 +255,24 @@ fn stage_from_requirement(requirement: StageRequirement) -> StageId {
 }
 
 fn verify_plugin_signature(
-    signature: Option<&PluginSignature>,
+    bundle: &PluginBundleManifest,
     policy: VerificationPolicy,
-    bundle_hash: Option<&str>,
 ) -> Result<SignatureStatus, PluginLoadError> {
-    let signature = match signature {
+    let signature = match bundle.signature.as_ref() {
         Some(signature) => signature,
         None => {
             return match policy {
-                VerificationPolicy::Strict => Err(PluginLoadError::SignatureMissing),
+                VerificationPolicy::Strict => {
+                    record_signature_failure_audit(bundle, "signature が見つかりません");
+                    Err(PluginLoadError::SignatureMissing)
+                }
                 VerificationPolicy::Permissive => Ok(SignatureStatus::Skipped),
             };
         }
     };
 
     if signature.algorithm.as_str().trim().is_empty() {
+        record_signature_failure_audit(bundle, "algorithm が空です");
         return Err(PluginLoadError::SignatureInvalid {
             reason: "algorithm が空です".to_string(),
         });
@@ -257,22 +281,30 @@ fn verify_plugin_signature(
     if matches!(policy, VerificationPolicy::Strict)
         && matches!(signature.algorithm, SignatureAlgorithm::Unknown(_))
     {
+        record_signature_failure_audit(
+            bundle,
+            &format!("未知の署名アルゴリズム: {}", signature.algorithm.as_str()),
+        );
         return Err(PluginLoadError::SignatureInvalid {
             reason: format!("未知の署名アルゴリズム: {}", signature.algorithm.as_str()),
         });
     }
 
     let signature_hash = signature.bundle_hash.as_deref();
-    if signature_hash.is_none() || bundle_hash.is_none() {
+    if signature_hash.is_none() || bundle.bundle_hash.is_none() {
         return match policy {
-            VerificationPolicy::Strict => Err(PluginLoadError::SignatureInvalid {
-                reason: "bundle_hash が不足しています".to_string(),
-            }),
+            VerificationPolicy::Strict => {
+                record_signature_failure_audit(bundle, "bundle_hash が不足しています");
+                Err(PluginLoadError::SignatureInvalid {
+                    reason: "bundle_hash が不足しています".to_string(),
+                })
+            }
             VerificationPolicy::Permissive => Ok(SignatureStatus::Skipped),
         };
     }
 
-    if signature_hash != bundle_hash {
+    if signature_hash != bundle.bundle_hash.as_deref() {
+        record_signature_failure_audit(bundle, "bundle_hash が一致しません");
         return Err(PluginLoadError::SignatureInvalid {
             reason: "bundle_hash が一致しません".to_string(),
         });
@@ -348,6 +380,74 @@ fn record_signature_audit(bundle: &PluginBundleManifest, status: &SignatureStatu
         .push(event);
 }
 
+fn record_signature_failure_audit(bundle: &PluginBundleManifest, reason: &str) {
+    let timestamp = OffsetDateTime::now_utc()
+        .format(&Rfc3339)
+        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".into());
+    let mut metadata = JsonMap::new();
+    metadata.insert(
+        "event.kind".into(),
+        Value::String(PLUGIN_EVENT_SIGNATURE_FAILURE.to_string()),
+    );
+    metadata.insert(
+        "event.domain".into(),
+        Value::String(PLUGIN_DOMAIN.to_string()),
+    );
+    metadata.insert(
+        "plugin.bundle_id".into(),
+        Value::String(bundle.bundle_id.clone()),
+    );
+    metadata.insert(
+        "plugin.bundle_version".into(),
+        Value::String(bundle.bundle_version.clone()),
+    );
+    if let Some(bundle_hash) = &bundle.bundle_hash {
+        metadata.insert(
+            "plugin.bundle_hash".into(),
+            Value::String(bundle_hash.clone()),
+        );
+    }
+    metadata.insert(
+        "plugin.signature.status".into(),
+        Value::String("failed".to_string()),
+    );
+    metadata.insert(
+        "plugin.signature.reason".into(),
+        Value::String(reason.to_string()),
+    );
+    if let Some(signature) = &bundle.signature {
+        metadata.insert(
+            "plugin.signature.algorithm".into(),
+            Value::String(signature.algorithm.as_str().to_string()),
+        );
+        if let Some(bundle_hash) = &signature.bundle_hash {
+            metadata.insert(
+                "plugin.signature.bundle_hash".into(),
+                Value::String(bundle_hash.clone()),
+            );
+        }
+        if let Some(issued_to) = &signature.issued_to {
+            metadata.insert(
+                "plugin.signature.issued_to".into(),
+                Value::String(issued_to.clone()),
+            );
+        }
+        if let Some(valid_until) = &signature.valid_until {
+            metadata.insert(
+                "plugin.signature.valid_until".into(),
+                Value::String(valid_until.clone()),
+            );
+        }
+    }
+    let envelope =
+        AuditEnvelope::from_parts(metadata, None, None, Some("plugin.signature".into()));
+    let event = AuditEvent::new(timestamp, envelope);
+    PLUGIN_AUDIT_EVENTS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .push(event);
+}
+
 fn record_install_audit(registration: &PluginRegistration, context: Option<&BundleContext>) {
     let timestamp = OffsetDateTime::now_utc()
         .format(&Rfc3339)
@@ -398,6 +498,56 @@ fn record_install_audit(registration: &PluginRegistration, context: Option<&Bund
         .push(event);
 }
 
+pub(crate) fn record_revoke_audit(
+    plugin_id: &str,
+    capabilities: &[String],
+    bundle_id: Option<&str>,
+    bundle_version: Option<&str>,
+    signature_status: Option<&SignatureStatus>,
+) {
+    let timestamp = OffsetDateTime::now_utc()
+        .format(&Rfc3339)
+        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".into());
+    let mut metadata = JsonMap::new();
+    metadata.insert(
+        "event.kind".into(),
+        Value::String(PLUGIN_EVENT_REVOKE.to_string()),
+    );
+    metadata.insert(
+        "event.domain".into(),
+        Value::String(PLUGIN_DOMAIN.to_string()),
+    );
+    metadata.insert("plugin.id".into(), Value::String(plugin_id.to_string()));
+    metadata.insert(
+        "plugin.capabilities".into(),
+        Value::Array(capabilities.iter().cloned().map(Value::String).collect()),
+    );
+    if let Some(bundle_id) = bundle_id {
+        metadata.insert(
+            "plugin.bundle_id".into(),
+            Value::String(bundle_id.to_string()),
+        );
+    }
+    if let Some(bundle_version) = bundle_version {
+        metadata.insert(
+            "plugin.bundle_version".into(),
+            Value::String(bundle_version.to_string()),
+        );
+    }
+    if let Some(signature_status) = signature_status {
+        metadata.insert(
+            "plugin.signature.status".into(),
+            Value::String(signature_status_label(signature_status).to_string()),
+        );
+    }
+    let envelope = AuditEnvelope::from_parts(metadata, None, None, Some("plugin.revoke".into()));
+    let event = AuditEvent::new(timestamp, envelope);
+    PLUGIN_AUDIT_EVENTS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .push(event);
+}
+
 #[derive(Debug, Clone)]
 struct BundleContext {
     bundle_id: String,
@@ -415,10 +565,14 @@ impl BundleContext {
     }
 
     fn signature_status_label(&self) -> &str {
-        match self.signature_status {
-            SignatureStatus::Verified => "verified",
-            SignatureStatus::Skipped => "skipped",
-        }
+        signature_status_label(&self.signature_status)
+    }
+}
+
+fn signature_status_label(signature_status: &SignatureStatus) -> &'static str {
+    match signature_status {
+        SignatureStatus::Verified => "verified",
+        SignatureStatus::Skipped => "skipped",
     }
 }
 
