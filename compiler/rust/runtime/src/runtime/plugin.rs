@@ -78,6 +78,7 @@ pub struct PluginBundleManifest {
     pub plugins: Vec<Manifest>,
     pub signature: Option<PluginSignature>,
     pub bundle_hash: Option<String>,
+    pub manifest_paths: Vec<PathBuf>,
 }
 
 /// プラグイン登録結果。
@@ -94,6 +95,16 @@ pub struct PluginBundleRegistration {
     pub bundle_version: String,
     pub plugins: Vec<PluginRegistration>,
     pub signature_status: SignatureStatus,
+}
+
+/// バンドル検証結果。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PluginBundleVerification {
+    pub bundle_id: String,
+    pub bundle_version: String,
+    pub signature_status: SignatureStatus,
+    pub bundle_hash: Option<String>,
+    pub manifest_paths: Vec<String>,
 }
 
 /// プラグインローダのエラー。
@@ -376,6 +387,28 @@ impl PluginLoader {
         self.register_bundle(bundle, policy)
     }
 
+    /// バンドルファイルを読み込み、署名検証のみ行う。
+    pub fn verify_bundle_path(
+        &self,
+        path: impl AsRef<Path>,
+        policy: VerificationPolicy,
+    ) -> Result<PluginBundleVerification, PluginLoadError> {
+        let bundle = load_bundle_from_path(path)?;
+        let signature_status = self.verify_bundle_signature(&bundle, policy)?;
+        let manifest_paths = bundle
+            .manifest_paths
+            .iter()
+            .map(|path| path.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+        Ok(PluginBundleVerification {
+            bundle_id: bundle.bundle_id,
+            bundle_version: bundle.bundle_version,
+            signature_status,
+            bundle_hash: bundle.bundle_hash,
+            manifest_paths,
+        })
+    }
+
     /// バンドルファイルを読み込む（登録は行わない）。
     pub fn load_bundle_manifest(
         &self,
@@ -418,11 +451,15 @@ impl PluginLoader {
         let capability_ids = capabilities.ids();
         let package = manifest.project.name.0.clone();
         let version = normalize_version(&manifest.project.version.0);
-        let metadata = PluginCapabilityMetadata::new(
+        let mut metadata = PluginCapabilityMetadata::new(
             package.clone(),
             version.clone(),
             capability_ids.clone(),
         );
+        if let Some(context) = context {
+            metadata.bundle_id = Some(context.bundle_id.clone());
+            metadata.bundle_version = Some(context.bundle_version.clone());
+        }
 
         for capability_id in &capability_ids {
             if let Some(record) = capabilities.get(capability_id) {
@@ -879,9 +916,11 @@ fn load_bundle_from_path(path: impl AsRef<Path>) -> Result<PluginBundleManifest,
     let base_dir = bundle_path.parent().unwrap_or_else(|| Path::new("."));
     let mut manifests = Vec::new();
     let mut hash_sources = Vec::new();
+    let mut manifest_paths = Vec::new();
 
     for entry in &bundle_file.plugins {
         let manifest_path = base_dir.join(&entry.manifest_path);
+        manifest_paths.push(entry.manifest_path.clone());
         let manifest_body =
             fs::read_to_string(&manifest_path).map_err(|err| PluginLoadError::BundleLoad {
                 message: err.to_string(),
@@ -915,6 +954,7 @@ fn load_bundle_from_path(path: impl AsRef<Path>) -> Result<PluginBundleManifest,
         plugins: manifests,
         signature,
         bundle_hash,
+        manifest_paths,
     })
 }
 

@@ -169,17 +169,17 @@
 ### G. CLI/運用導線
 
 #### G.1 目的とスコープ
-- [ ] Phase 4 で必要な **最小導線**（`install`/`verify` と Capability の可視化）を固め、運用ログと監査キーを揃える
-- [ ] 仕様/ガイド（`docs/spec/4-7-core-parse-plugin.md`, `docs/guides/cli-workflow.md`）と整合する CLI 挙動を確定する
+- [x] Phase 4 で必要な **最小導線**（`install`/`verify` と Capability の可視化）を固め、運用ログと監査キーを揃える
+- [x] 仕様/ガイド（`docs/spec/4-7-core-parse-plugin.md`, `docs/guides/cli-workflow.md`）と整合する CLI 挙動を確定する
 
 #### G.2 CLI 仕様（MVP）
-- [ ] `reml plugin install --bundle <path> --policy <strict|permissive> [--output human|json]`
+- [x] `reml plugin install --bundle <path> --policy <strict|permissive> [--output human|json]`
   - `PluginLoader::register_bundle_path` までを通し、登録結果（`PluginBundleRegistration` 相当）を返す
   - `--output json` は `docs/schemas/plugin-bundle-registration.schema.json` に準拠
-- [ ] `reml plugin verify --bundle <path> --policy <strict|permissive> [--output human|json]`
+- [x] `reml plugin verify --bundle <path> --policy <strict|permissive> [--output human|json]`
   - 署名/ハッシュ検証まで実行し、**Capability 登録は行わない**
   - 出力は `bundle_id`/`bundle_version`/`signature_status`/`bundle_hash`/`manifest_paths` を最小セットとする
-- [ ] `reml_capability list` に plugin 由来の情報を統合
+- [x] `reml_capability list` に plugin 由来の情報を統合
   - `provider=plugin` / `plugin_id` / `bundle_id` / `stage` / `registered_at` を表示
   - `--format json` では `CapabilityDescriptor` 相当を返す
 
@@ -188,7 +188,7 @@
 - [ ] エラーは `PluginError` を日本語メッセージへ変換し、終了コードを `0/1` に統一
 - [ ] 監査ログのキーを CLI の出力と一致させる  
   - `plugin.verify_signature` / `plugin.signature.failure` / `plugin.install` / `plugin.revoke`
-- [ ] 既存ガイドの記述に合わせ、`--output json` のサンプルを更新する（必要時）
+- [x] 既存ガイドの記述に合わせ、`--output json` のサンプルを更新する（必要時）
 
 #### G.4 受け入れ条件（最小）
 - [ ] `reml plugin install` 実行時に `plugin.verify_signature` と `plugin.install` が監査ログへ出力される

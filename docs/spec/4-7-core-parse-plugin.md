@@ -210,7 +210,8 @@ pub enum PluginWarning =
    2. `PluginSignature` を `verify_plugin_signature` に渡し、政策に応じた検証を行う。
    3. 依存プラグインを解決し、未解決の場合は `PluginError::MissingCapability` を報告する。
    4. バンドル内の各プラグインを `register_bundle` に渡し、成功時に `audit.log("plugin.install", …)` を記録する。
-2. `reml-plugin status` は登録済みプラグインを列挙し、Capability Stage・署名有効期限・最終検証時刻を表示する。結果は `status.json` としてエクスポートでき、CI で `StageRequirement` の逸脱を検出する。
-3. `reml-plugin revoke <id>` は対象プラグインを無効化し、`CapabilityRegistry.plugins.revoke_plugin` を起動する。無効化イベントは `plugin.revoke` として監査ログに残る。
+2. `reml-plugin verify <bundle>` は署名/ハッシュ検証まで実行し、登録は行わない。出力は `bundle_id`/`bundle_version`/`signature_status`/`bundle_hash`/`manifest_paths` を最小セットとする。
+3. `reml-plugin status` は登録済みプラグインを列挙し、Capability Stage・署名有効期限・最終検証時刻を表示する。結果は `status.json` としてエクスポートでき、CI で `StageRequirement` の逸脱を検出する。
+4. `reml-plugin revoke <id>` は対象プラグインを無効化し、`CapabilityRegistry.plugins.revoke_plugin` を起動する。無効化イベントは `plugin.revoke` として監査ログに残る。
 
 ガイドライン・ベストプラクティス（テンプレート作成、CI 連携手順、IDE 統合など）は引き続き [guides/DSL-plugin.md](../guides/DSL-plugin.md) に掲載し、本章では API 契約と互換条件のみを定義する。

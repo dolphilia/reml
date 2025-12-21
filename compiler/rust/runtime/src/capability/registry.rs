@@ -16,7 +16,9 @@ use super::{
     contract::{
         CapabilityContractSpan, ConductorCapabilityContract, ConductorCapabilityRequirement,
     },
-    descriptor::{CapabilityDescriptor, CapabilityId, CapabilityProvider, EffectTag},
+    descriptor::{
+        CapabilityDescriptor, CapabilityId, CapabilityProvider, CapabilityTimestamp, EffectTag,
+    },
     handle::CapabilityHandle,
     io::{IoAdapterKind, IoCapability, IoCapabilityMetadata, IoOperationKind},
     memory::{MemoryCapability, MemoryCapabilityMetadata},
@@ -272,6 +274,17 @@ impl CapabilityRegistry {
         CapabilityDescriptorList::new(descriptors)
     }
 
+    /// すべての CapabilityHandle を登録順に返す。
+    pub fn handles_all(&self) -> Vec<CapabilityHandle> {
+        let entries = self.entries.read().unwrap();
+        entries
+            .ordered_keys
+            .iter()
+            .filter_map(|id| entries.entries.get(id))
+            .map(|entry| entry.handle.clone())
+            .collect()
+    }
+
     /// Capability ハンドルを取得し Stage/効果スコープを検証する。
     pub fn verify_capability(
         &self,
@@ -344,6 +357,7 @@ impl CapabilityRegistry {
             required_effects,
             Ok(()),
         );
+        self.update_last_verified_at(capability);
         Ok(handle)
     }
 
@@ -584,6 +598,13 @@ impl CapabilityRegistry {
     pub fn capability_checks(&self) -> Vec<AuditEvent> {
         self.audit_events.read().unwrap().clone()
     }
+
+    fn update_last_verified_at(&self, capability: &str) {
+        let mut entries = self.entries.write().unwrap();
+        if let Some(entry) = entries.entries.get_mut(capability) {
+            entry.descriptor.metadata_mut().last_verified_at = Some(now_capability_timestamp());
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -736,6 +757,11 @@ fn builtin_capabilities() -> Vec<CapabilityHandle> {
         audit_capability("core.collections.audit", StageId::Stable, &["audit", "mem"]),
         metrics_capability("metrics.emit", StageId::Stable, &["audit"]),
     ]
+}
+
+fn now_capability_timestamp() -> CapabilityTimestamp {
+    let now = OffsetDateTime::now_utc();
+    CapabilityTimestamp::new(now.unix_timestamp(), now.nanosecond() as i32)
 }
 
 fn descriptor(id: &'static str, stage: StageId, effects: &[&str]) -> CapabilityDescriptor {

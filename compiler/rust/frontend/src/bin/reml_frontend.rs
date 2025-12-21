@@ -72,7 +72,7 @@ use reml_runtime::{
 };
 use reml_runtime::audit::AuditEvent;
 use reml_runtime::lsp::derive::{Derive, DeriveModel};
-use reml_runtime::runtime::plugin::{PluginLoader, VerificationPolicy};
+use reml_runtime::runtime::plugin::{PluginBundleVerification, PluginLoader, VerificationPolicy};
 use reml_runtime::test as runtime_test;
 use serde::Serialize;
 use uuid::Uuid;
@@ -214,7 +214,79 @@ fn try_run_plugin_command() -> Result<bool, Box<dyn std::error::Error>> {
             }
             Ok(true)
         }
+        "verify" => {
+            let mut bundle_path = None;
+            let mut policy = VerificationPolicy::Strict;
+            let mut output = OutputFormat::Human;
+            while let Some(arg) = iter.next() {
+                match arg.as_str() {
+                    "--bundle" => {
+                        bundle_path = iter.next().cloned();
+                    }
+                    "--policy" => {
+                        let value = iter.next().ok_or("--policy は strict|permissive を指定してください")?;
+                        policy = match value.as_str() {
+                            "strict" => VerificationPolicy::Strict,
+                            "permissive" => VerificationPolicy::Permissive,
+                            other => {
+                                return Err(
+                                    format!("--policy の未知の値: {other}").into()
+                                )
+                            }
+                        };
+                    }
+                    "--output" => {
+                        let value = iter
+                            .next()
+                            .ok_or("--output は human|json を指定してください")?;
+                        output = OutputFormat::parse(value)?;
+                        if matches!(output, OutputFormat::Lsp | OutputFormat::LspDerive) {
+                            return Err("--output は human|json のみ対応しています".into());
+                        }
+                    }
+                    "--human" => output = OutputFormat::Human,
+                    "--json" => output = OutputFormat::Json,
+                    other => {
+                        return Err(
+                            format!("plugin verify の未知のオプション: {other}").into()
+                        )
+                    }
+                }
+            }
+            let bundle_path =
+                bundle_path.ok_or("plugin verify には --bundle <path> が必要です")?;
+            let loader = PluginLoader::new();
+            let verification = loader.verify_bundle_path(bundle_path, policy)?;
+            match output {
+                OutputFormat::Human => {
+                    print_plugin_verification_human(&verification);
+                }
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&verification)?);
+                }
+                _ => {}
+            }
+            Ok(true)
+        }
         other => Err(format!("plugin {other} は未サポートです").into()),
+    }
+}
+
+fn print_plugin_verification_human(verification: &PluginBundleVerification) {
+    println!(
+        "plugin bundle verified: {}@{} ({:?})",
+        verification.bundle_id, verification.bundle_version, verification.signature_status
+    );
+    if let Some(bundle_hash) = &verification.bundle_hash {
+        println!("  bundle_hash: {bundle_hash}");
+    }
+    if verification.manifest_paths.is_empty() {
+        println!("  manifests: (none)");
+    } else {
+        println!("  manifests:");
+        for path in &verification.manifest_paths {
+            println!("    - {path}");
+        }
     }
 }
 

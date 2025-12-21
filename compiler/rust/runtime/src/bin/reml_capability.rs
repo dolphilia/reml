@@ -1,7 +1,7 @@
 use std::{env, error::Error, process};
 
 use reml_runtime::{
-    capability::{CapabilityDescriptor, CapabilityProvider},
+    capability::{CapabilityDescriptor, CapabilityProvider, CapabilityTimestamp},
     CapabilityDescriptorList, CapabilityRegistry,
 };
 use serde_json::json;
@@ -64,7 +64,7 @@ fn run_list(args: Vec<String>) -> Result<(), Box<dyn Error>> {
     let descriptors = registry.describe_all();
     match format {
         OutputFormat::Json => emit_json(&descriptors)?,
-        OutputFormat::Markdown => emit_markdown_table(&descriptors),
+        OutputFormat::Markdown => emit_markdown_table(registry.handles_all()),
     }
     Ok(())
 }
@@ -78,10 +78,13 @@ fn emit_json(list: &CapabilityDescriptorList) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn emit_markdown_table(list: &CapabilityDescriptorList) {
-    println!("| Capability | Stage | Effect Scope | Provider | Manifest Path |");
-    println!("| --- | --- | --- | --- | --- |");
-    for descriptor in list {
+fn emit_markdown_table(handles: Vec<reml_runtime::capability::CapabilityHandle>) {
+    println!(
+        "| Capability | Stage | Effect Scope | Provider | Plugin ID | Bundle ID | Registered At | Manifest Path |"
+    );
+    println!("| --- | --- | --- | --- | --- | --- | --- | --- |");
+    for handle in handles {
+        let descriptor = handle.descriptor();
         let effects = if descriptor.effect_scope().is_empty() {
             String::from("(none)")
         } else {
@@ -93,6 +96,23 @@ fn emit_markdown_table(list: &CapabilityDescriptorList) {
                 .join("<br>")
         };
         let provider = format_provider(descriptor);
+        let (plugin_id, bundle_id) = match handle.as_plugin() {
+            Some(plugin) => {
+                let metadata = plugin.metadata();
+                let bundle_id = match (&metadata.bundle_id, &metadata.bundle_version) {
+                    (Some(id), Some(version)) => format!("{id}@{version}"),
+                    (Some(id), None) => id.to_string(),
+                    _ => "-".to_string(),
+                };
+                (metadata.package.clone(), bundle_id)
+            }
+            None => ("-".to_string(), "-".to_string()),
+        };
+        let registered_at = descriptor
+            .metadata()
+            .last_verified_at
+            .map(format_capability_timestamp)
+            .unwrap_or_else(|| "-".to_string());
         let manifest_path = descriptor
             .metadata()
             .manifest_path
@@ -100,7 +120,7 @@ fn emit_markdown_table(list: &CapabilityDescriptorList) {
             .map(|path| format!("`{}`", path.display()))
             .unwrap_or_else(|| "-".to_string());
         println!(
-            "| `{id}` | `{stage}` | {effects} | {provider} | {manifest_path} |",
+            "| `{id}` | `{stage}` | {effects} | {provider} | {plugin_id} | {bundle_id} | {registered_at} | {manifest_path} |",
             id = descriptor.id,
             stage = descriptor.stage().as_str(),
         );
@@ -134,6 +154,10 @@ fn format_provider(descriptor: &CapabilityDescriptor) -> String {
             format!("Runtime `{name}`")
         }
     }
+}
+
+fn format_capability_timestamp(timestamp: CapabilityTimestamp) -> String {
+    format!("{}.{:09}s (unix)", timestamp.seconds, timestamp.nanos.max(0))
 }
 
 #[derive(Clone, Copy, Debug)]

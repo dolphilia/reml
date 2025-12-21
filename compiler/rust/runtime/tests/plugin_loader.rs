@@ -69,6 +69,7 @@ fn plugin_bundle_requires_signature_in_strict_mode() {
         plugins: vec![sample_manifest()],
         signature: None,
         bundle_hash: Some("sha256:demo".to_string()),
+        manifest_paths: Vec::new(),
     };
     let err = loader
         .register_bundle(bundle, VerificationPolicy::Strict)
@@ -97,6 +98,7 @@ fn plugin_bundle_accepts_signature_in_strict_mode() {
             bundle_hash: Some("sha256:demo".to_string()),
         }),
         bundle_hash: Some("sha256:demo".to_string()),
+        manifest_paths: Vec::new(),
     };
     let registration = loader
         .register_bundle(bundle, VerificationPolicy::Strict)
