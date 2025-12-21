@@ -88,6 +88,31 @@ reml_capability describe io.fs.read --output human
 2. `reml plugin sign --cert cert.pem` で署名し、`plugin.toml` に署名情報を記録。
 3. 公式 `reml-plugins` レジストリへアップロードし、互換テストを登録。
 
+### 3.1 バンドル JSON 形式（CLI 連携）
+
+CLI が `reml plugin install --bundle <path>` で読み込む JSON は以下の形式を基準とする。
+
+```json
+{
+  "bundle_id": "bundle.demo",
+  "bundle_version": "0.1.0",
+  "plugins": [
+    { "manifest_path": "plugins/demo/reml.toml" }
+  ],
+  "signature": {
+    "algorithm": "ed25519",
+    "certificate": "base64-cert",
+    "issued_to": "bundle.demo",
+    "valid_until": "2027-01-01T00:00:00Z",
+    "bundle_hash": "sha256:<hex>"
+  }
+}
+```
+
+- `plugins[*].manifest_path` はバンドル JSON からの相対パスで解釈する。
+- `bundle_hash` は `bundle_id` / `bundle_version` と各 `manifest_path` の内容を連結した入力から算出する。
+- 署名が無い場合は `VerificationPolicy::Permissive` で警告のみ、`Strict` ではインストールを失敗させる。
+
 ## 4. テスト戦略
 
 - `docs/guides/ci-strategy.md` のマトリクスに従い、対象ターゲットで `reml plugin test` を実行。

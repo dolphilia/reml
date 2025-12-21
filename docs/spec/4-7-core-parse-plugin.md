@@ -75,6 +75,32 @@ pub struct PluginBundleManifest {
 - `bundle_id` / `bundle_version` は CLI がキャッシュ・更新判定に利用する識別情報であり、`plugins` 内の各プラグインは `metadata.id` で一意に識別される。
 - バンドル（`register_bundle`）は複数プラグインをまとめて配布する単位であり、マニフェスト内の `signature` を利用して署名検証を行う（§4）。
 
+#### Bundle JSON 形式（CLI 連携用）
+
+CLI が読み込むバンドルファイルは JSON とし、以下の形式を基準とする。
+
+```json
+{
+  "bundle_id": "bundle.demo",
+  "bundle_version": "0.1.0",
+  "plugins": [
+    { "manifest_path": "plugins/demo/reml.toml" },
+    { "manifest_path": "plugins/extra/reml.toml" }
+  ],
+  "signature": {
+    "algorithm": "ed25519",
+    "certificate": "base64-cert",
+    "issued_to": "bundle.demo",
+    "valid_until": "2027-01-01T00:00:00Z",
+    "bundle_hash": "sha256:<hex>"
+  }
+}
+```
+
+- `plugins[*].manifest_path` はバンドル JSON からの相対パスとして解釈する。
+- `bundle_hash` は `bundle_id` / `bundle_version` と各 `manifest_path` の内容を連結した入力から算出する。
+- `signature` が無い場合は `VerificationPolicy::Permissive` では警告のみ、`Strict` では失敗とする。
+
 ## 2. 登録 API とランタイム契約
 
 ### 2.1 `ParserPlugin` 構造
