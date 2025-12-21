@@ -1,8 +1,12 @@
 //! Core.Dsl.Actor の最小実装。
 
 use std::sync::Arc;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use crate::runtime::async_bridge::ActorSystem;
+use serde_json::Map as JsonMap;
+
+use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
 
 /// アクター定義。
 #[derive(Clone)]
@@ -23,7 +27,12 @@ impl<Message> ActorDefinition<Message> {
     }
 
     pub fn handle(&self, message: Message) -> ActorResult<()> {
-        (self.on_message)(message)
+        catch_unwind(AssertUnwindSafe(|| (self.on_message)(message))).unwrap_or_else(|_| {
+            Err(ActorError::new(
+                ActorErrorKind::RuntimeFailure,
+                "actor handler panicked",
+            ))
+        })
     }
 }
 
@@ -109,5 +118,24 @@ impl Actor {
         supervision: Option<SupervisionBridge>,
     ) -> ActorResult<MailboxBridge<Message>> {
         system.spawn(def, supervision)
+    }
+}
+
+impl IntoDiagnostic for ActorError {
+    fn into_diagnostic(self) -> GuardDiagnostic {
+        let code = match self.kind {
+            ActorErrorKind::SpawnFailed => "dsl.actor.spawn_failed",
+            ActorErrorKind::MailboxUnavailable => "dsl.actor.mailbox_unavailable",
+            ActorErrorKind::RuntimeFailure => "dsl.actor.runtime_failure",
+        };
+        GuardDiagnostic {
+            code,
+            domain: "dsl",
+            severity: DiagnosticSeverity::Error,
+            message: self.message,
+            notes: Vec::new(),
+            extensions: JsonMap::new(),
+            audit_metadata: JsonMap::new(),
+        }
     }
 }

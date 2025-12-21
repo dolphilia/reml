@@ -54,13 +54,13 @@
 5. [x] 監査イベントの最小スキーマ（`dsl.object.dispatch`/`dsl.gc.root`/`dsl.actor.mailbox`/`dsl.vm.execute` など）を設計し、後続の `docs/spec/3-6-core-diagnostics-audit.md` 追記に接続する。
 
 ### フェーズC: Rust 実装（最小バックエンド）
-1. [ ] `Core.Dsl.Object` の `DispatchTable`/`ObjectHandle` を実装し、`MethodCache` の単純キャッシュ（モノモーフィック）を組み込む。
-2. [ ] `ObjectHandle` の所有権・参照モデル（`GcRef`/`RootScope` と接続）を明文化し、ディスパッチ時のライフタイム規約を揃える。
-3. [ ] `Core.Dsl.Gc` の `Arena`/`RefCount` を実装し、`RootScope` の開始・終了でルート登録を管理できるようにする。
-4. [ ] `Core.Dsl.Gc` の監査フック（割り当て/解放/ルート登録）を最小で追加し、診断ログへ出力できるようにする。
-5. [ ] `Core.Dsl.Actor` の `MailboxBridge` を `Core.Async` の既存 API へ接続し、`ActorDefinition` から `Mailbox` を起動できる導線を作る。
-6. [ ] `Core.Dsl.Vm` の `BytecodeBuilder` と最小 `VMCore`（Fetch-Decode-Execute）を実装し、命令ディスパッチのトレース出力を用意する。
-7. [ ] 例外・失敗時の `Result`/`Error` を `Core.Diagnostics` と統合し、パニック回避の最小ルールを決める。
+1. [x] `Core.Dsl.Object` の `DispatchTable`/`ObjectHandle` を実装し、`MethodCache` の単純キャッシュ（モノモーフィック）を組み込む。
+2. [x] `ObjectHandle` の所有権・参照モデル（`GcRef`/`RootScope` と接続）を明文化し、ディスパッチ時のライフタイム規約を揃える。
+3. [x] `Core.Dsl.Gc` の `Arena`/`RefCount` を実装し、`RootScope` の開始・終了でルート登録を管理できるようにする。
+4. [x] `Core.Dsl.Gc` の監査フック（割り当て/解放/ルート登録）を最小で追加し、診断ログへ出力できるようにする。
+5. [x] `Core.Dsl.Actor` の `MailboxBridge` を `Core.Async` の既存 API へ接続し、`ActorDefinition` から `Mailbox` を起動できる導線を作る。
+6. [x] `Core.Dsl.Vm` の `BytecodeBuilder` と最小 `VMCore`（Fetch-Decode-Execute）を実装し、命令ディスパッチのトレース出力を用意する。
+7. [x] 例外・失敗時の `Result`/`Error` を `Core.Diagnostics` と統合し、パニック回避の最小ルールを決める。
 
 ### フェーズD: 参照 DSL と回帰
 1. [ ] `examples/` に Mini-Ruby / Mini-Erlang / Mini-VM の最小実装を追加し、各 DSL で利用する `Core.Dsl.*` の範囲を明記する。

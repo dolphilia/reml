@@ -6,8 +6,10 @@ pub mod gc;
 pub mod object;
 pub mod vm;
 
+use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value};
+use std::sync::Arc;
 
 pub use actor::{
     Actor, ActorDefinition, ActorError, ActorErrorKind, MailboxBridge, SupervisorSpec,
@@ -19,7 +21,10 @@ pub use object::{
     ClassBuilder, DispatchError, DispatchErrorKind, DispatchKind, DispatchTable, MethodCache,
     MethodCacheKey, MethodEntry, MethodId, Object, ObjectHandle, PrototypeBuilder,
 };
-pub use vm::{Bytecode, BytecodeBuilder, CallFrame, Vm, VmError, VmErrorKind, VmState};
+pub use vm::{
+    Bytecode, BytecodeBuilder, CallFrame, Vm, VmCore, VmError, VmErrorKind, VmState, VmTraceEvent,
+};
+use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
 
 /// Core.Dsl 全体で共有する Result 型。
 pub type DslResult<T> = std::result::Result<T, DslError>;
@@ -70,6 +75,45 @@ impl AuditPayload {
 
 /// 監査イベント名（最小セット）。
 pub const AUDIT_DSL_OBJECT_DISPATCH: &str = "dsl.object.dispatch";
+pub const AUDIT_DSL_GC_ALLOC: &str = "dsl.gc.alloc";
 pub const AUDIT_DSL_GC_ROOT: &str = "dsl.gc.root";
+pub const AUDIT_DSL_GC_RELEASE: &str = "dsl.gc.release";
 pub const AUDIT_DSL_ACTOR_MAILBOX: &str = "dsl.actor.mailbox";
 pub const AUDIT_DSL_VM_EXECUTE: &str = "dsl.vm.execute";
+
+/// DSL 監査フック。
+pub type DslAuditHook = Arc<dyn Fn(AuditPayload) + Send + Sync>;
+
+static DSL_AUDIT_HOOK: OnceCell<DslAuditHook> = OnceCell::new();
+
+/// DSL 監査フックを登録する（1 回のみ）。
+pub fn set_dsl_audit_hook(hook: DslAuditHook) -> DslResult<()> {
+    DSL_AUDIT_HOOK
+        .set(hook)
+        .map_err(|_| DslError::new(DslErrorKind::InvalidArgument, "dsl audit hook already set"))
+}
+
+pub(crate) fn emit_audit(payload: AuditPayload) {
+    if let Some(hook) = DSL_AUDIT_HOOK.get() {
+        hook(payload);
+    }
+}
+
+impl IntoDiagnostic for DslError {
+    fn into_diagnostic(self) -> GuardDiagnostic {
+        let code = match self.kind {
+            DslErrorKind::NotImplemented => "dsl.not_implemented",
+            DslErrorKind::InvalidArgument => "dsl.invalid_argument",
+            DslErrorKind::RuntimeFailure => "dsl.runtime_failure",
+        };
+        GuardDiagnostic {
+            code,
+            domain: "dsl",
+            severity: DiagnosticSeverity::Error,
+            message: self.message,
+            notes: Vec::new(),
+            extensions: JsonMap::new(),
+            audit_metadata: JsonMap::new(),
+        }
+    }
+}
