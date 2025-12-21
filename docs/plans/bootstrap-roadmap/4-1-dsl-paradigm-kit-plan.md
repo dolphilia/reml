@@ -47,24 +47,33 @@
 3. [x] `README.md` と `docs/spec/README.md` の章構成へ新規仕様を登録する。
 
 ### フェーズB: Rust ランタイム設計
-1. [ ] `compiler/rust/runtime/src/dsl/` を新設し、`object`/`gc`/`actor`/`vm` のサブモジュールを作る。
-2. [ ] `compiler/rust/runtime/src/lib.rs` から `Core.Dsl` 名前空間として公開する。
-3. [ ] `Core.Async` 連携に必要な最小ブリッジ API を `compiler/rust/runtime/src/runtime/` または `compiler/rust/runtime/src/ffi/` に整理する。
+1. [ ] `compiler/rust/runtime/src/dsl/` を新設し、`mod.rs` と `object.rs`/`gc.rs`/`actor.rs`/`vm.rs` の雛形を追加する。
+2. [ ] `mod.rs` に公開 API の最小集合（`DispatchTable`/`GcHeap`/`ActorDefinition`/`BytecodeBuilder`）と共通型（`Result`/`Error`/`AuditPayload` など）を定義する。
+3. [ ] `compiler/rust/runtime/src/lib.rs` で `Core.Dsl` 名前空間を公開し、`Core.Dsl.*` のモジュール境界を明示する。
+4. [ ] `Core.Async` 連携のため、`compiler/rust/runtime/src/runtime/` か `compiler/rust/runtime/src/ffi/` に `MailboxBridge`/`SupervisionBridge` の接続点を設計し、依存関係（`Core.Async`/`Core.Diagnostics`）を整理する。
+5. [ ] 監査イベントの最小スキーマ（`dsl.object.dispatch`/`dsl.gc.root`/`dsl.actor.mailbox`/`dsl.vm.execute` など）を設計し、後続の `docs/spec/3-6-core-diagnostics-audit.md` 追記に接続する。
 
 ### フェーズC: Rust 実装（最小バックエンド）
-1. [ ] `Core.Dsl.Object` の `DispatchTable` と `ObjectHandle` を実装し、メソッドディスパッチの最短経路を提供する。
-2. [ ] `Core.Dsl.Gc` の `Arena`/`RefCount` を実装し、`RootScope` でルート登録できるようにする。
-3. [ ] `Core.Dsl.Actor` の `MailboxBridge` を `Core.Async` の既存 API へ接続する。
-4. [ ] `Core.Dsl.Vm` の `BytecodeBuilder` と最小 `VMCore`（Fetch-Decode-Execute）を実装する。
+1. [ ] `Core.Dsl.Object` の `DispatchTable`/`ObjectHandle` を実装し、`MethodCache` の単純キャッシュ（モノモーフィック）を組み込む。
+2. [ ] `ObjectHandle` の所有権・参照モデル（`GcRef`/`RootScope` と接続）を明文化し、ディスパッチ時のライフタイム規約を揃える。
+3. [ ] `Core.Dsl.Gc` の `Arena`/`RefCount` を実装し、`RootScope` の開始・終了でルート登録を管理できるようにする。
+4. [ ] `Core.Dsl.Gc` の監査フック（割り当て/解放/ルート登録）を最小で追加し、診断ログへ出力できるようにする。
+5. [ ] `Core.Dsl.Actor` の `MailboxBridge` を `Core.Async` の既存 API へ接続し、`ActorDefinition` から `Mailbox` を起動できる導線を作る。
+6. [ ] `Core.Dsl.Vm` の `BytecodeBuilder` と最小 `VMCore`（Fetch-Decode-Execute）を実装し、命令ディスパッチのトレース出力を用意する。
+7. [ ] 例外・失敗時の `Result`/`Error` を `Core.Diagnostics` と統合し、パニック回避の最小ルールを決める。
 
 ### フェーズD: 参照 DSL と回帰
-1. [ ] `examples/` に Mini-Ruby / Mini-Erlang / Mini-VM の最小実装を追加する。
-2. [ ] `expected/` に参照 DSL の出力スナップショットを追加し、差分確認の基盤を整える。
-3. [ ] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に検証シナリオを登録する。
+1. [ ] `examples/` に Mini-Ruby / Mini-Erlang / Mini-VM の最小実装を追加し、各 DSL で利用する `Core.Dsl.*` の範囲を明記する。
+2. [ ] Mini-Ruby は `Object`/`Gc`、Mini-Erlang は `Actor`/`Gc`、Mini-VM は `Vm`/`Object` の最小ルートを示し、依存関係を一覧化する。
+3. [ ] `expected/` に参照 DSL の出力スナップショットを追加し、`examples/` との対応表（入力/期待値/監査ログの有無）を整理する。
+4. [ ] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に検証シナリオを登録し、`Core.Dsl.*` の監査イベント有無・Stage 条件を列に追加する。
+5. [ ] `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` と整合する形で、回帰観点（性能・安全性・監査ログ）を参照 DSL へ紐付ける。
 
 ### フェーズE: 監査とリスク整理
-1. [ ] `docs/spec/3-6-core-diagnostics-audit.md` に `Core.Dsl.*` の監査イベント項目を追記する。
-2. [ ] `docs/notes/` に課題メモ（GC 性能・ブリッジ安全性など）を残し、TODO を明記する。
+1. [ ] `docs/spec/3-6-core-diagnostics-audit.md` に `Core.Dsl.*` の監査イベント（`dsl.object.dispatch`/`dsl.gc.root`/`dsl.actor.mailbox`/`dsl.vm.execute`）を追記する。
+2. [ ] `docs/spec/3-8-core-runtime-capability.md` と Stage 整合を確認し、監査イベントの必須フィールド（Stage/Bridge/Effect）を揃える。
+3. [ ] `docs/notes/` に課題メモ（GC 性能・ブリッジ安全性・VM 拡張）を残し、TODO と参照リンクを付与する。
+4. [ ] 監査ログの最低限の運用ルール（ログ粒度、個人情報の扱い、パフォーマンス影響）を整理し、ガイドまたはノートへ整理する。
 
 ## Rust 実装の想定モジュール構成
 - `compiler/rust/runtime/src/dsl/mod.rs`: 公開 API と共通型。
