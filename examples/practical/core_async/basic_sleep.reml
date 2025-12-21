@@ -1,0 +1,22 @@
+module Examples.Practical.CoreAsync.BasicSleep
+
+use Core
+use Core.Async
+use Core.Text.String as Str
+
+// Core.Async の最小サンプル: sleep_async + join + block_on。
+fn build_tick(label: Str, delay_ms: Int) -> Async.Future<Str>  // effect {io.async, io.timer}
+  = Async.sleep_async(Duration.from_millis(delay_ms))
+    |> Async.Future.map(|_| Str.concat("tick: ", label))
+
+fn main() -> Result<Str, Async.AsyncError>  // effect {io.async, io.timer, io.blocking}
+{
+  let future = Async.join(
+    build_tick("早い", 10),
+    build_tick("遅い", 20),
+  );
+
+  match Async.block_on(future) with
+    Ok((fast, slow)) -> Ok(Str.concat(fast, Str.concat(" / ", slow)))
+    Err(err) -> Err(err)
+}

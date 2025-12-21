@@ -16,5 +16,6 @@ Phase 4 のシナリオマトリクスで「実務投入」「監査ログ付き
 - `core_diagnostics/audit_envelope/`: `AuditEnvelope.metadata` に `scenario.id` と Stage 情報を記録するログ例
 - `core_runtime/capability/`: Runtime Bridge Stage の整合性チェック (`runtime.bridge.stage_mismatch`) を再現
 - `core_env/envcfg/`: `core.env.merge_profiles` と `@cfg` プロファイル同期の成功例
+- `core_async/`: Core.Async の `sleep_async`/`join`/`block_on` を使った最小例
 
 > 補足: 旧 `examples/core_io/*.reml` 等は参照用として残しつつ、Phase 4 以降のテストは本ディレクトリを参照する運用へ切り替えます。
