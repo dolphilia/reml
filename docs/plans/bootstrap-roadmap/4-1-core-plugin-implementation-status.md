@@ -184,9 +184,9 @@
   - `--format json` では `CapabilityDescriptor` 相当を返す
 
 #### G.3 実装タスク
-- [ ] CLI 側で `PluginLoader` / `PluginRuntimeManager` を呼び出す最小ラッパを追加し、`VerificationPolicy` を引き回す
-- [ ] エラーは `PluginError` を日本語メッセージへ変換し、終了コードを `0/1` に統一
-- [ ] 監査ログのキーを CLI の出力と一致させる  
+- [x] CLI 側で `PluginLoader` / `PluginRuntimeManager` を呼び出す最小ラッパを追加し、`VerificationPolicy` を引き回す
+- [x] エラーは `PluginError` を日本語メッセージへ変換し、終了コードを `0/1` に統一
+- [x] 監査ログのキーを CLI の出力と一致させる  
   - `plugin.verify_signature` / `plugin.signature.failure` / `plugin.install` / `plugin.revoke`
 - [x] 既存ガイドの記述に合わせ、`--output json` のサンプルを更新する（必要時）
 

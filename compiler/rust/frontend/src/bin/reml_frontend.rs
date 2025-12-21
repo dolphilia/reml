@@ -72,7 +72,12 @@ use reml_runtime::{
 };
 use reml_runtime::audit::AuditEvent;
 use reml_runtime::lsp::derive::{Derive, DeriveModel};
-use reml_runtime::runtime::plugin::{PluginBundleVerification, PluginLoader, VerificationPolicy};
+use reml_runtime::runtime::plugin::{
+    PluginBundleRegistration, PluginBundleVerification, PluginError, PluginLoadError, PluginLoader,
+    SignatureStatus, VerificationPolicy,
+};
+use reml_runtime::runtime::plugin_bridge::NativePluginExecutionBridge;
+use reml_runtime::runtime::plugin_manager::PluginRuntimeManager;
 use reml_runtime::test as runtime_test;
 use serde::Serialize;
 use uuid::Uuid;
@@ -195,17 +200,11 @@ fn try_run_plugin_command() -> Result<bool, Box<dyn std::error::Error>> {
             }
             let bundle_path =
                 bundle_path.ok_or("plugin install には --bundle <path> が必要です")?;
-            let loader = PluginLoader::new();
-            let registration = loader.register_bundle_path(bundle_path, policy)?;
+            let registration = run_plugin_install(bundle_path, policy)
+                .map_err(|err| format_plugin_error(&err))?;
             match output {
                 OutputFormat::Human => {
-                    println!(
-                        "plugin bundle installed: {}@{} ({:?})",
-                        registration.bundle_id, registration.bundle_version, registration.signature_status
-                    );
-                    for plugin in &registration.plugins {
-                        println!("  - {} ({} caps)", plugin.plugin_id, plugin.capabilities.len());
-                    }
+                    print_plugin_install_human(&registration);
                 }
                 OutputFormat::Json => {
                     println!("{}", serde_json::to_string_pretty(&registration)?);
@@ -255,8 +254,8 @@ fn try_run_plugin_command() -> Result<bool, Box<dyn std::error::Error>> {
             }
             let bundle_path =
                 bundle_path.ok_or("plugin verify には --bundle <path> が必要です")?;
-            let loader = PluginLoader::new();
-            let verification = loader.verify_bundle_path(bundle_path, policy)?;
+            let verification = run_plugin_verify(bundle_path, policy)
+                .map_err(|err| format_plugin_load_error(&err))?;
             match output {
                 OutputFormat::Human => {
                     print_plugin_verification_human(&verification);
@@ -272,10 +271,85 @@ fn try_run_plugin_command() -> Result<bool, Box<dyn std::error::Error>> {
     }
 }
 
+fn run_plugin_install(
+    bundle_path: String,
+    policy: VerificationPolicy,
+) -> Result<PluginBundleRegistration, PluginError> {
+    let loader = PluginLoader::new();
+    let bridge = NativePluginExecutionBridge::new();
+    let manager = PluginRuntimeManager::new(loader, Box::new(bridge));
+    manager.load_bundle_and_attach(bundle_path, policy)
+}
+
+fn run_plugin_verify(
+    bundle_path: String,
+    policy: VerificationPolicy,
+) -> Result<PluginBundleVerification, PluginLoadError> {
+    let loader = PluginLoader::new();
+    loader.verify_bundle_path(bundle_path, policy)
+}
+
+fn format_plugin_error(error: &PluginError) -> String {
+    match error {
+        PluginError::Load(err) => format_plugin_load_error(err),
+        PluginError::Capability(err) => {
+            format!("Capability の登録または検証に失敗しました: {}", err.detail())
+        }
+        PluginError::VerificationFailed { message } => {
+            format!("プラグイン検証に失敗しました: {message}")
+        }
+        PluginError::Io { message } => format!("プラグイン I/O エラーが発生しました: {message}"),
+        PluginError::AlreadyLoaded { plugin_id } => {
+            format!("プラグインは既にロードされています: {plugin_id}")
+        }
+        PluginError::NotLoaded { plugin_id } => {
+            format!("プラグインはロードされていません: {plugin_id}")
+        }
+        PluginError::Bridge { message } => {
+            format!("プラグインブリッジでエラーが発生しました: {message}")
+        }
+        PluginError::BundleInstallFailed {
+            message,
+            capability_error,
+        } => {
+            if let Some(error) = capability_error {
+                format!(
+                    "バンドルのインストールに失敗しました: {message}（capability: {}）",
+                    error.detail()
+                )
+            } else {
+                format!("バンドルのインストールに失敗しました: {message}")
+            }
+        }
+    }
+}
+
+fn format_plugin_load_error(error: &PluginLoadError) -> String {
+    error.to_string()
+}
+
+fn print_plugin_install_human(registration: &PluginBundleRegistration) {
+    println!(
+        "plugin.verify_signature: {}@{} ({})",
+        registration.bundle_id,
+        registration.bundle_version,
+        signature_status_label(&registration.signature_status)
+    );
+    for plugin in &registration.plugins {
+        println!(
+            "plugin.install: {} ({} caps)",
+            plugin.plugin_id,
+            plugin.capabilities.len()
+        );
+    }
+}
+
 fn print_plugin_verification_human(verification: &PluginBundleVerification) {
     println!(
-        "plugin bundle verified: {}@{} ({:?})",
-        verification.bundle_id, verification.bundle_version, verification.signature_status
+        "plugin.verify_signature: {}@{} ({})",
+        verification.bundle_id,
+        verification.bundle_version,
+        signature_status_label(&verification.signature_status)
     );
     if let Some(bundle_hash) = &verification.bundle_hash {
         println!("  bundle_hash: {bundle_hash}");
@@ -287,6 +361,13 @@ fn print_plugin_verification_human(verification: &PluginBundleVerification) {
         for path in &verification.manifest_paths {
             println!("    - {path}");
         }
+    }
+}
+
+fn signature_status_label(status: &SignatureStatus) -> &'static str {
+    match status {
+        SignatureStatus::Verified => "verified",
+        SignatureStatus::Skipped => "skipped",
     }
 }
 
