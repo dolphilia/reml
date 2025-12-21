@@ -60,6 +60,10 @@
 - [x] `reml plugin install --bundle` のガイド追記  
   - `docs/guides/plugin-authoring.md`
   - `docs/guides/cli-workflow.md`
+- [x] `--output json` の例とスキーマ参照を追加  
+  - `docs/spec/4-7-core-parse-plugin.md`
+  - `docs/guides/cli-workflow.md`
+  - `docs/schemas/plugin-bundle-registration.schema.json`
 
 ## 未実装（次フェーズ）
 
