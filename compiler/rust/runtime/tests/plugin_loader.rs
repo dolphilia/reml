@@ -65,6 +65,7 @@ fn plugin_bundle_requires_signature_in_strict_mode() {
         bundle_version: "0.1.0".to_string(),
         plugins: vec![sample_manifest()],
         signature: None,
+        bundle_hash: Some("sha256:demo".to_string()),
     };
     let err = loader
         .register_bundle(bundle, VerificationPolicy::Strict)
@@ -88,7 +89,9 @@ fn plugin_bundle_accepts_signature_in_strict_mode() {
             certificate: Some("demo-cert".to_string()),
             issued_to: Some("plugin.demo".to_string()),
             valid_until: Some("2027-01-01T00:00:00Z".to_string()),
+            bundle_hash: Some("sha256:demo".to_string()),
         }),
+        bundle_hash: Some("sha256:demo".to_string()),
     };
     let registration = loader
         .register_bundle(bundle, VerificationPolicy::Strict)

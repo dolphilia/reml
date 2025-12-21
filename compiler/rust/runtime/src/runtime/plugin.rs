@@ -1,7 +1,9 @@
-use std::{path::Path, sync::Mutex};
+use std::{fs, path::{Path, PathBuf}, sync::Mutex};
 
 use once_cell::sync::Lazy;
+use serde::Deserialize;
 use serde_json::{Map as JsonMap, Value};
+use sha2::{Digest, Sha256};
 use thiserror::Error;
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
@@ -49,6 +51,7 @@ pub struct PluginSignature {
     pub certificate: Option<String>,
     pub issued_to: Option<String>,
     pub valid_until: Option<String>,
+    pub bundle_hash: Option<String>,
 }
 
 /// 署名検証の結果。
@@ -65,6 +68,7 @@ pub struct PluginBundleManifest {
     pub bundle_version: String,
     pub plugins: Vec<Manifest>,
     pub signature: Option<PluginSignature>,
+    pub bundle_hash: Option<String>,
 }
 
 /// プラグイン登録結果。
@@ -94,6 +98,8 @@ pub enum PluginLoadError {
     ManifestCapability(#[from] ManifestCapabilityError),
     #[error("capability 登録に失敗しました: {0}")]
     CapabilityRegistration(#[from] CapabilityError),
+    #[error("bundle 読み込みに失敗しました: {message}")]
+    BundleLoad { message: String },
     #[error("plugin signature が見つかりません (Strict モード)")]
     SignatureMissing,
     #[error("plugin signature の検証に失敗しました: {reason}")]
@@ -119,7 +125,11 @@ impl PluginLoader {
         bundle: PluginBundleManifest,
         policy: VerificationPolicy,
     ) -> Result<PluginBundleRegistration, PluginLoadError> {
-        let signature_status = verify_plugin_signature(bundle.signature.as_ref(), policy)?;
+        let signature_status = verify_plugin_signature(
+            bundle.signature.as_ref(),
+            policy,
+            bundle.bundle_hash.as_deref(),
+        )?;
         record_signature_audit(&bundle, &signature_status);
         let mut registered = Vec::new();
         let context = BundleContext::new(&bundle, signature_status.clone());
@@ -132,6 +142,16 @@ impl PluginLoader {
             plugins: registered,
             signature_status,
         })
+    }
+
+    /// バンドルファイルから読み込み、登録する。
+    pub fn register_bundle_path(
+        &self,
+        path: impl AsRef<Path>,
+        policy: VerificationPolicy,
+    ) -> Result<PluginBundleRegistration, PluginLoadError> {
+        let bundle = load_bundle_from_path(path)?;
+        self.register_bundle(bundle, policy)
     }
 
     /// マニフェストファイルからプラグイン Capability を登録する。
@@ -215,6 +235,7 @@ fn stage_from_requirement(requirement: StageRequirement) -> StageId {
 fn verify_plugin_signature(
     signature: Option<&PluginSignature>,
     policy: VerificationPolicy,
+    bundle_hash: Option<&str>,
 ) -> Result<SignatureStatus, PluginLoadError> {
     let signature = match signature {
         Some(signature) => signature,
@@ -237,6 +258,22 @@ fn verify_plugin_signature(
     {
         return Err(PluginLoadError::SignatureInvalid {
             reason: format!("未知の署名アルゴリズム: {}", signature.algorithm.as_str()),
+        });
+    }
+
+    let signature_hash = signature.bundle_hash.as_deref();
+    if signature_hash.is_none() || bundle_hash.is_none() {
+        return match policy {
+            VerificationPolicy::Strict => Err(PluginLoadError::SignatureInvalid {
+                reason: "bundle_hash が不足しています".to_string(),
+            }),
+            VerificationPolicy::Permissive => Ok(SignatureStatus::Skipped),
+        };
+    }
+
+    if signature_hash != bundle_hash {
+        return Err(PluginLoadError::SignatureInvalid {
+            reason: "bundle_hash が一致しません".to_string(),
         });
     }
 
@@ -264,6 +301,12 @@ fn record_signature_audit(bundle: &PluginBundleManifest, status: &SignatureStatu
         "plugin.bundle_version".into(),
         Value::String(bundle.bundle_version.clone()),
     );
+    if let Some(bundle_hash) = &bundle.bundle_hash {
+        metadata.insert(
+            "plugin.bundle_hash".into(),
+            Value::String(bundle_hash.clone()),
+        );
+    }
     metadata.insert(
         "plugin.signature.status".into(),
         Value::String(match status {
@@ -277,6 +320,12 @@ fn record_signature_audit(bundle: &PluginBundleManifest, status: &SignatureStatu
             "plugin.signature.algorithm".into(),
             Value::String(signature.algorithm.as_str().to_string()),
         );
+        if let Some(bundle_hash) = &signature.bundle_hash {
+            metadata.insert(
+                "plugin.signature.bundle_hash".into(),
+                Value::String(bundle_hash.clone()),
+            );
+        }
         if let Some(issued_to) = &signature.issued_to {
             metadata.insert(
                 "plugin.signature.issued_to".into(),
@@ -378,4 +427,122 @@ pub fn take_plugin_audit_events() -> Vec<AuditEvent> {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .drain(..)
         .collect()
+}
+
+#[derive(Debug, Deserialize)]
+struct PluginBundleFile {
+    bundle_id: String,
+    bundle_version: String,
+    plugins: Vec<PluginBundleEntry>,
+    signature: Option<PluginSignatureFile>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PluginBundleEntry {
+    manifest_path: PathBuf,
+}
+
+#[derive(Debug, Deserialize)]
+struct PluginSignatureFile {
+    algorithm: Option<String>,
+    certificate: Option<String>,
+    issued_to: Option<String>,
+    valid_until: Option<String>,
+    bundle_hash: Option<String>,
+}
+
+fn load_bundle_from_path(path: impl AsRef<Path>) -> Result<PluginBundleManifest, PluginLoadError> {
+    let bundle_path = path.as_ref();
+    let body = fs::read_to_string(bundle_path).map_err(|err| PluginLoadError::BundleLoad {
+        message: err.to_string(),
+    })?;
+    let bundle_file: PluginBundleFile =
+        serde_json::from_str(&body).map_err(|err| PluginLoadError::BundleLoad {
+            message: err.to_string(),
+        })?;
+    let base_dir = bundle_path.parent().unwrap_or_else(|| Path::new("."));
+    let mut manifests = Vec::new();
+    let mut hash_sources = Vec::new();
+
+    for entry in &bundle_file.plugins {
+        let manifest_path = base_dir.join(&entry.manifest_path);
+        let manifest_body =
+            fs::read_to_string(&manifest_path).map_err(|err| PluginLoadError::BundleLoad {
+                message: err.to_string(),
+            })?;
+        let manifest = load_manifest(&manifest_path).map_err(|diagnostic| {
+            PluginLoadError::BundleLoad {
+                message: diagnostic.message,
+            }
+        })?;
+        manifests.push(manifest);
+        hash_sources.push((manifest_path, manifest_body));
+    }
+
+    let bundle_hash = Some(compute_bundle_hash(
+        &bundle_file.bundle_id,
+        &bundle_file.bundle_version,
+        &hash_sources,
+    ));
+
+    let signature = bundle_file.signature.map(|sig| PluginSignature {
+        algorithm: parse_signature_algorithm(sig.algorithm),
+        certificate: sig.certificate,
+        issued_to: sig.issued_to,
+        valid_until: sig.valid_until,
+        bundle_hash: sig.bundle_hash,
+    });
+
+    Ok(PluginBundleManifest {
+        bundle_id: bundle_file.bundle_id,
+        bundle_version: bundle_file.bundle_version,
+        plugins: manifests,
+        signature,
+        bundle_hash,
+    })
+}
+
+fn parse_signature_algorithm(value: Option<String>) -> SignatureAlgorithm {
+    match value.as_deref() {
+        Some("ed25519") => SignatureAlgorithm::Ed25519,
+        Some(other) => SignatureAlgorithm::Unknown(other.to_string()),
+        None => SignatureAlgorithm::Unknown("unknown".to_string()),
+    }
+}
+
+fn compute_bundle_hash(
+    bundle_id: &str,
+    bundle_version: &str,
+    sources: &[(PathBuf, String)],
+) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bundle_id.as_bytes());
+    hasher.update(b"\n");
+    hasher.update(bundle_version.as_bytes());
+    hasher.update(b"\n");
+    for (path, body) in sources {
+        hasher.update(path.to_string_lossy().as_bytes());
+        hasher.update(b"\n");
+        hasher.update(body.as_bytes());
+        hasher.update(b"\n");
+    }
+    let digest = hasher.finalize();
+    format!("sha256:{}", bytes_to_hex(digest.as_slice()))
+}
+
+fn bytes_to_hex(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for value in bytes {
+        out.push(hex_nibble(value >> 4));
+        out.push(hex_nibble(value & 0x0f));
+    }
+    out
+}
+
+fn hex_nibble(value: u8) -> char {
+    match value {
+        0..=9 => (b'0' + value) as char,
+        10..=15 => (b'a' + (value - 10)) as char,
+        _ => '0',
+    }
 }

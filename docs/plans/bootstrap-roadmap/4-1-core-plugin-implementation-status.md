@@ -53,7 +53,8 @@
   - `compiler/rust/runtime/src/runtime/plugin.rs`
 - [x] `plugin.bundle_id` などの監査キーを監査ログへ転写
   - `compiler/rust/runtime/src/runtime/plugin.rs`
-- [ ] Plugin Bundle の読込・検証（署名/ハッシュ）
+- [x] Plugin Bundle の読込・検証（署名/ハッシュ）
+  - `compiler/rust/runtime/src/runtime/plugin.rs`
 
 ### E. 実行時ロード経路
 - [ ] プラグインのロード/アンロード/実行ブリッジの統合
