@@ -145,20 +145,26 @@
    - `compiler/rust/runtime/src/runtime/plugin_manager.rs`
 
 #### F.4 受け入れ条件
-- `bundle.json` を指定したロードで `plugin.verify_signature`/`plugin.install` が監査ログに揃って出力される。
-- `RuntimeBridgeRegistry` の Stage 記録と Capability Registry の Stage が一致する。
-- アンロード時に Capability の重複登録が起きず、再ロードが可能である。
+- [x] `bundle.json` を指定したロードで `plugin.verify_signature`/`plugin.install` が監査ログに揃って出力される。  
+  - `compiler/rust/runtime/tests/plugin_manager.rs`
+- [x] `RuntimeBridgeRegistry` の Stage 記録と Capability Registry の Stage が一致する。  
+  - `compiler/rust/runtime/tests/plugin_manager.rs`
+- [x] アンロード時に Capability の重複登録が起きず、再ロードが可能である。  
+  - `compiler/rust/runtime/tests/plugin_manager.rs`
 
 **検証項目（F.4）**
-- `PluginRuntimeManager::load_bundle_and_attach` で bundle をロードし、`take_plugin_audit_events` に `plugin.verify_signature` / `plugin.install` が揃っていること。  
+- [x] `PluginRuntimeManager::load_bundle_and_attach` で bundle をロードし、`take_plugin_audit_events` に `plugin.verify_signature` / `plugin.install` が揃っていること。  
   - `compiler/rust/runtime/src/runtime/plugin_manager.rs`  
-  - `compiler/rust/runtime/src/runtime/plugin.rs`
-- `RuntimeBridgeRegistry::stage_records` の `required/actual` と `CapabilityRegistry::describe` の `stage` が一致すること。  
+  - `compiler/rust/runtime/src/runtime/plugin.rs`  
+  - `compiler/rust/runtime/tests/plugin_manager.rs`
+- [x] `RuntimeBridgeRegistry::stage_records` の `required/actual` と `CapabilityRegistry::describe` の `stage` が一致すること。  
   - `compiler/rust/runtime/src/runtime/plugin_bridge.rs`  
-  - `compiler/rust/runtime/src/runtime/bridge.rs`
-- `unload` 後に `CapabilityRegistry::describe` が `NotRegistered` を返し、同一 bundle を再ロードしても `AlreadyRegistered` が発生しないこと。  
+  - `compiler/rust/runtime/src/runtime/bridge.rs`  
+  - `compiler/rust/runtime/tests/plugin_manager.rs`
+- [x] `unload` 後に `CapabilityRegistry::describe` が `NotRegistered` を返し、同一 bundle を再ロードしても `AlreadyRegistered` が発生しないこと。  
   - `compiler/rust/runtime/src/runtime/plugin_manager.rs`  
-  - `compiler/rust/runtime/src/capability/registry.rs`
+  - `compiler/rust/runtime/src/capability/registry.rs`  
+  - `compiler/rust/runtime/tests/plugin_manager.rs`
 
 ### G. CLI/運用導線
 - [ ] `reml plugin install/verify` の最小 CLI
