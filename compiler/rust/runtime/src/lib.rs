@@ -9,6 +9,7 @@ pub mod cli;
 pub mod collections;
 pub mod config;
 pub mod data;
+pub mod dsl;
 pub mod doc;
 #[cfg(feature = "metrics")]
 pub mod diagnostics;

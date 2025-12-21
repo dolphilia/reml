@@ -47,11 +47,11 @@
 3. [x] `README.md` と `docs/spec/README.md` の章構成へ新規仕様を登録する。
 
 ### フェーズB: Rust ランタイム設計
-1. [ ] `compiler/rust/runtime/src/dsl/` を新設し、`mod.rs` と `object.rs`/`gc.rs`/`actor.rs`/`vm.rs` の雛形を追加する。
-2. [ ] `mod.rs` に公開 API の最小集合（`DispatchTable`/`GcHeap`/`ActorDefinition`/`BytecodeBuilder`）と共通型（`Result`/`Error`/`AuditPayload` など）を定義する。
-3. [ ] `compiler/rust/runtime/src/lib.rs` で `Core.Dsl` 名前空間を公開し、`Core.Dsl.*` のモジュール境界を明示する。
-4. [ ] `Core.Async` 連携のため、`compiler/rust/runtime/src/runtime/` か `compiler/rust/runtime/src/ffi/` に `MailboxBridge`/`SupervisionBridge` の接続点を設計し、依存関係（`Core.Async`/`Core.Diagnostics`）を整理する。
-5. [ ] 監査イベントの最小スキーマ（`dsl.object.dispatch`/`dsl.gc.root`/`dsl.actor.mailbox`/`dsl.vm.execute` など）を設計し、後続の `docs/spec/3-6-core-diagnostics-audit.md` 追記に接続する。
+1. [x] `compiler/rust/runtime/src/dsl/` を新設し、`mod.rs` と `object.rs`/`gc.rs`/`actor.rs`/`vm.rs` の雛形を追加する。
+2. [x] `mod.rs` に公開 API の最小集合（`DispatchTable`/`GcHeap`/`ActorDefinition`/`BytecodeBuilder`）と共通型（`Result`/`Error`/`AuditPayload` など）を定義する。
+3. [x] `compiler/rust/runtime/src/lib.rs` で `Core.Dsl` 名前空間を公開し、`Core.Dsl.*` のモジュール境界を明示する。
+4. [x] `Core.Async` 連携のため、`compiler/rust/runtime/src/runtime/` か `compiler/rust/runtime/src/ffi/` に `MailboxBridge`/`SupervisionBridge` の接続点を設計し、依存関係（`Core.Async`/`Core.Diagnostics`）を整理する。
+5. [x] 監査イベントの最小スキーマ（`dsl.object.dispatch`/`dsl.gc.root`/`dsl.actor.mailbox`/`dsl.vm.execute` など）を設計し、後続の `docs/spec/3-6-core-diagnostics-audit.md` 追記に接続する。
 
 ### フェーズC: Rust 実装（最小バックエンド）
 1. [ ] `Core.Dsl.Object` の `DispatchTable`/`ObjectHandle` を実装し、`MethodCache` の単純キャッシュ（モノモーフィック）を組み込む。
