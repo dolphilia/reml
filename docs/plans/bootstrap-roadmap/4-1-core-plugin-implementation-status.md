@@ -78,10 +78,32 @@
 3. `unload` 時に登録済み Capability を整理し、再ロード時に重複登録を防ぐ。
 4. 監査ログは `plugin.install` / `plugin.revoke` / `plugin.verify_signature` / `plugin.signature.failure` を優先し、`plugin.register_capability` と相互参照できるキーを揃える。
 
+**配置先と公開 API（確定）**
+- 配置先: `compiler/rust/runtime/src/runtime/plugin_manager.rs`
+- 公開 API:
+  - `pub struct PluginRuntimeManager`
+  - `pub enum PluginRuntimeState { Loaded, Failed, Unloaded }`
+  - `pub struct PluginRuntimeHandle { bundle_id: String, plugin_id: String }`
+  - `pub fn new(loader: PluginLoader, bridge: Box<dyn PluginExecutionBridge>) -> Self`
+  - `pub fn load_bundle_and_attach(&self, path: impl AsRef<Path>, policy: VerificationPolicy) -> Result<PluginBundleRegistration, PluginError>`
+  - `pub fn unload(&self, plugin_id: &str) -> Result<(), PluginError>`
+  - `pub fn state_of(&self, plugin_id: &str) -> Option<PluginRuntimeState>`
+
 #### F.2 実行ブリッジ統合（ネイティブ/将来の WASM）
 1. `PluginExecutionBridge`（仮）トレイトを追加し、`load` / `invoke` / `unload` の責務を統一する。
 2. ネイティブ実装は最小のスタブで開始し、`RuntimeBridgeRegistry` に Stage 検証記録を残す。
 3. 失敗時は `PluginError::VerificationFailed` / `PluginError::IO` に寄せ、Diagnostics へ変換できるようにする。
+
+**配置先と公開 API（確定）**
+- 配置先: `compiler/rust/runtime/src/runtime/plugin_bridge.rs`
+- 公開 API:
+  - `pub trait PluginExecutionBridge`
+  - `pub struct PluginInstance { plugin_id: String }`
+  - `pub struct PluginInvokeRequest { entrypoint: String, payload: Vec<u8> }`
+  - `pub struct PluginInvokeResponse { payload: Vec<u8> }`
+  - `fn load(&self, manifest: &Manifest) -> Result<PluginInstance, PluginError>`
+  - `fn invoke(&self, instance: &PluginInstance, request: PluginInvokeRequest) -> Result<PluginInvokeResponse, PluginError>`
+  - `fn unload(&self, instance: PluginInstance) -> Result<(), PluginError>`
 
 #### F.3 Capability 登録と Stage 検証の自動化
 1. `PluginRuntimeManager` から `register_manifest` を呼び出し、ロードと同時に Capability を登録する。
