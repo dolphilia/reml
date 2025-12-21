@@ -70,6 +70,28 @@
 ### F. 実行時ロード経路
 - [ ] プラグインのロード/アンロード/実行ブリッジの統合
 - [ ] 実行時の Capability 登録と Stage 検証の自動化
+- [ ] 実行時ロード経路の責務分離（ロード管理・実行ブリッジ・監査/診断）
+
+#### F.1 ライフサイクル設計（ロード/アンロード/再ロード）
+1. `PluginRuntimeManager`（仮）を追加し、ロード状態 (`Loaded`/`Failed`/`Unloaded`) を管理する。
+2. `PluginLoader` と実行ブリッジを接続する `load_bundle_and_attach`（仮）を用意する。
+3. `unload` 時に登録済み Capability を整理し、再ロード時に重複登録を防ぐ。
+4. 監査ログは `plugin.install` / `plugin.revoke` / `plugin.verify_signature` / `plugin.signature.failure` を優先し、`plugin.register_capability` と相互参照できるキーを揃える。
+
+#### F.2 実行ブリッジ統合（ネイティブ/将来の WASM）
+1. `PluginExecutionBridge`（仮）トレイトを追加し、`load` / `invoke` / `unload` の責務を統一する。
+2. ネイティブ実装は最小のスタブで開始し、`RuntimeBridgeRegistry` に Stage 検証記録を残す。
+3. 失敗時は `PluginError::VerificationFailed` / `PluginError::IO` に寄せ、Diagnostics へ変換できるようにする。
+
+#### F.3 Capability 登録と Stage 検証の自動化
+1. `PluginRuntimeManager` から `register_manifest` を呼び出し、ロードと同時に Capability を登録する。
+2. `verify_capability_stage` と `StageRequirement` を橋渡しし、Stage mismatch を `effects.contract.stage_mismatch` へ転写する。
+3. ロード失敗時は登録済み Capability をロールバックし、`PluginError::BundleInstallFailed` に寄せる。
+
+#### F.4 受け入れ条件
+- `bundle.json` を指定したロードで `plugin.verify_signature`/`plugin.install` が監査ログに揃って出力される。
+- `RuntimeBridgeRegistry` の Stage 記録と Capability Registry の Stage が一致する。
+- アンロード時に Capability の重複登録が起きず、再ロードが可能である。
 
 ### G. CLI/運用導線
 - [ ] `reml plugin install/verify` の最小 CLI
@@ -131,12 +153,12 @@ reml plugin install --bundle <path> --policy <strict|permissive> [--output human
   - `plugins[{ plugin_id, capabilities[] }]`
 
 **標準エラー**
-- 失敗時は `PluginLoadError` を日本語メッセージで出力する。
+- 失敗時は `PluginError` を日本語メッセージで出力する。
 
 ### 4. 失敗時の挙動
 - **署名/ハッシュ不一致**: `Strict` は失敗、`Permissive` は警告ログのみで続行。
-- **Manifest 読込失敗**: `PluginLoadError::BundleLoad` を返し登録を中断。
-- **Capability 登録失敗**: 失敗したプラグインを含む登録を中断し、再実行可能な状態を維持。
+- **Manifest 読込失敗**: `PluginError::IO` を返し登録を中断。
+- **Capability 登録失敗**: 失敗したプラグインを含む登録を中断し、`PluginError::BundleInstallFailed` を返す。
 
 ### 5. 監査キー（最小セット）
 - `plugin.bundle_id`, `plugin.bundle_version`
