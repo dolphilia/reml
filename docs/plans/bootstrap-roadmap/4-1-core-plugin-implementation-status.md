@@ -102,6 +102,12 @@
 3. [x] 失敗時は `PluginError::VerificationFailed` / `PluginError::IO` に寄せ、Diagnostics へ変換できるようにする。  
    - `compiler/rust/runtime/src/runtime/plugin.rs`  
    - `compiler/rust/runtime/src/runtime/plugin_bridge.rs`
+4. [x] `PluginError` を `GuardDiagnostic` へ変換し、`bridge.*` を監査メタデータへ転写する。  
+   - `compiler/rust/runtime/src/runtime/plugin.rs`  
+   - `compiler/rust/runtime/src/runtime/bridge.rs`  
+   - `compiler/rust/runtime/src/io/bridge.rs`
+5. [x] `plugin.invoke` の最小テストを追加する。  
+   - `compiler/rust/runtime/tests/plugin_bridge.rs`
 
 **配置先と公開 API（確定）**
 - 配置先: `compiler/rust/runtime/src/runtime/plugin_bridge.rs`
