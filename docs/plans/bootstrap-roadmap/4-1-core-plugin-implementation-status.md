@@ -218,6 +218,12 @@
 - [x] `RuntimeBridgeRegistry` に `bridge.kind=wasm` が記録され、`CapabilityRegistry::describe` と Stage が一致する
 - [x] 監査ログに `plugin.verify_signature` と `plugin.install` が揃い、`bundle_hash` が残る
 
+#### 🧪 追試ログ（WASM プラグイン）
+- `cargo test --manifest-path compiler/rust/runtime/Cargo.toml plugin_ -- --test-threads=1` を実行したが、`wasm-encoder v0.243.0` が `rustc 1.76+` を要求するため失敗（現行 `rustc 1.69.0`）。
+- 再実行には Rust toolchain の更新、または `wasm-encoder` の互換バージョン固定が必要。
+- `wat=1.0.68`（`wasm-encoder v0.31.1`）と `url=2.3.1` / `bumpalo=3.12.0` を固定し、`wasmtime=6.0.2`（`default-features = false`, `features = ["cranelift"]`）に更新したうえで再実行。`plugin_` テストは成功し、WASM ブリッジ経路の回帰確認が完了。
+- `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --test plugin_wasm_bridge -- --test-threads=1` を実行し、`wasm_bridge_loads_bundle_and_invokes` が成功することを確認。
+
 ## 実装計画（次のステップ）
 1. **PluginLoader と実行経路の接続**  
    - Bundle から `PluginLoader` を呼び出す導線を構築する。

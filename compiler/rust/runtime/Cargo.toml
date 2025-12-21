@@ -54,7 +54,7 @@ num-bigint = { version = "0.4", optional = true, features = ["serde"] }
 num-rational = { version = "0.4", optional = true }
 thiserror = "1.0"
 sha2 = "0.10"
-wasmtime = "17.0"
+wasmtime = { version = "6.0", default-features = false, features = ["cranelift"] }
 
 [dev-dependencies]
 humantime = "2.1"
@@ -63,7 +63,7 @@ proptest = { version = "=1.2.0", default-features = false, features = ["std"] }
 tempfile = "3.10"
 insta = { version = "1.44", features = ["yaml"] }
 static_assertions = "1.1"
-wat = "1.0"
+wat = "1.0.68"
 
 [[bench]]
 name = "bench_numeric_statistics"
