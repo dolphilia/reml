@@ -121,14 +121,29 @@
   - `fn unload(&self, instance: PluginInstance) -> Result<(), PluginError>`
 
 #### F.3 Capability 登録と Stage 検証の自動化
-1. `PluginRuntimeManager` から `register_manifest` を呼び出し、ロードと同時に Capability を登録する。
-2. `verify_capability_stage` と `StageRequirement` を橋渡しし、Stage mismatch を `effects.contract.stage_mismatch` へ転写する。
-3. ロード失敗時は登録済み Capability をロールバックし、`PluginError::BundleInstallFailed` に寄せる。
+1. [x] `PluginRuntimeManager` から `register_manifest` を呼び出し、ロードと同時に Capability を登録する。  
+   - `compiler/rust/runtime/src/runtime/plugin_manager.rs`
+2. [x] `verify_capability_stage` と `StageRequirement` を橋渡しし、Stage mismatch を `effects.contract.stage_mismatch` へ転写する。  
+   - `compiler/rust/runtime/src/runtime/plugin_manager.rs`  
+   - `compiler/rust/runtime/src/runtime/plugin.rs`
+3. [x] ロード失敗時は登録済み Capability をロールバックし、`PluginError::BundleInstallFailed` に寄せる。  
+   - `compiler/rust/runtime/src/runtime/plugin_manager.rs`
 
 #### F.4 受け入れ条件
 - `bundle.json` を指定したロードで `plugin.verify_signature`/`plugin.install` が監査ログに揃って出力される。
 - `RuntimeBridgeRegistry` の Stage 記録と Capability Registry の Stage が一致する。
 - アンロード時に Capability の重複登録が起きず、再ロードが可能である。
+
+**検証項目（F.4）**
+- `PluginRuntimeManager::load_bundle_and_attach` で bundle をロードし、`take_plugin_audit_events` に `plugin.verify_signature` / `plugin.install` が揃っていること。  
+  - `compiler/rust/runtime/src/runtime/plugin_manager.rs`  
+  - `compiler/rust/runtime/src/runtime/plugin.rs`
+- `RuntimeBridgeRegistry::stage_records` の `required/actual` と `CapabilityRegistry::describe` の `stage` が一致すること。  
+  - `compiler/rust/runtime/src/runtime/plugin_bridge.rs`  
+  - `compiler/rust/runtime/src/runtime/bridge.rs`
+- `unload` 後に `CapabilityRegistry::describe` が `NotRegistered` を返し、同一 bundle を再ロードしても `AlreadyRegistered` が発生しないこと。  
+  - `compiler/rust/runtime/src/runtime/plugin_manager.rs`  
+  - `compiler/rust/runtime/src/capability/registry.rs`
 
 ### G. CLI/運用導線
 - [ ] `reml plugin install/verify` の最小 CLI

@@ -2,9 +2,10 @@ use std::{collections::HashMap, path::Path, sync::Mutex};
 
 use crate::{
     capability::CapabilityRegistry,
+    config::manifest::ManifestCapabilities,
     runtime::{
         plugin::{
-            record_revoke_audit, PluginBundleRegistration, PluginError, PluginLoader,
+            record_revoke_audit, BundleContext, PluginBundleRegistration, PluginError, PluginLoader,
             SignatureStatus, VerificationPolicy,
         },
         plugin_bridge::{PluginExecutionBridge, PluginInstance},
@@ -75,13 +76,65 @@ impl PluginRuntimeManager {
                 }
             }
         }
-        let registration = self.loader.register_bundle(bundle.clone(), policy)?;
+        let signature_status = self.loader.verify_bundle_signature(&bundle, policy)?;
+        let context = BundleContext::new(&bundle, signature_status.clone());
+        let mut registered_capabilities = Vec::new();
+        let mut registrations = Vec::new();
+        let mut capabilities_by_plugin = HashMap::new();
 
-        let capabilities_by_plugin: HashMap<String, Vec<String>> = registration
-            .plugins
-            .iter()
-            .map(|plugin| (plugin.plugin_id.clone(), plugin.capabilities.clone()))
-            .collect();
+        for manifest in &bundle.plugins {
+            let registration = match self
+                .loader
+                .register_manifest_with_context(manifest, Some(&context))
+            {
+                Ok(registration) => registration,
+                Err(err) => {
+                    self.rollback_capabilities(&registered_capabilities);
+                    return Err(PluginError::BundleInstallFailed {
+                        message: err.to_string(),
+                        capability_error: None,
+                    });
+                }
+            };
+            registered_capabilities.extend(registration.capabilities.iter().cloned());
+            capabilities_by_plugin.insert(
+                registration.plugin_id.clone(),
+                registration.capabilities.clone(),
+            );
+
+            let manifest_caps = match ManifestCapabilities::from_manifest(manifest) {
+                Ok(manifest_caps) => manifest_caps,
+                Err(err) => {
+                    self.rollback_capabilities(&registered_capabilities);
+                    return Err(PluginError::BundleInstallFailed {
+                        message: err.to_string(),
+                        capability_error: None,
+                    });
+                }
+            };
+            for (capability_id, record) in manifest_caps.iter() {
+                if let Err(err) = self.registry.verify_capability_stage(
+                    capability_id,
+                    record.stage,
+                    &record.declared_effects,
+                ) {
+                    self.rollback_capabilities(&registered_capabilities);
+                    return Err(PluginError::BundleInstallFailed {
+                        message: err.detail().to_string(),
+                        capability_error: Some(err),
+                    });
+                }
+            }
+
+            registrations.push(registration);
+        }
+
+        let registration = PluginBundleRegistration {
+            bundle_id: bundle.bundle_id.clone(),
+            bundle_version: bundle.bundle_version.clone(),
+            plugins: registrations,
+            signature_status: signature_status.clone(),
+        };
 
         let mut instances: HashMap<String, PluginInstance> = HashMap::new();
         let mut load_error: Option<PluginError> = None;
@@ -99,39 +152,57 @@ impl PluginRuntimeManager {
             }
         }
 
+        if load_error.is_some() {
+            for (_, instance) in instances.drain() {
+                let _ = self.bridge.unload(instance);
+            }
+        }
+
+        let load_failed = load_error.is_some();
         let mut state_guard = self
             .state
             .lock()
             .expect("PluginRuntimeManager.state poisoned");
         for plugin in &registration.plugins {
-            let plugin_id = plugin.plugin_id.clone();
             let handle = PluginRuntimeHandle {
                 bundle_id: registration.bundle_id.clone(),
                 plugin_id: plugin.plugin_id.clone(),
             };
-            let instance = instances.remove(&plugin.plugin_id);
+            let instance = if load_failed {
+                None
+            } else {
+                instances.remove(&plugin.plugin_id)
+            };
             let record = PluginRuntimeRecord {
-                state: if instance.is_some() {
-                    PluginRuntimeState::Loaded
-                } else if load_error.is_some() {
+                state: if load_failed {
                     PluginRuntimeState::Failed
+                } else if instance.is_some() {
+                    PluginRuntimeState::Loaded
                 } else {
                     PluginRuntimeState::Unloaded
                 },
                 handle,
                 bundle_version: registration.bundle_version.clone(),
                 signature_status: registration.signature_status.clone(),
-                capabilities: capabilities_by_plugin
-                    .get(&plugin.plugin_id)
-                    .cloned()
-                    .unwrap_or_default(),
+                capabilities: if load_failed {
+                    Vec::new()
+                } else {
+                    capabilities_by_plugin
+                        .get(&plugin.plugin_id)
+                        .cloned()
+                        .unwrap_or_default()
+                },
                 instance,
             };
             state_guard.insert(plugin.plugin_id.clone(), record);
         }
 
         if let Some(error) = load_error {
-            return Err(error);
+            self.rollback_capabilities(&registered_capabilities);
+            return Err(PluginError::BundleInstallFailed {
+                message: error.to_string(),
+                capability_error: None,
+            });
         }
 
         Ok(registration)
@@ -178,4 +249,9 @@ impl PluginRuntimeManager {
         state_guard.get(plugin_id).map(|record| record.state)
     }
 
+    fn rollback_capabilities(&self, capabilities: &[String]) {
+        for capability in capabilities {
+            let _ = self.registry.unregister(capability);
+        }
+    }
 }

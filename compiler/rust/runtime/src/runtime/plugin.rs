@@ -17,6 +17,7 @@ use crate::{
     config::manifest::{
         load_manifest, Manifest, ManifestCapabilities, ManifestCapabilityError, ProjectKind,
     },
+    diagnostics::audit_bridge::stage_requirement_label,
     prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic},
     runtime::bridge::attach_bridge_stage_metadata,
     stage::{StageId, StageRequirement},
@@ -132,6 +133,11 @@ pub enum PluginError {
     NotLoaded { plugin_id: String },
     #[error("plugin bridge error: {message}")]
     Bridge { message: String },
+    #[error("plugin bundle install failed: {message}")]
+    BundleInstallFailed {
+        message: String,
+        capability_error: Option<CapabilityError>,
+    },
 }
 
 impl PluginError {
@@ -140,25 +146,48 @@ impl PluginError {
         bridge_id: Option<&str>,
         capability: Option<&str>,
     ) -> GuardDiagnostic {
-        let (code, kind, message) = match &self {
-            PluginError::Load(error) => ("runtime.plugin.load_failed", "load", error.to_string()),
-            PluginError::Capability(error) => (error.code(), "capability", error.detail().into()),
-            PluginError::VerificationFailed { message } => {
-                ("runtime.plugin.verify_failed", "verify", message.clone())
+        let (mut code, kind, mut message, capability_error) = match &self {
+            PluginError::Load(error) => {
+                ("runtime.plugin.load_failed", "load", error.to_string(), None)
             }
-            PluginError::Io { message } => ("runtime.plugin.io_error", "io", message.clone()),
+            PluginError::Capability(error) => {
+                (error.code(), "capability", error.detail().into(), Some(error))
+            }
+            PluginError::VerificationFailed { message } => {
+                ("runtime.plugin.verify_failed", "verify", message.clone(), None)
+            }
+            PluginError::Io { message } => ("runtime.plugin.io_error", "io", message.clone(), None),
             PluginError::AlreadyLoaded { plugin_id } => (
                 "runtime.plugin.already_loaded",
                 "already_loaded",
                 format!("plugin already loaded: {plugin_id}"),
+                None,
             ),
             PluginError::NotLoaded { plugin_id } => (
                 "runtime.plugin.not_loaded",
                 "not_loaded",
                 format!("plugin not loaded: {plugin_id}"),
+                None,
             ),
-            PluginError::Bridge { message } => ("runtime.plugin.bridge_error", "bridge", message.clone()),
+            PluginError::Bridge { message } => {
+                ("runtime.plugin.bridge_error", "bridge", message.clone(), None)
+            }
+            PluginError::BundleInstallFailed {
+                message,
+                capability_error,
+            } => (
+                "runtime.plugin.bundle_install_failed",
+                "bundle_install_failed",
+                message.clone(),
+                capability_error.as_ref(),
+            ),
         };
+
+        let stage_snapshot = capability_error.and_then(stage_mismatch_snapshot);
+        if let Some(snapshot) = stage_snapshot.as_ref() {
+            code = "effects.contract.stage_mismatch";
+            message = snapshot.detail.clone();
+        }
 
         let mut extensions = JsonMap::new();
         let mut plugin_meta = JsonMap::new();
@@ -182,6 +211,94 @@ impl PluginError {
             "plugin.error.message".into(),
             Value::String(message.clone()),
         );
+
+        if let Some(snapshot) = stage_snapshot {
+            extensions.insert(
+                "effects.contract.capability".into(),
+                Value::String(snapshot.capability_id.clone()),
+            );
+            extensions.insert(
+                "effects.contract.stage.required".into(),
+                Value::String(stage_requirement_label(snapshot.required)),
+            );
+            extensions.insert(
+                "effects.contract.stage.actual".into(),
+                Value::String(snapshot.actual.as_str().into()),
+            );
+            if !snapshot.required_effects.is_empty() {
+                extensions.insert(
+                    "effects.contract.required_effects".into(),
+                    Value::Array(
+                        snapshot
+                            .required_effects
+                            .iter()
+                            .cloned()
+                            .map(Value::String)
+                            .collect(),
+                    ),
+                );
+            }
+            if !snapshot.missing_effects.is_empty() {
+                extensions.insert(
+                    "effects.contract.missing_effects".into(),
+                    Value::Array(
+                        snapshot
+                            .missing_effects
+                            .iter()
+                            .cloned()
+                            .map(Value::String)
+                            .collect(),
+                    ),
+                );
+            }
+            extensions.insert(
+                "effects.contract.detail".into(),
+                Value::String(snapshot.detail.clone()),
+            );
+
+            audit_metadata.insert(
+                "effect.capability".into(),
+                Value::String(snapshot.capability_id.clone()),
+            );
+            audit_metadata.insert(
+                "effect.stage.required".into(),
+                Value::String(stage_requirement_label(snapshot.required)),
+            );
+            audit_metadata.insert(
+                "effect.stage.actual".into(),
+                Value::String(snapshot.actual.as_str().into()),
+            );
+            if !snapshot.required_effects.is_empty() {
+                audit_metadata.insert(
+                    "effect.required_effects".into(),
+                    Value::Array(
+                        snapshot
+                            .required_effects
+                            .iter()
+                            .cloned()
+                            .map(Value::String)
+                            .collect(),
+                    ),
+                );
+            }
+            if !snapshot.missing_effects.is_empty() {
+                audit_metadata.insert(
+                    "effect.missing_effects".into(),
+                    Value::Array(
+                        snapshot
+                            .missing_effects
+                            .iter()
+                            .cloned()
+                            .map(Value::String)
+                            .collect(),
+                    ),
+                );
+            }
+            audit_metadata.insert(
+                "effects.contract.detail".into(),
+                Value::String(snapshot.detail.clone()),
+            );
+        }
         if let Some(capability) = capability {
             let bridge_id = bridge_id
                 .map(str::to_string)
@@ -220,14 +337,23 @@ impl PluginLoader {
         }
     }
 
+    pub(crate) fn verify_bundle_signature(
+        &self,
+        bundle: &PluginBundleManifest,
+        policy: VerificationPolicy,
+    ) -> Result<SignatureStatus, PluginLoadError> {
+        let signature_status = verify_plugin_signature(bundle, policy)?;
+        record_signature_audit(bundle, &signature_status);
+        Ok(signature_status)
+    }
+
     /// バンドル単位でプラグインを登録する（署名検証含む）。
     pub fn register_bundle(
         &self,
         bundle: PluginBundleManifest,
         policy: VerificationPolicy,
     ) -> Result<PluginBundleRegistration, PluginLoadError> {
-        let signature_status = verify_plugin_signature(&bundle, policy)?;
-        record_signature_audit(&bundle, &signature_status);
+        let signature_status = self.verify_bundle_signature(&bundle, policy)?;
         let mut registered = Vec::new();
         let context = BundleContext::new(&bundle, signature_status.clone());
         for manifest in bundle.plugins {
@@ -278,7 +404,7 @@ impl PluginLoader {
         self.register_manifest_with_context(manifest, None)
     }
 
-    fn register_manifest_with_context(
+    pub(crate) fn register_manifest_with_context(
         &self,
         manifest: &Manifest,
         context: Option<&BundleContext>,
@@ -639,7 +765,7 @@ struct BundleContext {
 }
 
 impl BundleContext {
-    fn new(bundle: &PluginBundleManifest, signature_status: SignatureStatus) -> Self {
+    pub(crate) fn new(bundle: &PluginBundleManifest, signature_status: SignatureStatus) -> Self {
         Self {
             bundle_id: bundle.bundle_id.clone(),
             bundle_version: bundle.bundle_version.clone(),
@@ -649,6 +775,52 @@ impl BundleContext {
 
     fn signature_status_label(&self) -> &str {
         signature_status_label(&self.signature_status)
+    }
+}
+
+#[derive(Debug, Clone)]
+struct StageMismatchSnapshot {
+    capability_id: String,
+    required: StageRequirement,
+    actual: StageId,
+    required_effects: Vec<String>,
+    missing_effects: Vec<String>,
+    detail: String,
+}
+
+fn stage_mismatch_snapshot(error: &CapabilityError) -> Option<StageMismatchSnapshot> {
+    match error {
+        CapabilityError::StageViolation {
+            capability_id,
+            required,
+            actual,
+            message,
+            ..
+        } => Some(StageMismatchSnapshot {
+            capability_id: capability_id.clone(),
+            required: *required,
+            actual: *actual,
+            required_effects: Vec::new(),
+            missing_effects: Vec::new(),
+            detail: message.clone(),
+        }),
+        CapabilityError::EffectScopeMismatch {
+            capability_id,
+            required_stage,
+            actual_stage,
+            required_effects,
+            missing_effects,
+            message,
+            ..
+        } => Some(StageMismatchSnapshot {
+            capability_id: capability_id.clone(),
+            required: *required_stage,
+            actual: *actual_stage,
+            required_effects: required_effects.clone(),
+            missing_effects: missing_effects.clone(),
+            detail: message.clone(),
+        }),
+        _ => None,
     }
 }
 
