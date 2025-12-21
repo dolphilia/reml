@@ -136,6 +136,7 @@ Rust 実装を実務レベルの `.reml` シナリオで検証し、セルフホ
 | [4-0-phase4-migration.md](4-0-phase4-migration.md) | - | Phase 4 実用テスト計画（シナリオ/パイプライン/測定） | 10週 |
 | [4-1-scenario-matrix-plan.md](4-1-scenario-matrix-plan.md) | M1: シナリオマトリクス | `.reml` 入力分類、`phase4-scenario-matrix` 整備、例示コード移植 | 72週 |
 | [4-1-spec-core-regression-plan.md](4-1-spec-core-regression-plan.md) | M1: 回帰是正 | spec_core/practical スイートで判明した Parser/Typeck 不一致の是正計画 | 随時 |
+| [4-1-core-plugin-implementation-status.md](4-1-core-plugin-implementation-status.md) | M1: Core.Plugin 調査 | Rust 実装における Core.Plugin の実装状況調査 | 随時 |
 | [4-1-ffi-improvement-implementation-plan.md](4-1-ffi-improvement-implementation-plan.md) | M1: FFI 実装 | reml-bindgen/FFI DSL/build 統合と回帰接続 | 随時 |
 | [4-1-stdlib-improvement-implementation-plan.md](4-1-stdlib-improvement-implementation-plan.md) | M1: Stdlib 改善 | Core.Test/Cli/Text.Pretty/Doc/Lsp の実装と回帰接続 | 随時 |
 | [4-1-dsl-lite-profile-plan.md](4-1-dsl-lite-profile-plan.md) | M1: Lite 入口 | Reml Lite プロファイルとテンプレートの仕様化 | 随時 |

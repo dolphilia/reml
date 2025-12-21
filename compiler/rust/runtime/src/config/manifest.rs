@@ -330,6 +330,16 @@ impl ManifestCapabilities {
     pub fn get(&self, capability: &str) -> Option<&ManifestCapabilityRecord> {
         self.entries.get(capability)
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &ManifestCapabilityRecord)> {
+        self.entries.iter()
+    }
+
+    pub fn ids(&self) -> Vec<String> {
+        let mut ids: Vec<String> = self.entries.keys().cloned().collect();
+        ids.sort();
+        ids
+    }
 }
 
 /// `Manifest` を構築するための簡易ビルダー。

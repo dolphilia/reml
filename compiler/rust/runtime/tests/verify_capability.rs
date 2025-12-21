@@ -2,7 +2,7 @@ use reml_runtime::{
     capability::{
         io::{IoCapability, IoCapabilityMetadata},
         registry::{reset_for_tests, CapabilityError, CapabilityRegistry},
-        CapabilityDescriptor, CapabilityHandle, CapabilityProvider,
+        CapabilityDescriptor, CapabilityHandle, CapabilityProvider, PluginCapabilityMetadata,
     },
     StageId, StageRequirement,
 };
@@ -104,4 +104,51 @@ fn verify_capability_reports_not_registered_error() {
         .expect_err("unknown capability should produce an error");
     assert_eq!(err.code(), "runtime.capability.unknown");
     assert!(matches!(err, CapabilityError::NotRegistered { .. }));
+}
+
+#[test]
+fn verify_capability_records_plugin_provider_metadata() {
+    reset_for_tests();
+    let registry = CapabilityRegistry::registry();
+    registry
+        .register_plugin_capability(
+            "plugin.demo.audit",
+            StageId::Beta,
+            &["audit"],
+            PluginCapabilityMetadata::new(
+                "plugin.demo",
+                Some("1.2.3"),
+                vec!["audit".to_string()],
+            ),
+        )
+        .expect("plugin capability registration should succeed");
+    registry
+        .verify_capability(
+            "plugin.demo.audit",
+            StageRequirement::Exact(StageId::Beta),
+            &["audit".to_string()],
+        )
+        .expect("plugin capability should satisfy requirement");
+    let events = registry.capability_checks();
+    let metadata = &events.last().unwrap().envelope.metadata;
+    assert_eq!(
+        metadata
+            .get("capability.provider.kind")
+            .and_then(|value| value.as_str()),
+        Some("plugin")
+    );
+    assert_eq!(
+        metadata
+            .get("capability.provider")
+            .and_then(|value| value.as_str()),
+        Some("plugin:plugin.demo@1.2.3")
+    );
+    assert_eq!(
+        metadata.get("plugin.package").and_then(|value| value.as_str()),
+        Some("plugin.demo")
+    );
+    assert_eq!(
+        metadata.get("plugin.version").and_then(|value| value.as_str()),
+        Some("1.2.3")
+    );
 }

@@ -5,7 +5,7 @@ async,3-8-core-runtime-capability.md§1.1,―,―,未実装,"`AsyncCapability` /
 actor,3-8-core-runtime-capability.md§1.1,―,―,未実装,"Actor ランタイムのハンドル・監査 API は計画のみで、Rust 側コードは未着手。",20291221-core-runtime-capability
 audit,3-8-core-runtime-capability.md§1.1,compiler/rust/runtime/src/audit/mod.rs#L1-L220,compiler/rust/runtime/src/audit/mod.rs#L240-L360,APIのみ,"AuditEnvelope / AuditEvent は存在するが Capability Registry との連携と `CapabilityHandle::Audit` バリアントが欠落。",20291221-core-runtime-capability
 metrics,3-8-core-runtime-capability.md§1.1,compiler/rust/runtime/src/diagnostics/stage_guard.rs#L6-L80,―,Stage検証のみ,"`MetricsStageGuard` が `CapabilityRegistry::registry()` を直接呼ぶ PoC で、正式な `CapabilityHandle::Metrics` や Descriptor を返していない。",20291221-core-runtime-capability
-plugin,3-8-core-runtime-capability.md§1.1,―,―,未実装,"プラグイン登録 (`PluginCapability`) に相当するコードが Rust runtime に存在しない。",20291221-core-runtime-capability
+plugin,3-8-core-runtime-capability.md§1.1,compiler/rust/runtime/src/capability/plugin.rs,compiler/rust/runtime/tests/capability_handle_metadata.rs,型定義のみ,"`PluginCapability`/`CapabilityHandle::Plugin` は定義済みだが、Registry 登録・Manifest 連携・Bundle 検証・ロード経路は未着手。",20291221-core-runtime-capability
 system,3-8-core-runtime-capability.md§1.1,―,―,未実装,"`SyscallCapability` や OS ブリッジのラッパーは未着手。",20291221-core-runtime-capability
 process,3-8-core-runtime-capability.md§1.1,―,―,未実装,"プロセス/スレッド操作を提供するハンドルや Stage ガードが未定義。",20291221-core-runtime-capability
 memory,3-8-core-runtime-capability.md§1.1,compiler/rust/runtime/src/io/adapters.rs#L95-L111,―,Stage検証のみ,"`memory.buffered_io` を FsAdapter で検証しているが、専用 `MemoryCapability` 型や `describe_all` から参照するメタデータがない。",20291221-core-runtime-capability

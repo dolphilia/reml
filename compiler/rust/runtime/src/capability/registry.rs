@@ -23,6 +23,7 @@ use super::{
     io::{IoAdapterKind, IoCapability, IoCapabilityMetadata, IoOperationKind},
     memory::{MemoryCapability, MemoryCapabilityMetadata},
     metrics::{MetricsCapability, MetricsCapabilityMetadata, MetricsExporterKind},
+    plugin::{PluginCapability, PluginCapabilityMetadata},
     realtime::{RealtimeCapability, RealtimeCapabilityMetadata, RealtimeClockSource},
     security::{SecurityCapability, SecurityCapabilityMetadata, SecurityPolicyKind},
 };
@@ -98,6 +99,23 @@ impl CapabilityRegistry {
             .entries
             .insert(capability_id, CapabilityEntry { descriptor, handle });
         Ok(())
+    }
+
+    /// Plugin Capability を登録する。
+    pub fn register_plugin_capability(
+        &self,
+        id: &str,
+        stage: StageId,
+        effects: &[&str],
+        metadata: PluginCapabilityMetadata,
+    ) -> Result<(), CapabilityError> {
+        let provider = CapabilityProvider::Plugin {
+            package: metadata.package.clone(),
+            version: metadata.version.clone(),
+        };
+        let descriptor = CapabilityDescriptor::new(id, stage, effects.iter().copied(), provider);
+        let handle = CapabilityHandle::Plugin(PluginCapability::new(descriptor, metadata));
+        self.register(handle)
     }
 
     fn ensure_manifest_alignment(
@@ -450,6 +468,27 @@ impl CapabilityRegistry {
                 "effect.capability_descriptor".into(),
                 serde_json::to_value(desc).unwrap_or(Value::Null),
             );
+            let provider = &desc.metadata().provider;
+            metadata.insert(
+                "capability.provider".into(),
+                Value::String(format_provider(provider)),
+            );
+            metadata.insert(
+                "capability.provider.kind".into(),
+                Value::String(provider_kind(provider).into()),
+            );
+            if let CapabilityProvider::Plugin { package, version } = provider {
+                metadata.insert(
+                    "plugin.package".into(),
+                    Value::String(package.clone()),
+                );
+                if let Some(version) = version {
+                    metadata.insert(
+                        "plugin.version".into(),
+                        Value::String(version.clone()),
+                    );
+                }
+            }
             if !desc.effect_scope().is_empty() {
                 metadata.insert(
                     "effect.actual_effects".into(),
@@ -781,6 +820,30 @@ fn collections_ref_capability() -> CapabilityHandle {
             tracks_reference_count: true,
         },
     ))
+}
+
+fn provider_kind(provider: &CapabilityProvider) -> &'static str {
+    match provider {
+        CapabilityProvider::Core => "core",
+        CapabilityProvider::Plugin { .. } => "plugin",
+        CapabilityProvider::ExternalBridge { .. } => "bridge",
+        CapabilityProvider::RuntimeComponent { .. } => "runtime",
+    }
+}
+
+fn format_provider(provider: &CapabilityProvider) -> String {
+    match provider {
+        CapabilityProvider::Core => "core".to_string(),
+        CapabilityProvider::Plugin { package, version } => match version {
+            Some(version) => format!("plugin:{package}@{version}"),
+            None => format!("plugin:{package}"),
+        },
+        CapabilityProvider::ExternalBridge { name, version } => match version {
+            Some(version) => format!("bridge:{name}@{version}"),
+            None => format!("bridge:{name}"),
+        },
+        CapabilityProvider::RuntimeComponent { name } => format!("runtime:{name}"),
+    }
 }
 
 /// Capability 検証に失敗した場合のエラー。
