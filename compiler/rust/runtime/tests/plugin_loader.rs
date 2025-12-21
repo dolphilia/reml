@@ -4,7 +4,10 @@ use reml_runtime::{
         Manifest, PackageName, ProjectKind, ProjectSection, RunCapabilityEntry, RunSection,
         RunTargetSection, SemanticVersion,
     },
-    runtime::plugin::PluginLoader,
+    runtime::plugin::{
+        take_plugin_audit_events, PluginBundleManifest, PluginLoader, PluginSignature,
+        SignatureAlgorithm, VerificationPolicy,
+    },
 };
 
 fn sample_manifest() -> Manifest {
@@ -51,4 +54,67 @@ fn plugin_loader_registers_manifest_capabilities() {
         }
         other => panic!("unexpected provider: {other:?}"),
     }
+}
+
+#[test]
+fn plugin_bundle_requires_signature_in_strict_mode() {
+    reset_for_tests();
+    let loader = PluginLoader::new();
+    let bundle = PluginBundleManifest {
+        bundle_id: "bundle.demo".to_string(),
+        bundle_version: "0.1.0".to_string(),
+        plugins: vec![sample_manifest()],
+        signature: None,
+    };
+    let err = loader
+        .register_bundle(bundle, VerificationPolicy::Strict)
+        .expect_err("strict policy should reject missing signature");
+    assert!(matches!(
+        err,
+        reml_runtime::runtime::plugin::PluginLoadError::SignatureMissing
+    ));
+}
+
+#[test]
+fn plugin_bundle_accepts_signature_in_strict_mode() {
+    reset_for_tests();
+    let loader = PluginLoader::new();
+    let bundle = PluginBundleManifest {
+        bundle_id: "bundle.demo".to_string(),
+        bundle_version: "0.1.0".to_string(),
+        plugins: vec![sample_manifest()],
+        signature: Some(PluginSignature {
+            algorithm: SignatureAlgorithm::Ed25519,
+            certificate: Some("demo-cert".to_string()),
+            issued_to: Some("plugin.demo".to_string()),
+            valid_until: Some("2027-01-01T00:00:00Z".to_string()),
+        }),
+    };
+    let registration = loader
+        .register_bundle(bundle, VerificationPolicy::Strict)
+        .expect("bundle registration should succeed");
+    assert_eq!(registration.bundle_id, "bundle.demo");
+    assert_eq!(registration.plugins.len(), 1);
+
+    let events = take_plugin_audit_events();
+    assert_eq!(events.len(), 2);
+    let install = events
+        .iter()
+        .find(|event| {
+            event
+                .envelope
+                .metadata
+                .get("event.kind")
+                .and_then(|value| value.as_str())
+                == Some("plugin.install")
+        })
+        .expect("plugin.install event should be recorded");
+    assert_eq!(
+        install
+            .envelope
+            .metadata
+            .get("plugin.bundle_id")
+            .and_then(|value| value.as_str()),
+        Some("bundle.demo")
+    );
 }

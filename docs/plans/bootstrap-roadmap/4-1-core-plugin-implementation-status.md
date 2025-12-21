@@ -49,8 +49,11 @@
 ## 未実装（次フェーズ）
 
 ### D. Bundle/署名検証
+- [x] Plugin Bundle の最小署名検証導線（Strict/Permissive 方針）
+  - `compiler/rust/runtime/src/runtime/plugin.rs`
+- [x] `plugin.bundle_id` などの監査キーを監査ログへ転写
+  - `compiler/rust/runtime/src/runtime/plugin.rs`
 - [ ] Plugin Bundle の読込・検証（署名/ハッシュ）
-- [ ] `AuditEnvelope.metadata["plugin.bundle_id"]` 等の監査キー整備
 
 ### E. 実行時ロード経路
 - [ ] プラグインのロード/アンロード/実行ブリッジの統合
