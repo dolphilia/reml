@@ -1,7 +1,7 @@
 use std::{fs, path::{Path, PathBuf}, sync::Mutex};
 
 use once_cell::sync::Lazy;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value};
 use sha2::{Digest, Sha256};
 use thiserror::Error;
@@ -55,7 +55,8 @@ pub struct PluginSignature {
 }
 
 /// 署名検証の結果。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SignatureStatus {
     Verified,
     Skipped,
@@ -72,14 +73,14 @@ pub struct PluginBundleManifest {
 }
 
 /// プラグイン登録結果。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct PluginRegistration {
     pub plugin_id: String,
     pub capabilities: Vec<String>,
 }
 
 /// バンドル登録結果。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct PluginBundleRegistration {
     pub bundle_id: String,
     pub bundle_version: String,

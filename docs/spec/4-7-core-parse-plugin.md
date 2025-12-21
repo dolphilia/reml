@@ -143,6 +143,14 @@ fn with_capabilities(required: Set<CapabilityId>, parser: Parser) -> Result<Pars
 - `register_bundle` は複数プラグインを順序依存で登録する。途中でエラーが発生した場合はロールバックし、成功分を取り消した上で `PluginError::BundleInstallFailed` を返す。
 - `with_capabilities` は要求集合を `CapabilityRegistry::verify_conductor_contract`（[3-8 §2.3](3-8-core-runtime-capability.md#capability-contract)）へ委譲し、不足時は `PluginError::MissingCapability` を返す。
 
+CLI 連携例:
+
+```bash
+reml plugin install --bundle plugins/bundle.json --policy strict
+reml plugin install --bundle plugins/bundle.json --policy permissive
+reml plugin install --bundle plugins/bundle.json --policy strict --output json
+```
+
 ## 3. 監査・セキュリティ統合
 
 ### 3.1 署名・ステージ検証の連携

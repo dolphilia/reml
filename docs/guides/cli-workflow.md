@@ -17,6 +17,43 @@
 opam exec -- dune exec -- remlc <入力ファイル.reml> [オプション]
 ```
 
+### 1.1.1 プラグインバンドルのインストール（Rust CLI）
+
+Core.Plugin のバンドルは Rust CLI からインストールする想定であり、以下の形式を基準とする。
+
+```bash
+reml plugin install --bundle plugins/bundle.json --policy strict
+reml plugin install --bundle plugins/bundle.json --policy permissive
+reml plugin install --bundle plugins/bundle.json --policy strict --output json
+```
+
+- `--bundle` は [4-7-core-parse-plugin.md](../spec/4-7-core-parse-plugin.md) の Bundle JSON 形式に従う。
+- `--policy strict` は署名必須、`permissive` は警告のみで継続する。
+
+`--output json` の出力例:
+
+```json
+{
+  "bundle_id": "bundle.demo",
+  "bundle_version": "0.1.0",
+  "plugins": [
+    {
+      "plugin_id": "plugin.demo",
+      "capabilities": ["plugin.demo.audit"]
+    }
+  ],
+  "signature_status": "verified"
+}
+```
+
+JSON 出力は `docs/schemas/plugin-bundle-registration.schema.json` に準拠する。
+
+### 1.1.2 CLI サブコマンド一覧（Rust CLI）
+
+| コマンド | 説明 |
+| --- | --- |
+| `reml plugin install --bundle <path> --policy strict|permissive` | プラグインバンドルをインストールする |
+
 ### 1.2 最小のサンプル
 
 リポジトリには `examples/cli/` 配下に以下のベースサンプルがある。

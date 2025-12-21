@@ -72,6 +72,7 @@ use reml_runtime::{
 };
 use reml_runtime::audit::AuditEvent;
 use reml_runtime::lsp::derive::{Derive, DeriveModel};
+use reml_runtime::runtime::plugin::{PluginLoader, VerificationPolicy};
 use reml_runtime::test as runtime_test;
 use serde::Serialize;
 use uuid::Uuid;
@@ -138,6 +139,82 @@ fn try_run_capability_command() -> Result<bool, Box<dyn std::error::Error>> {
             Ok(true)
         }
         other => Err(format!("--capability {other} は未サポートです").into()),
+    }
+}
+
+fn try_run_plugin_command() -> Result<bool, Box<dyn std::error::Error>> {
+    let mut argv = env::args();
+    let _program_name = argv.next();
+    let args: Vec<String> = argv.collect();
+    if args.first().map(|arg| arg.as_str()) != Some("plugin") {
+        return Ok(false);
+    }
+    let mut iter = args.iter().skip(1);
+    let subcommand = iter
+        .next()
+        .ok_or("plugin には install などのサブコマンドを指定してください")?;
+    match subcommand.as_str() {
+        "install" => {
+            let mut bundle_path = None;
+            let mut policy = VerificationPolicy::Strict;
+            let mut output = OutputFormat::Human;
+            while let Some(arg) = iter.next() {
+                match arg.as_str() {
+                    "--bundle" => {
+                        bundle_path = iter.next().cloned();
+                    }
+                    "--policy" => {
+                        let value = iter.next().ok_or("--policy は strict|permissive を指定してください")?;
+                        policy = match value.as_str() {
+                            "strict" => VerificationPolicy::Strict,
+                            "permissive" => VerificationPolicy::Permissive,
+                            other => {
+                                return Err(
+                                    format!("--policy の未知の値: {other}").into()
+                                )
+                            }
+                        };
+                    }
+                    "--output" => {
+                        let value = iter
+                            .next()
+                            .ok_or("--output は human|json を指定してください")?;
+                        output = OutputFormat::parse(value)?;
+                        if matches!(output, OutputFormat::Lsp | OutputFormat::LspDerive) {
+                            return Err("--output は human|json のみ対応しています".into());
+                        }
+                    }
+                    "--human" => output = OutputFormat::Human,
+                    "--json" => output = OutputFormat::Json,
+                    other => {
+                        return Err(
+                            format!("plugin install の未知のオプション: {other}").into()
+                        )
+                    }
+                }
+            }
+            let bundle_path =
+                bundle_path.ok_or("plugin install には --bundle <path> が必要です")?;
+            let loader = PluginLoader::new();
+            let registration = loader.register_bundle_path(bundle_path, policy)?;
+            match output {
+                OutputFormat::Human => {
+                    println!(
+                        "plugin bundle installed: {}@{} ({:?})",
+                        registration.bundle_id, registration.bundle_version, registration.signature_status
+                    );
+                    for plugin in &registration.plugins {
+                        println!("  - {} ({} caps)", plugin.plugin_id, plugin.capabilities.len());
+                    }
+                }
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&registration)?);
+                }
+                _ => {}
+            }
+            Ok(true)
+        }
+        other => Err(format!("plugin {other} は未サポートです").into()),
     }
 }
 
@@ -296,6 +373,16 @@ fn format_permission(permission: &CapabilityPermission) -> String {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Err(err) = install_cli_ffi_executor() {
         eprintln!("[FFI] 実行エンジンの初期化に失敗しました: {err}");
+    }
+    let plugin_command_executed = match try_run_plugin_command() {
+        Ok(executed) => executed,
+        Err(err) => {
+            eprintln!("[PLUGIN] {err}");
+            std::process::exit(1);
+        }
+    };
+    if plugin_command_executed {
+        return Ok(());
     }
     let capability_command_executed = match try_run_capability_command() {
         Ok(executed) => executed,
