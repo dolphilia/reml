@@ -223,6 +223,8 @@
 - 再実行には Rust toolchain の更新、または `wasm-encoder` の互換バージョン固定が必要。
 - `wat=1.0.68`（`wasm-encoder v0.31.1`）と `url=2.3.1` / `bumpalo=3.12.0` を固定し、`wasmtime=6.0.2`（`default-features = false`, `features = ["cranelift"]`）に更新したうえで再実行。`plugin_` テストは成功し、WASM ブリッジ経路の回帰確認が完了。
 - `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --test plugin_wasm_bridge -- --test-threads=1` を実行し、`wasm_bridge_loads_bundle_and_invokes` が成功することを確認。
+- `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --test plugin_loader -- --test-threads=1` を実行し、`plugin_loader` の 3 テストが成功することを確認。
+- `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --test plugin_manager -- --test-threads=1` を実行し、`plugin_manager` の 3 テストが成功することを確認。
 
 ## 実装計画（次のステップ）
 1. **PluginLoader と実行経路の接続**  

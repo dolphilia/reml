@@ -26,3 +26,7 @@
 - `docs/guides/plugin-authoring.md`
 - `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §6
 - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`
+
+## 5. WASM ブリッジ依存固定メモ（Rust 1.69 維持）
+- `compiler/rust/runtime` の WASM ブリッジ検証では、`rustc 1.69.0` を維持するため `wasmtime=6.0.2`（`default-features = false`, `features = ["cranelift"]`）へ固定。
+- `wat=1.0.68` を採用して `wasm-encoder v0.31.1` に揃え、`url=2.3.1` / `bumpalo=3.12.0` を固定することで Rust 1.69 でのビルドを維持する。
