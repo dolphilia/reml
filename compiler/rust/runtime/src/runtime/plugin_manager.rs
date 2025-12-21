@@ -8,7 +8,7 @@ use crate::{
             record_revoke_audit, BundleContext, PluginBundleRegistration, PluginError, PluginLoader,
             SignatureStatus, VerificationPolicy,
         },
-        plugin_bridge::{PluginExecutionBridge, PluginInstance},
+        plugin_bridge::{PluginExecutionBridge, PluginInstance, PluginLoadRequest},
     },
 };
 
@@ -141,7 +141,13 @@ impl PluginRuntimeManager {
 
         for manifest in &bundle.plugins {
             let plugin_id = manifest.project.name.0.clone();
-            match self.bridge.load(manifest) {
+            let module_info = bundle.module_info_for(&plugin_id);
+            let request = PluginLoadRequest {
+                manifest,
+                bundle_hash: bundle.bundle_hash.as_deref(),
+                module_path: module_info.map(|info| info.module_path.as_path()),
+            };
+            match self.bridge.load(request) {
                 Ok(instance) => {
                     instances.insert(plugin_id, instance);
                 }

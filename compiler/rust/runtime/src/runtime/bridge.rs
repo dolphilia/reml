@@ -13,6 +13,10 @@ pub struct BridgeStageRecord {
     pub required: StageRequirement,
     pub actual: StageId,
     pub timestamp: SystemTime,
+    pub kind: Option<String>,
+    pub engine: Option<String>,
+    pub bundle_hash: Option<String>,
+    pub module_hash: Option<String>,
 }
 
 impl BridgeStageRecord {
@@ -46,6 +50,16 @@ impl RuntimeBridgeRegistry {
         requirement: StageRequirement,
         actual: StageId,
     ) {
+        self.record_stage_probe_with_metadata(capability, requirement, actual, BridgeMetadata::none());
+    }
+
+    pub fn record_stage_probe_with_metadata(
+        &self,
+        capability: impl Into<String>,
+        requirement: StageRequirement,
+        actual: StageId,
+        metadata: BridgeMetadata,
+    ) {
         let capability = capability.into();
         let mut records = self
             .stage_records
@@ -57,6 +71,10 @@ impl RuntimeBridgeRegistry {
             required: requirement,
             actual,
             timestamp: SystemTime::now(),
+            kind: metadata.kind,
+            engine: metadata.engine,
+            bundle_hash: metadata.bundle_hash,
+            module_hash: metadata.module_hash,
         });
     }
 
@@ -120,6 +138,52 @@ pub fn attach_bridge_stage_metadata(
         "bridge.stage.actual".into(),
         Value::String(snapshot.actual.as_str().into()),
     );
+    if let Some(kind) = snapshot.kind.as_ref() {
+        metadata.insert("bridge.kind".into(), Value::String(kind.to_string()));
+    }
+    if let Some(engine) = snapshot.engine.as_ref() {
+        metadata.insert("bridge.engine".into(), Value::String(engine.to_string()));
+    }
+    if let Some(bundle_hash) = snapshot.bundle_hash.as_ref() {
+        metadata.insert(
+            "bridge.bundle_hash".into(),
+            Value::String(bundle_hash.to_string()),
+        );
+    }
+    if let Some(module_hash) = snapshot.module_hash.as_ref() {
+        metadata.insert(
+            "bridge.module_hash".into(),
+            Value::String(module_hash.to_string()),
+        );
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BridgeMetadata {
+    pub kind: Option<String>,
+    pub engine: Option<String>,
+    pub bundle_hash: Option<String>,
+    pub module_hash: Option<String>,
+}
+
+impl BridgeMetadata {
+    pub fn none() -> Self {
+        Self {
+            kind: None,
+            engine: None,
+            bundle_hash: None,
+            module_hash: None,
+        }
+    }
+
+    pub fn wasm(bundle_hash: Option<String>, module_hash: Option<String>) -> Self {
+        Self {
+            kind: Some("wasm".to_string()),
+            engine: Some("wasmtime".to_string()),
+            bundle_hash,
+            module_hash,
+        }
+    }
 }
 
 fn requirement_label(requirement: StageRequirement) -> String {

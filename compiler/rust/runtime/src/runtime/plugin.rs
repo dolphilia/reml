@@ -78,6 +78,7 @@ pub struct PluginBundleManifest {
     pub plugins: Vec<Manifest>,
     pub signature: Option<PluginSignature>,
     pub bundle_hash: Option<String>,
+    pub modules: Vec<PluginModuleInfo>,
     pub manifest_paths: Vec<PathBuf>,
 }
 
@@ -105,6 +106,40 @@ pub struct PluginBundleVerification {
     pub signature_status: SignatureStatus,
     pub bundle_hash: Option<String>,
     pub manifest_paths: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PluginModuleInfo {
+    pub plugin_id: String,
+    pub module_path: PathBuf,
+    pub module_hash: String,
+}
+
+impl PluginModuleInfo {
+    fn as_audit_value(&self) -> Value {
+        let mut value = JsonMap::new();
+        value.insert(
+            "plugin.id".into(),
+            Value::String(self.plugin_id.clone()),
+        );
+        value.insert(
+            "plugin.module_path".into(),
+            Value::String(self.module_path.to_string_lossy().to_string()),
+        );
+        value.insert(
+            "plugin.module_hash".into(),
+            Value::String(self.module_hash.clone()),
+        );
+        Value::Object(value)
+    }
+}
+
+impl PluginBundleManifest {
+    pub fn module_info_for(&self, plugin_id: &str) -> Option<&PluginModuleInfo> {
+        self.modules
+            .iter()
+            .find(|module| module.plugin_id == plugin_id)
+    }
 }
 
 /// プラグインローダのエラー。
@@ -592,6 +627,12 @@ fn record_signature_audit(bundle: &PluginBundleManifest, status: &SignatureStatu
             Value::String(bundle_hash.clone()),
         );
     }
+    if !bundle.modules.is_empty() {
+        metadata.insert(
+            "plugin.modules".into(),
+            Value::Array(bundle.modules.iter().map(PluginModuleInfo::as_audit_value).collect()),
+        );
+    }
     metadata.insert(
         "plugin.signature.status".into(),
         Value::String(match status {
@@ -737,10 +778,26 @@ fn record_install_audit(registration: &PluginRegistration, context: Option<&Bund
             "plugin.bundle_version".into(),
             Value::String(context.bundle_version.clone()),
         );
+        if let Some(bundle_hash) = context.bundle_hash.as_ref() {
+            metadata.insert(
+                "plugin.bundle_hash".into(),
+                Value::String(bundle_hash.clone()),
+            );
+        }
         metadata.insert(
             "plugin.signature.status".into(),
             Value::String(context.signature_status_label().to_string()),
         );
+        if let Some(module) = context.module_info_for(&registration.plugin_id) {
+            metadata.insert(
+                "plugin.module_path".into(),
+                Value::String(module.module_path.to_string_lossy().to_string()),
+            );
+            metadata.insert(
+                "plugin.module_hash".into(),
+                Value::String(module.module_hash.clone()),
+            );
+        }
     }
     let envelope = AuditEnvelope::from_parts(metadata, None, None, Some("plugin.install".into()));
     let event = AuditEvent::new(timestamp, envelope);
@@ -804,7 +861,9 @@ pub(crate) fn record_revoke_audit(
 pub(crate) struct BundleContext {
     bundle_id: String,
     bundle_version: String,
+    bundle_hash: Option<String>,
     signature_status: SignatureStatus,
+    modules: Vec<PluginModuleInfo>,
 }
 
 impl BundleContext {
@@ -812,12 +871,20 @@ impl BundleContext {
         Self {
             bundle_id: bundle.bundle_id.clone(),
             bundle_version: bundle.bundle_version.clone(),
+            bundle_hash: bundle.bundle_hash.clone(),
             signature_status,
+            modules: bundle.modules.clone(),
         }
     }
 
     fn signature_status_label(&self) -> &str {
         signature_status_label(&self.signature_status)
+    }
+
+    fn module_info_for(&self, plugin_id: &str) -> Option<&PluginModuleInfo> {
+        self.modules
+            .iter()
+            .find(|module| module.plugin_id == plugin_id)
     }
 }
 
@@ -893,6 +960,8 @@ struct PluginBundleFile {
 #[derive(Debug, Deserialize)]
 struct PluginBundleEntry {
     manifest_path: PathBuf,
+    #[serde(default)]
+    module_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -917,6 +986,7 @@ fn load_bundle_from_path(path: impl AsRef<Path>) -> Result<PluginBundleManifest,
     let mut manifests = Vec::new();
     let mut hash_sources = Vec::new();
     let mut manifest_paths = Vec::new();
+    let mut modules = Vec::new();
 
     for entry in &bundle_file.plugins {
         let manifest_path = base_dir.join(&entry.manifest_path);
@@ -930,6 +1000,19 @@ fn load_bundle_from_path(path: impl AsRef<Path>) -> Result<PluginBundleManifest,
                 message: diagnostic.message,
             }
         })?;
+        if let Some(module_path) = entry.module_path.as_ref() {
+            let resolved_path = base_dir.join(module_path);
+            let module_bytes = fs::read(&resolved_path).map_err(|err| {
+                PluginLoadError::BundleLoad {
+                    message: err.to_string(),
+                }
+            })?;
+            modules.push(PluginModuleInfo {
+                plugin_id: manifest.project.name.0.clone(),
+                module_path: resolved_path,
+                module_hash: compute_module_hash(&module_bytes),
+            });
+        }
         manifests.push(manifest);
         hash_sources.push((manifest_path, manifest_body));
     }
@@ -954,6 +1037,7 @@ fn load_bundle_from_path(path: impl AsRef<Path>) -> Result<PluginBundleManifest,
         plugins: manifests,
         signature,
         bundle_hash,
+        modules,
         manifest_paths,
     })
 }
@@ -982,6 +1066,13 @@ fn compute_bundle_hash(
         hasher.update(body.as_bytes());
         hasher.update(b"\n");
     }
+    let digest = hasher.finalize();
+    format!("sha256:{}", bytes_to_hex(digest.as_slice()))
+}
+
+fn compute_module_hash(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
     let digest = hasher.finalize();
     format!("sha256:{}", bytes_to_hex(digest.as_slice()))
 }

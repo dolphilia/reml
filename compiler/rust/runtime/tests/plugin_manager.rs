@@ -36,6 +36,12 @@ capabilities = [
     manifest_path
 }
 
+fn write_module(dir: &Path) -> PathBuf {
+    let module_path = dir.join("plugin").join("plugin.wasm");
+    fs::write(&module_path, b"wasm-demo").expect("write module");
+    module_path
+}
+
 fn write_bundle(dir: &Path) -> PathBuf {
     let bundle_path = dir.join("bundle.json");
     fs::write(
@@ -45,7 +51,7 @@ fn write_bundle(dir: &Path) -> PathBuf {
   "bundle_id": "bundle.demo",
   "bundle_version": "0.1.0",
   "plugins": [
-    { "manifest_path": "plugin/reml.toml" }
+    { "manifest_path": "plugin/reml.toml", "module_path": "plugin/plugin.wasm" }
   ]
 }
 "#,
@@ -70,6 +76,7 @@ fn plugin_manager_records_signature_and_install_audit() {
 
     let dir = tempdir().expect("tempdir");
     write_plugin_manifest(dir.path());
+    write_module(dir.path());
     let bundle_path = write_bundle(dir.path());
     let manager = setup_manager();
     manager
@@ -96,6 +103,44 @@ fn plugin_manager_records_signature_and_install_audit() {
 
     assert!(has_verify_signature, "plugin.verify_signature should be recorded");
     assert!(has_install, "plugin.install should be recorded");
+    let verify_signature = events
+        .iter()
+        .find(|event| {
+            event
+                .envelope
+                .metadata
+                .get("event.kind")
+                .and_then(|value| value.as_str())
+                == Some("plugin.verify_signature")
+        })
+        .expect("plugin.verify_signature event should be recorded");
+    assert!(
+        verify_signature
+            .envelope
+            .metadata
+            .get("plugin.modules")
+            .is_some(),
+        "plugin.modules should be recorded"
+    );
+    let install = events
+        .iter()
+        .find(|event| {
+            event
+                .envelope
+                .metadata
+                .get("event.kind")
+                .and_then(|value| value.as_str())
+                == Some("plugin.install")
+        })
+        .expect("plugin.install event should be recorded");
+    assert!(
+        install
+            .envelope
+            .metadata
+            .get("plugin.module_hash")
+            .is_some(),
+        "plugin.module_hash should be recorded"
+    );
 }
 
 #[test]
@@ -106,6 +151,7 @@ fn plugin_manager_stage_record_matches_capability_descriptor() {
 
     let dir = tempdir().expect("tempdir");
     write_plugin_manifest(dir.path());
+    write_module(dir.path());
     let bundle_path = write_bundle(dir.path());
     let manager = setup_manager();
     manager
@@ -139,6 +185,7 @@ fn plugin_manager_unload_allows_reload() {
 
     let dir = tempdir().expect("tempdir");
     write_plugin_manifest(dir.path());
+    write_module(dir.path());
     let bundle_path = write_bundle(dir.path());
     let manager = setup_manager();
     manager

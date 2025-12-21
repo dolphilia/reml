@@ -199,24 +199,24 @@
 ### H. WASM 実行基盤（PoC）
 
 #### H.1 目的とスコープ
-- [ ] `PluginExecutionBridge` の WASM 実装を PoC で検証し、**ロード/呼び出し/アンロード** が動作することを確認する
-- [ ] 監査・Stage 検証の転写を確認し、`RuntimeBridgeRegistry` の記録が揃うことを確認する
-- [ ] 本格実装は Phase 5 以降とし、**WASI/ホスト I/O の解放は行わない**（PoC は最小権限）
+- [x] `PluginExecutionBridge` の WASM 実装を PoC で検証し、**ロード/呼び出し/アンロード** が動作することを確認する
+- [x] 監査・Stage 検証の転写を確認し、`RuntimeBridgeRegistry` の記録が揃うことを確認する
+- [x] 本格実装は Phase 5 以降とし、**WASI/ホスト I/O の解放は行わない**（PoC は最小権限）
 
 #### H.2 実装タスク（PoC）
-- [ ] `PluginExecutionBridge` の WASM 版（例: `PluginWasmBridge`）を追加し、Wasmtime で `load`/`invoke`/`unload` を実装する
-- [ ] `PluginInvokeRequest.entrypoint` を WASM export 名へ対応づけ、`payload` はバイナリ引数として渡す
-- [ ] WASM モジュールのロード時に `bundle_hash` と `module_hash` を監査メタデータへ転写する
-- [ ] `bridge.kind=wasm` / `bridge.engine=wasmtime` を `RuntimeBridgeRegistry` に記録する
+- [x] `PluginExecutionBridge` の WASM 版（例: `PluginWasmBridge`）を追加し、Wasmtime で `load`/`invoke`/`unload` を実装する
+- [x] `PluginInvokeRequest.entrypoint` を WASM export 名へ対応づけ、`payload` はバイナリ引数として渡す
+- [x] WASM モジュールのロード時に `bundle_hash` と `module_hash` を監査メタデータへ転写する
+- [x] `bridge.kind=wasm` / `bridge.engine=wasmtime` を `RuntimeBridgeRegistry` に記録する
 
 #### H.3 監査/Capability 連携
-- [ ] `plugin.verify_signature` / `plugin.install` の監査イベントに WASM モジュール情報を追加する
-- [ ] `verify_capability_stage` の結果と `RuntimeBridgeRegistry` の Stage 記録が一致することを確認する
+- [x] `plugin.verify_signature` / `plugin.install` の監査イベントに WASM モジュール情報を追加する
+- [x] `verify_capability_stage` の結果と `RuntimeBridgeRegistry` の Stage 記録が一致することを確認する
 
 #### H.4 受け入れ条件（PoC）
-- [ ] テスト用 bundle から WASM プラグインをロードし、1 回の `invoke` が成功する
-- [ ] `RuntimeBridgeRegistry` に `bridge.kind=wasm` が記録され、`CapabilityRegistry::describe` と Stage が一致する
-- [ ] 監査ログに `plugin.verify_signature` と `plugin.install` が揃い、`bundle_hash` が残る
+- [x] テスト用 bundle から WASM プラグインをロードし、1 回の `invoke` が成功する
+- [x] `RuntimeBridgeRegistry` に `bridge.kind=wasm` が記録され、`CapabilityRegistry::describe` と Stage が一致する
+- [x] 監査ログに `plugin.verify_signature` と `plugin.install` が揃い、`bundle_hash` が残る
 
 ## 実装計画（次のステップ）
 1. **PluginLoader と実行経路の接続**  
