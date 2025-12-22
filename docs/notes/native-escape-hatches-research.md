@@ -39,6 +39,7 @@
   ```
 - **リスク**: 移植性が完全に損なわれる。安全性の検証が困難。
 - **緩和策**: `effect {unsafe, native}` を要求する。`@cfg(target_arch = "...")` でガードする必要がある。
+- **Phase 4 方針**: Phase 4 では設計 + ガード付き PoC に限定し、`feature = "native-unstable"` と `@cfg(target_arch/target_os)` の併用を必須にする。フロントエンドは解析のみ、バックエンドはビルドガードが無効のままでは実行不可とし、`native.unstable.disabled` を返す。
 
 ### 3.2 コンパイラ組み込み関数 (`Core.Native`)
 - **ユースケース**: LLVM Intrinsics（例: `llvm.memcpy`, `llvm.ctpop`, `llvm.x86.avx.*`）を Reml 関数として公開する。
@@ -87,6 +88,7 @@
   ```
 - **メリット**: CPU アーキテクチャ（x86, ARM, RISC-V）に依存しないため、インラインアセンブリよりも移植性を維持しやすい。
 - **リスク**: LLVM の内部表現（opaque pointers 等）の変更に影響を受ける可能性があるが、アセンブリよりは抽象度が高い。
+- **Phase 4 方針**: LLVM IR 直書きは `feature = "native-unstable"` の背後に置き、Phase 4 ではビルドガードにより無効化する（解析のみ）。`@cfg(target)` でターゲット限定の明示が必須。
 
 ## 4. 提案と分析
 
@@ -103,6 +105,9 @@
 ### 4.2 セキュリティと監査
 - **効果システム**: 新しい `effect {native}`。これはハードウェア依存の *内部* 処理として、`ffi`（外部呼び出し）とは区別される。
 - **監査ログ**: `asm` ブロックはその使用をログに記録しなければならない。「なぜここでアセンブリが必要だったのか？」という問いは、レビューポリシーとして有効に機能する。
+
+#### TODO
+- Phase 4 の PoC では `native.intrinsic.unstable_used` を暫定キーとして出力する前提で、`docs/spec/3-6-core-diagnostics-audit.md` に正式反映するか再検討する。
 
 ### 4.3 リスク対メリット
 - **リスク**: インライン ASM は「巧妙」で可読性の低いコードを助長する。コードの移植性がなくなる。

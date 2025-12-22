@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::codegen::ModuleIr;
 use crate::intrinsics::IntrinsicStatus;
 use crate::target_diagnostics::TargetDiagnosticEmitter;
+use crate::unstable::UnstableStatus;
 use serde_json::Value;
 
 /// 単一診断レコード。
@@ -178,6 +179,23 @@ impl Verifier {
                     diagnostic = diagnostic.with_extension("intrinsic.expected", expected.render());
                 }
                 diagnostics.push(diagnostic);
+            }
+        }
+        for unstable in &module.unstable_uses {
+            audit.record("native.intrinsic.unstable_used", unstable.describe());
+            if unstable.status == UnstableStatus::Disabled {
+                diagnostics.push(
+                    Diagnostic::new(
+                        "Native",
+                        "native.unstable.disabled",
+                        format!(
+                            "unstable 機能 `{}` は feature \"native-unstable\" が必要です。",
+                            unstable.describe()
+                        ),
+                    )
+                    .with_extension("unstable.function", unstable.function.clone())
+                    .with_extension("unstable.kind", unstable.kind.as_label()),
+                );
             }
         }
         audit.record(

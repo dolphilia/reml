@@ -9,6 +9,9 @@ use crate::intrinsics::{
 use crate::target_diagnostics::TargetDiagnosticContext;
 use crate::target_machine::{TargetMachine, WindowsToolchainConfig};
 use crate::type_mapping::{RemlType, TypeLayout, TypeMappingContext};
+use crate::unstable::{
+    native_unstable_enabled, parse_unstable_attribute, UnstableStatus, UnstableUse,
+};
 
 pub type MirExprId = usize;
 pub type MirBlockLabel = String;
@@ -577,6 +580,7 @@ pub struct ModuleIr {
     pub llvm_functions: Vec<LlvmFunction>,
     pub metadata: Vec<String>,
     pub intrinsic_uses: Vec<IntrinsicUse>,
+    pub unstable_uses: Vec<UnstableUse>,
     pub windows_toolchain: Option<WindowsToolchainConfig>,
     pub target_context: TargetDiagnosticContext,
     pub bridge_metadata: BridgeMetadataContext,
@@ -604,6 +608,9 @@ impl ModuleIr {
         if !self.intrinsic_uses.is_empty() {
             summary.push(format!("intrinsics: {}", self.intrinsic_uses.len()));
         }
+        if !self.unstable_uses.is_empty() {
+            summary.push(format!("unstable: {}", self.unstable_uses.len()));
+        }
         self.metadata
             .iter()
             .cloned()
@@ -621,6 +628,7 @@ pub struct CodegenContext {
     llvm_functions: Vec<LlvmFunction>,
     module_metadata: Vec<String>,
     intrinsic_uses: Vec<IntrinsicUse>,
+    unstable_uses: Vec<UnstableUse>,
     target_context: TargetDiagnosticContext,
     bridge_metadata: BridgeMetadataContext,
     llvm_ir_builder: LlvmIrBuilder,
@@ -647,6 +655,7 @@ impl CodegenContext {
             llvm_functions: Vec::new(),
             module_metadata: Vec::new(),
             intrinsic_uses: Vec::new(),
+            unstable_uses: Vec::new(),
             target_context,
             bridge_metadata,
         }
@@ -695,6 +704,19 @@ impl CodegenContext {
                     resolve_intrinsic_use(&mir.name, &name, signature, &self.target_machine);
                 self.intrinsic_uses.push(usage);
             }
+            if let Some(request) = parse_unstable_attribute(attr) {
+                let status = if native_unstable_enabled() {
+                    UnstableStatus::Enabled
+                } else {
+                    UnstableStatus::Disabled
+                };
+                self.unstable_uses.push(UnstableUse {
+                    function: mir.name.clone(),
+                    kind: request.kind,
+                    payload: request.payload,
+                    status,
+                });
+            }
         }
         let branch_plans = if mir.exprs.is_empty() {
             mir.match_plans.clone()
@@ -741,6 +763,7 @@ impl CodegenContext {
             llvm_functions: self.llvm_functions,
             metadata: self.module_metadata,
             intrinsic_uses: self.intrinsic_uses,
+            unstable_uses: self.unstable_uses,
             windows_toolchain: self.target_machine.windows_toolchain.clone(),
             target_context: self.target_context.clone(),
             bridge_metadata: self.bridge_metadata.clone(),

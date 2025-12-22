@@ -159,10 +159,10 @@
 - [x] `reports/spec-audit/ch4` のログ保存ルールを更新
 
 ### フェーズE: 研究プロトタイプ（ASM / LLVM IR）
-- [ ] `docs/notes/native-escape-hatches-research.md` にガード条件と位置づけを追記
-- [ ] `feature = "native-unstable"` のプロトタイプを追加
-- [ ] `examples/native/unstable` を隔離し README で実行不能を明記
-- [ ] `native.intrinsic.unstable_used` の扱いを検討し TODO を残す
+- [x] `docs/notes/native-escape-hatches-research.md` にガード条件と位置づけを追記
+- [x] `feature = "native-unstable"` のプロトタイプを追加
+- [x] `examples/native/unstable` を隔離し README で実行不能を明記
+- [x] `native.intrinsic.unstable_used` の扱いを検討し TODO を残す
 
 ### フェーズF: Phase 4 回帰接続
 - [ ] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` にシナリオを追加
@@ -190,6 +190,7 @@
 ## 進捗状況
 - 2025-12-XX: 計画作成（未着手）
 - 2025-12-22: フェーズD 完了、埋め込み API の追加サンプルと実行ログを反映
+- 2025-12-23: フェーズE の研究プロトタイプ（ASM / LLVM IR）を反映
 
 ## 参照
 - `docs/notes/native-escape-hatches-research.md`

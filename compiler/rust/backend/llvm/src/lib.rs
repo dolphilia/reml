@@ -13,6 +13,7 @@ pub mod runtime_link;
 pub mod target_diagnostics;
 pub mod target_machine;
 pub mod type_mapping;
+pub mod unstable;
 pub mod verify;
 
 pub use codegen::{CodegenContext, GeneratedFunction, MirFunction, ModuleIr};
@@ -32,4 +33,5 @@ pub use target_machine::{
 };
 pub use type_mapping::{RemlType, TypeLayout, TypeMappingContext};
 pub use intrinsics::{IntrinsicSignature, IntrinsicStatus, IntrinsicUse};
+pub use unstable::{UnstableKind, UnstableStatus, UnstableUse};
 pub use verify::{AuditEntry, AuditLog, Diagnostic, VerificationResult, Verifier};
