@@ -52,6 +52,29 @@
   - `reports/spec-audit/ch4/logs/stdlib-parse-cst-*.md`
 - ログに残す項目は `reports/spec-audit/ch4/README.md` の「標準ライブラリ実行ログ（Phase 4）」を参照する。
 
+## Native Escape Hatches 回帰接続（Phase 4 追加）
+
+- `phase4-scenario-matrix.csv` に `NATIVE-INTRINSIC-001` / `NATIVE-EMBED-001` を追加し、`Core.Native` と埋め込み API の回帰を Phase 4 で追跡する。
+- 参照資産:
+  - `examples/native/intrinsics/basic.reml`
+  - `expected/native/intrinsics/basic.stdout`
+  - `expected/native/intrinsics/basic.audit.jsonl`
+  - `examples/native/embedding/basic.c`
+  - `examples/native/embedding/basic.reml`
+  - `expected/native/embedding/basic.stdout`
+  - `expected/native/embedding/basic.audit.jsonl`
+- 実行手順（案）:
+  - Intrinsic: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/native/intrinsics/basic.reml`
+  - Embed: `examples/native/embedding/basic.c` を `libreml` 相当の C ABI にリンクして実行し、stdout と監査ログを採取する。
+- 確認観点:
+  - `native.intrinsic.used` / `intrinsic.name` / `intrinsic.signature` が監査ログに出力されること。
+  - `native.embed.entrypoint` / `embed.abi.version` が監査ログに出力されること。
+  - 期待 stdout と `expected/native/` の差分がないこと。
+- 実行ログの保存先:
+  - `reports/spec-audit/ch4/logs/native-intrinsic-*.md`
+  - `reports/spec-audit/ch4/logs/native-embed-*.md`
+- KPI とログフォーマットは `reports/spec-audit/ch4/README.md` の「Native Escape Hatches 実行ログ（Phase 4）」を参照する。
+
 ## DSL パラダイム回帰接続（Phase 4 追加）
 
 `Core.Dsl.*` の参照 DSL を Phase 4 回帰へ組み込み、性能・安全性・監査ログの観点を `phase4-scenario-matrix.csv` に集約する。

@@ -165,9 +165,9 @@
 - [x] `native.intrinsic.unstable_used` の扱いを検討し TODO を残す
 
 ### フェーズF: Phase 4 回帰接続
-- [ ] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` にシナリオを追加
-- [ ] `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に実行手順を追記
-- [ ] `reports/spec-audit/ch4` の KPI とログ命名規則を追記
+- [x] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` にシナリオを追加
+- [x] `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に実行手順を追記
+- [x] `reports/spec-audit/ch4` の KPI とログ命名規則を追記
 
 ## タイムライン（目安）
 
@@ -191,6 +191,7 @@
 - 2025-12-XX: 計画作成（未着手）
 - 2025-12-22: フェーズD 完了、埋め込み API の追加サンプルと実行ログを反映
 - 2025-12-23: フェーズE の研究プロトタイプ（ASM / LLVM IR）を反映
+- 2026-02-XX: フェーズF の回帰接続ドキュメント更新を反映
 
 ## 参照
 - `docs/notes/native-escape-hatches-research.md`

@@ -49,11 +49,21 @@ Phase 4 の `.reml` シナリオを自動実行し、`docs/plans/bootstrap-roadm
 
 ## Native Escape Hatches 実行ログ（Phase 4）
 
-埋め込み API の回帰シナリオは、以下のログに実行結果を記録します。
+`Core.Native` の intrinsic と埋め込み API の回帰シナリオは、以下のログに実行結果を記録します。
 
 - 保存先: `reports/spec-audit/ch4/logs/native-embed-*.md`
+- 保存先: `reports/spec-audit/ch4/logs/native-intrinsic-*.md`
+- 命名規則: `native-intrinsic-YYYYMMDD.md` / `native-embed-YYYYMMDD.md`（時刻を含める場合は `YYYYMMDDTHHMMSSZ`）
 - 記録項目:
+  - `native-intrinsic-*`: 実行コマンド、対象ターゲット、`native.intrinsic.used` / `intrinsic.name` / `intrinsic.signature` の出力有無、`native.intrinsic.polyfill` 発生有無、`expected/native/intrinsics/` との差分確認
   - 実行したホストアプリ（例: `examples/native/embedding/basic.c`）と ABI バージョン
   - `native.embed.entrypoint` / `embed.abi.version` の監査キーが出力されたこと
   - エラー時は `native.embed.abi_mismatch` / `native.embed.unsupported_target` の有無
   - `expected/native/embedding/` との差分確認結果
+
+## Native Escape Hatches KPI（Phase 4）
+
+- 成功率: `NATIVE-INTRINSIC-001` / `NATIVE-EMBED-001` の成功件数 ÷ 実行件数
+- 監査キー欠落率: 必須キー欠落数 ÷ 必須キー総数（intrinsic は `native.intrinsic.used`/`intrinsic.name`/`intrinsic.signature`、embed は `native.embed.entrypoint`/`embed.abi.version`）
+- フォールバック発生率: `native.intrinsic.polyfill` 件数 ÷ `native.intrinsic.used` 件数
+- KPI は `reports/spec-audit/ch4/logs/native-*-*.md` に実測値を記録し、差分が出た場合は `phase4-scenario-matrix.csv` の `resolution_notes` に反映する。
