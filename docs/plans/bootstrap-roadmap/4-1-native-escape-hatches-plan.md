@@ -154,6 +154,8 @@
 - [x] 失敗時のエラーコードと `native.embed.*` 監査記録を確認
 - [x] `docs/guides/runtime-bridges.md` に埋め込み API 手順と互換性ルールを追記
 - [x] `examples/native/embedding` と `expected/` を整備
+- [x] `abi_mismatch` / `unsupported_target` の埋め込みサンプルを追加
+- [x] `reports/spec-audit/ch4/logs/native-embed-*.md` に実行ログを記録
 - [x] `reports/spec-audit/ch4` のログ保存ルールを更新
 
 ### フェーズE: 研究プロトタイプ（ASM / LLVM IR）
@@ -187,6 +189,7 @@
 
 ## 進捗状況
 - 2025-12-XX: 計画作成（未着手）
+- 2025-12-22: フェーズD 完了、埋め込み API の追加サンプルと実行ログを反映
 
 ## 参照
 - `docs/notes/native-escape-hatches-research.md`
