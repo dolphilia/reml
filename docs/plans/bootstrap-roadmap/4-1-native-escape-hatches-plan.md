@@ -125,6 +125,48 @@
    - KPI: 成功率、監査キー欠落率、フォールバック発生率を追跡指標にする。
    - 保存先: ログ命名規則と格納ディレクトリを統一する。
 
+## 作業チェックリスト
+
+### フェーズA: 仕様・監査・Capability 整合
+- [ ] `docs/spec/1-1-syntax.md` に `@intrinsic` の構文・制約・診断前提を追記
+- [ ] `docs/spec/1-3-effects-safety.md` に `effect {native}` の意味・`unsafe` との関係・`@cfg` 要件を追記
+- [ ] `docs/spec/3-6-core-diagnostics-audit.md` に `native.intrinsic.*` / `native.embed.*` の監査キーを定義
+- [ ] `docs/spec/3-8-core-runtime-capability.md` に `native.intrinsic` / `native.embed` を追加し Stage と対応表を整備
+- [ ] `docs/spec/1-0-language-core-overview.md` と `docs/spec/3-0-core-library-overview.md` の概要追記を確認
+
+### フェーズB: Rust 実装 - Intrinsics
+- [ ] `compiler/rust/frontend` に `@intrinsic` パース・AST・セマンティック検証を追加
+- [ ] `compiler/rust/frontend` の型検証に `native.intrinsic.invalid_type` を追加
+- [ ] `compiler/rust/backend/llvm` に LLVM intrinsic マッピングと署名検証を追加
+- [ ] 未対応ターゲットのポリフィル切替と `native.intrinsic.polyfill` 監査記録を確認
+- [ ] 監査ログに `intrinsic.name` / `intrinsic.signature` が出力されることを確認
+- [ ] `frontend` 診断テストに `@intrinsic` 成功/失敗ケースを追加
+
+### フェーズC: Rust 実装 - Core.Native API
+- [ ] `compiler/rust/runtime/src` に `core/native` モジュールを追加
+- [ ] `Core.Native` の最小 API（`memcpy`/`ctpop`/`sqrt`）を実装
+- [ ] `effect {native}` が必須になることを確認
+- [ ] `examples/native/intrinsics` と `expected/` を整備
+- [ ] `docs/spec/3-0-core-library-overview.md` に概要を追記
+
+### フェーズD: Rust 実装 - 埋め込み API
+- [ ] 埋め込み用 C ABI 層（`reml_create_context` など）を実装
+- [ ] 失敗時のエラーコードと `native.embed.*` 監査記録を確認
+- [ ] `docs/guides/runtime-bridges.md` に埋め込み API 手順と互換性ルールを追記
+- [ ] `examples/native/embedding` と `expected/` を整備
+- [ ] `reports/spec-audit/ch4` のログ保存ルールを更新
+
+### フェーズE: 研究プロトタイプ（ASM / LLVM IR）
+- [ ] `docs/notes/native-escape-hatches-research.md` にガード条件と位置づけを追記
+- [ ] `feature = "native-unstable"` のプロトタイプを追加
+- [ ] `examples/native/unstable` を隔離し README で実行不能を明記
+- [ ] `native.intrinsic.unstable_used` の扱いを検討し TODO を残す
+
+### フェーズF: Phase 4 回帰接続
+- [ ] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` にシナリオを追加
+- [ ] `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に実行手順を追記
+- [ ] `reports/spec-audit/ch4` の KPI とログ命名規則を追記
+
 ## タイムライン（目安）
 
 | 週 | タスク |
