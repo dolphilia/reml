@@ -433,6 +433,11 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/practical/core_async/basic_sleep.reml`（期待: 成功 → 2025-12-21 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_async/basic_sleep.reml` / diagnostics=[] / log=reports/spec-audit/ch4/logs/practical-20251221T004726Z.md / run_id=d232170c-b798-4713-b1a8-ab4d7fea04d3 / expected stdout=`expected/practical/core_async/basic_sleep.stdout`）
 - [x] `examples/practical/core_async/timeout_basic.reml`（期待: 成功 → 2025-12-21 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_async/timeout_basic.reml` / diagnostics=[] / log=reports/spec-audit/ch4/logs/practical-20251221T005126Z.md / run_id=60b82bd9-f460-4ea1-9695-50a64a4f1608 / expected stdout=`expected/practical/core_async/timeout_basic.stdout`）
 
+**examples/dsl_paradigm**
+- [x] `examples/dsl_paradigm/mini_ruby/mini_ruby_basic.reml`（期待: 成功 → 2025-12-22 CLI=`compiler/rust/frontend/target/debug/reml_frontend --output json examples/dsl_paradigm/mini_ruby/mini_ruby_basic.reml` / diagnostics=[] / log=reports/spec-audit/ch4/logs/dsl-paradigm-mini_ruby-20251222T010238Z.md / run_id=1ac49955-f6c4-4699-b53f-6775b60771f2）
+- [x] `examples/dsl_paradigm/mini_erlang/mini_erlang_basic.reml`（期待: 成功 → 2025-12-22 CLI=`compiler/rust/frontend/target/debug/reml_frontend --output json examples/dsl_paradigm/mini_erlang/mini_erlang_basic.reml` / diagnostics=[] / log=reports/spec-audit/ch4/logs/dsl-paradigm-mini_erlang-20251222T010311Z.md / run_id=49445f7d-0136-4076-b1aa-febab11e9243）
+- [x] `examples/dsl_paradigm/mini_vm/mini_vm_basic.reml`（期待: 成功 → 2025-12-22 CLI=`compiler/rust/frontend/target/debug/reml_frontend --output json examples/dsl_paradigm/mini_vm/mini_vm_basic.reml` / diagnostics=[] / log=reports/spec-audit/ch4/logs/dsl-paradigm-mini_vm-20251222T010257Z.md / run_id=e9e5b2f7-0255-4c3e-aec9-546ae94d597a）
+
 #### 監査ログ検証メモ（PhaseF 補足）
 
 - 監査出力を確認したい場合は `--emit-audit` を付けて CLI を再実行する。例:  

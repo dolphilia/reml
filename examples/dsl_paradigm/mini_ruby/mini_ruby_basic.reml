@@ -15,15 +15,14 @@ let string_class = Object.class_builder("String")
 
 fn run_string_length(scope: RootScope) -> Result<Int, DispatchError> {
   match Gc.alloc(scope, "remly") with
-  | Ok(text) ->
-    let obj = { table: string_class, payload: StrValue(text), shape_id: 1 }
-    match Object.call(obj, "length", [], None) with
-    | Ok(value) ->
+    | Ok(text) -> {
+      let obj = { table: string_class, payload: StrValue(text), shape_id: 1 }
+      let value = Object.call(obj, "length", [], None)
       match value with
-      | IntValue(size) -> Ok(size)
-      | _ -> Ok(0)
-    | Err(err) -> Err(err)
-  | Err(_) -> Err({ kind: DispatchErrorKind::RuntimeFailure, message: "gc_failed" })
+        | IntValue(size) -> Ok(size)
+        | _ -> Ok(0)
+    }
+    | Err(_) -> Err({ kind: DispatchErrorKind::RuntimeFailure, message: "gc_failed" })
 }
 
 fn main() -> Int {

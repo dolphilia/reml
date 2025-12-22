@@ -5,7 +5,7 @@ use Core.Prelude
 use Core.Dsl.Object
 use Core.Dsl.Vm
 
-enum Op =
+type Op =
   | Push(Int)
   | Add
   | Halt
@@ -21,11 +21,12 @@ fn exec_op(state: VmState<Int>, _op: Op) -> Result<VmState<Int>, VmError> {
 let program_class = Object.class_builder("Program")
   .method("run", |this, _| {
     match this.payload with
-    | BytecodeValue(code) ->
-      let state = { stack: [], frames: [{ ip: 0 }] }
-      let _ = Vm.run(code, state, |s, op| { exec_op(s, op) })
-      Ok(this.payload)
-    | _ -> Ok(this.payload)
+      | BytecodeValue(code) -> {
+        let state = { stack: [], frames: [{ ip: 0 }] }
+        let _ = Vm.run(code, state, |s, op| { exec_op(s, op) })
+        Ok(this.payload)
+      }
+      | _ -> Ok(this.payload)
   })
   .build()
 
