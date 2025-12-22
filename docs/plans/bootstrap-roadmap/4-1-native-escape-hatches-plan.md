@@ -25,14 +25,41 @@
 
 ### フェーズA: 仕様・監査・Capability 整合
 1. `docs/spec/1-1-syntax.md` に `@intrinsic` 属性の構文と制約を追記する。
+   - 設計決定: `@intrinsic("llvm.sqrt.f64")` 形式のみ許可し、識別子式は不可とする。
+   - 記述範囲: 関数宣言への付与条件、引数リテラルの型制約、`@intrinsic` と `@cfg` の併用可否。
+   - 診断: 構文違反時に `native.intrinsic.invalid_syntax` を出す前提を明記。
+   - 参照更新: `docs/spec/1-0-language-core-overview.md` に簡潔な導入文を追加する。
 2. `docs/spec/1-3-effects-safety.md` に `effect {native}` の意味、`unsafe` との関係、`@cfg` 要件を追記する。
+   - 役割定義: `effect {native}` は ABI/メモリ境界に触れる操作を含むことを明示。
+   - 使い分け: `unsafe` は局所的な危険区画、`effect {native}` はモジュール/関数単位の監査対象と整理。
+   - 互換条件: `@intrinsic` 付与時は `effect {native}` 必須、`@cfg` でターゲット限定を推奨。
+   - ガイド連動: `docs/guides/runtime-bridges.md` から相互参照リンクを追加。
 3. `docs/spec/3-6-core-diagnostics-audit.md` に `native.intrinsic.*` / `native.embed.*` の監査キーを定義する。
+   - キー定義: `native.intrinsic.used` / `native.intrinsic.invalid_type` / `native.intrinsic.signature_mismatch`。
+   - 埋め込み用: `native.embed.entrypoint` / `native.embed.abi_mismatch` / `native.embed.unsupported_target`。
+   - メタデータ: `AuditEnvelope.metadata` に `intrinsic.name` / `intrinsic.signature` / `embed.abi.version` を追加。
+   - 監査粒度: 関数単位・モジュール単位の記録範囲を明記する。
 4. `docs/spec/3-8-core-runtime-capability.md` に `native.intrinsic` / `native.embed` の Capability を追加する。
+   - Stage: 初期値は `Experimental` とし、昇格条件を `docs/notes/dsl-plugin-roadmap.md` に合わせて追記。
+   - 監査キー連動: Capability と監査キーの対応表を追加する。
+   - ブリッジ整合: `RuntimeBridgeAuditSpec` の key 体系と同一になるよう表記を統一する。
 
 ### フェーズB: Rust 実装 - Intrinsics
 1. `compiler/rust/frontend` に `@intrinsic` の AST/パーサ対応を追加し、型検証・診断 (`native.intrinsic.*`) を実装する。
+   - パーサ: 属性引数の文字列リテラルのみ許可し、その他は構文診断にする。
+   - AST: `Attribute::Intrinsic { name }` を追加し、ソース位置を保持する。
+   - セマンティック: `effect {native}` 未付与時は `native.intrinsic.missing_effect` を出す。
+   - 型検証: `Copy` 制約と ABI 安全型のホワイトリストを参照し、違反は `native.intrinsic.invalid_type`。
+   - テスト: 既存の `frontend` 診断テストに `@intrinsic` 成功/失敗ケースを追加。
 2. `compiler/rust/backend/llvm` に LLVM intrinsic マッピングを追加し、未対応ターゲットではポリフィルにフォールバックする。
+   - マッピング: 最小セットと拡張セットのテーブルを分離し、feature flag で切替。
+   - 検証: 期待型と IR の整合チェックを行い、`native.intrinsic.signature_mismatch` を出す。
+   - フォールバック: 未対応ターゲットでは `Core.Native` のポリフィル関数へ置換し、監査キーを記録。
+   - 最適化属性: `readonly`/`readnone` 等は許可表に基づき限定的に付与。
 3. 監査ログに `intrinsic` 名と引数型情報を記録し、`AuditEnvelope` に `native.intrinsic` メタデータを付与する。
+   - 収集点: IR 生成時に `intrinsic.name` と `intrinsic.signature` を収集する。
+   - 変換: 文字列表記を `docs/spec/3-6-core-diagnostics-audit.md` に合わせて正規化する。
+   - 出力: 既存の監査ログ形式に合わせ、`native.intrinsic.used` を必ず出力する。
 
 #### フロントエンド分解（`compiler/rust/frontend`）
 - `@intrinsic` 属性のパース追加（関数宣言のみ許可、引数は単一の文字列リテラル）。
@@ -51,22 +78,52 @@
 
 ### フェーズC: Rust 実装 - Core.Native API
 1. `compiler/rust/runtime/src` に `native` モジュールを追加し、`Core.Native` として公開する。
+   - モジュール設計: `core/native/mod.rs` を新設し、公開 API を `pub(crate)` と `pub` で分離。
+   - 安全境界: `unsafe` を最小限に閉じ込め、呼び出し側は `effect {native}` を強制。
+   - 監査連携: 各 API 呼び出しで `native.intrinsic.used` と `native.embed.entrypoint` を記録できる構造にする。
 2. 最小 API（`memcpy`/`ctpop`/`sqrt` など）を `Core.Native` から呼べるようにし、`effect {native}` を要求する。
+   - API 定義: 返却型と引数型の制約を明記し、非 `Copy` 型は拒否する。
+   - 実装: LLVM intrinsic への直接マッピングかポリフィルへ分岐する。
+   - ドキュメント: `docs/spec/3-0-core-library-overview.md` に `Core.Native` の概要を追加。
 3. `examples/native/intrinsics` を追加し、`expected/` と監査ログを整備する。
+   - サンプル内容: `sqrt` と `ctpop` を使う最小例を用意。
+   - 期待値: `expected/` に実行ログと監査ログのスナップショットを追加。
+   - シナリオ: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` と連携する ID を埋め込む。
 
 ### フェーズD: Rust 実装 - 埋め込み API
 1. `runtime/native` もしくは `compiler/rust/runtime` 配下に埋め込み用 C ABI 層（`reml_create_context` など）を実装する。
+   - ABI 方針: C99 互換で `extern "C"` の関数群を定義し、`reml_*` 命名に統一。
+   - ライフサイクル: `create`/`load`/`run`/`dispose` の最小フローを定義。
+   - 安全性: 失敗時は `Result` 相当のエラーコードを返し、監査ログに `native.embed.*` を記録。
 2. `docs/guides/runtime-bridges.md` に埋め込み API の最小利用手順を追記する。
+   - 章追加: 「埋め込み API (Phase 4)」節を追加し、C からの呼び出し例を示す。
+   - 互換性: ABI バージョンと互換性ルールを明記する。
+   - 参照: `docs/spec/3-8-core-runtime-capability.md` と相互リンクを張る。
 3. `examples/native/embedding` と `expected/` を追加し、Phase 4 シナリオへ登録する。
+   - サンプル: 最小の C ホストから `reml_run` を呼び出す例を用意。
+   - 期待値: 実行ログと監査ログを `expected/` に追加。
+   - 参照更新: シナリオ ID とログ保存先を `reports/spec-audit/ch4` の README に追記。
 
 ### フェーズE: 研究プロトタイプ（ASM / LLVM IR）
 1. `docs/notes/native-escape-hatches-research.md` の「Inline ASM」「LLVM IR」節を更新し、Rust 実装でのガード条件（feature flag / `@cfg`）を明記する。
+   - 位置づけ: Phase 4 では「設計 + ガード付き PoC」に限定することを明記。
+   - ガード: `feature = "native-unstable"` と `@cfg(target)` の併用要件を追記。
+   - 監査: `native.intrinsic.unstable_used` を追加するか検討し、必要なら TODO を残す。
 2. `compiler/rust/backend/llvm` に `feature = "native-unstable"` のプロトタイプを追加し、サンプルを `examples/native/unstable` に隔離する。
+   - 実装範囲: Inline ASM は解析のみ、LLVM IR 直書きはビルドガードで無効化。
+   - サンプル: 実行不能であることを README に明記し、監査ログのみ確認可能にする。
+   - 退避策: フィーチャ無効時に明示エラーを返し、クラッシュを防ぐ。
 
 ### フェーズF: Phase 4 回帰接続
 1. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `NATIVE-INTRINSIC-001` / `NATIVE-EMBED-001` を追加する。
+   - 追記事項: 依存 Capability、監査キー、対象ターゲットを列に追加する。
+   - 参照: `docs/plans/bootstrap-roadmap/4-0-phase4-migration.md` のマイルストーンに紐づける。
 2. `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に関連シナリオの実行手順を追記する。
+   - 手順: `examples/native/*` の実行と `expected/` 差分確認のステップを追加。
+   - 診断: `native.intrinsic.*` と `native.embed.*` のログが出ることを確認項目にする。
 3. `reports/spec-audit/ch4` にログが蓄積できるよう、実行手順と KPI を追記する。
+   - KPI: 成功率、監査キー欠落率、フォールバック発生率を追跡指標にする。
+   - 保存先: ログ命名規則と格納ディレクトリを統一する。
 
 ## タイムライン（目安）
 
