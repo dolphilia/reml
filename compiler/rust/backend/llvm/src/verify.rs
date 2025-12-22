@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::codegen::ModuleIr;
+use crate::intrinsics::IntrinsicStatus;
 use crate::target_diagnostics::TargetDiagnosticEmitter;
 use serde_json::Value;
 
@@ -152,6 +153,33 @@ impl Verifier {
         for entry in target_report.audit {
             audit.record_value(entry.key, &entry.value);
         }
+        for (key, value) in module.bridge_metadata.audit_entries() {
+            audit.record(key, value);
+        }
+        for intrinsic in &module.intrinsic_uses {
+            audit.record("native.intrinsic.used", intrinsic.name.clone());
+            audit.record("intrinsic.name", intrinsic.name.clone());
+            audit.record("intrinsic.signature", intrinsic.signature.render());
+            if intrinsic.status == IntrinsicStatus::Polyfill {
+                audit.record("native.intrinsic.polyfill", intrinsic.name.clone());
+            }
+            if intrinsic.status == IntrinsicStatus::SignatureMismatch {
+                let mut diagnostic = Diagnostic::new(
+                    "Native",
+                    "native.intrinsic.signature_mismatch",
+                    format!(
+                        "intrinsic `{}` のシグネチャが一致しません。",
+                        intrinsic.name
+                    ),
+                )
+                .with_extension("intrinsic.name", intrinsic.name.clone())
+                .with_extension("intrinsic.signature", intrinsic.signature.render());
+                if let Some(expected) = intrinsic.expected.as_ref() {
+                    diagnostic = diagnostic.with_extension("intrinsic.expected", expected.render());
+                }
+                diagnostics.push(diagnostic);
+            }
+        }
         audit.record(
             "audit.verdict",
             if diagnostics.is_empty() {
@@ -160,9 +188,6 @@ impl Verifier {
                 "fail"
             },
         );
-        for (key, value) in module.bridge_metadata.audit_entries() {
-            audit.record(key, value);
-        }
         if let Some(toolchain) = &module.windows_toolchain {
             audit.record("audit.toolchain", &toolchain.toolchain_name);
             audit.record("audit.llc_path", &toolchain.llc_path);

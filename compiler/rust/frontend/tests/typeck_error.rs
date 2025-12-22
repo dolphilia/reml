@@ -84,3 +84,28 @@ fn effect_stage_mismatch_is_serialized() {
         "JSON にステージ診断が含まれる"
     );
 }
+
+#[test]
+fn intrinsic_missing_effect_is_reported() {
+    let report = typecheck_source(r#"@intrinsic("llvm.ctpop.i64") fn pop(x: Int) = x"#);
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|entry| entry.code == "native.intrinsic.missing_effect"),
+        "native.intrinsic.missing_effect が報告される"
+    );
+}
+
+#[test]
+fn intrinsic_invalid_type_is_reported() {
+    let report =
+        typecheck_source(r#"@intrinsic("llvm.ctpop.i64") fn pop(x: Str) !{native} = x"#);
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|entry| entry.code == "native.intrinsic.invalid_type"),
+        "native.intrinsic.invalid_type が報告される"
+    );
+}

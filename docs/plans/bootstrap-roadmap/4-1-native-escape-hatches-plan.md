@@ -135,12 +135,12 @@
 - [x] `docs/spec/1-0-language-core-overview.md` と `docs/spec/3-0-core-library-overview.md` の概要追記を確認
 
 ### フェーズB: Rust 実装 - Intrinsics
-- [ ] `compiler/rust/frontend` に `@intrinsic` パース・AST・セマンティック検証を追加
-- [ ] `compiler/rust/frontend` の型検証に `native.intrinsic.invalid_type` を追加
-- [ ] `compiler/rust/backend/llvm` に LLVM intrinsic マッピングと署名検証を追加
-- [ ] 未対応ターゲットのポリフィル切替と `native.intrinsic.polyfill` 監査記録を確認
-- [ ] 監査ログに `intrinsic.name` / `intrinsic.signature` が出力されることを確認
-- [ ] `frontend` 診断テストに `@intrinsic` 成功/失敗ケースを追加
+- [x] `compiler/rust/frontend` に `@intrinsic` パース・AST・セマンティック検証を追加
+- [x] `compiler/rust/frontend` の型検証に `native.intrinsic.invalid_type` を追加
+- [x] `compiler/rust/backend/llvm` に LLVM intrinsic マッピングと署名検証を追加
+- [x] 未対応ターゲットのポリフィル切替と `native.intrinsic.polyfill` 監査記録を確認
+- [x] 監査ログに `intrinsic.name` / `intrinsic.signature` が出力されることを確認
+- [x] `frontend` 診断テストに `@intrinsic` 成功/失敗ケースを追加
 
 ### フェーズC: Rust 実装 - Core.Native API
 - [ ] `compiler/rust/runtime/src` に `core/native` モジュールを追加

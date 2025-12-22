@@ -14,9 +14,9 @@ use super::types::{BuiltinType, Type, TypeVarGen};
 use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
-    BinaryOp, Decl, DeclKind, Expr, ExprKind, FixityKind, Function, HandlerEntry, Ident, Literal,
-    LiteralKind, MatchArm, Module, ModulePath, Pattern, PatternKind, RelativeHead,
-    SlicePatternItem, Stmt, StmtKind, TypeKind,
+    Attribute, BinaryOp, Decl, DeclKind, EffectAnnotation, Expr, ExprKind, FixityKind, Function,
+    HandlerEntry, Ident, Literal, LiteralKind, MatchArm, Module, ModulePath, Pattern, PatternKind,
+    RelativeHead, SlicePatternItem, Stmt, StmtKind, TypeKind,
 };
 use crate::semantics::{mir, typed};
 use crate::span::Span;
@@ -290,6 +290,26 @@ impl TypecheckDriver {
 
             let substitution = solver.substitution().clone();
             let resolved_return = substitution.apply(&typed_body.ty);
+            if let Some(intrinsic_attr) = extract_intrinsic_attr(&function.attrs) {
+                let function_label = Some(function.name.name.clone());
+                if !effect_has_native(&function.effect) {
+                    violations.push(TypecheckViolation::intrinsic_missing_effect(
+                        intrinsic_attr.span,
+                        Some(intrinsic_attr.name.clone()),
+                        function_label.clone(),
+                    ));
+                }
+                if let Some(invalid_label) =
+                    first_intrinsic_invalid_type(&param_bindings, &resolved_return, &substitution)
+                {
+                    violations.push(TypecheckViolation::intrinsic_invalid_type(
+                        intrinsic_attr.span,
+                        Some(intrinsic_attr.name),
+                        invalid_label,
+                        function_label,
+                    ));
+                }
+            }
             let param_types = param_bindings
                 .iter()
                 .map(|binding| substitution.apply(&binding.ty))
@@ -485,6 +505,8 @@ pub enum TypecheckViolationKind {
     ControlFlowUnreachable,
     OpBuilderLevelConflict,
     OpBuilderFixityMissing,
+    IntrinsicMissingEffect,
+    IntrinsicInvalidType,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -809,6 +831,57 @@ impl TypecheckViolation {
             )],
             capability: None,
             function: name,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn intrinsic_missing_effect(span: Span, name: Option<String>, function: Option<String>) -> Self {
+        let label = name.unwrap_or_else(|| "unknown".to_string());
+        let message = format!(
+            "`@intrinsic` 関数 `{}` は `!{{native}}` を必ず指定する必要があります。",
+            label
+        );
+        Self {
+            kind: TypecheckViolationKind::IntrinsicMissingEffect,
+            code: "native.intrinsic.missing_effect",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "例: `fn sqrt(x: Int) !{native} = ...` のように効果注釈を追加してください。",
+            )],
+            capability: None,
+            function,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn intrinsic_invalid_type(
+        span: Span,
+        name: Option<String>,
+        ty_label: String,
+        function: Option<String>,
+    ) -> Self {
+        let label = name.unwrap_or_else(|| "unknown".to_string());
+        let message = format!(
+            "`@intrinsic` 関数 `{}` の型 `{}` は ABI 安全/Copy 制約に違反しています。",
+            label, ty_label
+        );
+        Self {
+            kind: TypecheckViolationKind::IntrinsicInvalidType,
+            code: "native.intrinsic.invalid_type",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "Int/Bool/Unit およびそれらのみで構成される Tuple のみ許可されます。",
+            )],
+            capability: None,
+            function,
             expected: None,
             recover: None,
             iterator_stage: None,
@@ -1198,12 +1271,14 @@ impl TypecheckViolation {
             | TypecheckViolationKind::ValueRestriction
             | TypecheckViolationKind::ImplDuplicate
             | TypecheckViolationKind::IteratorExpected
-            | TypecheckViolationKind::ControlFlowUnreachable => "type",
+            | TypecheckViolationKind::ControlFlowUnreachable
+            | TypecheckViolationKind::IntrinsicInvalidType => "type",
             TypecheckViolationKind::ResidualLeak
             | TypecheckViolationKind::StageMismatch
             | TypecheckViolationKind::IteratorStageMismatch
             | TypecheckViolationKind::PurityViolation
-            | TypecheckViolationKind::ActivePatternEffectViolation => "effects",
+            | TypecheckViolationKind::ActivePatternEffectViolation
+            | TypecheckViolationKind::IntrinsicMissingEffect => "effects",
             TypecheckViolationKind::CoreParseRecoverBranch
             | TypecheckViolationKind::OpBuilderLevelConflict
             | TypecheckViolationKind::OpBuilderFixityMissing => "parser",
@@ -3796,6 +3871,68 @@ struct ParamBinding {
     display: String,
     span: Span,
     ty: Type,
+}
+
+struct IntrinsicAttribute {
+    name: String,
+    span: Span,
+}
+
+fn extract_intrinsic_attr(attrs: &[Attribute]) -> Option<IntrinsicAttribute> {
+    for attr in attrs {
+        if attr.name.name != "intrinsic" {
+            continue;
+        }
+        if attr.args.len() != 1 {
+            continue;
+        }
+        if let ExprKind::Literal(Literal {
+            value: LiteralKind::String { value, .. },
+        }) = &attr.args[0].kind
+        {
+            return Some(IntrinsicAttribute {
+                name: value.clone(),
+                span: attr.span,
+            });
+        }
+    }
+    None
+}
+
+fn effect_has_native(effect: &Option<EffectAnnotation>) -> bool {
+    match effect {
+        Some(annotation) => annotation.tags.iter().any(|tag| tag.name == "native"),
+        None => false,
+    }
+}
+
+fn first_intrinsic_invalid_type(
+    params: &[ParamBinding],
+    return_ty: &Type,
+    substitution: &Substitution,
+) -> Option<String> {
+    for binding in params {
+        let resolved = substitution.apply(&binding.ty);
+        if !intrinsic_type_allowed(&resolved) {
+            return Some(resolved.label());
+        }
+    }
+    if !intrinsic_type_allowed(return_ty) {
+        return Some(return_ty.label());
+    }
+    None
+}
+
+fn intrinsic_type_allowed(ty: &Type) -> bool {
+    match ty {
+        Type::Builtin(BuiltinType::Int)
+        | Type::Builtin(BuiltinType::Bool)
+        | Type::Builtin(BuiltinType::Unit) => true,
+        Type::App { constructor, arguments } if constructor.as_str() == "Tuple" => arguments
+            .iter()
+            .all(|arg| intrinsic_type_allowed(arg)),
+        _ => false,
+    }
 }
 
 fn make_typed(

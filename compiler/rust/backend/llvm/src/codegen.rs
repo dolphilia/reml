@@ -3,6 +3,9 @@ use std::fmt::Write;
 
 use crate::bridge_metadata::BridgeMetadataContext;
 use crate::ffi_lowering::{FfiCallSignature, FfiLowering, LoweredFfiCall};
+use crate::intrinsics::{
+    parse_intrinsic_attribute, resolve_intrinsic_use, IntrinsicSignature, IntrinsicUse,
+};
 use crate::target_diagnostics::TargetDiagnosticContext;
 use crate::target_machine::{TargetMachine, WindowsToolchainConfig};
 use crate::type_mapping::{RemlType, TypeLayout, TypeMappingContext};
@@ -573,6 +576,7 @@ pub struct ModuleIr {
     pub functions: Vec<GeneratedFunction>,
     pub llvm_functions: Vec<LlvmFunction>,
     pub metadata: Vec<String>,
+    pub intrinsic_uses: Vec<IntrinsicUse>,
     pub windows_toolchain: Option<WindowsToolchainConfig>,
     pub target_context: TargetDiagnosticContext,
     pub bridge_metadata: BridgeMetadataContext,
@@ -597,6 +601,9 @@ impl ModuleIr {
                 self.bridge_metadata.stub_count()
             ));
         }
+        if !self.intrinsic_uses.is_empty() {
+            summary.push(format!("intrinsics: {}", self.intrinsic_uses.len()));
+        }
         self.metadata
             .iter()
             .cloned()
@@ -613,6 +620,7 @@ pub struct CodegenContext {
     functions: Vec<GeneratedFunction>,
     llvm_functions: Vec<LlvmFunction>,
     module_metadata: Vec<String>,
+    intrinsic_uses: Vec<IntrinsicUse>,
     target_context: TargetDiagnosticContext,
     bridge_metadata: BridgeMetadataContext,
     llvm_ir_builder: LlvmIrBuilder,
@@ -638,6 +646,7 @@ impl CodegenContext {
             functions: Vec::new(),
             llvm_functions: Vec::new(),
             module_metadata: Vec::new(),
+            intrinsic_uses: Vec::new(),
             target_context,
             bridge_metadata,
         }
@@ -678,6 +687,14 @@ impl CodegenContext {
             let lowered = self.ffi_lowering.lower_call(sig);
             self.bridge_metadata.record_stub(&lowered.stub_plan);
             lowered_calls.push(lowered);
+        }
+        for attr in &mir.attributes {
+            if let Some(name) = parse_intrinsic_attribute(attr) {
+                let signature = IntrinsicSignature::new(mir.params.clone(), mir.ret.clone());
+                let usage =
+                    resolve_intrinsic_use(&mir.name, &name, signature, &self.target_machine);
+                self.intrinsic_uses.push(usage);
+            }
         }
         let branch_plans = if mir.exprs.is_empty() {
             mir.match_plans.clone()
@@ -723,6 +740,7 @@ impl CodegenContext {
             functions: self.functions,
             llvm_functions: self.llvm_functions,
             metadata: self.module_metadata,
+            intrinsic_uses: self.intrinsic_uses,
             windows_toolchain: self.target_machine.windows_toolchain.clone(),
             target_context: self.target_context.clone(),
             bridge_metadata: self.bridge_metadata.clone(),

@@ -391,6 +391,7 @@ impl ParserDriver {
         }
         if let Some(module) = ast.as_ref() {
             collect_effect_handler_diagnostics(module, &mut diagnostics);
+            collect_intrinsic_attribute_diagnostics(module, &mut diagnostics);
         }
 
         (
@@ -861,6 +862,212 @@ fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<Fro
             DeclKind::Let { value, .. } | DeclKind::Var { value, .. } => record(value, diagnostics),
             _ => {}
         }
+    }
+}
+
+fn collect_intrinsic_attribute_diagnostics(
+    module: &Module,
+    diagnostics: &mut Vec<FrontendDiagnostic>,
+) {
+    fn report_intrinsic_error(
+        attr: &Attribute,
+        message: impl Into<String>,
+        diagnostics: &mut Vec<FrontendDiagnostic>,
+    ) {
+        let diagnostic = FrontendDiagnostic::new(message)
+            .with_severity(DiagnosticSeverity::Error)
+            .with_domain(DiagnosticDomain::Parser)
+            .with_code("native.intrinsic.invalid_syntax")
+            .with_recoverability(Recoverability::Recoverable)
+            .with_span(attr.span);
+        diagnostics.push(diagnostic);
+    }
+
+    fn intrinsic_literal_arg(attr: &Attribute) -> Option<&str> {
+        if attr.args.len() != 1 {
+            return None;
+        }
+        match &attr.args[0].kind {
+            ExprKind::Literal(Literal {
+                value: LiteralKind::String { value, .. },
+            }) => Some(value.as_str()),
+            _ => None,
+        }
+    }
+
+    fn validate_intrinsic_attr(
+        attr: &Attribute,
+        allow_on_target: bool,
+        target_label: &str,
+        diagnostics: &mut Vec<FrontendDiagnostic>,
+    ) {
+        if attr.name.name != "intrinsic" {
+            return;
+        }
+        if !allow_on_target {
+            report_intrinsic_error(
+                attr,
+                format!("`@intrinsic` は関数宣言にのみ付与できます（対象: {target_label}）。"),
+                diagnostics,
+            );
+            return;
+        }
+        if intrinsic_literal_arg(attr).is_none() {
+            report_intrinsic_error(
+                attr,
+                "`@intrinsic(\"llvm.sqrt.f64\")` の形式で intrinsic 名を指定してください。",
+                diagnostics,
+            );
+        }
+    }
+
+    fn validate_attrs(
+        attrs: &[Attribute],
+        allow_on_target: bool,
+        target_label: &str,
+        diagnostics: &mut Vec<FrontendDiagnostic>,
+    ) {
+        for attr in attrs {
+            validate_intrinsic_attr(attr, allow_on_target, target_label, diagnostics);
+        }
+    }
+
+    fn inspect_expr(expr: &Expr, diagnostics: &mut Vec<FrontendDiagnostic>) {
+        match &expr.kind {
+            ExprKind::Block { attrs, statements } => {
+                validate_attrs(attrs, false, "ブロック", diagnostics);
+                for stmt in statements {
+                    inspect_stmt(stmt, diagnostics);
+                }
+            }
+            ExprKind::Call { callee, args } => {
+                inspect_expr(callee, diagnostics);
+                for arg in args {
+                    inspect_expr(arg, diagnostics);
+                }
+            }
+            ExprKind::PerformCall { call } => inspect_expr(&call.argument, diagnostics),
+            ExprKind::Lambda { body, .. }
+            | ExprKind::Loop { body }
+            | ExprKind::Unsafe { body }
+            | ExprKind::Defer { body } => inspect_expr(body, diagnostics),
+            ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
+                inspect_expr(left, diagnostics);
+                inspect_expr(right, diagnostics);
+            }
+            ExprKind::Unary { expr: inner, .. }
+            | ExprKind::Propagate { expr: inner }
+            | ExprKind::Return { value: Some(inner) } => inspect_expr(inner, diagnostics),
+            ExprKind::Break { value } => {
+                if let Some(inner) = value {
+                    inspect_expr(inner, diagnostics);
+                }
+            }
+            ExprKind::Return { value: None } | ExprKind::Continue => {}
+            ExprKind::FieldAccess { target, .. }
+            | ExprKind::TupleAccess { target, .. }
+            | ExprKind::Index { target, .. } => inspect_expr(target, diagnostics),
+            ExprKind::IfElse {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                inspect_expr(condition, diagnostics);
+                inspect_expr(then_branch, diagnostics);
+                if let Some(branch) = else_branch {
+                    inspect_expr(branch, diagnostics);
+                }
+            }
+            ExprKind::Match { target, arms } => {
+                inspect_expr(target, diagnostics);
+                for arm in arms {
+                    if let Some(guard) = &arm.guard {
+                        inspect_expr(guard, diagnostics);
+                    }
+                    inspect_expr(&arm.body, diagnostics);
+                }
+            }
+            ExprKind::While { condition, body } => {
+                inspect_expr(condition, diagnostics);
+                inspect_expr(body, diagnostics);
+            }
+            ExprKind::For { start, end, .. } => {
+                inspect_expr(start, diagnostics);
+                inspect_expr(end, diagnostics);
+            }
+            ExprKind::Assign { target, value } => {
+                inspect_expr(target, diagnostics);
+                inspect_expr(value, diagnostics);
+            }
+            ExprKind::Literal(_)
+            | ExprKind::FixityLiteral(_)
+            | ExprKind::Identifier(_)
+            | ExprKind::ModulePath(_)
+            | ExprKind::Handle { .. } => {}
+        }
+    }
+
+    fn inspect_stmt(stmt: &Stmt, diagnostics: &mut Vec<FrontendDiagnostic>) {
+        match &stmt.kind {
+            StmtKind::Decl { decl } => inspect_decl(decl, diagnostics),
+            StmtKind::Expr { expr } | StmtKind::Defer { expr } => inspect_expr(expr, diagnostics),
+            StmtKind::Assign { target, value } => {
+                inspect_expr(target, diagnostics);
+                inspect_expr(value, diagnostics);
+            }
+        }
+    }
+
+    fn inspect_decl(decl: &Decl, diagnostics: &mut Vec<FrontendDiagnostic>) {
+        validate_attrs(&decl.attrs, false, "宣言", diagnostics);
+        match &decl.kind {
+            DeclKind::Extern { functions, .. } => {
+                for func in functions {
+                    validate_attrs(&func.attrs, false, "extern 関数", diagnostics);
+                }
+            }
+            DeclKind::Handler(handler) => {
+                for entry in &handler.entries {
+                    if let HandlerEntry::Operation { attrs, body, .. } = entry {
+                        validate_attrs(attrs, false, "handler operation", diagnostics);
+                        inspect_expr(body, diagnostics);
+                    }
+                }
+            }
+            DeclKind::Conductor(conductor) => {
+                if let Some(exec) = &conductor.execution {
+                    inspect_expr(&exec.body, diagnostics);
+                }
+                if let Some(monitor) = &conductor.monitoring {
+                    inspect_expr(&monitor.body, diagnostics);
+                }
+            }
+            DeclKind::Let { value, .. } | DeclKind::Var { value, .. } => {
+                inspect_expr(value, diagnostics);
+            }
+            DeclKind::Effect(effect) => {
+                for op in &effect.operations {
+                    validate_attrs(&op.attrs, false, "effect operation", diagnostics);
+                    inspect_expr(&op.body, diagnostics);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    if let Some(header) = &module.header {
+        validate_attrs(&header.attrs, false, "モジュールヘッダ", diagnostics);
+    }
+    for function in &module.functions {
+        validate_attrs(&function.attrs, true, "関数", diagnostics);
+        inspect_expr(&function.body, diagnostics);
+    }
+    for active in &module.active_patterns {
+        validate_attrs(&active.attrs, false, "Active Pattern", diagnostics);
+        inspect_expr(&active.body, diagnostics);
+    }
+    for decl in &module.decls {
+        inspect_decl(decl, diagnostics);
     }
 }
 

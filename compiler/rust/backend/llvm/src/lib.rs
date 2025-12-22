@@ -8,6 +8,7 @@ pub mod bridge_metadata;
 pub mod codegen;
 pub mod ffi_lowering;
 pub mod integration;
+pub mod intrinsics;
 pub mod runtime_link;
 pub mod target_diagnostics;
 pub mod target_machine;
@@ -30,4 +31,5 @@ pub use target_machine::{
     Triple, WindowsToolchainConfig,
 };
 pub use type_mapping::{RemlType, TypeLayout, TypeMappingContext};
+pub use intrinsics::{IntrinsicSignature, IntrinsicStatus, IntrinsicUse};
 pub use verify::{AuditEntry, AuditLog, Diagnostic, VerificationResult, Verifier};
