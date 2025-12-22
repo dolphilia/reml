@@ -20,6 +20,11 @@
 | **エンコーディング** | `Core.Config` (JSON/TOML), Base64 in Text | `json`, `csv`, `base64` | `encoding/json`, `encoding/csv` | `serde` (crate), `base64` (crate) |
 | **日付/時間** | `Core.Numeric`/`Core.Time` | `datetime`, `time`, `zoneinfo` | `time` | `std::time`, `chrono` (crate) |
 | **数学** | `Core.Numeric` (基本のみ) | `math`, `random`, `decimal` | `math`, `math/rand` | `std` (basic), `rand` (crate) |
+| **CLI/ターミナル** | **欠落** | `argparse`, `readline`, `shlex` | `flag`, `bufio` | `clap`, `rustyline` (crates) |
+| **ファイルシステム補助** | **欠落** | `glob`, `pathlib`, `tempfile`, `watchdog` | `path/filepath`, `io/fs` | `walkdir`, `notify`, `tempfile` (crates) |
+| **観測/ロギング** | `Core.Diagnostics` (重厚) | `logging`, `tracing` | `log`, `expvar` | `log`, `tracing` (crates) |
+| **バイナリ/シリアライズ** | **欠落** | `pickle`, `struct`, `msgpack` | `encoding/gob`, `encoding/binary` | `serde`, `bincode`, `prost` (crates) |
+| **テスト/検証** | **欠落** | `unittest`, `pytest` (外部) | `testing` | `std::test`, `proptest` (crates) |
 
 ## 3. ギャップ分析
 
@@ -58,6 +63,33 @@
 ### 3.6 データベース (`Core.Sql`)
 **ステータス**: 欠落。
 **要件**: 完全なドライバは通常外部にありますが、バックエンドを交換可能にするための標準インターフェース（Goの `database/sql` や Javaの JDBC のようなもの）が必要です。
+
+### 3.7 CLI/ターミナル (`Core.Cli`, `Core.Terminal`)
+**ステータス**: 欠落。
+**要件**: 日常的なツールやサーバー運用のために必須。CLI と対話入力は「言語の実用性」を左右するため、`Core.Diagnostics` と連携した一貫した UX が必要。
+- **引数/サブコマンド**: `--help` 自動生成、サブコマンド、バリデーション。
+- **プロンプト/補完**: 履歴、行編集、TTY 判定。
+- **出力整形**: 色、幅、テーブル、プログレス表示。
+
+### 3.8 ファイルシステム補助 (`Core.Fs`)
+**ステータス**: 欠落。
+**要件**: 多数のファイルを扱うツールやビルドを支える基盤。
+- **探索/グロブ**: `walk`, `glob`, `ignore` 連携。
+- **テンポラリ**: `TempDir`, `TempFile`。
+- **監視**: 変更検知 (`watch`) を `Core.Async` へストリーム接続。
+
+### 3.9 観測/ロギング (`Core.Log`, `Core.Metrics`, `Core.Trace`)
+**ステータス**: `Core.Diagnostics` はあるが、アプリ向けの簡易 API が不足。
+**要件**: 実運用での可観測性を確保し、監査ポリシーと衝突しない軽量 API を提供する。
+- **Logging**: 低コストのレベル別ログ。
+- **Metrics**: カウンタ、ゲージ、ヒストグラム。
+- **Tracing**: リクエスト単位のスパンと相関 ID。
+
+### 3.10 バイナリ/シリアライズ (`Core.Serialization`)
+**ステータス**: 欠落。
+**要件**: RPC、キャッシュ、IPC に不可欠。`Core.Encoding` との責務分離を前提にする。
+- **フォーマット**: CBOR、MessagePack、Bincode、Protobuf（後者はオプションでもよい）。
+- **方針**: `Core.Data` のスキーマと連携しつつ、ストリーミング API を提供する。
 
 ## 4. 標準ライブラリ拡張の提案
 
@@ -106,6 +138,41 @@ Reml 標準ライブラリトラックに以下のモジュールを追加する
 - 対数 (`log`, `ln`)。
 - 定数 (`PI`, `E`)。
 - PRNG (非暗号ランダム) を `Core.Math.Random` に。
+
+### 4.7 `Core.Cli`
+**効果**: `@pure`（解析）/ `effect {io.console}`（実行支援）
+**機能**:
+- `ArgSpec`, `CommandSpec`, `ArgValue` による宣言的な引数定義。
+- `parse_args`, `render_help`, `validate_args` の分離。
+- `Core.Diagnostics` との統合エラー表示。
+
+### 4.8 `Core.Terminal`
+**効果**: `effect {io.console}`
+**機能**:
+- 文字装飾、幅計測、色/スタイル。
+- `read_line`, `read_password`, `prompt_select`。
+- TTY 判定や非 TTY 時のフォールバック。
+
+### 4.9 `Core.Fs`
+**効果**: `effect {io, system}` / `effect {io.async}`（監視）
+**機能**:
+- `walk`, `glob`, `copy_tree`。
+- `TempDir`, `TempFile` と安全な自動削除ポリシー。
+- `watch(path) -> Stream<FsEvent>` を `Core.Async` と接続。
+
+### 4.10 `Core.Observability`
+**効果**: `effect {diagnostic, audit}`（既定）/ `effect {io}`（外部出力）
+**サブモジュール**:
+- `Core.Log`: 7.2 の簡易 API を標準化。
+- `Core.Metrics`: `counter`, `gauge`, `histogram`。
+- `Core.Trace`: `Span`, `TraceId` を `Core.Diagnostics` へ橋渡し。
+
+### 4.11 `Core.Serialization`
+**効果**: `@pure` / `effect {io}`（ストリーミング）
+**サブモジュール**:
+- `Core.Serialization.Cbor`, `Core.Serialization.MessagePack`。
+- `Core.Serialization.Bincode`（高速バイナリ）。
+- `Core.Serialization.Protobuf`（オプション、Stage 管理前提）。
 
 ## 5. 実装戦略
 
@@ -160,3 +227,19 @@ Reml 標準ライブラリトラックに以下のモジュールを追加する
 **要件**: 長時間実行されるサーバーアプリケーション（デーモン）の実装サポート。
 - **機能**: PIDファイル管理、デーモン化（ダブルフォーク等）、シグナルハンドリングの簡易ラッパー、正常なシャットダウンフック。
 - **位置づけ**: `Core.System` のサブモジュールとして検討。
+
+### 7.5 `Core.Test` (テスト/検証ハーネス)
+**ステータス**: 欠落。
+**要件**: 標準テストの基盤を最小限提供し、`Core.Diagnostics` と整合させる。
+- **機能**: `test`, `expect`, `assert_eq`、フィクスチャのスコープ管理。
+- **拡張**: property-based testing は `Core.Test.Property` として段階導入。
+
+### 7.6 エコシステムで頻出の補助ライブラリ整理
+他言語で「ほぼ標準」扱いになっている拡張ライブラリを整理し、標準化/準標準化候補を抽出する。
+- **HTTP/ネットワーク**: Python `requests`、Go `net/http`、Rust `reqwest` に相当。
+- **シリアライズ**: Rust `serde`、Go `encoding/json` に相当。
+- **CLI**: Rust `clap`、Go `cobra` に相当。
+- **ロギング/トレーシング**: Rust `tracing`、Go `zap` に相当。
+- **設定/環境**: Rust `config`、Go `viper` に相当（`Core.Config` と整合）。
+
+> **調査メモ**: `Core.Diagnostics` との責務境界は [3-6 Core Diagnostics & Audit](../spec/3-6-core-diagnostics-audit.md) を参照。`Core.Encoding` と `Core.Data` の切り分けは [3-7 Core Config & Data](../spec/3-7-core-config-data.md) に整合させる。`Core.Async` との連携は [3-9 Core Async](../spec/3-9-core-async-ffi-unsafe.md) を参照する。
