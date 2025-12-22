@@ -12,6 +12,7 @@ Reml 仕様で紹介されるサンプル実装を集約しています。元々
 - `core_diagnostics/`: `Core.Diagnostics` の監査ログ（PipelineStarted/PipelineCompleted）を再現する最小ケース
 - `dsl_paradigm/`: `Core.Dsl.*` パラダイムキットの参照 DSL（Mini-Ruby / Mini-Erlang / Mini-VM）
 - `language-impl-comparison/`: 各種小規模言語実装と比較調査資料
+- `native/`: `Core.Native` の intrinsic/埋め込み API サンプル
 - `spec_core/`: Chapter 1 BNF に沿った最小 `.reml` 入力（Phase 4 spec-core スイート）
 - `practical/`: Chapter 3 の実務シナリオと監査ログを `scenario_id` 単位で整理した Phase 4 practical スイート
 

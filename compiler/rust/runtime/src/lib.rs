@@ -16,6 +16,7 @@ pub mod diagnostics;
 pub mod ffi;
 pub mod io;
 pub mod lsp;
+pub mod native;
 #[cfg(feature = "core_numeric")]
 pub mod numeric;
 pub mod parse;

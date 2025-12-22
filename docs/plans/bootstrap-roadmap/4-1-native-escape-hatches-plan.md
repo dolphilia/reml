@@ -143,10 +143,10 @@
 - [x] `frontend` 診断テストに `@intrinsic` 成功/失敗ケースを追加
 
 ### フェーズC: Rust 実装 - Core.Native API
-- [ ] `compiler/rust/runtime/src` に `core/native` モジュールを追加
-- [ ] `Core.Native` の最小 API（`memcpy`/`ctpop`/`sqrt`）を実装
-- [ ] `effect {native}` が必須になることを確認
-- [ ] `examples/native/intrinsics` と `expected/` を整備
+- [x] `compiler/rust/runtime/src` に `core/native` モジュールを追加
+- [x] `Core.Native` の最小 API（`memcpy`/`ctpop`/`sqrt`）を実装
+- [x] `effect {native}` が必須になることを確認
+- [x] `examples/native/intrinsics` と `expected/` を整備
 - [x] `docs/spec/3-0-core-library-overview.md` に概要を追記
 
 ### フェーズD: Rust 実装 - 埋め込み API

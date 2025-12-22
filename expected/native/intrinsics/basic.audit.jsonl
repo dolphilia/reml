@@ -1,0 +1,2 @@
+{"scenario":"examples/native/intrinsics/basic.reml","metadata":{"native.intrinsic.used":true,"intrinsic.name":"llvm.sqrt.f64","intrinsic.signature":"(f64) -> f64"}}
+{"scenario":"examples/native/intrinsics/basic.reml","metadata":{"native.intrinsic.used":true,"intrinsic.name":"llvm.ctpop.i64","intrinsic.signature":"(i64) -> i64"}}
