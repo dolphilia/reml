@@ -141,6 +141,7 @@ make clean
 runtime/native/
 ├── include/
 │   ├── reml_runtime.h     # ランタイム API 定義
+│   ├── reml_embed.h       # 埋め込み API 定義
 │   ├── reml_platform.h    # プラットフォーム判定マクロ
 │   ├── reml_atomic.h      # アトミック操作互換レイヤー
 │   └── reml_os.h          # ファイル/スレッド抽象化 API

@@ -85,6 +85,48 @@ fn load_release_note(path: Path, audit: AuditSink) -> Result<Bytes, IoError> =
 - 代表例として `examples/core_diagnostics/constraint_graph/simple_chain.reml` と `examples/core_diagnostics/output/simple_chain-{constraint_graph.json,dot,svg}` を保管している。Runtime Bridge/TypeChecker 雙方で再利用する場合は `README.md` に記載した手順で JSON → DOT/SVG を再生成し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Telemetry KPI に紐付ける。
 - Graphviz で生成した SVG は `docs/spec/3-6-core-diagnostics-audit.md` や `docs/guides/runtime-bridges.md` の図版差し替えに使用し、Stage/Audit の条件が変わった場合は Run ID と `examples/core_diagnostics/output/` のファイルを揃えてから `docs/notes/` に追記する。`dot` 実行時には `graph_name`（例: `SimpleChain`）を指定し、CI でも同じ名前空間が使われるよう統一する。
 
+### 1.8 埋め込み API (Phase 4)
+
+- `runtime/native/include/reml_embed.h` の C ABI を利用し、`reml_create_context` → `reml_load_module` → `reml_run` → `reml_dispose_context` の最小フローを採用する。
+- `native.embed.entrypoint` と `embed.abi.version` は **成功時も必ず** 監査ログに出力し、ABI 不一致 (`native.embed.abi_mismatch`) と未対応ターゲット (`native.embed.unsupported_target`) は Error として記録する。
+- ABI 互換性は `docs/spec/3-8-core-runtime-capability.md` の `native.embed` Stage に従い、実験段階では `REML_EMBED_STATUS_ABI_MISMATCH` / `REML_EMBED_STATUS_UNSUPPORTED_TARGET` を利用して早期失敗させる。
+
+```c
+#include "reml_embed.h"
+#include <stdio.h>
+#include <string.h>
+
+static const char* safe_error(reml_embed_context_t* context) {
+    const char* message = reml_last_error(context);
+    return message ? message : "unknown error";
+}
+
+int main(void) {
+    const char* abi_version = "0.1.0";
+    const char* source = "module Embed.Sample\n\nfn main() -> Str { \"ok\" }";
+    reml_embed_context_t* ctx = NULL;
+
+    if (reml_create_context(abi_version, &ctx) != REML_EMBED_STATUS_OK) {
+        fprintf(stderr, "create failed: %s\n", safe_error(ctx));
+        return 1;
+    }
+    if (reml_load_module(ctx, (const unsigned char*)source, strlen(source)) != REML_EMBED_STATUS_OK) {
+        fprintf(stderr, "load failed: %s\n", safe_error(ctx));
+        reml_dispose_context(ctx);
+        return 1;
+    }
+    if (reml_run(ctx, "main") != REML_EMBED_STATUS_OK) {
+        fprintf(stderr, "run failed: %s\n", safe_error(ctx));
+        reml_dispose_context(ctx);
+        return 1;
+    }
+    reml_dispose_context(ctx);
+    return 0;
+}
+```
+
+> 参照: `docs/spec/3-8-core-runtime-capability.md` の `native.embed` と `docs/spec/3-6-core-diagnostics-audit.md` の監査キー表。
+
 ## 2. ホットリロード
 
 ```reml

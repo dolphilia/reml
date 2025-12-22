@@ -1,6 +1,6 @@
 //! Core.Async と Core.Dsl.Actor の接続点。
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::dsl::actor::{ActorDefinition, ActorError, ActorErrorKind, MailboxBridge, SupervisionBridge};
 
@@ -39,18 +39,31 @@ where
                 let (tx, rx) = std::sync::mpsc::channel::<Message>();
                 let def = Arc::new(def);
                 let send_def = Arc::clone(&def);
-                let send_tx = tx.clone();
+                let send_tx = Arc::new(Mutex::new(tx));
                 let send_fn = Arc::new(move |message: Message| -> ActorResult<()> {
                     let copy = message.clone();
                     send_def.handle(message)?;
-                    send_tx.send(copy).map_err(|_| {
+                    let tx = send_tx.lock().map_err(|_| {
+                        ActorError::new(
+                            ActorErrorKind::MailboxUnavailable,
+                            "actor mailbox unavailable",
+                        )
+                    })?;
+                    tx.send(copy).map_err(|_| {
                         ActorError::new(
                             ActorErrorKind::MailboxUnavailable,
                             "actor mailbox unavailable",
                         )
                     })
                 });
+                let recv_rx = Arc::new(Mutex::new(rx));
                 let recv_fn = Arc::new(move || -> ActorResult<Message> {
+                    let rx = recv_rx.lock().map_err(|_| {
+                        ActorError::new(
+                            ActorErrorKind::MailboxUnavailable,
+                            "actor mailbox unavailable",
+                        )
+                    })?;
                     rx.recv().map_err(|_| {
                         ActorError::new(
                             ActorErrorKind::MailboxUnavailable,

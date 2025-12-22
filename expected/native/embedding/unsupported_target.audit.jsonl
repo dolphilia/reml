@@ -1,0 +1,1 @@
+{"scenario":"examples/native/embedding/unsupported_target.c","metadata":{"native.embed.entrypoint":"reml_create_context","embed.abi.version":"0.1.0","native.embed.unsupported_target":true}}

@@ -11,6 +11,7 @@ pub mod config;
 pub mod data;
 pub mod dsl;
 pub mod doc;
+pub mod embedding;
 #[cfg(feature = "metrics")]
 pub mod diagnostics;
 pub mod ffi;

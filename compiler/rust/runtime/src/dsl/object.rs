@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-use serde_json::{Map as JsonMap, Value};
+use serde_json::{Map as JsonMap, Value as JsonValue};
 
 use crate::dsl::{emit_audit, AuditPayload, AUDIT_DSL_OBJECT_DISPATCH};
 use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
@@ -20,23 +20,24 @@ pub enum DispatchKind {
 }
 
 /// メソッド本体。
-pub type MethodEntry<Value> = fn(ObjectHandle<Value>, Vec<Value>) -> DispatchResult<Value>;
+pub type MethodEntry<Payload> =
+    fn(ObjectHandle<Payload>, Vec<Payload>) -> DispatchResult<Payload>;
 
 /// ディスパッチテーブル。
 #[derive(Clone)]
-pub struct DispatchTable<Value> {
+pub struct DispatchTable<Payload> {
     pub kind: DispatchKind,
     pub name: String,
-    pub parent: Option<Arc<DispatchTable<Value>>>,
-    pub methods: HashMap<MethodId, MethodEntry<Value>>,
+    pub parent: Option<Arc<DispatchTable<Payload>>>,
+    pub methods: HashMap<MethodId, MethodEntry<Payload>>,
 }
 
-impl<Value> DispatchTable<Value> {
+impl<Payload> DispatchTable<Payload> {
     pub fn new(
         kind: DispatchKind,
         name: impl Into<String>,
-        parent: Option<Arc<DispatchTable<Value>>>,
-        methods: HashMap<MethodId, MethodEntry<Value>>,
+        parent: Option<Arc<DispatchTable<Payload>>>,
+        methods: HashMap<MethodId, MethodEntry<Payload>>,
     ) -> Self {
         Self {
             kind,
@@ -55,9 +56,9 @@ pub struct ObjectHandle<Value> {
     pub shape_id: u64,
 }
 
-impl<Value> ObjectHandle<Value> {
+impl<Payload> ObjectHandle<Payload> {
     /// GC と接続する場合は `payload` に `GcRef<T>` を入れ、`RootScope` を保持すること。
-    pub fn new(table: Arc<DispatchTable<Value>>, payload: Value, shape_id: u64) -> Self {
+    pub fn new(table: Arc<DispatchTable<Payload>>, payload: Payload, shape_id: u64) -> Self {
         Self {
             table,
             payload,
@@ -65,9 +66,9 @@ impl<Value> ObjectHandle<Value> {
         }
     }
 
-    pub fn map_payload<Next>(self, f: impl FnOnce(Value) -> Next) -> ObjectHandle<Next> {
-        ObjectHandle {
-            table: Arc::clone(&self.table),
+    pub fn map_payload(self, f: impl FnOnce(Payload) -> Payload) -> Self {
+        Self {
+            table: self.table,
             payload: f(self.payload),
             shape_id: self.shape_id,
         }
@@ -83,20 +84,20 @@ pub struct MethodCacheKey {
 
 /// 最小のメソッドキャッシュ。
 #[derive(Default)]
-pub struct MethodCache<Value> {
-    entries: HashMap<MethodCacheKey, MethodEntry<Value>>,
+pub struct MethodCache<Payload> {
+    entries: HashMap<MethodCacheKey, MethodEntry<Payload>>,
 }
 
-impl<Value> MethodCache<Value> {
-    pub fn lookup(&self, key: &MethodCacheKey) -> Option<MethodEntry<Value>> {
+impl<Payload> MethodCache<Payload> {
+    pub fn lookup(&self, key: &MethodCacheKey) -> Option<MethodEntry<Payload>> {
         self.entries.get(key).cloned()
     }
 
-    pub fn record(&mut self, key: MethodCacheKey, entry: MethodEntry<Value>) {
+    pub fn record(&mut self, key: MethodCacheKey, entry: MethodEntry<Payload>) {
         self.entries.insert(key, entry);
     }
 
-    pub fn invalidate(&mut self, _table: &DispatchTable<Value>) {
+    pub fn invalidate(&mut self, _table: &DispatchTable<Payload>) {
         self.entries.clear();
     }
 }
@@ -131,19 +132,19 @@ pub type DispatchResult<T> = Result<T, DispatchError>;
 pub struct Object;
 
 impl Object {
-    pub fn call<Value>(
-        obj: ObjectHandle<Value>,
+    pub fn call<Payload>(
+        obj: ObjectHandle<Payload>,
         name: &str,
-        args: Vec<Value>,
-        cache: Option<&mut MethodCache<Value>>,
-    ) -> DispatchResult<Value> {
+        args: Vec<Payload>,
+        cache: Option<&mut MethodCache<Payload>>,
+    ) -> DispatchResult<Payload> {
         let mut payload = AuditPayload::new(AUDIT_DSL_OBJECT_DISPATCH);
-        payload.insert("dsl.object.method", Value::String(name.to_string()));
-        payload.insert("dsl.object.shape_id", Value::from(obj.shape_id));
-        payload.insert("dsl.object.table", Value::String(obj.table.name.clone()));
+        payload.insert("dsl.object.method", JsonValue::String(name.to_string()));
+        payload.insert("dsl.object.shape_id", JsonValue::from(obj.shape_id));
+        payload.insert("dsl.object.table", JsonValue::String(obj.table.name.clone()));
         payload.insert(
             "dsl.object.kind",
-            Value::String(format!("{:?}", obj.table.kind)),
+            JsonValue::String(format!("{:?}", obj.table.kind)),
         );
         emit_audit(payload);
 
@@ -168,20 +169,26 @@ impl Object {
         invoke_entry(entry, obj, args)
     }
 
-    pub fn lookup<Value>(table: &DispatchTable<Value>, name: &str) -> Option<MethodEntry<Value>> {
+    pub fn lookup<Payload>(
+        table: &DispatchTable<Payload>,
+        name: &str,
+    ) -> Option<MethodEntry<Payload>> {
         lookup(table, name)
     }
 
-    pub fn class_builder<Value>(name: impl Into<String>) -> ClassBuilder<Value> {
+    pub fn class_builder<Payload>(name: impl Into<String>) -> ClassBuilder<Payload> {
         ClassBuilder::new(name)
     }
 
-    pub fn prototype_builder<Value>(name: impl Into<String>) -> PrototypeBuilder<Value> {
+    pub fn prototype_builder<Payload>(name: impl Into<String>) -> PrototypeBuilder<Payload> {
         PrototypeBuilder::new(name)
     }
 }
 
-fn lookup<Value>(table: &DispatchTable<Value>, name: &str) -> Option<MethodEntry<Value>> {
+fn lookup<Payload>(
+    table: &DispatchTable<Payload>,
+    name: &str,
+) -> Option<MethodEntry<Payload>> {
     if let Some(entry) = table.methods.get(name) {
         return Some(entry.clone());
     }
@@ -191,11 +198,11 @@ fn lookup<Value>(table: &DispatchTable<Value>, name: &str) -> Option<MethodEntry
         .and_then(|parent| lookup(parent, name))
 }
 
-fn invoke_entry<Value>(
-    entry: MethodEntry<Value>,
-    obj: ObjectHandle<Value>,
-    args: Vec<Value>,
-) -> DispatchResult<Value> {
+fn invoke_entry<Payload>(
+    entry: MethodEntry<Payload>,
+    obj: ObjectHandle<Payload>,
+    args: Vec<Payload>,
+) -> DispatchResult<Payload> {
     catch_unwind(AssertUnwindSafe(|| entry(obj, args))).unwrap_or_else(|_| {
         Err(DispatchError::new(
             DispatchErrorKind::RuntimeFailure,
@@ -212,7 +219,7 @@ pub struct ClassBuilder<Value> {
     methods: HashMap<MethodId, MethodEntry<Value>>,
 }
 
-impl<Value> ClassBuilder<Value> {
+impl<Payload> ClassBuilder<Payload> {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -221,30 +228,30 @@ impl<Value> ClassBuilder<Value> {
         }
     }
 
-    pub fn method(mut self, name: impl Into<String>, entry: MethodEntry<Value>) -> Self {
+    pub fn method(mut self, name: impl Into<String>, entry: MethodEntry<Payload>) -> Self {
         self.methods.insert(name.into(), entry);
         self
     }
 
-    pub fn extend(mut self, parent: Arc<DispatchTable<Value>>) -> Self {
+    pub fn extend(mut self, parent: Arc<DispatchTable<Payload>>) -> Self {
         self.parent = Some(parent);
         self
     }
 
-    pub fn build(self) -> DispatchTable<Value> {
+    pub fn build(self) -> DispatchTable<Payload> {
         DispatchTable::new(DispatchKind::ClassBased, self.name, self.parent, self.methods)
     }
 }
 
 /// プロトタイプビルダー。
 #[derive(Clone)]
-pub struct PrototypeBuilder<Value> {
+pub struct PrototypeBuilder<Payload> {
     name: String,
-    parent: Option<Arc<DispatchTable<Value>>>,
-    methods: HashMap<MethodId, MethodEntry<Value>>,
+    parent: Option<Arc<DispatchTable<Payload>>>,
+    methods: HashMap<MethodId, MethodEntry<Payload>>,
 }
 
-impl<Value> PrototypeBuilder<Value> {
+impl<Payload> PrototypeBuilder<Payload> {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -253,17 +260,17 @@ impl<Value> PrototypeBuilder<Value> {
         }
     }
 
-    pub fn method(mut self, name: impl Into<String>, entry: MethodEntry<Value>) -> Self {
+    pub fn method(mut self, name: impl Into<String>, entry: MethodEntry<Payload>) -> Self {
         self.methods.insert(name.into(), entry);
         self
     }
 
-    pub fn delegate(mut self, parent: Arc<DispatchTable<Value>>) -> Self {
+    pub fn delegate(mut self, parent: Arc<DispatchTable<Payload>>) -> Self {
         self.parent = Some(parent);
         self
     }
 
-    pub fn build(self) -> DispatchTable<Value> {
+    pub fn build(self) -> DispatchTable<Payload> {
         DispatchTable::new(
             DispatchKind::PrototypeBased,
             self.name,

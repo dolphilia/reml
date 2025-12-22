@@ -2,7 +2,7 @@
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-use serde_json::{Map as JsonMap, Value};
+use serde_json::{Map as JsonMap, Value as JsonValue};
 
 use crate::dsl::{emit_audit, AuditPayload, AUDIT_DSL_VM_EXECUTE};
 use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
@@ -15,8 +15,8 @@ pub struct Bytecode<Op> {
 
 /// VM 状態。
 #[derive(Debug, Clone)]
-pub struct VmState<Value> {
-    pub stack: Vec<Value>,
+pub struct VmState<Slot> {
+    pub stack: Vec<Slot>,
     pub frames: Vec<CallFrame>,
 }
 
@@ -88,12 +88,12 @@ pub struct VmCore;
 pub struct Vm;
 
 impl VmCore {
-    pub fn step<Op: Clone, Value>(
+    pub fn step<'a, Op: Clone, Slot>(
         code: &Bytecode<Op>,
-        mut state: VmState<Value>,
-        exec: &mut impl FnMut(VmState<Value>, Op) -> VmResult<VmState<Value>>,
-        mut trace: Option<&mut dyn FnMut(VmTraceEvent<Op>)>,
-    ) -> VmResult<(VmState<Value>, bool)> {
+        mut state: VmState<Slot>,
+        exec: &mut impl FnMut(VmState<Slot>, Op) -> VmResult<VmState<Slot>>,
+        trace: Option<*mut (dyn FnMut(VmTraceEvent<Op>) + 'a)>,
+    ) -> VmResult<(VmState<Slot>, bool)> {
         let ip = state.frames.last().map(|frame| frame.ip).unwrap_or(0);
         let op = match code.ops.get(ip).cloned() {
             Some(op) => op,
@@ -105,12 +105,15 @@ impl VmCore {
             state.frames.push(CallFrame { ip });
         }
 
-        if let Some(trace_fn) = trace.as_mut() {
-            (*trace_fn)(VmTraceEvent { ip, op: op.clone() });
+        if let Some(trace_fn) = trace {
+            // 呼び出し側で借用済みのトレース関数を再利用する。
+            unsafe {
+                (&mut *trace_fn)(VmTraceEvent { ip, op: op.clone() });
+            }
         }
 
         let mut payload = AuditPayload::new(AUDIT_DSL_VM_EXECUTE);
-        payload.insert("dsl.vm.ip", Value::from(ip as u64));
+        payload.insert("dsl.vm.ip", JsonValue::from(ip as u64));
         emit_audit(payload);
 
         let state = catch_unwind(AssertUnwindSafe(|| exec(state, op))).unwrap_or_else(|_| {
@@ -122,14 +125,16 @@ impl VmCore {
         Ok((state, true))
     }
 
-    pub fn run<Op: Clone, Value>(
+    pub fn run<'a, Op: Clone, Slot>(
         code: Bytecode<Op>,
-        mut state: VmState<Value>,
-        mut exec: impl FnMut(VmState<Value>, Op) -> VmResult<VmState<Value>>,
-        mut trace: Option<&mut dyn FnMut(VmTraceEvent<Op>)>,
-    ) -> VmResult<VmState<Value>> {
+        mut state: VmState<Slot>,
+        mut exec: impl FnMut(VmState<Slot>, Op) -> VmResult<VmState<Slot>>,
+        trace: Option<&'a mut dyn FnMut(VmTraceEvent<Op>)>,
+    ) -> VmResult<VmState<Slot>> {
+        let trace_ptr: Option<*mut (dyn FnMut(VmTraceEvent<Op>) + 'a)> =
+            trace.map(|trace_fn| trace_fn as *mut _);
         loop {
-            let (next_state, advanced) = VmCore::step(&code, state, &mut exec, trace.as_deref_mut())?;
+            let (next_state, advanced) = VmCore::step(&code, state, &mut exec, trace_ptr)?;
             state = next_state;
             if !advanced {
                 break;
@@ -144,11 +149,11 @@ impl Vm {
         BytecodeBuilder::new()
     }
 
-    pub fn run<Op: Clone, Value>(
+    pub fn run<Op: Clone, Slot>(
         code: Bytecode<Op>,
-        state: VmState<Value>,
-        exec: impl FnMut(VmState<Value>, Op) -> VmResult<VmState<Value>>,
-    ) -> VmResult<VmState<Value>> {
+        state: VmState<Slot>,
+        exec: impl FnMut(VmState<Slot>, Op) -> VmResult<VmState<Slot>>,
+    ) -> VmResult<VmState<Slot>> {
         VmCore::run(code, state, exec, None)
     }
 }

@@ -46,3 +46,14 @@ Phase 4 の `.reml` シナリオを自動実行し、`docs/plans/bootstrap-roadm
   - stdout の先頭 1 行と `expected/` との一致確認
   - `run_id` が含まれる場合は比較対象から除外する旨を記載
 - `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `resolution_notes` には、該当ログファイル名と実行コマンドを併記する。
+
+## Native Escape Hatches 実行ログ（Phase 4）
+
+埋め込み API の回帰シナリオは、以下のログに実行結果を記録します。
+
+- 保存先: `reports/spec-audit/ch4/logs/native-embed-*.md`
+- 記録項目:
+  - 実行したホストアプリ（例: `examples/native/embedding/basic.c`）と ABI バージョン
+  - `native.embed.entrypoint` / `embed.abi.version` の監査キーが出力されたこと
+  - エラー時は `native.embed.abi_mismatch` / `native.embed.unsupported_target` の有無
+  - `expected/native/embedding/` との差分確認結果

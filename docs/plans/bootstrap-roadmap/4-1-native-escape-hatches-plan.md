@@ -150,11 +150,11 @@
 - [x] `docs/spec/3-0-core-library-overview.md` に概要を追記
 
 ### フェーズD: Rust 実装 - 埋め込み API
-- [ ] 埋め込み用 C ABI 層（`reml_create_context` など）を実装
-- [ ] 失敗時のエラーコードと `native.embed.*` 監査記録を確認
-- [ ] `docs/guides/runtime-bridges.md` に埋め込み API 手順と互換性ルールを追記
-- [ ] `examples/native/embedding` と `expected/` を整備
-- [ ] `reports/spec-audit/ch4` のログ保存ルールを更新
+- [x] 埋め込み用 C ABI 層（`reml_create_context` など）を実装
+- [x] 失敗時のエラーコードと `native.embed.*` 監査記録を確認
+- [x] `docs/guides/runtime-bridges.md` に埋め込み API 手順と互換性ルールを追記
+- [x] `examples/native/embedding` と `expected/` を整備
+- [x] `reports/spec-audit/ch4` のログ保存ルールを更新
 
 ### フェーズE: 研究プロトタイプ（ASM / LLVM IR）
 - [ ] `docs/notes/native-escape-hatches-research.md` にガード条件と位置づけを追記
