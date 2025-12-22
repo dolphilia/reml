@@ -34,6 +34,21 @@
 2. `compiler/rust/backend/llvm` に LLVM intrinsic マッピングを追加し、未対応ターゲットではポリフィルにフォールバックする。
 3. 監査ログに `intrinsic` 名と引数型情報を記録し、`AuditEnvelope` に `native.intrinsic` メタデータを付与する。
 
+#### フロントエンド分解（`compiler/rust/frontend`）
+- `@intrinsic` 属性のパース追加（関数宣言のみ許可、引数は単一の文字列リテラル）。
+- AST への属性情報付与（既存の attributes 構造に `Intrinsic` を追加）。
+- セマンティック検証: `@intrinsic` は `extern` との併用禁止、`effect {native}` 必須。
+- 型検証: intrinsic 宣言に不許可の型（非 `Copy`/未定義 ABI 型）が含まれる場合は `native.intrinsic.invalid_type` を出す。
+- 解決フェーズで intrinsic 名の正規化（`llvm.sqrt.f64` など）と内部 ID への変換を行う。
+- 監査ログ: `native.intrinsic.used` を関数単位で記録できるよう、IR へのメタデータ伝搬を追加する。
+
+#### バックエンド分解（`compiler/rust/backend/llvm`）
+- intrinsic 対応表の土台追加（`llvm.sqrt.f64` / `llvm.ctpop.*` / `llvm.memcpy.*` を最小セットにする）。
+- 型シグネチャ検証: intrinsic 期待型と IR の一致チェック（不一致時は `native.intrinsic.signature_mismatch`）。
+- 未対応ターゲットのフォールバック: ポリフィル関数呼び出しへ差し替え、`native.intrinsic.polyfill` を監査に記録。
+- 最適化属性の付与（`readonly`/`readnone`/`noalias` など）を慎重に設定し、監査メタデータに反映する。
+- `feature = "native-unstable"` で拡張セット（SIMD/ベクタ）を限定的に解放する。
+
 ### フェーズC: Rust 実装 - Core.Native API
 1. `compiler/rust/runtime/src` に `native` モジュールを追加し、`Core.Native` として公開する。
 2. 最小 API（`memcpy`/`ctpop`/`sqrt` など）を `Core.Native` から呼べるようにし、`effect {native}` を要求する。
