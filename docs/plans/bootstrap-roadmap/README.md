@@ -139,6 +139,7 @@ Rust 実装を実務レベルの `.reml` シナリオで検証し、セルフホ
 | [4-1-core-plugin-implementation-status.md](4-1-core-plugin-implementation-status.md) | M1: Core.Plugin 調査 | Rust 実装における Core.Plugin の実装状況調査 | 随時 |
 | [4-1-ffi-improvement-implementation-plan.md](4-1-ffi-improvement-implementation-plan.md) | M1: FFI 実装 | reml-bindgen/FFI DSL/build 統合と回帰接続 | 随時 |
 | [4-1-native-escape-hatches-plan.md](4-1-native-escape-hatches-plan.md) | M1: Native 拡張 | Intrinsics/埋め込み API/監査の最小実装計画 | 随時 |
+| [4-2-native-escape-hatches-asm-llvm-implementation-plan.md](4-2-native-escape-hatches-asm-llvm-implementation-plan.md) | M1: ASM/LLVM IR | Inline ASM / LLVM IR 本格実装と回帰接続 | 随時 |
 | [4-1-stdlib-improvement-implementation-plan.md](4-1-stdlib-improvement-implementation-plan.md) | M1: Stdlib 改善 | Core.Test/Cli/Text.Pretty/Doc/Lsp の実装と回帰接続 | 随時 |
 | [4-1-dsl-lite-profile-plan.md](4-1-dsl-lite-profile-plan.md) | M1: Lite 入口 | Reml Lite プロファイルとテンプレートの仕様化 | 随時 |
 | [4-1-dsl-test-kit-plan.md](4-1-dsl-test-kit-plan.md) | M1: DSL Test Kit | Core.Test.Dsl の仕様化と回帰接続 | 随時 |

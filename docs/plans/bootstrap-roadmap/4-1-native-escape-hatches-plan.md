@@ -4,6 +4,7 @@
 - `docs/notes/native-escape-hatches-research.md` で示した通り、`Core.Ffi` だけでは SIMD/低レベル最適化/埋め込み用途にギャップがある。
 - `docs/spec/0-1-project-purpose.md` の「実用に耐える性能」「エコシステム統合」達成には、Rust 実装でのネイティブ拡張の足場が必要。
 - Phase 4 の実用シナリオ回帰に接続できる最小スコープを定義し、過度に危険な機能（全面的な asm/syscall）を段階導入で扱う。
+- Inline ASM / LLVM IR の本格実装は `docs/plans/bootstrap-roadmap/4-2-native-escape-hatches-asm-llvm-implementation-plan.md` に分離し、Phase 4 での前倒し実装へ移行した。
 
 ## 目的
 1. `Core.Native`（または `Core.Intrinsics`）の仕様・監査・Capability 方針を整理し、Rust 実装に落とし込む。
