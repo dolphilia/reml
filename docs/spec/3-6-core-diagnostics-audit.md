@@ -194,6 +194,21 @@ pub enum AuditEvent = {
 - 追加メタデータ（例: `"pipeline.latency_ms"`, `"async.supervisor.strategy"`）は自由に拡張してよいが、必須キーが欠落した場合は `AuditEvent::Custom` を使用しない限り仕様違反として扱う。CI は `AuditPolicy.level = AuditLevel::Warning` 以上のときに必須キーの欠落を検出し、0-1 §1.2 の安全性保証を担保する。
 - イベントを `Diagnostic` と結合する場合は `AuditReference.events`（§6.1.2）へ列挙し、CLI/LSP で相関ビューを提供する。`AuditEvent::PipelineFailed` は `Severity::Error`、`AuditEvent::ConfigCompatChanged` は少なくとも `Severity::Warning` を推奨する。
 
+#### 1.1.3 Core.Dsl 監査イベント
+
+`Core.Dsl.*` が発行する監査イベントは `AuditEnvelope.metadata["event.kind"]` に `dsl.*` 名前空間を設定する。埋め込み DSL 由来の場合は §1.1.2 の `dsl.id` と `dsl.embedding.*` を同時に付与し、親 DSL との相関を維持する。
+
+| `event.kind` | 主な発火条件 | 必須メタデータ (`AuditEnvelope.metadata`) | 関連章 |
+| --- | --- | --- | --- |
+| `dsl.object.dispatch` | `DispatchTable` からのメソッド解決 | `"dsl.id"`, `"dsl.node"`, `"dsl.object.handle"`, `"dsl.object.class"`, `"dsl.dispatch.method"`, `"dsl.dispatch.cache"` | 3-16 §2 |
+| `dsl.gc.root` | `RootScope` によるルート登録/解除 | `"dsl.id"`, `"dsl.node"`, `"dsl.gc.heap"`, `"dsl.gc.action"`, `"dsl.gc.root_id"` | 3-16 §3 |
+| `dsl.actor.mailbox` | `MailboxBridge` 経由の送受信/監視 | `"dsl.id"`, `"dsl.node"`, `"dsl.actor.id"`, `"dsl.mailbox.id"`, `"dsl.mailbox.action"`, `"dsl.mailbox.depth"` | 3-16 §4 |
+| `dsl.vm.execute` | `VMCore` の命令ディスパッチ | `"dsl.id"`, `"dsl.node"`, `"dsl.vm.id"`, `"dsl.vm.instruction"`, `"dsl.vm.frame.depth"`, `"dsl.vm.pc"` | 3-16 §5 |
+
+- `dsl.node` は `ExecutionPlan.node_path`（3-6 §6.1.2）または `pipeline.node` と同一の表現を用いる。導線が無い場合は `dsl.node = "unknown"` を許容するが、監査レポートでは欠落として扱う。
+- `dsl.dispatch.cache` は `hit` / `miss` / `disabled` のいずれかを `snake_case` で記録する。`dsl.gc.action` は `register` / `release` / `promote` を想定し、`dsl.mailbox.action` は `enqueue` / `dequeue` / `spawn` / `shutdown` を想定する。
+- Stage/Bridge/Effect の監査メタデータが付随する場合は [3-8 §1.4](3-8-core-runtime-capability.md#audit-required-fields) の必須キーを同時に満たすこと。
+
 ### 1.2 診断ドメイン `DiagnosticDomain`
 
 ### 1.3 効果診断拡張 `effects`

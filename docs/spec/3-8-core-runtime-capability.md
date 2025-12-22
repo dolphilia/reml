@@ -405,6 +405,19 @@ sequenceDiagram
 - 上記シーケンスは Diagnostics/Audit 章（3-6）で要求される `effects.contract.stage_mismatch` と互換であり、Stage 判定結果が診断と監査の両方へ共通キーで転写される。`compiler/rust/runtime/tests/core_runtime_capability_guard.rs` では `core.io`/`core.time`/`core.async` のガードが期待通り動くことを `cargo test -p reml_runtime core_runtime_capability_guard` で検証し、リグレッションを防止する。
 - `FsAdapter::ensure_*` や `Timezone::timezone/local` といった API は本ガードを通じて `record_bridge_stage_probe` や `TimeError` に Stage 情報を転写し、RunConfig・RuntimeBridgePlan が参照する KPI を一貫させる。今後 `Core.Async` の API を追加する際も同じガードを再利用し、Stage ポリシーの抜け漏れを防ぐ。
 
+### 1.4 監査イベント必須フィールド（Stage/Bridge/Effect） {#audit-required-fields}
+
+Stage/Bridge/Effect の整合検証に関わる監査イベントは `AuditEnvelope.metadata` の必須キーを揃える。`AuditLevel::Summary` でも欠落を許容せず、[3-6 §2.4](3-6-core-diagnostics-audit.md#diagnostic-effect) の診断メタデータと同じキー体系で記録する。
+
+| 区分 | 必須キー (`AuditEnvelope.metadata`) | 目的 |
+| --- | --- | --- |
+| Stage（Capability/Effect） | `effect.stage.required`, `effect.stage.actual`, `effect.capability`, `effect.provider`, `effect.manifest_path` | Stage 検証の根拠と Capability 参照元を監査ログへ残す。 |
+| Bridge（Runtime Bridge） | `bridge.id`, `bridge.stage.required`, `bridge.stage.actual`, `bridge.capability` | Runtime Bridge の Stage/Capability 整合を追跡し、`bridge.contract.violation` の再現性を担保する。 |
+| Effect（ハンドラ/効果行） | `effect.order.before`, `effect.order.after`, `effect.residual.diff`, `effect.type_row.requested_mode`, `effect.type_row.available_mode`, `effect.type_row.guard_stage` | 効果ハンドラの並び替え・効果行モードの差分を監査ログへ一貫して残す。 |
+
+- `bridge.target.mismatch` などターゲット照合が関与する場合は `bridge.target.requested` / `bridge.target.detected` を追加必須キーとして扱う。
+- `effect.provider` と `effect.manifest_path` は `CapabilityDescriptor` 由来であり、`CapabilityRegistry::describe` が `None` を返す場合は `null` を記録するが、省略は許容しない。
+
 ### 1.5 Regex Capability {#regex-capability}
 
 | Capability | 説明 | 主な利用者 |
