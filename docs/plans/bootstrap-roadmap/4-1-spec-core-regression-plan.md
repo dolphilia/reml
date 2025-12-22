@@ -52,6 +52,19 @@
   - `reports/spec-audit/ch4/logs/stdlib-parse-cst-*.md`
 - ログに残す項目は `reports/spec-audit/ch4/README.md` の「標準ライブラリ実行ログ（Phase 4）」を参照する。
 
+## DSL パラダイム回帰接続（Phase 4 追加）
+
+`Core.Dsl.*` の参照 DSL を Phase 4 回帰へ組み込み、性能・安全性・監査ログの観点を `phase4-scenario-matrix.csv` に集約する。
+
+| Scenario | 入力 | 期待値 | 監査イベント | Stage 条件 |
+| --- | --- | --- | --- | --- |
+| CH4-DSL-PARA-001 | `examples/dsl_paradigm/mini_ruby/mini_ruby_basic.reml` | `expected/dsl_paradigm/mini_ruby/mini_ruby_basic.stdout` | `dsl.object.dispatch`, `dsl.gc.root` | `StageRequirement::AtLeast(Beta)` |
+| CH4-DSL-PARA-002 | `examples/dsl_paradigm/mini_erlang/mini_erlang_basic.reml` | `expected/dsl_paradigm/mini_erlang/mini_erlang_basic.stdout` | `dsl.actor.mailbox`, `dsl.gc.root` | `StageRequirement::AtLeast(Beta)` |
+| CH4-DSL-PARA-003 | `examples/dsl_paradigm/mini_vm/mini_vm_basic.reml` | `expected/dsl_paradigm/mini_vm/mini_vm_basic.stdout` | `dsl.vm.execute`, `dsl.object.dispatch` | `StageRequirement::AtLeast(Beta)` |
+
+- 性能観点は `dsl.object.dispatch`/`dsl.actor.mailbox`/`dsl.vm.execute` の監査件数と処理ステップの増減で追跡し、実行時間の計測は Phase 4 実走フェーズで補足する。
+- 安全性観点は `Core.Dsl.*` 由来の `DispatchError`/`ActorError`/`VmError` を検出できるかを確認し、必要な診断キーは `docs/spec/3-6-core-diagnostics-audit.md` へ追記する。
+
 ## スコープ
 
 - **含む**: Rust フロントエンド (`compiler/rust/frontend`) の Parser/Typeck/CLI オプション是正、`run_phase4_suite.py` の診断差分検知を活かしたレポーティング改善、`reports/spec-audit/ch4/` の定期更新。必要に応じて `RunConfig` / `ParseRunner` / `DiagnosticFilter` の既定値も調整する。

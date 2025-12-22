@@ -10,6 +10,7 @@ Reml 仕様で紹介されるサンプル実装を集約しています。元々
 - `core_io/`: `Core.IO` と `Core.Path` の Reader/Writer・監査・セキュリティサンプル（実務ケースは `practical/core_io/` に統合）
 - `core_path/`: パス正規化と `SecurityPolicy`/`is_safe_symlink` の利用例（実務ケースは `practical/core_path/` に統合）
 - `core_diagnostics/`: `Core.Diagnostics` の監査ログ（PipelineStarted/PipelineCompleted）を再現する最小ケース
+- `dsl_paradigm/`: `Core.Dsl.*` パラダイムキットの参照 DSL（Mini-Ruby / Mini-Erlang / Mini-VM）
 - `language-impl-comparison/`: 各種小規模言語実装と比較調査資料
 - `spec_core/`: Chapter 1 BNF に沿った最小 `.reml` 入力（Phase 4 spec-core スイート）
 - `practical/`: Chapter 3 の実務シナリオと監査ログを `scenario_id` 単位で整理した Phase 4 practical スイート

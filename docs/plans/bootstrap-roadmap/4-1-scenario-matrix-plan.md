@@ -14,7 +14,7 @@
 - **前提条件**: Phase 3 の章別資産が `compiler/rust/`・`examples/` に揃っている、`docs/plans/bootstrap-roadmap/0-2-roadmap-structure.md` に沿って新規ファイルの命名・参照が決まっている。
 
 ## 成果物と出口条件
-- `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` を新設し、各行に `scenario_id`, `category`, `spec_anchor`, `input_path`, `expected`, `diagnostic_keys`, `resolution` を必須フィールドとして登録する。
+- `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` を新設し、各行に `scenario_id`, `category`, `spec_anchor`, `input_path`, `expected`, `diagnostic_keys`, `stage_requirement`, `resolution` を必須フィールドとして登録する。加えて `audit_events`, `stage_condition` を監査/Stage 用の追加列として設ける。
 - `examples/spec_core/`・`examples/practical/` にサブディレクトリ（`chapter1/boundary` 等）を定義し、マトリクスの `input_path` と 1:1 で対応させる命名規約を決める。
 - `reports/spec-audit/ch4/spec-core-dashboard.md` と `reports/spec-audit/ch4/practical-suite-index.md` に、マトリクスと一致するハンドブックリンクを追加できる状態にする。
 - `phase4-scenario-matrix.csv` に登録したカテゴリのうち 85% 以上が `.reml` 資産を伴い、`resolution` 列が `pending` 以外になっていることを確認する（M1 exit）。

@@ -1,0 +1,29 @@
+module Examples.DslParadigm.MiniErlang.Basic
+
+// Core.Dsl.Actor / Core.Dsl.Gc を利用する最小例。
+use Core.Prelude
+use Core.Async
+use Core.Dsl.Actor
+use Core.Dsl.Gc
+
+type Msg =
+  | Ping(GcRef<Str>)
+  | Stop
+
+fn build_message(scope: RootScope) -> Result<Msg, GcError> {
+  match Gc.alloc(scope, "ping") with
+  | Ok(text) -> Ok(Ping(text))
+  | Err(err) -> Err(err)
+}
+
+fn spawn_echo(system: ActorSystem) -> Result<MailboxBridge<Msg>, ActorError> {
+  let def = {
+    name: "Echo",
+    on_message: |msg| {
+      match msg with
+      | Ping(_) -> Ok(())
+      | Stop -> Ok(())
+    },
+  }
+  Actor.spawn(system, def, None)
+}

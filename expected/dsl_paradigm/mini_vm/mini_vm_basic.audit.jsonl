@@ -1,0 +1,2 @@
+{"event":"dsl.vm.execute","metadata":{"dsl.id":"mini_vm","dsl.vm.opcode":"Add"}}
+{"event":"dsl.object.dispatch","metadata":{"dsl.id":"mini_vm","dsl.object.method":"run"}}

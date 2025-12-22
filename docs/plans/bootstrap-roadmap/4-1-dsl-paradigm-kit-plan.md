@@ -63,11 +63,11 @@
 7. [x] 例外・失敗時の `Result`/`Error` を `Core.Diagnostics` と統合し、パニック回避の最小ルールを決める。
 
 ### フェーズD: 参照 DSL と回帰
-1. [ ] `examples/` に Mini-Ruby / Mini-Erlang / Mini-VM の最小実装を追加し、各 DSL で利用する `Core.Dsl.*` の範囲を明記する。
-2. [ ] Mini-Ruby は `Object`/`Gc`、Mini-Erlang は `Actor`/`Gc`、Mini-VM は `Vm`/`Object` の最小ルートを示し、依存関係を一覧化する。
-3. [ ] `expected/` に参照 DSL の出力スナップショットを追加し、`examples/` との対応表（入力/期待値/監査ログの有無）を整理する。
-4. [ ] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に検証シナリオを登録し、`Core.Dsl.*` の監査イベント有無・Stage 条件を列に追加する。
-5. [ ] `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` と整合する形で、回帰観点（性能・安全性・監査ログ）を参照 DSL へ紐付ける。
+1. [x] `examples/` に Mini-Ruby / Mini-Erlang / Mini-VM の最小実装を追加し、各 DSL で利用する `Core.Dsl.*` の範囲を明記する（`examples/dsl_paradigm/`）。
+2. [x] Mini-Ruby は `Object`/`Gc`、Mini-Erlang は `Actor`/`Gc`、Mini-VM は `Vm`/`Object` の最小ルートを示し、依存関係を一覧化する（`examples/dsl_paradigm/README.md`）。
+3. [x] `expected/` に参照 DSL の出力スナップショットを追加し、`examples/` との対応表（入力/期待値/監査ログの有無）を整理する（`expected/dsl_paradigm/README.md`）。
+4. [x] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に検証シナリオを登録し、`Core.Dsl.*` の監査イベント有無・Stage 条件を列に追加する。
+5. [x] `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` と整合する形で、回帰観点（性能・安全性・監査ログ）を参照 DSL へ紐付ける。
 
 ### フェーズE: 監査とリスク整理
 1. [ ] `docs/spec/3-6-core-diagnostics-audit.md` に `Core.Dsl.*` の監査イベント（`dsl.object.dispatch`/`dsl.gc.root`/`dsl.actor.mailbox`/`dsl.vm.execute`）を追記する。
