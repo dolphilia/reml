@@ -309,6 +309,23 @@ fn sqrt_f64(x: f64) -> f64 = x
 fn popcount(x: i64) -> i64 = x
 ```
 
+#### 不安定機能属性 `@unstable`
+
+* `@unstable` は **関数宣言または `unsafe` ブロック** に付与できる属性で、Phase 4 の研究プロトタイプ（Inline ASM / LLVM IR）を明示します。
+* 書式は `@unstable("inline_asm")` または `@unstable("llvm_ir")` の **文字列リテラル 1 つ**に限定する。識別子式や補間文字列、名前付き引数（`kind=...`）は許可しない。
+* `@cfg(target_arch/target_os/target_family)` を併用し、対象ターゲットを明示する。無効化された要素は `@unstable` の検証対象外とする。
+* フロントエンドは `@unstable("inline_asm")` を `unstable:inline_asm`、`@unstable("llvm_ir")` を `unstable:llvm_ir` の内部属性に変換し、後続フェーズへ渡す。
+* `feature = "native-unstable"` が無効な場合、バックエンドは `native.unstable.disabled` を報告する。
+
+```reml
+@cfg(target_arch = "x86_64")
+@unstable("inline_asm")
+fn read_cycle_counter() -> i64 // effect {native, unsafe}
+{
+  unsafe { inline_asm("rdtsc") }
+}
+```
+
 #### 条件付きコンパイル属性 `@cfg`
 
 * `@cfg` は宣言・`use`・文ブロックに条件付きの有効/無効を与えるコンパイル時属性で、**パース段階**で評価されます。無効化された要素は以降の解析・型検査から完全に除去されます。
