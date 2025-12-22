@@ -351,6 +351,7 @@ impl TypecheckDriver {
             typed_module.functions.push(typed::TypedFunction {
                 name: function.name.name.clone(),
                 span: function.span,
+                attributes: intrinsic_attribute_strings(&function.attrs),
                 params: typed_params,
                 return_type: return_label,
                 body: typed_body,
@@ -3897,6 +3898,25 @@ fn extract_intrinsic_attr(attrs: &[Attribute]) -> Option<IntrinsicAttribute> {
         }
     }
     None
+}
+
+fn intrinsic_attribute_strings(attrs: &[Attribute]) -> Vec<String> {
+    let mut values = Vec::new();
+    for attr in attrs {
+        if attr.name.name != "intrinsic" {
+            continue;
+        }
+        if attr.args.len() != 1 {
+            continue;
+        }
+        if let ExprKind::Literal(Literal {
+            value: LiteralKind::String { value, .. },
+        }) = &attr.args[0].kind
+        {
+            values.push(format!("intrinsic:{value}"));
+        }
+    }
+    values
 }
 
 fn effect_has_native(effect: &Option<EffectAnnotation>) -> bool {

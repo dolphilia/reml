@@ -20,6 +20,7 @@ pub struct TypedModule {
 pub struct TypedFunction {
     pub name: String,
     pub span: Span,
+    pub attributes: Vec<String>,
     pub params: Vec<TypedParam>,
     pub return_type: String,
     pub body: TypedExpr,

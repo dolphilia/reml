@@ -45,6 +45,7 @@ impl Default for MirModule {
 pub struct MirFunction {
     pub name: String,
     pub span: Span,
+    pub attributes: Vec<String>,
     pub params: Vec<MirParam>,
     pub return_type: String,
     pub body: MirExprId,
@@ -247,6 +248,7 @@ fn lower_function(function: &typed::TypedFunction) -> MirFunction {
     MirFunction {
         name: function.name.clone(),
         span: function.span,
+        attributes: function.attributes.clone(),
         params: function
             .params
             .iter()
