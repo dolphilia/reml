@@ -6,9 +6,9 @@
 
 ## セクションガイド
 
-- [1.1 構文仕様](1-1-syntax.md): UTF-8 前提の字句規則、宣言・式・演算子の構造、`conductor` など DSL 構文と最小 EBNF の位置付けを示します。`let` 宣言が `match` と同等のパターン束縛を受け付け、網羅性チェックで安全性を担保することもここで定義しています。
+- [1.1 構文仕様](1-1-syntax.md): UTF-8 前提の字句規則、宣言・式・演算子の構造、`conductor` など DSL 構文と最小 EBNF の位置付けを示します。`let` 宣言が `match` と同等のパターン束縛を受け付け、網羅性チェックで安全性を担保することもここで定義しています。`@intrinsic` のようなネイティブ属性の構文制約もこの章で扱います。
 - [1.2 型システムと推論](1-2-types-Inference.md): プリミティブからトレイトまでの型体系と Hindley-Milner 推論、効果行を含む型注釈・エラー方針に加えて、`DslExportSignature` へ Stage/Capability 要件を組み込む `requires_capabilities`・`stage_bounds` の構造を定義します。
-- [1.3 効果システムと安全性](1-3-effects-safety.md): 効果分類、純粋性デフォルト、ハンドラ/Capability 連携、効果行の整列規約、`unsafe` ポインタの扱いなど安全性設計を整理します。
+- [1.3 効果システムと安全性](1-3-effects-safety.md): 効果分類、純粋性デフォルト、ハンドラ/Capability 連携、効果行の整列規約、`unsafe` ポインタの扱いなど安全性設計を整理します。`effect {native}` の監査境界と `@cfg` 連携もここで定義します。
 - [1.4 Unicode 文字モデル](1-4-test-unicode-model.md): Byte/Char/Grapheme の三層モデル、正規化・境界規則・エラーレポート指針を通じて国際化と診断の整合性を確保し、`Core.Parse.State` と `Diagnostic` が `display_width` を共有して列情報を揃える運用規約を定めます。
 - [1.5 形式文法（BNF）](1-5-formal-grammar-bnf.md): 章全体で定義した構文要素を EBNF で集約し、実装者・ツール向けのリファレンスを提供します。
 

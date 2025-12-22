@@ -128,11 +128,11 @@
 ## 作業チェックリスト
 
 ### フェーズA: 仕様・監査・Capability 整合
-- [ ] `docs/spec/1-1-syntax.md` に `@intrinsic` の構文・制約・診断前提を追記
-- [ ] `docs/spec/1-3-effects-safety.md` に `effect {native}` の意味・`unsafe` との関係・`@cfg` 要件を追記
-- [ ] `docs/spec/3-6-core-diagnostics-audit.md` に `native.intrinsic.*` / `native.embed.*` の監査キーを定義
-- [ ] `docs/spec/3-8-core-runtime-capability.md` に `native.intrinsic` / `native.embed` を追加し Stage と対応表を整備
-- [ ] `docs/spec/1-0-language-core-overview.md` と `docs/spec/3-0-core-library-overview.md` の概要追記を確認
+- [x] `docs/spec/1-1-syntax.md` に `@intrinsic` の構文・制約・診断前提を追記
+- [x] `docs/spec/1-3-effects-safety.md` に `effect {native}` の意味・`unsafe` との関係・`@cfg` 要件を追記
+- [x] `docs/spec/3-6-core-diagnostics-audit.md` に `native.intrinsic.*` / `native.embed.*` の監査キーを定義
+- [x] `docs/spec/3-8-core-runtime-capability.md` に `native.intrinsic` / `native.embed` を追加し Stage と対応表を整備
+- [x] `docs/spec/1-0-language-core-overview.md` と `docs/spec/3-0-core-library-overview.md` の概要追記を確認
 
 ### フェーズB: Rust 実装 - Intrinsics
 - [ ] `compiler/rust/frontend` に `@intrinsic` パース・AST・セマンティック検証を追加
@@ -147,7 +147,7 @@
 - [ ] `Core.Native` の最小 API（`memcpy`/`ctpop`/`sqrt`）を実装
 - [ ] `effect {native}` が必須になることを確認
 - [ ] `examples/native/intrinsics` と `expected/` を整備
-- [ ] `docs/spec/3-0-core-library-overview.md` に概要を追記
+- [x] `docs/spec/3-0-core-library-overview.md` に概要を追記
 
 ### フェーズD: Rust 実装 - 埋め込み API
 - [ ] 埋め込み用 C ABI 層（`reml_create_context` など）を実装

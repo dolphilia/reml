@@ -292,6 +292,23 @@ impl Parser<T> {
 }
 ```
 
+#### ネイティブ intrinsic 属性 `@intrinsic`
+
+* `@intrinsic` は **関数宣言にのみ**付与できる属性で、LLVM intrinsic などのネイティブ実装へ直接マッピングすることを示す。
+* 書式は `@intrinsic("llvm.sqrt.f64")` の **文字列リテラル 1 つ**に限定する。識別子式や補間文字列、名前付き引数（`name=...`）は許可しない。
+* `extern` 宣言や `trait` / `impl` 内のメソッド宣言には付与できない。対象は `fn` 宣言に限る。
+* `@cfg` との併用は可能で、並び順は問わない。`@cfg` により無効化された宣言は `@intrinsic` の検証対象外となる。
+* 構文違反（引数が文字列リテラルでない、引数が複数ある、関数宣言以外に付与など）は `native.intrinsic.invalid_syntax` として報告する。
+
+```reml
+@intrinsic("llvm.sqrt.f64")
+fn sqrt_f64(x: f64) -> f64 = x
+
+@cfg(target_arch = "aarch64")
+@intrinsic("llvm.ctpop.i64")
+fn popcount(x: i64) -> i64 = x
+```
+
 #### 条件付きコンパイル属性 `@cfg`
 
 * `@cfg` は宣言・`use`・文ブロックに条件付きの有効/無効を与えるコンパイル時属性で、**パース段階**で評価されます。無効化された要素は以降の解析・型検査から完全に除去されます。

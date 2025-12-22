@@ -87,6 +87,8 @@ pub enum CapabilityHandle =
 | `core.time.timezone.local` | `Beta` | `time` | Core | - |
 | `core.collections.audit` | `Stable` | `audit`<br>`mem` | Core | - |
 | `metrics.emit` | `Stable` | `audit` | Core | - |
+| `native.intrinsic` | `Experimental` | `native`<br>`audit`<br>`unsafe` | Core | - |
+| `native.embed` | `Experimental` | `native`<br>`audit`<br>`unsafe` | Core | - |
 <!-- capability-table:end -->
 
 Capability Registry は上記バリアントを通じてシステム API を表面化し、効果タグと runtime 権限を整合させる。
@@ -417,6 +419,17 @@ Stage/Bridge/Effect の整合検証に関わる監査イベントは `AuditEnvel
 
 - `bridge.target.mismatch` などターゲット照合が関与する場合は `bridge.target.requested` / `bridge.target.detected` を追加必須キーとして扱う。
 - `effect.provider` と `effect.manifest_path` は `CapabilityDescriptor` 由来であり、`CapabilityRegistry::describe` が `None` を返す場合は `null` を記録するが、省略は許容しない。
+
+#### 1.4.1 Native Escape Hatches の Capability 整合
+
+`native.intrinsic` / `native.embed` は **Stage = Experimental** を既定とし、Phase 4 の最小実装では `@requires_capability(stage="experimental")` と同等の取り扱いを行う。昇格条件は `docs/notes/dsl-plugin-roadmap.md` の Stage 監査手順と揃え、監査ログが整備された時点で `Beta` へ進める。
+
+| Capability | 目的 | 必須監査キー | 関連診断 |
+| --- | --- | --- | --- |
+| `native.intrinsic` | LLVM intrinsic / ネイティブ最適化呼び出し | `native.intrinsic.used`, `intrinsic.name`, `intrinsic.signature` | `native.intrinsic.invalid_type`, `native.intrinsic.signature_mismatch` |
+| `native.embed` | 埋め込み API と ABI エントリポイント | `native.embed.entrypoint`, `embed.abi.version` | `native.embed.abi_mismatch`, `native.embed.unsupported_target` |
+
+`Core.Runtime` のガード API は `effect {native}` を含む呼び出しに対して `CapabilityRegistry::verify_capability_stage` を適用し、Stage 不一致の場合は `effects.contract.stage_mismatch` を優先して報告する。`native.*` の監査キーは [3-6 §2.4.4](3-6-core-diagnostics-audit.md#diagnostic-native) と同じ表記を用い、`RuntimeBridgeAuditSpec` でもキー体系を統一する。
 
 ### 1.5 Regex Capability {#regex-capability}
 
