@@ -17,6 +17,7 @@
 - [1-0-validation-plan.md](1-0-validation-plan.md)
 - [1-1-spec-code-block-inventory.md](1-1-spec-code-block-inventory.md)
 - [1-2-spec-sample-fix-plan.md](1-2-spec-sample-fix-plan.md)
+- [1-2-spec-sample-fix-targets.md](1-2-spec-sample-fix-targets.md)
 
 ## 配置ポリシー（概要）
 - `.reml` は `examples/docs-examples/<kind>/<doc-path>/` に配置する。
