@@ -13,6 +13,7 @@ pub struct MirModule {
     pub schema_version: &'static str,
     pub functions: Vec<MirFunction>,
     pub active_patterns: Vec<MirActivePattern>,
+    pub conductors: Vec<MirConductor>,
 }
 
 impl MirModule {
@@ -23,10 +24,12 @@ impl MirModule {
             .iter()
             .map(lower_active_pattern)
             .collect();
+        let conductors = module.conductors.iter().map(lower_conductor).collect();
         Self {
             schema_version: MIR_SCHEMA_VERSION,
             functions,
             active_patterns,
+            conductors,
         }
     }
 }
@@ -37,6 +40,7 @@ impl Default for MirModule {
             schema_version: MIR_SCHEMA_VERSION,
             functions: Vec::new(),
             active_patterns: Vec::new(),
+            conductors: Vec::new(),
         }
     }
 }
@@ -64,6 +68,61 @@ pub struct MirActivePattern {
     pub body: MirExprId,
     pub exprs: Vec<MirExpr>,
     pub dict_ref_ids: Vec<typed::DictRefId>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MirConductor {
+    pub name: String,
+    pub span: Span,
+    pub dsl_defs: Vec<MirConductorDslDef>,
+    pub channels: Vec<MirConductorChannel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execution: Option<MirConductorBlock>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub monitoring: Option<MirConductorMonitoringBlock>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MirConductorDslDef {
+    pub alias: String,
+    pub target: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pipeline_type: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub tails: Vec<MirConductorDslTail>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MirConductorDslTail {
+    pub stage: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub arg_types: Vec<String>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MirConductorChannel {
+    pub source: String,
+    pub target: String,
+    pub payload: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MirConductorBlock {
+    pub ty: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MirConductorMonitoringBlock {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+    pub ty: String,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -286,6 +345,55 @@ fn lower_active_pattern(pattern: &typed::TypedActivePattern) -> MirActivePattern
         body,
         exprs: builder.finish(),
         dict_ref_ids: pattern.dict_ref_ids.clone(),
+    }
+}
+
+fn lower_conductor(conductor: &typed::TypedConductor) -> MirConductor {
+    MirConductor {
+        name: conductor.name.clone(),
+        span: conductor.span,
+        dsl_defs: conductor
+            .dsl_defs
+            .iter()
+            .map(|dsl_def| MirConductorDslDef {
+                alias: dsl_def.alias.clone(),
+                target: dsl_def.target.clone(),
+                target_type: dsl_def.target_type.clone(),
+                pipeline_type: dsl_def.pipeline_type.clone(),
+                tails: dsl_def
+                    .tails
+                    .iter()
+                    .map(|tail| MirConductorDslTail {
+                        stage: tail.stage.clone(),
+                        arg_types: tail.arg_types.clone(),
+                        span: tail.span,
+                    })
+                    .collect(),
+                span: dsl_def.span,
+            })
+            .collect(),
+        channels: conductor
+            .channels
+            .iter()
+            .map(|channel| MirConductorChannel {
+                source: channel.source.clone(),
+                target: channel.target.clone(),
+                payload: channel.payload.clone(),
+                span: channel.span,
+            })
+            .collect(),
+        execution: conductor.execution.as_ref().map(|block| MirConductorBlock {
+            ty: block.ty.clone(),
+            span: block.span,
+        }),
+        monitoring: conductor
+            .monitoring
+            .as_ref()
+            .map(|block| MirConductorMonitoringBlock {
+                target: block.target.clone(),
+                ty: block.ty.clone(),
+                span: block.span,
+            }),
     }
 }
 

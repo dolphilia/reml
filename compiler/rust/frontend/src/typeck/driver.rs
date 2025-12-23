@@ -14,9 +14,10 @@ use super::types::{BuiltinType, Type, TypeVarGen};
 use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
-    Attribute, BinaryOp, Decl, DeclKind, EffectAnnotation, Expr, ExprKind, FixityKind, Function,
-    HandlerEntry, Ident, Literal, LiteralKind, MatchArm, Module, ModulePath, Pattern, PatternKind,
-    RelativeHead, SlicePatternItem, Stmt, StmtKind, TypeKind,
+    Attribute, BinaryOp, ConductorDecl, ConductorMonitorTarget, Decl, DeclKind, EffectAnnotation,
+    Expr, ExprKind, FixityKind, Function, HandlerEntry, Ident, Literal, LiteralKind, MatchArm,
+    Module, ModulePath, Pattern, PatternKind, RelativeHead, SlicePatternItem, Stmt, StmtKind,
+    TypeKind,
 };
 use crate::semantics::{mir, typed};
 use crate::span::Span;
@@ -360,6 +361,53 @@ impl TypecheckDriver {
             });
         }
 
+        for decl in &module.decls {
+            if let DeclKind::Conductor(conductor) = &decl.kind {
+                let mut stats = FunctionStats::default();
+                let mut constraints = Vec::new();
+                let mut env = module_env.clone();
+                let mut loop_context = LoopContextStack::default();
+                let context = FunctionContext::module();
+                let typed_conductor = infer_conductor(
+                    conductor,
+                    &mut env,
+                    &mut var_gen,
+                    &mut solver,
+                    &mut constraints,
+                    &mut stats,
+                    &mut metrics,
+                    &mut violations,
+                    &mut dict_ref_drafts,
+                    context,
+                    &mut loop_context,
+                );
+                all_constraints.extend(constraints.drain(..));
+                typed_module.conductors.push(typed_conductor);
+            }
+        }
+
+        for expr in &module.exprs {
+            let mut stats = FunctionStats::default();
+            let mut constraints = Vec::new();
+            let mut env = module_env.clone();
+            let mut loop_context = LoopContextStack::default();
+            let context = FunctionContext::module();
+            let _ = infer_expr(
+                expr,
+                &mut env,
+                &mut var_gen,
+                &mut solver,
+                &mut constraints,
+                &mut stats,
+                &mut metrics,
+                &mut violations,
+                &mut dict_ref_drafts,
+                &mut loop_context,
+                context,
+            );
+            all_constraints.extend(constraints.drain(..));
+        }
+
         if config.trace_enabled {
             eprintln!("[TRACE] typecheck.finish");
         }
@@ -370,6 +418,7 @@ impl TypecheckDriver {
         violations.extend(iterator_stage_violations);
         violations.extend(detect_capability_violations(module, config));
         violations.extend(detect_duplicate_impls(module));
+        violations.extend(detect_varargs_violations(module));
         violations.extend(detect_spec_core_runtime_violations(module));
         let violations = compress_typecheck_violations(violations);
 
@@ -420,6 +469,7 @@ pub struct TypecheckReport {
 static TOP_LEVEL_DECLARATION_SUMMARY: Lazy<ExpectedTokensSummary> = Lazy::new(|| {
     let mut collector = ExpectedTokenCollector::new();
     collector.extend([
+        ExpectedToken::keyword("conductor"),
         ExpectedToken::keyword("effect"),
         ExpectedToken::keyword("extern"),
         ExpectedToken::keyword("fn"),
@@ -508,6 +558,10 @@ pub enum TypecheckViolationKind {
     OpBuilderFixityMissing,
     IntrinsicMissingEffect,
     IntrinsicInvalidType,
+    ConductorDslIdDuplicate,
+    VarargsInvalidAbi,
+    VarargsMissingFixedParam,
+    UnsafeInPureContext,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -880,6 +934,82 @@ impl TypecheckViolation {
             span: Some(span),
             notes: vec![ViolationNote::plain(
                 "Int/Bool/Unit およびそれらのみで構成される Tuple のみ許可されます。",
+            )],
+            capability: None,
+            function,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn conductor_dsl_id_duplicate(span: Span, name: &str) -> Self {
+        Self {
+            kind: TypecheckViolationKind::ConductorDslIdDuplicate,
+            code: "conductor.dsl_id.duplicate",
+            message: "conductor 内で dsl_id が重複しています".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "`{name}` が複数回宣言されています。dsl_id を一意にしてください。"
+            ))],
+            capability: None,
+            function: None,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn varargs_invalid_abi(span: Span, function: &str, abi: &str) -> Self {
+        Self {
+            kind: TypecheckViolationKind::VarargsInvalidAbi,
+            code: "ffi.varargs.invalid_abi",
+            message: "可変長引数は extern \"C\" でのみ使用できます".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "`{function}` は ABI \"{abi}\" で宣言されています。"
+            ))],
+            capability: None,
+            function: Some(function.to_string()),
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn varargs_missing_fixed_param(span: Span, function: &str) -> Self {
+        Self {
+            kind: TypecheckViolationKind::VarargsMissingFixedParam,
+            code: "ffi.varargs.missing_fixed_param",
+            message: "可変長引数の前に固定引数が必要です".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "`{function}` の可変長引数に最低 1 つの固定引数を指定してください。"
+            ))],
+            capability: None,
+            function: Some(function.to_string()),
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn unsafe_in_pure_context(span: Span, function: Option<String>) -> Self {
+        let message = match function.as_ref() {
+            Some(name) => format!("`@pure` 関数 `{name}` で `unsafe` が検出されました。"),
+            None => "`@pure` ブロックで `unsafe` が検出されました。".to_string(),
+        };
+        Self {
+            kind: TypecheckViolationKind::UnsafeInPureContext,
+            code: "effects.unsafe.pure_violation",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "`unsafe` を取り除くか、`@pure` を外してください。",
             )],
             capability: None,
             function,
@@ -1273,13 +1403,17 @@ impl TypecheckViolation {
             | TypecheckViolationKind::ImplDuplicate
             | TypecheckViolationKind::IteratorExpected
             | TypecheckViolationKind::ControlFlowUnreachable
-            | TypecheckViolationKind::IntrinsicInvalidType => "type",
+            | TypecheckViolationKind::IntrinsicInvalidType
+            | TypecheckViolationKind::ConductorDslIdDuplicate
+            | TypecheckViolationKind::VarargsInvalidAbi
+            | TypecheckViolationKind::VarargsMissingFixedParam => "type",
             TypecheckViolationKind::ResidualLeak
             | TypecheckViolationKind::StageMismatch
             | TypecheckViolationKind::IteratorStageMismatch
             | TypecheckViolationKind::PurityViolation
             | TypecheckViolationKind::ActivePatternEffectViolation
-            | TypecheckViolationKind::IntrinsicMissingEffect => "effects",
+            | TypecheckViolationKind::IntrinsicMissingEffect
+            | TypecheckViolationKind::UnsafeInPureContext => "effects",
             TypecheckViolationKind::CoreParseRecoverBranch
             | TypecheckViolationKind::OpBuilderLevelConflict
             | TypecheckViolationKind::OpBuilderFixityMissing => "parser",
@@ -1316,6 +1450,10 @@ fn collect_opbuilder_violations(module: &Module, violations: &mut Vec<TypecheckV
     for function in &module.functions {
         let mut tracker = OpBuilderTracker::new(Some(function.name.name.as_str()));
         visit_expr_for_opbuilder(&function.body, &mut tracker, violations);
+    }
+    for expr in &module.exprs {
+        let mut tracker = OpBuilderTracker::new(None);
+        visit_expr_for_opbuilder(expr, &mut tracker, violations);
     }
 }
 
@@ -2270,6 +2408,33 @@ fn infer_expr(
                 body_result.dict_ref_ids,
             )
         }
+        ExprKind::Unsafe { body } => {
+            if context.is_pure {
+                violations.push(TypecheckViolation::unsafe_in_pure_context(
+                    expr.span(),
+                    context.name.map(|name| name.to_string()),
+                ));
+            }
+            let body_result = infer_expr(
+                body,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            make_typed(
+                expr,
+                TypedExprKindDraft::Unknown,
+                body_result.ty.clone(),
+                body_result.dict_ref_ids,
+            )
+        }
         ExprKind::Break { value } => {
             let mut dict_ids = Vec::new();
             let mut break_ty = Type::builtin(BuiltinType::Unit);
@@ -2887,6 +3052,161 @@ fn infer_binding(
     let scheme = generalize_type(env, resolved_ty.clone());
     bind_pattern_to_env(pattern, &scheme, env, var_gen);
     value_result.dict_ref_ids
+}
+
+fn infer_conductor(
+    conductor: &ConductorDecl,
+    env: &mut TypeEnv,
+    var_gen: &mut TypeVarGen,
+    solver: &mut ConstraintSolver,
+    constraints: &mut Vec<Constraint>,
+    stats: &mut FunctionStats,
+    metrics: &mut TypecheckMetrics,
+    violations: &mut Vec<TypecheckViolation>,
+    dict_refs: &mut Vec<DictRefDraft>,
+    context: FunctionContext<'_>,
+    loop_context: &mut LoopContextStack,
+) -> typed::TypedConductor {
+    let mut seen_dsl_ids: HashMap<String, Span> = HashMap::new();
+    let mut dsl_defs = Vec::new();
+    for dsl_def in &conductor.dsl_defs {
+        let alias = dsl_def.alias.name.clone();
+        if seen_dsl_ids.contains_key(&alias) {
+            violations.push(TypecheckViolation::conductor_dsl_id_duplicate(
+                dsl_def.span,
+                alias.as_str(),
+            ));
+        } else {
+            seen_dsl_ids.insert(alias.clone(), dsl_def.span);
+        }
+        let target = dsl_def.target.name.clone();
+        let target_type = env
+            .lookup(target.as_str())
+            .map(|binding| binding.scheme.instantiate(var_gen))
+            .map(|ty| solver.substitution().apply(&ty).label());
+        let pipeline_type = dsl_def.pipeline.as_ref().map(|pipeline| {
+            let result = infer_expr(
+                &pipeline.expr,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            solver.substitution().apply(&result.ty).label()
+        });
+        let tails = dsl_def
+            .tails
+            .iter()
+            .map(|tail| {
+                let mut arg_types = Vec::new();
+                for arg in &tail.args {
+                    let result = infer_expr(
+                        &arg.value,
+                        env,
+                        var_gen,
+                        solver,
+                        constraints,
+                        stats,
+                        metrics,
+                        violations,
+                        dict_refs,
+                        loop_context,
+                        context,
+                    );
+                    arg_types.push(solver.substitution().apply(&result.ty).label());
+                }
+                typed::TypedConductorDslTail {
+                    stage: tail.stage.name.clone(),
+                    arg_types,
+                    span: tail.span,
+                }
+            })
+            .collect::<Vec<_>>();
+        dsl_defs.push(typed::TypedConductorDslDef {
+            alias,
+            target,
+            target_type,
+            pipeline_type,
+            tails,
+            span: dsl_def.span,
+        });
+    }
+
+    let channels = conductor
+        .channels
+        .iter()
+        .map(|route| {
+            let payload = type_from_annotation_kind(&route.payload.kind)
+                .map(|ty| solver.substitution().apply(&ty).label())
+                .unwrap_or_else(|| route.payload.render());
+            typed::TypedConductorChannel {
+                source: route.source.path.name.clone(),
+                target: route.target.path.name.clone(),
+                payload,
+                span: route.span,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let execution = conductor.execution.as_ref().map(|block| {
+        let result = infer_expr(
+            &block.body,
+            env,
+            var_gen,
+            solver,
+            constraints,
+            stats,
+            metrics,
+            violations,
+            dict_refs,
+            loop_context,
+            context,
+        );
+        typed::TypedConductorBlock {
+            ty: solver.substitution().apply(&result.ty).label(),
+            span: block.span,
+        }
+    });
+
+    let monitoring = conductor.monitoring.as_ref().map(|block| {
+        let result = infer_expr(
+            &block.body,
+            env,
+            var_gen,
+            solver,
+            constraints,
+            stats,
+            metrics,
+            violations,
+            dict_refs,
+            loop_context,
+            context,
+        );
+        let target = block.target.as_ref().map(|target| match target {
+            ConductorMonitorTarget::Module(ident) => ident.name.clone(),
+            ConductorMonitorTarget::Endpoint(endpoint) => endpoint.path.name.clone(),
+        });
+        typed::TypedConductorMonitoringBlock {
+            target,
+            ty: solver.substitution().apply(&result.ty).label(),
+            span: block.span,
+        }
+    });
+
+    typed::TypedConductor {
+        name: conductor.name.name.clone(),
+        span: conductor.span,
+        dsl_defs,
+        channels,
+        execution,
+        monitoring,
+    }
 }
 
 fn bind_pattern_to_env(
@@ -4117,6 +4437,29 @@ fn detect_capability_violations(
     for function in &module.functions {
         collect_perform_effects(&function.body, &mut usages);
     }
+    for expr in &module.exprs {
+        collect_perform_effects(expr, &mut usages);
+    }
+    for decl in &module.decls {
+        if let DeclKind::Conductor(conductor) = &decl.kind {
+            for dsl_def in &conductor.dsl_defs {
+                if let Some(pipeline) = &dsl_def.pipeline {
+                    collect_perform_effects(&pipeline.expr, &mut usages);
+                }
+                for tail in &dsl_def.tails {
+                    for arg in &tail.args {
+                        collect_perform_effects(&arg.value, &mut usages);
+                    }
+                }
+            }
+            if let Some(execution) = &conductor.execution {
+                collect_perform_effects(&execution.body, &mut usages);
+            }
+            if let Some(monitoring) = &conductor.monitoring {
+                collect_perform_effects(&monitoring.body, &mut usages);
+            }
+        }
+    }
     if usages.is_empty() {
         return Vec::new();
     }
@@ -4150,6 +4493,34 @@ fn detect_capability_violations(
                 Some(usage.span),
                 Some(descriptor.id().to_string()),
             ));
+        }
+    }
+    violations
+}
+
+fn detect_varargs_violations(module: &Module) -> Vec<TypecheckViolation> {
+    let mut violations = Vec::new();
+    for decl in &module.decls {
+        if let DeclKind::Extern { abi, functions, .. } = &decl.kind {
+            for item in functions {
+                let signature = &item.signature;
+                if !signature.varargs {
+                    continue;
+                }
+                if abi != "C" {
+                    violations.push(TypecheckViolation::varargs_invalid_abi(
+                        signature.span,
+                        signature.name.name.as_str(),
+                        abi,
+                    ));
+                }
+                if signature.params.is_empty() {
+                    violations.push(TypecheckViolation::varargs_missing_fixed_param(
+                        signature.span,
+                        signature.name.name.as_str(),
+                    ));
+                }
+            }
         }
     }
     violations
@@ -4474,6 +4845,9 @@ fn visit_module_exprs(module: &Module, visitor: &mut impl FnMut(&Expr)) {
     for decl in &module.decls {
         visit_decl(decl, visitor);
     }
+    for expr in &module.exprs {
+        visit_expr(expr, visitor);
+    }
 }
 
 fn visit_decl(decl: &Decl, visitor: &mut impl FnMut(&Expr)) {
@@ -4699,7 +5073,59 @@ fn collect_perform_effects(expr: &Expr, usages: &mut Vec<EffectUsage>) {
         ExprKind::Lambda { body, .. } => {
             collect_perform_effects(body, usages);
         }
-        ExprKind::Literal(_) | ExprKind::Identifier(_) => {}
+        ExprKind::Loop { body }
+        | ExprKind::Unsafe { body }
+        | ExprKind::Defer { body } => {
+            collect_perform_effects(body, usages);
+        }
+        ExprKind::While { condition, body } => {
+            collect_perform_effects(condition, usages);
+            collect_perform_effects(body, usages);
+        }
+        ExprKind::For { start, end, .. } => {
+            collect_perform_effects(start, usages);
+            collect_perform_effects(end, usages);
+        }
+        ExprKind::Match { target, arms } => {
+            collect_perform_effects(target, usages);
+            for arm in arms {
+                if let Some(guard) = &arm.guard {
+                    collect_perform_effects(guard, usages);
+                }
+                collect_perform_effects(&arm.body, usages);
+            }
+        }
+        ExprKind::Handle { handle } => {
+            collect_perform_effects(&handle.target, usages);
+        }
+        ExprKind::Pipe { left, right } => {
+            collect_perform_effects(left, usages);
+            collect_perform_effects(right, usages);
+        }
+        ExprKind::Unary { expr: inner, .. }
+        | ExprKind::Propagate { expr: inner }
+        | ExprKind::Return { value: Some(inner) } => {
+            collect_perform_effects(inner, usages);
+        }
+        ExprKind::Break { value } => {
+            if let Some(inner) = value {
+                collect_perform_effects(inner, usages);
+            }
+        }
+        ExprKind::FieldAccess { target, .. }
+        | ExprKind::TupleAccess { target, .. } => {
+            collect_perform_effects(target, usages);
+        }
+        ExprKind::Index { target, index } => {
+            collect_perform_effects(target, usages);
+            collect_perform_effects(index, usages);
+        }
+        ExprKind::Literal(_)
+        | ExprKind::Identifier(_)
+        | ExprKind::ModulePath(_)
+        | ExprKind::FixityLiteral(_)
+        | ExprKind::Continue
+        | ExprKind::Return { value: None } => {}
         _ => {}
     }
 }

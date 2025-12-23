@@ -12,6 +12,7 @@ pub type DictRefId = usize;
 pub struct TypedModule {
     pub functions: Vec<TypedFunction>,
     pub active_patterns: Vec<TypedActivePattern>,
+    pub conductors: Vec<TypedConductor>,
     pub dict_refs: Vec<DictRef>,
     pub schemes: Vec<SchemeInfo>,
 }
@@ -62,6 +63,61 @@ pub struct TypedActivePattern {
     pub params: Vec<TypedParam>,
     pub body: TypedExpr,
     pub dict_ref_ids: Vec<DictRefId>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedConductor {
+    pub name: String,
+    pub span: Span,
+    pub dsl_defs: Vec<TypedConductorDslDef>,
+    pub channels: Vec<TypedConductorChannel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execution: Option<TypedConductorBlock>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub monitoring: Option<TypedConductorMonitoringBlock>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedConductorDslDef {
+    pub alias: String,
+    pub target: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pipeline_type: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub tails: Vec<TypedConductorDslTail>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedConductorDslTail {
+    pub stage: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub arg_types: Vec<String>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedConductorChannel {
+    pub source: String,
+    pub target: String,
+    pub payload: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedConductorBlock {
+    pub ty: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedConductorMonitoringBlock {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+    pub ty: String,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Serialize)]
