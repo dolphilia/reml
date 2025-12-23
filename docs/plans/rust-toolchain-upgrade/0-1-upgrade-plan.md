@@ -74,6 +74,11 @@
 - ビルド失敗時はロールバックではなく修正優先で対応し、原因切り分け・コード修正・パッチ適用・代替クレート検討の順で解消を試みる。
 - 修正対応ログの項目は `docs/plans/rust-toolchain-upgrade/0-2-validation-plan.md` の「フェーズ 4 のログ項目（修正対応）」に従う。
 
+### 実施結果
+- 本リポジトリはドキュメント専用のため、`cargo build` による再ビルド検証は未実施。
+- 実行予定コマンドは `docs/plans/rust-toolchain-upgrade/0-2-validation-plan.md` の「推奨コマンド例」に従う。
+- 実施時は `reports/spec-audit/summary.md` に実行コマンド・結果・修正対応ログを追記する。
+
 ## フェーズ 5: 影響の整理と復帰準備
 - 更新結果を本計画書と `reports/spec-audit/summary.md` に記録する。
 - `docs/plans/docs-examples-audit/` の作業に戻るための差分確認を行う。

@@ -33,6 +33,13 @@
 - `rust-toolchain.toml` を追加し、`channel = "stable"` と `components = ["rustfmt", "clippy"]` を設定。
 - `rustup` を導入して `rustup update stable` を実行し、`rustc 1.92.0 (ded5c06cf 2025-12-08)` を stable として確定。
 
+## Rust ツールチェーン更新（フェーズ 4: 再ビルドと検証）
+| JST 時刻 | コマンド | 結果 | 備考 |
+|----------|----------|------|------|
+| 未実施 | `cargo build --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend` | ⏸️ 保留 | ドキュメント専用運用のためビルド未実施。実施時は `docs/plans/rust-toolchain-upgrade/0-2-validation-plan.md` に準拠。 |
+| 未実施 | `cargo build --manifest-path compiler/rust/runtime/Cargo.toml` | ⏸️ 保留 | 同上。 |
+| 未実施 | `cargo build --manifest-path compiler/rust/tooling/Cargo.toml` | ⏸️ 保留 | `compiler/rust/tooling` の有無を確認後に実施。 |
+
 ## Rust ツールチェーン更新: 修正対応ログテンプレート
 | JST 時刻 | 対象クレート | 症状/ログ要約 | 原因切り分け | 修正内容 | パッチ有無 | 結果 | 備考 |
 |----------|--------------|----------------|--------------|----------|-----------|------|------|
