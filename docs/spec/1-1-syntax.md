@@ -133,6 +133,8 @@ pub fn config_orchestrator() -> Parser<AppConfig> =
 
 ### B.4 宣言の種類
 
+* **トップレベル式の扱い**: 既定ではトップレベル式を許可しません。仕様サンプル検証や移行用途で必要な場合は `RunConfig.allow_top_level_expr = true` を明示し、CLI では `--allow-top-level-expr` で有効化します。
+
 * **値束縛と再代入**  \n  `let` は不変束縛、`var` は可変束縛。`var` で導入した変数はブロック内で `:=` による再代入が可能です（C.6 および [効果と安全性](1-3-effects-safety.md) を参照）。
 
   ```reml

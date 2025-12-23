@@ -365,12 +365,8 @@ impl ParserDriver {
             .extend(detect_handle_missing_with_tokens(&tokens).into_iter())
             .expect("token diagnostics must include severity/domain/code");
 
-        let (ast, parse_errors, legacy_error, trace_events) = parse_tokens(
-            &tokens,
-            source,
-            &streaming_state,
-            options.allow_top_level_expr,
-        );
+        let (ast, parse_errors, legacy_error, trace_events) =
+            parse_tokens(&tokens, source, &streaming_state);
         let mut streaming_recover = StreamingRecoverController::new(streaming_enabled);
         streaming_recover.start_checkpoint();
         for (span, formatted) in parse_errors.into_iter() {
@@ -399,6 +395,9 @@ impl ParserDriver {
         if let Some(module) = ast.as_ref() {
             collect_effect_handler_diagnostics(module, &mut diagnostics);
             collect_intrinsic_attribute_diagnostics(module, &mut diagnostics);
+            if !options.allow_top_level_expr {
+                collect_top_level_expr_diagnostics(module, &mut diagnostics);
+            }
         }
 
         (
@@ -483,7 +482,6 @@ fn parse_tokens(
     tokens: &[Token],
     source: &str,
     streaming_state: &StreamingState,
-    allow_top_level_expr: bool,
 ) -> (
     Option<Module>,
     Vec<(Option<Span>, FormattedSimpleError)>,
@@ -502,7 +500,7 @@ fn parse_tokens(
         .collect();
 
     let end = source.len();
-    let parser = module_parser(source, streaming_state, allow_top_level_expr);
+    let parser = module_parser(source, streaming_state);
     let (mut ast, errors) =
         parser.parse_recovery(Stream::from_iter(end..end, token_pairs.into_iter()));
 
@@ -1083,6 +1081,26 @@ fn collect_intrinsic_attribute_diagnostics(
     for expr in &module.exprs {
         inspect_expr(expr, diagnostics);
     }
+}
+
+fn collect_top_level_expr_diagnostics(module: &Module, diagnostics: &mut Vec<FrontendDiagnostic>) {
+    if module.exprs.is_empty() {
+        return;
+    }
+    let span = module.exprs.first().map(|expr| expr.span);
+    let mut diagnostic = FrontendDiagnostic::new("トップレベル式は許可されていません。")
+        .with_severity(DiagnosticSeverity::Error)
+        .with_domain(DiagnosticDomain::Parser)
+        .with_code("parser.top_level_expr.disallowed")
+        .with_recoverability(Recoverability::Recoverable);
+    if let Some(span) = span {
+        diagnostic = diagnostic.with_span(span);
+    }
+    diagnostic.add_note(DiagnosticNote::new(
+        "parser.top_level_expr.hint",
+        "`fn` で包むか、`RunConfig.allow_top_level_expr = true` / `--allow-top-level-expr` を利用してください。",
+    ));
+    diagnostics.push(diagnostic);
 }
 
 fn collect_cfg_diagnostics(
@@ -1690,7 +1708,6 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
 fn module_parser<'src>(
     source: &'src str,
     streaming_state: &StreamingState,
-    allow_top_level_expr: bool,
 ) -> impl chumsky::Parser<TokenKind, Module, Error = Simple<TokenKind>> + Clone + 'src {
     let streaming_state_success = streaming_state.clone();
 
@@ -3767,34 +3784,19 @@ fn module_parser<'src>(
         .then_ignore(just(TokenKind::Semicolon).repeated())
         .map(ModuleItem::Expr);
 
-    let module_item = if allow_top_level_expr {
-        choice((
-            effect_decl.clone().map(ModuleItem::Effect),
-            trait_decl.clone().map(ModuleItem::Decl),
-            impl_decl.clone().map(ModuleItem::Decl),
-            type_decl.clone().map(ModuleItem::Decl),
-            extern_decl.clone().map(ModuleItem::Decl),
-            let_decl.clone().map(ModuleItem::Decl),
-            var_decl.clone().map(ModuleItem::Decl),
-            conductor_decl.clone().map(ModuleItem::Decl),
-            active_pattern_decl.clone().map(ModuleItem::ActivePattern),
-            function.clone().map(ModuleItem::Function),
-            top_level_expr,
-        ))
-    } else {
-        choice((
-            effect_decl.clone().map(ModuleItem::Effect),
-            trait_decl.clone().map(ModuleItem::Decl),
-            impl_decl.clone().map(ModuleItem::Decl),
-            type_decl.clone().map(ModuleItem::Decl),
-            extern_decl.clone().map(ModuleItem::Decl),
-            let_decl.clone().map(ModuleItem::Decl),
-            var_decl.clone().map(ModuleItem::Decl),
-            conductor_decl.clone().map(ModuleItem::Decl),
-            active_pattern_decl.clone().map(ModuleItem::ActivePattern),
-            function.clone().map(ModuleItem::Function),
-        ))
-    };
+    let module_item = choice((
+        effect_decl.clone().map(ModuleItem::Effect),
+        trait_decl.clone().map(ModuleItem::Decl),
+        impl_decl.clone().map(ModuleItem::Decl),
+        type_decl.clone().map(ModuleItem::Decl),
+        extern_decl.clone().map(ModuleItem::Decl),
+        let_decl.clone().map(ModuleItem::Decl),
+        var_decl.clone().map(ModuleItem::Decl),
+        conductor_decl.clone().map(ModuleItem::Decl),
+        active_pattern_decl.clone().map(ModuleItem::ActivePattern),
+        function.clone().map(ModuleItem::Function),
+        top_level_expr,
+    ));
 
     module_item
         .repeated()
