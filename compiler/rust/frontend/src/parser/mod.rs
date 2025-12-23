@@ -1057,7 +1057,6 @@ fn collect_intrinsic_attribute_diagnostics(
             DeclKind::Effect(effect) => {
                 for op in &effect.operations {
                     validate_attrs(&op.attrs, false, "effect operation", diagnostics);
-                    inspect_expr(&op.body, diagnostics);
                 }
             }
             _ => {}
@@ -3007,6 +3006,7 @@ fn module_parser<'src>(
     let params = delimited_with_cut(
         TokenKind::LParen,
         param
+            .clone()
             .map(|((pattern, ty), default)| Param {
                 span: pattern.span,
                 pattern,
@@ -3020,7 +3020,13 @@ fn module_parser<'src>(
     );
     let params_with_varargs = params.clone().map(|params| (params, false));
 
-    let params_no_trailing = param.clone().separated_by(just(TokenKind::Comma));
+    let extern_param = param.clone().map(|((pattern, ty), default)| Param {
+        span: pattern.span,
+        pattern,
+        type_annotation: ty,
+        default,
+    });
+    let params_no_trailing = extern_param.clone().separated_by(just(TokenKind::Comma));
     let params_with_variadic = params_no_trailing
         .clone()
         .then(
@@ -3030,7 +3036,7 @@ fn module_parser<'src>(
                 .or_not(),
         )
         .map(|(params, varargs)| (params, varargs.unwrap_or(false)));
-    let params_with_trailing = param
+    let params_with_trailing = extern_param
         .clone()
         .separated_by(just(TokenKind::Comma))
         .allow_trailing()

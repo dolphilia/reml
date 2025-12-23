@@ -36,12 +36,14 @@
 ## Rust ツールチェーン更新（フェーズ 4: 再ビルドと検証）
 | JST 時刻 | コマンド | 結果 | 備考 |
 |----------|----------|------|------|
-| 未実施 | `cargo build --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend` | ⏸️ 保留 | ドキュメント専用運用のためビルド未実施。実施時は `docs/plans/rust-toolchain-upgrade/0-2-validation-plan.md` に準拠。 |
-| 未実施 | `cargo build --manifest-path compiler/rust/runtime/Cargo.toml` | ⏸️ 保留 | 同上。 |
-| 未実施 | `cargo build --manifest-path compiler/rust/tooling/Cargo.toml` | ⏸️ 保留 | `compiler/rust/tooling` の有無を確認後に実施。 |
+| 07:01 | `cargo build --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend` | ✅ 成功 | `time 0.3.30` の型推論エラー解消後にビルド通過。`core_prelude` 未定義など `reml_runtime` 側の警告は継続。 |
+| 07:02 | `cargo build --manifest-path compiler/rust/runtime/Cargo.toml` | ✅ 成功 | `core_prelude` 未定義 (`unexpected_cfgs`) など警告 21 件。 |
+| 07:02 | `cargo build --manifest-path compiler/rust/tooling/Cargo.toml` | ⏸️ 対象なし | `compiler/rust/tooling` が存在しないため実施不要。 |
 
 ## Rust ツールチェーン更新: 修正対応ログテンプレート
 | JST 時刻 | 対象クレート | 症状/ログ要約 | 原因切り分け | 修正内容 | パッチ有無 | 結果 | 備考 |
 |----------|--------------|----------------|--------------|----------|-----------|------|------|
+| 06:55 | `compiler/rust/runtime` / `compiler/rust/runtime/ffi` | `time 0.3.30` で `error[E0282]` | `time` クレートが `rustc 1.92` で型推論失敗 | `time = "0.3.36"` に緩和し `cargo update -p time` で `0.3.44` へ更新 | `なし` | ✅ 成功 | `compiler/rust/runtime/Cargo.toml` / `compiler/rust/runtime/ffi/Cargo.toml` と各 `Cargo.lock` を更新。 |
+| 06:58 | `compiler/rust/frontend` | `error[E0308]`/`error[E0609]` でビルド停止 | `OperationDecl` に `body` がなく、extern パラメータ型が `Param` と不一致 | `inspect_decl` の `effect` 分岐から `body` 参照を削除し、extern パラメータを `Param` へ統一 | `なし` | ✅ 成功 | `compiler/rust/frontend/src/parser/mod.rs` を修正。 |
 | 00:00 | `compiler/rust/<crate>` |  |  |  | `なし` / `あり` |  |  |
 | 10:30 | `compiler/rust/frontend` | `error[E0599]` でビルド停止 | `frontend` のみ再現、依存更新が要因 | `parser/lexer.rs` の型変換を修正 | `なし` | ✅ 成功 | `cargo build --manifest-path compiler/rust/frontend/Cargo.toml` |

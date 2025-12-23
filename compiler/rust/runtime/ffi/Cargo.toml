@@ -25,7 +25,7 @@ unicode-width = "0.1"
 unicode-normalization = "0.1"
 notify = "6.1"
 glob = "0.3"
-time = { version = "=0.3.30", features = ["local-offset", "formatting", "parsing"] }
+time = { version = "0.3.36", features = ["local-offset", "formatting", "parsing"] }
 ordered-float = "4.2"
 thiserror = "1.0"
 

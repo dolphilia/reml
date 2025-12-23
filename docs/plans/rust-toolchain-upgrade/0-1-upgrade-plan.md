@@ -75,9 +75,12 @@
 - 修正対応ログの項目は `docs/plans/rust-toolchain-upgrade/0-2-validation-plan.md` の「フェーズ 4 のログ項目（修正対応）」に従う。
 
 ### 実施結果
-- 本リポジトリはドキュメント専用のため、`cargo build` による再ビルド検証は未実施。
-- 実行予定コマンドは `docs/plans/rust-toolchain-upgrade/0-2-validation-plan.md` の「推奨コマンド例」に従う。
-- 実施時は `reports/spec-audit/summary.md` に実行コマンド・結果・修正対応ログを追記する。
+- `cargo build --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend` を実行し、ビルド成功を確認した。
+- `cargo build --manifest-path compiler/rust/runtime/Cargo.toml` を実行し、ビルド成功を確認した（`core_prelude` 未定義の `unexpected_cfgs` など警告は継続）。
+- `compiler/rust/tooling` が存在しないため、該当ビルドは対象外とした。
+- 失敗対応として `time 0.3.30` の `error[E0282]` を解消するため `time = "0.3.36"` へ緩和し、`cargo update -p time` で `0.3.44` に更新した。
+- `compiler/rust/frontend` の `OperationDecl` / extern パラメータ型不整合を修正し、ビルドを通した。
+- 実行コマンド・結果・修正対応ログは `reports/spec-audit/summary.md` に追記済み。
 
 ## フェーズ 5: 影響の整理と復帰準備
 - 更新結果を本計画書と `reports/spec-audit/summary.md` に記録する。
