@@ -863,6 +863,9 @@ fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<Fro
             _ => {}
         }
     }
+    for expr in &module.exprs {
+        record(expr, diagnostics);
+    }
 }
 
 fn collect_intrinsic_attribute_diagnostics(
@@ -1069,6 +1072,9 @@ fn collect_intrinsic_attribute_diagnostics(
     for decl in &module.decls {
         inspect_decl(decl, diagnostics);
     }
+    for expr in &module.exprs {
+        inspect_expr(expr, diagnostics);
+    }
 }
 
 fn collect_cfg_diagnostics(
@@ -1100,6 +1106,9 @@ fn collect_cfg_diagnostics(
     }
     for active_pattern in &module.active_patterns {
         inspect_cfg_expr(&active_pattern.body, diagnostics, &registry);
+    }
+    for expr in &module.exprs {
+        inspect_cfg_expr(expr, diagnostics, &registry);
     }
 }
 
@@ -1263,6 +1272,9 @@ fn collect_match_guard_diagnostics(module: &Module, diagnostics: &mut Vec<Fronte
         if let DeclKind::Let { value, .. } | DeclKind::Var { value, .. } = &decl.kind {
             walk_expr(value, diagnostics);
         }
+    }
+    for expr in &module.exprs {
+        walk_expr(expr, diagnostics);
     }
 }
 
@@ -1656,6 +1668,7 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
         TokenKind::Not => vec![ET::token("!")],
         TokenKind::Question => vec![ET::token("?")],
         TokenKind::Dot => vec![ET::token(".")],
+        TokenKind::Ellipsis => vec![ET::token("...")],
         TokenKind::DotDot => vec![ET::token("..")],
         TokenKind::Underscore => vec![ET::token("_")],
         TokenKind::Comment => vec![ET::custom("comment")],
@@ -2325,6 +2338,15 @@ fn module_parser<'src>(
                 }
             });
 
+        let unsafe_expr = just(TokenKind::KeywordUnsafe)
+            .ignore_then(block_expr.clone())
+            .map_with_span(|body, span: Range<usize>| Expr {
+                span: range_to_span(span),
+                kind: ExprKind::Unsafe {
+                    body: Box::new(body),
+                },
+            });
+
         let match_guard = choice((
             just(TokenKind::KeywordWhen).to(false),
             just(TokenKind::KeywordIf).to(true),
@@ -2934,6 +2956,7 @@ fn module_parser<'src>(
             do_expr,
             assignment_expr,
             block_expr,
+            unsafe_expr,
             pipe_expr,
         ))
         .boxed()
@@ -2967,6 +2990,29 @@ fn module_parser<'src>(
             .cut()
             .separated_by(just(TokenKind::Comma))
             .allow_trailing(),
+        TokenKind::RParen,
+    );
+    let params_with_varargs = params.clone().map(|params| (params, false));
+
+    let params_no_trailing = param.clone().separated_by(just(TokenKind::Comma));
+    let params_with_variadic = params_no_trailing
+        .clone()
+        .then(
+            just(TokenKind::Comma)
+                .ignore_then(just(TokenKind::Ellipsis))
+                .to(true)
+                .or_not(),
+        )
+        .map(|(params, varargs)| (params, varargs.unwrap_or(false)));
+    let params_with_trailing = param
+        .clone()
+        .separated_by(just(TokenKind::Comma))
+        .allow_trailing()
+        .map(|params| (params, false));
+    let variadic_only = just(TokenKind::Ellipsis).to((Vec::new(), true));
+    let extern_params = delimited_with_cut(
+        TokenKind::LParen,
+        choice((variadic_only, params_with_variadic, params_with_trailing)),
         TokenKind::RParen,
     );
 
@@ -3038,7 +3084,7 @@ fn module_parser<'src>(
         .map_with_span(move |_, span: Range<usize>| range_to_span(span))
         .then(ident.clone())
         .then(parse_generics.clone())
-        .then(params.clone())
+        .then(params_with_varargs.clone())
         .then(
             just(TokenKind::Arrow)
                 .ignore_then(type_parser.clone())
@@ -3050,7 +3096,8 @@ fn module_parser<'src>(
         .map_with_span(
             |(
                 (
-                    (((((fn_span, name), generics), params), ret_type), effect_before_where),
+                    (((((fn_span, name), generics), (params, varargs)), ret_type),
+                     effect_before_where),
                     where_clause,
                 ),
                 effect_after_where,
@@ -3062,6 +3109,45 @@ fn module_parser<'src>(
                     name,
                     generics,
                     params,
+                    varargs,
+                    ret_type,
+                    where_clause,
+                    effect,
+                    span: Span::new(fn_span.start.min(signature_span.start), signature_span.end),
+                }
+            },
+        );
+
+    let extern_fn_signature = just(TokenKind::KeywordFn)
+        .map_with_span(move |_, span: Range<usize>| range_to_span(span))
+        .then(ident.clone())
+        .then(parse_generics.clone())
+        .then(extern_params.clone())
+        .then(
+            just(TokenKind::Arrow)
+                .ignore_then(type_parser.clone())
+                .or_not(),
+        )
+        .then(effect_annotation.clone().or_not())
+        .then(where_clause.clone())
+        .then(effect_annotation.clone().or_not())
+        .map_with_span(
+            |(
+                (
+                    (((((fn_span, name), generics), (params, varargs)), ret_type),
+                     effect_before_where),
+                    where_clause,
+                ),
+                effect_after_where,
+            ),
+             span: Range<usize>| {
+                let effect = effect_after_where.or(effect_before_where);
+                let signature_span = range_to_span(span);
+                FunctionSignature {
+                    name,
+                    generics,
+                    params,
+                    varargs,
                     ret_type,
                     where_clause,
                     effect,
@@ -3263,7 +3349,7 @@ fn module_parser<'src>(
     let extern_fn_decl = attr_list
         .clone()
         .then(visibility.clone())
-        .then(fn_signature.clone())
+        .then(extern_fn_signature.clone())
         .then_ignore(just(TokenKind::Semicolon))
         .map_with_span(
             |((attrs, visibility), signature), span: Range<usize>| ExternItem {
@@ -3664,7 +3750,13 @@ fn module_parser<'src>(
         Function(Function),
         ActivePattern(ActivePatternDecl),
         Decl(Decl),
+        Expr(Expr),
     }
+
+    let top_level_expr = expr
+        .clone()
+        .then_ignore(just(TokenKind::Semicolon).repeated())
+        .map(ModuleItem::Expr);
 
     let module_item = choice((
         effect_decl.clone().map(ModuleItem::Effect),
@@ -3677,6 +3769,7 @@ fn module_parser<'src>(
         conductor_decl.clone().map(ModuleItem::Decl),
         active_pattern_decl.clone().map(ModuleItem::ActivePattern),
         function.clone().map(ModuleItem::Function),
+        top_level_expr,
     ));
 
     module_item
@@ -3687,12 +3780,14 @@ fn module_parser<'src>(
             let mut functions_vec = Vec::new();
             let mut active_patterns_vec = Vec::new();
             let mut decls_vec = Vec::new();
+            let mut exprs_vec = Vec::new();
             for item in items {
                 match item {
                     ModuleItem::Effect(effect) => effects_vec.push(effect),
                     ModuleItem::Function(function) => functions_vec.push(function),
                     ModuleItem::ActivePattern(active) => active_patterns_vec.push(active),
                     ModuleItem::Decl(decl) => decls_vec.push(decl),
+                    ModuleItem::Expr(expr) => exprs_vec.push(expr),
                 }
             }
             Module {
@@ -3702,6 +3797,7 @@ fn module_parser<'src>(
                 functions: functions_vec,
                 active_patterns: active_patterns_vec,
                 decls: decls_vec,
+                exprs: exprs_vec,
             }
         })
 }
@@ -3756,6 +3852,9 @@ fn append_module_trace_events(module: &Module, events: &mut Vec<ParserTraceEvent
     }
     for function in &module.functions {
         record_function_trace_events(function, events);
+    }
+    for expr in &module.exprs {
+        record_expr_trace_events(expr, events);
     }
 }
 

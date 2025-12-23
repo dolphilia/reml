@@ -10,6 +10,8 @@ pub struct Module {
     pub functions: Vec<Function>,
     pub active_patterns: Vec<ActivePatternDecl>,
     pub decls: Vec<Decl>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub exprs: Vec<Expr>,
 }
 
 impl Module {
@@ -36,8 +38,13 @@ impl Module {
                 .map(Function::render)
                 .collect::<Vec<_>>(),
         );
+        rendered.extend(self.exprs.iter().map(Expr::render));
         rendered.join("\n")
     }
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -329,6 +336,8 @@ pub struct FunctionSignature {
     pub name: Ident,
     pub generics: Vec<Ident>,
     pub params: Vec<Param>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub varargs: bool,
     pub ret_type: Option<TypeAnnot>,
     pub where_clause: Vec<WherePredicate>,
     #[serde(skip_serializing_if = "Option::is_none")]

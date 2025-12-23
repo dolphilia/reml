@@ -129,6 +129,7 @@ pub enum TokenKind {
     LogicalOr,
     Not,
     Question,
+    Ellipsis,
     DotDot,
     Underscore,
 

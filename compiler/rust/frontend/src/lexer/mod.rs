@@ -183,6 +183,8 @@ enum RawToken {
     PipeForward,
     #[token("~>")]
     ChannelPipe,
+    #[token("...")]
+    Ellipsis,
     #[token("..")]
     DotDot,
     #[token("=>")]
@@ -723,6 +725,7 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             Ok(RawToken::LogicalOr) => tokens.push(Token::new(TokenKind::LogicalOr, span)),
             Ok(RawToken::Not) => tokens.push(Token::new(TokenKind::Not, span)),
             Ok(RawToken::Question) => tokens.push(Token::new(TokenKind::Question, span)),
+            Ok(RawToken::Ellipsis) => tokens.push(Token::new(TokenKind::Ellipsis, span)),
             Ok(RawToken::DotDot) => tokens.push(Token::new(TokenKind::DotDot, span)),
             Ok(RawToken::Underscore) => tokens.push(Token::new(TokenKind::Underscore, span)),
             Ok(RawToken::BlockComment) => {}
