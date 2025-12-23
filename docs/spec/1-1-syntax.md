@@ -82,7 +82,7 @@
   中括弧は 1 階層以上のネストに対応し、`use Core.Parse.{Lex, Op.{Infix, Prefix}}` のように部分展開できます。
   なお **ルートモジュール（`module` ヘッダが `Spec.Core.*` などパッケージ直下を指す場合）では `super` を利用できません**。`super` は親モジュールを辿る相対参照であり、最上位には親が存在しないため、`use super.Core.Prelude` のような記法は `language.use.invalid_super` 診断として拒否されます。ルートからの参照が必要な場合は `use ::Core.Prelude` など明示的なルート指定を使用してください。
 
-> 監査ノート: `docs/spec/1-1-syntax/examples/use_nested.reml` が本節の正準サンプルです。Rust Frontend (2025-11-21 Streaming ランナー) は `module`/`use` の受理に加えて `fn ... { ... }` ブロックと `match` 構文も解析できるようになり、`TraceEvent::{ModuleHeaderAccepted,UseDeclAccepted}` を `reports/spec-audit/ch1/use_nested-YYYYMMDD-trace.md` へ記録します。Streaming 実行と CLI 実行の双方で診断 0 件が揃ったため、フォールバックの `use_nested_rustcap.reml` は参照用途のみとし、監査ベースラインは `reports/spec-audit/ch1/streaming_use_nested-YYYYMMDD-diagnostics.json`（`CI_RUN_ID=rust-frontend-streaming-20251121.1` など）を含む正準サンプルで固定します。
+> 監査ノート: `examples/docs-examples/spec/1-1-syntax/use_nested.reml` が本節の正準サンプルです。Rust Frontend (2025-11-21 Streaming ランナー) は `module`/`use` の受理に加えて `fn ... { ... }` ブロックと `match` 構文も解析できるようになり、`TraceEvent::{ModuleHeaderAccepted,UseDeclAccepted}` を `reports/spec-audit/ch1/use_nested-YYYYMMDD-trace.md` へ記録します。Streaming 実行と CLI 実行の双方で診断 0 件が揃ったため、フォールバックの `use_nested_rustcap.reml` は参照用途のみとし、監査ベースラインは `reports/spec-audit/ch1/streaming_use_nested-YYYYMMDD-diagnostics.json`（`CI_RUN_ID=rust-frontend-streaming-20251121.1` など）を含む正準サンプルで固定します。
 
 ### B.1.1 DSLエントリーポイント宣言 {#dsl-entry-declaration}
 
@@ -265,7 +265,7 @@ conductor config_orchestrator {
   * `handler <EffectName>` ブロックで対象操作を列挙し、必要に応じて `return` 節を定義する。
   * `resume` はワンショットが既定。複数回呼び出す場合は `@reentrant` 属性と Capability 許可が必要（3.8 節）。
 
-> 監査ノート: 効果構文の正準サンプルは `docs/spec/1-1-syntax/examples/effect_handler.reml` です。Rust Frontend (2025-11-21 Streaming ランナー) は `ExprParser` と effect handler 実装に加えて `StreamFlowState` の橋渡しを検証し、`reports/spec-audit/ch1/effect_handler-YYYYMMDD-diagnostics.json` や `streaming_effect_handler-YYYYMMDD-diagnostics.json`（例: `...-20251121-diagnostics.json`）に診断 0 件のログを保存しています。`effect_handler_rustcap.reml` 等のフォールバックは完全に撤廃済みであり、監査では `effect_handler-YYYYMMDD-trace.md`/`effect_handler-YYYYMMDD-dualwrite.md` と Streaming ログを組み合わせて参照してください。PoC を再現する際は `cargo test --manifest-path compiler/rust/frontend/Cargo.toml streaming_metrics -- --nocapture` による `bridge_signal_roundtrip` テストと `scripts/poc_dualwrite_compare.sh effect_handler` を併用します。
+> 監査ノート: 効果構文の正準サンプルは `examples/docs-examples/spec/1-1-syntax/effect_handler.reml` です。Rust Frontend (2025-11-21 Streaming ランナー) は `ExprParser` と effect handler 実装に加えて `StreamFlowState` の橋渡しを検証し、`reports/spec-audit/ch1/effect_handler-YYYYMMDD-diagnostics.json` や `streaming_effect_handler-YYYYMMDD-diagnostics.json`（例: `...-20251121-diagnostics.json`）に診断 0 件のログを保存しています。`effect_handler_rustcap.reml` 等のフォールバックは完全に撤廃済みであり、監査では `effect_handler-YYYYMMDD-trace.md`/`effect_handler-YYYYMMDD-dualwrite.md` と Streaming ログを組み合わせて参照してください。PoC を再現する際は `cargo test --manifest-path compiler/rust/frontend/Cargo.toml streaming_metrics -- --nocapture` による `bridge_signal_roundtrip` テストと `scripts/poc_dualwrite_compare.sh effect_handler` を併用します。
 
 * **属性拡張**
   効果ハンドラ導入に伴い、以下の属性を追加する。詳細な検査規則は 1.3 節および 3.8 節を参照。

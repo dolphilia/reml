@@ -170,10 +170,10 @@ impl SampleCase {
     fn source(self) -> &'static str {
         match self {
             SampleCase::UseNested => {
-                include_str!("../../../../docs/spec/1-1-syntax/examples/use_nested.reml")
+                include_str!("../../../../examples/docs-examples/spec/1-1-syntax/use_nested.reml")
             }
             SampleCase::EffectHandler => {
-                include_str!("../../../../docs/spec/1-1-syntax/examples/effect_handler.reml")
+                include_str!("../../../../examples/docs-examples/spec/1-1-syntax/effect_handler.reml")
             }
         }
     }

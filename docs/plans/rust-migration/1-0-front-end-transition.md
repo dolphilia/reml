@@ -124,7 +124,7 @@
   - `OperationDecl`/`HandlerDecl` の `resume` 注釈にも `AnnotationKind` を適用し、`p1-front-end-checklists.csv` の AST 行へ `Phase2-8-W37: ModuleHeader/UseDecl/HandlerDecl align` を記入する。  
 - パーサ/トレース更新:
   - `module_parser` を `parse_module_header` → `parse_use_list` → `parse_decl_list` の 3 ステージに分割し、各フェーズで `TraceEvent::{ModuleHeaderAccepted, UseDeclAccepted}` を記録する。トレースログ（`use_nested-YYYYMMDD-trace.md`）は `scripts/poc_dualwrite_compare.sh use_nested` から得た dual-write 結果を `reports/spec-audit/ch1/` へ保存し、`docs/plans/rust-migration/unified-porting-principles.md#同一観測点の再現` の要件を満たす証跡とする。  
-  - `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/use_nested.reml --trace-output reports/spec-audit/ch1/use_nested-YYYYMMDD-trace.md` を 1 日 2 回（朝/夕）実行し、`reports/spec-audit/ch1/use_nested-YYYYMMDD-diagnostics.json` へ結果を上書き保存する。CI では `use_nested_rustcap.reml` との比較も残し、差分ゼロを確認できた時点で脚注削除の提案を `docs/spec/1-1-syntax.md` へ送る。  
+  - `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics examples/docs-examples/spec/1-1-syntax/use_nested.reml --trace-output reports/spec-audit/ch1/use_nested-YYYYMMDD-trace.md` を 1 日 2 回（朝/夕）実行し、`reports/spec-audit/ch1/use_nested-YYYYMMDD-diagnostics.json` へ結果を上書き保存する。CI では `use_nested_rustcap.reml` との比較も残し、差分ゼロを確認できた時点で脚注削除の提案を `docs/spec/1-1-syntax.md` へ送る。  
 - 現状メモ:
   - 2025-11-17 時点で `ModuleHeader`/`UseDecl` の AST 整備・`TraceEvent::{ModuleHeaderAccepted,UseDeclAccepted}` の埋め込みに加え、ブロック/`match` 構文を Rust Frontend が解析できるようになり、`use_nested.reml` が診断 0 件で通過する。`reports/spec-audit/ch1/use_nested-20251117-diagnostics.json` / `use_nested-20251117-trace.md` をベースラインとし、`rust-gap SYNTAX-002` は `Closed` 扱い。  
 - 差分メモ連携:
@@ -134,7 +134,7 @@
 #### Phase 2-8 追補（W38）: module_parser 再実装グリッド
 
 - `module_parser.rs` を `ModuleStage::{Header,UseList,DeclList}` 単位に再構成し、各ステージで `TraceEvent::ModuleStageEntered { stage }`・`TraceEvent::ModuleDeclAccepted { kind }` を `trace_id = syntax:module-stage::<stage>` へ固定。証跡は `reports/spec-audit/ch1/use_nested-20251119-trace.md`、`block_scope-20251119-trace.md`、`effect_handler-20251119-trace.md` に保存する。  
-- `tests/parser.rs` へ `module_header_accepts_use_nested` など 6 本の統合テストを追加し、`cargo test --manifest-path compiler/rust/frontend/Cargo.toml parser::module -- --nocapture` のログを `reports/spec-audit/ch1/module_parser-20251119-parser-tests.md` に収集。テストは `docs/spec/1-1-syntax/examples/*.reml` を直接読む `FixtureSample` を利用し、dual-write 結果は `reports/spec-audit/ch1/module_parser-20251119-dualwrite.md` で確認する。  
+- `tests/parser.rs` へ `module_header_accepts_use_nested` など 6 本の統合テストを追加し、`cargo test --manifest-path compiler/rust/frontend/Cargo.toml parser::module -- --nocapture` のログを `reports/spec-audit/ch1/module_parser-20251119-parser-tests.md` に収集。テストは `examples/docs-examples/spec/1-1-syntax/*.reml` を直接読む `FixtureSample` を利用し、dual-write 結果は `reports/spec-audit/ch1/module_parser-20251119-dualwrite.md` で確認する。  
 - `scripts/poc_dualwrite_compare.sh use_nested` / `effect_handler` の出力を `reports/spec-audit/ch1/2025-11-17-syntax-samples.md#2025-11-19-module_parser-再実装ログ` に転記し、`docs/plans/rust-migration/3-0-ci-and-dual-write-strategy.md#3010-ci-ブロッカーとゲート` に `Module Parser Acceptance`／`Rollback Hook` を追加。  
 - `docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-002/module_parser` 行を `Closed (P2-8 W38)` に更新し、今後の P3 監査では `reports/spec-audit/ch1/module_parser-20251119-parser-tests.md`、`use_nested-20251119-diagnostics.json`、`effect_handler-20251119-diagnostics.json` を参照する。  
 
@@ -143,7 +143,7 @@
 - 目的: `rust-gap SYNTAX-003` の解消。`ExprParser` を分離し、`block_scope.reml` と `effect_handler.reml` を Rust Frontend で受理して診断 0 件を確認する。  
 - 実装タスク:
   - `compiler/rust/frontend/src/parser/expr.rs` を追加して式パーサを `module_parser` から切り離し、`Expr` 列挙に `Block`, `Let`, `Var`, `Do`, `Perform`, `Handle`, `Resume`, `Return` を追加。`TraceEvent::{ExprEnter,ExprLeave}` を `trace_id = syntax:expr-*` で固定する。  
-  - `BindingKind::{Immutable,Mutable}` と `TypeAnnot::Pending` を `let`/`var` の AST に付与し、`docs/spec/1-1-syntax/examples/block_scope.reml` を CLI で検証 (`reports/spec-audit/ch1/block_scope-20251118-diagnostics.json`)。  
+  - `BindingKind::{Immutable,Mutable}` と `TypeAnnot::Pending` を `let`/`var` の AST に付与し、`examples/docs-examples/spec/1-1-syntax/block_scope.reml` を CLI で検証 (`reports/spec-audit/ch1/block_scope-20251118-diagnostics.json`)。  
   - `EffectExprKind`・`TypeAnnot::Resume` を通じて `perform`/`do`/`handle`/`operation` を統合し、`operation log(args, resume)` が `DeclKind::Handler` と `OperationDecl` の双方で共有されるようにする。`effects.resume.untyped` 診断を `compiler/rust/frontend/src/diagnostics/mod.rs` へ追加。  
   - `scripts/poc_dualwrite_compare.sh effect_handler` を実行し、OCaml/Rust の診断 JSON と監査メタデータが一致することを `reports/spec-audit/ch1/effect_handler-20251118-dualwrite.md` に記録。  
 - 成果物:

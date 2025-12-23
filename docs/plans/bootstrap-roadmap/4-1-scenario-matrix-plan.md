@@ -33,8 +33,8 @@
 
   | spec_anchor | サンプル資産 | category | expected・根拠 | 現状 |
   | --- | --- | --- | --- | --- |
-  | `docs/spec/1-1-syntax.md§B.1` | `docs/spec/1-1-syntax/examples/use_nested(.reml)` | Prelude / Runtime | `reports/spec-audit/ch1/use_nested-20251119-diagnostics.json`, `use_nested_rustcap-20251117` | `ok`（Rust Frontend CLI/Streaming で診断 0） |
-  | `docs/spec/1-1-syntax.md§B.5` | `docs/spec/1-1-syntax/examples/effect_handler.reml` | Capability | `reports/spec-audit/ch1/effect_handler-20251119-diagnostics.json` | `ok`（StageRequirement::AtLeast(Beta)） |
+  | `docs/spec/1-1-syntax.md§B.1` | `examples/docs-examples/spec/1-1-syntax/use_nested(.reml)` | Prelude / Runtime | `reports/spec-audit/ch1/use_nested-20251119-diagnostics.json`, `use_nested_rustcap-20251117` | `ok`（Rust Frontend CLI/Streaming で診断 0） |
+  | `docs/spec/1-1-syntax.md§B.5` | `examples/docs-examples/spec/1-1-syntax/effect_handler.reml` | Capability | `reports/spec-audit/ch1/effect_handler-20251119-diagnostics.json` | `ok`（StageRequirement::AtLeast(Beta)） |
   | `docs/spec/1-0-language-core-overview.md§4.1` | `examples/cli/trace_sample.reml` | CLI | `reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/trace_sample_cli.ocaml.diagnostics.json` | `pending`（Rust ゴールデン化待ち） |
 | `docs/spec/3-5-core-io-path.md§7` | `examples/practical/core_io/file_copy/canonical.reml` / `examples/practical/core_path/security_check/relative_denied.reml` | IO | `reports/spec-audit/ch3/core_io_summary-20251201.md`, `tests/data/core_path/security/relative_denied.json` | `pending`（`expected/` へのゴールデン搬入待ち） |
   | `docs/spec/3-0-core-library-overview.md§3.6` | `examples/core_diagnostics/pipeline_branch.reml` | Runtime | `examples/core_diagnostics/pipeline_branch.expected.diagnostic.json` | `ok`（`effects.contract.stage_mismatch` を再現） |
