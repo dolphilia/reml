@@ -20,5 +20,6 @@
 - [3.14 LSP ツールキット](3-14-core-lsp.md): LSP 型と JSON-RPC ヘルパを標準化し、診断ブリッジの経路を整理します。
 - [3.15 ドキュメント生成](3-15-core-doc.md): ドキュメントコメント抽出・レンダリング・Doctest の最小仕様を定義します。
 - [3.16 DSL パラダイムキット](3-16-core-dsl-paradigm-kits.md): `Core.Dsl.Object`/`Core.Dsl.Gc`/`Core.Dsl.Actor`/`Core.Dsl.Vm` の最小 API を整備し、DSL 実装の意味論基盤を標準化します。
+- [3.17 ネットワーク基盤](3-17-core-net.md): URL 解析 → HTTP リクエスト送信の最小シナリオを軸に、HTTP クライアント/TCP/UDP/URL の最小 API と `effect {net}` を定義し、Capability/監査ログと整合する基盤を提示します。TLS/HTTP2 は Phase 5 拡張項目として整理します。
 
 標準ライブラリの再エクスポートは `use Core.Parse.{Lex, Op.{Infix, Prefix}}` のような多段ネスト `use` を前提に整理されており、Phase 2-5 `SYNTAX-002` 計画 S5（2025-11-12 更新）で OCaml 実装・テスト・測定指標が揃った。詳細は [`../plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md`](../plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md) と [0-3-audit-and-metrics.md](../plans/bootstrap-roadmap/0-3-audit-and-metrics.md) の `parser.use_nested_support` を参照して最新状態を確認すること。Capability Stage の検証や `effects.contract.stage_mismatch` のサンプルは `examples/core_diagnostics/pipeline_branch.reml` と `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` に収録されており、Core.Runtime が記録する `capability.*` / `effect.stage.*` メタデータの流れを Chapter 3.6/3.8 から一貫して追跡できる。

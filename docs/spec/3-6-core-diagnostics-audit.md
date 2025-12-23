@@ -8,8 +8,8 @@
 | --- | --- |
 | ステータス | 正式仕様 |
 | 効果タグ | `@pure`, `effect {diagnostic}`, `effect {audit}`, `effect {debug}`, `effect {trace}`, `effect {privacy}`, `effect {migration}` |
-| 依存モジュール | `Core.Prelude`, `Core.Text`, `Core.Numeric & Time`, `Core.Config`, `Core.Data`, `Core.IO` |
-| 相互参照 | [2.5 エラー設計](2-5-error.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.7 Core Config & Data](3-7-core-config-data.md) |
+| 依存モジュール | `Core.Prelude`, `Core.Text`, `Core.Numeric & Time`, `Core.Config`, `Core.Data`, `Core.IO`, `Core.Net` |
+| 相互参照 | [2.5 エラー設計](2-5-error.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.7 Core Config & Data](3-7-core-config-data.md), [3.17 Core Net](3-17-core-net.md) |
 
 > **段階的導入ポリシー**: 新しい効果カテゴリや Capability と連携する診断は、`Diagnostic.extensions["effects"].stage`に `Experimental` / `Beta` / `Stable` を記録し、実験フラグで有効化した機能を明示する。CLI と LSP は `stage` が `Experimental` の診断をデフォルトで `Warning` に落とし、`--ack-experimental-diagnostics` を指定した場合のみ `Error` へ昇格させる運用を推奨する。`effect {migration}` は [3-7 Core Config & Data](3-7-core-config-data.md) で追加された `MigrationPlan` API が Configuration 差分を適用するときに用いるタグであり、Config CLI (`reml config migrate`) が `Diagnostic.extensions["migration"]` と `AuditEnvelope.metadata["config.migration.*"]` を同時に書き込めることを保証する。
 
@@ -299,6 +299,7 @@ pub enum DiagnosticDomain = {
   Type,
   Effect,
   Runtime,
+  Net,
   Config,
   Manifest,
   Target,
@@ -311,6 +312,7 @@ pub enum DiagnosticDomain = {
 ```
 
 - ドメインは診断を機能領域ごとに分類し、CLI/LSP/監査ログでのフィルタリングや集計に利用する。
+- `Net` は `Core.Net` に由来する通信/URL 解析の診断を扱い、`net.*` キーと監査イベントを統一する。
 - `Target` はクロスコンパイルやターゲットプロファイル整合性に関する診断を表し、本節 §7 でメッセージ定義を示す。
 - `Other(Str)` は将来の拡張やユーザープロジェクト固有の分類に使用し、名前は `snake_case` 推奨とする。
 
@@ -545,7 +547,31 @@ CLI/LSP の `Diagnostic.extensions["effects"]["iterator"]` へも同じキー集
 
 これらのキーは `AuditPolicy.exclude_patterns` で除外しない限り永続化され、`CapabilityAudit` レポートや LSP の効果ビューで差分分析に利用できる。
 
-#### 2.4.3 Stage 差分プリセット `EffectDiagnostic` {#effect-diagnostic-stage}
+#### 2.4.5 ネットワーク診断プリセット (Net Domain) {#diagnostic-net}
+
+`Core.Net` の診断は `Diagnostic.domain = Some(DiagnosticDomain::Net)` を既定とし、`AuditEnvelope.metadata` に `net.*` を必ず記録する。`event.kind` には `net.*` を設定し、HTTP/TCP/UDP のイベントを共通の形式で追跡できるようにする。
+
+| `event.kind` | 必須メタデータ | 補足 |
+| --- | --- | --- |
+| `net.http.request` | `net.url`, `net.method`, `net.request_bytes`, `net.elapsed_ms` | 送信開始または完了時に記録する。 |
+| `net.http.response` | `net.url`, `net.status`, `net.response_bytes`, `net.elapsed_ms` | 受信完了時に記録する。 |
+| `net.tcp.connect` | `net.url`, `net.elapsed_ms` | 接続完了時に記録する。 |
+| `net.tcp.listen` | `net.url`, `net.listen_port` | リスナー確立時に記録する。 |
+| `net.udp.bind` | `net.url`, `net.listen_port` | バインド完了時に記録する。 |
+| `net.udp.send` | `net.peer`, `net.request_bytes`, `net.elapsed_ms` | 送信完了時に記録する。 |
+
+| 診断キー | 既定 Severity | 発生条件 | 必須メタデータ |
+| --- | --- | --- | --- |
+| `net.http.timeout` | Error | HTTP 送受信がタイムアウトした | `net.url`, `net.elapsed_ms`, `net.method` |
+| `net.http.connection_failed` | Error | HTTP 接続に失敗した | `net.url`, `net.elapsed_ms`, `net.method` |
+| `net.tcp.connect_refused` | Error | TCP 接続が拒否された | `net.url`, `net.elapsed_ms` |
+| `net.tcp.timeout` | Error | TCP/UDP の送受信がタイムアウトした | `net.url`, `net.elapsed_ms` |
+| `net.dns.failure` | Error | DNS 解決に失敗した | `net.url`, `net.elapsed_ms` |
+| `net.url.invalid_scheme` | Error | URL スキームが不正 | `net.url` |
+
+`AuditEnvelope.metadata` と `Diagnostic.audit_metadata` には `net.url`, `net.method`, `net.status`, `net.request_bytes`, `net.response_bytes`, `net.elapsed_ms`, `net.peer`, `net.listen_port` を該当ケースで必須とし、値が存在しない場合は `net.audit.missing_metadata` を `Warning` で発行する。
+
+#### 2.4.6 Stage 差分プリセット `EffectDiagnostic` {#effect-diagnostic-stage}
 
 ```reml
 pub struct EffectDiagnostic;

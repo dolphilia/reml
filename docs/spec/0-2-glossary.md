@@ -141,6 +141,13 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **Core.Lsp**: LSP の基本型と JSON-RPC ヘルパを提供し、DSL 作者が最小実装を構築できるようにする。[3-14 Core Lsp](3-14-core-lsp.md) を参照。
 - **Core.Doc**: ドキュメントコメント抽出とレンダリング、Doctest 実行の標準 API を提供する。[3-15 Core Doc](3-15-core-doc.md) を参照。
 
+## ネットワーク
+- **Core.Net**: HTTP/TCP/UDP/URL の最小 API と `effect {net}` を定義する標準ライブラリモジュール。[3-17 Core Net](3-17-core-net.md) を参照。
+- **Url / UrlParts**: URL の正規化済み構造とビルド用の構造体。`scheme`/`authority`/`path` の不変条件を保証する。[3-17 Core Net](3-17-core-net.md) を参照。
+- **NetError / HttpError / UrlError**: ネットワーク、HTTP、URL 解析の失敗を表すエラー型。`diagnostic_key` と `Result` で失敗経路を明確化する。[3-17 Core Net](3-17-core-net.md) を参照。
+- **TcpStream / TcpListener**: TCP の接続ストリームとリスナー。`Core.IO.Reader/Writer` と互換の読み書き契約を持つ。[3-17 Core Net](3-17-core-net.md) を参照。
+- **UdpSocket**: UDP の送受信ソケットと `Datagram` 形式の受信バッファ。[3-17 Core Net](3-17-core-net.md) を参照。
+
 ## DSL・エコシステム・ツール
 - **DSL (Domain-Specific Language)**: `Core.Parse` を使って特定領域向けの言語を宣言的に構築するアプローチ。プロジェクト全体が DSL ファーストを掲げ、[0-1 プロジェクト目的](0-1-project-purpose.md#32-エコシステム統合とdslファーストアプローチ) に背景がまとめられる。
 - **Conductor パターン**: 複数の DSL を組み合わせてパイプライン化するための構文で、`conductor` ブロックとして宣言する。[1-1 構文](1-1-syntax.md#b11-dslエントリーポイント宣言) と [guides/conductor-pattern.md](../guides/conductor-pattern.md) に運用指針がある。

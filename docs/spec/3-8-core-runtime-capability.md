@@ -83,6 +83,11 @@ pub enum CapabilityHandle =
 | `watcher.resource_limits` | `Stable` | `io`<br>`watcher` | Core | - |
 | `memory.buffered_io` | `Stable` | `mem` | Core | - |
 | `security.fs.policy` | `Stable` | `security` | Core | - |
+| `net.http.client` | `Experimental` | `net`<br>`io` | Core | - |
+| `net.tcp.connect` | `Experimental` | `net`<br>`io` | Core | - |
+| `net.tcp.listen` | `Experimental` | `net`<br>`io` | Core | - |
+| `net.udp.bind` | `Experimental` | `net`<br>`io` | Core | - |
+| `net.udp.send` | `Experimental` | `net`<br>`io` | Core | - |
 | `core.time.timezone.lookup` | `Beta` | `time` | Core | - |
 | `core.time.timezone.local` | `Beta` | `time` | Core | - |
 | `core.collections.audit` | `Stable` | `audit`<br>`mem` | Core | - |
