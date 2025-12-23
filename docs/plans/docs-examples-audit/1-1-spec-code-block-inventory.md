@@ -5,8 +5,8 @@
 | 優先度 | ドキュメント | 節 | コード名 | .reml パス | 状態 | 備考 |
 | --- | --- | --- | --- | --- | --- | --- |
 | P0 | docs/spec/0-3-code-style-guide.md | 3.3 配列・タプル・レコード | sec_3_3 | examples/docs-examples/spec/0-3-code-style-guide/sec_3_3.reml | ok | L44 / diag:reports/spec-audit/ch0/0-3-code-style-guide__sec_3_3-20251223-diagnostics.json |
-| P0 | docs/spec/0-3-code-style-guide.md | 3.4 パイプとチェーン | sec_3_4 | examples/docs-examples/spec/0-3-code-style-guide/sec_3_4.reml | ng | L58 / validation:nonzero:1 / diag:reports/spec-audit/ch0/0-3-code-style-guide__sec_3_4-20251223-diagnostics.json |
-| P0 | docs/spec/0-3-code-style-guide.md | 3.5 制御構文 | sec_3_5 | examples/docs-examples/spec/0-3-code-style-guide/sec_3_5.reml | ng | L71 / validation:nonzero:1 / diag:reports/spec-audit/ch0/0-3-code-style-guide__sec_3_5-20251223-diagnostics.json |
+| P0 | docs/spec/0-3-code-style-guide.md | 3.4 パイプとチェーン | sec_3_4 | examples/docs-examples/spec/0-3-code-style-guide/sec_3_4.reml | ok | L58 / validation:nonzero:1 / category:example / diag_code:parser.syntax.expected_tokens / fix:fn-wrap / diag:reports/spec-audit/ch0/0-3-code-style-guide__sec_3_4-20251223-diagnostics.json |
+| P0 | docs/spec/0-3-code-style-guide.md | 3.5 制御構文 | sec_3_5 | examples/docs-examples/spec/0-3-code-style-guide/sec_3_5.reml | ok | L71 / validation:nonzero:1 / category:example / diag_code:parser.syntax.expected_tokens / fix:fn-wrap / diag:reports/spec-audit/ch0/0-3-code-style-guide__sec_3_5-20251223-diagnostics.json |
 | P0 | docs/spec/0-3-code-style-guide.md | 5.2 関数・無名関数 | sec_5_2 | examples/docs-examples/spec/0-3-code-style-guide/sec_5_2.reml | ok | L115 / diag:reports/spec-audit/ch0/0-3-code-style-guide__sec_5_2-20251223-diagnostics.json |
 | P0 | docs/spec/1-1-syntax.md | B.1 モジュールとインポート | sec_b_1 | examples/docs-examples/spec/1-1-syntax/sec_b_1.reml | ok | L76 / diag:reports/spec-audit/ch1/1-1-syntax__sec_b_1-20251223-diagnostics.json |
 | P0 | docs/spec/1-1-syntax.md | B.1.1 DSLエントリーポイント宣言 | sec_b_1_1 | examples/docs-examples/spec/1-1-syntax/sec_b_1_1.reml | ng | L100 / validation:nonzero:1 / diag:reports/spec-audit/ch1/1-1-syntax__sec_b_1_1-20251223-diagnostics.json |

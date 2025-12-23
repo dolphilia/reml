@@ -56,10 +56,12 @@
 - `|>` は 1 段につき 1 行を基本とし、長いチェーンでは次行をインデントして視線を揃える。
 
   ```reml
-  source
-    |> tokenize()
-    |> parse(rule = grammar.entry)
-    |> map_errors(normalize)
+  fn pipeline_example(source) {
+    source
+      |> tokenize()
+      |> parse(rule = grammar.entry)
+      |> map_errors(normalize)
+  }
   ```
 
 - `_` 占位による挿入位置指定は必要箇所のみ。複数箇所に同じ値を渡す場合はラムダを使う方が読みやすい。【F:1-1-syntax.md†L494-L499】
@@ -69,11 +71,13 @@
 - `if`/`else` は 1 行で書ける短文でもブロックを許容するが、ネストが深くなる場合は `match` を優先する。
 
   ```reml
-  if cond then expr1 else expr2
-  
-  match value with
-  | Some(v) -> transform(v)
-  | None    -> default
+  fn choose_value(cond: bool, value: Option<i64>) -> i64 {
+    let base = if cond then 1 else 0
+
+    match value with
+    | Some(v) -> v + base
+    | None    -> base
+  }
   ```
 
 - `match` アームは `|` を行頭に揃え、`->` の右側は 1 行で収まらない場合にのみ改行して 2 スペース継続インデントする。

@@ -24,3 +24,5 @@
 | JST 時刻 | コマンド | 結果 | 備考 |
 |----------|----------|------|------|
 | 17:00 | `compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics <sample>` | ⚠️ 438 件中 53 件 OK / 385 件 NG | `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` を更新し、`reports/spec-audit/ch0`〜`ch4` に `docs-examples-audit-20251223.md` と診断 JSON を保存。 |
+| 17:08 | 手動編集（`docs/spec/0-3-code-style-guide.md` / `examples/docs-examples/spec/0-3-code-style-guide/*.reml`） | ✅ ch0 の NG 2 件を修正 | `reports/spec-audit/ch0/docs-examples-fix-notes-20251223.md` に修正メモを追記。再検証は未実施。 |
+| 17:10 | `compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics examples/docs-examples/spec/0-3-code-style-guide/sec_3_4.reml` / `compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics examples/docs-examples/spec/0-3-code-style-guide/sec_3_5.reml` | ✅ diagnostics 0 件 | `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` の状態を `ok` に更新。 |
