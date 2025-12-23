@@ -230,6 +230,30 @@ Reml 標準ライブラリトラックに以下のモジュールを追加する
     - API は `Core.Path` を受け入れ、OS の差異（Windows パス vs POSIX）を処理する必要があります。
     - `Core.System` は、シグナルやプロセス属性のための抽象インターフェースを提供する必要があります。
 
+## 着手順の目安
+
+標準ライブラリ拡張の着手順を以下に整理する。実用性・安全性・段階的導入（`docs/spec/0-1-project-purpose.md`）を最優先の判断基準とする。
+
+1. **P0: Core.Net / Core.Crypto**  
+   - **理由**: 実用用途の根幹（API 連携・配信・認証/整合性）であり、欠落がボトルネック。  
+   - **前提**: `Core.Async` と `Core.Io`/`Core.Path` 連携、`effect {net}`/`effect {crypto, random}` の監査統合。
+
+2. **P1: Core.System（Process/Env/Daemon）/ Core.Sync**  
+   - **理由**: サブプロセス・シグナル・同期原語は汎用言語として必須。`Core.Process` をプラグインから昇格。  
+   - **前提**: Capability Stage と診断監査の整合（`docs/spec/3-6-core-diagnostics-audit.md` / `3-8-core-runtime-capability.md`）。
+
+3. **P2: Core.Encoding / Core.Serialization / Core.Archive / Core.Math**  
+   - **理由**: データ交換・パッケージング・数値処理の実務要件を満たすため。  
+   - **前提**: `Core.Data` との責務境界（`docs/spec/3-7-core-config-data.md`）を明確化し、ストリーミング API を `Reader`/`Writer` と統合。
+
+4. **P3: Core.Fs / Core.Terminal / Core.Observability**  
+   - **理由**: ツール運用・可観測性・開発体験の向上。`Core.Diagnostics` との住み分けを保ちつつ簡易 API を提供。  
+   - **前提**: `Core.Async` ストリーム接続、`effect {io.console}` と監査ログの統一。
+
+5. **P4: Core.Sql / Core.Test 拡張**  
+   - **理由**: 実装コストが大きく、外部ドライバ依存が強い。インターフェース標準化から着手。`Core.Test` は Phase 4 で最小実装済みのため拡張は後続。  
+   - **前提**: Stage 管理とプラグイン/FFI ポリシー（`docs/spec/3-8-core-runtime-capability.md`）の再確認。
+
 ## 6. 次のステップ
 
 1.  基盤的な可用性のブロッカーであるため、`Core.Net` と `Core.Crypto` を優先する。
