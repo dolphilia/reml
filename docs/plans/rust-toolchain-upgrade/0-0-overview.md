@@ -9,6 +9,11 @@
 - 依存クレートの更新・互換性確認を行い、ビルドと検証の記録を `reports/` と計画書に残す。
 - 更新完了後、`docs/plans/docs-examples-audit/` のフェーズ作業へ復帰できる状態にする。
 
+## 更新対象の Rust バージョン
+- `rust-toolchain.toml` を導入し、`channel = "stable"` で最新安定版を追従する。
+- `icu_normalizer_data` の `rustc 1.83+` 要件を満たすため、最低条件を `stable (>= 1.83)` とする。
+- 実作業時は `rustup show` で取得した stable の具体バージョンを `reports/spec-audit/summary.md` と本計画書に記録する。
+
 ## 対象範囲
 - Rust ツールチェーン（`rustc` / `cargo` / `rustfmt` / `clippy`）の更新。
 - `compiler/rust/` 配下のバイナリとライブラリ（`reml_frontend`、runtime、tooling、tests）。

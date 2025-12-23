@@ -37,6 +37,12 @@
 - `rustfmt` / `clippy` も同じツールチェーンに揃える。
 - `rust-toolchain.toml` を導入する場合は、ワークスペース方針と合わせて明記する。
 
+### 方針決定（確定）
+- `rust-toolchain.toml` を導入し、`channel = "stable"` を採用する（最新安定版を常時追従）。
+- `components = ["rustfmt", "clippy"]` を指定し、ツール群のバージョンを固定する。
+- `icu_normalizer_data` の要件に合わせ、`stable (>= 1.83)` を最低条件として明記する。
+- 更新当日に確定した stable の具体バージョンは、`reports/spec-audit/summary.md` と本計画書のフェーズ 2 実施記録に残す。
+
 ## フェーズ 3: 依存クレートの更新と整合
 - `cargo update` で依存を更新し、MSRV を超えるクレートがあれば互換方針を決定する。
 - `Cargo.lock` の差分を記録し、更新理由をメモに残す。
