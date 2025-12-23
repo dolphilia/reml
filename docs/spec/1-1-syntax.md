@@ -438,10 +438,11 @@ let embedded = embedded_dsl(
 #### B.8.3.2 `with_embedded` の合成契約（草案）
 
 ```reml
-fn docs_pipeline() -> Parser<Doc> =
-  markdown_parser
+conductor docs_pipeline {
+  markdown: markdown_parser
     |> with_embedded([embedded])
     |> with_capabilities(["core.parse", "core.lsp"])
+}
 ```
 
 - `with_embedded` は `embedded_dsl` の配列を受け取り、親 DSL のパース/実行コンテキストに境界情報を登録する。

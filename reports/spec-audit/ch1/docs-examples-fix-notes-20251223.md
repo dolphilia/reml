@@ -28,3 +28,9 @@
 - `docs/spec/1-1-syntax.md` の該当コードブロックを全て更新。
 - 在庫表 `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` は `ok` / `validation:ok` を反映済み。
 - 再検証は `compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics <sample>` を用いて実施。
+
+## 追記: フェーズ 3 再検証（2025-12-23）
+- 現行の `compiler/rust/frontend/target/debug/reml_frontend` では `--allow-top-level-expr` が未提供で、`conductor` の `pub` 修飾・`unsafe` ブロック・`...` 可変長引数が構文エラーになることを確認。
+- フェーズ 3 復元分は一旦フォールバックへ戻し、`examples/docs-examples/spec/1-1-syntax/sec_b_8_3_2.reml` の `conductor` 例のみ維持。
+- `examples/docs-examples/spec/1-1-syntax/sec_b_1_1.reml` / `sec_b_4-f.reml` / `sec_b_5-c.reml` / `sec_c_4-a.reml` / `sec_c_4-b.reml` / `sec_c_4-c.reml` / `sec_c_4-d.reml` / `sec_c_4-e.reml` / `sec_c_7.reml` / `sec_section-b.reml` を修正し、全件 `--emit-diagnostics` で 0 件を確認。
+- `docs/spec/1-1-syntax.md` の該当コードブロックもフォールバック内容へ戻した。

@@ -1,15 +1,15 @@
-  fn greet_with_console() -> String {
-    handle greet() with
-      handler Console {
-        operation log(msg, resume) {
-          println("LOG: " + msg)
-          resume(())
-        }
-        operation ask(prompt, resume) {
-          resume("Reml")
-        }
-        return value {
-          value
-        }
+fn greet_with_console() -> String {
+  handle greet() with
+    handler Console {
+      operation log(msg, resume) {
+        println("LOG: " + msg)
+        resume(())
       }
-  }
+      operation ask(prompt, resume) {
+        resume("Reml")
+      }
+      return value {
+        value
+      }
+    }
+}
