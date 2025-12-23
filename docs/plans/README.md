@@ -11,6 +11,14 @@ Reml 実装ロードマップや運用計画を集約しています。
 ## リポジトリ再編計画
 - [repository-restructure-plan.md](repository-restructure-plan.md)
 
+## Rust ツールチェーン更新計画 (`docs/plans/rust-toolchain-upgrade/`)
+- [README.md](rust-toolchain-upgrade/README.md) — 目的・手順・復帰計画の一覧
+- [0-0-overview.md](rust-toolchain-upgrade/0-0-overview.md) — 背景・目的・対象範囲
+- [0-1-upgrade-plan.md](rust-toolchain-upgrade/0-1-upgrade-plan.md) — 更新作業のフェーズ計画
+- [0-2-validation-plan.md](rust-toolchain-upgrade/0-2-validation-plan.md) — ビルド/検証手順と記録方針
+- [0-3-rollback-plan.md](rust-toolchain-upgrade/0-3-rollback-plan.md) — ロールバック指針
+- [0-4-return-to-task.md](rust-toolchain-upgrade/0-4-return-to-task.md) — docs-examples-audit への復帰手順
+
 ## ドキュメント Reml コード検証計画 (`docs/plans/docs-examples-audit/`)
 - [README.md](docs-examples-audit/README.md) — 計画の概要と参照先
 - [0-0-overview.md](docs-examples-audit/0-0-overview.md) — 背景・目的・成功条件
