@@ -53,9 +53,26 @@
 - `Cargo.lock` の差分を記録し、更新理由をメモに残す。
 - 破壊的変更がある場合は、個別にピン留めまたは修正を行う。
 
+### 実施結果
+- `cargo update` を以下で実行し、該当する `Cargo.lock` を更新した。
+  - `compiler/rust/adapter`
+  - `compiler/rust/frontend`
+  - `compiler/rust/backend/llvm`
+  - `compiler/rust/runtime`
+  - `compiler/rust/runtime/ffi`
+  - `compiler/rust/xtask`
+- 主要な更新差分（抜粋）:
+  - 共通更新: `itoa 1.0.16`, `ryu 1.0.21`, `serde_json 1.0.146`, `syn 2.0.111`
+  - `frontend`: `uuid 1.19.0`, `cc 1.2.50`, `insta 1.45.0`, `log 0.4.29`, `redox_syscall 0.6.0`, `zerocopy 0.8.31`, `windows-sys 0.61.2` 追加
+  - `runtime`: `csv 1.4.0`, `url 2.5.7`, `rayon 1.11.0`, `wasm-encoder 0.243.0`, `wast 243.0.0`, `wat 1.243.0` に更新し、`icu_*` 系と `wasmparser 0.243.0` などの新規追加を確認
+- `Cargo.toml.ws` は `cargo` の manifest として認識されないため、`Cargo.lock`（リポジトリ直下）は更新できなかった。`tests/reml_e2e` のロック更新は `Cargo.toml` の復帰手順（`docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` 参照）を含めて方針決定が必要。
+- 破壊的変更の影響はフェーズ 4 のビルド検証で確認し、必要に応じてピン留め方針を追記する。
+
 ## フェーズ 4: 再ビルドと検証
 - `compiler/rust/` 配下の主要バイナリを順にビルドする。
 - ビルドログと結果を `reports/` に記録する（詳細は 0-2 を参照）。
+- ビルド失敗時はロールバックではなく修正優先で対応し、原因切り分け・コード修正・パッチ適用・代替クレート検討の順で解消を試みる。
+- 修正対応ログの項目は `docs/plans/rust-toolchain-upgrade/0-2-validation-plan.md` の「フェーズ 4 のログ項目（修正対応）」に従う。
 
 ## フェーズ 5: 影響の整理と復帰準備
 - 更新結果を本計画書と `reports/spec-audit/summary.md` に記録する。

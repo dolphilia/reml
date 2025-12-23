@@ -32,3 +32,9 @@
 ## Rust ツールチェーン更新（stable 版の確定）
 - `rust-toolchain.toml` を追加し、`channel = "stable"` と `components = ["rustfmt", "clippy"]` を設定。
 - `rustup` を導入して `rustup update stable` を実行し、`rustc 1.92.0 (ded5c06cf 2025-12-08)` を stable として確定。
+
+## Rust ツールチェーン更新: 修正対応ログテンプレート
+| JST 時刻 | 対象クレート | 症状/ログ要約 | 原因切り分け | 修正内容 | パッチ有無 | 結果 | 備考 |
+|----------|--------------|----------------|--------------|----------|-----------|------|------|
+| 00:00 | `compiler/rust/<crate>` |  |  |  | `なし` / `あり` |  |  |
+| 10:30 | `compiler/rust/frontend` | `error[E0599]` でビルド停止 | `frontend` のみ再現、依存更新が要因 | `parser/lexer.rs` の型変換を修正 | `なし` | ✅ 成功 | `cargo build --manifest-path compiler/rust/frontend/Cargo.toml` |
