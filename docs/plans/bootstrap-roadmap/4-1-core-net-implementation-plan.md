@@ -71,31 +71,54 @@ val build : UrlParts -> Result<Url, UrlError>
 ## 作業ステップ
 
 ### フェーズA: 仕様設計とドキュメント整備
-1. `docs/spec/3-17-core-net.md` を新設し、HTTP/TCP/UDP/URL の最小 API を定義する。
-2. `docs/spec/3-0-core-library-overview.md` と `docs/spec/README.md` に `Core.Net` を追記する。
+1. `docs/spec/3-17-core-net.md` を新設し、`Core.Net.Http` / `Core.Net.Tcp` / `Core.Net.Udp` / `Core.Net.Url` の最小 API を定義する。
+   - `Request`/`Response` の最小フィールド（`method`, `url`, `headers`, `body`）と `HttpMethod` 列挙、`Url`/`UrlParts` の不変条件を明文化する。
+   - エラー型を `NetError`/`HttpError`/`UrlError` に分離し、`Result` での失敗時に返す診断キーを併記する。
+   - `effect {net}` の意味範囲（DNS/接続/送受信/URL解析）を定義し、`io`/`io.async` との包含関係を記載する。
+2. `docs/spec/3-0-core-library-overview.md` と `docs/spec/README.md` に `Core.Net` を追記し、章内リンクとセクション要約を追加する。
+   - 主要モジュール、最小 API の利用シナリオ、Phase 5 で拡張予定の項目（TLS/HTTP2）を簡潔に記載する。
 3. `docs/spec/3-6-core-diagnostics-audit.md` に `net.*` 系診断/監査キーを追加する。
-4. `docs/spec/3-8-core-runtime-capability.md` に `net.http.client` / `net.tcp.connect` などの Capability を登録する。
+   - `net.http.request` / `net.http.response` / `net.tcp.connect` / `net.tcp.listen` / `net.udp.bind` / `net.udp.send` の監査イベントと必須メタデータ（`url`, `method`, `status`, `bytes`, `elapsed_ms` など）を定義する。
+   - 失敗時の診断キー（例: `net.http.timeout`, `net.tcp.connect_refused`）と再試行・タイムアウト時の扱いを明記する。
+4. `docs/spec/3-8-core-runtime-capability.md` に `net.http.client` / `net.tcp.connect` / `net.tcp.listen` / `net.udp.bind` / `net.udp.send` などの Capability を登録する。
+   - Capability の Stage 初期値と監査証跡（`effect.stage.required` / `capability.granted`）を揃える。
+5. `docs/spec/0-2-glossary.md` に必要な新語（`UrlParts`, `NetError`, `TcpStream` 等）を追記し、用語揺れを防ぐ。
 
 ### フェーズB: Rust Runtime の最小実装
-1. `compiler/rust/runtime/src/net/` を追加し、`http.rs` / `tcp.rs` / `udp.rs` / `url.rs` を配置する。
-2. HTTP クライアントは `reqwest` 等を候補とし、`Client.request` を同期/非同期のどちらで提供するか決定する。
-3. TCP/UDP は `std::net` の同期版を最小構成として実装し、`Core.Async` と接続するための拡張口を用意する。
-4. `runtime/lib.rs` で `Core.Net` API を公開し、`net` 効果と監査イベントを紐付ける。
+1. `compiler/rust/runtime/src/net/` を追加し、`mod.rs` と `http.rs` / `tcp.rs` / `udp.rs` / `url.rs` を配置する。
+   - モジュール公開順と `pub(crate)` 範囲を決め、`runtime/lib.rs` から `Core.Net` を再輸出する。
+2. URL 解析は `url` クレートなどを候補に、`Url`/`UrlParts` への変換と `UrlError` マッピングを実装する。
+   - `parse` と `build` の逆写像を確認し、失敗時の `UrlError` 種別と診断キーを固定する。
+3. HTTP クライアントは `reqwest`（同期/非同期）や `ureq` などの候補比較を行い、最小構成の依存を決定する。
+   - 初期は同期 API を優先し、`Client.request` のブロッキング/非ブロッキング方針と `Core.Async` 連携の分岐条件を記録する。
+4. TCP/UDP は `std::net` の同期版で最小実装を用意し、タイムアウト/バッファ制御を `RunConfig` から注入できるようにする。
+   - `TcpStream`/`TcpListener`/`UdpSocket` の薄いラッパを用意し、`Core.Io` の `Reader/Writer` と接続するための変換関数を追加する。
+5. 監査イベントの発火位置を実装内に明記し、`net.*` キーを `AuditEnvelope` へ書き込む経路を通す。
 
 ### フェーズC: 非同期統合と Effect 設計
 1. `Core.Async` と `Core.Net` の接続点を整理し、`io.async` と `net` の効果整合を明文化する。
+   - `effect {net}` の実行経路が `Async` 経由か同期経由かを判定する規則を定義する（例: `RunConfig.net.mode = sync|async`）。
 2. `Core.Net.Http` のストリーミングボディと `Core.Io.Reader/Writer` の互換ルールを追加する。
-3. `run_config` にネットワークのタイムアウト/リトライポリシーを追加し、監査メタデータに残す。
+   - 受信ボディの最大サイズ制限、メモリ上限超過時のエラー、ストリーム途中終了時の診断キーを規定する。
+3. `RunConfig` にネットワークのタイムアウト/リトライポリシーを追加し、監査メタデータに残す。
+   - `net.timeout.connect` / `net.timeout.read` / `net.retry.max_attempts` を設け、`AuditEnvelope.metadata` に記録する。
+4. `Core.Net` の API 仕様に `Async` 版のシグネチャを追記するか、`Core.Async` 側のアダプタで吸収するかを決定し、仕様書に方針を明記する。
 
 ### フェーズD: サーバー/高レベル API
 1. `Core.Net.Http.Server` の最小 API を追加し、ルーティングとリクエストハンドラを定義する。
+   - `Server.start : ServerConfig -> (Request -> effect {net} Result<Response, NetError>) -> effect {net} Result<ServerHandle, NetError>` のような形で最小署名を固定する。
 2. `Core.Net.Tcp` の `TcpListener` から `Stream` への変換を定義し、`Core.Async` で非同期受理する。
-3. TLS や HTTP/2 は Phase 5 以降の拡張項目として別途計画を作成する。
+   - `accept` の戻り値（`(TcpStream, SocketAddr)`）とキャンセル規約、バックプレッシャーの扱いを明記する。
+3. サーバー実装は `runtime` 側で最小の依存に留め、Phase 4 ではローカル/開発用の用途に限定する方針を明文化する。
+4. TLS や HTTP/2 は Phase 5 以降の拡張項目として別途計画を作成し、`docs/plans/bootstrap-roadmap/4-2-*` との接続点を整理する。
 
 ### フェーズE: サンプル・回帰・監査ログ
-1. `examples/practical/core_net/` に HTTP クライアントと TCP/UDP サンプルを追加する。
-2. `expected/` に CLI 出力を追加し、`phase4-scenario-matrix.csv` にシナリオを登録する。
-3. `reports/spec-audit/ch4/logs/` に実行ログを保存し、診断/監査キーを検証する。
+1. `examples/practical/core_net/` に HTTP クライアント / URL 解析 / TCP エコー / UDP 送受信の最小サンプルを追加する。
+   - 成功系と失敗系（タイムアウト、接続拒否、URL 解析失敗）をセットで用意する。
+2. `expected/` に stdout / diagnostics / audit のゴールデンを追加し、`docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` にシナリオを登録する。
+   - `diagnostic_keys` / `audit_events` / `stage_requirement` を埋め、`resolution=pending` で初期登録する。
+3. `reports/spec-audit/ch4/logs/` に実行ログを保存し、診断/監査キーが `docs/spec/3-6-core-diagnostics-audit.md` と一致することを確認する。
+4. 追加したサンプルが `docs/spec/3-17-core-net.md` のコード例と一致することを点検し、相互参照リンクを補完する。
 
 ## タイムライン（目安）
 
