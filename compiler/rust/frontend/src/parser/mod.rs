@@ -234,6 +234,7 @@ pub struct ParserOptions {
     pub stream_flow: Option<StreamFlowState>,
     pub lex_identifier_profile: IdentifierProfile,
     pub lex_identifier_locale: Option<LocaleId>,
+    pub allow_top_level_expr: bool,
 }
 
 impl Default for ParserOptions {
@@ -245,6 +246,7 @@ impl Default for ParserOptions {
             stream_flow: None,
             lex_identifier_profile: IdentifierProfile::Unicode,
             lex_identifier_locale: None,
+            allow_top_level_expr: false,
         }
     }
 }
@@ -261,6 +263,7 @@ impl ParserOptions {
             stream_flow: None,
             lex_identifier_profile: lex_identifier_profile_from_run_config(run_config),
             lex_identifier_locale: lex_identifier_locale_from_run_config(run_config),
+            allow_top_level_expr: run_config.allow_top_level_expr,
         }
     }
 
@@ -362,8 +365,12 @@ impl ParserDriver {
             .extend(detect_handle_missing_with_tokens(&tokens).into_iter())
             .expect("token diagnostics must include severity/domain/code");
 
-        let (ast, parse_errors, legacy_error, trace_events) =
-            parse_tokens(&tokens, source, &streaming_state);
+        let (ast, parse_errors, legacy_error, trace_events) = parse_tokens(
+            &tokens,
+            source,
+            &streaming_state,
+            options.allow_top_level_expr,
+        );
         let mut streaming_recover = StreamingRecoverController::new(streaming_enabled);
         streaming_recover.start_checkpoint();
         for (span, formatted) in parse_errors.into_iter() {
@@ -476,6 +483,7 @@ fn parse_tokens(
     tokens: &[Token],
     source: &str,
     streaming_state: &StreamingState,
+    allow_top_level_expr: bool,
 ) -> (
     Option<Module>,
     Vec<(Option<Span>, FormattedSimpleError)>,
@@ -494,7 +502,7 @@ fn parse_tokens(
         .collect();
 
     let end = source.len();
-    let parser = module_parser(source, streaming_state);
+    let parser = module_parser(source, streaming_state, allow_top_level_expr);
     let (mut ast, errors) =
         parser.parse_recovery(Stream::from_iter(end..end, token_pairs.into_iter()));
 
@@ -1682,6 +1690,7 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
 fn module_parser<'src>(
     source: &'src str,
     streaming_state: &StreamingState,
+    allow_top_level_expr: bool,
 ) -> impl chumsky::Parser<TokenKind, Module, Error = Simple<TokenKind>> + Clone + 'src {
     let streaming_state_success = streaming_state.clone();
 
@@ -3758,19 +3767,34 @@ fn module_parser<'src>(
         .then_ignore(just(TokenKind::Semicolon).repeated())
         .map(ModuleItem::Expr);
 
-    let module_item = choice((
-        effect_decl.clone().map(ModuleItem::Effect),
-        trait_decl.clone().map(ModuleItem::Decl),
-        impl_decl.clone().map(ModuleItem::Decl),
-        type_decl.clone().map(ModuleItem::Decl),
-        extern_decl.clone().map(ModuleItem::Decl),
-        let_decl.clone().map(ModuleItem::Decl),
-        var_decl.clone().map(ModuleItem::Decl),
-        conductor_decl.clone().map(ModuleItem::Decl),
-        active_pattern_decl.clone().map(ModuleItem::ActivePattern),
-        function.clone().map(ModuleItem::Function),
-        top_level_expr,
-    ));
+    let module_item = if allow_top_level_expr {
+        choice((
+            effect_decl.clone().map(ModuleItem::Effect),
+            trait_decl.clone().map(ModuleItem::Decl),
+            impl_decl.clone().map(ModuleItem::Decl),
+            type_decl.clone().map(ModuleItem::Decl),
+            extern_decl.clone().map(ModuleItem::Decl),
+            let_decl.clone().map(ModuleItem::Decl),
+            var_decl.clone().map(ModuleItem::Decl),
+            conductor_decl.clone().map(ModuleItem::Decl),
+            active_pattern_decl.clone().map(ModuleItem::ActivePattern),
+            function.clone().map(ModuleItem::Function),
+            top_level_expr,
+        ))
+    } else {
+        choice((
+            effect_decl.clone().map(ModuleItem::Effect),
+            trait_decl.clone().map(ModuleItem::Decl),
+            impl_decl.clone().map(ModuleItem::Decl),
+            type_decl.clone().map(ModuleItem::Decl),
+            extern_decl.clone().map(ModuleItem::Decl),
+            let_decl.clone().map(ModuleItem::Decl),
+            var_decl.clone().map(ModuleItem::Decl),
+            conductor_decl.clone().map(ModuleItem::Decl),
+            active_pattern_decl.clone().map(ModuleItem::ActivePattern),
+            function.clone().map(ModuleItem::Function),
+        ))
+    };
 
     module_item
         .repeated()

@@ -1937,6 +1937,7 @@ fn apply_workspace_config(
     merge_overridden: bool,
     diagnostic_filter_overridden: bool,
     audit_policy_overridden: bool,
+    allow_top_level_expr_overridden: bool,
 ) -> Result<(), String> {
     let raw = std::fs::read_to_string(path)
         .map_err(|err| format!("{} の読み込みに失敗しました: {err}", path.display()))?;
@@ -1952,6 +1953,14 @@ fn apply_workspace_config(
         if !merge_overridden {
             if let Some(merge) = parser.get("merge_warnings").and_then(|v| v.as_bool()) {
                 run_config.merge_warnings = merge;
+            }
+        }
+        if !allow_top_level_expr_overridden {
+            if let Some(allow) = parser
+                .get("allow_top_level_expr")
+                .and_then(|v| v.as_bool())
+            {
+                run_config.allow_top_level_expr = allow;
             }
         }
         if let Some(ack) = parser
@@ -2215,6 +2224,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut diagnostic_filter_overridden = false;
     let mut audit_policy_overridden = false;
     let mut telemetry_requests: Vec<TelemetryRequest> = Vec::new();
+    let mut allow_top_level_expr_overridden = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--emit-parse-debug" => {
@@ -2419,6 +2429,14 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                 run_config.merge_warnings = false;
                 merge_warnings_overridden = true;
             }
+            "--allow-top-level-expr" => {
+                run_config.allow_top_level_expr = true;
+                allow_top_level_expr_overridden = true;
+            }
+            "--no-allow-top-level-expr" => {
+                run_config.allow_top_level_expr = false;
+                allow_top_level_expr_overridden = true;
+            }
             "--require-eof" => run_config.require_eof = true,
             "--no-require-eof" => run_config.require_eof = false,
             "--legacy-result" => run_config.legacy_result = true,
@@ -2598,6 +2616,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
             merge_warnings_overridden,
             diagnostic_filter_overridden,
             audit_policy_overridden,
+            allow_top_level_expr_overridden,
         ) {
             eprintln!("[CONFIG] {}", error);
         }
@@ -2744,6 +2763,8 @@ fn print_help(program_name: &str) {
   --runtime-phase on|off         パース/型検査後の簡易 runtime 実行フェーズを有効/無効化（既定: on）
   --no-runtime-phase             上記のショートカット（off）
   --packrat / --no-packrat       Packrat キャッシュを有効/無効化
+  --allow-top-level-expr         トップレベル式を許可（サンプル検証モード）
+  --no-allow-top-level-expr      トップレベル式を拒否（既定）
   --streaming / --no-streaming   Streaming Runner の有無を切替
   --effect-stage <STAGE>         Stage 要件を指定
   --ack-experimental-diagnostics 実験的 Stage の診断を Error として扱う
@@ -3110,6 +3131,7 @@ fn build_runconfig_summary(
         "left_recursion": left_recursion_label(run_config.left_recursion),
         "trace": run_config.trace,
         "merge_warnings": run_config.merge_warnings,
+        "allow_top_level_expr": run_config.allow_top_level_expr,
         "ack_experimental_diagnostics": run_config.ack_experimental_diagnostics,
         "require_eof": run_config.require_eof,
         "legacy_result": run_config.legacy_result,
@@ -3154,6 +3176,7 @@ fn build_runconfig_top_level(
             "left_recursion": left_recursion_label(run_config.left_recursion),
             "trace": run_config.trace,
             "merge_warnings": run_config.merge_warnings,
+            "allow_top_level_expr": run_config.allow_top_level_expr,
             "ack_experimental_diagnostics": run_config.ack_experimental_diagnostics,
             "require_eof": run_config.require_eof,
             "legacy_result": run_config.legacy_result,
@@ -3189,6 +3212,10 @@ fn build_config_extension(run_config: &RunConfig, args: &CliArgs) -> Value {
     config.insert(
         "merge_warnings".to_string(),
         json!(run_config.merge_warnings),
+    );
+    config.insert(
+        "allow_top_level_expr".to_string(),
+        json!(run_config.allow_top_level_expr),
     );
     config.insert(
         "ack_experimental_diagnostics".to_string(),
@@ -3728,6 +3755,10 @@ fn build_audit_metadata(
     metadata.insert(
         "parser.runconfig.switches.merge_warnings".to_string(),
         json!(run_config.merge_warnings),
+    );
+    metadata.insert(
+        "parser.runconfig.switches.allow_top_level_expr".to_string(),
+        json!(run_config.allow_top_level_expr),
     );
     metadata.insert(
         "parser.runconfig.switches.ack_experimental_diagnostics".to_string(),
