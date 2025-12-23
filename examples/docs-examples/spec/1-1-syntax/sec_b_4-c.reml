@@ -3,5 +3,5 @@
     | Add(Expr, Expr)
     | Neg(Expr)
 
-  type alias Bytes = [u8]
-  type UserId = new i64
+  type alias Bytes = Vec<u8>
+  type UserId = new { value: i64 }

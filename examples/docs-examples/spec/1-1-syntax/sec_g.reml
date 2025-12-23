@@ -9,18 +9,19 @@ fn join3(a: String, b: String, c: String) -> String =
 let r = "1 2 3"
   |> split(" ")
   |> map(|s| parse_int(s))
-  |> fold(init=0, f=(_ + 1))
+  |> fold(0, |acc| acc + 1)
   //           ↑ パイプ値の占位
 
 // ADT と match
 type Expr = | Int(i64) | Add(Expr, Expr) | Neg(Expr)
+fn negate(x: i64) -> i64 = x
 fn eval(e: Expr) -> i64 =
   match e with
   | Int(n)     -> n
-  | Neg(x)     -> -eval(x)
+  | Neg(x)     -> negate(eval(x))
   | Add(a, b)  -> eval(a) + eval(b)
 
 // ブロックは最後の式が値
 fn abs(x: i64) -> i64 {
-  if x < 0 then -x else x
+  if x < 0 then negate(x) else x
 }

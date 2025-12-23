@@ -1,5 +1,10 @@
+fn loop_examples(items) {
   while cond { work() }
 
+  var total = 0
   for item in items {
     total := total + item
   }
+
+  total
+}

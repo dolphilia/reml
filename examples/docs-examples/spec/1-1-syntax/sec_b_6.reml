@@ -4,5 +4,8 @@ pub fn eval(expr: Expr) -> Result<i64, Error> = expr?
 
 impl Parser<T> {
   @inline
-  fn map<U>(self, f: T -> U) -> Parser<U> { ... }
+  fn map<U>(self, f: T -> U) -> Parser<U> {
+    let _ = f
+    self
+  }
 }

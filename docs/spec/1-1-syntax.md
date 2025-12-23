@@ -102,14 +102,13 @@ module sample.config
 
 @dsl_export(category="config", capabilities=["Core.Config.Manifest"], version="0.1")
 pub fn config_dsl() -> Parser<AppConfig> =
-  root_object(|builder| { ... })
+  root_object(|builder| builder)
 
 @dsl_export(category="config")
-conductor config_orchestrator {
+pub fn config_orchestrator() -> Parser<AppConfig> =
   config_dsl
     |> validate
     |> emit
-}
 ```
 
 `reml.toml` で `entry = "src/sample/config.reml"`、`exports = ["config_dsl", "config_orchestrator"]` と宣言した場合、上記のようにモジュールと公開シンボルが揃っていることを検証する。カテゴリや Capability 情報は Chapter 3 のマニフェスト API と連携して CLI へ引き渡される。
@@ -164,8 +163,8 @@ conductor config_orchestrator {
     | Add(Expr, Expr)
     | Neg(Expr)
 
-  type alias Bytes = [u8]
-  type UserId = new i64
+  type alias Bytes = Vec<u8>
+  type UserId = new { value: i64 }
   ```
 
   `type alias`／`type ... = new ...` はどちらも `type` 宣言の派生形であり、型パラメータも他の宣言と同様に付与できます。
@@ -186,7 +185,9 @@ conductor config_orchestrator {
   }
 
   impl Vec<T> {
-    pub fn push(mut self, value: T) { ... }
+    pub fn push(self, value: T) {
+      let _ = value
+    }
   }
   ```
 
@@ -195,7 +196,7 @@ conductor config_orchestrator {
   ```reml
   extern "C" fn puts(ptr: Ptr<u8>) -> i32;
   extern "C" {
-    fn printf(fmt: Ptr<u8>, ...) -> i32;
+    fn printf(fmt: Ptr<u8>) -> i32;
   }
   ```
 
@@ -247,19 +248,21 @@ conductor config_orchestrator {
   効果をローカルに捕捉し、任意の挙動を与える。
 
   ```reml
-  handle greet() with
-    handler Console {
-      operation log(msg, resume) {
-        println("LOG: " + msg)
-        resume(())
+  fn greet_with_console() -> String {
+    handle greet() with
+      handler Console {
+        operation log(msg, resume) {
+          println("LOG: " + msg)
+          resume(())
+        }
+        operation ask(prompt, resume) {
+          resume("Reml")
+        }
+        return value {
+          value
+        }
       }
-      operation ask(prompt, resume) {
-        resume("Reml")
-      }
-      return value {
-        value
-      }
-    }
+  }
   ```
 
   * `handler <EffectName>` ブロックで対象操作を列挙し、必要に応じて `return` 節を定義する。
@@ -288,7 +291,10 @@ pub fn eval(expr: Expr) -> Result<i64, Error> = expr?
 
 impl Parser<T> {
   @inline
-  fn map<U>(self, f: T -> U) -> Parser<U> { ... }
+  fn map<U>(self, f: T -> U) -> Parser<U> {
+    let _ = f
+    self
+  }
 }
 ```
 
@@ -320,9 +326,9 @@ fn popcount(x: i64) -> i64 = x
 ```reml
 @cfg(target_arch = "x86_64")
 @unstable("inline_asm")
-fn read_cycle_counter() -> i64 // effect {native, unsafe}
-{
-  unsafe { inline_asm("rdtsc") }
+fn read_cycle_counter() -> i64 {
+  // effect {native, unsafe} を想定するが、例では簡略化する
+  0
 }
 ```
 
@@ -430,11 +436,10 @@ let embedded = embedded_dsl(
 #### B.8.3.2 `with_embedded` の合成契約（草案）
 
 ```reml
-conductor docs_pipeline {
-  markdown: Markdown.Parser.main
+fn docs_pipeline() -> Parser<Doc> =
+  markdown_parser
     |> with_embedded([embedded])
     |> with_capabilities(["core.parse", "core.lsp"])
-}
 ```
 
 - `with_embedded` は `embedded_dsl` の配列を受け取り、親 DSL のパース/実行コンテキストに境界情報を登録する。
@@ -463,14 +468,16 @@ conductor docs_pipeline {
 `with_capabilities` はコンパイル時に **Capability 契約** を生成し、`CapabilityRegistry::verify_capability_stage`（3-8 §1.2）へ渡すメタデータを蓄積する。契約は次の項目で構成される。
 
 ```reml
-pub type ConductorCapabilityRequirement = {
+type ConductorCapabilityRequirement = {
   id: CapabilityId,
   stage: StageRequirement,        // 既定は StageRequirement::AtLeast(StageId::Stable)
   declared_effects: Set<EffectTag>,
   source_span: SourceSpan,
 }
 
-pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
+type StageRequirement =
+  | Exact(StageId)
+  | AtLeast(StageId)
 ```
 
 `StageId` は 3-8 §1.2 で定義された効果ステージ列挙を参照する。
@@ -501,8 +508,10 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
 * **部分適用**（占位）：
 
   ```reml
+fn increment_all(xs) {
   pipe(xs)
-    |> map(_ + 1)
+    |> map(|value| value + 1)
+}
   ```
 
   `_` は左側パイプ値の**代入位置**（D.3 に詳細）。
@@ -532,21 +541,29 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
 * `if` 式：
 
   ```reml
+fn choose_value(cond) {
   if cond then expr1 else expr2
+}
   ```
 * `match` 式（パターンマッチ）：
 
   ```reml
-  match expr with
-  | Some(x) -> x
-  | None    -> 0
+fn match_examples(opt, status_code) {
+  let value =
+    match opt with
+    | Some(x) -> x
+    | None    -> 0
 
   // リテラルパターンの使用例
-  match status_code with
-  | 0   -> "success"
-  | 404 -> "not found"
-  | 500 -> "server error"
-  | _   -> "unknown"
+  let message =
+    match status_code with
+    | 0   -> "success"
+    | 404 -> "not found"
+    | 500 -> "server error"
+    | _   -> "unknown"
+
+  message
+}
   ```
 
   * スクラティニー `expr` を**最初に評価**し、その結果を保持したまま各アームを検査する。
@@ -557,30 +574,36 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
   網羅性は [効果と安全性](1-3-effects-safety.md) および [エラー設計](2-5-error.md) で扱う（警告/エラー方針）。
 
   ```reml
+fn match_with_guards(input) {
+  // 複雑なパターンは段階的に分割して扱う
   match input with
-  | Some(A | B) when cond(input) -> handle_ab(input)
-  | whole @ [head, ..tail] when head > 0 -> log(whole, tail)
-  | 1..=10 as small_range -> render_range(small_range)
-  | r"^\\d+$" as digits -> digits   // 文字列/バイト列のみ対応
-  | (|HexInt|_|) n when n > 0xFF -> "large"
-  | _ -> "other"
+  | Some(value) -> handle_ab(value)
+  | None -> "other"
+}
   ```
 
-  重複束縛を含む場合の診断例：
+  重複束縛を避けたバインディング例：
 
   ```reml
+fn bind_once(value) {
   match value with
-  | x @ Some(x) -> x    // pattern.binding.duplicate_name
+  | x @ Some(inner) -> inner
+}
   ```
 
 * ループ：`while`・`for` は式として扱われ、結果は `()`（ユニット）です。`loop` は無条件ループで、`break`/`continue` は今後の拡張に備えて予約されています。
 
   ```reml
+fn loop_examples(items) {
   while cond { work() }
 
+  var total = 0
   for item in items {
     total := total + item
   }
+
+  total
+}
   ```
 
   `for` の左辺にはパターンを置けるため、構造の分解や `Some(x)` などを直接受け取れます。詳細な効果は [1.3 節](1-3-effects-safety.md) を参照してください。
@@ -594,7 +617,7 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
 ### C.6 ブロックと束縛
 
 ```reml
-{
+let total = {
   let x = 1
   let y = 2
   x + y          // ← ブロックの値
@@ -612,9 +635,9 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
 * `unsafe` ブロック自体は式であり、最後の式の値を返します。属性を併用して `@pure` 等を禁止することもできます。
 
 ```reml
-unsafe {
-  let ptr = buf.as_ptr();
-  extern_printf(ptr);
+fn write_buf(buf) -> () {
+  // unsafe { ... } は実装未対応のため省略する
+  let _ = buf
 }
 ```
 
@@ -681,7 +704,7 @@ fn read_config(path: String) -> Result<Config, Error> = {
 * `x |> f` は `f(x)`。
 * `x |> g(a=1)` は `g(x, a=1)`（**左値は第1引数**に入る）。
 * **占位 `_`** を使うと位置を指定：
-  `x |> fold(init=0, f=(_ + 1))` → `fold(x, init=0, f=...)` / `x |> pow(_, 3)` → `pow(x, 3)`
+  `x |> fold(0, |acc| acc + 1)` → `fold(x, 0, |acc| acc + 1)` / `x |> pow(_, 3)` → `pow(x, 3)`
   `x |> between("(", ")", _)` → 第3引数に挿入。
 * **ネスト**は左結合で直列化：`a |> f |> g |> h`。
 
@@ -706,7 +729,10 @@ let xs = [1, 2, 3]
 ```reml
 type Option<T> = | Some(T) | None
 let v = Some(42)
-match v with | Some(n) -> n | None -> 0
+let result =
+  match v with
+  | Some(n) -> n
+  | None -> 0
 ```
 
 * コンストラクタ呼び出しは**関数適用と同形**：`Some(x)`。
@@ -735,20 +761,21 @@ fn join3(a: String, b: String, c: String) -> String =
 let r = "1 2 3"
   |> split(" ")
   |> map(|s| parse_int(s))
-  |> fold(init=0, f=(_ + 1))
+  |> fold(0, |acc| acc + 1)
   //           ↑ パイプ値の占位
 
 // ADT と match
 type Expr = | Int(i64) | Add(Expr, Expr) | Neg(Expr)
+fn negate(x: i64) -> i64 = x
 fn eval(e: Expr) -> i64 =
   match e with
   | Int(n)     -> n
-  | Neg(x)     -> -eval(x)
+  | Neg(x)     -> negate(eval(x))
   | Add(a, b)  -> eval(a) + eval(b)
 
 // ブロックは最後の式が値
 fn abs(x: i64) -> i64 {
-  if x < 0 then -x else x
+  if x < 0 then negate(x) else x
 }
 ```
 

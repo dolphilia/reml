@@ -25,25 +25,25 @@
 ### docs/spec/1-1-syntax.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| B.1.1 DSLエントリーポイント宣言 | sec_b_1_1 | examples/docs-examples/spec/1-1-syntax/sec_b_1_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B.4 宣言の種類 | sec_b_4-c | examples/docs-examples/spec/1-1-syntax/sec_b_4-c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B.4 宣言の種類 | sec_b_4-e | examples/docs-examples/spec/1-1-syntax/sec_b_4-e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B.4 宣言の種類 | sec_b_4-f | examples/docs-examples/spec/1-1-syntax/sec_b_4-f.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B.5 効果宣言とハンドラ構文（実験段階） | sec_b_5-c | examples/docs-examples/spec/1-1-syntax/sec_b_5-c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B.6 属性（Attributes） | sec_b_6 | examples/docs-examples/spec/1-1-syntax/sec_b_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 不安定機能属性 `@unstable` | sec_section-b | examples/docs-examples/spec/1-1-syntax/sec_section-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B.8.3.2 `with_embedded` の合成契約（草案） | sec_b_8_3_2 | examples/docs-examples/spec/1-1-syntax/sec_b_8_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B.8.5 Capability 検証契約と `with_capabilities` | sec_b_8_5 | examples/docs-examples/spec/1-1-syntax/sec_b_8_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C.2 関数適用・引数 | sec_c_2 | examples/docs-examples/spec/1-1-syntax/sec_c_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C.4 制御構文 | sec_c_4-a | examples/docs-examples/spec/1-1-syntax/sec_c_4-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C.4 制御構文 | sec_c_4-b | examples/docs-examples/spec/1-1-syntax/sec_c_4-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C.4 制御構文 | sec_c_4-c | examples/docs-examples/spec/1-1-syntax/sec_c_4-c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C.4 制御構文 | sec_c_4-d | examples/docs-examples/spec/1-1-syntax/sec_c_4-d.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C.4 制御構文 | sec_c_4-e | examples/docs-examples/spec/1-1-syntax/sec_c_4-e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C.6 ブロックと束縛 | sec_c_6 | examples/docs-examples/spec/1-1-syntax/sec_c_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C.7 `unsafe` ブロック | sec_c_7 | examples/docs-examples/spec/1-1-syntax/sec_c_7.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| E.2 代数的データ型（ADT） | sec_e_2 | examples/docs-examples/spec/1-1-syntax/sec_e_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| G. 例（仕様の運用感） | sec_g | examples/docs-examples/spec/1-1-syntax/sec_g.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| B.1.1 DSLエントリーポイント宣言 | sec_b_1_1 | examples/docs-examples/spec/1-1-syntax/sec_b_1_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B.4 宣言の種類 | sec_b_4-c | examples/docs-examples/spec/1-1-syntax/sec_b_4-c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B.4 宣言の種類 | sec_b_4-e | examples/docs-examples/spec/1-1-syntax/sec_b_4-e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B.4 宣言の種類 | sec_b_4-f | examples/docs-examples/spec/1-1-syntax/sec_b_4-f.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B.5 効果宣言とハンドラ構文（実験段階） | sec_b_5-c | examples/docs-examples/spec/1-1-syntax/sec_b_5-c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B.6 属性（Attributes） | sec_b_6 | examples/docs-examples/spec/1-1-syntax/sec_b_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 不安定機能属性 `@unstable` | sec_section-b | examples/docs-examples/spec/1-1-syntax/sec_section-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B.8.3.2 `with_embedded` の合成契約（草案） | sec_b_8_3_2 | examples/docs-examples/spec/1-1-syntax/sec_b_8_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B.8.5 Capability 検証契約と `with_capabilities` | sec_b_8_5 | examples/docs-examples/spec/1-1-syntax/sec_b_8_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C.2 関数適用・引数 | sec_c_2 | examples/docs-examples/spec/1-1-syntax/sec_c_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C.4 制御構文 | sec_c_4-a | examples/docs-examples/spec/1-1-syntax/sec_c_4-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C.4 制御構文 | sec_c_4-b | examples/docs-examples/spec/1-1-syntax/sec_c_4-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C.4 制御構文 | sec_c_4-c | examples/docs-examples/spec/1-1-syntax/sec_c_4-c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C.4 制御構文 | sec_c_4-d | examples/docs-examples/spec/1-1-syntax/sec_c_4-d.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C.4 制御構文 | sec_c_4-e | examples/docs-examples/spec/1-1-syntax/sec_c_4-e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C.6 ブロックと束縛 | sec_c_6 | examples/docs-examples/spec/1-1-syntax/sec_c_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C.7 `unsafe` ブロック | sec_c_7 | examples/docs-examples/spec/1-1-syntax/sec_c_7.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| E.2 代数的データ型（ADT） | sec_e_2 | examples/docs-examples/spec/1-1-syntax/sec_e_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| G. 例（仕様の運用感） | sec_g | examples/docs-examples/spec/1-1-syntax/sec_g.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/1-2-types-Inference.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

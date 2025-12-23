@@ -1,5 +1,4 @@
-conductor docs_pipeline {
-  markdown: Markdown.Parser.main
+fn docs_pipeline() -> Parser<Doc> =
+  markdown_parser
     |> with_embedded([embedded])
     |> with_capabilities(["core.parse", "core.lsp"])
-}

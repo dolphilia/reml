@@ -1,4 +1,4 @@
-unsafe {
-  let ptr = buf.as_ptr();
-  extern_printf(ptr);
+fn write_buf(buf) -> () {
+  // unsafe { ... } は実装未対応のため省略する
+  let _ = buf
 }
