@@ -43,6 +43,11 @@
 - `icu_normalizer_data` の要件に合わせ、`stable (>= 1.83)` を最低条件として明記する。
 - 更新当日に確定した stable の具体バージョンは、`reports/spec-audit/summary.md` と本計画書のフェーズ 2 実施記録に残す。
 
+### 実施結果
+- `rust-toolchain.toml` をリポジトリ直下へ追加し、`channel = "stable"` と `components = ["rustfmt", "clippy"]` を設定した。
+- `rustup` を導入して `rustup update stable` を実行し、`rustc 1.92.0 (ded5c06cf 2025-12-08)` を最新安定版として確認した。
+- `stable (>= 1.83)` の最低条件は維持し、具体バージョンは上記の通りとする。
+
 ## フェーズ 3: 依存クレートの更新と整合
 - `cargo update` で依存を更新し、MSRV を超えるクレートがあれば互換方針を決定する。
 - `Cargo.lock` の差分を記録し、更新理由をメモに残す。
