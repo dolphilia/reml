@@ -4,8 +4,8 @@ module sample.config
 pub fn config_dsl() -> Parser<AppConfig> =
   root_object(|builder| builder)
 
-@dsl_export(category="config")
-pub fn config_orchestrator() -> Parser<AppConfig> =
-  config_dsl
+conductor config_orchestrator {
+  config: config_dsl
     |> validate
     |> emit
+}

@@ -1,4 +1,2 @@
-fn bind_once(value) {
-  match value with
-  | x @ Some(inner) -> inner
-}
+match value with
+| x @ Some(inner) -> inner

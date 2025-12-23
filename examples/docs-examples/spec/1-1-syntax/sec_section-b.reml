@@ -1,6 +1,7 @@
 @cfg(target_arch = "x86_64")
 @unstable("inline_asm")
 fn read_cycle_counter() -> i64 {
-  // effect {native, unsafe} を想定するが、例では簡略化する
-  0
+  unsafe {
+    inline_asm("rdtsc")
+  }
 }

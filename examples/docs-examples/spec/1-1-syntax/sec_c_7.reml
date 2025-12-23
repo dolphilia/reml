@@ -1,4 +1,5 @@
 fn write_buf(buf) -> () {
-  // unsafe { ... } は実装未対応のため省略する
-  let _ = buf
+  unsafe {
+    let _ = buf
+  }
 }

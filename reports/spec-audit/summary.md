@@ -29,6 +29,11 @@
 | 20:50 | `for file in sec_b_1_1 sec_b_4-c sec_b_4-e sec_b_4-f sec_b_5-c sec_b_6 sec_section-b sec_b_8_3_2 sec_b_8_5 sec_c_2 sec_c_4-a sec_c_4-b sec_c_4-c sec_c_4-d sec_c_4-e sec_c_6 sec_c_7 sec_e_2 sec_g; do compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics examples/docs-examples/spec/1-1-syntax/$file.reml; done` | ✅ 対象 19 件 diagnostics 0 件 | `docs/spec/1-1-syntax.md` と `examples/docs-examples/spec/1-1-syntax/*.reml` を整合更新。`reports/spec-audit/ch1/docs-examples-fix-notes-20251223.md` に修正メモを記録。 |
 | 21:30 | `compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics examples/docs-examples/spec/1-1-syntax/<phase3>` | ✅ 対象 11 件 diagnostics 0 件 | `--allow-top-level-expr` が未提供で復元分はフォールバックへ戻し、`sec_b_8_3_2` の `conductor` 例のみ維持。`reports/spec-audit/ch1/docs-examples-fix-notes-20251223.md` に再検証メモを追記。 |
 
+## 2025-12-24 docs-examples-audit フェーズ 3 復元
+| JST 時刻 | コマンド | 結果 | 備考 |
+|----------|----------|------|------|
+| 07:14 | `for file in sec_b_1_1 sec_b_4-f sec_b_5-c sec_b_8_3_2 sec_c_4-a sec_c_4-b sec_c_4-c sec_c_4-d sec_c_4-e sec_c_7 sec_section-b sec_e_2; do compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics --allow-top-level-expr examples/docs-examples/spec/1-1-syntax/$file.reml; done` | ✅ 対象 12 件 diagnostics 0 件 | `conductor`/`unsafe`/`...`/トップレベル式の復元分を再検証。`sec_b_1_1` の `conductor` は `@dsl_export` 省略のまま通過。 |
+
 ## Rust ツールチェーン更新（stable 版の確定）
 - `rust-toolchain.toml` を追加し、`channel = "stable"` と `components = ["rustfmt", "clippy"]` を設定。
 - `rustup` を導入して `rustup update stable` を実行し、`rustc 1.92.0 (ded5c06cf 2025-12-08)` を stable として確定。

@@ -1,6 +1,5 @@
 type Option<T> = | Some(T) | None
 let v = Some(42)
-let result =
-  match v with
-  | Some(n) -> n
-  | None -> 0
+match v with
+| Some(n) -> n
+| None -> 0

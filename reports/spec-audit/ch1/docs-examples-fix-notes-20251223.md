@@ -34,3 +34,9 @@
 - フェーズ 3 復元分は一旦フォールバックへ戻し、`examples/docs-examples/spec/1-1-syntax/sec_b_8_3_2.reml` の `conductor` 例のみ維持。
 - `examples/docs-examples/spec/1-1-syntax/sec_b_1_1.reml` / `sec_b_4-f.reml` / `sec_b_5-c.reml` / `sec_c_4-a.reml` / `sec_c_4-b.reml` / `sec_c_4-c.reml` / `sec_c_4-d.reml` / `sec_c_4-e.reml` / `sec_c_7.reml` / `sec_section-b.reml` を修正し、全件 `--emit-diagnostics` で 0 件を確認。
 - `docs/spec/1-1-syntax.md` の該当コードブロックもフォールバック内容へ戻した。
+
+## 追記: フェーズ 3 復元と再検証（2025-12-24）
+- `conductor`/`unsafe`/`...`/トップレベル式のサンプルを仕様寄りに復元。
+- `examples/docs-examples/spec/1-1-syntax/sec_b_1_1.reml` は `conductor` を採用し、`@dsl_export` は省略（`conductor` への属性付与は現行パーサ未対応）。
+- `docs/spec/1-1-syntax.md` の該当コードブロックを復元。
+- `compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics --allow-top-level-expr <sample>` で `sec_b_1_1` / `sec_b_4-f` / `sec_b_5-c` / `sec_b_8_3_2` / `sec_c_4-a` / `sec_c_4-b` / `sec_c_4-c` / `sec_c_4-d` / `sec_c_4-e` / `sec_c_7` / `sec_section-b` / `sec_e_2` の diagnostics 0 件を確認。

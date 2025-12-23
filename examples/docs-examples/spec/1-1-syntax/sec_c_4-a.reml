@@ -1,3 +1,1 @@
-fn choose_value(cond) {
-  if cond then expr1 else expr2
-}
+if cond then expr1 else expr2

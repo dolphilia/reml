@@ -88,7 +88,7 @@
 
 `reml.toml` の `[dsl]` セクションで宣言された `entry` は、1 ファイル 1 モジュールの原則に従い、該当モジュールのトップレベル公開シンボルと一致しなければならない。`exports` 配列の各名前は、以下の要件を満たすトップレベル宣言を指す。
 
-- 宣言は `pub` であり、コンパイラが DSL メタデータを収集できるよう **`@dsl_export` 属性** を付与する。
+- 宣言は `pub` であり、コンパイラが DSL メタデータを収集できるよう **`@dsl_export` 属性** を付与する（`conductor` は `exports` 指定で公開されるため `@dsl_export` は省略可）。
 - 宣言されるシンボルは次のいずれかの形である。
   - `pub let entry_name: Parser<T>` または `pub const entry_name: Parser<T>`（値としてのエクスポート）。
   - `pub fn entry_name(args) -> Parser<T>`（関数としてのエクスポート。`args` の既定値や名前付き引数は通常の関数規則に従う）。
@@ -104,11 +104,11 @@ module sample.config
 pub fn config_dsl() -> Parser<AppConfig> =
   root_object(|builder| builder)
 
-@dsl_export(category="config")
-pub fn config_orchestrator() -> Parser<AppConfig> =
-  config_dsl
+conductor config_orchestrator {
+  config: config_dsl
     |> validate
     |> emit
+}
 ```
 
 `reml.toml` で `entry = "src/sample/config.reml"`、`exports = ["config_dsl", "config_orchestrator"]` と宣言した場合、上記のようにモジュールと公開シンボルが揃っていることを検証する。カテゴリや Capability 情報は Chapter 3 のマニフェスト API と連携して CLI へ引き渡される。
@@ -198,7 +198,7 @@ pub fn config_orchestrator() -> Parser<AppConfig> =
   ```reml
   extern "C" fn puts(ptr: Ptr<u8>) -> i32;
   extern "C" {
-    fn printf(fmt: Ptr<u8>) -> i32;
+    fn printf(fmt: Ptr<u8>, ...) -> i32;
   }
   ```
 
@@ -250,21 +250,19 @@ pub fn config_orchestrator() -> Parser<AppConfig> =
   効果をローカルに捕捉し、任意の挙動を与える。
 
   ```reml
-  fn greet_with_console() -> String {
-    handle greet() with
-      handler Console {
-        operation log(msg, resume) {
-          println("LOG: " + msg)
-          resume(())
-        }
-        operation ask(prompt, resume) {
-          resume("Reml")
-        }
-        return value {
-          value
-        }
+  handle greet() with
+    handler Console {
+      operation log(msg, resume) {
+        println("LOG: " + msg)
+        resume(())
       }
-  }
+      operation ask(prompt, resume) {
+        resume("Reml")
+      }
+      return value {
+        value
+      }
+    }
   ```
 
   * `handler <EffectName>` ブロックで対象操作を列挙し、必要に応じて `return` 節を定義する。
@@ -329,8 +327,9 @@ fn popcount(x: i64) -> i64 = x
 @cfg(target_arch = "x86_64")
 @unstable("inline_asm")
 fn read_cycle_counter() -> i64 {
-  // effect {native, unsafe} を想定するが、例では簡略化する
-  0
+  unsafe {
+    inline_asm("rdtsc")
+  }
 }
 ```
 
@@ -544,29 +543,25 @@ fn increment_all(xs) {
 * `if` 式：
 
   ```reml
-fn choose_value(cond) {
-  if cond then expr1 else expr2
-}
+if cond then expr1 else expr2
   ```
 * `match` 式（パターンマッチ）：
 
   ```reml
-fn match_examples(opt, status_code) {
-  let value =
-    match opt with
-    | Some(x) -> x
-    | None    -> 0
+let value =
+  match opt with
+  | Some(x) -> x
+  | None    -> 0
 
-  // リテラルパターンの使用例
-  let message =
-    match status_code with
-    | 0   -> "success"
-    | 404 -> "not found"
-    | 500 -> "server error"
-    | _   -> "unknown"
+// リテラルパターンの使用例
+let message =
+  match status_code with
+  | 0   -> "success"
+  | 404 -> "not found"
+  | 500 -> "server error"
+  | _   -> "unknown"
 
-  message
-}
+message
   ```
 
   * スクラティニー `expr` を**最初に評価**し、その結果を保持したまま各アームを検査する。
@@ -577,36 +572,30 @@ fn match_examples(opt, status_code) {
   網羅性は [効果と安全性](1-3-effects-safety.md) および [エラー設計](2-5-error.md) で扱う（警告/エラー方針）。
 
   ```reml
-fn match_with_guards(input) {
-  // 複雑なパターンは段階的に分割して扱う
-  match input with
-  | Some(value) -> handle_ab(value)
-  | None -> "other"
-}
+// 複雑なパターンは段階的に分割して扱う
+match input with
+| Some(value) -> handle_ab(value)
+| None -> "other"
   ```
 
   重複束縛を避けたバインディング例：
 
   ```reml
-fn bind_once(value) {
-  match value with
-  | x @ Some(inner) -> inner
-}
+match value with
+| x @ Some(inner) -> inner
   ```
 
 * ループ：`while`・`for` は式として扱われ、結果は `()`（ユニット）です。`loop` は無条件ループで、`break`/`continue` は今後の拡張に備えて予約されています。
 
   ```reml
-fn loop_examples(items) {
-  while cond { work() }
+while cond { work() }
 
-  var total = 0
-  for item in items {
-    total := total + item
-  }
-
-  total
+var total = 0
+for item in items {
+  total := total + item
 }
+
+total
   ```
 
   `for` の左辺にはパターンを置けるため、構造の分解や `Some(x)` などを直接受け取れます。詳細な効果は [1.3 節](1-3-effects-safety.md) を参照してください。
@@ -639,8 +628,9 @@ let total = {
 
 ```reml
 fn write_buf(buf) -> () {
-  // unsafe { ... } は実装未対応のため省略する
-  let _ = buf
+  unsafe {
+    let _ = buf
+  }
 }
 ```
 
@@ -732,10 +722,9 @@ let xs = [1, 2, 3]
 ```reml
 type Option<T> = | Some(T) | None
 let v = Some(42)
-let result =
-  match v with
-  | Some(n) -> n
-  | None -> 0
+match v with
+| Some(n) -> n
+| None -> 0
 ```
 
 * コンストラクタ呼び出しは**関数適用と同形**：`Some(x)`。
