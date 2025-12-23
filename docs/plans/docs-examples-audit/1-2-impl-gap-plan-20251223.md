@@ -1,0 +1,106 @@
+# 1.2 実装ギャップ対応計画（Rust Frontend / 2025-12-23）
+
+`docs/spec/1-1-syntax.md` のサンプル修正で判明した **仕様と実装のギャップ** を整理し、Rust Frontend 側で追随するための対応計画を定義する。
+
+## 目的
+- 仕様に合わせて Rust Frontend の受理範囲を拡張する。
+- 仕様サンプルの簡略化を段階的に解消し、正準例へ戻す。
+
+## 対象範囲
+- 仕様章: `docs/spec/1-1-syntax.md`
+- サンプル: `examples/docs-examples/spec/1-1-syntax/*.reml`
+- 監査ログ: `reports/spec-audit/ch1/docs-examples-fix-notes-20251223.md`
+
+## ギャップ一覧（簡略化／回避済み）
+
+### 1. `conductor` 宣言が未対応
+- 影響: B.1.1 / B.8.3.2 の仕様は `conductor` をエントリポイントとして想定しているが、実装は構文受理できない。
+- 該当サンプル:
+  - `examples/docs-examples/spec/1-1-syntax/sec_b_1_1.reml`
+  - `examples/docs-examples/spec/1-1-syntax/sec_b_8_3_2.reml`
+- 現状の回避: `fn` 宣言へ置換。
+
+### 2. `unsafe` ブロックが未対応
+- 影響: 仕様は `unsafe` ブロックを前提とするが、実装では構文エラーとなる。
+- 該当サンプル:
+  - `examples/docs-examples/spec/1-1-syntax/sec_c_7.reml`
+  - `examples/docs-examples/spec/1-1-syntax/sec_section-b.reml`
+- 現状の回避: `unsafe` を削除し、コメントで注意書きを追加。
+
+### 3. C 可変長引数 (`...`) が未対応
+- 影響: 仕様の FFI 例に含まれる `printf(fmt: Ptr<u8>, ...)` を実装が受理できない。
+- 該当サンプル:
+  - `examples/docs-examples/spec/1-1-syntax/sec_b_4-f.reml`
+- 現状の回避: `...` を削除した簡略宣言。
+
+### 4. トップレベル式（制御構文・handle・match など）が未受理
+- 影響: 仕様は式例をトップレベルで提示するが、実装はトップレベルで宣言のみを許容する。
+- 該当サンプル:
+  - `examples/docs-examples/spec/1-1-syntax/sec_b_5-c.reml`
+  - `examples/docs-examples/spec/1-1-syntax/sec_c_4-a.reml`
+  - `examples/docs-examples/spec/1-1-syntax/sec_c_4-b.reml`
+  - `examples/docs-examples/spec/1-1-syntax/sec_c_4-c.reml`
+  - `examples/docs-examples/spec/1-1-syntax/sec_c_4-d.reml`
+  - `examples/docs-examples/spec/1-1-syntax/sec_c_4-e.reml`
+  - `examples/docs-examples/spec/1-1-syntax/sec_e_2.reml`
+- 現状の回避: `fn` でラップ。
+
+## 実装修正計画（Rust Frontend）
+
+### フェーズ 1: 構文受理（最小限のパース対応）
+1) `conductor` 宣言のパーサ追加
+- 目的: トップレベルで `conductor` を受理し、AST へ格納できるようにする。
+- 成果物: `conductor` を含むサンプルが `--emit-diagnostics` で 0 件になる。
+- 対象サンプル: `sec_b_1_1`, `sec_b_8_3_2`
+
+2) `unsafe` ブロックのパーサ追加
+- 目的: `unsafe { ... }` 構文を式として受理。
+- 成果物: `sec_c_7`, `sec_section-b` が構文エラーにならない。
+
+3) 外部関数宣言での `...` 受理
+- 目的: `extern "C" fn printf(fmt: Ptr<u8>, ...)` の可変長引数を許容。
+- 成果物: `sec_b_4-f` が構文エラーにならない。
+
+4) トップレベル式の許可（暫定）
+- 目的: 仕様サンプルの検証用に、トップレベルで `match`/`if`/`while`/`for`/`loop`/`handle` 等の式を受理。
+- 成果物: 対象サンプルが `fn` ラップ無しで解析できる。
+- 注意: 恒久対応が難しい場合は「サンプル検証モード」などの RunConfig 拡張を検討。
+
+### フェーズ 2: AST/診断の整合
+1) `conductor` の意味解析を追加
+- 目的: `@dsl_export` や `Parser<T>` との連携を見据え、宣言の型情報を保持。
+- 成果物: 章別監査ログに `conductor` 由来の診断が追加されない。
+
+2) `unsafe` ブロックの制約チェック
+- 目的: `unsafe` が許容される位置や属性制約を明示。
+- 成果物: `1-3-effects-safety.md` との矛盾がない診断ルール。
+
+3) 可変長引数の型制約
+- 目的: `...` の後続引数禁止、`extern` のみ許可などの制約を実装。
+- 成果物: 不正構文に対して適切な診断が出る。
+
+4) トップレベル式の扱い方針を確定
+- 目的: 仕様上の許容範囲と実装上の制約を整理。
+- 成果物: `docs/spec/1-1-syntax.md` に実装差分注記が不要になるか、または `RunConfig` で明示。
+
+### フェーズ 3: サンプル復元と再検証
+1) サンプルを仕様寄りに戻す
+- `conductor` や `unsafe` を元の表現へ復元。
+- `printf(... )` の可変長引数表現を復元。
+- トップレベル式の例を関数ラップ無しに戻す（可能なら）。
+
+2) 監査ログ更新
+- `reports/spec-audit/summary.md` に再検証結果を記録。
+- `reports/spec-audit/ch1/docs-examples-fix-notes-YYYYMMDD.md` を更新。
+
+## 進捗管理
+- 本計画書作成日: 2025-12-23
+- 進捗欄（運用用）:
+  - [ ] フェーズ 1 完了
+  - [ ] フェーズ 2 完了
+  - [ ] フェーズ 3 完了
+
+## 関連リンク
+- `docs/spec/1-1-syntax.md`
+- `docs/plans/docs-examples-audit/1-2-spec-sample-fix-plan.md`
+- `reports/spec-audit/ch1/docs-examples-fix-notes-20251223.md`
