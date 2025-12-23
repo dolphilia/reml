@@ -54,11 +54,12 @@
 
 ### 3.5 エンコーディング (`Core.Encoding`)
 **ステータス**: 散在している。Base64 は `Core.Text` に、JSON/TOML は `Core.Config` にある。
-**要件**: データフォーマット専用の名前空間。
+**要件**: データフォーマット専用の名前空間と、`Core.Data` との責務分離。
 - **CSV**: データサイエンスや交換に不可欠。
 - **URL**: クエリパラメータのエンコード/デコード（多くの場合 Net の一部）。
 - **Hex**: バイナリから16進数文字列への変換。
 - **統一インターフェース**: ストリーミングエンコード/デコードに `Reader`/`Writer` トレイトを使用。
+- **責務境界**: `Core.Encoding` は Codec とストリーミング変換、`Core.Data` はスキーマ・検証・操作に集中。
 
 ### 3.6 データベース (`Core.Sql`)
 **ステータス**: 欠落。
@@ -90,6 +91,23 @@
 **要件**: RPC、キャッシュ、IPC に不可欠。`Core.Encoding` との責務分離を前提にする。
 - **フォーマット**: CBOR、MessagePack、Bincode、Protobuf（後者はオプションでもよい）。
 - **方針**: `Core.Data` のスキーマと連携しつつ、ストリーミング API を提供する。
+
+### 3.11 同期/並行プリミティブ (`Core.Sync`)
+**ステータス**: `Core.Async` は計画されているが、同期プリミティブの仕様が欠落。
+**要件**: マルチスレッドやタスク間の安全な共有と調整。
+- **Primitives**: `Mutex`, `RwLock`, `Condvar`。
+- **Channels**: `mpsc`, `broadcast`。
+- **Atomics**: `AtomicInt`, `AtomicBool` 等のロックフリー操作。
+
+### 3.12 デーモン/サービス化 (`Core.System.Daemon`)
+**ステータス**: 欠落。
+**要件**: 長時間稼働するサービスの運用支援。
+- **機能**: PID ファイル、デーモン化、シグナルハンドリング、シャットダウンフック。
+
+### 3.13 テスト/検証 (`Core.Test`)
+**ステータス**: 欠落。
+**要件**: 言語レベルの最小テストハーネスと診断連携。
+- **機能**: `test`, `expect`, `assert_eq`、フィクスチャのスコープ管理。
 
 ## 4. 標準ライブラリ拡張の提案
 
@@ -124,12 +142,17 @@ Reml 標準ライブラリトラックに以下のモジュールを追加する
 - `Core.Encoding.Base64`: Text から移動/エイリアス。
 - `Core.Encoding.Hex`: Hex ダンプ/ロード。
 - `Core.Encoding.Json`: `Core.Config` へのエイリアス/参照、または特化したデータバインディング。
+**責務境界**:
+- `Core.Encoding`: Codec とストリーミング変換 (`JsonEncoder`, `Base64Decoder`) に集中。
+- `Core.Data`: スキーマ定義、バリデーション、データ操作に集中。
 
 ### 4.5 `Core.System` (`Core.Env` と `Core.Process` の統合)
 **効果**: `effect {process}, effect {system}`
 **変更点**:
 - `4-2-process-plugin` を標準ライブラリの `Core.System.Process` 配下に昇格させる。
 - `Core.Env` を `Core.System.Env` に統合する（または `Core.Env` エイリアスとして維持する）。
+**サブモジュール**:
+- `Core.System.Daemon`: PID ファイル、デーモン化、シグナル/シャットダウンフック。
 
 ### 4.6 `Core.Math` (`Core.Numeric` の拡張)
 **効果**: `@pure`
@@ -163,9 +186,11 @@ Reml 標準ライブラリトラックに以下のモジュールを追加する
 ### 4.10 `Core.Observability`
 **効果**: `effect {diagnostic, audit}`（既定）/ `effect {io}`（外部出力）
 **サブモジュール**:
-- `Core.Log`: 7.2 の簡易 API を標準化。
+- `Core.Log`: `Debug/Info/Warn/Error` と直感的 API を提供する軽量ファサード。
 - `Core.Metrics`: `counter`, `gauge`, `histogram`。
 - `Core.Trace`: `Span`, `TraceId` を `Core.Diagnostics` へ橋渡し。
+**統合方針**:
+- `Core.Diagnostics`/`AuditSink` と接続可能にし、既定は標準出力/標準エラーへ構造化テキスト出力。
 
 ### 4.11 `Core.Serialization`
 **効果**: `@pure` / `effect {io}`（ストリーミング）
@@ -174,6 +199,19 @@ Reml 標準ライブラリトラックに以下のモジュールを追加する
 - `Core.Serialization.Bincode`（高速バイナリ）。
 - `Core.Serialization.Protobuf`（オプション、Stage 管理前提）。
 
+### 4.12 `Core.Sync`
+**効果**: `@pure`（構造）/ `effect {async}`（待機・通知）
+**機能**:
+- `Mutex`, `RwLock`, `Condvar`、`AtomicInt` 等。
+- `mpsc`, `broadcast` のチャネル群。
+- `Core.Async` と同期/非同期の両方で使えるインターフェースを整理。
+
+### 4.13 `Core.Test`
+**効果**: `@pure` / `effect {diagnostic}`（レポート）
+**機能**:
+- `test`, `expect`, `assert_eq`、フィクスチャのスコープ管理。
+- `Core.Test.Property` を段階導入。
+
 ## 5. 実装戦略
 
 1.  **Rust クレートの統合**: Reml の公式ランタイムは Rust ベースです。これらのモジュールは、パフォーマンスと信頼性を確保するために、可能な限り成熟した Rust クレートに直接マッピングすべきです。
@@ -181,6 +219,8 @@ Reml 標準ライブラリトラックに以下のモジュールを追加する
     - `Core.Crypto` -> `ring`
     - `Core.Archive` -> `flate2`, `tar`, `zip`
     - `Core.Encoding` -> `csv`, `serde_json`, `base64`
+    - `Core.Sync` -> `std::sync`, `tokio::sync`
+    - `Core.Log` -> `log`, `tracing`
 
 2.  **監査と安全性**:
     - すべての IO/Net/Process 操作は `Core.Diagnostics` および `AuditSink` と統合する必要があります。
@@ -193,48 +233,16 @@ Reml 標準ライブラリトラックに以下のモジュールを追加する
 ## 6. 次のステップ
 
 1.  基盤的な可用性のブロッカーであるため、`Core.Net` と `Core.Crypto` を優先する。
-2.  `Core.Net` の詳細な仕様をドラフトする（`Core.Io` スタイルに従う）。
-3.  `Core.Process` について「プラグイン vs 標準ライブラリ」の境界を再検討する - 通常、プロセス制御は実用性を謳う言語にとっては「標準」と見なされます。
+2.  `Core.System`（`Process`/`Daemon`/`Env`）と `Core.Sync` の仕様を先行ドラフトする。
+3.  `Core.Net` の詳細仕様を `Core.Io` スタイルに合わせて起草し、`Core.Async` との接合点を明確化する。
+4.  `Core.Encoding` と `Core.Data` の責務境界を [3-7 Core Config & Data](../spec/3-7-core-config-data.md) と整合させる。
+5.  `Core.Test` の最小テストハーネスを定義し、`Core.Diagnostics` へのレポート形式を決める。
 
-## 7. 追加の提案と検討事項
+## 7. 準標準ライブラリ候補の整理
 
-提案の初期ドラフトを見直した結果、以下の機能領域も「一人前の言語」として欠かせない要素であると考えられます。これらについても追加で検討すべきです。
+標準ライブラリ本体の拡張と並行して、エコシステム側で事実上の標準になりやすい領域を整理し、準標準化の候補として監視する。
 
-### 7.1 `Core.Sync` (並行処理プリミティブ)
-**ステータス**: `Core.Async` (言語機能) は計画されているが、具体的な同期プリミティブの仕様が見当たらない。
-**要件**: マルチスレッドや非同期タスク間の安全なデータ共有と調整。
-- **Primitives**: `Mutex`, `RwLock`, `Condvar`。
-- **Channels**: `mpsc` (Multi-Producer, Single-Consumer), `broadcast`。
-- **Atomics**: `AtomicInt`, `AtomicBool` 等のロックフリー操作。
-- **方針**: Rust の `std::sync` および `tokio::sync` をモデルにし、同期・非同期の両方で使えるインターフェース（あるいは明確な分離）を提供する。
-
-### 7.2 `Core.Log` (アプリケーションロギング)
-**ステータス**: `Core.Diagnostics` はあるが、これは主にコンパイラ診断や監査ログ向けであり、構造が重厚である。
-**要件**: アプリケーション開発者が手軽に実行時情報を出力するための軽量ファサード。
-- **Levels**: `Debug`, `Info`, `Warn`, `Error`。
-- **Interface**: `log.info("Server started port={}", port)` のような直感的な API。
-- **統合**: バックエンドとして `Core.Diagnostics` や `AuditSink` に接続可能にしつつ、デフォルトでは標準出力/標準エラーへ構造化テキストを出力する。
-
-### 7.3 `Core.Encoding` と `Core.Data` の責務整理
-**課題**: 本提案の `Core.Encoding` (JSON/CSV) と、既存計画 ([3-7](3-7-core-config-data.md)) の `Core.Data` には機能的な重複の可能性がある。
-**提案**:
-- **`Core.Encoding`**: 低レベルな「バイト列 ⇔ データ構造」の変換（Codec）に集中する（例: `JsonEncoder`, `Base64Decoder`）。ストリーミング処理を主眼に置く。
-- **`Core.Data`**: 高レベルな「データモデリング・検証・操作」に集中する（例: スキーマ定義、バリデーション、DataFrame的な操作）。
-- **連携**: `Core.Data` のモデルを `Core.Encoding` でシリアライズする、という階層構造を明確にする。
-
-### 7.4 `Core.System.Daemon` (サービス化サポート)
-**ステータス**: 欠落。
-**要件**: 長時間実行されるサーバーアプリケーション（デーモン）の実装サポート。
-- **機能**: PIDファイル管理、デーモン化（ダブルフォーク等）、シグナルハンドリングの簡易ラッパー、正常なシャットダウンフック。
-- **位置づけ**: `Core.System` のサブモジュールとして検討。
-
-### 7.5 `Core.Test` (テスト/検証ハーネス)
-**ステータス**: 欠落。
-**要件**: 標準テストの基盤を最小限提供し、`Core.Diagnostics` と整合させる。
-- **機能**: `test`, `expect`, `assert_eq`、フィクスチャのスコープ管理。
-- **拡張**: property-based testing は `Core.Test.Property` として段階導入。
-
-### 7.6 エコシステムで頻出の補助ライブラリ整理
+### 7.1 エコシステムで頻出の補助ライブラリ整理
 他言語で「ほぼ標準」扱いになっている拡張ライブラリを整理し、標準化/準標準化候補を抽出する。
 - **HTTP/ネットワーク**: Python `requests`、Go `net/http`、Rust `reqwest` に相当。
 - **シリアライズ**: Rust `serde`、Go `encoding/json` に相当。
