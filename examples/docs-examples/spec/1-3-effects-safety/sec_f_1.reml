@@ -1,0 +1,6 @@
+@cfg(target_arch = "aarch64")
+@intrinsic("llvm.ctpop.i64")
+fn popcount(x: i64) -> i64 !{native} = x
+
+@cfg(not(target_arch = "aarch64"))
+fn popcount(x: i64) -> i64 = Core.Native.ctpop_fallback(x)

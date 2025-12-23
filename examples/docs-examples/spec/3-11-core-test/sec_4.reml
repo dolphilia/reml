@@ -1,0 +1,3 @@
+pub type TableCase<T> = { input: T, expected: Str }
+
+fn table_test<T>(cases: List<TableCase<T>>, render: fn(T) -> Str) -> Result<(), TestError>

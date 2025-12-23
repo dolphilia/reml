@@ -1,0 +1,10 @@
+struct File {
+  fd: Fd,
+  path: PathBuf,
+}
+
+fn open(path: Path) -> Result<File, IoError>                       // `effect {io, io.blocking}`
+fn create(path: Path, options: FileOptions) -> Result<File, IoError> // `effect {io, io.blocking}`
+fn metadata(path: Path) -> Result<FileMetadata, IoError>           // `effect {io, io.blocking}`
+fn remove(path: Path) -> Result<(), IoError>                       // `effect {io, io.blocking}`
+fn sync(file: &mut File) -> Result<(), IoError>                    // `effect {io, io.blocking}`

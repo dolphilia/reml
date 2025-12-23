@@ -1,0 +1,10 @@
+let primary =
+  atom.andThen(
+    many(
+      choice([
+        sym("(").then(args).then(sym(")")).map(|(_,a,_)| (|recv| Call(recv,a))),
+        sym("[").then(expr).then(sym("]")).map(|(_,i,_)| (|recv| Index(recv,i))),
+        sym(".").then(ident).map(|(_,id)| (|recv| Field(recv,id))),
+      ])
+    )
+  ).map(|(base, posts)| posts.fold(base, (|acc,f| f(acc))))

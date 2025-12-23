@@ -1,0 +1,36 @@
+pub type MethodId = Str
+
+pub enum DispatchKind =
+  | ClassBased
+  | PrototypeBased
+
+pub type DispatchTable<Value> = {
+  kind: DispatchKind,
+  name: Str,
+  parent: Option<DispatchTable<Value>>,
+  methods: Map<MethodId, MethodEntry<Value>>,
+}
+
+pub type MethodEntry<Value> =
+  fn(ObjectHandle<Value>, List<Value>) -> Result<Value, DispatchError> // `effect {runtime}`
+
+pub type ObjectHandle<Value> = {
+  table: DispatchTable<Value>,
+  payload: Value,
+  shape_id: Int,
+}
+
+pub type MethodCacheKey = { shape_id: Int, name: MethodId }
+
+pub type MethodCache<Value> = {
+  lookup: fn(&MethodCache<Value>, MethodCacheKey) -> Option<MethodEntry<Value>>,
+  record: fn(&mut MethodCache<Value>, MethodCacheKey, MethodEntry<Value>) -> (),
+  invalidate: fn(&mut MethodCache<Value>, DispatchTable<Value>) -> (),
+}
+
+pub type DispatchError = { kind: DispatchErrorKind, message: Str }
+
+pub enum DispatchErrorKind =
+  | MethodNotFound
+  | ArityMismatch
+  | RuntimeFailure

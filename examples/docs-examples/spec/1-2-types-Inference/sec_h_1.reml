@@ -1,0 +1,3 @@
+let id = |x| x               // id : ∀a. a -> a
+let n  = id(42)              // inst a := i64 → i64
+let s  = id("hi")            // inst a := String → String

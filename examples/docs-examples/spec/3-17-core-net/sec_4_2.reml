@@ -1,0 +1,2 @@
+val client: ClientConfig -> Client // `@pure`
+val request: Client -> Request -> effect {net} Result<Response, HttpError>

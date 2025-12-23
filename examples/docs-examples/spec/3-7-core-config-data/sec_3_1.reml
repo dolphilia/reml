@@ -1,0 +1,3 @@
+fn backup_before_migration<T>(schema: Schema<T>, data: T, backup_path: Path) -> Result<BackupHandle, MigrationError>
+fn rollback_migration<T>(backup: BackupHandle) -> Result<T, MigrationError>
+fn verify_migration<T>(old_data: T, new_data: T, schema: Schema<T>) -> Result<(), ValidationError>

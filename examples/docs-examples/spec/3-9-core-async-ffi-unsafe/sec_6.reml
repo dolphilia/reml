@@ -1,0 +1,15 @@
+use Core;
+use Core.Async;
+use Core.Ffi;
+
+fn async_file_copy(src: Path, dest: Path) -> Result<(), Diagnostic> =
+  spawn(async move {
+    let mut reader = AsyncFile::open(src).await?;
+    let mut writer = AsyncFile::create(dest).await?;
+    while let Some(chunk) = reader.next_chunk().await? {
+      writer.write_all(chunk).await?;
+    }
+    Ok(())
+  }, scheduler())
+    .await
+    .map_err(|err| Diagnostic::from_async_error(err))

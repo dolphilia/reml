@@ -1,0 +1,5 @@
+  let answer = 42
+  var total = 0
+  let (lhs, rhs) = pair
+  let { name, version, .. } = manifest
+  let Cons(head, tail) = list

@@ -1,0 +1,8 @@
+pub struct PluginSignature {
+  pub algorithm: SignatureAlgorithm,    // "ed25519" など
+  pub certificate: Option<Base64>,
+  pub issued_to: Option<Str>,
+  pub valid_until: Option<Timestamp>,
+}
+
+fn verify_plugin_signature(sig: PluginSignature, policy: VerificationPolicy) -> Result<(), PluginError>

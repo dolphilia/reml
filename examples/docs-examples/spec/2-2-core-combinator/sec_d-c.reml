@@ -1,0 +1,4 @@
+  sym("[").then(cut_here()).then(elements).then(sym("]"))           // JSON: `[`
+  sym("{").then(cut_here()).then(members).then(sym("}"))            // JSON: `{`
+  key.then(Lex.string(":").then(cut_here())).then(value_or_nested)  // YAML: `:`
+  Lex.string("-").then(cut_here()).then(value)                      // YAML: `-`

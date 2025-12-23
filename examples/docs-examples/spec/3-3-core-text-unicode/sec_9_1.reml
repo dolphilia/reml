@@ -1,0 +1,9 @@
+// 主要エンコーディング間の変換
+fn to_utf16(text: Str) -> Result<Vec<u16>, UnicodeError>        // `effect {mem, unicode}`
+fn from_utf16(data: &[u16]) -> Result<String, UnicodeError>     // `effect {mem, unicode}`
+fn to_latin1(text: Str) -> Result<Vec<u8>, UnicodeError>        // `effect {mem, unicode}`
+fn from_latin1(data: &[u8]) -> String                          // `effect {mem}`
+
+// ベース64 エンコーディング
+fn to_base64(data: &[u8]) -> String                            // `effect {mem}`
+fn from_base64(text: Str) -> Result<Vec<u8>, DecodeError>       // `effect {mem}`

@@ -1,0 +1,15 @@
+pub enum CapabilityHandle =
+  | Gc(GcCapability)
+  | Io(IoCapability)
+  | Async(AsyncCapability)
+  | Actor(ActorRuntimeCapability)
+  | Audit(AuditCapability)
+  | Metrics(MetricsCapability)
+  | Plugin(PluginCapability)
+  | System(SyscallCapability)
+  | Process(ProcessCapability)
+  | Memory(MemoryCapability)
+  | Signal(SignalCapability)
+  | Hardware(HardwareCapability)
+  | RealTime(RealTimeCapability)
+  | Security(SecurityCapability);

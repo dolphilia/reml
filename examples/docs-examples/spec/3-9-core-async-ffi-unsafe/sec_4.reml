@@ -1,0 +1,3 @@
+fn unsafe_block<T>(f: () -> T) -> T                      // `effect {unsafe}`
+fn assume(cond: Bool, message: Str) -> ()                // `effect {unsafe}`
+fn transmute<T, U>(value: T) -> U                        // `effect {unsafe}`

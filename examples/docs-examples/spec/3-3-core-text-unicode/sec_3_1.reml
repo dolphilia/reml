@@ -1,0 +1,13 @@
+enum NormalizationForm = NFC | NFD | NFKC | NFKD
+
+type UnicodeError = {
+  kind: UnicodeErrorKind,
+  span: Option<Span>,
+  message: Str
+}
+
+type UnicodeErrorKind = InvalidUtf8 | UnsupportedScalar | UnsupportedLocale
+
+fn normalize(string: String, form: NormalizationForm) -> Result<String, UnicodeError> // `effect {unicode}`
+fn is_normalized(str: Str, form: NormalizationForm) -> Bool                            // `@pure`
+fn prepare_identifier(str: Str) -> Result<String, UnicodeError>                       // `effect {unicode}`

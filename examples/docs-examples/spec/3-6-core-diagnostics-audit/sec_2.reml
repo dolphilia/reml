@@ -1,0 +1,15 @@
+fn diagnostic(message: Str) -> DiagnosticBuilder                     // `@pure`
+
+struct DiagnosticBuilder {
+  diag: Diagnostic,
+}
+
+impl DiagnosticBuilder {
+  fn with_span(self, span: Span) -> Self;                             // `@pure`
+  fn with_severity(self, severity: Severity) -> Self;                 // `@pure`
+  fn with_domain(self, domain: DiagnosticDomain) -> Self;             // `@pure`
+  fn with_code(self, code: Str) -> Self;                              // `@pure`
+  fn add_hint(self, hint: Hint) -> Self;                              // `@pure`
+  fn attach_audit(self, audit: AuditEnvelope) -> Self;                // `@pure`
+  fn finish(self) -> Diagnostic;                                      // `@pure`
+}

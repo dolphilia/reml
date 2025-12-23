@@ -1,0 +1,10 @@
+pub type Vec<T>
+
+fn new<T>() -> Vec<T>                                  // `effect {mut}`
+fn with_capacity<T>(cap: usize) -> Vec<T>               // `effect {mut, mem}`
+fn push<T>(vec: &mut Vec<T>, value: T) -> ()            // `effect {mut}`
+fn pop<T>(vec: &mut Vec<T>) -> Option<T>                // `effect {mut}`
+fn reserve<T>(vec: &mut Vec<T>, additional: usize) -> ()// `effect {mut, mem}`
+fn shrink_to_fit<T>(vec: &mut Vec<T>) -> ()             // `effect {mut, mem}`
+fn iter<T>(vec: &Vec<T>) -> Iter<T>                     // `@pure`
+fn to_list<T>(vec: Vec<T>) -> List<T>                   // `effect {mem}`

@@ -1,0 +1,6 @@
+fn position(line: Int, character: Int) -> Position
+fn range(start_line: Int, start_char: Int, end_line: Int, end_char: Int) -> Range
+fn diagnostic(range: Range, severity: DiagnosticSeverity, message: Str) -> LspDiagnostic
+
+fn encode_publish(uri: Str, diagnostics: List<LspDiagnostic>) -> Str
+fn decode_message(payload: Str) -> Result<JsonRpcMessage, LspError>

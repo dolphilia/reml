@@ -1,0 +1,3 @@
+// sugar：文字列を演算子パーサへ持ち上げ
+fn op_str<A>(space: Parser<()>, s: Str, f: any) -> Parser<typeof f>
+// 例: op_str(sc, "+", (|a,b| Add(a,b)))

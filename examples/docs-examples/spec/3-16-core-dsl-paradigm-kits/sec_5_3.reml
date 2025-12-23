@@ -1,0 +1,4 @@
+use Core.Dsl.Actor
+
+let def = { name: "Echo", on_message: |msg| { log(msg); Ok(()) } }
+let mailbox = Actor.spawn(system, def, None)

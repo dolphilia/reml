@@ -1,0 +1,5 @@
+type IndexCache = {
+  offsets: Vec<u32>,          // コードポイント単位
+  version: UnicodeVersion,    // 例: "15.0"
+  generation: u32,            // Bytes/Str の世代識別子
+}

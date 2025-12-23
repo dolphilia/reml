@@ -1,0 +1,26 @@
+fn join<T, U>(future1: Future<T>, future2: Future<U>) -> Future<(T, U)>         // `effect {io.async}`
+fn select<T>(futures: List<Future<T>>) -> Future<(usize, T)>                   // `effect {io.async}`
+fn timeout<T>(future: Future<T>, duration: Duration) -> Future<Result<T, AsyncError>> // `effect {io.async}`
+fn retry<T>(future: () -> Future<T>, policy: RetryPolicy) -> Future<T>         // `effect {io.async}`
+
+pub type RetryPolicy = {
+  max_attempts: u32,
+  backoff: BackoffStrategy,
+  should_retry: (AsyncError) -> Bool,
+}
+
+pub enum BackoffStrategy = Linear(Duration) | Exponential { base: Duration, max: Duration } | Custom((u32) -> Duration)
+
+pub struct TimeoutInfo = {
+  waited: Duration,
+  limit: Duration,
+  origin: TimeoutOrigin,
+}
+
+pub enum TimeoutOrigin = UserDeadline | RuntimeDefault | Capability(Str) | External(Str)
+
+fn AsyncError::timeout_info(&self) -> Option<&TimeoutInfo>
+fn AsyncError::into_timeout_info(self) -> Option<TimeoutInfo>
+
+#[deprecated(since = "1.0.0-beta2", note = "AsyncError::Timeout へ統一されたため")]
+pub type TimeoutError = TimeoutInfo

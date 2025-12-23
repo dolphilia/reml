@@ -1,0 +1,7 @@
+pub type PluginCapability = {
+  register_plugin: fn(ParserPlugin) -> Result<CapabilitySet, PluginError>,               // effect {runtime}
+  register_bundle: fn(PluginBundleManifest) -> Result<List<CapabilitySet>, PluginError>, // effect {runtime}
+  revoke_plugin: fn(PluginId) -> Result<(), PluginError>,                               // effect {runtime, audit}
+  verify_signature: fn(PluginSignature, VerificationPolicy) -> Result<(), PluginError>, // effect {runtime, security}
+  load: fn(Path) -> Result<PluginHandle, PluginError>,                                   // effect {runtime, security}
+}

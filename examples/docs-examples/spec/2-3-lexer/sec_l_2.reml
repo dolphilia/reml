@@ -1,0 +1,5 @@
+let number: Parser<Either<i64,f64>> =
+  lexeme(sc,
+    float().map(|s| Right(parseF64(s)?))
+    .or(intAuto().andThen(|(r,d)| ok(Left(parseI64(d, r)?))))
+  ).label("number")

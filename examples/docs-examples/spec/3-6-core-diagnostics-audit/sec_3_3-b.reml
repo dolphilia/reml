@@ -1,0 +1,9 @@
+fn example_syscall(fd: i32, sink: AuditSink) -> Result<usize, SyscallError> = {
+  let ctx = AuditContext::new("syscall", "read")?.with_metadata({ "fd": fd.into() });
+  audited_syscall("read", || {
+    SyscallCapability::raw_syscall(SYS_READ, [fd as i64, 0, 0, 0, 0, 0])
+      .map(|ret| ret as usize)
+  }, multi_audit_sink([sink, console_audit_sink]))?
+  ctx.log("syscall.completed", json!({ "result": "ok" }))?;
+  Ok(ret)
+}

@@ -1,0 +1,11 @@
+fn configure_gc_advanced(config: AdvancedGcConfig) -> Result<(), CapabilityError>;
+
+pub type AdvancedGcConfig = {
+  heap_size_limit: Option<usize>,
+  collection_frequency: GcFrequency,
+  concurrent_collection: Bool,
+  memory_pressure_threshold: Float,
+  debug_mode: Bool,
+}
+
+pub enum GcFrequency = Aggressive | Normal | Conservative | Manual

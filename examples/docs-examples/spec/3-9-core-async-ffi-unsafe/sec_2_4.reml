@@ -1,0 +1,8 @@
+// 自動的なラッパー生成
+macro foreign_fn(lib: Str, name: Str, signature: Str) -> ForeignFunction
+
+// 使用例
+let add_numbers = foreign_fn!("math", "add", "fn(i32, i32) -> i32");
+let args = ffi::encode_args(&(42i32, 24i32));
+let raw = add_numbers.call(args)?;            // raw は FfiValue (Span<u8>)
+let sum: i32 = ffi::decode_result(raw)?;

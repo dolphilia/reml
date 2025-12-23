@@ -1,0 +1,8 @@
+pub type ForeignFunction = FnPtr<(VoidPtr,), VoidPtr>
+
+fn bind_library(path: Path) -> Result<LibraryHandle, FfiError>               // `effect {ffi}`
+fn get_function(handle: LibraryHandle, name: Str) -> Result<ForeignFunction, FfiError> // `effect {ffi}`
+fn call_ffi(fn_ptr: ForeignFunction, args: FfiArgs) -> Result<FfiValue, FfiError> // `effect {ffi, unsafe}`
+
+pub type FfiArgs = Span<u8>
+pub type FfiValue = Span<u8>

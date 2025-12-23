@@ -1,0 +1,6 @@
+@intrinsic("llvm.sqrt.f64")
+fn sqrt_f64(x: f64) -> f64 = x
+
+@cfg(target_arch = "aarch64")
+@intrinsic("llvm.ctpop.i64")
+fn popcount(x: i64) -> i64 = x

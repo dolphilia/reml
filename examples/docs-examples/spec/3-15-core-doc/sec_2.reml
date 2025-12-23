@@ -1,0 +1,20 @@
+pub type DocItem = {
+  name: Str,
+  summary: Str,
+  body: Str,
+  examples: List<Str>,
+}
+
+pub type DocPage = { items: List<DocItem> }
+
+pub type DocError = { kind: DocErrorKind, message: Str }
+
+pub enum DocErrorKind =
+  | ParseFailed
+  | RenderFailed
+  | DoctestFailed
+
+fn extract(source: Str) -> Result<DocPage, DocError>
+fn render_markdown(page: DocPage) -> Str
+fn render_html(page: DocPage) -> Str
+fn run_doctest(page: DocPage) -> Result<(), DocError>

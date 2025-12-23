@@ -1,0 +1,4 @@
+unsafe {
+  let ptr = buf.as_ptr();
+  extern_printf(ptr);
+}

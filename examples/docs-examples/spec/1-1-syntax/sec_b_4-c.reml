@@ -1,0 +1,7 @@
+  type Expr =
+    | Int(i64)
+    | Add(Expr, Expr)
+    | Neg(Expr)
+
+  type alias Bytes = [u8]
+  type UserId = new i64

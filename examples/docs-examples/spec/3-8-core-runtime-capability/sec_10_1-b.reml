@@ -1,0 +1,16 @@
+pub type RuntimeBridgeDescriptor = {
+  id: RuntimeBridgeId,
+  stage: StageId,
+  required_capabilities: Set<CapabilityId>,
+  required_effects: Set<EffectTag>,
+  target_profiles: Set<Str>,          // 例: "native-x86_64", "wasi-preview2"
+  reload: Option<RuntimeBridgeReloadSpec>,
+  audit: RuntimeBridgeAuditSpec,
+  manifest_path: Option<Path>,
+}
+
+pub struct RuntimeBridgeHandle {
+  id: RuntimeBridgeId,
+  stage: StageId,
+  reload: Option<RuntimeBridgeReloadHandle>,
+}

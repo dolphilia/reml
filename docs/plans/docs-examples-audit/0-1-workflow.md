@@ -3,6 +3,7 @@
 ## 1. 棚卸し
 - `docs/` 内の ```reml コードブロックを抽出し、出典（ファイル/節）と対応する `.reml` を記録する。
 - 出力は `docs/plans/docs-examples-audit/` 配下で管理する。
+- `docs/spec/` の棚卸し表は `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` を正本とする。
 
 ### 棚卸しテンプレート
 ```text

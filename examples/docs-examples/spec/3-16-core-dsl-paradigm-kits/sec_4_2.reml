@@ -1,0 +1,9 @@
+fn Gc.new(strategy: GcStrategy) -> GcHeap
+
+fn Gc.with_scope<T>(heap: GcHeap, f: fn(RootScope) -> T) -> T
+
+fn Gc.alloc<T>(scope: RootScope, value: T) -> Result<GcRef<T>, GcError> // `effect {memory}`
+fn Gc.pin<T>(scope: RootScope, value: GcRef<T>) -> RootScope            // `effect {memory}`
+
+fn Gc.collect(heap: GcHeap) -> Result<(), GcError>                       // `effect {memory}`
+fn Gc.collect_if_needed(heap: GcHeap) -> Result<(), GcError>             // `effect {memory}`

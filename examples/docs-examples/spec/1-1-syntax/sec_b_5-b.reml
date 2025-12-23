@@ -1,0 +1,5 @@
+  fn greet() -> Text {
+    let name = do Console.ask("name?")
+    do Console.log("hi " + name)
+    name
+  }

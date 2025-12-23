@@ -1,0 +1,9 @@
+use Nest.Data
+
+let userSchema = Schema.build("User", |s| {
+  s.field("id", Column<Guid, { nullable = false }>)
+   .field("email", Column<Text, { nullable = false, description = "連絡先" }>)
+   .field("signup_at", Column<DateTime, { nullable = false }>)
+   .field("score", Column<f64, { nullable = true, stats = Some({ mean = 0.0, stddev = 1.0, ..ColumnStats::zero }) }))
+   .index("pk_user", columns = ["id"], unique = true)
+})

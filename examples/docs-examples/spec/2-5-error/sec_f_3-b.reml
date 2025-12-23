@@ -1,0 +1,11 @@
+fn toStructuredLog(diag: Diagnostic) -> Json = json!({
+  "event": "reml.error",
+  "domain": diag.domain,
+  "code": diag.code,
+  "severity": diag.severity,
+  "severity_hint": diag.severity_hint,
+  "message": diag.message,
+  "extensions": diag.extensions,
+  "notes": diag.notes,
+  "fixits": diag.fixits
+})

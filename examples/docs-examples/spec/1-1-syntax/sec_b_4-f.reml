@@ -1,0 +1,4 @@
+  extern "C" fn puts(ptr: Ptr<u8>) -> i32;
+  extern "C" {
+    fn printf(fmt: Ptr<u8>, ...) -> i32;
+  }

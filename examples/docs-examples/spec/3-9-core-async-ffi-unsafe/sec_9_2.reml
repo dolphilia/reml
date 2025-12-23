@@ -1,0 +1,2 @@
+fn mock_foreign_function(signature: FfiSignature, behavior: MockBehavior) -> MockForeignFunction
+fn verify_ffi_contract(foreign_fn: ForeignFunction, contract: FfiContract) -> Result<(), FfiError>

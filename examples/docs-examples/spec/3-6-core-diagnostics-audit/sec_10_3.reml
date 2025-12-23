@@ -1,0 +1,8 @@
+fn diagnostic_metrics(diagnostics: Iter<Diagnostic>) -> DiagnosticMetrics {
+  DiagnosticMetrics {
+    total_count: diagnostics.count(),
+    by_severity: diagnostics.group_by(|d| d.severity).map_values(|group| group.count()),
+    by_code: diagnostics.group_by(|d| d.code).map_values(|group| group.count()),
+    resolution_time: diagnostics.map(|d| d.timestamp).variance(),
+  }
+}

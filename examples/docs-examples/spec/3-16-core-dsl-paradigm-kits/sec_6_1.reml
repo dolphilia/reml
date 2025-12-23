@@ -1,0 +1,18 @@
+pub type Bytecode<Op> = {
+  ops: List<Op>,
+}
+
+pub type VmState<Value> = {
+  stack: List<Value>,
+  frames: List<CallFrame>,
+}
+
+pub type CallFrame = { ip: Int }
+
+pub type VmError = { kind: VmErrorKind, message: Str }
+
+pub enum VmErrorKind =
+  | Halted
+  | InvalidOpcode
+  | StackUnderflow
+  | RuntimeFailure

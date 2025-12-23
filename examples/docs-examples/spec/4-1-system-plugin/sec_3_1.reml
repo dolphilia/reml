@@ -1,0 +1,7 @@
+fn audited_syscall<T>(desc: SyscallDescriptor, thunk: SyscallThunk, sink: AuditSink) -> Result<T, SyscallError> =
+  let ctx = AuditContext::new("syscall", desc.name)?.with_metadata(desc.audit_metadata.clone());
+  let start = now()?;
+  let result = thunk()?;
+  let duration = now()? - start;
+  ctx.log("syscall.completed", json!({ "duration_ns": duration.as_nanos(), "result": result }))?;
+  Ok(result);

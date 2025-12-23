@@ -1,0 +1,19 @@
+pub type TemplateSegmentId = u32
+
+pub type TemplateSegment =
+  | Literal(str: Str)
+  | Interpolate(expr: TemplateExpr, filters: List<TemplateFilterId>)
+  | Control(block: TemplateBlock, body: List<TemplateSegment>)
+  | Comment(str: Str)
+
+pub type TemplateExpr =
+  | Path(IdentPath)
+  | Literal(TemplateLiteral)
+  | Call(IdentPath, args: List<TemplateExpr>)
+
+pub type TemplateBlock =
+  | If(condition: TemplateExpr, else_body: Option<List<TemplateSegment>>)
+  | For(bind: Ident, iter: TemplateExpr)
+  | Scoped(scope: Ident, params: List<TemplateExpr>)
+
+pub type TemplateLiteral = Str | Bool | Int | Float | Json

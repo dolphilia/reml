@@ -1,0 +1,22 @@
+pub type DeriveModel = {
+  completions: List<CompletionItem>,
+  outline: List<OutlineNode>,
+  semantic_tokens: List<SemanticToken>,
+  hovers: List<HoverEntry>,
+}
+
+pub type CompletionItem = { label: Str, kind: Str }
+
+pub type OutlineNode = {
+  name: Str,
+  kind: Str,
+  children: List<OutlineNode>,
+}
+
+pub type SemanticToken = { kind: Str, range: Range }
+
+pub type HoverEntry = { name: Str, doc: Str }
+
+fn Derive.collect<T>(parser: Parser<T>) -> DeriveModel
+fn Derive.standard_capabilities(model: DeriveModel) -> LspCapabilities
+fn Derive.apply_standard_capabilities(model: DeriveModel, server: LspServer) -> LspServer

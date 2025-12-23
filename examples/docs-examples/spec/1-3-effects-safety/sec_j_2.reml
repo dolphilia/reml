@@ -1,0 +1,12 @@
+@pure
+fn parseFile(path: String) -> Result<AST, Error> = {
+  // error: io 効果の `readFile` は @pure で禁止
+  let s = readFile(path)?
+  parseModule(s)
+}
+
+fn parseFile(path: String) -> Result<AST, Error> = {
+  // OK: 効果は境界関数に出す
+  let s = readFile(path)?            // io
+  parseModule(s)                     // pure
+}

@@ -1,0 +1,5 @@
+fn Actor.spawn<Message>(
+  system: ActorSystem,
+  def: ActorDefinition<Message>,
+  supervision: Option<SupervisionBridge>
+) -> Result<MailboxBridge<Message>, ActorError> // `effect {io.async}`

@@ -1,0 +1,6 @@
+pub type SyscallDescriptor = {
+  name: Str,
+  number: SyscallNumber,
+  effect_set: Set<EffectTag>,   // 例: {syscall, memory}
+  audit_metadata: Map<Str, Json>,
+}

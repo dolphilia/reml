@@ -1,0 +1,8 @@
+fn empty<T>() -> Iter<T>
+fn once<T>(value: T) -> Iter<T>
+fn repeat<T>(value: T) -> Iter<T>
+fn from_list<T>(values: List<T>) -> Iter<T>
+fn from_result<T, E>(value: Result<T, E>) -> Iter<T> // Ok -> 単一要素, Err -> 空 + エラー保留
+fn range(start: Int, end: Int, step: Int = 1) -> Iter<Int>
+fn unfold<S, T>(state: S, f: (S) -> Option<(S, T)>) -> Iter<T>
+fn try_unfold<S, T, E>(state: S, f: (S) -> Result<Option<(S, T)>, E>) -> Result<Iter<T>, E>

@@ -1,0 +1,4 @@
+fn segment_graphemes(str: Str) -> Iter<Grapheme>             // `effect {unicode}`
+fn segment_words(str: Str) -> Iter<Str>                      // `effect {unicode}`
+fn segment_sentences(str: Str) -> Iter<Str>                  // `effect {unicode}`
+fn grapheme_width(gr: Grapheme) -> usize                     // `@pure`

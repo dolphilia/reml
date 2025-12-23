@@ -1,0 +1,3 @@
+type ParserId = u32
+type MemoKey = (ParserId, byte_off)
+type MemoVal<T> = Reply<T>  // Ok/Err 丸ごと

@@ -1,0 +1,13 @@
+type ParseDiagnosticOptions = {
+  severity: Severity = Severity::Error,
+  domain: DiagnosticDomain = DiagnosticDomain::Parser,
+  code: Option<Str> = None,
+  locale: Option<Locale> = None,
+  audit: Option<AuditEnvelope> = None,
+  input_name: Option<Str> = None,
+  attach_span_trace: Bool = true,
+}
+
+fn parse_error_defaults(input_name: Str) -> ParseDiagnosticOptions // `@pure`
+fn from_parse_error(src: Str, err: ParseError, opts: ParseDiagnosticOptions) -> Diagnostic      // `@pure`
+fn from_parse_errors(src: Str, errs: List<ParseError>, opts: ParseDiagnosticOptions) -> List<Diagnostic> // `@pure`

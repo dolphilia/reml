@@ -1,0 +1,10 @@
+let info = platform_info();
+if info.runtime_capabilities.contains(RuntimeCapability::SIMD) {
+  enable_simd_pipeline();
+}
+if platform_features().contains("packrat_default") {
+  cfg.extensions["target"].features.insert("packrat_default");
+}
+if has_target_capability(TargetCapability::FilesystemCaseInsensitive) {
+  cfg.extensions["target"].extra.insert("fs.case", "insensitive");
+}

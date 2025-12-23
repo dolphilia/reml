@@ -1,0 +1,2 @@
+fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New>)
+  -> Result<ReloadState<T>, ReloadError>

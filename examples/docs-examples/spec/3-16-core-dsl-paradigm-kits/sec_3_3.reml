@@ -1,0 +1,8 @@
+use Core.Dsl.Object
+
+let animal = Object.class_builder("Animal")
+  .method("speak", |this, _| { "..." })
+  .build()
+
+let dog = { table: animal, payload: "Dog", shape_id: 1 }
+let result = Object.call(dog, "speak", [], None)

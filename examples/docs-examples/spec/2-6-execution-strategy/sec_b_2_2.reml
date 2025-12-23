@@ -1,0 +1,15 @@
+fn specialise_config(profile: BuildProfile) -> RunConfig = {
+  let info = platform_info();
+  let mut cfg = RunConfig { extensions = { "target": default_target(profile) } };
+  if has_capability(RuntimeCapability::SIMD) {
+    cfg.packrat = true;
+  }
+  if platform_features().contains("io.blocking.strict") {
+    cfg.extensions["target"].extra.insert("io.blocking", "strict");
+    cfg.merge_warnings = false; // ブロッキング時の警告を逐次報告
+  }
+  if info.family == TargetFamily::Wasm {
+    cfg.left_recursion = "off";
+  }
+  cfg
+}

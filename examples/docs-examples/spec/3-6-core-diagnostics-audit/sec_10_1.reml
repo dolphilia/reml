@@ -1,0 +1,14 @@
+// CLI コマンドラインオプション
+fn setup_cli_diagnostics(args: CliArgs) -> AuditSink {
+  let policy = AuditPolicy {
+    level: args.verbosity.to_audit_level(),
+    anonymize_pii: !args.debug_mode,
+    ..AuditPolicy::default()
+  };
+
+  match args.output_format {
+    OutputFormat::Human => filtered_audit_sink(console_audit_sink, policy.filter),
+    OutputFormat::Json => json_audit_sink,
+    OutputFormat::Structured => lsp_audit_sink,
+  }
+}

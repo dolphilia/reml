@@ -1,0 +1,5 @@
+  if cond then expr1 else expr2
+  
+  match value with
+  | Some(v) -> transform(v)
+  | None    -> default

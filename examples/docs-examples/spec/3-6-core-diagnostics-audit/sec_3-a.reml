@@ -1,0 +1,5 @@
+pub type AuditSink = fn(Diagnostic) -> Result<(), AuditError>          // `effect {audit}`
+
+fn emit(diag: Diagnostic, sink: AuditSink) -> Result<(), AuditError>    // `effect {diagnostic, audit}`
+fn with_context(diag: Diagnostic, ctx: Json) -> Diagnostic              // `@pure`
+fn redact(diag: Diagnostic, policy: RedactPolicy) -> Diagnostic         // `@pure`

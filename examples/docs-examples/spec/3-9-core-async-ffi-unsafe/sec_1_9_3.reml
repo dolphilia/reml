@@ -1,0 +1,16 @@
+let system = runtime.actor_system()?;
+
+actor spec Greeter {
+  state = { greeted: Set<Text> }
+
+  on Message::Greet(name) -> ! { io.async } {
+    if !state.greeted.contains(name) {
+      state.greeted.insert(name);
+      log.info("greet", name);
+    }
+    reply(Message::Hello(name))?;
+  }
+}
+
+let greeter = system.spawn(Greeter::new())?;
+let response = await system.ask(greeter, Message::Greet("Reml"), 2.s)?;

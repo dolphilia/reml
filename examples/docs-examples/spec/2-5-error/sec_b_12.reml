@@ -1,0 +1,11 @@
+let result = await Async.timeout(parse_stream(stream), 1.s);
+match result {
+  Ok(value) -> continue(value),
+  Err(e) -> {
+    if let Some(info) = e.timeout_info() {
+      let diag = Diagnostic::runtime_timeout(span, info);
+      return Err(Err.attach(parse_error, diag));
+    }
+    return Err(Err.attach(parse_error, e.into_diagnostic(span)));
+  }
+}

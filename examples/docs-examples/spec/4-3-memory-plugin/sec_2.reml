@@ -1,0 +1,10 @@
+pub type MappedMemory = {
+  ptr: NonNullPtr<u8>,
+  len: usize,
+  protection: MemoryProtection,
+  flags: MmapFlags,
+}
+
+pub enum MemoryProtection = ReadOnly | ReadWrite | ReadExecute | ReadWriteExecute
+
+pub enum MmapFlags = Private | Shared | Anonymous | Fixed | HugePage | Custom(Str)

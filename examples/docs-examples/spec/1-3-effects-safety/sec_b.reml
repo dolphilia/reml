@@ -1,0 +1,2 @@
+  let id = |x| x                 // 一般化: ∀a. a -> a
+  let line = readLine()          // io 効果 → 単相

@@ -1,0 +1,38 @@
+pub struct AsyncCapability {
+  scheduler: SchedulerHandle,
+  spawn_task: fn(Future<Any>) -> TaskHandle,
+  supports_mailbox: fn() -> Bool,
+  tracing: Option<AsyncTracingHooks>,
+}
+
+pub struct TaskHandle {
+  id: Uuid,
+  cancel: fn() -> Bool,
+  metrics: TaskMetrics,
+}
+
+pub struct ActorRuntimeCapability {
+  allocate_mailbox: fn<Message>(ActorId, MailboxConfig) -> Result<MailboxHandle<Message>, CapabilityError>,
+  register_transport: fn(TransportHandle) -> Result<(), CapabilityError>,
+  diagnostics: ActorDiagnosticsHooks,
+}
+
+pub struct MailboxConfig {
+  capacity: usize,
+  overflow: OverflowPolicy,
+  priority: Option<PriorityPolicy>,
+}
+
+pub struct ActorDiagnosticsHooks {
+  on_spawn: fn(ActorId, NodeId) -> (),
+  on_exit: fn(ActorId, ExitStatus) -> (),
+  on_backpressure: fn(ActorId, MailboxStats) -> (),
+}
+
+pub struct MailboxStats {
+  pending: usize,
+  dropped: usize,
+  high_watermark: usize,
+}
+
+pub enum PriorityPolicy = FIFO | Priority { levels: u8 }

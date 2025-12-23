@@ -1,0 +1,9 @@
+extern "C" fn strlen(ptr: Ptr<u8>) -> usize
+
+fn c_strlen(input: Str) -> usize = {
+  unsafe {
+    let bytes = input.asBytes();
+    let ptr = bytes.asPtr();
+    strlen(ptr)
+  }
+}

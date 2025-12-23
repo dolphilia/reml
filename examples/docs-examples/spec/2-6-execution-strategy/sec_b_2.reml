@@ -1,0 +1,12 @@
+type RunConfig = {
+  require_eof: Bool = false,
+  packrat: Bool = false,
+  left_recursion: "off" | "on" | "auto" = "auto",
+  trace: Bool = false,
+  merge_warnings: Bool = true,
+  legacy_result: Bool = false,
+  locale: Option<Locale> = None,
+  extensions: RunConfigExtensions = {}
+}
+
+type RunConfigExtensions = Map<Str, Any>

@@ -1,0 +1,12 @@
+use Core;
+use Core.Runtime;
+use Core.Numeric;
+
+fn bootstrap_runtime() -> Result<(), CapabilityError> =
+  register("gc", CapabilityHandle::Gc(my_gc_capability()))?;
+  register("metrics", CapabilityHandle::Metrics(my_metrics_capability()))?;
+  Ok(())
+
+fn collect_gc_metrics() -> Result<MetricPoint<Float>, CapabilityError> =
+  let metrics = registry().metrics.metrics()?;
+  Ok(metric_point("gc.pause_ms", metrics.last_pause_ms))

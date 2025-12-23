@@ -1,0 +1,3 @@
+fn trace_async_execution(future: Future<T>) -> Future<(T, ExecutionTrace)>      // `effect {debug}`
+fn debug_deadlock_detection() -> Result<List<DeadlockInfo>, DebugError>        // `effect {debug}`
+fn async_test_harness<T>(test: Future<T>, timeout: Duration) -> TestResult<T>   // `effect {test}`

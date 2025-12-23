@@ -1,0 +1,31 @@
+pub struct ChannelMetricsHandle = {
+  queue_depth: GaugeMetric,
+  dropped_messages: CounterMetric,
+  producer_latency: LatencyHistogram,
+  consumer_latency: LatencyHistogram,
+  throughput: CounterMetric,
+}
+
+pub struct ChannelMetricsSample = {
+  queue_depth: usize,
+  dropped_messages: u64,
+  producer_latency_p95: Duration,
+  consumer_latency_p95: Duration,
+  throughput_per_sec: f64,
+  observed_at: Timestamp,
+}
+
+fn channel_metrics<T>(scope: &ExecutionMetricsScope,
+  recv: &DslReceiver<T>,
+  channel_id: ChannelId,
+  opts: ChannelMetricOptions = ChannelMetricOptions::default())
+  -> Result<ChannelMetricsHandle, AsyncError>                            // `effect {io.async}`
+
+fn snapshot_channel_metrics(handle: &ChannelMetricsHandle)
+  -> Result<ChannelMetricsSample, AsyncError>                            // `effect {io.async}`
+
+pub struct ChannelMetricOptions = {
+  collect_dropped_messages: Bool = true,
+  collect_latency: Bool = true,
+  collect_throughput: Bool = true,
+}

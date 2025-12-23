@@ -1,0 +1,23 @@
+pub type CapabilityId = Str
+
+pub struct CapabilityRegistry {
+  gc: Option<GcCapability>,
+  io: IoCapability,
+  async_runtime: Option<AsyncCapability>,
+  actor: Option<ActorRuntimeCapability>,
+  audit: AuditCapability,
+  metrics: MetricsCapability,
+  plugins: PluginCapability,
+  system: Option<SyscallCapability>,
+  process: Option<ProcessCapability>,
+  memory: Option<MemoryCapability>,
+  signal: Option<SignalCapability>,
+  hardware: Option<HardwareCapability>,
+  realtime: Option<RealTimeCapability>,
+  security: SecurityCapability,
+}
+
+fn registry() -> &'static CapabilityRegistry                  // `effect {runtime}`
+fn register(cap: CapabilityId, value: CapabilityHandle) -> Result<(), CapabilityError> // `effect {runtime}`
+fn get(cap: CapabilityId) -> Option<CapabilityHandle>          // `effect {runtime}`
+fn describe(cap: CapabilityId) -> Option<CapabilityDescriptor> // `effect {runtime}`

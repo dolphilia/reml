@@ -1,0 +1,19 @@
+pub enum StageId = Experimental | Beta | Stable
+
+pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
+
+pub type ConductorCapabilityRequirement = {
+  id: CapabilityId,
+  stage: StageRequirement,
+  declared_effects: Set<EffectTag>,
+  source_span: SourceSpan,
+}
+
+pub type ConductorCapabilityContract = {
+  requirements: List<ConductorCapabilityRequirement>,
+  manifest_path: Option<Path>,
+}
+
+fn verify_capability(id: CapabilityId) -> Result<CapabilityHandle, CapabilityError>
+fn verify_capability_stage(id: CapabilityId, requirement: StageRequirement) -> Result<CapabilityHandle, CapabilityError>
+fn verify_conductor_contract(contract: ConductorCapabilityContract) -> Result<(), CapabilityError>

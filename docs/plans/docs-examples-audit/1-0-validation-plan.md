@@ -11,10 +11,12 @@ cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend 
   --emit-typeck-debug reports/spec-audit/ch1/use_nested-YYYYMMDD-typeck.json
 ```
 
-## ログ命名
-- `reports/spec-audit/<chapter>/<sample>-YYYYMMDD-diagnostics.json`
-- `reports/spec-audit/<chapter>/<sample>-YYYYMMDD-typeck.json`
-- Streaming 実行時は `streaming_<sample>-YYYYMMDD-diagnostics.json`
+## ログ命名（合意版）
+- 基本形式: `reports/spec-audit/<chapter>/<sample>-YYYYMMDD-<kind>.json`（タイムスタンプは JST）
+- Streaming 実行時は `reports/spec-audit/<chapter>/streaming_<sample>-YYYYMMDD-<kind>.json`
+- 付随ログは `reports/spec-audit/<chapter>/<sample>-YYYYMMDD-trace.md` / `<sample>-YYYYMMDD-dualwrite.md`
+- 実行コマンドと CI 情報は `reports/spec-audit/summary.md` に追記する
+- 命名・運用の詳細は `reports/spec-audit/README.md` を正本とする
 
 ## カバレッジの扱い
 - `docs/spec/` は P0 として全件検証。

@@ -1,0 +1,5 @@
+fn container_profile(profile: &str) -> RunConfig = match profile {
+  | "serverless" -> RunConfig { packrat = false, merge_warnings = true, ..default }
+  | "latency"   -> RunConfig { packrat = true, left_recursion = "auto", ..default }
+  | _            -> default,
+}

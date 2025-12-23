@@ -1,0 +1,12 @@
+module sample.config
+
+@dsl_export(category="config", capabilities=["Core.Config.Manifest"], version="0.1")
+pub fn config_dsl() -> Parser<AppConfig> =
+  root_object(|builder| { ... })
+
+@dsl_export(category="config")
+conductor config_orchestrator {
+  config_dsl
+    |> validate
+    |> emit
+}

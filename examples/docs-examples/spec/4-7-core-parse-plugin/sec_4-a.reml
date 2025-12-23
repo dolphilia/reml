@@ -1,0 +1,9 @@
+pub enum PluginError =
+  | MissingCapability { id: CapabilityId, required_stage: StageRequirement }
+  | StageViolation { id: CapabilityId, required_stage: StageRequirement, actual_stage: CapabilityStage }
+  | IncompatibleCore { required: SemVerRange, actual: SemVer }
+  | BundleInstallFailed { failed_at: PluginId, cause: Box<PluginError> }
+  | SignatureMismatch { plugin: PluginId }
+  | VerificationFailed { policy: VerificationPolicy, reason: Str }
+  | RegistrarError { operation: Str, cause: Diagnostic }
+  | IO { path: Path, cause: IOError }

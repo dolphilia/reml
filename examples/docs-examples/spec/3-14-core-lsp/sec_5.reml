@@ -1,0 +1,17 @@
+pub type LspDeriveEnvelope = {
+  format: Str,    // "lsp-derive"
+  version: Int,   // 1
+  source: Str,
+  capabilities: LspDeriveCapabilities,
+  completions: List<CompletionItem>,
+  outline: List<OutlineNode>,
+  semantic_tokens: List<SemanticToken>,
+  hovers: List<HoverEntry>,
+}
+
+pub type LspDeriveCapabilities = {
+  completion: Bool,
+  outline: Bool,
+  semantic_tokens: Bool,
+  hover: Bool,
+}

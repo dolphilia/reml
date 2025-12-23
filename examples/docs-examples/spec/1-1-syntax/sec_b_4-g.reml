@@ -1,0 +1,2 @@
+  pattern (|IntLit|_|)(src: String) = parse_int(src) // Option<T> を返す部分パターン
+  pattern (|Normalize|)(x) = normalize(x)             // 常に成功する完全パターン

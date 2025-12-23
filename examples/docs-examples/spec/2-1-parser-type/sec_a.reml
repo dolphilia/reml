@@ -1,0 +1,25 @@
+// コア：パーサは Input を読み、成功/失敗と残り入力を返す純関数
+type Parser<T> = fn(&mut State) -> Reply<T>
+
+// 実行結果（consumed/committed の2ビットを明示）
+type Reply<T> =
+  | Ok(value: T, rest: Input, span: Span, consumed: Bool)
+  | Err(error: ParseError, consumed: Bool, committed: Bool)
+
+// ランナーが外部へ返す“エラー不可能”結果（AST + 診断）
+type ParseResult<T> = {
+  value: Option<T>,                 // 成功時は値、失敗時は None
+  span: Option<Span>,               // 値が存在する場合の全体スパン
+  diagnostics: List<Diagnostic>,    // 2.5 で定義される診断の列
+  recovered: Bool,                  // recover 等で補完した場合 true
+  legacy_error: Option<ParseError>  // 互換モード用（cfg.legacy_result=true）
+}
+
+// 実行状態（不変入力 + 可変の解析状態）
+type State = {
+  input: Input,                // 現在の入力ビュー（不変データの参照＋オフセット）
+  config: RunConfig,           // 実行設定（Packrat 等）
+  memo: MemoTable,             // Packrat/左再帰用メモテーブル
+  diag: DiagState,             // 最遠エラー等の集約
+  trace: TraceState            // 追跡（オフ既定）
+}

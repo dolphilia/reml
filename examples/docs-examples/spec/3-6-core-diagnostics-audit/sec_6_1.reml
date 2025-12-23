@@ -1,0 +1,11 @@
+pub struct DslMetricsHandle = {
+  latency: LatencyHistogram,
+  throughput: CounterMetric,
+  error_rate: RatioGauge,
+  in_flight: GaugeMetric,
+}
+
+fn register_dsl_metrics(scope: &ExecutionMetricsScope, dsl_id: DslId) -> Result<DslMetricsHandle, Diagnostic> // `effect {trace}`
+fn record_dsl_success(handle: DslMetricsHandle, duration: Duration) -> ()                                  // `effect {trace}`
+fn record_dsl_failure(handle: DslMetricsHandle, error: Diagnostic, duration: Duration) -> ()               // `effect {trace, audit}`
+fn observe_backpressure(handle: DslMetricsHandle, depth: usize) -> ()                                      // `effect {trace}`

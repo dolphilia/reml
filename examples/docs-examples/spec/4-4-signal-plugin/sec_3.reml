@@ -1,0 +1,1 @@
+fn log_signal(event: Str, info: SignalInfo, audit: AuditSink) -> Result<(), Diagnostic> // effect {audit}

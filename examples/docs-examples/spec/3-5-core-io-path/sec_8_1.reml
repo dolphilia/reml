@@ -1,0 +1,7 @@
+// 同期 IO を非同期コンテキストで使用
+fn async_read<R: Reader>(reader: R) -> AsyncResult<Bytes>          // `effect {io.async}`
+fn async_write<W: Writer>(writer: W, data: Bytes) -> AsyncResult<usize> // `effect {io.async}`
+
+// バッチ処理とストリーミング
+fn batch_process_files(paths: List<Path>, processor: (Path) -> Result<T, IoError>) -> AsyncResult<List<T>>
+fn stream_file_contents(path: Path) -> AsyncResult<AsyncIter<Bytes>>

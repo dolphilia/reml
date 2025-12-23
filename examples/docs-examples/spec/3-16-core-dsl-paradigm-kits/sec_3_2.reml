@@ -1,0 +1,26 @@
+fn Object.call<Value>(
+  obj: ObjectHandle<Value>,
+  name: MethodId,
+  args: List<Value>,
+  cache: Option<&mut MethodCache<Value>>
+) -> Result<Value, DispatchError> // `effect {runtime}`
+
+fn Object.lookup<Value>(
+  table: DispatchTable<Value>,
+  name: MethodId
+) -> Option<MethodEntry<Value>>
+
+fn Object.class_builder<Value>(name: Str) -> ClassBuilder<Value>
+fn Object.prototype_builder<Value>(name: Str) -> PrototypeBuilder<Value>
+
+pub type ClassBuilder<Value> = {
+  method: fn(ClassBuilder<Value>, MethodId, MethodEntry<Value>) -> ClassBuilder<Value>,
+  extend: fn(ClassBuilder<Value>, DispatchTable<Value>) -> ClassBuilder<Value>,
+  build: fn(ClassBuilder<Value>) -> DispatchTable<Value>,
+}
+
+pub type PrototypeBuilder<Value> = {
+  method: fn(PrototypeBuilder<Value>, MethodId, MethodEntry<Value>) -> PrototypeBuilder<Value>,
+  delegate: fn(PrototypeBuilder<Value>, DispatchTable<Value>) -> PrototypeBuilder<Value>,
+  build: fn(PrototypeBuilder<Value>) -> DispatchTable<Value>,
+}

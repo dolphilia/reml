@@ -1,0 +1,5 @@
+  fn add(lhs: i64, rhs: i64) -> i64 = lhs + rhs
+  
+  fn fact(n: i64) -> i64 {
+    if n <= 1 then 1 else n * fact(n - 1)
+  }

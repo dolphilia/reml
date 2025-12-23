@@ -1,0 +1,13 @@
+use Core.Dsl.Vm
+
+enum Op = | Push(Int) | Add | Halt
+
+let code = Vm.bytecode_builder()
+  .emit(Op.Push(1))
+  .emit(Op.Push(2))
+  .emit(Op.Add)
+  .emit(Op.Halt)
+  .build()
+
+let state = { stack: [], frames: [{ ip: 0 }] }
+let result = Vm.run(code, state, |state, op| { exec_op(state, op) })

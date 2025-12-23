@@ -1,0 +1,4 @@
+  source
+    |> tokenize()
+    |> parse(rule = grammar.entry)
+    |> map_errors(normalize)

@@ -1,0 +1,7 @@
+  match input with
+  | Some(A | B) when cond(input) -> handle_ab(input)
+  | whole @ [head, ..tail] when head > 0 -> log(whole, tail)
+  | 1..=10 as small_range -> render_range(small_range)
+  | r"^\\d+$" as digits -> digits   // 文字列/バイト列のみ対応
+  | (|HexInt|_|) n when n > 0xFF -> "large"
+  | _ -> "other"

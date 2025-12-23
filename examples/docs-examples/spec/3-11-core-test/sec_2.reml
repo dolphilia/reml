@@ -1,0 +1,29 @@
+pub type TestError = {
+  kind: TestErrorKind,
+  message: Str,
+  context: Map<Str, Str>,
+}
+
+pub enum TestErrorKind =
+  | AssertionFailed
+  | SnapshotMismatch
+  | SnapshotMissing
+  | HarnessFailure
+  | FuzzCrash
+
+pub type SnapshotPolicy = {
+  mode: Str,          // "verify" | "update" | "record"
+  normalize: Bool,
+  max_bytes: Int,
+}
+
+pub type TestCase = {
+  name: Str,
+  body: fn() -> Result<(), TestError>,
+}
+
+fn assert_eq<T: Eq>(actual: T, expected: T) -> Result<(), TestError>
+fn assert_snapshot(name: Str, value: Str) -> Result<(), TestError>
+fn assert_snapshot_with(policy: SnapshotPolicy, name: Str, value: Str) -> Result<(), TestError>
+fn test(name: Str, body: fn() -> Result<(), TestError>) -> Result<(), TestError>
+fn test_with(policy: SnapshotPolicy, name: Str, body: fn() -> Result<(), TestError>) -> Result<(), TestError>

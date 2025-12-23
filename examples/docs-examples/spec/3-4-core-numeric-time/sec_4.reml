@@ -1,0 +1,10 @@
+pub type MetricPoint<T> = {
+  name: Str,
+  value: T,
+  timestamp: Timestamp,
+  tags: Map<Str, Str>
+}
+
+fn metric_point<T: IntoMetricValue>(name: Str, value: T) -> MetricPoint<T> // `@pure`
+fn attach_audit(mp: MetricPoint<T>, audit_id: Option<Uuid>) -> MetricPoint<T> // `@pure`
+fn emit_metric(mp: MetricPoint<Float>, sink: AuditSink) -> Result<(), Diagnostic> // `effect {audit}`

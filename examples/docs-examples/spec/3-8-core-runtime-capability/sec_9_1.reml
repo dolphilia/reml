@@ -1,0 +1,17 @@
+fn start_metrics_collection(interval: Duration) -> Result<MetricsCollector, CapabilityError>
+fn get_runtime_statistics() -> RuntimeStatistics
+
+pub type RuntimeStatistics = {
+  uptime: Duration,
+  memory_usage: MemoryUsage,
+  gc_statistics: GcStatistics,
+  capability_usage: Map<CapabilityId, UsageStats>,
+  thread_pool_status: ThreadPoolStatus,
+}
+
+pub type MemoryUsage = {
+  heap_used: usize,
+  heap_total: usize,
+  stack_size: usize,
+  gc_overhead: Float,
+}

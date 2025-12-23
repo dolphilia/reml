@@ -1,0 +1,8 @@
+pub type MemoryCapability = {
+  mmap: fn(MmapRequest) -> Result<MappedMemory, MemoryError>,                // effect {memory, unsafe}
+  munmap: fn(MappedMemory) -> Result<(), MemoryError>,                       // effect {memory}
+  mprotect: fn(&mut MappedMemory, MemoryProtection) -> Result<(), MemoryError>, // effect {memory, security}
+  msync: fn(&MappedMemory, SyncFlags) -> Result<(), MemoryError>,            // effect {memory, io}
+  shared_open: fn(SharedMemoryRequest) -> Result<SharedMemory, MemoryError>, // effect {memory, process}
+  shared_close: fn(SharedMemory) -> Result<(), MemoryError>,                 // effect {memory}
+}

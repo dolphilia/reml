@@ -1,0 +1,72 @@
+pub struct SupervisorSpec = {
+  name: Str,
+  strategy: RestartStrategy,
+  children: List<ChildSpec>,
+  health_check: Option<SupervisorHealthCheck>,
+  audit_label: Option<Str>,
+}
+
+pub struct ChildSpec = {
+  build: fn(&ActorSystem) -> Result<ActorRef<Any>, AsyncError>,
+  policy: ChildRestartPolicy,
+  tags: Set<EffectTag>,
+  backoff: Option<BackoffStrategy>,
+}
+
+pub enum RestartStrategy = OneForOne { budget: RestartBudget }
+  | OneForAll { budget: RestartBudget }
+  | Temporary
+
+pub struct RestartBudget = {
+  max_restarts: NonZeroU16,
+  within: Duration,
+  cooldown: Duration,
+}
+
+pub enum ChildRestartPolicy = Permanent | Transient | Temporary
+
+pub struct SupervisorHandle = {
+  id: Uuid,
+  descriptor: SupervisorDescriptor,
+  observe: fn() -> AsyncStream<SupervisorEvent>,
+  restart: fn(ActorId) -> Result<(), AsyncError>,
+  shutdown: fn(Duration) -> Future<Result<(), AsyncError>>,
+}
+
+pub struct SupervisorEvent = {
+  actor: ActorId,
+  outcome: SupervisorOutcome,
+  restart_count: u16,
+  observed_at: Timestamp,
+  diagnostic: Option<Diagnostic>,
+}
+
+pub enum SupervisorOutcome = Restarted | Escalated | Exhausted | Stopped | Failed(AsyncErrorKind)
+
+pub struct SupervisorDescriptor = {
+  name: Str,
+  strategy: RestartStrategy,
+  children: List<ChildDigest>,
+}
+
+pub struct ChildDigest = {
+  actor: ActorId,
+  policy: ChildRestartPolicy,
+  tags: Set<EffectTag>,
+}
+
+fn spawn_supervised(system: &ActorSystem, spec: SupervisorSpec)
+  -> Result<SupervisorHandle, AsyncError>                                  // `effect {io.async, audit}`
+
+fn supervisor_stats(handle: &SupervisorHandle) -> SupervisorStats           // `@pure`
+
+pub struct SupervisorStats = {
+  restarts_in_window: u16,
+  window_started_at: Timestamp,
+  exhausted: Bool,
+}
+
+pub struct SupervisorHealthCheck = {
+  interval: Duration,
+  probe: fn(&SupervisorHandle) -> Future<Result<(), AsyncError>>,
+}

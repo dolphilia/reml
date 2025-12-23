@@ -1,0 +1,22 @@
+pub type TimeError = {
+  kind: TimeErrorKind,
+  message: Str,
+  timestamp: Option<Timestamp>,
+  timezone: Option<Str>,
+  format_pattern: Option<Str>,
+  locale: Option<Str>,
+}
+
+pub enum TimeErrorKind = SystemClockUnavailable | InvalidTimezone | TimeOverflow | InvalidFormat
+
+impl IntoDiagnostic for TimeError {
+  fn into_diagnostic(self) -> Diagnostic {
+    Diagnostic::system_error(self.message)
+      .with_code(format!("TIME_{:?}", self.kind))
+      .with_metadata("timestamp", self.timestamp)
+      .with_metadata("format_pattern", self.format_pattern)
+      .with_metadata("locale", self.locale)
+  }
+}
+
+- フォーマット/パースの失敗は `TimeErrorKind::InvalidFormat` として扱い、`format_pattern`・`locale` メタデータを診断および監査ログに必ず付与する。

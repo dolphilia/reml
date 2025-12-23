@@ -1,0 +1,5 @@
+let diagnostic = Diag.from_parse_error(
+  source,
+  error,
+  Diag.parse_error_defaults("GraphQL schema"),
+);

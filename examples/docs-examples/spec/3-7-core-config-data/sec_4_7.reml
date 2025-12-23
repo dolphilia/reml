@@ -1,0 +1,11 @@
+pub type DataQualityRule<T> = {
+  name: Str,
+  description: Str,
+  validator: (T) -> Result<(), QualityViolation>,
+  severity: QualitySeverity,
+}
+
+pub enum QualitySeverity = Info | Warning | Error | Critical
+
+fn validate_data_quality<T>(data: Iter<T>, rules: List<DataQualityRule<T>>) -> QualityReport
+fn auto_fix_quality_issues<T>(data: T, rules: List<DataQualityRule<T>>) -> Result<T, QualityError>

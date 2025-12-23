@@ -1,0 +1,7 @@
+pub type SharedMemory = {
+  name: Option<Str>,
+  region: MappedMemory,
+  owner: SharedMemoryOwner,
+}
+
+pub enum SharedMemoryOwner = Local | Remote(ProcessId)

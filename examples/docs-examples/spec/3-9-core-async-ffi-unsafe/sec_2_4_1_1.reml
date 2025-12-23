@@ -1,0 +1,6 @@
+let cos = effect {ffi, unsafe} {
+  let lib = ffi.bind_library("m")?
+  let raw = lib.bind_fn("cos", ffi.fn_sig([ffi.double], ffi.double, false))?
+  ffi.wrap(raw, { name: "libm.cos", null_check: false, ownership: None, error_map: None })?
+}
+let value = cos(0.5)?

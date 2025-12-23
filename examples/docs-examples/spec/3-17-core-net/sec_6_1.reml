@@ -1,0 +1,8 @@
+module Core.Net.Udp
+
+pub type UdpSocket = opaque
+
+pub type Datagram = {
+  bytes: Bytes,
+  peer: Core.Net.Tcp.SocketAddr,
+}

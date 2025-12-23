@@ -1,0 +1,10 @@
+pub enum ParserMetaKind = Rule | Keyword | Symbol | Token
+
+pub type ParserMeta = {
+  id: ParserId,
+  kind: ParserMetaKind,
+  name: Str,
+  doc: Option<Str>,
+  children: List<ParserId>,
+  token_kind: Option<Str>,
+}

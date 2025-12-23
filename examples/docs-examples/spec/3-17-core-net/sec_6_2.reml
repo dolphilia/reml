@@ -1,0 +1,4 @@
+val bind: Url -> effect {net} Result<UdpSocket, NetError>
+val send_to: UdpSocket -> Bytes -> Core.Net.Tcp.SocketAddr -> effect {net} Result<Int, NetError>
+val recv_from: UdpSocket -> effect {net} Result<Datagram, NetError>
+val close: UdpSocket -> effect {net} Result<(), NetError>

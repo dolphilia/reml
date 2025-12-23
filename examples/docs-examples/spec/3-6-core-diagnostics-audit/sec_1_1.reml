@@ -1,0 +1,6 @@
+pub type AuditEnvelope = {
+  audit_id: Option<Uuid>,
+  change_set: Option<Json>,
+  capability: Option<CapabilityId>,
+  metadata: Map<Str, Json>,
+}

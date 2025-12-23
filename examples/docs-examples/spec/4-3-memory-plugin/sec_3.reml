@@ -1,0 +1,16 @@
+pub type MmapRequest = {
+  addr: Option<VoidPtr>,
+  len: usize,
+  protection: MemoryProtection,
+  flags: Set<MmapFlags>,
+  file: Option<Path>,
+  offset: Option<i64>,
+}
+
+pub type SharedMemoryRequest = {
+  name: Option<Str>,
+  size: usize,
+  create: Bool,
+  protection: MemoryProtection,
+  flags: Set<MmapFlags>,
+}

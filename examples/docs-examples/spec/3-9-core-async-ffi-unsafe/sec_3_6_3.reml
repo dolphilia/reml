@@ -1,0 +1,14 @@
+struct RootGuard {
+  ptr: NonNullPtr<Object>,
+}
+
+impl RootGuard {
+  fn new(ptr: NonNullPtr<Object>) -> Result<RootGuard, UnsafeError> = {
+    unsafe { runtime::register_root(ptr)? }
+    Ok(RootGuard { ptr })
+  }
+
+  fn release(self) -> Result<(), UnsafeError> = {
+    unsafe { runtime::unregister_root(self.ptr) }
+  }
+}

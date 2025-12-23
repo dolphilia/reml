@@ -1,0 +1,12 @@
+pub struct PluginDependency {
+  pub id: PluginId,
+  pub version: SemVerRange,
+  pub capabilities: Set<CapabilityId>,
+}
+
+pub struct PluginBundleManifest {
+  pub bundle_id: Str,
+  pub bundle_version: PluginSemVer,
+  pub plugins: List<ParserPlugin>,
+  pub signature: Option<PluginSignature>,
+}

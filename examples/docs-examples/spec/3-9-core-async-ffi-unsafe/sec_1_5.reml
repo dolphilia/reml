@@ -1,0 +1,18 @@
+fn default_scheduler_config() -> SchedulerConfig = {
+  let info = platform_info();
+  let hints = scheduler_hints(info); // Core.Async が提供する CPU/IO 推奨値
+  SchedulerConfig {
+    worker_threads: Some(if has_capability(RuntimeCapability::Vector512) {
+      hints.prefer_physical_threads
+    } else {
+      hints.prefer_logical_threads
+    }),
+    max_blocking_threads: if platform_features().contains("io.blocking.strict") {
+      Some(hints.blocking_guard_threads)
+    } else {
+      None
+    },
+    io_driver: info.family == TargetFamily::Unix,
+    time_driver: true,
+  }
+}

@@ -1,0 +1,6 @@
+fn then<A,B>(p: Parser<A>, q: Parser<B>) -> Parser<(A,B)>     // 直列
+fn andThen<A,B>(p: Parser<A>, f: A -> Parser<B>) -> Parser<B> // = flatMap
+fn skipL<A,B>(p: Parser<A>, q: Parser<B>) -> Parser<B>        // 左を捨てる
+fn skipR<A,B>(p: Parser<A>, q: Parser<B>) -> Parser<A>        // 右を捨てる
+fn or<A>(p: Parser<A>, q: Parser<A>) -> Parser<A>             // 左優先の選択
+fn choice<A>(xs: [Parser<A>]) -> Parser<A>                    // 左から順に or

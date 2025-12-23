@@ -1,0 +1,20 @@
+pub type Position = { line: Int, character: Int }
+pub type Range = { start: Position, end: Position }
+
+pub enum DiagnosticSeverity = Error | Warning | Information | Hint
+
+pub type LspDiagnostic = {
+  range: Range,
+  severity: DiagnosticSeverity,
+  message: Str,
+  code: Option<Str>,
+}
+
+pub type JsonRpcMessage = {
+  method: Str,
+  params: Map<Str, Str>,
+}
+
+pub type LspError = { kind: LspErrorKind, message: Str }
+
+pub enum LspErrorKind = DecodeFailed | UnsupportedMethod

@@ -1,0 +1,6 @@
+fn parse_header(bytes: Span<u8>) -> Result<Header, ParseError> = {
+  if bytes.len < HEADER_LEN { return Err(ParseError::Truncated) }
+  let version_ptr = unsafe { bytes.ptr.add(OFFSET_VERSION) };
+  let version = unsafe { version_ptr.read()? };
+  Ok(Header { version, ..default })
+}

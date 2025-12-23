@@ -1,0 +1,8 @@
+pub enum TemplateCapability =
+  | RenderHtml
+  | RenderText
+  | RegisterFilter
+  | BypassEscape
+
+fn capability_name(cap: TemplateCapability) -> CapabilityId
+fn requires_stage(cap: TemplateCapability) -> StageId

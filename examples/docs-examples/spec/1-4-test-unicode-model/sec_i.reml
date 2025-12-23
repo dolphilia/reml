@@ -1,0 +1,37 @@
+// 生成・変換
+fn string(bytes: Bytes, validate_utf8: Bool = true) -> Result<String, Utf8Error>
+fn to_string(chars: Iterator<Char>) -> String
+
+// 長さ
+fn byte_len(s: Str) -> usize
+fn char_len(s: Str) -> usize            // コードポイント数（必要時のみ計算）
+fn grapheme_len(s: Str) -> usize
+
+// 反復
+fn bytes(s: Str) -> Iterator<u8>
+fn codepoints(s: Str) -> Iterator<Char>
+fn graphemes(s: Str) -> Iterator<Grapheme>
+
+// スライス
+fn slice_bytes(s: Str, r: Range<usize>) -> Bytes
+fn slice_codepoints(s: Str, r: Range<usize>) -> Str
+fn slice_graphemes(s: Str, r: Range<usize>) -> Str
+
+// 検索
+fn find(s: Str, pat: Str) -> Option<usize>                 // バイトオフセット
+fn find_grapheme(s: Str, pred: Grapheme -> Bool) -> Option<usize>
+
+// 正規化・大小
+fn normalize_nfc(s: Str)  -> String
+fn normalize_nfd(s: Str)  -> String
+fn normalize_nfkc(s: Str) -> String
+fn normalize_nfkd(s: Str) -> String
+fn to_lower(s: Str, locale: Option<Locale>) -> String
+fn to_upper(s: Str, locale: Option<Locale>) -> String
+fn to_casefold(s: Str) -> String
+
+// 比較
+fn eq_bytes(a: Str, b: Str) -> Bool
+fn eq_codepoint(a: Str, b: Str) -> Bool
+type Collator
+impl Collator { fn new(locale: Locale) -> Collator; fn compare(&self, a: Str, b: Str) -> Ordering }

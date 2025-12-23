@@ -1,0 +1,6 @@
+fn record_target_diagnostics(metrics: DslMetricsHandle, diag: Diagnostic) -> () = {
+  let target_errors = diag.extensions.get("cfg").and_then(|cfg| cfg.get("target_config_errors")).unwrap_or(0);
+  if target_errors > 0 {
+    metrics.error_rate.increment_with_tag("target", target_errors);
+  }
+}

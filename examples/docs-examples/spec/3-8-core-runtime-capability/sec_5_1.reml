@@ -1,0 +1,6 @@
+pub type IoCapability = {
+  open: fn(Path, FileOptions) -> Result<File, CapabilityError>,
+  read: fn(File, Bytes) -> Result<usize, CapabilityError>,
+  write: fn(File, Bytes) -> Result<usize, CapabilityError>,
+  close: fn(File) -> Result<(), CapabilityError>,
+}

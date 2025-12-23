@@ -1,0 +1,6 @@
+pub struct EffectDiagnostic;
+
+impl EffectDiagnostic {
+  fn stage_violation(span: Span, capability: CapabilityId, err: Runtime.CapabilityError)
+    -> Diagnostic // `@pure`
+}

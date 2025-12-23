@@ -1,0 +1,8 @@
+pub type SyscallCapability = {
+  raw_syscall: fn(SyscallNumber, [i64; 6]) -> Result<i64, SyscallError>,      // effect {syscall, unsafe}
+  platform_syscalls: PlatformSyscalls,                                        // effect {syscall}
+  audited_syscall: fn(SyscallDescriptor, SyscallThunk) -> Result<SyscallRet, SyscallError>, // effect {syscall, audit}
+  supports: fn(SyscallId) -> Bool,
+}
+
+pub type SyscallThunk = fn() -> Result<SyscallRet, SyscallError>;

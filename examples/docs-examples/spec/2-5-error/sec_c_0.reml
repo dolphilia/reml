@@ -1,0 +1,5 @@
+let diagnostics = Err.toDiagnostics(
+  source,
+  error,
+  Diag.parse_error_defaults("GraphQL schema"),
+);

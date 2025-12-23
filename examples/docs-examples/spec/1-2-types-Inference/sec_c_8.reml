@@ -1,0 +1,16 @@
+type RunConfigTarget = {
+  os: Str,
+  family: Str,
+  arch: Str,
+  abi: Option<Str>,
+  vendor: Option<Str>,
+  env: Option<Str>,
+  profile_id: Option<Str>,
+  triple: Option<Str>,
+  features: Set<Str>,
+  capabilities: Set<Str>,
+  stdlib_version: Option<SemVer>,
+  runtime_revision: Option<Str>,
+  diagnostics: Bool,
+  extra: Map<Str, Str>
+}

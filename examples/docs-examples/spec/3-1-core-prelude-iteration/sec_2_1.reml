@@ -1,0 +1,11 @@
+@must_use
+pub type Option<T> =
+  | Some(value: T)
+  | None
+
+@must_use
+pub type Result<T, E> =
+  | Ok(value: T)
+  | Err(error: E)
+
+pub type Never = Result<Never, Never> // 空集合を示す記号的型。実体化不可。

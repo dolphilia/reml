@@ -1,0 +1,18 @@
+effect ForeignCall : ffi {
+  operation call(name: Text, payload: Bytes) -> Result<Bytes, FfiError>
+}
+
+@handles(ForeignCall)
+@requires_capability(stage="experimental")
+fn with_foreign_stub(request: Request) -> Result<Response, FfiError> ! {} =
+  handle do ForeignCall.call("service", encode(request)) with
+    handler ForeignCall {
+      operation call(name, payload, resume) {
+        audit.log("ffi.call", {"name": name, "bytes": payload.len()})
+        // スタブ応答を返し、本物の FFI を呼び出さず終了
+        resume(Ok(stub_response(name, payload)))
+      }
+      return result {
+        result.and_then(decode_response)
+      }
+    }

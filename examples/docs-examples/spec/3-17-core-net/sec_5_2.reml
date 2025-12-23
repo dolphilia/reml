@@ -1,0 +1,4 @@
+val connect: Url -> effect {net} Result<TcpStream, NetError>
+val listen: Url -> effect {net} Result<TcpListener, NetError>
+val accept: TcpListener -> effect {net} Result<(TcpStream, SocketAddr), NetError>
+val close: TcpStream -> effect {net} Result<(), NetError>

@@ -1,0 +1,9 @@
+module Core.Unsafe.Ptr {
+  type Ptr<T>
+  type MutPtr<T>
+  type NonNullPtr<T>
+  type VoidPtr = Ptr<void>
+  type FnPtr<Args, Ret>
+  type Span<T> = { ptr: NonNullPtr<T>, len: usize }
+  type TaggedPtr<T> = { raw: Ptr<T>, label: Option<Str> }
+}

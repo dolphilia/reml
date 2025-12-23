@@ -1,0 +1,9 @@
+pub type BridgeDiagnostic = {
+  id: RuntimeBridgeId,
+  stage_required: Option<Runtime.StageRequirement>,
+  stage_actual: Option<Runtime.StageId>,
+  target_requested: Option<Str>,
+  target_detected: Option<Str>,
+  manifest_path: Option<Path>,
+  checklist_missing: List<Text>,
+}

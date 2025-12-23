@@ -1,0 +1,21 @@
+pub type CapabilitySecurity = {
+  signature: Option<DigitalSignature>,
+  permissions: Set<Permission>,
+  isolation_level: IsolationLevel,
+  audit_required: Bool,
+  effect_scope: Set<EffectTag>,
+  policy: Option<SecurityPolicyRef>,
+  sandbox: Option<SandboxProfile>,
+}
+
+pub enum Permission = {
+  ReadConfig,
+  WriteConfig,
+  FileSystem(PathPattern),
+  Network(NetworkPattern),
+  Runtime(RuntimeOperation),
+}
+
+pub enum IsolationLevel = None | Sandboxed | FullIsolation
+
+fn verify_capability_security(handle: CapabilityHandle, security: CapabilitySecurity) -> Result<(), SecurityError>

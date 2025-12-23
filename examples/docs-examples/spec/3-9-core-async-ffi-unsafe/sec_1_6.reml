@@ -1,0 +1,15 @@
+@handles(Console)
+fn with_console_mock() -> Result<Text, AsyncError> ! {} =
+  handle greet() with
+    handler Console {
+      operation log(msg, resume) {
+        audit.log("console.log", msg)
+        resume(())
+      }
+      operation ask(_, resume) {
+        resume("Reml")
+      }
+      return value {
+        Ok(value)
+      }
+    }

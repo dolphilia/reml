@@ -1,0 +1,6 @@
+pub type AuditError = {
+  kind: AuditErrorKind,
+  message: Str,
+}
+
+pub enum AuditErrorKind = Transport | Encoding | PolicyViolation

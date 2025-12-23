@@ -1,0 +1,2 @@
+fn Err.expected(at: Span, xs: Set<Expectation>) -> ParseError
+fn Err.custom(at: Span, msg: Str) -> ParseError

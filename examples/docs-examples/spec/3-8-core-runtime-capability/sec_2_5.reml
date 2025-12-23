@@ -1,0 +1,9 @@
+pub type HardwareCapability = {
+  read_cpu_id: fn() -> CpuId,                                  // effect {hardware}
+  cpu_features: fn() -> CpuFeatures,                           // effect {hardware}
+  rdtsc: fn() -> u64,                                          // effect {hardware, timing}
+  rdtscp: fn() -> (u64, u32),                                  // effect {hardware, timing}
+  prefetch: fn<T>(Ptr<T>, PrefetchLocality) -> (),              // effect {hardware}
+  numa_nodes: fn() -> List<NumaNode>,                           // effect {hardware}
+  bind_numa: fn(NumaNode) -> Result<(), HardwareError>,        // effect {hardware, thread}
+}

@@ -1,0 +1,2 @@
+  match value with
+  | x @ Some(x) -> x    // pattern.binding.duplicate_name

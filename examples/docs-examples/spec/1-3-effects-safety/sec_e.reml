@@ -1,0 +1,2 @@
+  var acc = 0
+  for x in xs { acc := acc + x }   // `:=` は再代入

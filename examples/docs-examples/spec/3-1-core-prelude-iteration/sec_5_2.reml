@@ -1,0 +1,7 @@
+fn process_large_dataset(data: Iter<Record>) -> Result<Summary, ProcessError> =
+  data
+    |> Iter.buffered(1000)  // 1000件先読みバッファ
+    |> Iter.map(validate_record)
+    |> Iter.try_fold(Summary::empty(), |summary, record| {
+        summary.update(record?)
+      })

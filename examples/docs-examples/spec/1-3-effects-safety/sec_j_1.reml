@@ -1,0 +1,3 @@
+@pure
+fn intLit() -> Parser<i64> =
+  digits().map(parseInt)             // 文字列→数値, 外界に作用しない

@@ -1,0 +1,2 @@
+fn spanned<A>(p: Parser<A>) -> Parser<(A, Span)>      // 値とスパン
+fn position() -> Parser<Span>                         // ゼロ幅で現在位置

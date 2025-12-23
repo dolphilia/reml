@@ -1,0 +1,20 @@
+trait Numeric<T> {
+  fn zero() -> T;
+  fn one() -> T;
+  fn abs(self: T) -> T;
+  fn clamp(self: T, min: T, max: T) -> T;
+}
+
+trait OrderedFloat<T> {
+  fn is_nan(self: T) -> Bool;
+  fn is_infinite(self: T) -> Bool;
+  fn total_cmp(self: T, other: T) -> Ordering;
+}
+
+fn lerp<T: Numeric + Copy>(start: T, end: T, t: Float) -> T // `@pure`
+fn mean<T: Numeric>(iter: Iter<T>) -> Option<T>             // `@pure`
+fn variance<T: Numeric>(iter: Iter<T>) -> Option<T>         // `@pure`
+fn percentile(iter: Iter<Float>, p: Float) -> Option<Float> // `@pure`
+fn median<T: Numeric + Ord>(iter: Iter<T>) -> Option<T>     // `@pure`
+fn mode<T: Numeric + Eq + Hash>(iter: Iter<T>) -> Option<T> // `@pure`
+fn range<T: Numeric + Ord>(iter: Iter<T>) -> Option<(T, T)> // `@pure`

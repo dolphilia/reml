@@ -1,0 +1,44 @@
+type Manifest = {
+  project: ProjectSection,
+  dependencies: Map<PackageName, DependencySpec>,
+  dsl: Map<Str, DslEntry>,
+  build: BuildSection,
+  registry: RegistrySection,
+}
+
+type ProjectSection = {
+  name: PackageName,
+  version: SemVer,
+  authors: List<Contact>,
+  license: Option<LicenseId>,
+  description: Option<Str>,
+}
+
+type DslEntry = {
+  entry: Path,
+  exports: List<DslExportRef>,
+  kind: DslCategory,
+  expect_effects: Set<EffectTag>,
+  allow_prerelease: Bool,
+  capabilities: List<CapabilityId>,
+  summary: Option<Str>,
+}
+
+type DslExportRef = {
+  name: Str,
+  signature: Option<DslExportSignature<Json>>,  // Chapter 1.2 で定義
+}
+
+type BuildSection = {
+  target: TargetTriple,
+  features: Set<Str>,
+  optimize: OptimizeLevel,
+  warnings_as_errors: Bool,
+  profiles: Map<Str, BuildProfile>,
+}
+
+type RegistrySection = {
+  upstream: Url,
+  mirrors: List<Url>,
+  auth: Option<AuthConfig>,
+}

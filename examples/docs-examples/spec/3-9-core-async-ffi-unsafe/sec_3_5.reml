@@ -1,0 +1,2 @@
+fn tag<T>(ptr: Ptr<T>, label: Str) -> TaggedPtr<T>
+fn debug_repr<T>(ptr: Ptr<T>) -> Str

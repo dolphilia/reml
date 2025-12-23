@@ -1,0 +1,4 @@
+module Core.Net.Url
+
+val parse: Str -> Result<Url, UrlError> // `@pure`
+val build: UrlParts -> Result<Url, UrlError> // `@pure`

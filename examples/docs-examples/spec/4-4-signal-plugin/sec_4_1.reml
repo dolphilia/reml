@@ -1,0 +1,8 @@
+fn install_shutdown_handler(audit: AuditSink) -> Result<(), SignalError> = {
+  let handler = |info: SignalInfo| {
+    audit.log("signal.shutdown", json!({ "signal": info.signal }))?
+    SignalAction::Terminate
+  }
+  SignalCapability::register_handler(SIGTERM, handler)?;
+  Ok(())
+}

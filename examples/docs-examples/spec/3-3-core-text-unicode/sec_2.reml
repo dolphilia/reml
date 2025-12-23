@@ -1,0 +1,13 @@
+pub type Bytes
+pub type Str
+pub type String
+pub type Grapheme
+pub type GraphemeSeq = List<Grapheme>  // 所有型として採用
+pub type TextBuilder
+
+fn as_bytes(str: Str) -> Bytes                // `@pure`
+fn to_string(bytes: Bytes) -> Result<String, DecodeError> // `effect {unicode}`
+fn str_from_slice(bytes: Bytes) -> Result<Str, DecodeError> // `@pure`
+fn string_clone(str: Str) -> String            // `effect {mem}`
+fn grapheme_seq(str: Str) -> GraphemeSeq       // `effect {unicode}`
+fn builder() -> TextBuilder                    // `effect {mem}`

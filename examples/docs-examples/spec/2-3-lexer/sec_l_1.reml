@@ -1,0 +1,10 @@
+let sc = (whitespace().or(commentLine("//")).or(commentBlock("/*","*/", true))) |> skipMany
+let sym(s) = symbol(sc, s)
+let kw(s)  = expect("keyword " + s, keyword(sc, s))
+
+let ident = lexeme(sc, identifier(DefaultId))
+  |> label("identifier")
+
+let reservedSet = {"fn","let","var","type","match","with","if","then","else","use","pub","return","true","false"}
+let nonReservedIdent =
+  ident.andThen(|name| if reservedSet.contains(name) then fail("reserved") else ok(name))

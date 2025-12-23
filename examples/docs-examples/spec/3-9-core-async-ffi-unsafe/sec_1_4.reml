@@ -1,0 +1,33 @@
+pub struct Channel<Send, Recv> where Send: Serialize, Recv: Deserialize {
+  sender: DslSender<Send>,
+  receiver: DslReceiver<Recv>,
+  codec: Codec<Send, Recv>,
+  buffer_size: usize,
+  overflow: OverflowPolicy,
+}
+
+fn create_channel<S, R>(buffer_size: usize, codec: Codec<S, R>) -> Result<(DslSender<S>, DslReceiver<R>), AsyncError> // `effect {io.async}`
+fn merge_channels<T>(channels: List<DslReceiver<T>>) -> DslReceiver<T>                                             // `effect {io.async}`
+fn split_channel<T>(channel: DslReceiver<T>, predicate: (T) -> Bool) -> (DslReceiver<T>, DslReceiver<T>)           // `effect {io.async}`
+fn with_execution_plan<T>(dsl: DslSpec<T>, plan: ExecutionPlan) -> DslSpec<T>                                     // `effect {io.async}`
+fn with_plan<T>(stream: AsyncStream<T>, plan: ExecutionPlan) -> AsyncStream<T>                                    // `effect {io.async}`
+fn with_resource_limits<T>(dsl: DslSpec<T>, limits: ResourceLimitSet) -> DslSpec<T>                               // `effect {io.async}`
+
+struct ExecutionPlan = {
+  strategy: ExecutionStrategy,
+  backpressure: BackpressurePolicy,
+  error: ErrorPropagationPolicy,
+  scheduling: SchedulingPolicy,
+}
+
+pub type ResourceLimitSet = {
+  memory: Option<MemoryLimit>,
+  cpu: Option<CpuQuota>,
+  annotations: Map<Str, Json>,
+}
+
+fn ResourceLimitSet::new(memory: Option<MemoryLimit>, cpu: Option<CpuQuota>) -> ResourceLimitSet
+
+enum BackpressurePolicy = Drop | DropOldest | Buffer(usize) | Block | Adaptive { high_watermark: usize, low_watermark: usize, strategy: AdaptiveStrategy }
+
+enum AdaptiveStrategy = DropNewest | SlowProducer | SignalDownstream

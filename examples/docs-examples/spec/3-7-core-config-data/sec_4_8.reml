@@ -1,0 +1,3 @@
+fn update_stats(column: ColumnStats, values: Iter<Json>) -> Result<ColumnStats, Diagnostic> // `@pure`
+fn merge_stats(left: ColumnStats, right: ColumnStats) -> ColumnStats                        // `@pure`
+fn as_metric(points: ColumnStats) -> List<MetricPoint<Float>>                               // `@pure`

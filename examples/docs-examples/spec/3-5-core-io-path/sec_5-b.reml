@@ -1,0 +1,3 @@
+fn track_resources(enabled: Bool) -> ()                           // `effect {debug}`
+fn list_open_resources() -> List<ResourceHandle>                  // `effect {debug}`
+fn force_cleanup_resources() -> Result<u32, IoError>              // `effect {io, debug}`

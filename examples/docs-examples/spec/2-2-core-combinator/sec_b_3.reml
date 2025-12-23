@@ -1,0 +1,13 @@
+type ParserProfile = {
+  packrat_hits: Int,
+  packrat_misses: Int,
+  backtracks: Int,
+  recoveries: Int,
+  left_recursion_guard_hits: Int,
+  memo_entries: Int,
+}
+
+RunConfig.profile: Bool = false
+RunConfig.extensions["parse"].profile: Bool
+RunConfig.extensions["parse"].profile_output: Str
+ParseResult.profile: Option<ParserProfile>
