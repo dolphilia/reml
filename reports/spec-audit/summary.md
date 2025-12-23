@@ -19,3 +19,8 @@
 |----------|----------|------|------|
 | 09:35 | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/block_scope.reml --trace-output reports/spec-audit/ch1/block_scope-20251118-trace.md` | ✅ 診断 0 件 | `ExprParser` へブロック/`let`/`var` を導入。ログ: `reports/spec-audit/ch1/block_scope-20251118-diagnostics.json`。 |
 | 10:12 | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/effect_handler.reml --trace-output reports/spec-audit/ch1/effect_handler-20251118-trace.md` | ✅ 診断 0 件 | `perform`/`handle`/`operation` が Rust Frontend で受理。dual-write: `reports/spec-audit/ch1/effect_handler-20251118-dualwrite.md`。`rust-gap SYNTAX-003` をクローズ。 |
+
+## 2025-12-23 docs-examples-audit 一括検証
+| JST 時刻 | コマンド | 結果 | 備考 |
+|----------|----------|------|------|
+| 17:00 | `compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics <sample>` | ⚠️ 438 件中 53 件 OK / 385 件 NG | `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` を更新し、`reports/spec-audit/ch0`〜`ch4` に `docs-examples-audit-20251223.md` と診断 JSON を保存。 |
