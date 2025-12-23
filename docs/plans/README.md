@@ -11,6 +11,12 @@ Reml 実装ロードマップや運用計画を集約しています。
 ## リポジトリ再編計画
 - [repository-restructure-plan.md](repository-restructure-plan.md)
 
+## ドキュメント Reml コード検証計画 (`docs/plans/docs-examples-audit/`)
+- [README.md](docs-examples-audit/README.md) — 計画の概要と参照先
+- [0-0-overview.md](docs-examples-audit/0-0-overview.md) — 背景・目的・成功条件
+- [0-1-workflow.md](docs-examples-audit/0-1-workflow.md) — 抽出ルールと運用フロー
+- [1-0-validation-plan.md](docs-examples-audit/1-0-validation-plan.md) — 検証手順とログ規約
+
 ## Rust 移植計画 (`docs/plans/rust-migration/`)
 - [README.md](rust-migration/README.md) — Rust 版コンパイラ移行タスクのドキュメント集約
 - [overview.md](rust-migration/overview.md) — 移植計画の背景と必要ドキュメント一覧
