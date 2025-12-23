@@ -279,9 +279,84 @@ pub enum NetErrorKind =
 | `ProtocolViolation` | `net.protocol_violation` | TCP/UDP のヘッダ不整合。 |
 | `Unsupported` | `net.unsupported` | プラットフォーム非対応。 |
 
-## 8. 監査ログと診断キー
+## 8. 使用例
 
-### 8.1 監査イベント
+### 8.1 URL 解析と HTTP GET
+
+```reml
+use Core;
+use Core.Net.Http;
+use Core.Net.Url;
+use Core.Text;
+
+fn parse_http_url(text: Str) -> Result<Url, Http.HttpError> {
+  match Url.parse(text) with
+  | Ok(url) -> Ok(url)
+  | Err(err) -> Err({
+      kind: Http.HttpErrorKind::InvalidUrl,
+      message: err.message,
+      diagnostic_key: "net.http.invalid_url",
+      status: None,
+      cause: None,
+    })
+}
+
+fn get_text(url_text: Str) -> Result<Http.Response, Http.HttpError>  // effect {net}
+{
+  let url = parse_http_url(url_text)?;
+  let headers = Map.empty_map();
+  let client = Http.client({
+    timeout_ms: Some(1500),
+    max_redirects: 2,
+    default_headers: headers,
+  });
+
+  let request = {
+    method: Http.HttpMethod::Get,
+    url: url,
+    headers: headers,
+    body: Text.as_bytes(""),
+  };
+
+  Http.request(client, request)
+}
+```
+
+### 8.2 UDP 送信
+
+```reml
+use Core;
+use Core.Net;
+use Core.Net.Tcp;
+use Core.Net.Udp;
+use Core.Net.Url;
+use Core.Text;
+
+fn parse_udp_url(text: Str) -> Result<Url, Net.NetError> {
+  match Url.parse(text) with
+  | Ok(url) -> Ok(url)
+  | Err(err) -> Err({
+      kind: Net.NetErrorKind::InvalidAddress,
+      message: err.message,
+      diagnostic_key: "net.address.invalid",
+      retryable: false,
+      url: None,
+    })
+}
+
+fn send_ping() -> Result<Int, Net.NetError>  // effect {net}
+{
+  let bind_url = parse_udp_url("udp://0.0.0.0:0/")?;
+  let socket = Udp.bind(bind_url)?;
+  let payload = Text.as_bytes("ping");
+  let peer: Tcp.SocketAddr = { host: "127.0.0.1", port: 9000 };
+  Udp.send_to(socket, payload, peer)
+}
+```
+
+## 9. 監査ログと診断キー
+
+### 9.1 監査イベント
 
 `event.kind` には `net.*` を設定し、`AuditEnvelope.metadata` / `Diagnostic.audit_metadata` の双方に同一キーで記録する。
 
@@ -294,7 +369,7 @@ pub enum NetErrorKind =
 | `net.udp.bind` | `net.url`, `net.listen_port` | バインド成功時に記録する。 |
 | `net.udp.send` | `net.peer`, `net.request_bytes`, `net.elapsed_ms` | 送信完了時に記録する。 |
 
-### 8.2 診断キー
+### 9.2 診断キー
 
 | 診断キー | 既定 Severity | 発生条件 | 推奨対応 |
 | --- | --- | --- | --- |
