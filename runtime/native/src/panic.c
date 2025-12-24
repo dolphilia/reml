@@ -54,9 +54,8 @@ static unsigned long reml_get_process_id(void) {
 /**
  * パニック（プログラムを異常終了させる）
  *
- * LLVM IR 側では panic(ptr, i64) の FAT ポインタ形式で宣言されているが、
- * C 実装側では const char* として受け取り、NULL 終端を前提とする。
- * 長さパラメータ（i64）は現在の実装では無視される。
+ * LLVM IR 側は panic(ptr) の宣言を正準とし、C 実装側では const char* として受け取り、
+ * NULL 終端を前提とする。
  *
  * @param msg エラーメッセージ（NULL 終端文字列）
  */

@@ -96,6 +96,12 @@
   - `runtime/native/include/reml_runtime.h` のコメントにある「LLVM IR 側では panic(ptr, i64)」の記述を現在の IR と一致させる。
   - `@panic` の宣言形式（引数数・型）を `compiler/rust/backend/llvm` 側で固定化し、テストで IR 断片を確認する。
 
+##### 整理結果（runtime 突き合わせ）
+- `runtime/native/include/reml_runtime.h` / `runtime/native/src/panic.c` は `panic(const char*)` を実装し、**LLVM IR 側が `panic(ptr, i64)` を宣言しているという注記はあるが、実装は長さ引数を使用していない**。
+- backend 側は `@panic(ptr)` を正準として lowering 済み（`compiler/rust/backend/llvm/src/codegen.rs` の `INTRINSIC_PANIC`）。
+- したがって現時点の整合方針は **`@panic(ptr)` を IR 正準とし、runtime の注記を更新して「FAT ポインタ注記を撤去」する**こと。  
+  併せて `Str` → `ptr` 変換（`reml_string_t.data` 取得相当）の lowering を TODO に残す。
+
 #### let/var を MIR に導入する設計案（Block statements 構造）
 - **目的**: `Block` 内で `let`/`var` を式として扱わず、評価順序と `defer`/`propagate` を明示的に制御できるようにする。
 - **提案**:

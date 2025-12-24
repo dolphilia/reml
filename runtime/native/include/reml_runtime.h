@@ -113,9 +113,8 @@ void dec_ref(void* ptr);
  * exit(1) でプログラムを終了する。
  *
  * Phase 1 実装注記:
- *   LLVM IR 側では panic(ptr, i64) の FAT ポインタ形式で宣言されているが、
- *   C 実装側では const char* として受け取り、NULL 終端を前提とする。
- *   長さパラメータ（i64）は無視可能。
+ *   LLVM IR 側は panic(ptr) の宣言を正準とし、C 側では const char* として受け取り
+ *   NULL 終端を前提とする。
  *
  * @param msg エラーメッセージ（NULL 終端文字列）
  * @note この関数は決して戻らない（noreturn 属性）
