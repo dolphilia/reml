@@ -45,6 +45,11 @@
 - 変更時は、関連する実装（`compiler/`）との整合性を常に意識してください。
 - リンク切れを防ぐため、相対パスの整合性を確認してください。
 
+### examples の `.reml` 実行
+- スイート実行: `tooling/examples/run_examples.sh --suite spec_core` / `--suite practical`
+- 単体実行（ビルド済み想定）: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/.../*.reml`
+- 単体実行（cargo 経由）: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/.../*.reml`
+
 ## コーディング規約
 
 ### 一般

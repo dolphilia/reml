@@ -1,19 +1,8 @@
 # spec_core スイート実行レポート
 
-- 実行時刻: 2025-12-18 23:47:32Z
-- 対象シナリオ: 73 件 / 成功 73 件 / 失敗 0 件
+- 実行時刻: 2025-12-24 20:15:45Z
+- 対象シナリオ: 75 件 / 成功 75 件 / 失敗 0 件
 - 入力ソース: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
-
-## FFI シナリオ（未実行）
-
-FFI 系シナリオは `spec_core` スイートとは別に回帰監視する。
-
-| Scenario | Input | Expected | Status | Notes |
-| --- | --- | --- | --- | --- |
-| `FFI-BINDGEN-001` | `examples/ffi/bindgen/minimal/reml-bindgen.toml` | `expected/ffi/bindgen/minimal/counter_bindings.reml` | 未実行 | manifest は `expected/ffi/bindgen/minimal/bindings.manifest.json` を参照 |
-| `FFI-DSL-001` | `examples/ffi/dsl/wrapped_safe.reml` | `expected/ffi/dsl/wrapped_safe.audit.json` | 未実行 | unsafe 直呼びは `expected/ffi/dsl/unsafe_direct.audit.json` を参照 |
-| `FFI-BUILD-001` | `docs/guides/ffi-build-integration-guide.md` | `reports/spec-audit/ch4/logs/ffi-build-*.md` | 未実行 | `ffi.build.*` の監査ログを記録する |
-| `FFI-WIT-001` | `docs/notes/ffi-wasm-component-model-log.md` | `docs/guides/ffi-wit-poc.md` | 未実行 | PoC 実施後に外部ツール名と生成物パスを追記する |
 
 | Scenario | File | 期待 Diagnostics | 実際 Diagnostics | Exit | 判定 | 備考 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -42,6 +31,8 @@ FFI 系シナリオは `spec_core` スイートとは別に回帰監視する。
 | `CH2-PARSE-103` | `examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren.reml` | `parser.syntax.expected_tokens` | `parser.syntax.expected_tokens` | 1 | ✅ pass | 括弧閉じ忘れ（`(1 + 2`）で `)` への期待が自然に収束することを固定する（括弧ペアの cut 境界）。比較対象（Cut 無し相当）: `examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren-no-cut.reml`。 |
 | `CH2-PARSE-201` | `examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml` | `core.parse.recover.branch` | `core.parse.recover.branch` | 1 | ✅ pass | `Parse.recover` が `core.parse.recover.branch` 診断を生成し Diagnostics chapter と同期することを確認する。 |
 | `CH2-PARSE-202` | `examples/spec_core/chapter2/parser_core/core-parse-recover-multiple-errors-semicolon.reml` | `core.parse.recover.branch` | `core.parse.recover.branch` | 1 | ✅ pass | 文末 `;` 同期で 1 回の実行に複数診断（回復 2 回）を蓄積する最小ケース（計画起点 ID: CP-WS4-001）。 |
+| `CH2-PARSE-203` | `examples/spec_core/chapter2/parser_core/core-parse-recover-sync-to.reml` | `core.parse.recover.branch` | `core.parse.recover.branch` | 1 | ✅ pass | `sync_to` による同期点消費を使い、`recover_until` の複数回復を同一入力で固定する。 |
+| `CH2-PARSE-204` | `examples/spec_core/chapter2/parser_core/core-parse-recover-panic-block.reml` | `core.parse.recover.branch` | `core.parse.recover.branch` | 1 | ✅ pass | `panic_block` がネストした `{}` を数えて同期し、次のブロックへ継続できることを固定する。 |
 | `CP-WS2-001` | `examples/spec_core/chapter2/parser_core/core-parse-label-vs-token-with-label.reml` | `parser.syntax.expected_tokens` | `parser.syntax.expected_tokens` | 1 | ✅ pass | Parse.run の label 有無で期待集合を比較する基準。with-label は Rule("expression") を含み context_note が `+` の後に expression、no-label は token/class のみ。 |
 | `CH2-STREAM-301` | `examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml` | — | — | 0 | ✅ pass | `run_stream` と `DemandHint::More` の協調を示す Streaming API 基準ケースを chapter2 §C-1 に基づき追加する。 |
 | `CH2-OP-401` | `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml` | `core.parse.opbuilder.level_conflict` | `core.parse.opbuilder.level_conflict` | 1 | ✅ pass | 同一レベルへ異なる fixity を登録した際の `core.parse.opbuilder.level_conflict` 診断をゴールデン化し優先度規則を確認する。 |

@@ -38,6 +38,10 @@
         - backend: `cargo build --manifest-path compiler/rust/backend/llvm/Cargo.toml`
         - runtime: `cargo build --manifest-path compiler/rust/runtime/Cargo.toml`
         - ルート: `mv Cargo.toml.ws Cargo.toml` → `cargo build` → `mv Cargo.toml Cargo.toml.ws`
+    - examples の `.reml` 実行:
+        - スイート実行: `tooling/examples/run_examples.sh --suite spec_core` / `--suite practical`
+        - 単体実行（ビルド済み想定）: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/.../*.reml`
+        - 単体実行（cargo 経由）: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/.../*.reml`
     - エラーメッセージや識別子にはプロジェクトの命名規則に従います。
 4. **非破壊的編集**: 既存の資産（特に OCaml の参照実装や古いノート）を無断で削除せず、必要なら `deprecated` 扱いにして残します。
 
