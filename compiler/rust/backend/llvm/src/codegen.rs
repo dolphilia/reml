@@ -24,6 +24,7 @@ const INTRINSIC_FIELD_ACCESS: &str = "@reml_field_access";
 const INTRINSIC_INDEX_ACCESS: &str = "@reml_index_access";
 const INTRINSIC_CALL: &str = "@reml_call";
 const INTRINSIC_STR_CONCAT: &str = "@reml_str_concat";
+const INTRINSIC_STR_DATA: &str = "@reml_str_data";
 const INTRINSIC_IF_ELSE: &str = "@reml_if_else";
 const INTRINSIC_PERFORM: &str = "@reml_perform";
 const INTRINSIC_PANIC: &str = "@panic";
@@ -1096,6 +1097,7 @@ fn lower_match_to_blocks(
                             body_label.clone(),
                             arm.body,
                             value,
+                            &mut ssa,
                         );
                         blocks.push(block);
                         llvm_blocks.push(llvm_block);
@@ -1910,8 +1912,12 @@ fn lower_if_else_with_propagate_to_blocks(
         }
         BranchKind::Panic => {
             let value = emit_value_expr(then_branch, expr_map, ssa);
-            let (block, llvm_block) =
-                lower_panic_value_to_named_block(then_label.clone(), then_branch, value);
+            let (block, llvm_block) = lower_panic_value_to_named_block(
+                then_label.clone(),
+                then_branch,
+                value,
+                ssa,
+            );
             blocks.push(block);
             llvm_blocks.push(llvm_block);
         }
@@ -1949,8 +1955,12 @@ fn lower_if_else_with_propagate_to_blocks(
         }
         BranchKind::Panic => {
             let value = emit_value_expr(else_branch, expr_map, ssa);
-            let (block, llvm_block) =
-                lower_panic_value_to_named_block(else_label.clone(), else_branch, value);
+            let (block, llvm_block) = lower_panic_value_to_named_block(
+                else_label.clone(),
+                else_branch,
+                value,
+                ssa,
+            );
             blocks.push(block);
             llvm_blocks.push(llvm_block);
         }
@@ -2080,8 +2090,12 @@ fn lower_if_else_to_operand_blocks(
         }
         BranchKind::Panic => {
             let value = emit_value_expr(then_branch, expr_map, ssa);
-            let (block, llvm_block) =
-                lower_panic_value_to_named_block(then_label.clone(), then_branch, value);
+            let (block, llvm_block) = lower_panic_value_to_named_block(
+                then_label.clone(),
+                then_branch,
+                value,
+                ssa,
+            );
             blocks.push(block);
             llvm_blocks.push(llvm_block);
         }
@@ -2119,8 +2133,12 @@ fn lower_if_else_to_operand_blocks(
         }
         BranchKind::Panic => {
             let value = emit_value_expr(else_branch, expr_map, ssa);
-            let (block, llvm_block) =
-                lower_panic_value_to_named_block(else_label.clone(), else_branch, value);
+            let (block, llvm_block) = lower_panic_value_to_named_block(
+                else_label.clone(),
+                else_branch,
+                value,
+                ssa,
+            );
             blocks.push(block);
             llvm_blocks.push(llvm_block);
         }
@@ -2703,6 +2721,7 @@ fn lower_panic_value_to_named_block_with_defers(
 ) -> (BasicBlock, LlvmBlock) {
     let mut instrs = value.instrs;
     emit_defer_lifo_instrs(defer_lifo, expr_map, ssa, &mut instrs);
+    let panic_arg = lower_panic_argument(&value.ty, &value.operand, ssa, &mut instrs);
     instrs.push(LlvmInstr::Comment(format!(
         "panic expr#{body} -> {INTRINSIC_PANIC}"
     )));
@@ -2710,7 +2729,7 @@ fn lower_panic_value_to_named_block_with_defers(
         result: None,
         ret_ty: "void".into(),
         callee: INTRINSIC_PANIC.into(),
-        args: vec![(value.ty, value.operand)],
+        args: vec![(ssa.pointer_type(), panic_arg)],
     });
     let block = BasicBlock {
         label: label.clone(),
@@ -2779,12 +2798,44 @@ fn infer_propagate_flavor(ty_hint: &str) -> PropagateFlavor {
     PropagateFlavor::Result
 }
 
+fn lower_panic_argument(
+    ty: &str,
+    operand: &str,
+    ssa: &mut LlvmBuilder,
+    instrs: &mut Vec<LlvmInstr>,
+) -> String {
+    if ty == ssa.pointer_type() {
+        return operand.to_string();
+    }
+    let str_operand = if ty == "Str" {
+        operand.to_string()
+    } else {
+        let converted = ssa.new_tmp("panic_str");
+        instrs.push(LlvmInstr::Call {
+            result: Some(converted.clone()),
+            ret_ty: "Str".into(),
+            callee: INTRINSIC_VALUE.into(),
+            args: vec![("Str".into(), operand.to_string())],
+        });
+        converted
+    };
+    let ptr = ssa.new_tmp("panic_ptr");
+    instrs.push(LlvmInstr::Call {
+        result: Some(ptr.clone()),
+        ret_ty: ssa.pointer_type(),
+        callee: INTRINSIC_STR_DATA.into(),
+        args: vec![("Str".into(), str_operand)],
+    });
+    ptr
+}
+
 fn lower_panic_value_to_blocks(
     body: MirExprId,
     value: EmittedValue,
-    _ssa: &mut LlvmBuilder,
+    ssa: &mut LlvmBuilder,
 ) -> (Vec<BasicBlock>, Vec<LlvmBlock>) {
     let mut instrs = value.instrs;
+    let panic_arg = lower_panic_argument(&value.ty, &value.operand, ssa, &mut instrs);
     instrs.push(LlvmInstr::Comment(format!(
         "panic expr#{body} -> {INTRINSIC_PANIC}"
     )));
@@ -2792,7 +2843,7 @@ fn lower_panic_value_to_blocks(
         result: None,
         ret_ty: "void".into(),
         callee: INTRINSIC_PANIC.into(),
-        args: vec![(value.ty, value.operand)],
+        args: vec![(ssa.pointer_type(), panic_arg)],
     });
     let block = BasicBlock {
         label: "entry".into(),
@@ -2815,8 +2866,10 @@ fn lower_panic_value_to_named_block(
     label: String,
     body: MirExprId,
     value: EmittedValue,
+    ssa: &mut LlvmBuilder,
 ) -> (BasicBlock, LlvmBlock) {
     let mut instrs = value.instrs;
+    let panic_arg = lower_panic_argument(&value.ty, &value.operand, ssa, &mut instrs);
     instrs.push(LlvmInstr::Comment(format!(
         "panic expr#{body} -> {INTRINSIC_PANIC}"
     )));
@@ -2824,7 +2877,7 @@ fn lower_panic_value_to_named_block(
         result: None,
         ret_ty: "void".into(),
         callee: INTRINSIC_PANIC.into(),
-        args: vec![(value.ty, value.operand)],
+        args: vec![(ssa.pointer_type(), panic_arg)],
     });
     let block = BasicBlock {
         label: label.clone(),
@@ -3491,7 +3544,7 @@ fn lower_expr_to_operand_blocks(
                         ssa,
                     )
                 }
-                _ => lower_panic_value_to_named_block(label, expr_id, value),
+                _ => lower_panic_value_to_named_block(label, expr_id, value, ssa),
             };
             (vec![block], vec![llvm_block], None, true)
         }

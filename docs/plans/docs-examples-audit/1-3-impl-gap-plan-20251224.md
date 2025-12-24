@@ -42,9 +42,9 @@
 - `Index` を backend に追加し、`@reml_index_access` の operand を生成する。
 - backend ビルドと IR ダンプを通し、`alloca`/`store`/`load` が出力されることを確認する。
 - `propagate` の payload 型を `MirExpr.ty` から解決し、`@reml_value(payload_ty, ptr)` を挿入する。
+- `panic` の引数を `Str -> ptr` へ変換し、`@panic(ptr)` に統一する（runtime 注記も更新）。
 
 #### 残タスク（未完了）
-- `panic` 引数型の IR 仕様（`@panic(ptr)` と `Str` 変換の整合）を runtime 側仕様と突き合わせる。
 - `defer` 構文のパーサテスト・診断 0 件の確認（フェーズ 1 との整合も含む）。
 
 #### 設計方針（MIR/IR 低レイヤ）
@@ -100,7 +100,11 @@
 - `runtime/native/include/reml_runtime.h` / `runtime/native/src/panic.c` は `panic(const char*)` を実装し、**LLVM IR 側が `panic(ptr, i64)` を宣言しているという注記はあるが、実装は長さ引数を使用していない**。
 - backend 側は `@panic(ptr)` を正準として lowering 済み（`compiler/rust/backend/llvm/src/codegen.rs` の `INTRINSIC_PANIC`）。
 - したがって現時点の整合方針は **`@panic(ptr)` を IR 正準とし、runtime の注記を更新して「FAT ポインタ注記を撤去」する**こと。  
-  併せて `Str` → `ptr` 変換（`reml_string_t.data` 取得相当）の lowering を TODO に残す。
+-  併せて `Str` → `ptr` 変換（`reml_string_t.data` 取得相当）の lowering を backend に実装済み。
+
+##### 実装メモ（lowering 具体化）
+- `panic` の引数は `@reml_str_data(Str) -> ptr` で `Str` から data ポインタを取得する。
+- `Str` 以外の値は `@reml_value` で `Str` に整形してから `@reml_str_data` に渡す。
 
 #### let/var を MIR に導入する設計案（Block statements 構造）
 - **目的**: `Block` 内で `let`/`var` を式として扱わず、評価順序と `defer`/`propagate` を明示的に制御できるようにする。
