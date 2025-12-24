@@ -82,6 +82,27 @@
   - `runtime/native/include/reml_runtime.h` のコメントにある「LLVM IR 側では panic(ptr, i64)」の記述を現在の IR と一致させる。
   - `@panic` の宣言形式（引数数・型）を `compiler/rust/backend/llvm` 側で固定化し、テストで IR 断片を確認する。
 
+#### let/var を MIR に導入する設計案（Block statements 構造）
+- **目的**: `Block` 内で `let`/`var` を式として扱わず、評価順序と `defer`/`propagate` を明示的に制御できるようにする。
+- **提案**:
+  - `MirExprKind::Block` に `statements: Vec<MirStmt>` を追加し、`tail` は式位置のみを表す。
+  - `MirStmt` は `Let { pattern, value, mutability }` / `Expr { expr }` / `Defer { expr }` を基本形とする。
+  - `let` 右辺の `propagate` は **右辺評価ブロックで早期 `ret`** として lowering し、成功時のみ束縛を追加する。
+  - `var` は `let` と同等の IR 形で表現し、可変性はフロントエンドの型情報（別表）で保持する。
+- **影響範囲**:
+  - フロントエンド: `TypedExprKind::Block` に statements を導入し、`mir.rs` へ変換。
+  - バックエンド: `emit_value_expr` から `emit_block_with_stmts` 相当の分離が必要。
+
+#### Result/Option の payload 型解決（型ヒント精度向上）
+- **現状**: `propagate` の分岐は `Result/Option` の判定のみで、payload 型は `ptr` 扱い。
+- **方針**:
+  - `MirExpr` の `ty` に `Result<T,E>` / `Option<T>` の **payload 型文字列**を保持する（例: `Result<i64, Error>` → `payload_ty=i64`）。
+  - `propagate` の成功側で `intrinsic_ctor_payload` が返す `ptr` を `@reml_value(payload_ty, ptr)` で期待型へ変換する。
+  - `payload_ty` が未解決の場合は現行通り `ptr` フォールバック。
+- **実装案**:
+  - `frontend/typeck` で `Result/Option` の `Type` から payload を抽出して `MirExpr` に埋め込む。
+  - `llvm/codegen` で `payload_ty` を参照して `INTRINSIC_VALUE` の `ret_ty` を切り替える。
+
 1) `defer` の実行保証
 - 目的: `return` / `?` / 例外的終了で `defer` が必ず実行されることを保証する。
 - 成果物: ブロック終了時の `defer` 実行がテストで確認できる。
