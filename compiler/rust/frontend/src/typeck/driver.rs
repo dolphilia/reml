@@ -803,7 +803,7 @@ impl TypecheckViolation {
         Self {
             kind: TypecheckViolationKind::IteratorExpected,
             code: "language.iterator.expected",
-            message: "for 式の `in` 右辺は Array<T> などのイテレータである必要があります"
+            message: "for 式の `in` 右辺は [T] などのイテレータである必要があります"
                 .to_string(),
             span: Some(span),
             notes: vec![ViolationNote::plain(format!(
@@ -1179,7 +1179,7 @@ impl TypecheckViolation {
         Self {
             kind: TypecheckViolationKind::PatternSliceTypeMismatch,
             code: "pattern.slice.type_mismatch",
-            message: "スライスパターンは Array など反復可能な型にのみ適用できます。".to_string(),
+            message: "スライスパターンは [T] など反復可能な型にのみ適用できます。".to_string(),
             span: Some(span),
             notes: vec![ViolationNote::plain(format!("対象の型: {actual}"))],
             capability: None,
@@ -1879,7 +1879,7 @@ fn infer_expr(
                         metrics.record_unify_call();
                         let _ = solver.unify(result.ty.clone(), element_ty.clone());
                     }
-                    let ty = Type::app("Array", vec![solver.substitution().apply(&element_ty)]);
+                    let ty = Type::slice(solver.substitution().apply(&element_ty));
                     make_typed(
                         expr,
                         TypedExprKindDraft::Literal(literal.clone()),
@@ -1940,7 +1940,7 @@ fn infer_expr(
                     }
                     "format" => {
                         let t = var_gen.fresh_type();
-                        let arg = Type::app("Array", vec![t]);
+                        let arg = Type::slice(t);
                         Type::arrow(vec![arg], Type::builtin(BuiltinType::Str))
                     }
                     "Ok" => {
@@ -2000,7 +2000,7 @@ fn infer_expr(
                         Type::Builtin(BuiltinType::Str) => Type::arrow(vec![], int_ty),
                         _ => {
                             let elem = var_gen.fresh_type();
-                            let array_ty = Type::app("Array", vec![elem]);
+                            let array_ty = Type::slice(elem);
                             stats.constraints += 1;
                             metrics.record_constraint("method.len.array");
                             constraints.push(Constraint::equal(
@@ -2019,7 +2019,7 @@ fn infer_expr(
                         Type::Builtin(BuiltinType::Str) => Type::arrow(vec![], bool_ty),
                         _ => {
                             let elem = var_gen.fresh_type();
-                            let array_ty = Type::app("Array", vec![elem]);
+                            let array_ty = Type::slice(elem);
                             stats.constraints += 1;
                             metrics.record_constraint("method.is_empty.array");
                             constraints.push(Constraint::equal(
@@ -2044,7 +2044,7 @@ fn infer_expr(
                 }
                 "push" => {
                     let elem = var_gen.fresh_type();
-                    let array_ty = Type::app("Array", vec![elem.clone()]);
+                    let array_ty = Type::slice(elem.clone());
                     stats.constraints += 1;
                     metrics.record_constraint("method.push.array");
                     constraints.push(Constraint::equal(
@@ -2057,7 +2057,7 @@ fn infer_expr(
                 }
                 "pop" => {
                     let elem = var_gen.fresh_type();
-                    let array_ty = Type::app("Array", vec![elem.clone()]);
+                    let array_ty = Type::slice(elem.clone());
                     stats.constraints += 1;
                     metrics.record_constraint("method.pop.array");
                     constraints.push(Constraint::equal(
@@ -2149,7 +2149,7 @@ fn infer_expr(
                 context,
             );
             let element_ty = var_gen.fresh_type();
-            let array_ty = Type::app("Array", vec![element_ty.clone()]);
+            let array_ty = Type::slice(element_ty.clone());
             stats.constraints += 1;
             metrics.record_constraint("index.target");
             constraints.push(Constraint::equal(
@@ -2619,7 +2619,7 @@ fn infer_expr(
                 context,
             );
             let element_ty = var_gen.fresh_type();
-            let array_ty = Type::app("Array", vec![element_ty.clone()]);
+            let array_ty = Type::slice(element_ty.clone());
             stats.constraints += 1;
             metrics.record_constraint("for.iterator");
             constraints.push(Constraint::equal(start_result.ty.clone(), array_ty.clone()));
@@ -3656,10 +3656,15 @@ fn is_range_compatible_type(ty: &Type) -> bool {
 
 fn array_element_type(target_ty: &Type) -> Option<Type> {
     match target_ty {
+        Type::Slice { element } => Some(element.as_ref().clone()),
         Type::App {
             constructor,
             arguments,
         } if constructor == "Array" && arguments.len() == 1 => Some(arguments[0].clone()),
+        Type::App {
+            constructor,
+            arguments,
+        } if constructor == "Slice" && arguments.len() == 1 => Some(arguments[0].clone()),
         _ => None,
     }
 }
@@ -3907,7 +3912,13 @@ fn exhaustiveness_domain_for_type(target_ty: &Type) -> ExhaustivenessDomain {
         Type::App { constructor, .. } if constructor.as_str() == "Result" => {
             ExhaustivenessDomain::OptionLike
         }
-        Type::App { constructor, .. } if constructor.as_str() == "Array" => ExhaustivenessDomain::Slice,
+        Type::App { constructor, .. } if constructor.as_str() == "Array" => {
+            ExhaustivenessDomain::Slice
+        }
+        Type::App { constructor, .. } if constructor.as_str() == "Slice" => {
+            ExhaustivenessDomain::Slice
+        }
+        Type::Slice { .. } => ExhaustivenessDomain::Slice,
         _ => ExhaustivenessDomain::Unknown,
     }
 }
@@ -4086,6 +4097,11 @@ fn type_from_annotation_kind(kind: &TypeKind) -> Option<Type> {
             }
             Some(Type::app(callee.name.clone(), resolved_args))
         }
+        TypeKind::Slice { element } => {
+            type_from_annotation_kind(&element.kind).map(Type::slice)
+        }
+        TypeKind::Ref { target, mutable } => type_from_annotation_kind(&target.kind)
+            .map(|inner| Type::reference(inner, *mutable)),
         _ => None,
     }
 }

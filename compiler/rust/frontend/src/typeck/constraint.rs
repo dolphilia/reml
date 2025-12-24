@@ -92,6 +92,8 @@ impl Substitution {
                 let arguments = arguments.iter().map(|arg| self.apply(arg)).collect();
                 Type::app(constructor.clone(), arguments)
             }
+            Type::Slice { element } => Type::slice(self.apply(element)),
+            Type::Ref { target, mutable } => Type::reference(self.apply(target), *mutable),
         }
     }
 
@@ -197,6 +199,33 @@ impl ConstraintSolver {
                     self.unify(left_arg, right_arg)?;
                 }
                 Ok(())
+            }
+            (Type::Slice { element: left }, Type::Slice { element: right }) => {
+                self.unify(*left, *right)
+            }
+            (
+                Type::Ref {
+                    target: left_target,
+                    mutable: left_mutable,
+                },
+                Type::Ref {
+                    target: right_target,
+                    mutable: right_mutable,
+                },
+            ) => {
+                if left_mutable != right_mutable {
+                    return Err(ConstraintSolverError::Mismatch(
+                        Type::Ref {
+                            target: left_target,
+                            mutable: left_mutable,
+                        },
+                        Type::Ref {
+                            target: right_target,
+                            mutable: right_mutable,
+                        },
+                    ));
+                }
+                self.unify(*left_target, *right_target)
             }
             (left, right) => Err(ConstraintSolverError::Mismatch(left, right)),
         }

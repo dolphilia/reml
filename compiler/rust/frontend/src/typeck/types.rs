@@ -32,6 +32,8 @@ pub enum TypeKind {
     Builtin,
     Arrow,
     Application,
+    Slice,
+    Ref,
 }
 
 /// Reml 型システムの基礎を構成する列挙型。
@@ -47,6 +49,13 @@ pub enum Type {
     App {
         constructor: SmolStr,
         arguments: Vec<Type>,
+    },
+    Slice {
+        element: Box<Type>,
+    },
+    Ref {
+        target: Box<Type>,
+        mutable: bool,
     },
 }
 
@@ -73,12 +82,27 @@ impl Type {
         }
     }
 
+    pub fn slice(element: Type) -> Self {
+        Self::Slice {
+            element: Box::new(element),
+        }
+    }
+
+    pub fn reference(target: Type, mutable: bool) -> Self {
+        Self::Ref {
+            target: Box::new(target),
+            mutable,
+        }
+    }
+
     pub fn kind(&self) -> TypeKind {
         match self {
             Type::Var(_) => TypeKind::Variable,
             Type::Builtin(_) => TypeKind::Builtin,
             Type::Arrow { .. } => TypeKind::Arrow,
             Type::App { .. } => TypeKind::Application,
+            Type::Slice { .. } => TypeKind::Slice,
+            Type::Ref { .. } => TypeKind::Ref,
         }
     }
 
@@ -94,6 +118,8 @@ impl Type {
             Type::App { arguments, .. } => arguments
                 .iter()
                 .any(|argument| argument.contains_variable(target)),
+            Type::Slice { element } => element.contains_variable(target),
+            Type::Ref { target: inner, .. } => inner.contains_variable(target),
             _ => false,
         }
     }
@@ -119,6 +145,12 @@ impl Type {
                 for argument in arguments {
                     argument.collect_free_type_variables(vars);
                 }
+            }
+            Type::Slice { element } => {
+                element.collect_free_type_variables(vars);
+            }
+            Type::Ref { target, .. } => {
+                target.collect_free_type_variables(vars);
             }
             _ => {}
         }
@@ -160,6 +192,14 @@ impl fmt::Display for Type {
                     write!(f, "{}", arg)?;
                 }
                 write!(f, ">")
+            }
+            Type::Slice { element } => write!(f, "[{}]", element),
+            Type::Ref { target, mutable } => {
+                if *mutable {
+                    write!(f, "&mut {}", target)
+                } else {
+                    write!(f, "&{}", target)
+                }
             }
         }
     }
