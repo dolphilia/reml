@@ -333,6 +333,8 @@ impl FfiCallJson {
 #[derive(Debug, Deserialize)]
 struct MirExprJson {
     id: usize,
+    #[serde(default)]
+    ty: String,
     kind: MirExprKindJson,
 }
 
@@ -594,6 +596,7 @@ fn convert_exprs(exprs: Vec<MirExprJson>) -> Vec<MirExpr> {
         .into_iter()
         .map(|expr| MirExpr {
             id: expr.id,
+            ty: expr.ty,
             kind: convert_expr_kind(expr.kind),
         })
         .collect()

@@ -41,9 +41,9 @@
 - `let/var` を backend で `alloca`/`store`/`load` に落とす実装を追加する。
 - `Index` を backend に追加し、`@reml_index_access` の operand を生成する。
 - backend ビルドと IR ダンプを通し、`alloca`/`store`/`load` が出力されることを確認する。
+- `propagate` の payload 型を `MirExpr.ty` から解決し、`@reml_value(payload_ty, ptr)` を挿入する。
 
 #### 残タスク（未完了）
-- `propagate` の payload 型解決（`Result/Option` の payload を `@reml_value` で期待型へ変換）。
 - `panic` 引数型の IR 仕様（`@panic(ptr)` と `Str` 変換の整合）を runtime 側仕様と突き合わせる。
 - `defer` 構文のパーサテスト・診断 0 件の確認（フェーズ 1 との整合も含む）。
 

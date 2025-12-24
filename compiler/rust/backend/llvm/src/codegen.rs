@@ -39,6 +39,7 @@ fn intrinsic_ctor_payload(name: &str) -> String {
 #[derive(Clone, Debug)]
 pub struct MirExpr {
     pub id: MirExprId,
+    pub ty: String,
     pub kind: MirExprKind,
 }
 
@@ -2898,6 +2899,7 @@ fn lower_propagate_value_to_blocks(
     };
 
     let payload = ssa.new_tmp("propagate_payload");
+    let payload_ty = infer_propagate_payload_llvm_type(ty_hint, ssa);
     let mut ok_instrs = vec![LlvmInstr::Comment(format!("propagate ok#{body} -> payload"))];
     let ctor_name = match flavor {
         PropagateFlavor::Option => "Some",
@@ -2909,15 +2911,17 @@ fn lower_propagate_value_to_blocks(
         callee: intrinsic_ctor_payload(ctor_name),
         args: vec![(ssa.pointer_type(), value.operand.clone())],
     });
+    let (payload_value, _payload_value_ty) =
+        convert_propagate_payload(payload.clone(), payload_ty, ssa, &mut ok_instrs);
     let ok_block = BasicBlock {
         label: ok_label.clone(),
         instrs: vec![format!("propagate ok#{body} -> payload")],
-        terminator: format!("ret {payload}"),
+        terminator: format!("ret {payload_value}"),
     };
     let ok_llvm_block = LlvmBlock {
         label: ok_label,
         instrs: ok_instrs,
-        terminator: LlvmTerminator::Ret(Some(payload)),
+        terminator: LlvmTerminator::Ret(Some(payload_value)),
     };
 
     let err_block = BasicBlock {
@@ -2998,7 +3002,7 @@ fn lower_propagate_value_to_match_blocks(
     };
 
     let payload = ssa.new_tmp("propagate_payload");
-    let result = ssa.new_tmp("match_result");
+    let payload_ty = infer_propagate_payload_llvm_type(ty_hint, ssa);
     let ctor_name = match flavor {
         PropagateFlavor::Option => "Some",
         PropagateFlavor::Result => "Ok",
@@ -3012,12 +3016,29 @@ fn lower_propagate_value_to_match_blocks(
         callee: intrinsic_ctor_payload(ctor_name),
         args: vec![(ssa.pointer_type(), residual.clone())],
     });
-    ok_instrs.push(LlvmInstr::Call {
-        result: Some(result.clone()),
-        ret_ty: result_type.to_string(),
-        callee: INTRINSIC_VALUE.into(),
-        args: vec![(result_type.to_string(), payload)],
-    });
+    let (payload_value, payload_value_ty) =
+        convert_propagate_payload(payload.clone(), payload_ty, ssa, &mut ok_instrs);
+    let result = if payload_value_ty == result_type {
+        payload_value
+    } else if payload_value_ty == ssa.pointer_type() {
+        let result = ssa.new_tmp("match_result");
+        ok_instrs.push(LlvmInstr::Call {
+            result: Some(result.clone()),
+            ret_ty: result_type.to_string(),
+            callee: INTRINSIC_VALUE.into(),
+            args: vec![(result_type.to_string(), payload_value)],
+        });
+        result
+    } else {
+        let result = ssa.new_tmp("match_result");
+        ok_instrs.push(LlvmInstr::Call {
+            result: Some(result.clone()),
+            ret_ty: result_type.to_string(),
+            callee: INTRINSIC_VALUE.into(),
+            args: vec![(result_type.to_string(), payload)],
+        });
+        result
+    };
     let ok_block = BasicBlock {
         label: ok_label.clone(),
         instrs: vec![format!("propagate ok#{body} -> end")],
@@ -3109,7 +3130,7 @@ fn lower_propagate_value_to_if_blocks(
     };
 
     let payload = ssa.new_tmp("propagate_payload");
-    let result = ssa.new_tmp("ifelse_result");
+    let payload_ty = infer_propagate_payload_llvm_type(ty_hint, ssa);
     let ctor_name = match flavor {
         PropagateFlavor::Option => "Some",
         PropagateFlavor::Result => "Ok",
@@ -3123,12 +3144,29 @@ fn lower_propagate_value_to_if_blocks(
         callee: intrinsic_ctor_payload(ctor_name),
         args: vec![(ssa.pointer_type(), residual.clone())],
     });
-    ok_instrs.push(LlvmInstr::Call {
-        result: Some(result.clone()),
-        ret_ty: result_type.to_string(),
-        callee: INTRINSIC_VALUE.into(),
-        args: vec![(result_type.to_string(), payload)],
-    });
+    let (payload_value, payload_value_ty) =
+        convert_propagate_payload(payload.clone(), payload_ty, ssa, &mut ok_instrs);
+    let result = if payload_value_ty == result_type {
+        payload_value
+    } else if payload_value_ty == ssa.pointer_type() {
+        let result = ssa.new_tmp("ifelse_result");
+        ok_instrs.push(LlvmInstr::Call {
+            result: Some(result.clone()),
+            ret_ty: result_type.to_string(),
+            callee: INTRINSIC_VALUE.into(),
+            args: vec![(result_type.to_string(), payload_value)],
+        });
+        result
+    } else {
+        let result = ssa.new_tmp("ifelse_result");
+        ok_instrs.push(LlvmInstr::Call {
+            result: Some(result.clone()),
+            ret_ty: result_type.to_string(),
+            callee: INTRINSIC_VALUE.into(),
+            args: vec![(result_type.to_string(), payload)],
+        });
+        result
+    };
     let ok_block = BasicBlock {
         label: ok_label.clone(),
         instrs: vec![format!("propagate ok#{body} -> {end_label}")],
@@ -3169,7 +3207,7 @@ fn lower_propagate_operand_to_blocks(
     ty_hint: &str,
     next_label: &str,
     ssa: &mut LlvmBuilder,
-) -> (Vec<BasicBlock>, Vec<LlvmBlock>, String) {
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>, (String, String)) {
     let ok_label = format!("{label}.ok");
     let err_label = format!("{label}.err");
     let cond_label = format!("{label}.cond");
@@ -3219,6 +3257,7 @@ fn lower_propagate_operand_to_blocks(
     };
 
     let payload = ssa.new_tmp("propagate_payload");
+    let payload_ty = infer_propagate_payload_llvm_type(ty_hint, ssa);
     let ctor_name = match flavor {
         PropagateFlavor::Option => "Some",
         PropagateFlavor::Result => "Ok",
@@ -3232,6 +3271,8 @@ fn lower_propagate_operand_to_blocks(
         callee: intrinsic_ctor_payload(ctor_name),
         args: vec![(ssa.pointer_type(), residual.clone())],
     });
+    let (payload_value, payload_value_ty) =
+        convert_propagate_payload(payload.clone(), payload_ty, ssa, &mut ok_instrs);
     let ok_block = BasicBlock {
         label: ok_label.clone(),
         instrs: vec![format!("propagate ok#{body} -> {next_label}")],
@@ -3261,7 +3302,7 @@ fn lower_propagate_operand_to_blocks(
     (
         vec![entry_block, ok_block, err_block],
         vec![entry_llvm_block, ok_llvm_block, err_llvm_block],
-        payload,
+        (payload_value, payload_value_ty),
     )
 }
 
@@ -3274,7 +3315,7 @@ fn lower_propagate_operand_to_blocks_with_defers(
     defer_lifo: &[MirExprId],
     expr_map: &HashMap<MirExprId, &MirExpr>,
     ssa: &mut LlvmBuilder,
-) -> (Vec<BasicBlock>, Vec<LlvmBlock>, String) {
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>, (String, String)) {
     let ok_label = format!("{label}.ok");
     let err_label = format!("{label}.err");
     let cond_label = format!("{label}.cond");
@@ -3324,6 +3365,7 @@ fn lower_propagate_operand_to_blocks_with_defers(
     };
 
     let payload = ssa.new_tmp("propagate_payload");
+    let payload_ty = infer_propagate_payload_llvm_type(ty_hint, ssa);
     let ctor_name = match flavor {
         PropagateFlavor::Option => "Some",
         PropagateFlavor::Result => "Ok",
@@ -3337,6 +3379,8 @@ fn lower_propagate_operand_to_blocks_with_defers(
         callee: intrinsic_ctor_payload(ctor_name),
         args: vec![(ssa.pointer_type(), residual.clone())],
     });
+    let (payload_value, payload_value_ty) =
+        convert_propagate_payload(payload.clone(), payload_ty, ssa, &mut ok_instrs);
     let ok_block = BasicBlock {
         label: ok_label.clone(),
         instrs: vec![format!("propagate ok#{body} -> {next_label}")],
@@ -3368,7 +3412,7 @@ fn lower_propagate_operand_to_blocks_with_defers(
     (
         vec![entry_block, ok_block, err_block],
         vec![entry_llvm_block, ok_llvm_block, err_llvm_block],
-        payload,
+        (payload_value, payload_value_ty),
     )
 }
 
@@ -3430,7 +3474,7 @@ fn lower_expr_to_operand_blocks(
             (
                 blocks,
                 llvm_blocks,
-                Some((payload, ssa.pointer_type())),
+                Some(payload),
                 false,
             )
         }
@@ -3840,6 +3884,16 @@ fn infer_expr_type_hint(
     let Some(expr) = expr_map.get(&expr_id) else {
         return "Result".into();
     };
+    if let MirExprKind::Propagate { expr: inner } = &expr.kind {
+        if let Some(inner_expr) = expr_map.get(inner) {
+            if !inner_expr.ty.trim().is_empty() {
+                return inner_expr.ty.clone();
+            }
+        }
+    }
+    if !expr.ty.trim().is_empty() {
+        return expr.ty.clone();
+    }
     match &expr.kind {
         MirExprKind::Literal { summary } => {
             if summary.trim() == "unit" {
@@ -3872,6 +3926,99 @@ fn infer_expr_type_hint(
     }
 }
 
+fn map_type_token_to_llvm(token: &str, ssa: &LlvmBuilder) -> Option<String> {
+    let trimmed = token.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    match lower.as_str() {
+        "bool" => Some(ssa.bool_type()),
+        "i32" | "int32" => Some("i32".into()),
+        "i64" | "int64" => Some("i64".into()),
+        "f64" | "double" => Some("double".into()),
+        "string" | "str" => Some("Str".into()),
+        "ptr" | "pointer" | "i8*" => Some(ssa.pointer_type()),
+        "unit" | "void" => Some(ssa.pointer_type()),
+        _ => None,
+    }
+}
+
+fn extract_generic_args_from(ty: &str, name: &str) -> Option<Vec<String>> {
+    let start = ty.find(name)?;
+    let rest = &ty[start..];
+    let lt = rest.find('<')?;
+    let mut args = Vec::new();
+    let mut depth = 0usize;
+    let mut buf = String::new();
+    for ch in rest[lt + 1..].chars() {
+        match ch {
+            '<' => {
+                depth += 1;
+                buf.push(ch);
+            }
+            '>' => {
+                if depth == 0 {
+                    let trimmed = buf.trim();
+                    if !trimmed.is_empty() {
+                        args.push(trimmed.to_string());
+                    }
+                    return Some(args);
+                }
+                depth = depth.saturating_sub(1);
+                buf.push(ch);
+            }
+            ',' if depth == 0 => {
+                let trimmed = buf.trim();
+                if !trimmed.is_empty() {
+                    args.push(trimmed.to_string());
+                }
+                buf.clear();
+            }
+            _ => buf.push(ch),
+        }
+    }
+    None
+}
+
+fn infer_propagate_payload_llvm_type(ty_hint: &str, ssa: &LlvmBuilder) -> Option<String> {
+    let result_args = extract_generic_args_from(ty_hint, "Result");
+    if let Some(args) = result_args {
+        if let Some(first) = args.first() {
+            if let Some(mapped) = map_type_token_to_llvm(first, ssa) {
+                return Some(mapped);
+            }
+        }
+    }
+    let option_args = extract_generic_args_from(ty_hint, "Option");
+    if let Some(args) = option_args {
+        if let Some(first) = args.first() {
+            if let Some(mapped) = map_type_token_to_llvm(first, ssa) {
+                return Some(mapped);
+            }
+        }
+    }
+    None
+}
+
+fn convert_propagate_payload(
+    payload_ptr: String,
+    payload_ty: Option<String>,
+    ssa: &mut LlvmBuilder,
+    instrs: &mut Vec<LlvmInstr>,
+) -> (String, String) {
+    if let Some(target_ty) = payload_ty {
+        if target_ty != ssa.pointer_type() {
+            let result = ssa.new_tmp("propagate_value");
+            instrs.push(LlvmInstr::Call {
+                result: Some(result.clone()),
+                ret_ty: target_ty.clone(),
+                callee: INTRINSIC_VALUE.into(),
+                args: vec![(target_ty.clone(), payload_ptr)],
+            });
+            return (result, target_ty);
+        }
+    }
+    (payload_ptr, ssa.pointer_type())
+}
+
 fn infer_expr_llvm_type(
     expr_id: MirExprId,
     expr_map: &HashMap<MirExprId, &MirExpr>,
@@ -3880,6 +4027,9 @@ fn infer_expr_llvm_type(
     let Some(expr) = expr_map.get(&expr_id) else {
         return ssa.pointer_type();
     };
+    if let Some(mapped) = map_type_token_to_llvm(&expr.ty, ssa) {
+        return mapped;
+    }
     match &expr.kind {
         MirExprKind::Literal { summary } => {
             if summary.trim() == "unit" {
