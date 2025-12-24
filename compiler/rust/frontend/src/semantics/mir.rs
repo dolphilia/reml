@@ -150,6 +150,14 @@ pub enum MirExprKind {
         callee: MirExprId,
         args: Vec<MirExprId>,
     },
+    Block {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tail: Option<MirExprId>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        defers: Vec<MirExprId>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        defer_lifo: Vec<MirExprId>,
+    },
     Binary {
         operator: String,
         left: MirExprId,
@@ -413,32 +421,44 @@ impl MirExprBuilder {
                 callee: self.lower_expr(callee),
                 args: args.iter().map(|arg| self.lower_expr(arg)).collect(),
             },
-        typed::TypedExprKind::Binary {
-            operator,
-            left,
-            right,
-        } => MirExprKind::Binary {
-            operator: operator.clone(),
-            left: self.lower_expr(left),
-            right: self.lower_expr(right),
-        },
-        typed::TypedExprKind::FieldAccess { target, field } => MirExprKind::FieldAccess {
-            target: self.lower_expr(target),
-            field: field.name.clone(),
-        },
-        typed::TypedExprKind::TupleAccess { target, index } => MirExprKind::TupleAccess {
-            target: self.lower_expr(target),
-            index: *index,
-        },
-        typed::TypedExprKind::Index { target, index } => MirExprKind::Index {
-            target: self.lower_expr(target),
-            index: self.lower_expr(index),
-        },
-        typed::TypedExprKind::Match { target, arms } => MirExprKind::Match {
-            target: self.lower_expr(target),
-            arms: arms
-                .iter()
-                .map(|arm| MirMatchArm {
+            typed::TypedExprKind::Block { tail, defers } => {
+                let defers = defers
+                    .iter()
+                    .map(|defer| self.lower_expr(defer))
+                    .collect::<Vec<_>>();
+                let defer_lifo = defers.iter().copied().rev().collect::<Vec<_>>();
+                MirExprKind::Block {
+                    tail: tail.as_ref().map(|tail| self.lower_expr(tail)),
+                    defers,
+                    defer_lifo,
+                }
+            }
+            typed::TypedExprKind::Binary {
+                operator,
+                left,
+                right,
+            } => MirExprKind::Binary {
+                operator: operator.clone(),
+                left: self.lower_expr(left),
+                right: self.lower_expr(right),
+            },
+            typed::TypedExprKind::FieldAccess { target, field } => MirExprKind::FieldAccess {
+                target: self.lower_expr(target),
+                field: field.name.clone(),
+            },
+            typed::TypedExprKind::TupleAccess { target, index } => MirExprKind::TupleAccess {
+                target: self.lower_expr(target),
+                index: *index,
+            },
+            typed::TypedExprKind::Index { target, index } => MirExprKind::Index {
+                target: self.lower_expr(target),
+                index: self.lower_expr(index),
+            },
+            typed::TypedExprKind::Match { target, arms } => MirExprKind::Match {
+                target: self.lower_expr(target),
+                arms: arms
+                    .iter()
+                    .map(|arm| MirMatchArm {
                         pattern: lower_pattern(&arm.pattern),
                         guard: arm.guard.as_ref().map(|guard| self.lower_expr(guard)),
                         alias: arm.alias.clone(),
@@ -456,14 +476,14 @@ impl MirExprBuilder {
                 then_branch: self.lower_expr(then_branch),
                 else_branch: self.lower_expr(else_branch),
             },
-        typed::TypedExprKind::PerformCall { call } => MirExprKind::PerformCall {
-            call: MirEffectCall {
-                effect: call.effect.clone(),
-                argument: self.lower_expr(&call.argument),
+            typed::TypedExprKind::PerformCall { call } => MirExprKind::PerformCall {
+                call: MirEffectCall {
+                    effect: call.effect.clone(),
+                    argument: self.lower_expr(&call.argument),
+                },
             },
-        },
-        typed::TypedExprKind::Unknown => MirExprKind::Unknown,
-    };
+            typed::TypedExprKind::Unknown => MirExprKind::Unknown,
+        };
         self.push_expr(expr.span, expr.ty.clone(), expr.dict_ref_ids.clone(), kind)
     }
 
@@ -821,6 +841,14 @@ fn collect_match_lowerings_from_expr(
             collect_match_lowerings_from_expr(condition, owner, plans);
             collect_match_lowerings_from_expr(then_branch, owner, plans);
             collect_match_lowerings_from_expr(else_branch, owner, plans);
+        }
+        typed::TypedExprKind::Block { tail, defers } => {
+            if let Some(tail) = tail {
+                collect_match_lowerings_from_expr(tail, owner, plans);
+            }
+            for defer in defers {
+                collect_match_lowerings_from_expr(defer, owner, plans);
+            }
         }
         typed::TypedExprKind::PerformCall { call } => {
             collect_match_lowerings_from_expr(&call.argument, owner, plans);

@@ -2768,21 +2768,15 @@ fn infer_expr(
                 context,
                 loop_context,
             );
-            if let Some(tail_expr) = block_result.tail_expr {
-                TypedExprDraft {
-                    span: expr.span,
-                    kind: tail_expr.kind,
-                    ty: block_result.ty,
-                    dict_ref_ids: block_result.dict_ref_ids,
-                }
-            } else {
-                make_typed(
-                    expr,
-                    TypedExprKindDraft::Unknown,
-                    block_result.ty,
-                    block_result.dict_ref_ids,
-                )
-            }
+            make_typed(
+                expr,
+                TypedExprKindDraft::Block {
+                    tail: block_result.tail_expr.map(Box::new),
+                    defers: block_result.defer_exprs,
+                },
+                block_result.ty,
+                block_result.dict_ref_ids,
+            )
         }
         ExprKind::Lambda { params, body, .. } => {
             let mut lambda_env = env.enter_scope();
@@ -2831,6 +2825,7 @@ struct BlockInferenceResult {
     ty: Type,
     dict_ref_ids: Vec<typed::DictRefId>,
     tail_expr: Option<TypedExprDraft>,
+    defer_exprs: Vec<TypedExprDraft>,
 }
 
 fn infer_block(
@@ -2850,6 +2845,7 @@ fn infer_block(
     let mut last_ty = Type::builtin(BuiltinType::Unknown);
     let mut block_dict_refs = Vec::new();
     let mut tail_expr = None;
+    let mut defer_exprs = Vec::new();
     let mut terminated = false;
     for stmt in statements {
         if terminated {
@@ -2938,7 +2934,8 @@ fn infer_block(
                     loop_context,
                     context,
                 );
-                block_dict_refs.extend(defer_result.dict_ref_ids);
+                block_dict_refs.extend(defer_result.dict_ref_ids.clone());
+                defer_exprs.push(defer_result);
             }
         }
     }
@@ -2946,6 +2943,7 @@ fn infer_block(
         ty: last_ty,
         dict_ref_ids: block_dict_refs,
         tail_expr,
+        defer_exprs,
     }
 }
 
@@ -4159,6 +4157,10 @@ enum TypedExprKindDraft {
         target: Box<TypedExprDraft>,
         index: Box<TypedExprDraft>,
     },
+    Block {
+        tail: Option<Box<TypedExprDraft>>,
+        defers: Vec<TypedExprDraft>,
+    },
     Match {
         target: Box<TypedExprDraft>,
         arms: Vec<TypedMatchArmDraft>,
@@ -4321,6 +4323,14 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
         TypedExprKindDraft::Index { target, index } => typed::TypedExprKind::Index {
             target: Box::new(finalize_typed_expr(*target, substitution)),
             index: Box::new(finalize_typed_expr(*index, substitution)),
+        },
+        TypedExprKindDraft::Block { tail, defers } => typed::TypedExprKind::Block {
+            tail: tail
+                .map(|tail| Box::new(finalize_typed_expr(*tail, substitution))),
+            defers: defers
+                .into_iter()
+                .map(|defer| finalize_typed_expr(defer, substitution))
+                .collect(),
         },
         TypedExprKindDraft::Binary {
             operator,

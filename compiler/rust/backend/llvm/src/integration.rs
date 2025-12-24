@@ -339,6 +339,14 @@ struct MirExprJson {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum MirExprKindJson {
+    Block {
+        #[serde(default)]
+        tail: Option<usize>,
+        #[serde(default)]
+        defers: Vec<usize>,
+        #[serde(default)]
+        defer_lifo: Vec<usize>,
+    },
     Match {
         target: usize,
         #[serde(default)]
@@ -550,6 +558,7 @@ fn convert_exprs(exprs: Vec<MirExprJson>) -> Vec<MirExpr> {
 
 fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
     match kind {
+        MirExprKindJson::Block { .. } => MirExprKind::Unknown,
         MirExprKindJson::Match {
             target,
             arms,
