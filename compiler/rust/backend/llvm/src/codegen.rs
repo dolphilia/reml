@@ -21,6 +21,7 @@ const INTRINSIC_VALUE: &str = "@reml_value";
 const INTRINSIC_MATCH_CHECK: &str = "@reml_match_check";
 const INTRINSIC_REGEX_MATCH: &str = "@reml_regex_match";
 const INTRINSIC_FIELD_ACCESS: &str = "@reml_field_access";
+const INTRINSIC_INDEX_ACCESS: &str = "@reml_index_access";
 const INTRINSIC_CALL: &str = "@reml_call";
 const INTRINSIC_STR_CONCAT: &str = "@reml_str_concat";
 const INTRINSIC_IF_ELSE: &str = "@reml_if_else";
@@ -76,6 +77,10 @@ pub enum MirExprKind {
     FieldAccess {
         target: MirExprId,
         field: String,
+    },
+    Index {
+        target: MirExprId,
+        index: MirExprId,
     },
     Call {
         callee: MirExprId,
@@ -464,7 +469,13 @@ impl LlvmFunction {
 struct LlvmBuilder {
     type_mapping: TypeMappingContext,
     counter: usize,
-    scopes: Vec<HashMap<String, String>>,
+    scopes: Vec<HashMap<String, LocalBinding>>,
+}
+
+#[derive(Clone, Debug)]
+struct LocalBinding {
+    ptr: String,
+    ty: String,
 }
 
 impl LlvmBuilder {
@@ -499,13 +510,13 @@ impl LlvmBuilder {
         }
     }
 
-    fn bind_local(&mut self, name: String, operand: String) {
+    fn bind_local(&mut self, name: String, binding: LocalBinding) {
         if let Some(scope) = self.scopes.last_mut() {
-            scope.insert(name, operand);
+            scope.insert(name, binding);
         }
     }
 
-    fn resolve_local(&self, name: &str) -> Option<String> {
+    fn resolve_local(&self, name: &str) -> Option<LocalBinding> {
         for scope in self.scopes.iter().rev() {
             if let Some(value) = scope.get(name) {
                 return Some(value.clone());
@@ -518,6 +529,20 @@ impl LlvmBuilder {
 #[derive(Clone, Debug)]
 pub enum LlvmInstr {
     Comment(String),
+    Alloca {
+        result: String,
+        ty: String,
+    },
+    Load {
+        result: String,
+        ty: String,
+        ptr: String,
+    },
+    Store {
+        ty: String,
+        ptr: String,
+        value: String,
+    },
     BinOp {
         result: String,
         op: String,
@@ -559,6 +584,13 @@ impl LlvmInstr {
     pub fn describe(&self) -> String {
         match self {
             LlvmInstr::Comment(text) => format!("; {text}"),
+            LlvmInstr::Alloca { result, ty } => format!("{result} = alloca {ty}"),
+            LlvmInstr::Load { result, ty, ptr } => {
+                format!("{result} = load {ty}, ptr {ptr}")
+            }
+            LlvmInstr::Store { ty, ptr, value } => {
+                format!("store {ty} {value}, ptr {ptr}")
+            }
             LlvmInstr::BinOp {
                 result,
                 op,
@@ -1434,6 +1466,10 @@ fn expr_contains_early_exit(
                 || args
                     .iter()
                     .any(|arg| expr_contains_early_exit(*arg, expr_map))
+        }
+        MirExprKind::Index { target, index } => {
+            expr_contains_early_exit(*target, expr_map)
+                || expr_contains_early_exit(*index, expr_map)
         }
         MirExprKind::Binary { left, right, .. } => {
             expr_contains_early_exit(*left, expr_map)
@@ -3706,7 +3742,7 @@ fn lower_stmt_to_blocks(
 ) -> (Vec<BasicBlock>, Vec<LlvmBlock>, bool) {
     match &stmt.kind {
         MirStmtKind::Let { pattern, value, .. } => {
-            let (blocks, llvm_blocks, operand, terminated) = lower_expr_to_operand_blocks(
+            let (blocks, mut llvm_blocks, operand, terminated) = lower_expr_to_operand_blocks(
                 label,
                 *value,
                 expr_map,
@@ -3715,8 +3751,11 @@ fn lower_stmt_to_blocks(
                 defer_lifo,
             );
             if !terminated {
-                if let Some((operand, _)) = operand {
-                    bind_pattern_operand(pattern, operand, ssa);
+                if let Some((operand, ty)) = operand {
+                    if let Some(block) = llvm_blocks.last_mut() {
+                        let instrs = bind_pattern_operand(pattern, operand, ty, ssa);
+                        block.instrs.extend(instrs);
+                    }
                 }
             }
             (blocks, llvm_blocks, terminated)
@@ -3734,7 +3773,7 @@ fn lower_stmt_to_blocks(
         }
         MirStmtKind::Assign { target, value } => {
             let temp_label = format!("{label}.assign");
-            let (mut blocks, mut llvm_blocks, _operand, terminated) =
+            let (mut blocks, mut llvm_blocks, target_operand, terminated) =
                 lower_expr_to_operand_blocks(
                     label,
                     *target,
@@ -3746,7 +3785,7 @@ fn lower_stmt_to_blocks(
             if terminated {
                 return (blocks, llvm_blocks, true);
             }
-            let (value_blocks, value_llvm_blocks, operand, terminated) =
+            let (value_blocks, mut value_llvm_blocks, operand, terminated) =
                 lower_expr_to_operand_blocks(
                     temp_label,
                     *value,
@@ -3755,8 +3794,18 @@ fn lower_stmt_to_blocks(
                     next_label,
                     defer_lifo,
                 );
-            if let Some((operand, _)) = operand {
-                rebind_target_operand(*target, operand, expr_map, ssa);
+            if let Some((operand, ty)) = operand {
+                if let Some(block) = value_llvm_blocks.last_mut() {
+                    let instrs = rebind_target_operand(
+                        *target,
+                        target_operand,
+                        operand,
+                        ty,
+                        expr_map,
+                        ssa,
+                    );
+                    block.instrs.extend(instrs);
+                }
             }
             blocks.extend(value_blocks);
             llvm_blocks.extend(value_llvm_blocks);
@@ -3816,7 +3865,12 @@ fn emit_block_statement_instrs(
             MirStmtKind::Let { pattern, value, .. } => {
                 let value = emit_value_expr(*value, expr_map, ssa);
                 instrs.extend(value.instrs);
-                bind_pattern_operand(pattern, value.operand, ssa);
+                instrs.extend(bind_pattern_operand(
+                    pattern,
+                    value.operand,
+                    value.ty,
+                    ssa,
+                ));
             }
             MirStmtKind::Expr { expr } => {
                 let value = emit_value_expr(*expr, expr_map, ssa);
@@ -3827,7 +3881,14 @@ fn emit_block_statement_instrs(
                 instrs.extend(target_value.instrs);
                 let value_value = emit_value_expr(*value, expr_map, ssa);
                 instrs.extend(value_value.instrs);
-                rebind_target_operand(*target, value_value.operand, expr_map, ssa);
+                instrs.extend(rebind_target_operand(
+                    *target,
+                    Some((target_value.operand, target_value.ty)),
+                    value_value.operand,
+                    value_value.ty,
+                    expr_map,
+                    ssa,
+                ));
             }
             MirStmtKind::Defer { .. } => {
                 instrs.push(LlvmInstr::Comment(
@@ -3853,28 +3914,89 @@ fn emit_defer_lifo_instrs(
     }
 }
 
-fn bind_pattern_operand(pattern: &MirPattern, operand: String, ssa: &mut LlvmBuilder) {
+fn bind_pattern_operand(
+    pattern: &MirPattern,
+    operand: String,
+    ty: String,
+    ssa: &mut LlvmBuilder,
+) -> Vec<LlvmInstr> {
     let mut names = Vec::new();
     collect_pattern_binding_names(pattern, &mut names);
+    let mut instrs = Vec::new();
     for name in names {
-        ssa.bind_local(name, operand.clone());
+        let ptr = ssa.new_tmp(&format!("{name}_addr"));
+        instrs.push(LlvmInstr::Alloca {
+            result: ptr.clone(),
+            ty: ty.clone(),
+        });
+        instrs.push(LlvmInstr::Store {
+            ty: ty.clone(),
+            ptr: ptr.clone(),
+            value: operand.clone(),
+        });
+        ssa.bind_local(
+            name,
+            LocalBinding {
+                ptr,
+                ty: ty.clone(),
+            },
+        );
     }
+    instrs
 }
 
 fn rebind_target_operand(
     target_id: MirExprId,
-    operand: String,
+    target_operand: Option<(String, String)>,
+    value_operand: String,
+    value_ty: String,
     expr_map: &HashMap<MirExprId, &MirExpr>,
     ssa: &mut LlvmBuilder,
-) {
+) -> Vec<LlvmInstr> {
+    let mut instrs = Vec::new();
     let Some(expr) = expr_map.get(&target_id) else {
-        return;
+        return instrs;
     };
-    if let MirExprKind::Identifier { summary } = &expr.kind {
-        if let Some(name) = extract_local_name_from_summary(summary) {
-            ssa.bind_local(name, operand);
+    match &expr.kind {
+        MirExprKind::Identifier { summary } => {
+            if let Some(name) = extract_local_name_from_summary(summary) {
+                if let Some(binding) = ssa.resolve_local(&name) {
+                    instrs.push(LlvmInstr::Store {
+                        ty: binding.ty,
+                        ptr: binding.ptr,
+                        value: value_operand,
+                    });
+                }
+            }
+        }
+        MirExprKind::FieldAccess { .. } | MirExprKind::Index { .. } => {
+            if let Some((ptr, _)) = target_operand {
+                instrs.push(LlvmInstr::Store {
+                    ty: value_ty,
+                    ptr,
+                    value: value_operand,
+                });
+            } else {
+                instrs.push(LlvmInstr::Comment(
+                    "field assign skipped: missing target operand".into(),
+                ));
+            }
+        }
+        _ => {
+            if let Some((ptr, _)) = target_operand {
+                instrs.push(LlvmInstr::Store {
+                    ty: value_ty,
+                    ptr,
+                    value: value_operand,
+                });
+            } else {
+                instrs.push(LlvmInstr::Comment(
+                    "assign target unsupported -> skipped".into(),
+                ));
+            }
         }
     }
+    instrs
 }
 
 fn collect_pattern_binding_names(pattern: &MirPattern, names: &mut Vec<String>) {
@@ -4129,7 +4251,7 @@ fn emit_value_expr(
         MirExprKind::Literal { summary } => {
             if summary.trim() == "unit" {
                 let unit = emit_unit_value(ssa);
-                return (unit.operand, unit.instrs);
+                return unit;
             }
             if let Some(value) = extract_literal_operand(summary) {
                 let ty = if value == "true" || value == "false" {
@@ -4153,13 +4275,27 @@ fn emit_value_expr(
                 ))],
             }
         }
-        MirExprKind::Identifier { summary } => EmittedValue {
-            ty: ssa.pointer_type(),
-            operand: extract_local_name_from_summary(summary)
-                .and_then(|name| ssa.resolve_local(&name))
-                .unwrap_or_else(|| format_operand_from_summary(summary)),
-            instrs: vec![],
-        },
+        MirExprKind::Identifier { summary } => {
+            if let Some(name) = extract_local_name_from_summary(summary) {
+                if let Some(binding) = ssa.resolve_local(&name) {
+                    let result = ssa.new_tmp("load");
+                    return EmittedValue {
+                        ty: binding.ty.clone(),
+                        operand: result.clone(),
+                        instrs: vec![LlvmInstr::Load {
+                            result,
+                            ty: binding.ty,
+                            ptr: binding.ptr,
+                        }],
+                    };
+                }
+            }
+            EmittedValue {
+                ty: ssa.pointer_type(),
+                operand: format_operand_from_summary(summary),
+                instrs: vec![],
+            }
+        }
         MirExprKind::FieldAccess { target, field } => {
             let target_value = emit_value_expr(*target, expr_map, ssa);
             let result = ssa.new_tmp("field");
@@ -4175,6 +4311,31 @@ fn emit_value_expr(
                 args: vec![
                     (ssa.pointer_type(), target_value.operand),
                     (ssa.pointer_type(), format!("\"{}\"", field.replace('"', "\\\""))),
+                ],
+            });
+            EmittedValue {
+                ty: ssa.pointer_type(),
+                operand: result,
+                instrs,
+            }
+        }
+        MirExprKind::Index { target, index } => {
+            let target_value = emit_value_expr(*target, expr_map, ssa);
+            let index_value = emit_value_expr(*index, expr_map, ssa);
+            let result = ssa.new_tmp("index");
+            let mut instrs = target_value.instrs;
+            instrs.extend(index_value.instrs);
+            instrs.push(LlvmInstr::Comment(format!(
+                "index_access {}[{}]",
+                target_value.operand, index_value.operand
+            )));
+            instrs.push(LlvmInstr::Call {
+                result: Some(result.clone()),
+                ret_ty: ssa.pointer_type(),
+                callee: INTRINSIC_INDEX_ACCESS.into(),
+                args: vec![
+                    (ssa.pointer_type(), target_value.operand),
+                    (index_value.ty, index_value.operand),
                 ],
             });
             EmittedValue {

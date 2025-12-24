@@ -390,6 +390,10 @@ enum MirExprKindJson {
         target: usize,
         field: String,
     },
+    Index {
+        target: usize,
+        index: usize,
+    },
     Identifier {
         ident: Value,
     },
@@ -647,6 +651,7 @@ fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
             argument: call.argument,
         },
         MirExprKindJson::FieldAccess { target, field } => MirExprKind::FieldAccess { target, field },
+        MirExprKindJson::Index { target, index } => MirExprKind::Index { target, index },
         MirExprKindJson::Identifier { ident } => MirExprKind::Identifier {
             summary: value_summary(ident),
         },
