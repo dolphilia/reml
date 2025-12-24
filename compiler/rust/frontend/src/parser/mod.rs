@@ -671,12 +671,10 @@ fn build_diagnostic_from_error(
 
 fn build_expected_summary(err: &Simple<TokenKind>) -> ExpectedTokensSummary {
     let mut collector = ExpectedTokenCollector::new();
-    let label = err
-        .label()
-        .and_then(|text| {
-            let trimmed = text.trim();
-            (!trimmed.is_empty()).then(|| trimmed.to_string())
-        });
+    let label = err.label().and_then(|text| {
+        let trimmed = text.trim();
+        (!trimmed.is_empty()).then(|| trimmed.to_string())
+    });
     let expectations: Vec<Option<TokenKind>> = err.expected().cloned().collect();
     let is_expr_context = is_expression_recover_context(&expectations);
 
@@ -944,9 +942,7 @@ fn collect_intrinsic_attribute_diagnostics(
     fn inspect_expr(expr: &Expr, diagnostics: &mut Vec<FrontendDiagnostic>) {
         match &expr.kind {
             ExprKind::Block {
-                attrs,
-                statements,
-                ..
+                attrs, statements, ..
             } => {
                 validate_attrs(attrs, false, "ブロック", diagnostics);
                 for stmt in statements {
@@ -1329,9 +1325,7 @@ fn inspect_cfg_expr(
 ) {
     match &expr.kind {
         ExprKind::Block {
-            attrs,
-            statements,
-            ..
+            attrs, statements, ..
         } => {
             evaluate_cfg_attributes(attrs, diagnostics, registry);
             for stmt in statements {
@@ -1785,18 +1779,15 @@ fn module_parser<'src>(
             annotation_kind: None,
         });
 
-        let slice_type = delimited_with_cut(
-            TokenKind::LBracket,
-            ty.clone().cut(),
-            TokenKind::RBracket,
-        )
-        .map_with_span(|element, span: Range<usize>| TypeAnnot {
-            span: range_to_span(span),
-            kind: TypeKind::Slice {
-                element: Box::new(element),
-            },
-            annotation_kind: None,
-        });
+        let slice_type =
+            delimited_with_cut(TokenKind::LBracket, ty.clone().cut(), TokenKind::RBracket)
+                .map_with_span(|element, span: Range<usize>| TypeAnnot {
+                    span: range_to_span(span),
+                    kind: TypeKind::Slice {
+                        element: Box::new(element),
+                    },
+                    annotation_kind: None,
+                });
 
         let simple = qualified_ident.clone().map(|name| TypeAnnot {
             span: name.span,
@@ -2049,24 +2040,26 @@ fn module_parser<'src>(
             kind: PatternKind::Slice { elements },
         });
 
-        let pattern_ctor = qualified_ident.clone().then(
-            delimited_with_cut(
-                TokenKind::LParen,
-                pat.clone()
-                    .cut()
-                    .separated_by(just(TokenKind::Comma))
-                    .allow_trailing(),
-                TokenKind::RParen,
+        let pattern_ctor = qualified_ident
+            .clone()
+            .then(
+                delimited_with_cut(
+                    TokenKind::LParen,
+                    pat.clone()
+                        .cut()
+                        .separated_by(just(TokenKind::Comma))
+                        .allow_trailing(),
+                    TokenKind::RParen,
+                )
+                .or_not(),
             )
-            .or_not(),
-        )
-        .map(|(name, args)| Pattern {
-            span: name.span,
-            kind: PatternKind::Constructor {
-                name,
-                args: args.unwrap_or_default(),
-            },
-        });
+            .map(|(name, args)| Pattern {
+                span: name.span,
+                kind: PatternKind::Constructor {
+                    name,
+                    args: args.unwrap_or_default(),
+                },
+            });
 
         let wildcard_pattern =
             just(TokenKind::Underscore).map_with_span(|_, span: Range<usize>| Pattern {
@@ -2324,8 +2317,7 @@ fn module_parser<'src>(
                 )
             });
 
-        let paren_expr =
-            delimited_with_cut(TokenKind::LParen, expr.clone(), TokenKind::RParen);
+        let paren_expr = delimited_with_cut(TokenKind::LParen, expr.clone(), TokenKind::RParen);
 
         let array_literal = delimited_with_cut(
             TokenKind::LBracket,
@@ -2523,7 +2515,11 @@ fn module_parser<'src>(
                     .ignore_then(type_parser_for_expr.clone().cut())
                     .or_not(),
             )
-            .then(just(TokenKind::Assign).ignore_then(expr.clone().cut()).or_not())
+            .then(
+                just(TokenKind::Assign)
+                    .ignore_then(expr.clone().cut())
+                    .or_not(),
+            )
             .map(|((pattern, ty), default)| Param {
                 span: pattern.span,
                 pattern,
@@ -2611,7 +2607,11 @@ fn module_parser<'src>(
                     .ignore_then(type_parser_for_expr.clone().cut())
                     .or_not(),
             )
-            .then(just(TokenKind::Assign).ignore_then(expr.clone().cut()).or_not())
+            .then(
+                just(TokenKind::Assign)
+                    .ignore_then(expr.clone().cut())
+                    .or_not(),
+            )
             .map(|((pattern, ty), default)| Param {
                 span: pattern.span,
                 pattern,
@@ -2687,10 +2687,11 @@ fn module_parser<'src>(
             }
         });
 
-        let case_source = just(TokenKind::StringLiteral).map_with_span(move |_, span: Range<usize>| {
-            let unescaped = parse_string_literal_value(source, span.clone());
-            Expr::string(unescaped, range_to_span(span))
-        });
+        let case_source =
+            just(TokenKind::StringLiteral).map_with_span(move |_, span: Range<usize>| {
+                let unescaped = parse_string_literal_value(source, span.clone());
+                Expr::string(unescaped, range_to_span(span))
+            });
 
         let case_entry = case_keyword
             .ignore_then(case_source)
@@ -2747,12 +2748,10 @@ fn module_parser<'src>(
 
         let test_parser_expr = test_parser_ident
             .then(
-                delimited_with_cut(
-                    TokenKind::LParen,
-                    expr.clone().cut(),
-                    TokenKind::RParen,
-                )
-                .map_with_span(|parser_expr, span: Range<usize>| (parser_expr, range_to_span(span))),
+                delimited_with_cut(TokenKind::LParen, expr.clone().cut(), TokenKind::RParen)
+                    .map_with_span(|parser_expr, span: Range<usize>| {
+                        (parser_expr, range_to_span(span))
+                    }),
             )
             .then(case_block.clone())
             .map_with_span(
@@ -3039,7 +3038,11 @@ fn module_parser<'src>(
                 .ignore_then(type_parser.clone().cut())
                 .or_not(),
         )
-        .then(just(TokenKind::Assign).ignore_then(expr.clone().cut()).or_not());
+        .then(
+            just(TokenKind::Assign)
+                .ignore_then(expr.clone().cut())
+                .or_not(),
+        );
 
     let params = delimited_with_cut(
         TokenKind::LParen,
@@ -3166,8 +3169,10 @@ fn module_parser<'src>(
         .map_with_span(
             |(
                 (
-                    (((((fn_span, name), generics), (params, varargs)), ret_type),
-                     effect_before_where),
+                    (
+                        ((((fn_span, name), generics), (params, varargs)), ret_type),
+                        effect_before_where,
+                    ),
                     where_clause,
                 ),
                 effect_after_where,
@@ -3204,8 +3209,10 @@ fn module_parser<'src>(
         .map_with_span(
             |(
                 (
-                    (((((fn_span, name), generics), (params, varargs)), ret_type),
-                     effect_before_where),
+                    (
+                        ((((fn_span, name), generics), (params, varargs)), ret_type),
+                        effect_before_where,
+                    ),
                     where_clause,
                 ),
                 effect_after_where,

@@ -177,7 +177,9 @@ pub enum MirStmtKind {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum MirExprKind {
     Literal(Literal),
-    Identifier { ident: Ident },
+    Identifier {
+        ident: Ident,
+    },
     Call {
         callee: MirExprId,
         args: Vec<MirExprId>,
@@ -265,27 +267,38 @@ pub struct MirPattern {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum MirPatternKind {
     Wildcard,
-    Var { name: String },
+    Var {
+        name: String,
+    },
     Literal(Literal),
-    Tuple { elements: Vec<MirPattern> },
+    Tuple {
+        elements: Vec<MirPattern>,
+    },
     Record {
         fields: Vec<MirPatternRecordField>,
         has_rest: bool,
     },
-    Constructor { name: String, args: Vec<MirPattern> },
+    Constructor {
+        name: String,
+        args: Vec<MirPattern>,
+    },
     Binding {
         name: String,
         pattern: Box<MirPattern>,
         via_at: bool,
     },
-    Or { variants: Vec<MirPattern> },
+    Or {
+        variants: Vec<MirPattern>,
+    },
     Slice(MirSlicePattern),
     Range {
         start: Option<Box<MirPattern>>,
         end: Option<Box<MirPattern>>,
         inclusive: bool,
     },
-    Regex { pattern: String },
+    Regex {
+        pattern: String,
+    },
     Active(MirActivePatternCall),
 }
 
@@ -504,9 +517,7 @@ impl MirExprBuilder {
             typed::TypedExprKind::Call { callee, args } => {
                 if let typed::TypedExprKind::Identifier { ident } = &callee.kind {
                     if ident.name == "panic" {
-                        let argument = args
-                            .get(0)
-                            .map(|arg| self.lower_expr(arg));
+                        let argument = args.get(0).map(|arg| self.lower_expr(arg));
                         MirExprKind::Panic { argument }
                     } else {
                         MirExprKind::Call {
@@ -668,7 +679,10 @@ fn lower_pattern(pattern: &typed::TypedPattern) -> MirPattern {
                 .iter()
                 .map(|field| MirPatternRecordField {
                     key: field.key.clone(),
-                    value: field.value.as_ref().map(|value| Box::new(lower_pattern(value))),
+                    value: field
+                        .value
+                        .as_ref()
+                        .map(|value| Box::new(lower_pattern(value))),
                 })
                 .collect(),
             has_rest: *has_rest,
@@ -736,7 +750,9 @@ fn lower_pattern(pattern: &typed::TypedPattern) -> MirPattern {
             } else {
                 typed::ActivePatternKind::Total
             },
-            argument: argument.as_ref().map(|value| Box::new(lower_pattern(value))),
+            argument: argument
+                .as_ref()
+                .map(|value| Box::new(lower_pattern(value))),
             input_binding: None,
             miss_target: if *is_partial {
                 Some(MirJumpTarget::NextArm)
@@ -803,7 +819,12 @@ fn lower_pattern_for_lowering(pattern: &typed::TypedPattern) -> PatternLowering 
         typed::TypedPatternKind::Record { fields, has_rest } => {
             let mut children = fields
                 .iter()
-                .filter_map(|field| field.value.as_ref().map(|value| lower_pattern_for_lowering(value)))
+                .filter_map(|field| {
+                    field
+                        .value
+                        .as_ref()
+                        .map(|value| lower_pattern_for_lowering(value))
+                })
                 .collect::<Vec<_>>();
             if *has_rest {
                 children.push(PatternLowering {
@@ -844,7 +865,8 @@ fn lower_pattern_for_lowering(pattern: &typed::TypedPattern) -> PatternLowering 
             }
         }
         typed::TypedPatternKind::Or { variants } => {
-            let lowered_variants: Vec<_> = variants.iter().map(lower_pattern_for_lowering).collect();
+            let lowered_variants: Vec<_> =
+                variants.iter().map(lower_pattern_for_lowering).collect();
             let miss_on_none = lowered_variants.iter().any(|variant| variant.miss_on_none);
             PatternLowering {
                 label: "or".to_string(),
@@ -860,9 +882,7 @@ fn lower_pattern_for_lowering(pattern: &typed::TypedPattern) -> PatternLowering 
             children: elements
                 .iter()
                 .map(|item| match item {
-                    typed::TypedSlicePatternItem::Element(pat) => {
-                        lower_pattern_for_lowering(pat)
-                    }
+                    typed::TypedSlicePatternItem::Element(pat) => lower_pattern_for_lowering(pat),
                     typed::TypedSlicePatternItem::Rest { ident } => PatternLowering {
                         label: ident
                             .as_ref()
@@ -1025,8 +1045,7 @@ fn collect_match_lowerings_from_stmt(
     plans: &mut Vec<MatchLoweringPlan>,
 ) {
     match &stmt.kind {
-        typed::TypedStmtKind::Let { value, .. }
-        | typed::TypedStmtKind::Var { value, .. } => {
+        typed::TypedStmtKind::Let { value, .. } | typed::TypedStmtKind::Var { value, .. } => {
             collect_match_lowerings_from_expr(value, owner, plans);
         }
         typed::TypedStmtKind::Expr { expr } => {

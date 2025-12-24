@@ -11,11 +11,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value};
 use std::sync::Arc;
 
-pub use actor::{
-    Actor, ActorDefinition, ActorError, ActorErrorKind, MailboxBridge, SupervisorSpec,
-    SupervisionBridge,
-};
+use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
 pub use crate::runtime::async_bridge::ActorSystem;
+pub use actor::{
+    Actor, ActorDefinition, ActorError, ActorErrorKind, MailboxBridge, SupervisionBridge,
+    SupervisorSpec,
+};
 pub use gc::{Gc, GcError, GcErrorKind, GcHeap, GcRef, GcStrategy, RootScope};
 pub use object::{
     ClassBuilder, DispatchError, DispatchErrorKind, DispatchKind, DispatchTable, MethodCache,
@@ -24,7 +25,6 @@ pub use object::{
 pub use vm::{
     Bytecode, BytecodeBuilder, CallFrame, Vm, VmCore, VmError, VmErrorKind, VmState, VmTraceEvent,
 };
-use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
 
 /// Core.Dsl 全体で共有する Result 型。
 pub type DslResult<T> = std::result::Result<T, DslError>;

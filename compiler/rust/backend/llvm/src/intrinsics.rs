@@ -137,7 +137,10 @@ fn lookup_spec(name: &str) -> Option<IntrinsicSpec> {
 
 fn target_supports(target: &TargetMachine, required_feature: Option<&str>) -> bool {
     match required_feature {
-        Some(feature) => target.features.split(',').any(|flag| flag.contains(feature)),
+        Some(feature) => target
+            .features
+            .split(',')
+            .any(|flag| flag.contains(feature)),
         None => true,
     }
 }

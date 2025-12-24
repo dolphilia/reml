@@ -9,11 +9,11 @@ pub mod cli;
 pub mod collections;
 pub mod config;
 pub mod data;
-pub mod dsl;
-pub mod doc;
-pub mod embedding;
 #[cfg(feature = "metrics")]
 pub mod diagnostics;
+pub mod doc;
+pub mod dsl;
+pub mod embedding;
 pub mod ffi;
 pub mod io;
 pub mod lsp;

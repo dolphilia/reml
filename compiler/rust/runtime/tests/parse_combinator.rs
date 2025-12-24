@@ -127,7 +127,10 @@ fn attempt_rewinds_consumption_for_alternatives() {
 fn cut_blocks_fallback_even_when_empty() {
     let parser = non_consuming_fail("hard stop").cut().or(ok(()));
     let result = run(&parser, "", &RunConfig::default());
-    assert!(result.value.is_none(), "commit 付きの失敗は or で巻き取らない");
+    assert!(
+        result.value.is_none(),
+        "commit 付きの失敗は or で巻き取らない"
+    );
     assert_eq!(
         result
             .diagnostics
@@ -197,7 +200,10 @@ fn profile_collects_packrat_and_backtrack_metrics() {
         ..RunConfig::default()
     };
     let result = run(&parser, "y", &cfg);
-    let profile = result.profile.as_ref().expect("profile should be collected");
+    let profile = result
+        .profile
+        .as_ref()
+        .expect("profile should be collected");
     assert!(
         profile.packrat_hits >= 1,
         "expected at least one memo hit on retry"
@@ -240,7 +246,12 @@ fn recover_collect_config(
         if !sync_tokens.is_empty() {
             ext.insert(
                 "sync_tokens".into(),
-                Value::Array(sync_tokens.iter().map(|token| Value::String((*token).into())).collect()),
+                Value::Array(
+                    sync_tokens
+                        .iter()
+                        .map(|token| Value::String((*token).into()))
+                        .collect(),
+                ),
             );
         }
         if let Some(value) = max_diagnostics {
@@ -311,26 +322,30 @@ fn recover_with_default_records_action_default() {
     let result = run(&parser, "oops\nrest", &cfg);
     assert_eq!(result.value, Some(()));
     assert!(result.recovered);
-    let meta = result.diagnostics[0].recover.as_ref().expect("recover meta should be attached");
+    let meta = result.diagnostics[0]
+        .recover
+        .as_ref()
+        .expect("recover meta should be attached");
     assert_eq!(meta.action.as_ref(), Some(&RecoverAction::Default));
 }
 
 #[test]
 fn recover_with_insert_records_inserted_and_fixit() {
     let cfg = recover_collect_config(&["\n"], None, None, None);
-    let parser = consume_then_fail("recover me")
-        .recover_with_insert(tag("\n").map(|_| ()), ";", ());
+    let parser =
+        consume_then_fail("recover me").recover_with_insert(tag("\n").map(|_| ()), ";", ());
     let result = run(&parser, "oops\nrest", &cfg);
     assert_eq!(result.value, Some(()));
     assert!(result.recovered);
-    let meta = result.diagnostics[0].recover.as_ref().expect("recover meta should be attached");
+    let meta = result.diagnostics[0]
+        .recover
+        .as_ref()
+        .expect("recover meta should be attached");
     assert_eq!(meta.action.as_ref(), Some(&RecoverAction::Insert));
     assert_eq!(meta.inserted.as_deref(), Some(";"));
     assert_eq!(
         result.diagnostics[0].fixits,
-        vec![ParseFixIt::InsertToken {
-            token: ";".into()
-        }]
+        vec![ParseFixIt::InsertToken { token: ";".into() }]
     );
     let guard = result.diagnostics[0].to_guard_diagnostic();
     assert!(
@@ -350,7 +365,10 @@ fn recover_with_context_records_context_message() {
     let result = run(&parser, "oops\nrest", &cfg);
     assert_eq!(result.value, Some(()));
     assert!(result.recovered);
-    let meta = result.diagnostics[0].recover.as_ref().expect("recover meta should be attached");
+    let meta = result.diagnostics[0]
+        .recover
+        .as_ref()
+        .expect("recover meta should be attached");
     assert_eq!(meta.action.as_ref(), Some(&RecoverAction::Context));
     assert_eq!(meta.context.as_deref(), Some("ここは式が必要です"));
 }
@@ -378,8 +396,7 @@ fn panic_block_skips_nested_block() {
 #[test]
 fn recover_missing_inserts_token_and_fixit() {
     let cfg = recover_collect_config(&["\n"], None, None, None);
-    let parser = consume_then_fail("recover me")
-        .recover_missing(tag("\n").map(|_| ()), ";", ());
+    let parser = consume_then_fail("recover me").recover_missing(tag("\n").map(|_| ()), ";", ());
     let result = run(&parser, "oops\nrest", &cfg);
     assert_eq!(result.value, Some(()));
     assert!(result.recovered);
@@ -391,18 +408,17 @@ fn recover_missing_inserts_token_and_fixit() {
     assert_eq!(meta.inserted.as_deref(), Some(";"));
     assert_eq!(
         result.diagnostics[0].fixits,
-        vec![ParseFixIt::InsertToken {
-            token: ";".into()
-        }]
+        vec![ParseFixIt::InsertToken { token: ";".into() }]
     );
 }
 
 #[test]
 fn recover_notes_true_exposes_context_in_notes() {
-    let cfg = recover_collect_config(&["\n"], None, None, None).with_extension("recover", |mut ext| {
-        ext.insert("notes".into(), Value::Bool(true));
-        ext
-    });
+    let cfg =
+        recover_collect_config(&["\n"], None, None, None).with_extension("recover", |mut ext| {
+            ext.insert("notes".into(), Value::Bool(true));
+            ext
+        });
     let parser = consume_then_fail("recover me").recover_with_context(
         tag("\n").map(|_| ()),
         "ここは式が必要です",
@@ -411,7 +427,10 @@ fn recover_notes_true_exposes_context_in_notes() {
     let result = run(&parser, "oops\nrest", &cfg);
     assert_eq!(result.value, Some(()));
     assert!(result.recovered);
-    assert_eq!(result.diagnostics[0].notes, vec!["ここは式が必要です".to_string()]);
+    assert_eq!(
+        result.diagnostics[0].notes,
+        vec!["ここは式が必要です".to_string()]
+    );
     let json = result.diagnostics[0].to_guard_diagnostic().into_json();
     assert_eq!(
         json.get("notes")

@@ -227,7 +227,8 @@ fn validate_locale(locale: LocaleId, fmt: &TimeFormat) -> TimeResult<LocaleId> {
     let pattern = pattern_label(fmt);
     let Some(entry) = TIME_LOCALE_TABLE
         .iter()
-        .find(|entry| entry.id.eq_ignore_ascii_case(&canonical)) else {
+        .find(|entry| entry.id.eq_ignore_ascii_case(&canonical))
+    else {
         return Err(unknown_locale_error(&canonical, &pattern));
     };
     if !entry.status.is_supported() {

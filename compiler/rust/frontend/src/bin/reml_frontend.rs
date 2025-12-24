@@ -12,7 +12,6 @@ use std::sync::{Arc, Mutex};
 
 use reml_adapter::target::{self, TargetInference};
 use reml_frontend::diagnostic::messages;
-use reml_frontend::ffi_executor::install_cli_ffi_executor;
 use reml_frontend::diagnostic::{
     effects,
     filter::{
@@ -22,8 +21,10 @@ use reml_frontend::diagnostic::{
     formatter::{self, FormatterContext},
     json as diag_json, unicode, DiagnosticDomain, FrontendDiagnostic, StageAuditPayload,
 };
+use reml_frontend::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 use reml_frontend::effects::diagnostics::EffectDiagnostic;
 use reml_frontend::error::Recoverability;
+use reml_frontend::ffi_executor::install_cli_ffi_executor;
 use reml_frontend::lexer::{lex_source_with_options, IdentifierProfile, LexerOptions};
 use reml_frontend::output::cli::{
     emit_cli_output, CliCommandKind, CliDiagnosticEnvelope, CliExitCode, CliPhaseKind, CliSummary,
@@ -47,19 +48,27 @@ use reml_frontend::typeck::{
     TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics, TypecheckReport,
     TypecheckViolation, TypecheckViolationKind, TypedFunctionSummary,
 };
+use reml_runtime::audit::AuditEvent;
 use reml_runtime::config::{
     compatibility_profile, resolve_compat, CompatibilityLayer, CompatibilityProfileError,
     ConfigFormat, ManifestLoader, ResolveCompatOptions, ResolvedConfigCompatibility,
 };
-use reml_runtime::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
-use reml_runtime::run_config::{
-    apply_manifest_overrides, ApplyManifestOverridesArgs, RunConfigManifestOverrides,
-    LeftRecursionStrategy,
-};
+use reml_runtime::lsp::derive::{Derive, DeriveModel};
 use reml_runtime::parse as runtime_parse;
 use reml_runtime::parse::combinator::LEFT_RECURSION_MESSAGE;
-use reml_frontend::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
+use reml_runtime::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
+use reml_runtime::run_config::{
+    apply_manifest_overrides, ApplyManifestOverridesArgs, LeftRecursionStrategy,
+    RunConfigManifestOverrides,
+};
+use reml_runtime::runtime::plugin::{
+    take_plugin_audit_events, PluginBundleRegistration, PluginBundleVerification, PluginError,
+    PluginLoadError, PluginLoader, SignatureStatus, VerificationPolicy,
+};
+use reml_runtime::runtime::plugin_bridge::NativePluginExecutionBridge;
+use reml_runtime::runtime::plugin_manager::PluginRuntimeManager;
 use reml_runtime::stage::StageId as RuntimeStageId;
+use reml_runtime::test as runtime_test;
 use reml_runtime::text::LocaleId;
 use reml_runtime::text::Str as RuntimeStr;
 use reml_runtime::{
@@ -70,15 +79,6 @@ use reml_runtime::{
     CapabilityDescriptor, CapabilityIsolationLevel, CapabilityPermission, CapabilityProvider,
     CapabilityRegistry, CapabilityTimestamp,
 };
-use reml_runtime::audit::AuditEvent;
-use reml_runtime::lsp::derive::{Derive, DeriveModel};
-use reml_runtime::runtime::plugin::{
-    take_plugin_audit_events, PluginBundleRegistration, PluginBundleVerification, PluginError,
-    PluginLoadError, PluginLoader, SignatureStatus, VerificationPolicy,
-};
-use reml_runtime::runtime::plugin_bridge::NativePluginExecutionBridge;
-use reml_runtime::runtime::plugin_manager::PluginRuntimeManager;
-use reml_runtime::test as runtime_test;
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -169,15 +169,13 @@ fn try_run_plugin_command() -> Result<bool, Box<dyn std::error::Error>> {
                         bundle_path = iter.next().cloned();
                     }
                     "--policy" => {
-                        let value = iter.next().ok_or("--policy は strict|permissive を指定してください")?;
+                        let value = iter
+                            .next()
+                            .ok_or("--policy は strict|permissive を指定してください")?;
                         policy = match value.as_str() {
                             "strict" => VerificationPolicy::Strict,
                             "permissive" => VerificationPolicy::Permissive,
-                            other => {
-                                return Err(
-                                    format!("--policy の未知の値: {other}").into()
-                                )
-                            }
+                            other => return Err(format!("--policy の未知の値: {other}").into()),
                         };
                     }
                     "--output" => {
@@ -192,9 +190,7 @@ fn try_run_plugin_command() -> Result<bool, Box<dyn std::error::Error>> {
                     "--human" => output = OutputFormat::Human,
                     "--json" => output = OutputFormat::Json,
                     other => {
-                        return Err(
-                            format!("plugin install の未知のオプション: {other}").into()
-                        )
+                        return Err(format!("plugin install の未知のオプション: {other}").into())
                     }
                 }
             }
@@ -229,15 +225,13 @@ fn try_run_plugin_command() -> Result<bool, Box<dyn std::error::Error>> {
                         bundle_path = iter.next().cloned();
                     }
                     "--policy" => {
-                        let value = iter.next().ok_or("--policy は strict|permissive を指定してください")?;
+                        let value = iter
+                            .next()
+                            .ok_or("--policy は strict|permissive を指定してください")?;
                         policy = match value.as_str() {
                             "strict" => VerificationPolicy::Strict,
                             "permissive" => VerificationPolicy::Permissive,
-                            other => {
-                                return Err(
-                                    format!("--policy の未知の値: {other}").into()
-                                )
-                            }
+                            other => return Err(format!("--policy の未知の値: {other}").into()),
                         };
                     }
                     "--output" => {
@@ -252,14 +246,11 @@ fn try_run_plugin_command() -> Result<bool, Box<dyn std::error::Error>> {
                     "--human" => output = OutputFormat::Human,
                     "--json" => output = OutputFormat::Json,
                     other => {
-                        return Err(
-                            format!("plugin verify の未知のオプション: {other}").into()
-                        )
+                        return Err(format!("plugin verify の未知のオプション: {other}").into())
                     }
                 }
             }
-            let bundle_path =
-                bundle_path.ok_or("plugin verify には --bundle <path> が必要です")?;
+            let bundle_path = bundle_path.ok_or("plugin verify には --bundle <path> が必要です")?;
             let verification = match run_plugin_verify(bundle_path, policy) {
                 Ok(verification) => verification,
                 Err(err) => {
@@ -305,7 +296,10 @@ fn format_plugin_error(error: &PluginError) -> String {
     match error {
         PluginError::Load(err) => format_plugin_load_error(err),
         PluginError::Capability(err) => {
-            format!("Capability の登録または検証に失敗しました: {}", err.detail())
+            format!(
+                "Capability の登録または検証に失敗しました: {}",
+                err.detail()
+            )
         }
         PluginError::VerificationFailed { message } => {
             format!("プラグイン検証に失敗しました: {message}")
@@ -1005,7 +999,11 @@ fn run_parse_driver_mode(
 
     let mut diagnostics = Vec::new();
     for err in &result.diagnostics {
-        diagnostics.push(build_parse_driver_diagnostic(err, driver_source, label_for_diagnostic));
+        diagnostics.push(build_parse_driver_diagnostic(
+            err,
+            driver_source,
+            label_for_diagnostic,
+        ));
     }
 
     let finished_at = formatter::current_timestamp();
@@ -1021,8 +1019,11 @@ fn run_parse_driver_mode(
     };
     let exit_code = determine_exit_code(&diagnostics);
     let diagnostic_count = diagnostics.len();
-    let stage_payload =
-        StageAuditPayload::new(&args.typecheck_config.effect_context, &args.runtime_capabilities, None);
+    let stage_payload = StageAuditPayload::new(
+        &args.typecheck_config.effect_context,
+        &args.runtime_capabilities,
+        None,
+    );
     let envelope = CliDiagnosticEnvelope::new(
         &args.command,
         &args.phase,
@@ -1332,8 +1333,8 @@ fn lexpack_string(space: runtime_parse::Parser<()>) -> runtime_parse::Parser<Str
             if ch == '"' {
                 let closing = rest.advance(1);
                 let span = input.span_to(&closing);
-                let value = input.remaining()[..(closing.byte_offset() - input.byte_offset())]
-                    .to_string();
+                let value =
+                    input.remaining()[..(closing.byte_offset() - input.byte_offset())].to_string();
                 state.set_input(closing.clone());
                 return runtime_parse::Reply::Ok {
                     value,
@@ -1362,7 +1363,9 @@ fn integer_literal_parser() -> runtime_parse::Parser<(i32, runtime_parse::Span)>
         for ch in start_input.remaining().chars() {
             if ch.is_ascii_digit() {
                 digits += 1;
-                value = value.saturating_mul(10).saturating_add(ch.to_digit(10).unwrap() as i32);
+                value = value
+                    .saturating_mul(10)
+                    .saturating_add(ch.to_digit(10).unwrap() as i32);
                 rest = rest.advance(ch.len_utf8());
             } else {
                 break;
@@ -1370,14 +1373,11 @@ fn integer_literal_parser() -> runtime_parse::Parser<(i32, runtime_parse::Span)>
         }
         if digits == 0 {
             return runtime_parse::Reply::Err {
-                error: runtime_parse::ParseError::new(
-                    "value",
-                    start_input.position(),
-                )
-                .with_expected_tokens([
-                    String::from("integer-literal"),
-                    String::from("identifier"),
-                ]),
+                error: runtime_parse::ParseError::new("value", start_input.position())
+                    .with_expected_tokens([
+                        String::from("integer-literal"),
+                        String::from("identifier"),
+                    ]),
                 consumed: false,
                 committed: false,
             };
@@ -1504,7 +1504,9 @@ fn classify_parse_driver_token(token: &str) -> ExpectedToken {
         ExpectedToken::class(token.to_string())
     } else if token.contains("identifier") || token.contains("literal") || token.ends_with("EOF") {
         ExpectedToken::class(token.to_string())
-    } else if token.chars().all(|ch| ch.is_ascii_lowercase()) && token.chars().all(|ch| ch.is_ascii_alphabetic()) {
+    } else if token.chars().all(|ch| ch.is_ascii_lowercase())
+        && token.chars().all(|ch| ch.is_ascii_alphabetic())
+    {
         ExpectedToken::keyword(token.to_string())
     } else {
         ExpectedToken::token(token.to_string())
@@ -1541,10 +1543,16 @@ fn expected_from_summary(summary: &ExpectedTokensSummary) -> Value {
     let mut expected = Map::new();
     expected.insert(
         "message_key".to_string(),
-        json!(summary.message_key.clone().unwrap_or_else(|| "parse.expected".to_string())),
+        json!(summary
+            .message_key
+            .clone()
+            .unwrap_or_else(|| "parse.expected".to_string())),
     );
     expected.insert("humanized".to_string(), json!(summary.humanized));
-    expected.insert("locale_args".to_string(), json!(summary.locale_args.clone()));
+    expected.insert(
+        "locale_args".to_string(),
+        json!(summary.locale_args.clone()),
+    );
     expected.insert("alternatives".to_string(), json!(alternatives));
     if let Some(context) = summary.context_note.as_ref() {
         if !context.trim().is_empty() {
@@ -1956,10 +1964,7 @@ fn apply_workspace_config(
             }
         }
         if !allow_top_level_expr_overridden {
-            if let Some(allow) = parser
-                .get("allow_top_level_expr")
-                .and_then(|v| v.as_bool())
-            {
+            if let Some(allow) = parser.get("allow_top_level_expr").and_then(|v| v.as_bool()) {
                 run_config.allow_top_level_expr = allow;
             }
         }
@@ -2243,9 +2248,9 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                 )
             }
             "--parse-driver-profile-output" => {
-                let path = args
-                    .next()
-                    .ok_or_else(|| "--parse-driver-profile-output は出力パスを伴う必要があります")?;
+                let path = args.next().ok_or_else(|| {
+                    "--parse-driver-profile-output は出力パスを伴う必要があります"
+                })?;
                 parse_driver_profile_output = Some(PathBuf::from(path));
             }
             "--parse-driver-left-recursion" => {
@@ -2385,11 +2390,9 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                 emit_impl_registry = Some(PathBuf::from(path));
             }
             "--output" | "--format" => {
-                let value = args
-                    .next()
-                    .ok_or_else(|| {
-                        "--output は human|json|lsp|lsp-derive のいずれかを指定してください"
-                    })?;
+                let value = args.next().ok_or_else(|| {
+                    "--output は human|json|lsp|lsp-derive のいずれかを指定してください"
+                })?;
                 output_format = OutputFormat::parse(&value)?;
             }
             "--emit-tokens" => {

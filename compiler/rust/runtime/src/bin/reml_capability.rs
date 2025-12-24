@@ -157,7 +157,11 @@ fn format_provider(descriptor: &CapabilityDescriptor) -> String {
 }
 
 fn format_capability_timestamp(timestamp: CapabilityTimestamp) -> String {
-    format!("{}.{:09}s (unix)", timestamp.seconds, timestamp.nanos.max(0))
+    format!(
+        "{}.{:09}s (unix)",
+        timestamp.seconds,
+        timestamp.nanos.max(0)
+    )
 }
 
 #[derive(Clone, Copy, Debug)]

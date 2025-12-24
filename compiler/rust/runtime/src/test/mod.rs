@@ -224,23 +224,19 @@ pub fn table_test<T>(cases: &[TableCase<T>], render: impl Fn(&T) -> String) -> T
     for (index, case) in cases.iter().enumerate() {
         let actual = render(&case.input);
         if actual != case.expected {
-            return Err(TestError::new(
-                TestErrorKind::AssertionFailed,
-                "table_test mismatch",
-            )
-            .with_context("case_index", index.to_string())
-            .with_context("expected", case.expected.clone())
-            .with_context("actual", actual));
+            return Err(
+                TestError::new(TestErrorKind::AssertionFailed, "table_test mismatch")
+                    .with_context("case_index", index.to_string())
+                    .with_context("expected", case.expected.clone())
+                    .with_context("actual", actual),
+            );
         }
     }
     Ok(())
 }
 
 /// ファジング実行（最小版）。
-pub fn fuzz_bytes(
-    config: &FuzzConfig,
-    f: impl Fn(&[u8]) -> TestResult + UnwindSafe,
-) -> TestResult {
+pub fn fuzz_bytes(config: &FuzzConfig, f: impl Fn(&[u8]) -> TestResult + UnwindSafe) -> TestResult {
     let mut generator = FuzzGenerator::new(&config.seed);
     let max_cases = config.max_cases.max(1);
     let max_bytes = config.max_bytes.max(1);
@@ -282,18 +278,16 @@ pub(crate) fn normalize_snapshot(value: &str) -> String {
 fn verify_snapshot(store: &mut SnapshotStore, name: &str, value: &str) -> TestResult {
     match store.get(name) {
         Some(entry) if entry.value == value => Ok(()),
-        Some(entry) => Err(TestError::new(
-            TestErrorKind::SnapshotMismatch,
-            "snapshot mismatch",
-        )
-        .with_context("snapshot.name", name)
-        .with_context("snapshot.expected_hash", entry.hash.to_string())
-        .with_context("snapshot.actual_hash", snapshot_hash(value).to_string())),
-        None => Err(TestError::new(
-            TestErrorKind::SnapshotMissing,
-            "snapshot missing",
-        )
-        .with_context("snapshot.name", name)),
+        Some(entry) => Err(
+            TestError::new(TestErrorKind::SnapshotMismatch, "snapshot mismatch")
+                .with_context("snapshot.name", name)
+                .with_context("snapshot.expected_hash", entry.hash.to_string())
+                .with_context("snapshot.actual_hash", snapshot_hash(value).to_string()),
+        ),
+        None => Err(
+            TestError::new(TestErrorKind::SnapshotMissing, "snapshot missing")
+                .with_context("snapshot.name", name),
+        ),
     }
 }
 
@@ -332,12 +326,7 @@ pub(crate) fn snapshot_hash(value: &str) -> u64 {
     hasher.finish()
 }
 
-pub(crate) fn record_snapshot_updated(
-    name: &str,
-    hash: u64,
-    mode: SnapshotMode,
-    bytes: usize,
-) {
+pub(crate) fn record_snapshot_updated(name: &str, hash: u64, mode: SnapshotMode, bytes: usize) {
     let timestamp = OffsetDateTime::now_utc()
         .format(&Rfc3339)
         .unwrap_or_else(|_| "1970-01-01T00:00:00Z".into());
@@ -346,20 +335,19 @@ pub(crate) fn record_snapshot_updated(
         "event.kind".into(),
         Value::String(AuditEventKind::SnapshotUpdated.as_str().into_owned()),
     );
-    metadata.insert(
-        "event.domain".into(),
-        Value::String("test".into()),
-    );
+    metadata.insert("event.domain".into(), Value::String("test".into()));
     metadata.insert("snapshot.name".into(), Value::String(name.to_string()));
     metadata.insert("snapshot.hash".into(), Value::String(hash.to_string()));
     metadata.insert(
         "snapshot.mode".into(),
-        Value::String(match mode {
-            SnapshotMode::Verify => "verify",
-            SnapshotMode::Update => "update",
-            SnapshotMode::Record => "record",
-        }
-        .into()),
+        Value::String(
+            match mode {
+                SnapshotMode::Verify => "verify",
+                SnapshotMode::Update => "update",
+                SnapshotMode::Record => "record",
+            }
+            .into(),
+        ),
     );
     metadata.insert("snapshot.bytes".into(), Value::String(bytes.to_string()));
     let envelope = AuditEnvelope::from_parts(metadata, None, None, Some("core.test".into()));
@@ -416,10 +404,7 @@ impl FuzzGenerator {
     }
 
     fn next_u64(&mut self) -> u64 {
-        self.state = self
-            .state
-            .wrapping_mul(6364136223846793005)
-            .wrapping_add(1);
+        self.state = self.state.wrapping_mul(6364136223846793005).wrapping_add(1);
         self.state
     }
 

@@ -50,6 +50,19 @@
 - 単体実行（ビルド済み想定）: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/.../*.reml`
 - 単体実行（cargo 経由）: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/.../*.reml`
 
+### よく使う `cargo test` / `cargo fmt` / `cargo clippy`
+- フロントエンド全体テスト: `cargo test --manifest-path compiler/rust/frontend/Cargo.toml`
+- フロントエンドの範囲指定: `cargo test --manifest-path compiler/rust/frontend/Cargo.toml parser::module -- --nocapture`
+- フロントエンド fmt: `cargo fmt --manifest-path compiler/rust/frontend/Cargo.toml`
+- フロントエンド clippy: `cargo clippy --manifest-path compiler/rust/frontend/Cargo.toml`
+- adapter テスト: `cargo test --manifest-path compiler/rust/adapter/Cargo.toml`
+- backend テスト: `cargo test --manifest-path compiler/rust/backend/llvm/Cargo.toml`
+- backend fmt: `cargo fmt --manifest-path compiler/rust/backend/llvm/Cargo.toml`
+- backend clippy: `cargo clippy --manifest-path compiler/rust/backend/llvm/Cargo.toml`
+- runtime テスト: `cargo test --manifest-path compiler/rust/runtime/Cargo.toml`
+- runtime fmt: `cargo fmt --manifest-path compiler/rust/runtime/Cargo.toml`
+- runtime clippy: `cargo clippy --manifest-path compiler/rust/runtime/Cargo.toml`
+
 ## コーディング規約
 
 ### 一般

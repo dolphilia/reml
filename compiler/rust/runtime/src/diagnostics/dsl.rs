@@ -44,10 +44,9 @@ pub fn apply_dsl_metadata(
         .audit_metadata
         .insert("dsl.id".into(), Value::String(dsl_id.to_string()));
     if let Some(parent_id) = parent_id {
-        diagnostic.audit_metadata.insert(
-            "dsl.parent_id".into(),
-            Value::String(parent_id.to_string()),
-        );
+        diagnostic
+            .audit_metadata
+            .insert("dsl.parent_id".into(), Value::String(parent_id.to_string()));
     }
     diagnostic
         .audit_metadata

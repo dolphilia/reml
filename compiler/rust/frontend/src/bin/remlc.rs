@@ -1,3 +1,4 @@
+use reml_frontend::ffi_executor::install_cli_ffi_executor;
 use reml_runtime::collections::{
     audit_bridge::{AuditBridgeError, ChangeSet},
     persistent::btree::PersistentMap,
@@ -16,7 +17,6 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::{collections::BTreeMap, process};
-use reml_frontend::ffi_executor::install_cli_ffi_executor;
 
 fn main() {
     if let Err(err) = install_cli_ffi_executor() {
@@ -162,7 +162,10 @@ fn handle_build(args: Vec<String>) -> Result<i32, CliError> {
         &opts,
         diagnostics.into_iter().map(guard_diag_to_report).collect(),
         config.is_some(),
-        config.as_ref().and_then(|value| value.ffi.as_ref()).is_some(),
+        config
+            .as_ref()
+            .and_then(|value| value.ffi.as_ref())
+            .is_some(),
         audit_entries,
     );
     print_build_report(&report, opts.output_format)?;
@@ -257,9 +260,8 @@ impl NewOptions {
                 }
             }
         }
-        let output_path = output_path.ok_or_else(|| {
-            CliError::Usage("出力先のパスを指定してください".to_string())
-        })?;
+        let output_path = output_path
+            .ok_or_else(|| CliError::Usage("出力先のパスを指定してください".to_string()))?;
         if template != "lite" {
             return Err(CliError::Usage(format!(
                 "テンプレート `{template}` は未対応です（利用可能: lite）"
@@ -305,26 +307,22 @@ impl BuildLintOptions {
         while let Some(arg) = iter.next() {
             match arg.as_str() {
                 "--config" => {
-                    let value = iter
-                        .next()
-                        .ok_or_else(|| CliError::Usage("--config はパスを伴う必要があります".into()))?;
+                    let value = iter.next().ok_or_else(|| {
+                        CliError::Usage("--config はパスを伴う必要があります".into())
+                    })?;
                     opts.config_path = PathBuf::from(value);
                 }
                 "--format" => {
-                    let value = iter
-                        .next()
-                        .ok_or_else(|| {
-                            CliError::Usage("--format は human|json の値を伴う必要があります".into())
-                        })?;
+                    let value = iter.next().ok_or_else(|| {
+                        CliError::Usage("--format は human|json の値を伴う必要があります".into())
+                    })?;
                     opts.output_format = ReportFormat::parse(&value)?;
                 }
                 "--emit-bindgen" => opts.emit_bindgen = true,
                 "--cache-dir" => {
-                    let value = iter
-                        .next()
-                        .ok_or_else(|| {
-                            CliError::Usage("--cache-dir はパスを伴う必要があります".into())
-                        })?;
+                    let value = iter.next().ok_or_else(|| {
+                        CliError::Usage("--cache-dir はパスを伴う必要があります".into())
+                    })?;
                     opts.cache_dir = Some(PathBuf::from(value));
                 }
                 other => {
@@ -434,11 +432,7 @@ fn load_build_config(path: &Path) -> Result<BuildConfig, GuardDiagnostic> {
         )
     })?;
     serde_json::from_str(&body).map_err(|err| {
-        ffi_build_config_invalid(
-            path,
-            None,
-            format!("reml.json の解析に失敗しました: {err}"),
-        )
+        ffi_build_config_invalid(path, None, format!("reml.json の解析に失敗しました: {err}"))
     })
 }
 
@@ -467,7 +461,11 @@ fn validate_build_config(config: &BuildConfig, path: &Path) -> Vec<GuardDiagnost
     }
     if let Some(bindgen) = ffi.bindgen.as_ref() {
         if bindgen.enabled {
-            if bindgen.output.as_ref().map_or(true, |v| v.trim().is_empty()) {
+            if bindgen
+                .output
+                .as_ref()
+                .map_or(true, |v| v.trim().is_empty())
+            {
                 diagnostics.push(ffi_build_config_invalid(
                     path,
                     Some("ffi.bindgen.output".to_string()),
@@ -535,7 +533,11 @@ fn run_bindgen_if_enabled(
     if !bindgen.enabled {
         return (diagnostics, audit_entries);
     }
-    let output = match bindgen.output.as_ref().map(|value| value.trim()).filter(|v| !v.is_empty())
+    let output = match bindgen
+        .output
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|v| !v.is_empty())
     {
         Some(value) => value.to_string(),
         None => {
@@ -568,11 +570,9 @@ fn run_bindgen_if_enabled(
         let mut error_code: Option<String> = None;
         let mut error_message: Option<String> = None;
         if let Some(cache_path) = cache_path.as_ref() {
-            if let Err(err) = restore_bindgen_cache(
-                cache_path,
-                Path::new(&output),
-                Path::new(&manifest_path),
-            ) {
+            if let Err(err) =
+                restore_bindgen_cache(cache_path, Path::new(&output), Path::new(&manifest_path))
+            {
                 let (diag, code, message) = match err {
                     BindgenCacheRestoreError::OutputOverwrite(path) => {
                         let diag = ffi_bindgen_output_overwrite(path);
@@ -585,10 +585,8 @@ fn run_bindgen_if_enabled(
                         (diag, "ffi.bindgen.output_overwrite".to_string(), message)
                     }
                     BindgenCacheRestoreError::CacheMissing(path) => {
-                        let message = format!(
-                            "生成物キャッシュが見つかりません: {}",
-                            path.display()
-                        );
+                        let message =
+                            format!("生成物キャッシュが見つかりません: {}", path.display());
                         (
                             ffi_build_bindgen_failed(message.clone()),
                             "ffi.bindgen.generate_failed".to_string(),
@@ -699,10 +697,7 @@ fn invoke_reml_bindgen(
     }
 }
 
-fn cache_path_for_input_hash(
-    cache_dir: Option<&PathBuf>,
-    input_hash: &str,
-) -> Option<PathBuf> {
+fn cache_path_for_input_hash(cache_dir: Option<&PathBuf>, input_hash: &str) -> Option<PathBuf> {
     cache_dir.map(|root| root.join("ffi").join(input_hash))
 }
 
@@ -794,10 +789,7 @@ fn ffi_bindgen_audit_entry(
         bindgen_meta.insert("error.code".into(), Value::String(code.to_string()));
     }
     if let Some(message) = error_message {
-        bindgen_meta.insert(
-            "error.message".into(),
-            Value::String(message.to_string()),
-        );
+        bindgen_meta.insert("error.message".into(), Value::String(message.to_string()));
     }
     meta.insert("ffi.bindgen".into(), Value::Object(bindgen_meta));
     let mut entry = Map::new();
@@ -913,7 +905,9 @@ fn parse_bindgen_version(raw: &str) -> String {
         .split_whitespace()
         .find(|token| token.chars().any(|ch| ch.is_ascii_digit()))
     {
-        return candidate.trim_matches(|ch: char| ch == 'v' || ch == ':').to_string();
+        return candidate
+            .trim_matches(|ch: char| ch == 'v' || ch == ':')
+            .to_string();
     }
     trimmed.to_string()
 }
@@ -952,10 +946,7 @@ fn ffi_build_config_invalid(
     message: impl Into<String>,
 ) -> GuardDiagnostic {
     let mut build_info = Map::new();
-    build_info.insert(
-        "path".into(),
-        Value::String(path.display().to_string()),
-    );
+    build_info.insert("path".into(), Value::String(path.display().to_string()));
     if let Some(field) = field {
         build_info.insert("field".into(), Value::String(field));
     }

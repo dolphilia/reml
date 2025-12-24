@@ -5,8 +5,8 @@ use crate::{
     config::manifest::ManifestCapabilities,
     runtime::{
         plugin::{
-            record_revoke_audit, BundleContext, PluginBundleRegistration, PluginError, PluginLoader,
-            SignatureStatus, VerificationPolicy,
+            record_revoke_audit, BundleContext, PluginBundleRegistration, PluginError,
+            PluginLoader, SignatureStatus, VerificationPolicy,
         },
         plugin_bridge::{PluginExecutionBridge, PluginInstance, PluginLoadRequest},
     },

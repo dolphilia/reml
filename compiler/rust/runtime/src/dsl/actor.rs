@@ -1,7 +1,7 @@
 //! Core.Dsl.Actor の最小実装。
 
-use std::sync::Arc;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::Arc;
 
 use crate::runtime::async_bridge::ActorSystem;
 use serde_json::Map as JsonMap;

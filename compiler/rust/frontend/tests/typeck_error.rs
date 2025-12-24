@@ -99,8 +99,7 @@ fn intrinsic_missing_effect_is_reported() {
 
 #[test]
 fn intrinsic_invalid_type_is_reported() {
-    let report =
-        typecheck_source(r#"@intrinsic("llvm.ctpop.i64") fn pop(x: Str) !{native} = x"#);
+    let report = typecheck_source(r#"@intrinsic("llvm.ctpop.i64") fn pop(x: Str) !{native} = x"#);
     assert!(
         report
             .violations

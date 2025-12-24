@@ -1,15 +1,15 @@
+use super::cst::{CstBuilder, CstNode, CstOutput, Token as CstToken, Trivia, TriviaKind};
+use super::embedded::{shift_position, ContextBridge, EmbeddedDslSpec, EmbeddedNode};
+use super::meta::{normalize_doc, ObservedToken, ParseMetaRegistry, ParserMetaKind};
+use super::op_builder::FixitySymbol;
 use crate::prelude::ensure::{DiagnosticNote, DiagnosticSeverity, GuardDiagnostic};
 use crate::run_config::{LeftRecursionStrategy, RunConfig};
 use crate::text::{Str, String as TextString};
 use serde_json::{json, Map, Value};
 use std::any::Any;
-use super::cst::{CstBuilder, CstNode, CstOutput, Token as CstToken, Trivia, TriviaKind};
-use super::embedded::{shift_position, ContextBridge, EmbeddedDslSpec, EmbeddedNode};
-use super::meta::{normalize_doc, ObservedToken, ParseMetaRegistry, ParserMetaKind};
-use super::op_builder::FixitySymbol;
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::fs;
 use std::fmt;
+use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -59,10 +59,9 @@ fn apply_dsl_metadata(
         .audit_metadata
         .insert("dsl.id".into(), Value::String(dsl_id.to_string()));
     if let Some(parent_id) = parent_id {
-        diagnostic.audit_metadata.insert(
-            "dsl.parent_id".into(),
-            Value::String(parent_id.to_string()),
-        );
+        diagnostic
+            .audit_metadata
+            .insert("dsl.parent_id".into(), Value::String(parent_id.to_string()));
     }
     diagnostic
         .audit_metadata
@@ -849,9 +848,7 @@ fn reorder_levels<T: Clone + Send + Sync + 'static>(
     reordered
 }
 
-fn choice_ops<T: Clone + Send + Sync + 'static>(
-    ops: &[Parser<T>],
-) -> Option<Parser<T>> {
+fn choice_ops<T: Clone + Send + Sync + 'static>(ops: &[Parser<T>]) -> Option<Parser<T>> {
     match ops.len() {
         0 => None,
         1 => Some(ops[0].clone()),
@@ -872,10 +869,7 @@ fn apply_prefix_postfix<T: Clone + Send + Sync + 'static>(
         term.and_then(move |core| {
             let pres_clone = pres.clone();
             postfix_many.clone().map(move |posts| {
-                let with_prefix = pres_clone
-                    .iter()
-                    .rev()
-                    .fold(core.clone(), |acc, f| f(acc));
+                let with_prefix = pres_clone.iter().rev().fold(core.clone(), |acc, f| f(acc));
                 posts.into_iter().fold(with_prefix, |acc, f| f(acc))
             })
         })
@@ -886,18 +880,17 @@ fn infix_nonassoc<T: Clone + Send + Sync + 'static>(
     term: Parser<T>,
     op: Parser<BinaryOp<T>>,
 ) -> Parser<T> {
-    term.clone()
-        .and_then(move |lhs| {
-            let lhs_for_ok = lhs.clone();
-            let op = op.clone();
+    term.clone().and_then(move |lhs| {
+        let lhs_for_ok = lhs.clone();
+        let op = op.clone();
+        let term = term.clone();
+        op.and_then(move |f| {
             let term = term.clone();
-            op.and_then(move |f| {
-                let term = term.clone();
-                let lhs_for_map = lhs.clone();
-                term.map(move |rhs| f(lhs_for_map.clone(), rhs))
-            })
-            .or(ok(lhs_for_ok))
+            let lhs_for_map = lhs.clone();
+            term.map(move |rhs| f(lhs_for_map.clone(), rhs))
         })
+        .or(ok(lhs_for_ok))
+    })
 }
 
 fn build_level<T: Clone + Send + Sync + 'static>(
@@ -947,13 +940,11 @@ fn build_level<T: Clone + Send + Sync + 'static>(
             for op in ops.iter() {
                 let op_parser = Parser::new({
                     let op = op.clone();
-                    move |state| {
-                        Reply::Ok {
-                            value: op.clone(),
-                            span: empty_span(state.input()),
-                            consumed: false,
-                            rest: state.input().clone(),
-                        }
+                    move |state| Reply::Ok {
+                        value: op.clone(),
+                        span: empty_span(state.input()),
+                        consumed: false,
+                        rest: state.input().clone(),
                     }
                 });
                 match op_parser.parse(state) {
@@ -1026,10 +1017,7 @@ pub fn expr_builder<T: Clone + Send + Sync + 'static>(
 ) -> Parser<T> {
     Parser::new(move |state| {
         let override_table = decode_operator_table_override(&state.run_config);
-        let commit_style = match override_table
-            .as_ref()
-            .and_then(|cfg| cfg.commit_operators)
-        {
+        let commit_style = match override_table.as_ref().and_then(|cfg| cfg.commit_operators) {
             Some(true) => ExprCommit::CommitOperators,
             Some(false) => ExprCommit::Preserve,
             None => config.commit_style,
@@ -1047,10 +1035,8 @@ pub fn expr_builder<T: Clone + Send + Sync + 'static>(
             levels.clone()
         };
 
-        let spaced_levels: Vec<ExprOpLevel<T>> = reordered
-            .iter()
-            .map(|lvl| lvl.with_space(&space))
-            .collect();
+        let spaced_levels: Vec<ExprOpLevel<T>> =
+            reordered.iter().map(|lvl| lvl.with_space(&space)).collect();
 
         let mut parser = base_atom;
         for level in spaced_levels.iter() {
@@ -1792,12 +1778,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
     where
         T: Clone + 'static,
     {
-        self.recover_with_payload(
-            until,
-            with,
-            RecoverMeta::collect(RecoverAction::Skip),
-            None,
-        )
+        self.recover_with_payload(until, with, RecoverMeta::collect(RecoverAction::Skip), None)
     }
 
     fn recover_with_payload(
@@ -1965,12 +1946,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
     where
         T: Clone + 'static,
     {
-        self.recover_with_payload(
-            until,
-            with,
-            RecoverMeta::collect(RecoverAction::Skip),
-            None,
-        )
+        self.recover_with_payload(until, with, RecoverMeta::collect(RecoverAction::Skip), None)
     }
 
     pub fn recover_with_insert(
@@ -2008,12 +1984,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
         )
     }
 
-    pub fn recover_missing(
-        self,
-        until: Parser<()>,
-        token: impl Into<String>,
-        with: T,
-    ) -> Parser<T>
+    pub fn recover_missing(self, until: Parser<()>, token: impl Into<String>, with: T) -> Parser<T>
     where
         T: Clone + 'static,
     {
@@ -2032,12 +2003,7 @@ impl<T: Clone + Send + Sync + 'static> Parser<T> {
         )
     }
 
-    pub fn panic_block(
-        self,
-        open: Parser<()>,
-        close: Parser<()>,
-        with: T,
-    ) -> Parser<T>
+    pub fn panic_block(self, open: Parser<()>, close: Parser<()>, with: T) -> Parser<T>
     where
         T: Clone + 'static,
     {
@@ -2984,11 +2950,7 @@ where
                 state.set_input(rest.clone());
                 if state.cst_enabled() && start_input.byte_offset() < rest.byte_offset() {
                     if let Some(text) = slice_input_text(&start_input, &rest) {
-                        state.record_cst_token(
-                            TextString::from(kind.clone()),
-                            text,
-                            span.clone(),
-                        );
+                        state.record_cst_token(TextString::from(kind.clone()), text, span.clone());
                     }
                 }
                 state.record_semantic_token(kind.clone(), span.clone());
@@ -3040,11 +3002,7 @@ pub fn sync_to(sync: Parser<()>) -> Parser<()> {
         loop {
             state.set_input(cursor.clone());
             match sync.parse(state) {
-                Reply::Ok {
-                    rest,
-                    consumed,
-                    ..
-                } => {
+                Reply::Ok { rest, consumed, .. } => {
                     let progressed = start_input.byte_offset() != rest.byte_offset();
                     if !progressed {
                         let err = ParseError::new("sync_to が空成功しました", cursor.position());
@@ -3081,8 +3039,10 @@ pub fn sync_to(sync: Parser<()>) -> Parser<()> {
             }
 
             if cursor.is_empty() {
-                let err =
-                    ParseError::new("sync_to が同期点を見つけられませんでした", cursor.position());
+                let err = ParseError::new(
+                    "sync_to が同期点を見つけられませんでした",
+                    cursor.position(),
+                );
                 state.set_input(start_input);
                 return Reply::Err {
                     error: err,
@@ -3095,8 +3055,10 @@ pub fn sync_to(sync: Parser<()>) -> Parser<()> {
                 let step = ch.len_utf8().max(1);
                 cursor = cursor.advance(idx + step);
             } else {
-                let err =
-                    ParseError::new("sync_to が同期点を見つけられませんでした", cursor.position());
+                let err = ParseError::new(
+                    "sync_to が同期点を見つけられませんでした",
+                    cursor.position(),
+                );
                 state.set_input(start_input);
                 return Reply::Err {
                     error: err,
@@ -3117,11 +3079,7 @@ fn panic_block_sync(open: Parser<()>, close: Parser<()>) -> Parser<()> {
         loop {
             state.set_input(cursor.clone());
             match open.parse(state) {
-                Reply::Ok {
-                    rest,
-                    consumed,
-                    ..
-                } => {
+                Reply::Ok { rest, consumed, .. } => {
                     if !consumed || cursor.byte_offset() == rest.byte_offset() {
                         let err =
                             ParseError::new("panic_block が空成功しました", cursor.position());
@@ -3154,11 +3112,7 @@ fn panic_block_sync(open: Parser<()>, close: Parser<()>) -> Parser<()> {
 
             state.set_input(cursor.clone());
             match close.parse(state) {
-                Reply::Ok {
-                    rest,
-                    consumed,
-                    ..
-                } => {
+                Reply::Ok { rest, consumed, .. } => {
                     if !consumed || cursor.byte_offset() == rest.byte_offset() {
                         let err =
                             ParseError::new("panic_block が空成功しました", cursor.position());
@@ -3294,8 +3248,7 @@ where
 }
 
 /// レイアウトトークン（indent/dedent/newline）を消費する。
-pub fn layout_token(text: impl AsRef<str>) -> Parser<()>
-{
+pub fn layout_token(text: impl AsRef<str>) -> Parser<()> {
     let expected = text.as_ref().to_string();
     Parser::new(move |state| {
         if !state.layout_active() {
@@ -3492,10 +3445,7 @@ where
         state.register_meta(id, ParserMetaKind::Symbol, text.clone(), None);
         if text.is_empty() {
             return Reply::Err {
-                error: ParseError::new(
-                    "空の記号は許可されていません",
-                    state.input().position(),
-                ),
+                error: ParseError::new("空の記号は許可されていません", state.input().position()),
                 consumed: false,
                 committed: false,
             };
@@ -3731,10 +3681,7 @@ where
         let input = state.input().clone();
         let Some(after_start) = spec.boundary.match_start(&input) else {
             return Reply::Err {
-                error: ParseError::new(
-                    "埋め込み DSL の開始境界が見つかりません",
-                    input.position(),
-                ),
+                error: ParseError::new("埋め込み DSL の開始境界が見つかりません", input.position()),
                 consumed: false,
                 committed: false,
             };
@@ -3786,11 +3733,8 @@ where
                 ..
             } => {
                 if state.run_config.require_eof && !rest.is_empty() {
-                    let mut error = ParseError::new(
-                        "未消費の入力が残っています",
-                        rest.position(),
-                    )
-                    .with_source_dsl(spec.dsl_id.clone());
+                    let mut error = ParseError::new("未消費の入力が残っています", rest.position())
+                        .with_source_dsl(spec.dsl_id.clone());
                     error.position = shift_position(base_pos, error.position);
                     return Reply::Err {
                         error,
@@ -4006,8 +3950,7 @@ impl ParseState {
         if self.input.is_empty() {
             while self.layout_stack.len() > 1 {
                 self.layout_stack.pop();
-                self.layout_pending
-                    .push_back(profile.dedent_token.clone());
+                self.layout_pending.push_back(profile.dedent_token.clone());
             }
             return;
         }
@@ -4025,8 +3968,7 @@ impl ParseState {
             advanced_newline = true;
         }
         if advanced_newline && !(self.input.line() == 1 && self.input.byte_offset() == 0) {
-            self.layout_pending
-                .push_back(profile.newline_token.clone());
+            self.layout_pending.push_back(profile.newline_token.clone());
         }
 
         // 行頭でインデント幅を評価し、indent/dedent を生成。
@@ -4043,14 +3985,12 @@ impl ParseState {
             let current = *self.layout_stack.last().unwrap_or(&0);
             if indent_width > current {
                 self.layout_stack.push(indent_width);
-                self.layout_pending
-                    .push_back(profile.indent_token.clone());
+                self.layout_pending.push_back(profile.indent_token.clone());
             } else if indent_width < current {
                 while let Some(&top) = self.layout_stack.last() {
                     if top > indent_width {
                         self.layout_stack.pop();
-                        self.layout_pending
-                            .push_back(profile.dedent_token.clone());
+                        self.layout_pending.push_back(profile.dedent_token.clone());
                     } else {
                         break;
                     }
@@ -4119,11 +4059,7 @@ impl ParseState {
         if let Some(last) = self.meta_rule_stack.pop() {
             if last != id {
                 self.meta_rule_stack.push(last);
-                if let Some(pos) = self
-                    .meta_rule_stack
-                    .iter()
-                    .rposition(|entry| *entry == id)
-                {
+                if let Some(pos) = self.meta_rule_stack.iter().rposition(|entry| *entry == id) {
                     self.meta_rule_stack.remove(pos);
                 }
             }
@@ -4224,8 +4160,12 @@ impl ParseState {
     }
 
     pub fn memo_put<T: Clone + Send + Sync + 'static>(&mut self, key: MemoKey, reply: &Reply<T>) {
-        self.memo
-            .insert(key, Box::new(MemoizedReply { reply: reply.clone() }));
+        self.memo.insert(
+            key,
+            Box::new(MemoizedReply {
+                reply: reply.clone(),
+            }),
+        );
     }
 
     pub fn record_packrat_hit(&mut self) {
@@ -4410,7 +4350,11 @@ where
 }
 
 /// 既存の RunConfig をベースに `mode="collect"` を有効化して実行する。
-pub fn run_with_recovery_config<T>(parser: &Parser<T>, input: &str, cfg: &RunConfig) -> ParseResult<T>
+pub fn run_with_recovery_config<T>(
+    parser: &Parser<T>,
+    input: &str,
+    cfg: &RunConfig,
+) -> ParseResult<T>
 where
     T: Clone + Send + Sync + 'static,
 {
@@ -4428,18 +4372,13 @@ where
 }
 
 /// CLI / LSP など外部向け診断形式へ変換する。
-pub fn parse_result_to_guard_diagnostics<T>(
-    result: &ParseResult<T>,
-) -> Vec<GuardDiagnostic> {
+pub fn parse_result_to_guard_diagnostics<T>(result: &ParseResult<T>) -> Vec<GuardDiagnostic> {
     result.guard_diagnostics()
 }
 
 /// ParseError の列を GuardDiagnostic へ変換する。
 pub fn parse_errors_to_guard_diagnostics(errors: &[ParseError]) -> Vec<GuardDiagnostic> {
-    errors
-        .iter()
-        .map(ParseError::to_guard_diagnostic)
-        .collect()
+    errors.iter().map(ParseError::to_guard_diagnostic).collect()
 }
 
 fn write_profile_report(profile: &ParserProfile, path: &Path) -> std::io::Result<()> {

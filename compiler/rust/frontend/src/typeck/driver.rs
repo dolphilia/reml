@@ -804,8 +804,7 @@ impl TypecheckViolation {
         Self {
             kind: TypecheckViolationKind::IteratorExpected,
             code: "language.iterator.expected",
-            message: "for 式の `in` 右辺は [T] などのイテレータである必要があります"
-                .to_string(),
+            message: "for 式の `in` 右辺は [T] などのイテレータである必要があります".to_string(),
             span: Some(span),
             notes: vec![ViolationNote::plain(format!(
                 "実際の型: {}",
@@ -894,7 +893,11 @@ impl TypecheckViolation {
         }
     }
 
-    fn intrinsic_missing_effect(span: Span, name: Option<String>, function: Option<String>) -> Self {
+    fn intrinsic_missing_effect(
+        span: Span,
+        name: Option<String>,
+        function: Option<String>,
+    ) -> Self {
         let label = name.unwrap_or_else(|| "unknown".to_string());
         let message = format!(
             "`@intrinsic` 関数 `{}` は `!{{native}}` を必ず指定する必要があります。",
@@ -1823,110 +1826,105 @@ fn infer_expr(
     metrics.record_ast_node();
     metrics.record_token_count(expr.span.len() as usize);
     match &expr.kind {
-        ExprKind::Literal(literal) => {
-            match &literal.value {
-                LiteralKind::Tuple { elements } => {
-                    let mut dicts = Vec::new();
-                    let mut element_types = Vec::new();
-                    for element in elements {
-                        let result = infer_expr(
-                            element,
-                            env,
-                            var_gen,
-                            solver,
-                            constraints,
-                            stats,
-                            metrics,
-                            violations,
-                            dict_refs,
-                            loop_context,
-                            context,
-                        );
-                        dicts.extend(result.dict_ref_ids);
-                        element_types.push(solver.substitution().apply(&result.ty));
-                    }
-                    let ty = Type::app("Tuple", element_types);
-                    make_typed(
-                        expr,
-                        TypedExprKindDraft::Literal(literal.clone()),
-                        ty,
-                        dicts,
-                    )
+        ExprKind::Literal(literal) => match &literal.value {
+            LiteralKind::Tuple { elements } => {
+                let mut dicts = Vec::new();
+                let mut element_types = Vec::new();
+                for element in elements {
+                    let result = infer_expr(
+                        element,
+                        env,
+                        var_gen,
+                        solver,
+                        constraints,
+                        stats,
+                        metrics,
+                        violations,
+                        dict_refs,
+                        loop_context,
+                        context,
+                    );
+                    dicts.extend(result.dict_ref_ids);
+                    element_types.push(solver.substitution().apply(&result.ty));
                 }
-                LiteralKind::Array { elements } => {
-                    let mut dicts = Vec::new();
-                    let element_ty = var_gen.fresh_type();
-                    for element in elements {
-                        let result = infer_expr(
-                            element,
-                            env,
-                            var_gen,
-                            solver,
-                            constraints,
-                            stats,
-                            metrics,
-                            violations,
-                            dict_refs,
-                            loop_context,
-                            context,
-                        );
-                        dicts.extend(result.dict_ref_ids);
-                        stats.constraints += 1;
-                        metrics.record_constraint("literal.array.element");
-                        constraints.push(Constraint::equal(
-                            result.ty.clone(),
-                            element_ty.clone(),
-                        ));
-                        metrics.record_unify_call();
-                        let _ = solver.unify(result.ty.clone(), element_ty.clone());
-                    }
-                    let ty = Type::slice(solver.substitution().apply(&element_ty));
-                    make_typed(
-                        expr,
-                        TypedExprKindDraft::Literal(literal.clone()),
-                        ty,
-                        dicts,
-                    )
-                }
-                LiteralKind::Record { fields } => {
-                    let mut dicts = Vec::new();
-                    let mut field_types = Vec::new();
-                    for field in fields {
-                        let result = infer_expr(
-                            &field.value,
-                            env,
-                            var_gen,
-                            solver,
-                            constraints,
-                            stats,
-                            metrics,
-                            violations,
-                            dict_refs,
-                            loop_context,
-                            context,
-                        );
-                        dicts.extend(result.dict_ref_ids);
-                        field_types.push(solver.substitution().apply(&result.ty));
-                    }
-                    let ty = Type::app("Record", field_types);
-                    make_typed(
-                        expr,
-                        TypedExprKindDraft::Literal(literal.clone()),
-                        ty,
-                        dicts,
-                    )
-                }
-                _ => {
-                    let ty = type_for_literal(literal);
-                    make_typed(
-                        expr,
-                        TypedExprKindDraft::Literal(literal.clone()),
-                        ty,
-                        Vec::new(),
-                    )
-                }
+                let ty = Type::app("Tuple", element_types);
+                make_typed(
+                    expr,
+                    TypedExprKindDraft::Literal(literal.clone()),
+                    ty,
+                    dicts,
+                )
             }
-        }
+            LiteralKind::Array { elements } => {
+                let mut dicts = Vec::new();
+                let element_ty = var_gen.fresh_type();
+                for element in elements {
+                    let result = infer_expr(
+                        element,
+                        env,
+                        var_gen,
+                        solver,
+                        constraints,
+                        stats,
+                        metrics,
+                        violations,
+                        dict_refs,
+                        loop_context,
+                        context,
+                    );
+                    dicts.extend(result.dict_ref_ids);
+                    stats.constraints += 1;
+                    metrics.record_constraint("literal.array.element");
+                    constraints.push(Constraint::equal(result.ty.clone(), element_ty.clone()));
+                    metrics.record_unify_call();
+                    let _ = solver.unify(result.ty.clone(), element_ty.clone());
+                }
+                let ty = Type::slice(solver.substitution().apply(&element_ty));
+                make_typed(
+                    expr,
+                    TypedExprKindDraft::Literal(literal.clone()),
+                    ty,
+                    dicts,
+                )
+            }
+            LiteralKind::Record { fields } => {
+                let mut dicts = Vec::new();
+                let mut field_types = Vec::new();
+                for field in fields {
+                    let result = infer_expr(
+                        &field.value,
+                        env,
+                        var_gen,
+                        solver,
+                        constraints,
+                        stats,
+                        metrics,
+                        violations,
+                        dict_refs,
+                        loop_context,
+                        context,
+                    );
+                    dicts.extend(result.dict_ref_ids);
+                    field_types.push(solver.substitution().apply(&result.ty));
+                }
+                let ty = Type::app("Record", field_types);
+                make_typed(
+                    expr,
+                    TypedExprKindDraft::Literal(literal.clone()),
+                    ty,
+                    dicts,
+                )
+            }
+            _ => {
+                let ty = type_for_literal(literal);
+                make_typed(
+                    expr,
+                    TypedExprKindDraft::Literal(literal.clone()),
+                    ty,
+                    Vec::new(),
+                )
+            }
+        },
         ExprKind::Identifier(ident) => {
             let mut ty = match env.lookup(ident.name.as_str()) {
                 Some(binding) => binding.scheme.instantiate(var_gen),
@@ -2296,10 +2294,7 @@ fn infer_expr(
                     )
                 })
                 .collect();
-            let param_types: Vec<Type> = typed_args
-                .iter()
-                .map(|_| var_gen.fresh_type())
-                .collect();
+            let param_types: Vec<Type> = typed_args.iter().map(|_| var_gen.fresh_type()).collect();
             let result_type = var_gen.fresh_type();
 
             // callee が関数型であることを期待して矢印型と一致させる
@@ -2797,11 +2792,7 @@ fn infer_expr(
                 );
                 let dicts = result.dict_ref_ids.clone();
                 let ty = result.ty.clone();
-                (
-                    Some(Box::new(result)),
-                    dicts,
-                    ty,
-                )
+                (Some(Box::new(result)), dicts, ty)
             } else {
                 (None, Vec::new(), Type::builtin(BuiltinType::Unit))
             };
@@ -2913,85 +2904,82 @@ fn infer_block(
             violations.push(TypecheckViolation::control_flow_unreachable(stmt.span));
         }
         match &stmt.kind {
-            StmtKind::Decl { decl } => {
-                match &decl.kind {
-                    DeclKind::Let { pattern, value, .. } => {
-                        let (value_result, stmt_refs) = infer_binding_with_value(
-                            pattern,
-                            value,
-                            &mut block_env,
-                            var_gen,
-                            solver,
-                            constraints,
-                            stats,
-                            metrics,
-                            violations,
-                            dict_refs,
-                            context,
-                            loop_context,
-                        );
-                        block_dict_refs.extend(stmt_refs.clone());
-                        typed_statements.push(TypedStmtDraft {
-                            span: stmt.span,
-                            kind: TypedStmtKindDraft::Let {
-                                pattern: lower_typed_pattern(pattern),
-                                value: Box::new(value_result),
-                            },
-                        });
-                    }
-                    DeclKind::Var {
+            StmtKind::Decl { decl } => match &decl.kind {
+                DeclKind::Let { pattern, value, .. } => {
+                    let (value_result, stmt_refs) = infer_binding_with_value(
                         pattern,
                         value,
-                        type_annotation,
-                    } => {
-                        let (value_result, stmt_refs) = infer_binding_with_value(
-                            pattern,
-                            value,
-                            &mut block_env,
-                            var_gen,
-                            solver,
-                            constraints,
-                            stats,
-                            metrics,
-                            violations,
-                            dict_refs,
-                            context,
-                            loop_context,
-                        );
-                        if type_annotation.is_none() {
-                            if let Some(name) = pattern_binding_name(pattern) {
-                                violations
-                                    .push(TypecheckViolation::value_restriction(decl.span, name));
-                            }
-                        }
-                        block_dict_refs.extend(stmt_refs.clone());
-                        typed_statements.push(TypedStmtDraft {
-                            span: stmt.span,
-                            kind: TypedStmtKindDraft::Var {
-                                pattern: lower_typed_pattern(pattern),
-                                value: Box::new(value_result),
-                            },
-                        });
-                    }
-                    _ => {
-                        let stmt_refs = infer_decl(
-                            decl,
-                            &mut block_env,
-                            var_gen,
-                            solver,
-                            constraints,
-                            stats,
-                            metrics,
-                            violations,
-                            dict_refs,
-                            None,
-                            context,
-                            loop_context,
-                        );
-                        block_dict_refs.extend(stmt_refs);
-                    }
+                        &mut block_env,
+                        var_gen,
+                        solver,
+                        constraints,
+                        stats,
+                        metrics,
+                        violations,
+                        dict_refs,
+                        context,
+                        loop_context,
+                    );
+                    block_dict_refs.extend(stmt_refs.clone());
+                    typed_statements.push(TypedStmtDraft {
+                        span: stmt.span,
+                        kind: TypedStmtKindDraft::Let {
+                            pattern: lower_typed_pattern(pattern),
+                            value: Box::new(value_result),
+                        },
+                    });
                 }
-            }
+                DeclKind::Var {
+                    pattern,
+                    value,
+                    type_annotation,
+                } => {
+                    let (value_result, stmt_refs) = infer_binding_with_value(
+                        pattern,
+                        value,
+                        &mut block_env,
+                        var_gen,
+                        solver,
+                        constraints,
+                        stats,
+                        metrics,
+                        violations,
+                        dict_refs,
+                        context,
+                        loop_context,
+                    );
+                    if type_annotation.is_none() {
+                        if let Some(name) = pattern_binding_name(pattern) {
+                            violations.push(TypecheckViolation::value_restriction(decl.span, name));
+                        }
+                    }
+                    block_dict_refs.extend(stmt_refs.clone());
+                    typed_statements.push(TypedStmtDraft {
+                        span: stmt.span,
+                        kind: TypedStmtKindDraft::Var {
+                            pattern: lower_typed_pattern(pattern),
+                            value: Box::new(value_result),
+                        },
+                    });
+                }
+                _ => {
+                    let stmt_refs = infer_decl(
+                        decl,
+                        &mut block_env,
+                        var_gen,
+                        solver,
+                        constraints,
+                        stats,
+                        metrics,
+                        violations,
+                        dict_refs,
+                        None,
+                        context,
+                        loop_context,
+                    );
+                    block_dict_refs.extend(stmt_refs);
+                }
+            },
             StmtKind::Expr { expr } => {
                 let expr_result = infer_expr(
                     expr,
@@ -3479,7 +3467,11 @@ fn lower_typed_pattern(pattern: &Pattern) -> typed::TypedPattern {
                 .iter()
                 .map(|field| TypedPatternRecordField {
                     key: field.key.name.clone(),
-                    value: field.value.as_deref().map(lower_typed_pattern).map(Box::new),
+                    value: field
+                        .value
+                        .as_deref()
+                        .map(lower_typed_pattern)
+                        .map(Box::new),
                 })
                 .collect(),
             has_rest: *has_rest,
@@ -3535,10 +3527,7 @@ fn lower_typed_pattern(pattern: &Pattern) -> typed::TypedPattern {
         } => TypedPatternKind::ActivePattern {
             name: name.name.clone(),
             is_partial: *is_partial,
-            argument: argument
-                .as_deref()
-                .map(lower_typed_pattern)
-                .map(Box::new),
+            argument: argument.as_deref().map(lower_typed_pattern).map(Box::new),
         },
     };
 
@@ -4156,7 +4145,9 @@ impl ExhaustivenessTracker {
             PatternKind::Binding { pattern: inner, .. } => self.is_total_like(inner),
             PatternKind::ActivePattern { is_partial, .. } => !*is_partial,
             PatternKind::Range { start, end, .. } => start.is_none() && end.is_none(),
-            PatternKind::Tuple { elements } => elements.iter().all(|element| self.is_total_like(element)),
+            PatternKind::Tuple { elements } => {
+                elements.iter().all(|element| self.is_total_like(element))
+            }
             _ => false,
         }
     }
@@ -4274,11 +4265,10 @@ fn type_from_annotation_kind(kind: &TypeKind) -> Option<Type> {
             }
             Some(Type::app(callee.name.clone(), resolved_args))
         }
-        TypeKind::Slice { element } => {
-            type_from_annotation_kind(&element.kind).map(Type::slice)
+        TypeKind::Slice { element } => type_from_annotation_kind(&element.kind).map(Type::slice),
+        TypeKind::Ref { target, mutable } => {
+            type_from_annotation_kind(&target.kind).map(|inner| Type::reference(inner, *mutable))
         }
-        TypeKind::Ref { target, mutable } => type_from_annotation_kind(&target.kind)
-            .map(|inner| Type::reference(inner, *mutable)),
         _ => None,
     }
 }
@@ -4504,9 +4494,12 @@ fn intrinsic_type_allowed(ty: &Type) -> bool {
         Type::Builtin(BuiltinType::Int)
         | Type::Builtin(BuiltinType::Bool)
         | Type::Builtin(BuiltinType::Unit) => true,
-        Type::App { constructor, arguments } if constructor.as_str() == "Tuple" => arguments
-            .iter()
-            .all(|arg| intrinsic_type_allowed(arg)),
+        Type::App {
+            constructor,
+            arguments,
+        } if constructor.as_str() == "Tuple" => {
+            arguments.iter().all(|arg| intrinsic_type_allowed(arg))
+        }
         _ => false,
     }
 }
@@ -4534,12 +4527,10 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
             target: Box::new(finalize_typed_expr(*target, substitution)),
             field,
         },
-        TypedExprKindDraft::TupleAccess { target, index } => {
-            typed::TypedExprKind::TupleAccess {
-                target: Box::new(finalize_typed_expr(*target, substitution)),
-                index,
-            }
-        }
+        TypedExprKindDraft::TupleAccess { target, index } => typed::TypedExprKind::TupleAccess {
+            target: Box::new(finalize_typed_expr(*target, substitution)),
+            index,
+        },
         TypedExprKindDraft::Index { target, index } => typed::TypedExprKind::Index {
             target: Box::new(finalize_typed_expr(*target, substitution)),
             index: Box::new(finalize_typed_expr(*index, substitution)),
@@ -4553,16 +4544,14 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
                 .into_iter()
                 .map(|stmt| finalize_typed_stmt(stmt, substitution))
                 .collect(),
-            tail: tail
-                .map(|tail| Box::new(finalize_typed_expr(*tail, substitution))),
+            tail: tail.map(|tail| Box::new(finalize_typed_expr(*tail, substitution))),
             defers: defers
                 .into_iter()
                 .map(|defer| finalize_typed_expr(defer, substitution))
                 .collect(),
         },
         TypedExprKindDraft::Return { value } => typed::TypedExprKind::Return {
-            value: value
-                .map(|value| Box::new(finalize_typed_expr(*value, substitution))),
+            value: value.map(|value| Box::new(finalize_typed_expr(*value, substitution))),
         },
         TypedExprKindDraft::Propagate { expr } => typed::TypedExprKind::Propagate {
             expr: Box::new(finalize_typed_expr(*expr, substitution)),
@@ -4622,10 +4611,7 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
     }
 }
 
-fn finalize_typed_stmt(
-    stmt: TypedStmtDraft,
-    substitution: &Substitution,
-) -> typed::TypedStmt {
+fn finalize_typed_stmt(stmt: TypedStmtDraft, substitution: &Substitution) -> typed::TypedStmt {
     let kind = match stmt.kind {
         TypedStmtKindDraft::Let { pattern, value } => typed::TypedStmtKind::Let {
             pattern,
@@ -5362,9 +5348,7 @@ fn collect_perform_effects(expr: &Expr, usages: &mut Vec<EffectUsage>) {
         ExprKind::Lambda { body, .. } => {
             collect_perform_effects(body, usages);
         }
-        ExprKind::Loop { body }
-        | ExprKind::Unsafe { body }
-        | ExprKind::Defer { body } => {
+        ExprKind::Loop { body } | ExprKind::Unsafe { body } | ExprKind::Defer { body } => {
             collect_perform_effects(body, usages);
         }
         ExprKind::While { condition, body } => {
@@ -5401,8 +5385,7 @@ fn collect_perform_effects(expr: &Expr, usages: &mut Vec<EffectUsage>) {
                 collect_perform_effects(inner, usages);
             }
         }
-        ExprKind::FieldAccess { target, .. }
-        | ExprKind::TupleAccess { target, .. } => {
+        ExprKind::FieldAccess { target, .. } | ExprKind::TupleAccess { target, .. } => {
             collect_perform_effects(target, usages);
         }
         ExprKind::Index { target, index } => {

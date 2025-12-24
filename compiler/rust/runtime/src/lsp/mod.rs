@@ -123,7 +123,11 @@ pub fn range(start_line: i64, start_char: i64, end_line: i64, end_char: i64) -> 
 }
 
 /// 診断を生成する。
-pub fn diagnostic(range: Range, severity: DiagnosticSeverity, message: impl Into<String>) -> LspDiagnostic {
+pub fn diagnostic(
+    range: Range,
+    severity: DiagnosticSeverity,
+    message: impl Into<String>,
+) -> LspDiagnostic {
     LspDiagnostic {
         range,
         severity,
@@ -151,10 +155,7 @@ pub fn to_lsp(range: Range, diagnostic: &GuardDiagnostic) -> LspDiagnostic {
 pub fn encode_publish(uri: impl Into<String>, diagnostics: Vec<LspDiagnostic>) -> String {
     let params = PublishParams {
         uri: uri.into(),
-        diagnostics: diagnostics
-            .iter()
-            .map(LspDiagnosticJson::from)
-            .collect(),
+        diagnostics: diagnostics.iter().map(LspDiagnosticJson::from).collect(),
     };
     let payload = PublishNotification {
         method: "textDocument/publishDiagnostics",

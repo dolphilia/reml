@@ -1,8 +1,7 @@
 use serde_json::{Map as JsonMap, Value};
 
 use crate::runtime::bridge::{
-    attach_bridge_stage_metadata as attach_runtime_bridge_stage_metadata,
-    RuntimeBridgeRegistry,
+    attach_bridge_stage_metadata as attach_runtime_bridge_stage_metadata, RuntimeBridgeRegistry,
 };
 use crate::stage::{StageId, StageRequirement};
 

@@ -15,8 +15,7 @@ use time::OffsetDateTime;
 const EMBED_ABI_VERSION: &str = "0.1.0";
 const EMBED_CAPABILITY: &str = "native.embed";
 
-static EMBED_AUDIT_EVENTS: Lazy<Mutex<Vec<AuditEvent>>> =
-    Lazy::new(|| Mutex::new(Vec::new()));
+static EMBED_AUDIT_EVENTS: Lazy<Mutex<Vec<AuditEvent>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -195,7 +194,12 @@ fn read_c_string(ptr: *const c_char) -> Option<String> {
     if ptr.is_null() {
         return None;
     }
-    unsafe { CStr::from_ptr(ptr).to_str().ok().map(|value| value.to_string()) }
+    unsafe {
+        CStr::from_ptr(ptr)
+            .to_str()
+            .ok()
+            .map(|value| value.to_string())
+    }
 }
 
 fn is_supported_target() -> bool {
@@ -207,11 +211,7 @@ fn is_supported_target() -> bool {
     matches!(std::env::consts::OS, "macos" | "linux" | "windows")
 }
 
-fn record_embed_audit(
-    entrypoint: &str,
-    abi_version: &str,
-    marker: Option<(&str, bool)>,
-) {
+fn record_embed_audit(entrypoint: &str, abi_version: &str, marker: Option<(&str, bool)>) {
     let timestamp = OffsetDateTime::now_utc()
         .format(&Rfc3339)
         .unwrap_or_else(|_| "1970-01-01T00:00:00Z".into());

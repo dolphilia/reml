@@ -50,7 +50,12 @@ impl RuntimeBridgeRegistry {
         requirement: StageRequirement,
         actual: StageId,
     ) {
-        self.record_stage_probe_with_metadata(capability, requirement, actual, BridgeMetadata::none());
+        self.record_stage_probe_with_metadata(
+            capability,
+            requirement,
+            actual,
+            BridgeMetadata::none(),
+        );
     }
 
     pub fn record_stage_probe_with_metadata(

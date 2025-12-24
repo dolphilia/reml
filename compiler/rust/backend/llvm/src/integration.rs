@@ -613,10 +613,7 @@ fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
             defers,
             defer_lifo,
         } => MirExprKind::Block {
-            statements: statements
-                .into_iter()
-                .map(convert_stmt)
-                .collect(),
+            statements: statements.into_iter().map(convert_stmt).collect(),
             tail,
             defers,
             defer_lifo,
@@ -656,7 +653,9 @@ fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
             effect: value_summary(call.effect),
             argument: call.argument,
         },
-        MirExprKindJson::FieldAccess { target, field } => MirExprKind::FieldAccess { target, field },
+        MirExprKindJson::FieldAccess { target, field } => {
+            MirExprKind::FieldAccess { target, field }
+        }
         MirExprKindJson::Index { target, index } => MirExprKind::Index { target, index },
         MirExprKindJson::Identifier { ident } => MirExprKind::Identifier {
             summary: value_summary(ident),
@@ -1304,7 +1303,8 @@ mod tests {
     }
 
     #[test]
-    fn llvm_ir_option_canonical_has_ctor_payload_and_expr_lowering() -> Result<(), MirSnapshotError> {
+    fn llvm_ir_option_canonical_has_ctor_payload_and_expr_lowering() -> Result<(), MirSnapshotError>
+    {
         let repo_root = env!("CARGO_MANIFEST_DIR");
         let path = std::path::Path::new(repo_root)
             .join("../../../../tmp/mir-bnf-matchexpr-option-canonical.json");

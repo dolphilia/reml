@@ -1,2 +1,2 @@
-pub mod typed;
 pub mod mir;
+pub mod typed;

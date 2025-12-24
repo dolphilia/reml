@@ -267,9 +267,10 @@ impl OpTable {
                     .iter()
                     .map(|op| match op {
                         OperatorSpec::Token(t) => Value::String(t.clone()),
-                        OperatorSpec::Ternary { head, mid } => {
-                            Value::Array(vec![Value::String(head.clone()), Value::String(mid.clone())])
-                        }
+                        OperatorSpec::Ternary { head, mid } => Value::Array(vec![
+                            Value::String(head.clone()),
+                            Value::String(mid.clone()),
+                        ]),
                     })
                     .collect();
                 obj.insert("operators".into(), Value::Array(operators));

@@ -61,11 +61,12 @@ impl Default for NativePluginExecutionBridge {
 
 impl PluginExecutionBridge for NativePluginExecutionBridge {
     fn load(&self, request: PluginLoadRequest) -> Result<PluginInstance, PluginError> {
-        let capabilities = ManifestCapabilities::from_manifest(request.manifest).map_err(|err| {
-            PluginError::VerificationFailed {
-                message: err.to_string(),
-            }
-        })?;
+        let capabilities =
+            ManifestCapabilities::from_manifest(request.manifest).map_err(|err| {
+                PluginError::VerificationFailed {
+                    message: err.to_string(),
+                }
+            })?;
 
         for (capability_id, record) in capabilities.iter() {
             let actual = stage_from_requirement(record.stage);
@@ -87,7 +88,9 @@ impl PluginExecutionBridge for NativePluginExecutionBridge {
             "plugin.echo" => Ok(PluginInvokeResponse {
                 payload: request.payload,
             }),
-            "plugin.noop" => Ok(PluginInvokeResponse { payload: Vec::new() }),
+            "plugin.noop" => Ok(PluginInvokeResponse {
+                payload: Vec::new(),
+            }),
             "plugin.io_error" => Err(PluginError::Io {
                 message: io_error("native bridge io error").to_string(),
             }),
@@ -129,11 +132,11 @@ impl Default for PluginWasmBridge {
 
 impl PluginExecutionBridge for PluginWasmBridge {
     fn load(&self, request: PluginLoadRequest) -> Result<PluginInstance, PluginError> {
-        let module_path = request.module_path.ok_or_else(|| {
-            PluginError::VerificationFailed {
+        let module_path = request
+            .module_path
+            .ok_or_else(|| PluginError::VerificationFailed {
                 message: "wasm module path is missing".to_string(),
-            }
-        })?;
+            })?;
 
         let module_bytes = fs::read(module_path).map_err(|err| PluginError::Io {
             message: err.to_string(),
@@ -145,11 +148,12 @@ impl PluginExecutionBridge for PluginWasmBridge {
             }
         })?;
 
-        let capabilities = ManifestCapabilities::from_manifest(request.manifest).map_err(|err| {
-            PluginError::VerificationFailed {
-                message: err.to_string(),
-            }
-        })?;
+        let capabilities =
+            ManifestCapabilities::from_manifest(request.manifest).map_err(|err| {
+                PluginError::VerificationFailed {
+                    message: err.to_string(),
+                }
+            })?;
         let bundle_hash = request.bundle_hash.map(str::to_string);
         for (capability_id, record) in capabilities.iter() {
             let actual = stage_from_requirement(record.stage);
@@ -198,16 +202,16 @@ impl PluginExecutionBridge for PluginWasmBridge {
         };
 
         let mut store = Store::new(&self.engine, ());
-        let instance = Instance::new(&mut store, &module.module, &[]).map_err(|err| {
-            PluginError::Bridge {
+        let instance =
+            Instance::new(&mut store, &module.module, &[]).map_err(|err| PluginError::Bridge {
                 message: err.to_string(),
-            }
-        })?;
-        let memory = instance
-            .get_memory(&mut store, "memory")
-            .ok_or_else(|| PluginError::Bridge {
-                message: "wasm memory export not found".to_string(),
             })?;
+        let memory =
+            instance
+                .get_memory(&mut store, "memory")
+                .ok_or_else(|| PluginError::Bridge {
+                    message: "wasm memory export not found".to_string(),
+                })?;
 
         let payload_len = request.payload.len();
         memory

@@ -19,12 +19,7 @@ impl EmbeddedLspRegistry {
         Self { routes: Vec::new() }
     }
 
-    pub fn register_route(
-        &mut self,
-        span: Span,
-        dsl_id: impl Into<String>,
-        server: LspServer,
-    ) {
+    pub fn register_route(&mut self, span: Span, dsl_id: impl Into<String>, server: LspServer) {
         self.routes.push(EmbeddedLspRoute {
             span,
             dsl_id: dsl_id.into(),

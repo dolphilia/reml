@@ -31,9 +31,19 @@ pub struct CliSpec {
 /// CLI 要素。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CliEntry {
-    Flag { name: String, help: String },
-    Arg { name: String, help: String },
-    Command { name: String, help: String, spec: CliSpec },
+    Flag {
+        name: String,
+        help: String,
+    },
+    Arg {
+        name: String,
+        help: String,
+    },
+    Command {
+        name: String,
+        help: String,
+        spec: CliSpec,
+    },
 }
 
 /// 解析結果。
@@ -152,7 +162,11 @@ pub fn builder() -> CliBuilder {
 }
 
 /// フラグを追加する。
-pub fn flag(mut builder: CliBuilder, name: impl Into<String>, help: impl Into<String>) -> CliBuilder {
+pub fn flag(
+    mut builder: CliBuilder,
+    name: impl Into<String>,
+    help: impl Into<String>,
+) -> CliBuilder {
     builder.entries.push(CliEntry::Flag {
         name: name.into(),
         help: help.into(),
@@ -161,7 +175,11 @@ pub fn flag(mut builder: CliBuilder, name: impl Into<String>, help: impl Into<St
 }
 
 /// 引数を追加する。
-pub fn arg(mut builder: CliBuilder, name: impl Into<String>, help: impl Into<String>) -> CliBuilder {
+pub fn arg(
+    mut builder: CliBuilder,
+    name: impl Into<String>,
+    help: impl Into<String>,
+) -> CliBuilder {
     builder.entries.push(CliEntry::Arg {
         name: name.into(),
         help: help.into(),
@@ -351,10 +369,7 @@ fn record_cli_audit(values: &CliValues) {
         "event.kind".into(),
         Value::String(CLI_AUDIT_KIND.to_string()),
     );
-    metadata.insert(
-        "event.domain".into(),
-        Value::String(CLI_DOMAIN.to_string()),
-    );
+    metadata.insert("event.domain".into(), Value::String(CLI_DOMAIN.to_string()));
     metadata.insert(
         "cli.command".into(),
         values
@@ -404,7 +419,12 @@ fn unknown_command_error(command: &str, index: &CliSpecIndex) -> CliError {
         format!("未知のサブコマンドが指定されました: {command}"),
     );
     if !index.commands.is_empty() {
-        let hints = index.commands.keys().cloned().collect::<Vec<_>>().join(", ");
+        let hints = index
+            .commands
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(", ");
         error = error.with_hint(format!("利用可能なサブコマンド: {hints}"));
     }
     error

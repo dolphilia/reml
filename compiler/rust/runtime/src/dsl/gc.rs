@@ -8,7 +8,9 @@ use std::sync::{
 
 use serde_json::{Map as JsonMap, Value};
 
-use crate::dsl::{emit_audit, AuditPayload, AUDIT_DSL_GC_ALLOC, AUDIT_DSL_GC_RELEASE, AUDIT_DSL_GC_ROOT};
+use crate::dsl::{
+    emit_audit, AuditPayload, AUDIT_DSL_GC_ALLOC, AUDIT_DSL_GC_RELEASE, AUDIT_DSL_GC_ROOT,
+};
 use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
 
 /// GC 戦略。

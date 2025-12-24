@@ -106,8 +106,7 @@ impl CstBuilder {
         let mut leading = Vec::new();
         if !self.pending_trivia.is_empty() {
             if let Some(last) = self.nodes.last_mut() {
-                last.trivia_trailing
-                    .extend(self.pending_trivia.drain(..));
+                last.trivia_trailing.extend(self.pending_trivia.drain(..));
             } else {
                 leading = std::mem::take(&mut self.pending_trivia);
             }

@@ -2,17 +2,33 @@
 
 use std::sync::{Arc, Mutex};
 
-use crate::dsl::actor::{ActorDefinition, ActorError, ActorErrorKind, MailboxBridge, SupervisionBridge};
+use crate::dsl::actor::{
+    ActorDefinition, ActorError, ActorErrorKind, MailboxBridge, SupervisionBridge,
+};
 
 /// Core.Async 互換のアクターシステム。
 #[derive(Clone)]
 pub struct ActorSystem<Message> {
-    spawner: Arc<dyn Fn(ActorDefinition<Message>, Option<SupervisionBridge>) -> ActorResult<MailboxBridge<Message>> + Send + Sync>,
+    spawner: Arc<
+        dyn Fn(
+                ActorDefinition<Message>,
+                Option<SupervisionBridge>,
+            ) -> ActorResult<MailboxBridge<Message>>
+            + Send
+            + Sync,
+    >,
 }
 
 impl<Message> ActorSystem<Message> {
     pub fn new(
-        spawner: Arc<dyn Fn(ActorDefinition<Message>, Option<SupervisionBridge>) -> ActorResult<MailboxBridge<Message>> + Send + Sync>,
+        spawner: Arc<
+            dyn Fn(
+                    ActorDefinition<Message>,
+                    Option<SupervisionBridge>,
+                ) -> ActorResult<MailboxBridge<Message>>
+                + Send
+                + Sync,
+        >,
     ) -> Self {
         Self { spawner }
     }

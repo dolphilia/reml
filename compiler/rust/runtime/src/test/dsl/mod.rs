@@ -124,10 +124,7 @@ where
     T: Clone + PartialEq + Debug + Send + Sync + 'static,
 {
     for (index, case) in cases.iter().enumerate() {
-        let case_name = case
-            .name
-            .clone()
-            .unwrap_or_else(|| format!("case_{index}"));
+        let case_name = case.name.clone().unwrap_or_else(|| format!("case_{index}"));
         let outcome = match &case.expect {
             DslExpectation::Ast(matcher) => {
                 let result = run_with_default(&parser, &case.source);
@@ -148,11 +145,7 @@ where
     Ok(())
 }
 
-fn match_ast<T>(
-    result: &ParseResult<T>,
-    matcher: &AstMatcher<T>,
-    source: &str,
-) -> TestResult
+fn match_ast<T>(result: &ParseResult<T>, matcher: &AstMatcher<T>, source: &str) -> TestResult
 where
     T: Clone + PartialEq + Debug + Send + Sync + 'static,
 {
@@ -240,16 +233,8 @@ where
             ));
         };
         let ast_text = format!("{value:#?}");
-        updated |= apply_golden_snapshot(
-            &golden.expected_ast_path,
-            &ast_text,
-            &golden.policy,
-        )?;
-        updated |= apply_golden_snapshot(
-            &golden.expected_error_path,
-            &error_json,
-            &golden.policy,
-        )?;
+        updated |= apply_golden_snapshot(&golden.expected_ast_path, &ast_text, &golden.policy)?;
+        updated |= apply_golden_snapshot(&golden.expected_error_path, &error_json, &golden.policy)?;
         if updated {
             let combined = format!("{ast_text}\n{error_json}");
             record_snapshot_updated(
@@ -261,11 +246,7 @@ where
         }
         Ok(())
     } else {
-        updated |= apply_golden_snapshot(
-            &golden.expected_error_path,
-            &error_json,
-            &golden.policy,
-        )?;
+        updated |= apply_golden_snapshot(&golden.expected_error_path, &error_json, &golden.policy)?;
         if updated {
             record_snapshot_updated(
                 &golden.case_id,
@@ -292,12 +273,15 @@ fn matches_error_code(expected: &str, diag: &GuardDiagnostic, source_len: usize)
 
 fn matches_error_position(expect: Option<&AtSpec>, diag: &GuardDiagnostic) -> bool {
     let Some(expect) = expect else { return true };
-    let Some((byte, line, col)) = extract_position(diag) else { return false };
+    let Some((byte, line, col)) = extract_position(diag) else {
+        return false;
+    };
     match expect {
         AtSpec::Offset(offset) => byte == *offset,
-        AtSpec::LineCol { line: exp_line, col: exp_col } => {
-            line == *exp_line && col == *exp_col
-        }
+        AtSpec::LineCol {
+            line: exp_line,
+            col: exp_col,
+        } => line == *exp_line && col == *exp_col,
     }
 }
 
@@ -363,7 +347,11 @@ fn read_text(path: &Path) -> Result<String, TestError> {
     })
 }
 
-fn apply_golden_snapshot(path: &Path, value: &str, policy: &SnapshotPolicy) -> Result<bool, TestError> {
+fn apply_golden_snapshot(
+    path: &Path,
+    value: &str,
+    policy: &SnapshotPolicy,
+) -> Result<bool, TestError> {
     let value = if policy.normalize {
         normalize_snapshot(value)
     } else {
@@ -375,8 +363,10 @@ fn apply_golden_snapshot(path: &Path, value: &str, policy: &SnapshotPolicy) -> R
             if expected == value {
                 Ok(false)
             } else {
-                Err(TestError::new(TestErrorKind::SnapshotMismatch, "golden mismatch")
-                    .with_context("path", path.display().to_string()))
+                Err(
+                    TestError::new(TestErrorKind::SnapshotMismatch, "golden mismatch")
+                        .with_context("path", path.display().to_string()),
+                )
             }
         }
         SnapshotMode::Record => {
@@ -385,8 +375,10 @@ fn apply_golden_snapshot(path: &Path, value: &str, policy: &SnapshotPolicy) -> R
                 if expected == value {
                     Ok(false)
                 } else {
-                    Err(TestError::new(TestErrorKind::SnapshotMismatch, "golden mismatch")
-                        .with_context("path", path.display().to_string()))
+                    Err(
+                        TestError::new(TestErrorKind::SnapshotMismatch, "golden mismatch")
+                            .with_context("path", path.display().to_string()),
+                    )
                 }
             } else {
                 write_text(path, &value)?;
@@ -494,9 +486,7 @@ fn matcher_to_pattern_string<T: Debug>(matcher: &AstMatcher<T>) -> String {
         AstMatcher::Record(fields) => {
             let rendered = fields
                 .iter()
-                .map(|(key, value)| {
-                    format!("{key}: {}", matcher_to_pattern_string(value))
-                })
+                .map(|(key, value)| format!("{key}: {}", matcher_to_pattern_string(value)))
                 .collect::<Vec<_>>()
                 .join(", ");
             normalize_debug(&format!("...{{ {rendered} }}..."))

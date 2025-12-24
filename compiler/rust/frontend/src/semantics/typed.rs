@@ -248,9 +248,13 @@ pub struct TypedPattern {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TypedPatternKind {
     Wildcard,
-    Var { name: String },
+    Var {
+        name: String,
+    },
     Literal(Literal),
-    Tuple { elements: Vec<TypedPattern> },
+    Tuple {
+        elements: Vec<TypedPattern>,
+    },
     Record {
         fields: Vec<TypedPatternRecordField>,
         has_rest: bool,
@@ -275,7 +279,9 @@ pub enum TypedPatternKind {
         end: Option<Box<TypedPattern>>,
         inclusive: bool,
     },
-    Regex { pattern: String },
+    Regex {
+        pattern: String,
+    },
     ActivePattern {
         name: String,
         is_partial: bool,

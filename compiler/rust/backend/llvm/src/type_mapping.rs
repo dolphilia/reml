@@ -10,7 +10,10 @@ pub enum RemlType {
     Pointer,
     String,
     Slice(Box<RemlType>),
-    Ref { mutable: bool, to: Box<RemlType> },
+    Ref {
+        mutable: bool,
+        to: Box<RemlType>,
+    },
     Unit,
     RowTuple(Vec<RemlType>),
     Adt {

@@ -499,15 +499,9 @@ impl CapabilityRegistry {
                 Value::String(provider_kind(provider).into()),
             );
             if let CapabilityProvider::Plugin { package, version } = provider {
-                metadata.insert(
-                    "plugin.package".into(),
-                    Value::String(package.clone()),
-                );
+                metadata.insert("plugin.package".into(), Value::String(package.clone()));
                 if let Some(version) = version {
-                    metadata.insert(
-                        "plugin.version".into(),
-                        Value::String(version.clone()),
-                    );
+                    metadata.insert("plugin.version".into(), Value::String(version.clone()));
                 }
             }
             if !desc.effect_scope().is_empty() {

@@ -1,8 +1,8 @@
 //! Core.Dsl.Object の最小実装。
 
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::Arc;
 
 use serde_json::{Map as JsonMap, Value as JsonValue};
 
@@ -20,8 +20,7 @@ pub enum DispatchKind {
 }
 
 /// メソッド本体。
-pub type MethodEntry<Payload> =
-    fn(ObjectHandle<Payload>, Vec<Payload>) -> DispatchResult<Payload>;
+pub type MethodEntry<Payload> = fn(ObjectHandle<Payload>, Vec<Payload>) -> DispatchResult<Payload>;
 
 /// ディスパッチテーブル。
 #[derive(Clone)]
@@ -141,7 +140,10 @@ impl Object {
         let mut payload = AuditPayload::new(AUDIT_DSL_OBJECT_DISPATCH);
         payload.insert("dsl.object.method", JsonValue::String(name.to_string()));
         payload.insert("dsl.object.shape_id", JsonValue::from(obj.shape_id));
-        payload.insert("dsl.object.table", JsonValue::String(obj.table.name.clone()));
+        payload.insert(
+            "dsl.object.table",
+            JsonValue::String(obj.table.name.clone()),
+        );
         payload.insert(
             "dsl.object.kind",
             JsonValue::String(format!("{:?}", obj.table.kind)),
@@ -185,10 +187,7 @@ impl Object {
     }
 }
 
-fn lookup<Payload>(
-    table: &DispatchTable<Payload>,
-    name: &str,
-) -> Option<MethodEntry<Payload>> {
+fn lookup<Payload>(table: &DispatchTable<Payload>, name: &str) -> Option<MethodEntry<Payload>> {
     if let Some(entry) = table.methods.get(name) {
         return Some(entry.clone());
     }
@@ -239,7 +238,12 @@ impl<Payload> ClassBuilder<Payload> {
     }
 
     pub fn build(self) -> DispatchTable<Payload> {
-        DispatchTable::new(DispatchKind::ClassBased, self.name, self.parent, self.methods)
+        DispatchTable::new(
+            DispatchKind::ClassBased,
+            self.name,
+            self.parent,
+            self.methods,
+        )
     }
 }
 

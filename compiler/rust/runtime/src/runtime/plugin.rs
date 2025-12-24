@@ -118,10 +118,7 @@ pub struct PluginModuleInfo {
 impl PluginModuleInfo {
     fn as_audit_value(&self) -> Value {
         let mut value = JsonMap::new();
-        value.insert(
-            "plugin.id".into(),
-            Value::String(self.plugin_id.clone()),
-        );
+        value.insert("plugin.id".into(), Value::String(self.plugin_id.clone()));
         value.insert(
             "plugin.module_path".into(),
             Value::String(self.module_path.to_string_lossy().to_string()),
@@ -192,15 +189,24 @@ impl PluginError {
         capability: Option<&str>,
     ) -> GuardDiagnostic {
         let (mut code, kind, mut message, capability_error) = match &self {
-            PluginError::Load(error) => {
-                ("runtime.plugin.load_failed", "load", error.to_string(), None)
-            }
-            PluginError::Capability(error) => {
-                (error.code(), "capability", error.detail().into(), Some(error))
-            }
-            PluginError::VerificationFailed { message } => {
-                ("runtime.plugin.verify_failed", "verify", message.clone(), None)
-            }
+            PluginError::Load(error) => (
+                "runtime.plugin.load_failed",
+                "load",
+                error.to_string(),
+                None,
+            ),
+            PluginError::Capability(error) => (
+                error.code(),
+                "capability",
+                error.detail().into(),
+                Some(error),
+            ),
+            PluginError::VerificationFailed { message } => (
+                "runtime.plugin.verify_failed",
+                "verify",
+                message.clone(),
+                None,
+            ),
             PluginError::Io { message } => ("runtime.plugin.io_error", "io", message.clone(), None),
             PluginError::AlreadyLoaded { plugin_id } => (
                 "runtime.plugin.already_loaded",
@@ -214,9 +220,12 @@ impl PluginError {
                 format!("plugin not loaded: {plugin_id}"),
                 None,
             ),
-            PluginError::Bridge { message } => {
-                ("runtime.plugin.bridge_error", "bridge", message.clone(), None)
-            }
+            PluginError::Bridge { message } => (
+                "runtime.plugin.bridge_error",
+                "bridge",
+                message.clone(),
+                None,
+            ),
             PluginError::BundleInstallFailed {
                 message,
                 capability_error,
@@ -248,10 +257,7 @@ impl PluginError {
         extensions.insert("message".into(), Value::String(message.clone()));
 
         let mut audit_metadata = JsonMap::new();
-        audit_metadata.insert(
-            "plugin.error.kind".into(),
-            Value::String(kind.to_string()),
-        );
+        audit_metadata.insert("plugin.error.kind".into(), Value::String(kind.to_string()));
         audit_metadata.insert(
             "plugin.error.message".into(),
             Value::String(message.clone()),
@@ -486,11 +492,8 @@ impl PluginLoader {
         let capability_ids = capabilities.ids();
         let package = manifest.project.name.0.clone();
         let version = normalize_version(&manifest.project.version.0);
-        let mut metadata = PluginCapabilityMetadata::new(
-            package.clone(),
-            version.clone(),
-            capability_ids.clone(),
-        );
+        let mut metadata =
+            PluginCapabilityMetadata::new(package.clone(), version.clone(), capability_ids.clone());
         if let Some(context) = context {
             metadata.bundle_id = Some(context.bundle_id.clone());
             metadata.bundle_version = Some(context.bundle_version.clone());
@@ -630,16 +633,24 @@ fn record_signature_audit(bundle: &PluginBundleManifest, status: &SignatureStatu
     if !bundle.modules.is_empty() {
         metadata.insert(
             "plugin.modules".into(),
-            Value::Array(bundle.modules.iter().map(PluginModuleInfo::as_audit_value).collect()),
+            Value::Array(
+                bundle
+                    .modules
+                    .iter()
+                    .map(PluginModuleInfo::as_audit_value)
+                    .collect(),
+            ),
         );
     }
     metadata.insert(
         "plugin.signature.status".into(),
-        Value::String(match status {
-            SignatureStatus::Verified => "verified",
-            SignatureStatus::Skipped => "skipped",
-        }
-        .to_string()),
+        Value::String(
+            match status {
+                SignatureStatus::Verified => "verified",
+                SignatureStatus::Skipped => "skipped",
+            }
+            .to_string(),
+        ),
     );
     if let Some(signature) = &bundle.signature {
         metadata.insert(
@@ -732,8 +743,7 @@ fn record_signature_failure_audit(bundle: &PluginBundleManifest, reason: &str) {
             );
         }
     }
-    let envelope =
-        AuditEnvelope::from_parts(metadata, None, None, Some("plugin.signature".into()));
+    let envelope = AuditEnvelope::from_parts(metadata, None, None, Some("plugin.signature".into()));
     let event = AuditEvent::new(timestamp, envelope);
     PLUGIN_AUDIT_EVENTS
         .lock()
@@ -995,18 +1005,16 @@ fn load_bundle_from_path(path: impl AsRef<Path>) -> Result<PluginBundleManifest,
             fs::read_to_string(&manifest_path).map_err(|err| PluginLoadError::BundleLoad {
                 message: err.to_string(),
             })?;
-        let manifest = load_manifest(&manifest_path).map_err(|diagnostic| {
-            PluginLoadError::BundleLoad {
+        let manifest =
+            load_manifest(&manifest_path).map_err(|diagnostic| PluginLoadError::BundleLoad {
                 message: diagnostic.message,
-            }
-        })?;
+            })?;
         if let Some(module_path) = entry.module_path.as_ref() {
             let resolved_path = base_dir.join(module_path);
-            let module_bytes = fs::read(&resolved_path).map_err(|err| {
-                PluginLoadError::BundleLoad {
+            let module_bytes =
+                fs::read(&resolved_path).map_err(|err| PluginLoadError::BundleLoad {
                     message: err.to_string(),
-                }
-            })?;
+                })?;
             modules.push(PluginModuleInfo {
                 plugin_id: manifest.project.name.0.clone(),
                 module_path: resolved_path,

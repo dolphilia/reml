@@ -1,13 +1,10 @@
 //! Core.Ffi.Dsl の最小ランタイム実装。
 //! 仕様: `docs/spec/3-9-core-async-ffi-unsafe.md` §2.4.1.
 
+use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value};
-use std::{
-    fmt,
-    sync::Arc,
-};
-use once_cell::sync::OnceCell;
+use std::{fmt, sync::Arc};
 
 use crate::{
     audit::AuditEnvelope,
@@ -302,8 +299,7 @@ pub struct FfiRawFn {
     symbol: String,
     signature: FfiFnSig,
     library: FfiLibraryHandle,
-    call_handler:
-        Option<Arc<dyn Fn(&[FfiValue]) -> Result<FfiValue, FfiError> + Send + Sync>>,
+    call_handler: Option<Arc<dyn Fn(&[FfiValue]) -> Result<FfiValue, FfiError> + Send + Sync>>,
 }
 
 impl fmt::Debug for FfiRawFn {
@@ -340,11 +336,10 @@ impl FfiRawFn {
         if let Some(executor) = FFI_CALL_EXECUTOR.get() {
             return executor.call(self, args);
         }
-        Err(FfiError::new(
-            FfiErrorKind::CallFailed,
-            "FFI 呼び出しエンジンが未登録です",
+        Err(
+            FfiError::new(FfiErrorKind::CallFailed, "FFI 呼び出しエンジンが未登録です")
+                .with_code(FFI_CALL_EXECUTOR_MISSING_CODE),
         )
-        .with_code(FFI_CALL_EXECUTOR_MISSING_CODE))
     }
 
     /// 監査ログを付与して呼び出す。
@@ -513,8 +508,7 @@ impl FfiWrappedFn {
     fn invalid_argument_error(&self) -> FfiError {
         let mut extensions = JsonMap::new();
         let mut wrap_info = JsonMap::new();
-        let expected_signature =
-            serde_json::to_value(&self.raw.signature).unwrap_or(Value::Null);
+        let expected_signature = serde_json::to_value(&self.raw.signature).unwrap_or(Value::Null);
         wrap_info.insert("expected_signature".into(), expected_signature);
         extensions.insert("ffi.wrap".into(), Value::Object(wrap_info));
         FfiError::new(
@@ -533,12 +527,9 @@ impl FfiWrappedFn {
             wrap_info.insert("ownership".into(), Value::String(ownership.as_str().into()));
         }
         extensions.insert("ffi.wrap".into(), Value::Object(wrap_info));
-        FfiError::new(
-            FfiErrorKind::NullReturn,
-            "FFI 呼び出しが NULL を返しました",
-        )
-        .with_code(FFI_WRAP_NULL_RETURN_CODE)
-        .with_extensions(extensions)
+        FfiError::new(FfiErrorKind::NullReturn, "FFI 呼び出しが NULL を返しました")
+            .with_code(FFI_WRAP_NULL_RETURN_CODE)
+            .with_extensions(extensions)
     }
 
     fn ownership_violation_error(&self, ownership: Ownership) -> FfiError {
@@ -645,15 +636,13 @@ pub trait FfiCallExecutor: Send + Sync {
 
 /// FFI 呼び出しエンジンを登録する。
 pub fn set_ffi_call_executor(executor: Arc<dyn FfiCallExecutor>) -> Result<(), FfiError> {
-    FFI_CALL_EXECUTOR
-        .set(executor)
-        .map_err(|_| {
-            FfiError::new(
-                FfiErrorKind::CallFailed,
-                "FFI 呼び出しエンジンは既に登録されています",
-            )
-            .with_code(FFI_CALL_EXECUTOR_ALREADY_SET_CODE)
-        })
+    FFI_CALL_EXECUTOR.set(executor).map_err(|_| {
+        FfiError::new(
+            FfiErrorKind::CallFailed,
+            "FFI 呼び出しエンジンは既に登録されています",
+        )
+        .with_code(FFI_CALL_EXECUTOR_ALREADY_SET_CODE)
+    })
 }
 
 /// FFI エラーの種別。
@@ -747,10 +736,7 @@ pub fn insert_wrapper_audit_metadata(
     if let Some(error_map) = &spec.error_map {
         wrapper.insert("error_map".into(), Value::String(error_map.clone()));
     }
-    wrapper.insert(
-        "call_mode".into(),
-        Value::String(call_mode.as_str().into()),
-    );
+    wrapper.insert("call_mode".into(), Value::String(call_mode.as_str().into()));
     envelope
         .metadata
         .insert("ffi.wrapper".into(), Value::Object(wrapper));
@@ -846,11 +832,8 @@ mod tests {
 "#;
         let json: Value = serde_json::from_str(payload).expect("MIR JSON を parse できること");
         let call = json["functions"][0]["ffi_calls"][0].clone();
-        let spec: FfiCallSpec =
-            serde_json::from_value(call).expect("FfiCallSpec に変換できること");
-        let sig = spec
-            .to_signature()
-            .expect("FfiFnSig へ変換できること");
+        let spec: FfiCallSpec = serde_json::from_value(call).expect("FfiCallSpec に変換できること");
+        let sig = spec.to_signature().expect("FfiFnSig へ変換できること");
         assert!(sig.variadic, "variadic が維持されること");
         assert_eq!(
             sig.params,

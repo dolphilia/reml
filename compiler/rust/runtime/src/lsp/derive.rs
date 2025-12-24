@@ -77,11 +77,7 @@ impl Derive {
         Self::collect_with_source(&parser, "", &RunConfig::default())
     }
 
-    pub fn collect_with_source<T>(
-        parser: &Parser<T>,
-        source: &str,
-        cfg: &RunConfig,
-    ) -> DeriveModel
+    pub fn collect_with_source<T>(parser: &Parser<T>, source: &str, cfg: &RunConfig) -> DeriveModel
     where
         T: Clone + Send + Sync + 'static,
     {

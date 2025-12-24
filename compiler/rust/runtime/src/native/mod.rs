@@ -16,11 +16,7 @@ pub const SIGNATURE_CTPOP_I32: &str = "(i32) -> i32";
 pub const SIGNATURE_MEMCPY_P0_P0_I64: &str = "(ptr, ptr, i64) -> void";
 
 /// `native.intrinsic.*` の監査メタデータを `AuditEnvelope` に挿入する。
-pub fn insert_intrinsic_audit_metadata(
-    envelope: &mut AuditEnvelope,
-    name: &str,
-    signature: &str,
-) {
+pub fn insert_intrinsic_audit_metadata(envelope: &mut AuditEnvelope, name: &str, signature: &str) {
     record_intrinsic_audit_metadata(envelope, name, signature);
 }
 
@@ -44,9 +40,10 @@ pub(crate) fn record_intrinsic_audit_metadata(
     envelope
         .metadata
         .insert("intrinsic.name".into(), Value::String(name.to_string()));
-    envelope
-        .metadata
-        .insert("intrinsic.signature".into(), Value::String(signature.to_string()));
+    envelope.metadata.insert(
+        "intrinsic.signature".into(),
+        Value::String(signature.to_string()),
+    );
 }
 
 pub(crate) fn record_embed_entrypoint_metadata(
@@ -58,9 +55,10 @@ pub(crate) fn record_embed_entrypoint_metadata(
         "native.embed.entrypoint".into(),
         Value::String(entrypoint.to_string()),
     );
-    envelope
-        .metadata
-        .insert("embed.abi.version".into(), Value::String(abi_version.to_string()));
+    envelope.metadata.insert(
+        "embed.abi.version".into(),
+        Value::String(abi_version.to_string()),
+    );
 }
 
 /// `effect {native}` を要求する平方根 intrinsic。

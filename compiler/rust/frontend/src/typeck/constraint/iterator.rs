@@ -127,9 +127,11 @@ pub struct IteratorStageSnapshot {
 /// `Iterator` 制約を解決する。
 pub fn solve_iterator(source_ty: &Type) -> Option<IteratorDictInfo> {
     match source_ty {
-        Type::Slice { element } => {
-            Some(new_dict(source_ty, element.as_ref(), IteratorKind::ArrayLike))
-        }
+        Type::Slice { element } => Some(new_dict(
+            source_ty,
+            element.as_ref(),
+            IteratorKind::ArrayLike,
+        )),
         Type::App {
             constructor,
             arguments,

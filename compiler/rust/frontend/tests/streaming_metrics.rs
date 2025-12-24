@@ -173,7 +173,9 @@ impl SampleCase {
                 include_str!("../../../../examples/docs-examples/spec/1-1-syntax/use_nested.reml")
             }
             SampleCase::EffectHandler => {
-                include_str!("../../../../examples/docs-examples/spec/1-1-syntax/effect_handler.reml")
+                include_str!(
+                    "../../../../examples/docs-examples/spec/1-1-syntax/effect_handler.reml"
+                )
             }
         }
     }

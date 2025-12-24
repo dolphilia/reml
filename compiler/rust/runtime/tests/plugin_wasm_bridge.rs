@@ -106,10 +106,7 @@ fn wasm_bridge_loads_bundle_and_invokes() {
     let bundle = loader
         .load_bundle_manifest(&bundle_path)
         .expect("bundle should load");
-    let manifest = bundle
-        .plugins
-        .get(0)
-        .expect("plugin manifest should exist");
+    let manifest = bundle.plugins.get(0).expect("plugin manifest should exist");
     loader
         .register_manifest(manifest)
         .expect("capabilities should register");
@@ -144,7 +141,10 @@ fn wasm_bridge_loads_bundle_and_invokes() {
     assert_eq!(record.engine.as_deref(), Some("wasmtime"));
     assert_eq!(record.bundle_hash.as_deref(), bundle.bundle_hash.as_deref());
     let bytes = fs::read(&module_path).expect("module bytes should exist");
-    assert_eq!(record.module_hash.as_deref(), Some(compute_hash(&bytes).as_str()));
+    assert_eq!(
+        record.module_hash.as_deref(),
+        Some(compute_hash(&bytes).as_str())
+    );
 
     let descriptor = CapabilityRegistry::registry()
         .describe("plugin.demo.audit")

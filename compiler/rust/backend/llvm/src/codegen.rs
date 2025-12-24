@@ -1250,8 +1250,7 @@ fn lower_entry_expr_to_blocks(
                             }
                             MirExprKind::Propagate { .. } => {
                                 let value = emit_value_expr(body, &expr_map, &mut ssa);
-                                let tail_ty_hint =
-                                    infer_expr_type_hint(*tail_id, &expr_map, &ssa);
+                                let tail_ty_hint = infer_expr_type_hint(*tail_id, &expr_map, &ssa);
                                 return lower_propagate_value_to_blocks(
                                     body,
                                     value,
@@ -1311,11 +1310,7 @@ fn lower_entry_expr_to_blocks(
                         .any(|arg| expr_contains_early_exit(*arg, &expr_map))
                 {
                     let (blocks, llvm_blocks) = lower_call_with_propagate_to_blocks(
-                        body,
-                        *callee,
-                        args,
-                        &expr_map,
-                        &mut ssa,
+                        body, *callee, args, &expr_map, &mut ssa,
                     );
                     return (blocks, llvm_blocks);
                 }
@@ -1330,12 +1325,7 @@ fn lower_entry_expr_to_blocks(
                         || expr_contains_early_exit(*right, &expr_map))
                 {
                     let (blocks, llvm_blocks) = lower_binary_with_propagate_to_blocks(
-                        body,
-                        operator,
-                        *left,
-                        *right,
-                        &expr_map,
-                        &mut ssa,
+                        body, operator, *left, *right, &expr_map, &mut ssa,
                     );
                     return (blocks, llvm_blocks);
                 }
@@ -1367,14 +1357,8 @@ fn lower_entry_expr_to_blocks_via_operand(
     ssa: &mut LlvmBuilder,
 ) -> (Vec<BasicBlock>, Vec<LlvmBlock>) {
     let end_label = "entry.end".to_string();
-    let (mut blocks, mut llvm_blocks, operand, terminated) = lower_expr_to_operand_blocks(
-        "entry".to_string(),
-        body,
-        expr_map,
-        ssa,
-        &end_label,
-        None,
-    );
+    let (mut blocks, mut llvm_blocks, operand, terminated) =
+        lower_expr_to_operand_blocks("entry".to_string(), body, expr_map, ssa, &end_label, None);
     if terminated {
         return (blocks, llvm_blocks);
     }
@@ -1405,10 +1389,7 @@ impl BranchKind {
     }
 }
 
-fn classify_branch_kind(
-    expr_id: MirExprId,
-    expr_map: &HashMap<MirExprId, &MirExpr>,
-) -> BranchKind {
+fn classify_branch_kind(expr_id: MirExprId, expr_map: &HashMap<MirExprId, &MirExpr>) -> BranchKind {
     let Some(expr) = expr_map.get(&expr_id) else {
         return BranchKind::Normal;
     };
@@ -1432,16 +1413,15 @@ fn classify_branch_kind(
     }
 }
 
-fn expr_contains_early_exit(
-    expr_id: MirExprId,
-    expr_map: &HashMap<MirExprId, &MirExpr>,
-) -> bool {
+fn expr_contains_early_exit(expr_id: MirExprId, expr_map: &HashMap<MirExprId, &MirExpr>) -> bool {
     let Some(expr) = expr_map.get(&expr_id) else {
         return false;
     };
     match &expr.kind {
         MirExprKind::Propagate { .. } | MirExprKind::Panic { .. } => true,
-        MirExprKind::Block { statements, tail, .. } => {
+        MirExprKind::Block {
+            statements, tail, ..
+        } => {
             let stmt_exit = statements.iter().any(|stmt| match &stmt.kind {
                 MirStmtKind::Let { value, .. } => expr_contains_early_exit(*value, expr_map),
                 MirStmtKind::Expr { expr } => expr_contains_early_exit(*expr, expr_map),
@@ -1477,8 +1457,7 @@ fn expr_contains_early_exit(
                 || expr_contains_early_exit(*index, expr_map)
         }
         MirExprKind::Binary { left, right, .. } => {
-            expr_contains_early_exit(*left, expr_map)
-                || expr_contains_early_exit(*right, expr_map)
+            expr_contains_early_exit(*left, expr_map) || expr_contains_early_exit(*right, expr_map)
         }
         _ => false,
     }
@@ -1503,15 +1482,14 @@ fn lower_call_with_propagate_to_blocks(
     for expr_id in steps {
         let next_label = format!("call{}.step{}", body, next_index);
         next_index += 1;
-        let (step_blocks, step_llvm_blocks, operand, terminated) =
-            lower_expr_to_operand_blocks(
-                step_label.clone(),
-                expr_id,
-                expr_map,
-                ssa,
-                &next_label,
-                None,
-            );
+        let (step_blocks, step_llvm_blocks, operand, terminated) = lower_expr_to_operand_blocks(
+            step_label.clone(),
+            expr_id,
+            expr_map,
+            ssa,
+            &next_label,
+            None,
+        );
         blocks.extend(step_blocks);
         llvm_blocks.extend(step_llvm_blocks);
         if terminated {
@@ -1570,7 +1548,12 @@ fn lower_call_with_propagate_to_operand_blocks(
     expr_map: &HashMap<MirExprId, &MirExpr>,
     ssa: &mut LlvmBuilder,
     next_label: &str,
-) -> (Vec<BasicBlock>, Vec<LlvmBlock>, Option<(String, String)>, bool) {
+) -> (
+    Vec<BasicBlock>,
+    Vec<LlvmBlock>,
+    Option<(String, String)>,
+    bool,
+) {
     let mut blocks = Vec::new();
     let mut llvm_blocks = Vec::new();
     let mut step_label = label;
@@ -1583,15 +1566,14 @@ fn lower_call_with_propagate_to_operand_blocks(
     for expr_id in steps {
         let next_step_label = format!("call{}.step{}", body, next_index);
         next_index += 1;
-        let (step_blocks, step_llvm_blocks, operand, terminated) =
-            lower_expr_to_operand_blocks(
-                step_label.clone(),
-                expr_id,
-                expr_map,
-                ssa,
-                &next_step_label,
-                None,
-            );
+        let (step_blocks, step_llvm_blocks, operand, terminated) = lower_expr_to_operand_blocks(
+            step_label.clone(),
+            expr_id,
+            expr_map,
+            ssa,
+            &next_step_label,
+            None,
+        );
         blocks.extend(step_blocks);
         llvm_blocks.extend(step_llvm_blocks);
         if terminated {
@@ -1661,15 +1643,14 @@ fn lower_binary_with_propagate_to_blocks(
     for expr_id in [left, right] {
         let next_label = format!("bin{}.step{}", body, next_index);
         next_index += 1;
-        let (step_blocks, step_llvm_blocks, operand, terminated) =
-            lower_expr_to_operand_blocks(
-                step_label.clone(),
-                expr_id,
-                expr_map,
-                ssa,
-                &next_label,
-                None,
-            );
+        let (step_blocks, step_llvm_blocks, operand, terminated) = lower_expr_to_operand_blocks(
+            step_label.clone(),
+            expr_id,
+            expr_map,
+            ssa,
+            &next_label,
+            None,
+        );
         blocks.extend(step_blocks);
         llvm_blocks.extend(step_llvm_blocks);
         if terminated {
@@ -1747,7 +1728,12 @@ fn lower_binary_with_propagate_to_operand_blocks(
     expr_map: &HashMap<MirExprId, &MirExpr>,
     ssa: &mut LlvmBuilder,
     next_label: &str,
-) -> (Vec<BasicBlock>, Vec<LlvmBlock>, Option<(String, String)>, bool) {
+) -> (
+    Vec<BasicBlock>,
+    Vec<LlvmBlock>,
+    Option<(String, String)>,
+    bool,
+) {
     let mut blocks = Vec::new();
     let mut llvm_blocks = Vec::new();
     let mut step_label = label;
@@ -1757,15 +1743,14 @@ fn lower_binary_with_propagate_to_operand_blocks(
     for expr_id in [left, right] {
         let next_step_label = format!("bin{}.step{}", body, next_index);
         next_index += 1;
-        let (step_blocks, step_llvm_blocks, operand, terminated) =
-            lower_expr_to_operand_blocks(
-                step_label.clone(),
-                expr_id,
-                expr_map,
-                ssa,
-                &next_step_label,
-                None,
-            );
+        let (step_blocks, step_llvm_blocks, operand, terminated) = lower_expr_to_operand_blocks(
+            step_label.clone(),
+            expr_id,
+            expr_map,
+            ssa,
+            &next_step_label,
+            None,
+        );
         blocks.extend(step_blocks);
         llvm_blocks.extend(step_llvm_blocks);
         if terminated {
@@ -1897,28 +1882,23 @@ fn lower_if_else_with_propagate_to_blocks(
         }
         BranchKind::Propagate => {
             let value = emit_value_expr(then_branch, expr_map, ssa);
-            let (prop_blocks, prop_llvm_blocks, phi_source) =
-                lower_propagate_value_to_if_blocks(
-                    then_label.clone(),
-                    then_branch,
-                    value,
-                    &then_ty,
-                    &result_type,
-                    &end_label,
-                    ssa,
-                );
+            let (prop_blocks, prop_llvm_blocks, phi_source) = lower_propagate_value_to_if_blocks(
+                then_label.clone(),
+                then_branch,
+                value,
+                &then_ty,
+                &result_type,
+                &end_label,
+                ssa,
+            );
             blocks.extend(prop_blocks);
             llvm_blocks.extend(prop_llvm_blocks);
             phi_sources.push(phi_source);
         }
         BranchKind::Panic => {
             let value = emit_value_expr(then_branch, expr_map, ssa);
-            let (block, llvm_block) = lower_panic_value_to_named_block(
-                then_label.clone(),
-                then_branch,
-                value,
-                ssa,
-            );
+            let (block, llvm_block) =
+                lower_panic_value_to_named_block(then_label.clone(), then_branch, value, ssa);
             blocks.push(block);
             llvm_blocks.push(llvm_block);
         }
@@ -1940,28 +1920,23 @@ fn lower_if_else_with_propagate_to_blocks(
         }
         BranchKind::Propagate => {
             let value = emit_value_expr(else_branch, expr_map, ssa);
-            let (prop_blocks, prop_llvm_blocks, phi_source) =
-                lower_propagate_value_to_if_blocks(
-                    else_label.clone(),
-                    else_branch,
-                    value,
-                    &else_ty,
-                    &result_type,
-                    &end_label,
-                    ssa,
-                );
+            let (prop_blocks, prop_llvm_blocks, phi_source) = lower_propagate_value_to_if_blocks(
+                else_label.clone(),
+                else_branch,
+                value,
+                &else_ty,
+                &result_type,
+                &end_label,
+                ssa,
+            );
             blocks.extend(prop_blocks);
             llvm_blocks.extend(prop_llvm_blocks);
             phi_sources.push(phi_source);
         }
         BranchKind::Panic => {
             let value = emit_value_expr(else_branch, expr_map, ssa);
-            let (block, llvm_block) = lower_panic_value_to_named_block(
-                else_label.clone(),
-                else_branch,
-                value,
-                ssa,
-            );
+            let (block, llvm_block) =
+                lower_panic_value_to_named_block(else_label.clone(), else_branch, value, ssa);
             blocks.push(block);
             llvm_blocks.push(llvm_block);
         }
@@ -2021,7 +1996,12 @@ fn lower_if_else_to_operand_blocks(
     expr_map: &HashMap<MirExprId, &MirExpr>,
     ssa: &mut LlvmBuilder,
     next_label: &str,
-) -> (Vec<BasicBlock>, Vec<LlvmBlock>, Option<(String, String)>, bool) {
+) -> (
+    Vec<BasicBlock>,
+    Vec<LlvmBlock>,
+    Option<(String, String)>,
+    bool,
+) {
     let end_label = format!("ifelse{}.end", body);
     let then_label = format!("ifelse{}.then", body);
     let else_label = format!("ifelse{}.else", body);
@@ -2075,28 +2055,23 @@ fn lower_if_else_to_operand_blocks(
         }
         BranchKind::Propagate => {
             let value = emit_value_expr(then_branch, expr_map, ssa);
-            let (prop_blocks, prop_llvm_blocks, phi_source) =
-                lower_propagate_value_to_if_blocks(
-                    then_label.clone(),
-                    then_branch,
-                    value,
-                    &then_ty,
-                    &result_type,
-                    &end_label,
-                    ssa,
-                );
+            let (prop_blocks, prop_llvm_blocks, phi_source) = lower_propagate_value_to_if_blocks(
+                then_label.clone(),
+                then_branch,
+                value,
+                &then_ty,
+                &result_type,
+                &end_label,
+                ssa,
+            );
             blocks.extend(prop_blocks);
             llvm_blocks.extend(prop_llvm_blocks);
             phi_sources.push(phi_source);
         }
         BranchKind::Panic => {
             let value = emit_value_expr(then_branch, expr_map, ssa);
-            let (block, llvm_block) = lower_panic_value_to_named_block(
-                then_label.clone(),
-                then_branch,
-                value,
-                ssa,
-            );
+            let (block, llvm_block) =
+                lower_panic_value_to_named_block(then_label.clone(), then_branch, value, ssa);
             blocks.push(block);
             llvm_blocks.push(llvm_block);
         }
@@ -2118,28 +2093,23 @@ fn lower_if_else_to_operand_blocks(
         }
         BranchKind::Propagate => {
             let value = emit_value_expr(else_branch, expr_map, ssa);
-            let (prop_blocks, prop_llvm_blocks, phi_source) =
-                lower_propagate_value_to_if_blocks(
-                    else_label.clone(),
-                    else_branch,
-                    value,
-                    &else_ty,
-                    &result_type,
-                    &end_label,
-                    ssa,
-                );
+            let (prop_blocks, prop_llvm_blocks, phi_source) = lower_propagate_value_to_if_blocks(
+                else_label.clone(),
+                else_branch,
+                value,
+                &else_ty,
+                &result_type,
+                &end_label,
+                ssa,
+            );
             blocks.extend(prop_blocks);
             llvm_blocks.extend(prop_llvm_blocks);
             phi_sources.push(phi_source);
         }
         BranchKind::Panic => {
             let value = emit_value_expr(else_branch, expr_map, ssa);
-            let (block, llvm_block) = lower_panic_value_to_named_block(
-                else_label.clone(),
-                else_branch,
-                value,
-                ssa,
-            );
+            let (block, llvm_block) =
+                lower_panic_value_to_named_block(else_label.clone(), else_branch, value, ssa);
             blocks.push(block);
             llvm_blocks.push(llvm_block);
         }
@@ -2177,12 +2147,7 @@ fn lower_if_else_to_operand_blocks(
             target: next_label.to_string(),
         },
     });
-    (
-        blocks,
-        llvm_blocks,
-        Some((phi_result, result_type)),
-        false,
-    )
+    (blocks, llvm_blocks, Some((phi_result, result_type)), false)
 }
 
 fn lower_block_tail_if_else_with_defer_to_blocks(
@@ -2384,7 +2349,12 @@ fn lower_block_tail_if_else_with_defer_to_operand_blocks(
     expr_map: &HashMap<MirExprId, &MirExpr>,
     ssa: &mut LlvmBuilder,
     next_label: &str,
-) -> (Vec<BasicBlock>, Vec<LlvmBlock>, Option<(String, String)>, bool) {
+) -> (
+    Vec<BasicBlock>,
+    Vec<LlvmBlock>,
+    Option<(String, String)>,
+    bool,
+) {
     let end_label = format!("block_ifelse{}.end", body);
     let then_label = format!("block_ifelse{}.then", body);
     let else_label = format!("block_ifelse{}.else", body);
@@ -2552,12 +2522,7 @@ fn lower_block_tail_if_else_with_defer_to_operand_blocks(
             target: next_label.to_string(),
         },
     });
-    (
-        blocks,
-        llvm_blocks,
-        Some((phi_result, result_type)),
-        false,
-    )
+    (blocks, llvm_blocks, Some((phi_result, result_type)), false)
 }
 
 fn lower_if_else_branch_value_with_defers(
@@ -2617,9 +2582,7 @@ fn lower_block_propagate_with_defers_to_if_blocks(
     let cond = ssa.new_tmp("propagate_ok");
     match flavor {
         PropagateFlavor::Option => {
-            entry_instrs.push(LlvmInstr::Comment(format!(
-                "{cond_label}: check Some/None"
-            )));
+            entry_instrs.push(LlvmInstr::Comment(format!("{cond_label}: check Some/None")));
             entry_instrs.push(LlvmInstr::Icmp {
                 result: cond.clone(),
                 pred: "ne".into(),
@@ -2629,9 +2592,7 @@ fn lower_block_propagate_with_defers_to_if_blocks(
             });
         }
         PropagateFlavor::Result => {
-            entry_instrs.push(LlvmInstr::Comment(format!(
-                "{cond_label}: check Ok/Err"
-            )));
+            entry_instrs.push(LlvmInstr::Comment(format!("{cond_label}: check Ok/Err")));
             entry_instrs.push(LlvmInstr::Call {
                 result: Some(cond.clone()),
                 ret_ty: ssa.bool_type(),
@@ -2913,9 +2874,7 @@ fn lower_propagate_value_to_blocks(
     let cond = ssa.new_tmp("propagate_ok");
     match flavor {
         PropagateFlavor::Option => {
-            entry_instrs.push(LlvmInstr::Comment(format!(
-                "{cond_label}: check Some/None"
-            )));
+            entry_instrs.push(LlvmInstr::Comment(format!("{cond_label}: check Some/None")));
             entry_instrs.push(LlvmInstr::Icmp {
                 result: cond.clone(),
                 pred: "ne".into(),
@@ -2925,9 +2884,7 @@ fn lower_propagate_value_to_blocks(
             });
         }
         PropagateFlavor::Result => {
-            entry_instrs.push(LlvmInstr::Comment(format!(
-                "{cond_label}: check Ok/Err"
-            )));
+            entry_instrs.push(LlvmInstr::Comment(format!("{cond_label}: check Ok/Err")));
             entry_instrs.push(LlvmInstr::Call {
                 result: Some(cond.clone()),
                 ret_ty: ssa.bool_type(),
@@ -2954,7 +2911,9 @@ fn lower_propagate_value_to_blocks(
 
     let payload = ssa.new_tmp("propagate_payload");
     let payload_ty = infer_propagate_payload_llvm_type(ty_hint, ssa);
-    let mut ok_instrs = vec![LlvmInstr::Comment(format!("propagate ok#{body} -> payload"))];
+    let mut ok_instrs = vec![LlvmInstr::Comment(format!(
+        "propagate ok#{body} -> payload"
+    ))];
     let ctor_name = match flavor {
         PropagateFlavor::Option => "Some",
         PropagateFlavor::Result => "Ok",
@@ -3017,9 +2976,7 @@ fn lower_propagate_value_to_match_blocks(
     let cond = ssa.new_tmp("propagate_ok");
     match flavor {
         PropagateFlavor::Option => {
-            entry_instrs.push(LlvmInstr::Comment(format!(
-                "{cond_label}: check Some/None"
-            )));
+            entry_instrs.push(LlvmInstr::Comment(format!("{cond_label}: check Some/None")));
             entry_instrs.push(LlvmInstr::Icmp {
                 result: cond.clone(),
                 pred: "ne".into(),
@@ -3029,9 +2986,7 @@ fn lower_propagate_value_to_match_blocks(
             });
         }
         PropagateFlavor::Result => {
-            entry_instrs.push(LlvmInstr::Comment(format!(
-                "{cond_label}: check Ok/Err"
-            )));
+            entry_instrs.push(LlvmInstr::Comment(format!("{cond_label}: check Ok/Err")));
             entry_instrs.push(LlvmInstr::Call {
                 result: Some(cond.clone()),
                 ret_ty: ssa.bool_type(),
@@ -3145,9 +3100,7 @@ fn lower_propagate_value_to_if_blocks(
     let cond = ssa.new_tmp("propagate_ok");
     match flavor {
         PropagateFlavor::Option => {
-            entry_instrs.push(LlvmInstr::Comment(format!(
-                "{cond_label}: check Some/None"
-            )));
+            entry_instrs.push(LlvmInstr::Comment(format!("{cond_label}: check Some/None")));
             entry_instrs.push(LlvmInstr::Icmp {
                 result: cond.clone(),
                 pred: "ne".into(),
@@ -3157,9 +3110,7 @@ fn lower_propagate_value_to_if_blocks(
             });
         }
         PropagateFlavor::Result => {
-            entry_instrs.push(LlvmInstr::Comment(format!(
-                "{cond_label}: check Ok/Err"
-            )));
+            entry_instrs.push(LlvmInstr::Comment(format!("{cond_label}: check Ok/Err")));
             entry_instrs.push(LlvmInstr::Call {
                 result: Some(cond.clone()),
                 ret_ty: ssa.bool_type(),
@@ -3272,9 +3223,7 @@ fn lower_propagate_operand_to_blocks(
     let cond = ssa.new_tmp("propagate_ok");
     match flavor {
         PropagateFlavor::Option => {
-            entry_instrs.push(LlvmInstr::Comment(format!(
-                "{cond_label}: check Some/None"
-            )));
+            entry_instrs.push(LlvmInstr::Comment(format!("{cond_label}: check Some/None")));
             entry_instrs.push(LlvmInstr::Icmp {
                 result: cond.clone(),
                 pred: "ne".into(),
@@ -3284,9 +3233,7 @@ fn lower_propagate_operand_to_blocks(
             });
         }
         PropagateFlavor::Result => {
-            entry_instrs.push(LlvmInstr::Comment(format!(
-                "{cond_label}: check Ok/Err"
-            )));
+            entry_instrs.push(LlvmInstr::Comment(format!("{cond_label}: check Ok/Err")));
             entry_instrs.push(LlvmInstr::Call {
                 result: Some(cond.clone()),
                 ret_ty: ssa.bool_type(),
@@ -3380,9 +3327,7 @@ fn lower_propagate_operand_to_blocks_with_defers(
     let cond = ssa.new_tmp("propagate_ok");
     match flavor {
         PropagateFlavor::Option => {
-            entry_instrs.push(LlvmInstr::Comment(format!(
-                "{cond_label}: check Some/None"
-            )));
+            entry_instrs.push(LlvmInstr::Comment(format!("{cond_label}: check Some/None")));
             entry_instrs.push(LlvmInstr::Icmp {
                 result: cond.clone(),
                 pred: "ne".into(),
@@ -3392,9 +3337,7 @@ fn lower_propagate_operand_to_blocks_with_defers(
             });
         }
         PropagateFlavor::Result => {
-            entry_instrs.push(LlvmInstr::Comment(format!(
-                "{cond_label}: check Ok/Err"
-            )));
+            entry_instrs.push(LlvmInstr::Comment(format!("{cond_label}: check Ok/Err")));
             entry_instrs.push(LlvmInstr::Call {
                 result: Some(cond.clone()),
                 ret_ty: ssa.bool_type(),
@@ -3477,7 +3420,12 @@ fn lower_expr_to_operand_blocks(
     ssa: &mut LlvmBuilder,
     next_label: &str,
     defer_lifo: Option<&[MirExprId]>,
-) -> (Vec<BasicBlock>, Vec<LlvmBlock>, Option<(String, String)>, bool) {
+) -> (
+    Vec<BasicBlock>,
+    Vec<LlvmBlock>,
+    Option<(String, String)>,
+    bool,
+) {
     let Some(expr) = expr_map.get(&expr_id) else {
         let block = BasicBlock {
             label: label.clone(),
@@ -3506,45 +3454,23 @@ fn lower_expr_to_operand_blocks(
             let value = emit_value_expr(expr_id, expr_map, ssa);
             let ty_hint = infer_expr_type_hint(expr_id, expr_map, ssa);
             let (blocks, llvm_blocks, payload) = match defer_lifo {
-                Some(defers) if !defers.is_empty() => lower_propagate_operand_to_blocks_with_defers(
-                    label,
-                    expr_id,
-                    value,
-                    &ty_hint,
-                    next_label,
-                    defers,
-                    expr_map,
-                    ssa,
-                ),
+                Some(defers) if !defers.is_empty() => {
+                    lower_propagate_operand_to_blocks_with_defers(
+                        label, expr_id, value, &ty_hint, next_label, defers, expr_map, ssa,
+                    )
+                }
                 _ => lower_propagate_operand_to_blocks(
-                    label,
-                    expr_id,
-                    value,
-                    &ty_hint,
-                    next_label,
-                    ssa,
+                    label, expr_id, value, &ty_hint, next_label, ssa,
                 ),
             };
-            (
-                blocks,
-                llvm_blocks,
-                Some(payload),
-                false,
-            )
+            (blocks, llvm_blocks, Some(payload), false)
         }
         MirExprKind::Panic { .. } => {
             let value = emit_value_expr(expr_id, expr_map, ssa);
             let (block, llvm_block) = match defer_lifo {
-                Some(defers) if !defers.is_empty() => {
-                    lower_panic_value_to_named_block_with_defers(
-                        label,
-                        expr_id,
-                        value,
-                        defers,
-                        expr_map,
-                        ssa,
-                    )
-                }
+                Some(defers) if !defers.is_empty() => lower_panic_value_to_named_block_with_defers(
+                    label, expr_id, value, defers, expr_map, ssa,
+                ),
                 _ => lower_panic_value_to_named_block(label, expr_id, value, ssa),
             };
             (vec![block], vec![llvm_block], None, true)
@@ -3553,29 +3479,19 @@ fn lower_expr_to_operand_blocks(
             condition,
             then_branch,
             else_branch,
-        } if expr_contains_early_exit(expr_id, expr_map) => {
-            lower_if_else_to_operand_blocks(
-                label,
-                expr_id,
-                *condition,
-                *then_branch,
-                *else_branch,
-                expr_map,
-                ssa,
-                next_label,
-            )
-        }
-        MirExprKind::Call { callee, args }
-            if expr_contains_early_exit(expr_id, expr_map) =>
-        {
+        } if expr_contains_early_exit(expr_id, expr_map) => lower_if_else_to_operand_blocks(
+            label,
+            expr_id,
+            *condition,
+            *then_branch,
+            *else_branch,
+            expr_map,
+            ssa,
+            next_label,
+        ),
+        MirExprKind::Call { callee, args } if expr_contains_early_exit(expr_id, expr_map) => {
             lower_call_with_propagate_to_operand_blocks(
-                label,
-                expr_id,
-                *callee,
-                args,
-                expr_map,
-                ssa,
-                next_label,
+                label, expr_id, *callee, args, expr_map, ssa, next_label,
             )
         }
         MirExprKind::Binary {
@@ -3586,14 +3502,7 @@ fn lower_expr_to_operand_blocks(
             && expr_contains_early_exit(expr_id, expr_map) =>
         {
             lower_binary_with_propagate_to_operand_blocks(
-                label,
-                expr_id,
-                operator,
-                *left,
-                *right,
-                expr_map,
-                ssa,
-                next_label,
+                label, expr_id, operator, *left, *right, expr_map, ssa, next_label,
             )
         }
         MirExprKind::Block {
@@ -3611,7 +3520,11 @@ fn lower_expr_to_operand_blocks(
                     lower_block_statements_to_blocks(
                         stmt_label.clone(),
                         statements,
-                        if defer_lifo.is_empty() { None } else { Some(defer_lifo) },
+                        if defer_lifo.is_empty() {
+                            None
+                        } else {
+                            Some(defer_lifo)
+                        },
                         expr_map,
                         ssa,
                     );
@@ -3680,7 +3593,11 @@ fn lower_expr_to_operand_blocks(
                         expr_map,
                         ssa,
                         &defer_label,
-                        if defer_lifo.is_empty() { None } else { Some(defer_lifo) },
+                        if defer_lifo.is_empty() {
+                            None
+                        } else {
+                            Some(defer_lifo)
+                        },
                     );
                 blocks.extend(tail_blocks);
                 llvm_blocks.extend(tail_llvm_blocks);
@@ -3720,9 +3637,7 @@ fn lower_expr_to_operand_blocks(
             };
             let llvm_block = LlvmBlock {
                 label: stmt_label,
-                instrs: vec![LlvmInstr::Comment(format!(
-                    "block#{expr_id} -> unit"
-                ))],
+                instrs: vec![LlvmInstr::Comment(format!("block#{expr_id} -> unit"))],
                 terminator: LlvmTerminator::Br {
                     target: defer_label.clone(),
                 },
@@ -3758,9 +3673,7 @@ fn lower_expr_to_operand_blocks(
             let llvm_block = LlvmBlock {
                 label,
                 instrs: {
-                    let mut instrs = vec![LlvmInstr::Comment(format!(
-                        "exec expr#{expr_id}"
-                    ))];
+                    let mut instrs = vec![LlvmInstr::Comment(format!("exec expr#{expr_id}"))];
                     instrs.extend(value.instrs);
                     instrs
                 },
@@ -3818,14 +3731,8 @@ fn lower_stmt_to_blocks(
 ) -> (Vec<BasicBlock>, Vec<LlvmBlock>, bool) {
     match &stmt.kind {
         MirStmtKind::Let { pattern, value, .. } => {
-            let (blocks, mut llvm_blocks, operand, terminated) = lower_expr_to_operand_blocks(
-                label,
-                *value,
-                expr_map,
-                ssa,
-                next_label,
-                defer_lifo,
-            );
+            let (blocks, mut llvm_blocks, operand, terminated) =
+                lower_expr_to_operand_blocks(label, *value, expr_map, ssa, next_label, defer_lifo);
             if !terminated {
                 if let Some((operand, ty)) = operand {
                     if let Some(block) = llvm_blocks.last_mut() {
@@ -3837,14 +3744,8 @@ fn lower_stmt_to_blocks(
             (blocks, llvm_blocks, terminated)
         }
         MirStmtKind::Expr { expr } => {
-            let (blocks, llvm_blocks, _operand, terminated) = lower_expr_to_operand_blocks(
-                label,
-                *expr,
-                expr_map,
-                ssa,
-                next_label,
-                defer_lifo,
-            );
+            let (blocks, llvm_blocks, _operand, terminated) =
+                lower_expr_to_operand_blocks(label, *expr, expr_map, ssa, next_label, defer_lifo);
             (blocks, llvm_blocks, terminated)
         }
         MirStmtKind::Assign { target, value } => {
@@ -3863,23 +3764,12 @@ fn lower_stmt_to_blocks(
             }
             let (value_blocks, mut value_llvm_blocks, operand, terminated) =
                 lower_expr_to_operand_blocks(
-                    temp_label,
-                    *value,
-                    expr_map,
-                    ssa,
-                    next_label,
-                    defer_lifo,
+                    temp_label, *value, expr_map, ssa, next_label, defer_lifo,
                 );
             if let Some((operand, ty)) = operand {
                 if let Some(block) = value_llvm_blocks.last_mut() {
-                    let instrs = rebind_target_operand(
-                        *target,
-                        target_operand,
-                        operand,
-                        ty,
-                        expr_map,
-                        ssa,
-                    );
+                    let instrs =
+                        rebind_target_operand(*target, target_operand, operand, ty, expr_map, ssa);
                     block.instrs.extend(instrs);
                 }
             }
@@ -4102,9 +3992,7 @@ fn infer_expr_llvm_type(
         }
         MirExprKind::Call { callee, .. } => infer_call_return_type(*callee, expr_map, ssa),
         MirExprKind::Binary { operator, .. } => match operator.as_str() {
-            "&&" | "and" | "||" | "or" | "==" | "!=" | "<" | "<=" | ">" | ">=" => {
-                ssa.bool_type()
-            }
+            "&&" | "and" | "||" | "or" | "==" | "!=" | "<" | "<=" | ">" | ">=" => ssa.bool_type(),
             "+" | "-" | "*" | "/" | "%" => "i64".into(),
             _ => ssa.pointer_type(),
         },
@@ -4123,12 +4011,7 @@ fn emit_block_statement_instrs(
             MirStmtKind::Let { pattern, value, .. } => {
                 let value = emit_value_expr(*value, expr_map, ssa);
                 instrs.extend(value.instrs);
-                instrs.extend(bind_pattern_operand(
-                    pattern,
-                    value.operand,
-                    value.ty,
-                    ssa,
-                ));
+                instrs.extend(bind_pattern_operand(pattern, value.operand, value.ty, ssa));
             }
             MirStmtKind::Expr { expr } => {
                 let value = emit_value_expr(*expr, expr_map, ssa);
@@ -4317,7 +4200,9 @@ fn collect_pattern_binding_names(pattern: &MirPattern, names: &mut Vec<String>) 
                 collect_pattern_binding_names(argument, names);
             }
         }
-        MirPatternKind::Wildcard | MirPatternKind::Literal { .. } | MirPatternKind::Regex { .. } => {}
+        MirPatternKind::Wildcard
+        | MirPatternKind::Literal { .. }
+        | MirPatternKind::Regex { .. } => {}
     }
 }
 
@@ -4568,7 +4453,10 @@ fn emit_value_expr(
                 callee: INTRINSIC_FIELD_ACCESS.into(),
                 args: vec![
                     (ssa.pointer_type(), target_value.operand),
-                    (ssa.pointer_type(), format!("\"{}\"", field.replace('"', "\\\""))),
+                    (
+                        ssa.pointer_type(),
+                        format!("\"{}\"", field.replace('"', "\\\"")),
+                    ),
                 ],
             });
             EmittedValue {
@@ -4648,12 +4536,7 @@ fn emit_value_expr(
                                 instrs.append(&mut value.instrs);
                                 value.instrs = instrs;
                             }
-                            emit_defer_lifo_instrs(
-                                defer_lifo,
-                                expr_map,
-                                ssa,
-                                &mut value.instrs,
-                            );
+                            emit_defer_lifo_instrs(defer_lifo, expr_map, ssa, &mut value.instrs);
                             value
                                 .instrs
                                 .push(LlvmInstr::Comment(format!("return expr#{tail_id}")));
@@ -4667,15 +4550,10 @@ fn emit_value_expr(
                                 instrs.append(&mut value.instrs);
                                 value.instrs = instrs;
                             }
-                            emit_defer_lifo_instrs(
-                                defer_lifo,
-                                expr_map,
-                                ssa,
-                                &mut value.instrs,
-                            );
-                            value.instrs.push(LlvmInstr::Comment(format!(
-                                "propagate expr#{tail_id}"
-                            )));
+                            emit_defer_lifo_instrs(defer_lifo, expr_map, ssa, &mut value.instrs);
+                            value
+                                .instrs
+                                .push(LlvmInstr::Comment(format!("propagate expr#{tail_id}")));
                             ssa.pop_scope();
                             return value;
                         }
@@ -4690,12 +4568,7 @@ fn emit_value_expr(
                                 instrs.append(&mut value.instrs);
                                 value.instrs = instrs;
                             }
-                            emit_defer_lifo_instrs(
-                                defer_lifo,
-                                expr_map,
-                                ssa,
-                                &mut value.instrs,
-                            );
+                            emit_defer_lifo_instrs(defer_lifo, expr_map, ssa, &mut value.instrs);
                             value
                                 .instrs
                                 .push(LlvmInstr::Comment(format!("panic expr#{tail_id}")));
@@ -4753,141 +4626,136 @@ fn emit_value_expr(
             operator,
             left,
             right,
-        } => {
-            match operator.as_str() {
-                "&&" | "and" | "||" | "or" | "==" | "!=" | "<" | "<=" | ">" | ">=" => {
-                    let (cond, instrs) = emit_bool_expr(expr_id, expr_map, ssa);
-                    return EmittedValue {
-                        ty: ssa.bool_type(),
-                        operand: cond,
-                        instrs,
-                    };
-                }
-                "+" => {
-                    let lhs = emit_value_expr(*left, expr_map, ssa);
-                    let rhs = emit_value_expr(*right, expr_map, ssa);
-                    let mut instrs = lhs.instrs;
-                    instrs.extend(rhs.instrs);
-                    let is_stringish = lhs.ty == "Str"
-                        || rhs.ty == "Str"
-                        || lhs.operand.starts_with('"')
-                        || rhs.operand.starts_with('"');
-                    if is_stringish {
-                        let result = ssa.new_tmp("concat");
-                        instrs.push(LlvmInstr::Call {
-                            result: Some(result.clone()),
-                            ret_ty: "Str".into(),
-                            callee: INTRINSIC_STR_CONCAT.into(),
-                            args: vec![
-                                ("Str".into(), lhs.operand),
-                                ("Str".into(), rhs.operand),
-                            ],
-                        });
-                        return EmittedValue {
-                            ty: "Str".into(),
-                            operand: result,
-                            instrs,
-                        };
-                    }
-                    let result = ssa.new_tmp("add");
-                    instrs.push(LlvmInstr::BinOp {
-                        result: result.clone(),
-                        op: "add".into(),
-                        ty: "i64".into(),
-                        lhs: lhs.operand,
-                        rhs: rhs.operand,
-                    });
-                    return EmittedValue {
-                        ty: "i64".into(),
-                        operand: result,
-                        instrs,
-                    };
-                }
-                "%" => {
-                    let lhs = emit_value_expr(*left, expr_map, ssa);
-                    let rhs = emit_value_expr(*right, expr_map, ssa);
-                    let mut instrs = lhs.instrs;
-                    instrs.extend(rhs.instrs);
-                    let result = ssa.new_tmp("mod");
-                    instrs.push(LlvmInstr::BinOp {
-                        result: result.clone(),
-                        op: "srem".into(),
-                        ty: "i64".into(),
-                        lhs: lhs.operand,
-                        rhs: rhs.operand,
-                    });
-                    return EmittedValue {
-                        ty: "i64".into(),
-                        operand: result,
-                        instrs,
-                    };
-                }
-                "-" => {
-                    let lhs = emit_value_expr(*left, expr_map, ssa);
-                    let rhs = emit_value_expr(*right, expr_map, ssa);
-                    let mut instrs = lhs.instrs;
-                    instrs.extend(rhs.instrs);
-                    let result = ssa.new_tmp("sub");
-                    instrs.push(LlvmInstr::BinOp {
-                        result: result.clone(),
-                        op: "sub".into(),
-                        ty: "i64".into(),
-                        lhs: lhs.operand,
-                        rhs: rhs.operand,
-                    });
-                    return EmittedValue {
-                        ty: "i64".into(),
-                        operand: result,
-                        instrs,
-                    };
-                }
-                "*" => {
-                    let lhs = emit_value_expr(*left, expr_map, ssa);
-                    let rhs = emit_value_expr(*right, expr_map, ssa);
-                    let mut instrs = lhs.instrs;
-                    instrs.extend(rhs.instrs);
-                    let result = ssa.new_tmp("mul");
-                    instrs.push(LlvmInstr::BinOp {
-                        result: result.clone(),
-                        op: "mul".into(),
-                        ty: "i64".into(),
-                        lhs: lhs.operand,
-                        rhs: rhs.operand,
-                    });
-                    return EmittedValue {
-                        ty: "i64".into(),
-                        operand: result,
-                        instrs,
-                    };
-                }
-                "/" => {
-                    let lhs = emit_value_expr(*left, expr_map, ssa);
-                    let rhs = emit_value_expr(*right, expr_map, ssa);
-                    let mut instrs = lhs.instrs;
-                    instrs.extend(rhs.instrs);
-                    let result = ssa.new_tmp("div");
-                    instrs.push(LlvmInstr::BinOp {
-                        result: result.clone(),
-                        op: "sdiv".into(),
-                        ty: "i64".into(),
-                        lhs: lhs.operand,
-                        rhs: rhs.operand,
-                    });
-                    return EmittedValue {
-                        ty: "i64".into(),
-                        operand: result,
-                        instrs,
-                    };
-                }
-                _ => EmittedValue {
-                    ty: ssa.pointer_type(),
-                    operand: format!("#{}", expr_id),
-                    instrs: vec![LlvmInstr::Comment(format!(
-                        "binary op {operator} unsupported -> fallback #{expr_id}"
-                    ))],
-                },
+        } => match operator.as_str() {
+            "&&" | "and" | "||" | "or" | "==" | "!=" | "<" | "<=" | ">" | ">=" => {
+                let (cond, instrs) = emit_bool_expr(expr_id, expr_map, ssa);
+                return EmittedValue {
+                    ty: ssa.bool_type(),
+                    operand: cond,
+                    instrs,
+                };
             }
-        }
+            "+" => {
+                let lhs = emit_value_expr(*left, expr_map, ssa);
+                let rhs = emit_value_expr(*right, expr_map, ssa);
+                let mut instrs = lhs.instrs;
+                instrs.extend(rhs.instrs);
+                let is_stringish = lhs.ty == "Str"
+                    || rhs.ty == "Str"
+                    || lhs.operand.starts_with('"')
+                    || rhs.operand.starts_with('"');
+                if is_stringish {
+                    let result = ssa.new_tmp("concat");
+                    instrs.push(LlvmInstr::Call {
+                        result: Some(result.clone()),
+                        ret_ty: "Str".into(),
+                        callee: INTRINSIC_STR_CONCAT.into(),
+                        args: vec![("Str".into(), lhs.operand), ("Str".into(), rhs.operand)],
+                    });
+                    return EmittedValue {
+                        ty: "Str".into(),
+                        operand: result,
+                        instrs,
+                    };
+                }
+                let result = ssa.new_tmp("add");
+                instrs.push(LlvmInstr::BinOp {
+                    result: result.clone(),
+                    op: "add".into(),
+                    ty: "i64".into(),
+                    lhs: lhs.operand,
+                    rhs: rhs.operand,
+                });
+                return EmittedValue {
+                    ty: "i64".into(),
+                    operand: result,
+                    instrs,
+                };
+            }
+            "%" => {
+                let lhs = emit_value_expr(*left, expr_map, ssa);
+                let rhs = emit_value_expr(*right, expr_map, ssa);
+                let mut instrs = lhs.instrs;
+                instrs.extend(rhs.instrs);
+                let result = ssa.new_tmp("mod");
+                instrs.push(LlvmInstr::BinOp {
+                    result: result.clone(),
+                    op: "srem".into(),
+                    ty: "i64".into(),
+                    lhs: lhs.operand,
+                    rhs: rhs.operand,
+                });
+                return EmittedValue {
+                    ty: "i64".into(),
+                    operand: result,
+                    instrs,
+                };
+            }
+            "-" => {
+                let lhs = emit_value_expr(*left, expr_map, ssa);
+                let rhs = emit_value_expr(*right, expr_map, ssa);
+                let mut instrs = lhs.instrs;
+                instrs.extend(rhs.instrs);
+                let result = ssa.new_tmp("sub");
+                instrs.push(LlvmInstr::BinOp {
+                    result: result.clone(),
+                    op: "sub".into(),
+                    ty: "i64".into(),
+                    lhs: lhs.operand,
+                    rhs: rhs.operand,
+                });
+                return EmittedValue {
+                    ty: "i64".into(),
+                    operand: result,
+                    instrs,
+                };
+            }
+            "*" => {
+                let lhs = emit_value_expr(*left, expr_map, ssa);
+                let rhs = emit_value_expr(*right, expr_map, ssa);
+                let mut instrs = lhs.instrs;
+                instrs.extend(rhs.instrs);
+                let result = ssa.new_tmp("mul");
+                instrs.push(LlvmInstr::BinOp {
+                    result: result.clone(),
+                    op: "mul".into(),
+                    ty: "i64".into(),
+                    lhs: lhs.operand,
+                    rhs: rhs.operand,
+                });
+                return EmittedValue {
+                    ty: "i64".into(),
+                    operand: result,
+                    instrs,
+                };
+            }
+            "/" => {
+                let lhs = emit_value_expr(*left, expr_map, ssa);
+                let rhs = emit_value_expr(*right, expr_map, ssa);
+                let mut instrs = lhs.instrs;
+                instrs.extend(rhs.instrs);
+                let result = ssa.new_tmp("div");
+                instrs.push(LlvmInstr::BinOp {
+                    result: result.clone(),
+                    op: "sdiv".into(),
+                    ty: "i64".into(),
+                    lhs: lhs.operand,
+                    rhs: rhs.operand,
+                });
+                return EmittedValue {
+                    ty: "i64".into(),
+                    operand: result,
+                    instrs,
+                };
+            }
+            _ => EmittedValue {
+                ty: ssa.pointer_type(),
+                operand: format!("#{}", expr_id),
+                instrs: vec![LlvmInstr::Comment(format!(
+                    "binary op {operator} unsupported -> fallback #{expr_id}"
+                ))],
+            },
+        },
         MirExprKind::IfElse {
             condition,
             then_branch,
@@ -4929,7 +4797,10 @@ fn emit_value_expr(
                 ret_ty: ssa.pointer_type(),
                 callee: INTRINSIC_PERFORM.into(),
                 args: vec![
-                    (ssa.pointer_type(), format!("\"{}\"", effect.replace('"', "\\\""))),
+                    (
+                        ssa.pointer_type(),
+                        format!("\"{}\"", effect.replace('"', "\\\"")),
+                    ),
                     (value.ty, value.operand),
                 ],
             });
@@ -5373,7 +5244,11 @@ fn emit_pattern_blocks(
                 instrs: {
                     outer_instrs.insert(
                         0,
-                        LlvmInstr::Comment(pattern_check_label(pattern, target_desc, next_arm_label)),
+                        LlvmInstr::Comment(pattern_check_label(
+                            pattern,
+                            target_desc,
+                            next_arm_label,
+                        )),
                     );
                     outer_instrs
                 },

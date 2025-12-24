@@ -115,11 +115,7 @@ fn verify_capability_records_plugin_provider_metadata() {
             "plugin.demo.audit",
             StageId::Beta,
             &["audit"],
-            PluginCapabilityMetadata::new(
-                "plugin.demo",
-                Some("1.2.3"),
-                vec!["audit".to_string()],
-            ),
+            PluginCapabilityMetadata::new("plugin.demo", Some("1.2.3"), vec!["audit".to_string()]),
         )
         .expect("plugin capability registration should succeed");
     registry
@@ -144,11 +140,15 @@ fn verify_capability_records_plugin_provider_metadata() {
         Some("plugin:plugin.demo@1.2.3")
     );
     assert_eq!(
-        metadata.get("plugin.package").and_then(|value| value.as_str()),
+        metadata
+            .get("plugin.package")
+            .and_then(|value| value.as_str()),
         Some("plugin.demo")
     );
     assert_eq!(
-        metadata.get("plugin.version").and_then(|value| value.as_str()),
+        metadata
+            .get("plugin.version")
+            .and_then(|value| value.as_str()),
         Some("1.2.3")
     );
 }

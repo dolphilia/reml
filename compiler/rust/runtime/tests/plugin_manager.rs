@@ -101,7 +101,10 @@ fn plugin_manager_records_signature_and_install_audit() {
             == Some("plugin.install")
     });
 
-    assert!(has_verify_signature, "plugin.verify_signature should be recorded");
+    assert!(
+        has_verify_signature,
+        "plugin.verify_signature should be recorded"
+    );
     assert!(has_install, "plugin.install should be recorded");
     let verify_signature = events
         .iter()
