@@ -1208,10 +1208,10 @@ fn lower_entry_expr_to_blocks(
                 }
             }
             MirExprKind::Call { callee, args } => {
-                if classify_branch_kind(*callee, &expr_map).is_early_exit()
+                if expr_contains_early_exit(*callee, &expr_map)
                     || args
                         .iter()
-                        .any(|arg| classify_branch_kind(*arg, &expr_map).is_early_exit())
+                        .any(|arg| expr_contains_early_exit(*arg, &expr_map))
                 {
                     let (blocks, llvm_blocks) = lower_call_with_propagate_to_blocks(
                         body,
@@ -1229,8 +1229,8 @@ fn lower_entry_expr_to_blocks(
                 right,
             } => {
                 if matches!(operator.as_str(), "+" | "-" | "*" | "/" | "%")
-                    && (classify_branch_kind(*left, &expr_map).is_early_exit()
-                        || classify_branch_kind(*right, &expr_map).is_early_exit())
+                    && (expr_contains_early_exit(*left, &expr_map)
+                        || expr_contains_early_exit(*right, &expr_map))
                 {
                     let (blocks, llvm_blocks) = lower_binary_with_propagate_to_blocks(
                         body,
@@ -1304,6 +1304,42 @@ fn classify_branch_kind(
     }
 }
 
+fn expr_contains_early_exit(
+    expr_id: MirExprId,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+) -> bool {
+    let Some(expr) = expr_map.get(&expr_id) else {
+        return false;
+    };
+    match &expr.kind {
+        MirExprKind::Propagate { .. } | MirExprKind::Panic { .. } => true,
+        MirExprKind::Block { tail, .. } => tail
+            .and_then(|tail_id| expr_map.get(&tail_id))
+            .map(|expr| expr_contains_early_exit(expr.id, expr_map))
+            .unwrap_or(false),
+        MirExprKind::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            expr_contains_early_exit(*condition, expr_map)
+                || expr_contains_early_exit(*then_branch, expr_map)
+                || expr_contains_early_exit(*else_branch, expr_map)
+        }
+        MirExprKind::Call { callee, args } => {
+            expr_contains_early_exit(*callee, expr_map)
+                || args
+                    .iter()
+                    .any(|arg| expr_contains_early_exit(*arg, expr_map))
+        }
+        MirExprKind::Binary { left, right, .. } => {
+            expr_contains_early_exit(*left, expr_map)
+                || expr_contains_early_exit(*right, expr_map)
+        }
+        _ => false,
+    }
+}
+
 fn lower_call_with_propagate_to_blocks(
     body: MirExprId,
     callee: MirExprId,
@@ -1321,63 +1357,25 @@ fn lower_call_with_propagate_to_blocks(
     steps.extend_from_slice(args);
 
     for expr_id in steps {
-        let kind = classify_branch_kind(expr_id, expr_map);
         let next_label = format!("call{}.step{}", body, next_index);
         next_index += 1;
-        match kind {
-            BranchKind::Normal => {
-                let value = emit_value_expr(expr_id, expr_map, ssa);
-                let block = BasicBlock {
-                    label: step_label.clone(),
-                    instrs: vec![format!("exec expr#{expr_id}")],
-                    terminator: format!("br {next_label}"),
-                };
-                let llvm_block = LlvmBlock {
-                    label: step_label.clone(),
-                    instrs: {
-                        let mut instrs = vec![LlvmInstr::Comment(format!(
-                            "exec expr#{expr_id}"
-                        ))];
-                        instrs.extend(value.instrs);
-                        instrs
-                    },
-                    terminator: LlvmTerminator::Br {
-                        target: next_label.clone(),
-                    },
-                };
-                operands.push((value.ty, value.operand));
-                blocks.push(block);
-                llvm_blocks.push(llvm_block);
-                step_label = next_label;
-            }
-            BranchKind::Panic => {
-                let value = emit_value_expr(expr_id, expr_map, ssa);
-                let (block, llvm_block) =
-                    lower_panic_value_to_named_block(step_label, expr_id, value);
-                blocks.push(block);
-                llvm_blocks.push(llvm_block);
-                return (blocks, llvm_blocks);
-            }
-            BranchKind::Propagate => {
-                let value = emit_value_expr(expr_id, expr_map, ssa);
-                let (prop_blocks, prop_llvm_blocks, payload) =
-                    lower_propagate_operand_to_blocks(
-                        step_label.clone(),
-                        expr_id,
-                        value,
-                        expr_map
-                            .get(&expr_id)
-                            .map(|expr| expr.ty.as_str())
-                            .unwrap_or("Result"),
-                        &next_label,
-                        ssa,
-                    );
-                operands.push((ssa.pointer_type(), payload));
-                blocks.extend(prop_blocks);
-                llvm_blocks.extend(prop_llvm_blocks);
-                step_label = next_label;
-            }
+        let (step_blocks, step_llvm_blocks, operand, terminated) =
+            lower_expr_to_operand_blocks(
+                step_label.clone(),
+                expr_id,
+                expr_map,
+                ssa,
+                &next_label,
+            );
+        blocks.extend(step_blocks);
+        llvm_blocks.extend(step_llvm_blocks);
+        if terminated {
+            return (blocks, llvm_blocks);
         }
+        if let Some((operand, ty)) = operand {
+            operands.push((ty, operand));
+        }
+        step_label = next_label;
     }
 
     let callee_type = operands
@@ -1419,6 +1417,87 @@ fn lower_call_with_propagate_to_blocks(
     (blocks, llvm_blocks)
 }
 
+fn lower_call_with_propagate_to_operand_blocks(
+    label: String,
+    body: MirExprId,
+    callee: MirExprId,
+    args: &[MirExprId],
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+    next_label: &str,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>, Option<(String, String)>, bool) {
+    let mut blocks = Vec::new();
+    let mut llvm_blocks = Vec::new();
+    let mut step_label = label;
+    let mut next_index = 0usize;
+    let mut operands: Vec<(String, String)> = Vec::new();
+    let mut steps = Vec::new();
+    steps.push(callee);
+    steps.extend_from_slice(args);
+
+    for expr_id in steps {
+        let next_step_label = format!("call{}.step{}", body, next_index);
+        next_index += 1;
+        let (step_blocks, step_llvm_blocks, operand, terminated) =
+            lower_expr_to_operand_blocks(
+                step_label.clone(),
+                expr_id,
+                expr_map,
+                ssa,
+                &next_step_label,
+            );
+        blocks.extend(step_blocks);
+        llvm_blocks.extend(step_llvm_blocks);
+        if terminated {
+            return (blocks, llvm_blocks, None, true);
+        }
+        if let Some((operand, ty)) = operand {
+            operands.push((ty, operand));
+        }
+        step_label = next_step_label;
+    }
+
+    let callee_type = operands
+        .first()
+        .map(|(ty, _)| ty.clone())
+        .unwrap_or_else(|| ssa.pointer_type());
+    let callee_operand = operands
+        .first()
+        .map(|(_, op)| op.clone())
+        .unwrap_or_else(|| "null".into());
+    let mut call_args = Vec::new();
+    call_args.push((callee_type, callee_operand));
+    for (ty, op) in operands.into_iter().skip(1) {
+        call_args.push((ty, op));
+    }
+
+    let ret_ty = infer_call_return_type(callee, expr_map, ssa);
+    let result = ssa.new_tmp("call");
+    let block = BasicBlock {
+        label: step_label.clone(),
+        instrs: vec![format!("exec call#{body}")],
+        terminator: format!("br {next_label}"),
+    };
+    let llvm_block = LlvmBlock {
+        label: step_label,
+        instrs: vec![
+            LlvmInstr::Comment(format!("exec call#{body}")),
+            LlvmInstr::Call {
+                result: Some(result.clone()),
+                ret_ty: ret_ty.clone(),
+                callee: INTRINSIC_CALL.into(),
+                args: call_args,
+            },
+        ],
+        terminator: LlvmTerminator::Br {
+            target: next_label.to_string(),
+        },
+    };
+    blocks.push(block);
+    llvm_blocks.push(llvm_block);
+    (blocks, llvm_blocks, Some((result, ret_ty)), false)
+}
+
 fn lower_binary_with_propagate_to_blocks(
     body: MirExprId,
     operator: &str,
@@ -1432,64 +1511,28 @@ fn lower_binary_with_propagate_to_blocks(
     let mut step_label = "entry".to_string();
     let mut next_index = 0usize;
     let mut operands: Vec<String> = Vec::new();
+    let mut operand_tys: Vec<String> = Vec::new();
     for expr_id in [left, right] {
-        let kind = classify_branch_kind(expr_id, expr_map);
         let next_label = format!("bin{}.step{}", body, next_index);
         next_index += 1;
-        match kind {
-            BranchKind::Normal => {
-                let value = emit_value_expr(expr_id, expr_map, ssa);
-                let block = BasicBlock {
-                    label: step_label.clone(),
-                    instrs: vec![format!("exec expr#{expr_id}")],
-                    terminator: format!("br {next_label}"),
-                };
-                let llvm_block = LlvmBlock {
-                    label: step_label.clone(),
-                    instrs: {
-                        let mut instrs = vec![LlvmInstr::Comment(format!(
-                            "exec expr#{expr_id}"
-                        ))];
-                        instrs.extend(value.instrs);
-                        instrs
-                    },
-                    terminator: LlvmTerminator::Br {
-                        target: next_label.clone(),
-                    },
-                };
-                operands.push(value.operand);
-                blocks.push(block);
-                llvm_blocks.push(llvm_block);
-                step_label = next_label;
-            }
-            BranchKind::Panic => {
-                let value = emit_value_expr(expr_id, expr_map, ssa);
-                let (block, llvm_block) =
-                    lower_panic_value_to_named_block(step_label, expr_id, value);
-                blocks.push(block);
-                llvm_blocks.push(llvm_block);
-                return (blocks, llvm_blocks);
-            }
-            BranchKind::Propagate => {
-                let value = emit_value_expr(expr_id, expr_map, ssa);
-                let (prop_blocks, prop_llvm_blocks, payload) =
-                    lower_propagate_operand_to_blocks(
-                        step_label.clone(),
-                        expr_id,
-                        value,
-                        expr_map
-                            .get(&expr_id)
-                            .map(|expr| expr.ty.as_str())
-                            .unwrap_or("Result"),
-                        &next_label,
-                        ssa,
-                    );
-                operands.push(payload);
-                blocks.extend(prop_blocks);
-                llvm_blocks.extend(prop_llvm_blocks);
-                step_label = next_label;
-            }
+        let (step_blocks, step_llvm_blocks, operand, terminated) =
+            lower_expr_to_operand_blocks(
+                step_label.clone(),
+                expr_id,
+                expr_map,
+                ssa,
+                &next_label,
+            );
+        blocks.extend(step_blocks);
+        llvm_blocks.extend(step_llvm_blocks);
+        if terminated {
+            return (blocks, llvm_blocks);
         }
+        if let Some((operand, ty)) = operand {
+            operands.push(operand);
+            operand_tys.push(ty);
+        }
+        step_label = next_label;
     }
 
     let lhs = operands.get(0).cloned().unwrap_or_else(|| "0".into());
@@ -1503,6 +1546,36 @@ fn lower_binary_with_propagate_to_blocks(
         "%" => "srem",
         _ => "add",
     };
+    let mut instrs = vec![LlvmInstr::Comment(format!("exec binary#{body}"))];
+    let mut lhs_operand = lhs.clone();
+    let mut rhs_operand = rhs.clone();
+    if operand_tys.get(0).map(|ty| ty.as_str()) != Some("i64") {
+        let cast = ssa.new_tmp("lhs_i64");
+        instrs.push(LlvmInstr::Call {
+            result: Some(cast.clone()),
+            ret_ty: "i64".into(),
+            callee: INTRINSIC_VALUE.into(),
+            args: vec![("i64".into(), lhs_operand.clone())],
+        });
+        lhs_operand = cast;
+    }
+    if operand_tys.get(1).map(|ty| ty.as_str()) != Some("i64") {
+        let cast = ssa.new_tmp("rhs_i64");
+        instrs.push(LlvmInstr::Call {
+            result: Some(cast.clone()),
+            ret_ty: "i64".into(),
+            callee: INTRINSIC_VALUE.into(),
+            args: vec![("i64".into(), rhs_operand.clone())],
+        });
+        rhs_operand = cast;
+    }
+    instrs.push(LlvmInstr::BinOp {
+        result: result.clone(),
+        op: op.into(),
+        ty: "i64".into(),
+        lhs: lhs_operand,
+        rhs: rhs_operand,
+    });
     let block = BasicBlock {
         label: step_label.clone(),
         instrs: vec![format!("exec binary#{body}")],
@@ -1510,21 +1583,109 @@ fn lower_binary_with_propagate_to_blocks(
     };
     let llvm_block = LlvmBlock {
         label: step_label,
-        instrs: vec![
-            LlvmInstr::Comment(format!("exec binary#{body}")),
-            LlvmInstr::BinOp {
-                result: result.clone(),
-                op: op.into(),
-                ty: "i64".into(),
-                lhs,
-                rhs,
-            },
-        ],
+        instrs,
         terminator: LlvmTerminator::Ret(Some(result)),
     };
     blocks.push(block);
     llvm_blocks.push(llvm_block);
     (blocks, llvm_blocks)
+}
+
+fn lower_binary_with_propagate_to_operand_blocks(
+    label: String,
+    body: MirExprId,
+    operator: &str,
+    left: MirExprId,
+    right: MirExprId,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+    next_label: &str,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>, Option<(String, String)>, bool) {
+    let mut blocks = Vec::new();
+    let mut llvm_blocks = Vec::new();
+    let mut step_label = label;
+    let mut next_index = 0usize;
+    let mut operands: Vec<String> = Vec::new();
+    let mut operand_tys: Vec<String> = Vec::new();
+    for expr_id in [left, right] {
+        let next_step_label = format!("bin{}.step{}", body, next_index);
+        next_index += 1;
+        let (step_blocks, step_llvm_blocks, operand, terminated) =
+            lower_expr_to_operand_blocks(
+                step_label.clone(),
+                expr_id,
+                expr_map,
+                ssa,
+                &next_step_label,
+            );
+        blocks.extend(step_blocks);
+        llvm_blocks.extend(step_llvm_blocks);
+        if terminated {
+            return (blocks, llvm_blocks, None, true);
+        }
+        if let Some((operand, ty)) = operand {
+            operands.push(operand);
+            operand_tys.push(ty);
+        }
+        step_label = next_step_label;
+    }
+
+    let lhs = operands.get(0).cloned().unwrap_or_else(|| "0".into());
+    let rhs = operands.get(1).cloned().unwrap_or_else(|| "0".into());
+    let result = ssa.new_tmp("bin");
+    let op = match operator {
+        "+" => "add",
+        "-" => "sub",
+        "*" => "mul",
+        "/" => "sdiv",
+        "%" => "srem",
+        _ => "add",
+    };
+    let mut instrs = vec![LlvmInstr::Comment(format!("exec binary#{body}"))];
+    let mut lhs_operand = lhs.clone();
+    let mut rhs_operand = rhs.clone();
+    if operand_tys.get(0).map(|ty| ty.as_str()) != Some("i64") {
+        let cast = ssa.new_tmp("lhs_i64");
+        instrs.push(LlvmInstr::Call {
+            result: Some(cast.clone()),
+            ret_ty: "i64".into(),
+            callee: INTRINSIC_VALUE.into(),
+            args: vec![("i64".into(), lhs_operand.clone())],
+        });
+        lhs_operand = cast;
+    }
+    if operand_tys.get(1).map(|ty| ty.as_str()) != Some("i64") {
+        let cast = ssa.new_tmp("rhs_i64");
+        instrs.push(LlvmInstr::Call {
+            result: Some(cast.clone()),
+            ret_ty: "i64".into(),
+            callee: INTRINSIC_VALUE.into(),
+            args: vec![("i64".into(), rhs_operand.clone())],
+        });
+        rhs_operand = cast;
+    }
+    instrs.push(LlvmInstr::BinOp {
+        result: result.clone(),
+        op: op.into(),
+        ty: "i64".into(),
+        lhs: lhs_operand,
+        rhs: rhs_operand,
+    });
+    let block = BasicBlock {
+        label: step_label.clone(),
+        instrs: vec![format!("exec binary#{body}")],
+        terminator: format!("br {next_label}"),
+    };
+    let llvm_block = LlvmBlock {
+        label: step_label,
+        instrs,
+        terminator: LlvmTerminator::Br {
+            target: next_label.to_string(),
+        },
+    };
+    blocks.push(block);
+    llvm_blocks.push(llvm_block);
+    (blocks, llvm_blocks, Some((result, "i64".into())), false)
 }
 
 fn lower_if_else_with_propagate_to_blocks(
@@ -1699,6 +1860,177 @@ fn lower_if_else_with_propagate_to_blocks(
         terminator: LlvmTerminator::Ret(Some(phi_result)),
     });
     (blocks, llvm_blocks)
+}
+
+fn lower_if_else_to_operand_blocks(
+    label: String,
+    body: MirExprId,
+    condition: MirExprId,
+    then_branch: MirExprId,
+    else_branch: MirExprId,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+    next_label: &str,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>, Option<(String, String)>, bool) {
+    let end_label = format!("ifelse{}.end", body);
+    let then_label = format!("ifelse{}.then", body);
+    let else_label = format!("ifelse{}.else", body);
+    let then_kind = classify_branch_kind(then_branch, expr_map);
+    let else_kind = classify_branch_kind(else_branch, expr_map);
+    let then_ty = expr_map
+        .get(&then_branch)
+        .map(|expr| expr.ty.as_str())
+        .unwrap_or("unknown");
+    let else_ty = expr_map
+        .get(&else_branch)
+        .map(|expr| expr.ty.as_str())
+        .unwrap_or("unknown");
+    let result_type = if then_ty == else_ty {
+        then_ty.to_string()
+    } else {
+        ssa.pointer_type()
+    };
+
+    let (cond, mut cond_instrs) = emit_bool_expr(condition, expr_map, ssa);
+    cond_instrs.insert(
+        0,
+        LlvmInstr::Comment(format!("ifelse#{body} cond -> {then_label}/{else_label}")),
+    );
+    let entry_block = BasicBlock {
+        label: label.clone(),
+        instrs: vec![format!("exec ifelse#{body} cond")],
+        terminator: format!("br_if {cond} then {then_label} else {else_label}"),
+    };
+    let entry_llvm_block = LlvmBlock {
+        label: label.clone(),
+        instrs: cond_instrs,
+        terminator: LlvmTerminator::BrCond {
+            cond: cond.clone(),
+            then_bb: then_label.clone(),
+            else_bb: else_label.clone(),
+        },
+    };
+
+    let mut blocks = vec![entry_block];
+    let mut llvm_blocks = vec![entry_llvm_block];
+    let mut phi_sources: Vec<(String, String)> = Vec::new();
+
+    match then_kind {
+        BranchKind::Normal => {
+            let (block, llvm_block, phi_source) = lower_if_else_branch_value(
+                then_label.clone(),
+                then_branch,
+                expr_map,
+                &result_type,
+                &end_label,
+                ssa,
+            );
+            blocks.push(block);
+            llvm_blocks.push(llvm_block);
+            phi_sources.push(phi_source);
+        }
+        BranchKind::Propagate => {
+            let value = emit_value_expr(then_branch, expr_map, ssa);
+            let (prop_blocks, prop_llvm_blocks, phi_source) =
+                lower_propagate_value_to_if_blocks(
+                    then_label.clone(),
+                    then_branch,
+                    value,
+                    then_ty,
+                    &result_type,
+                    &end_label,
+                    ssa,
+                );
+            blocks.extend(prop_blocks);
+            llvm_blocks.extend(prop_llvm_blocks);
+            phi_sources.push(phi_source);
+        }
+        BranchKind::Panic => {
+            let value = emit_value_expr(then_branch, expr_map, ssa);
+            let (block, llvm_block) =
+                lower_panic_value_to_named_block(then_label.clone(), then_branch, value);
+            blocks.push(block);
+            llvm_blocks.push(llvm_block);
+        }
+    }
+
+    match else_kind {
+        BranchKind::Normal => {
+            let (block, llvm_block, phi_source) = lower_if_else_branch_value(
+                else_label.clone(),
+                else_branch,
+                expr_map,
+                &result_type,
+                &end_label,
+                ssa,
+            );
+            blocks.push(block);
+            llvm_blocks.push(llvm_block);
+            phi_sources.push(phi_source);
+        }
+        BranchKind::Propagate => {
+            let value = emit_value_expr(else_branch, expr_map, ssa);
+            let (prop_blocks, prop_llvm_blocks, phi_source) =
+                lower_propagate_value_to_if_blocks(
+                    else_label.clone(),
+                    else_branch,
+                    value,
+                    else_ty,
+                    &result_type,
+                    &end_label,
+                    ssa,
+                );
+            blocks.extend(prop_blocks);
+            llvm_blocks.extend(prop_llvm_blocks);
+            phi_sources.push(phi_source);
+        }
+        BranchKind::Panic => {
+            let value = emit_value_expr(else_branch, expr_map, ssa);
+            let (block, llvm_block) =
+                lower_panic_value_to_named_block(else_label.clone(), else_branch, value);
+            blocks.push(block);
+            llvm_blocks.push(llvm_block);
+        }
+    }
+
+    if phi_sources.is_empty() {
+        return (blocks, llvm_blocks, None, true);
+    }
+
+    let phi_inputs = format!(
+        "[{}]",
+        phi_sources
+            .iter()
+            .map(|(_, lbl)| lbl.clone())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    let phi_result = ssa.new_tmp("ifelse_result");
+    blocks.push(BasicBlock {
+        label: end_label.clone(),
+        instrs: vec![format!(
+            "phi ifelse_result : {} <- {}",
+            result_type, phi_inputs
+        )],
+        terminator: format!("br {next_label}"),
+    });
+    llvm_blocks.push(LlvmBlock {
+        label: end_label,
+        instrs: vec![LlvmInstr::Phi {
+            result: phi_result.clone(),
+            ty: result_type.clone(),
+            incomings: phi_sources,
+        }],
+        terminator: LlvmTerminator::Br {
+            target: next_label.to_string(),
+        },
+    });
+    (
+        blocks,
+        llvm_blocks,
+        Some((phi_result, result_type)),
+        false,
+    )
 }
 
 fn lower_block_tail_if_else_with_defer_to_blocks(
@@ -1894,6 +2226,198 @@ fn lower_block_tail_if_else_with_defer_to_blocks(
         terminator: LlvmTerminator::Ret(Some(phi_result)),
     });
     (blocks, llvm_blocks)
+}
+
+fn lower_block_tail_if_else_with_defer_to_operand_blocks(
+    label: String,
+    body: MirExprId,
+    condition: MirExprId,
+    then_branch: MirExprId,
+    else_branch: MirExprId,
+    defer_lifo: &[MirExprId],
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+    next_label: &str,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>, Option<(String, String)>, bool) {
+    let end_label = format!("block_ifelse{}.end", body);
+    let then_label = format!("block_ifelse{}.then", body);
+    let else_label = format!("block_ifelse{}.else", body);
+    let then_kind = classify_branch_kind(then_branch, expr_map);
+    let else_kind = classify_branch_kind(else_branch, expr_map);
+    let then_ty = expr_map
+        .get(&then_branch)
+        .map(|expr| expr.ty.as_str())
+        .unwrap_or("unknown");
+    let else_ty = expr_map
+        .get(&else_branch)
+        .map(|expr| expr.ty.as_str())
+        .unwrap_or("unknown");
+    let result_type = if then_ty == else_ty {
+        then_ty.to_string()
+    } else {
+        ssa.pointer_type()
+    };
+
+    let (cond, mut cond_instrs) = emit_bool_expr(condition, expr_map, ssa);
+    cond_instrs.insert(
+        0,
+        LlvmInstr::Comment(format!(
+            "block ifelse#{body} cond -> {then_label}/{else_label}"
+        )),
+    );
+    let entry_block = BasicBlock {
+        label: label.clone(),
+        instrs: vec![format!("exec block ifelse#{body} cond")],
+        terminator: format!("br_if {cond} then {then_label} else {else_label}"),
+    };
+    let entry_llvm_block = LlvmBlock {
+        label: label.clone(),
+        instrs: cond_instrs,
+        terminator: LlvmTerminator::BrCond {
+            cond: cond.clone(),
+            then_bb: then_label.clone(),
+            else_bb: else_label.clone(),
+        },
+    };
+
+    let mut blocks = vec![entry_block];
+    let mut llvm_blocks = vec![entry_llvm_block];
+    let mut phi_sources: Vec<(String, String)> = Vec::new();
+
+    match then_kind {
+        BranchKind::Normal => {
+            let (block, llvm_block, phi_source) = lower_if_else_branch_value_with_defers(
+                then_label.clone(),
+                then_branch,
+                defer_lifo,
+                expr_map,
+                &result_type,
+                &end_label,
+                ssa,
+            );
+            blocks.push(block);
+            llvm_blocks.push(llvm_block);
+            phi_sources.push(phi_source);
+        }
+        BranchKind::Propagate => {
+            let value = emit_value_expr(then_branch, expr_map, ssa);
+            let (prop_blocks, prop_llvm_blocks, phi_source) =
+                lower_block_propagate_with_defers_to_if_blocks(
+                    then_label.clone(),
+                    then_branch,
+                    value,
+                    then_ty,
+                    &result_type,
+                    &end_label,
+                    defer_lifo,
+                    expr_map,
+                    ssa,
+                );
+            blocks.extend(prop_blocks);
+            llvm_blocks.extend(prop_llvm_blocks);
+            phi_sources.push(phi_source);
+        }
+        BranchKind::Panic => {
+            let value = emit_value_expr(then_branch, expr_map, ssa);
+            let (block, llvm_block) = lower_panic_value_to_named_block_with_defers(
+                then_label.clone(),
+                then_branch,
+                value,
+                defer_lifo,
+                expr_map,
+                ssa,
+            );
+            blocks.push(block);
+            llvm_blocks.push(llvm_block);
+        }
+    }
+
+    match else_kind {
+        BranchKind::Normal => {
+            let (block, llvm_block, phi_source) = lower_if_else_branch_value_with_defers(
+                else_label.clone(),
+                else_branch,
+                defer_lifo,
+                expr_map,
+                &result_type,
+                &end_label,
+                ssa,
+            );
+            blocks.push(block);
+            llvm_blocks.push(llvm_block);
+            phi_sources.push(phi_source);
+        }
+        BranchKind::Propagate => {
+            let value = emit_value_expr(else_branch, expr_map, ssa);
+            let (prop_blocks, prop_llvm_blocks, phi_source) =
+                lower_block_propagate_with_defers_to_if_blocks(
+                    else_label.clone(),
+                    else_branch,
+                    value,
+                    else_ty,
+                    &result_type,
+                    &end_label,
+                    defer_lifo,
+                    expr_map,
+                    ssa,
+                );
+            blocks.extend(prop_blocks);
+            llvm_blocks.extend(prop_llvm_blocks);
+            phi_sources.push(phi_source);
+        }
+        BranchKind::Panic => {
+            let value = emit_value_expr(else_branch, expr_map, ssa);
+            let (block, llvm_block) = lower_panic_value_to_named_block_with_defers(
+                else_label.clone(),
+                else_branch,
+                value,
+                defer_lifo,
+                expr_map,
+                ssa,
+            );
+            blocks.push(block);
+            llvm_blocks.push(llvm_block);
+        }
+    }
+
+    if phi_sources.is_empty() {
+        return (blocks, llvm_blocks, None, true);
+    }
+
+    let phi_inputs = format!(
+        "[{}]",
+        phi_sources
+            .iter()
+            .map(|(_, lbl)| lbl.clone())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    let phi_result = ssa.new_tmp("ifelse_result");
+    blocks.push(BasicBlock {
+        label: end_label.clone(),
+        instrs: vec![format!(
+            "phi ifelse_result : {} <- {}",
+            result_type, phi_inputs
+        )],
+        terminator: format!("br {next_label}"),
+    });
+    llvm_blocks.push(LlvmBlock {
+        label: end_label,
+        instrs: vec![LlvmInstr::Phi {
+            result: phi_result.clone(),
+            ty: result_type.clone(),
+            incomings: phi_sources,
+        }],
+        terminator: LlvmTerminator::Br {
+            target: next_label.to_string(),
+        },
+    });
+    (
+        blocks,
+        llvm_blocks,
+        Some((phi_result, result_type)),
+        false,
+    )
 }
 
 fn lower_if_else_branch_value_with_defers(
@@ -2619,6 +3143,228 @@ fn lower_propagate_operand_to_blocks(
         vec![entry_llvm_block, ok_llvm_block, err_llvm_block],
         payload,
     )
+}
+
+fn lower_expr_to_operand_blocks(
+    label: String,
+    expr_id: MirExprId,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+    next_label: &str,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>, Option<(String, String)>, bool) {
+    let Some(expr) = expr_map.get(&expr_id) else {
+        let block = BasicBlock {
+            label: label.clone(),
+            instrs: vec![format!("exec expr#{expr_id} (missing)")],
+            terminator: format!("br {next_label}"),
+        };
+        let llvm_block = LlvmBlock {
+            label,
+            instrs: vec![LlvmInstr::Comment(format!(
+                "expr#{expr_id} missing -> fallback"
+            ))],
+            terminator: LlvmTerminator::Br {
+                target: next_label.to_string(),
+            },
+        };
+        return (
+            vec![block],
+            vec![llvm_block],
+            Some((format!("#{}", expr_id), ssa.pointer_type())),
+            false,
+        );
+    };
+
+    match &expr.kind {
+        MirExprKind::Propagate { .. } => {
+            let value = emit_value_expr(expr_id, expr_map, ssa);
+            let (blocks, llvm_blocks, payload) = lower_propagate_operand_to_blocks(
+                label,
+                expr_id,
+                value,
+                expr.ty.as_str(),
+                next_label,
+                ssa,
+            );
+            (
+                blocks,
+                llvm_blocks,
+                Some((payload, ssa.pointer_type())),
+                false,
+            )
+        }
+        MirExprKind::Panic { .. } => {
+            let value = emit_value_expr(expr_id, expr_map, ssa);
+            let (block, llvm_block) =
+                lower_panic_value_to_named_block(label, expr_id, value);
+            (vec![block], vec![llvm_block], None, true)
+        }
+        MirExprKind::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+        } if expr_contains_early_exit(expr_id, expr_map) => {
+            lower_if_else_to_operand_blocks(
+                label,
+                expr_id,
+                *condition,
+                *then_branch,
+                *else_branch,
+                expr_map,
+                ssa,
+                next_label,
+            )
+        }
+        MirExprKind::Call { callee, args }
+            if expr_contains_early_exit(expr_id, expr_map) =>
+        {
+            lower_call_with_propagate_to_operand_blocks(
+                label,
+                expr_id,
+                *callee,
+                args,
+                expr_map,
+                ssa,
+                next_label,
+            )
+        }
+        MirExprKind::Binary {
+            operator,
+            left,
+            right,
+        } if matches!(operator.as_str(), "+" | "-" | "*" | "/" | "%")
+            && expr_contains_early_exit(expr_id, expr_map) =>
+        {
+            lower_binary_with_propagate_to_operand_blocks(
+                label,
+                expr_id,
+                operator,
+                *left,
+                *right,
+                expr_map,
+                ssa,
+                next_label,
+            )
+        }
+        MirExprKind::Block {
+            tail: Some(tail_id),
+            defer_lifo,
+            ..
+        } => {
+            if let Some(tail_expr) = expr_map.get(tail_id) {
+                if let MirExprKind::IfElse {
+                    condition,
+                    then_branch,
+                    else_branch,
+                } = &tail_expr.kind
+                {
+                    if expr_contains_early_exit(*tail_id, expr_map) {
+                        if !defer_lifo.is_empty() {
+                            return lower_block_tail_if_else_with_defer_to_operand_blocks(
+                                label,
+                                expr_id,
+                                *condition,
+                                *then_branch,
+                                *else_branch,
+                                defer_lifo,
+                                expr_map,
+                                ssa,
+                                next_label,
+                            );
+                        }
+                        return lower_if_else_to_operand_blocks(
+                            label,
+                            *tail_id,
+                            *condition,
+                            *then_branch,
+                            *else_branch,
+                            expr_map,
+                            ssa,
+                            next_label,
+                        );
+                    }
+                }
+            }
+            match classify_branch_kind(expr_id, expr_map) {
+                BranchKind::Propagate => {
+                    let value = emit_value_expr(expr_id, expr_map, ssa);
+                    let (blocks, llvm_blocks, payload) = lower_propagate_operand_to_blocks(
+                        label,
+                        expr_id,
+                        value,
+                        expr.ty.as_str(),
+                        next_label,
+                        ssa,
+                    );
+                    return (
+                        blocks,
+                        llvm_blocks,
+                        Some((payload, ssa.pointer_type())),
+                        false,
+                    );
+                }
+                BranchKind::Panic => {
+                    let value = emit_value_expr(expr_id, expr_map, ssa);
+                    let (block, llvm_block) =
+                        lower_panic_value_to_named_block(label, expr_id, value);
+                    return (vec![block], vec![llvm_block], None, true);
+                }
+                BranchKind::Normal => {}
+            }
+            let value = emit_value_expr(expr_id, expr_map, ssa);
+            let block = BasicBlock {
+                label: label.clone(),
+                instrs: vec![format!("exec expr#{expr_id}")],
+                terminator: format!("br {next_label}"),
+            };
+            let llvm_block = LlvmBlock {
+                label,
+                instrs: {
+                    let mut instrs = vec![LlvmInstr::Comment(format!(
+                        "exec expr#{expr_id}"
+                    ))];
+                    instrs.extend(value.instrs);
+                    instrs
+                },
+                terminator: LlvmTerminator::Br {
+                    target: next_label.to_string(),
+                },
+            };
+            (
+                vec![block],
+                vec![llvm_block],
+                Some((value.operand, value.ty)),
+                false,
+            )
+        }
+        _ => {
+            let value = emit_value_expr(expr_id, expr_map, ssa);
+            let block = BasicBlock {
+                label: label.clone(),
+                instrs: vec![format!("exec expr#{expr_id}")],
+                terminator: format!("br {next_label}"),
+            };
+            let llvm_block = LlvmBlock {
+                label,
+                instrs: {
+                    let mut instrs = vec![LlvmInstr::Comment(format!(
+                        "exec expr#{expr_id}"
+                    ))];
+                    instrs.extend(value.instrs);
+                    instrs
+                },
+                terminator: LlvmTerminator::Br {
+                    target: next_label.to_string(),
+                },
+            };
+            (
+                vec![block],
+                vec![llvm_block],
+                Some((value.operand, value.ty)),
+                false,
+            )
+        }
+    }
 }
 
 fn emit_guard_cond(
