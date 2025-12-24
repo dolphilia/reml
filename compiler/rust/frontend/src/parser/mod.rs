@@ -1676,6 +1676,7 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
         TokenKind::ChannelPipe => vec![ET::token("~>")],
         TokenKind::Bar => vec![ET::token("|")],
         TokenKind::At => vec![ET::token("@")],
+        TokenKind::Ampersand => vec![ET::token("&")],
         TokenKind::Plus => vec![ET::token("+")],
         TokenKind::Minus => vec![ET::token("-")],
         TokenKind::Star => vec![ET::token("*")],
@@ -1714,6 +1715,7 @@ fn module_parser<'src>(
         just(TokenKind::Identifier),
         just(TokenKind::UpperIdentifier),
         just(TokenKind::KeywordSelf),
+        just(TokenKind::KeywordMut),
     ))
     .map_with_span(move |_, span: Range<usize>| {
         let slice = &source[span.start..span.end];
@@ -1722,13 +1724,14 @@ fn module_parser<'src>(
 
     let ident = identifier.clone().map(|(name, span)| Ident { name, span });
 
-    let lower_ident = just(TokenKind::Identifier).map_with_span(move |_, span: Range<usize>| {
-        let slice = &source[span.start..span.end];
-        Ident {
-            name: slice.to_string(),
-            span: range_to_span(span),
-        }
-    });
+    let lower_ident = choice((just(TokenKind::Identifier), just(TokenKind::KeywordMut)))
+        .map_with_span(move |_, span: Range<usize>| {
+            let slice = &source[span.start..span.end];
+            Ident {
+                name: slice.to_string(),
+                span: range_to_span(span),
+            }
+        });
 
     let int_literal = just(TokenKind::IntLiteral).map_with_span(move |_, span: Range<usize>| {
         let slice = &source[span.start..span.end];
@@ -1771,6 +1774,19 @@ fn module_parser<'src>(
         .map_with_span(|elements, span: Range<usize>| TypeAnnot {
             span: range_to_span(span),
             kind: TypeKind::Tuple { elements },
+            annotation_kind: None,
+        });
+
+        let slice_type = delimited_with_cut(
+            TokenKind::LBracket,
+            ty.clone().cut(),
+            TokenKind::RBracket,
+        )
+        .map_with_span(|element, span: Range<usize>| TypeAnnot {
+            span: range_to_span(span),
+            kind: TypeKind::Slice {
+                element: Box::new(element),
+            },
             annotation_kind: None,
         });
 
@@ -1829,7 +1845,21 @@ fn module_parser<'src>(
                 annotation_kind: None,
             });
 
-        let atom = choice((fn_type, tuple_type, record_type, app, simple));
+        let atom = recursive(|atom| {
+            let ref_type = just(TokenKind::Ampersand)
+                .then(just(TokenKind::KeywordMut).or_not())
+                .then(atom.clone().cut())
+                .map_with_span(|((_, mut_kw), target), span: Range<usize>| TypeAnnot {
+                    span: range_to_span(span),
+                    kind: TypeKind::Ref {
+                        target: Box::new(target),
+                        mutable: mut_kw.is_some(),
+                    },
+                    annotation_kind: None,
+                });
+            let base = choice((fn_type, tuple_type, record_type, slice_type, app, simple));
+            choice((ref_type, base))
+        });
 
         atom.clone()
             .then(just(TokenKind::Arrow).ignore_then(ty.clone()).or_not())

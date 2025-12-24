@@ -106,6 +106,8 @@ enum RawToken {
     KeywordLet,
     #[token("var")]
     KeywordVar,
+    #[token("mut")]
+    KeywordMut,
     #[token("fn")]
     KeywordFn,
     #[token("type")]
@@ -195,6 +197,8 @@ enum RawToken {
     ColonAssign,
     #[token("&&")]
     LogicalAnd,
+    #[token("&")]
+    Ampersand,
     #[token("||")]
     LogicalOr,
     #[token("==")]
@@ -489,6 +493,9 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             Ok(RawToken::KeywordVar) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordVar, "var")
             }
+            Ok(RawToken::KeywordMut) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordMut, "mut")
+            }
             Ok(RawToken::KeywordFn) => push_keyword(&mut tokens, span, TokenKind::KeywordFn, "fn"),
             Ok(RawToken::KeywordType) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordType, "type")
@@ -722,6 +729,7 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             Ok(RawToken::Gt) => tokens.push(Token::new(TokenKind::Gt, span)),
             Ok(RawToken::Ge) => tokens.push(Token::new(TokenKind::Ge, span)),
             Ok(RawToken::LogicalAnd) => tokens.push(Token::new(TokenKind::LogicalAnd, span)),
+            Ok(RawToken::Ampersand) => tokens.push(Token::new(TokenKind::Ampersand, span)),
             Ok(RawToken::LogicalOr) => tokens.push(Token::new(TokenKind::LogicalOr, span)),
             Ok(RawToken::Not) => tokens.push(Token::new(TokenKind::Not, span)),
             Ok(RawToken::Question) => tokens.push(Token::new(TokenKind::Question, span)),

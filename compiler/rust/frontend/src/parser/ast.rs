@@ -1281,6 +1281,13 @@ pub enum TypeKind {
     Record {
         fields: Vec<(Ident, TypeAnnot)>,
     },
+    Slice {
+        element: Box<TypeAnnot>,
+    },
+    Ref {
+        target: Box<TypeAnnot>,
+        mutable: bool,
+    },
     Fn {
         params: Vec<TypeAnnot>,
         ret: Box<TypeAnnot>,
@@ -1314,6 +1321,14 @@ impl TypeKind {
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("record({})", entries)
+            }
+            TypeKind::Slice { element } => format!("[{}]", element.render()),
+            TypeKind::Ref { target, mutable } => {
+                if *mutable {
+                    format!("&mut {}", target.render())
+                } else {
+                    format!("&{}", target.render())
+                }
             }
             TypeKind::Fn { params, ret } => format!(
                 "fn({}) -> {}",
