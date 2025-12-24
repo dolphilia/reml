@@ -25,3 +25,4 @@
   - `sec_f`: `parser.lexer.unknown_token` / `parser.syntax.expected_tokens`（診断 2 件）。
   - `sec_h_2-a`: `parser.syntax.expected_tokens`（診断 1 件）。
   - `sec_h_2-b`: diagnostics 0 件。
+- `reml_frontend` 再ビルド後に再検証し、対象 4 件は diagnostics 0 件へ改善。
