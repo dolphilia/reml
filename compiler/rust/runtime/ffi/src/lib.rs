@@ -32,16 +32,26 @@ pub mod core_collections_metrics;
 pub mod core_prelude;
 #[cfg(feature = "core_prelude")]
 pub use core_prelude as prelude;
+#[cfg(feature = "runtime_support")]
 #[path = "../../src/io/mod.rs"]
 pub mod io;
+#[cfg(feature = "runtime_support")]
 #[path = "../../src/test/mod.rs"]
 pub mod test;
 pub mod stage {
     pub use crate::capability_metadata::{StageId, StageParseError, StageRequirement};
 }
-#[cfg(feature = "core_prelude")]
+#[cfg(all(feature = "core_prelude", feature = "runtime_support"))]
 #[path = "../../src/text/mod.rs"]
 pub mod text;
+#[cfg(all(feature = "core_prelude", not(feature = "runtime_support")))]
+pub mod text {
+    use serde_json::{Map, Value};
+
+    pub fn take_text_audit_metadata() -> Option<Map<String, Value>> {
+        None
+    }
+}
 mod env;
 mod ffi_contract;
 #[cfg(feature = "core_prelude")]
@@ -49,6 +59,7 @@ mod handles;
 mod manifest_contract;
 mod registry;
 #[path = "../../src/runtime/mod.rs"]
+#[cfg(feature = "runtime_support")]
 pub mod runtime;
 mod security;
 

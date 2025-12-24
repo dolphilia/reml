@@ -12,6 +12,7 @@ path = "src/lib.rs"
 [features]
 default = []
 core_prelude = []
+runtime_support = ["schemars", "sha2", "wasmtime", "uuid", "unicode-ident"]
 
 [dependencies]
 serde_json = "1.0"
@@ -23,11 +24,16 @@ indexmap = "1.9"
 unicode-segmentation = "1.11"
 unicode-width = "0.1"
 unicode-normalization = "0.1"
+unicode-ident = { version = "1.0", optional = true }
 notify = "6.1"
 glob = "0.3"
 time = { version = "0.3.36", features = ["local-offset", "formatting", "parsing"] }
 ordered-float = "4.2"
 thiserror = "1.0"
+schemars = { version = "0.8", features = ["derive"], optional = true }
+sha2 = { version = "0.10", optional = true }
+uuid = { version = "1.8", features = ["serde"], optional = true }
+wasmtime = { version = "6.0", default-features = false, features = ["cranelift"], optional = true }
 
 [dev-dependencies]
 tempfile = "3.9"

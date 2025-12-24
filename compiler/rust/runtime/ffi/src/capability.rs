@@ -14,3 +14,6 @@ pub mod registry {
         RuntimeBridgeRegistry, RuntimeBridgeStreamSignal,
     };
 }
+
+pub use crate::capability_metadata::PluginCapabilityMetadata;
+pub use crate::registry::{CapabilityError, CapabilityRegistry};
