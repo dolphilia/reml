@@ -18,10 +18,10 @@
   - `3-x` 系列: 標準ライブラリ仕様。
   - `4-x` 系列: 公式プラグイン仕様ドラフト。
   - `5-x` 系列: エコシステム仕様ドラフト。
-- `guides/`: 実務ガイド（AI 連携、プラグイン開発など）。
-- `notes/`: 調査ノート、将来計画、RFC 相当の文書。
-- `plans/`: Reml 実装ロードマップや運用計画。
-- `schemas/`: JSON Schema definitions (Diagnostics, Plugins 등).
+- `docs/guides/`: 実務ガイド（AI 連携、プラグイン開発など）。
+- `docs/notes/`: 調査ノート、将来計画、RFC 相当の文書。
+- `docs/plans/`: Reml 実装ロードマップや運用計画。
+- `docs/schemas/`: JSON Schema definitions (Diagnostics, Plugins など).
 
 ### 実装 (`compiler/`, `runtime/`, etc.)
 
@@ -42,7 +42,8 @@
     - 実装コード: Rust (2021 edition以上), OCaml (参照用)。
 3. **Rust 開発**:
     - `cargo test`, `cargo fmt`, `cargo clippy` を活用し、品質を保ちます。
-    - ルートには衝突回避のため `Cargo.toml.ws` のみがあり、各作業単位は `compiler/rust/frontend/` や `compiler/rust/backend/`、`compiler/rust/runtime/` などの個別 `Cargo.toml` を直接指定して実行します（例: `cargo test --manifest-path compiler/rust/frontend/Cargo.toml`）。
+    - ルートには衝突回避のため `Cargo.toml.ws` のみがあり、原則 `--manifest-path` で各作業単位の `Cargo.toml` を直接指定して実行します（例: `cargo test --manifest-path compiler/rust/frontend/Cargo.toml`）。
+    - ルートビルドは必要な時のみ実行し、作業後に `Cargo.toml.ws` を必ず元に戻します。
     - 実行手順:
         - frontend: `cargo build --manifest-path compiler/rust/frontend/Cargo.toml`
         - backend: `cargo build --manifest-path compiler/rust/backend/llvm/Cargo.toml`

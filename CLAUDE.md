@@ -30,7 +30,7 @@
 ### その他
 
 - `examples/`: Reml コードのサンプル。
-- `tests/`: 統合テスト（存在する場合）。
+- `tests/`: 統合テスト。
 
 ## 開発ワークフロー
 
@@ -38,7 +38,8 @@
 
 アクティブな開発はここで行われます。
 
-- ルートには衝突回避のため `Cargo.toml.ws` のみがあり、作業対象の `Cargo.toml` を直接指定して実行します（例: `compiler/rust/frontend/`、`compiler/rust/backend/`、`compiler/rust/runtime/`）。
+- ルートには衝突回避のため `Cargo.toml.ws` のみがあり、原則 `--manifest-path` で作業対象の `Cargo.toml` を直接指定して実行します（例: `compiler/rust/frontend/`、`compiler/rust/backend/`、`compiler/rust/runtime/`）。
+- ルートビルドは必要な時のみ実行し、作業後に `Cargo.toml.ws` を必ず元に戻します。
 - **ビルド**: `cargo build --manifest-path compiler/rust/frontend/Cargo.toml`
 - **テスト**: `cargo test --manifest-path compiler/rust/frontend/Cargo.toml`
 - **リント**: `cargo clippy --manifest-path compiler/rust/frontend/Cargo.toml`
