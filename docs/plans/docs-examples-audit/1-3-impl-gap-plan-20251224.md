@@ -33,6 +33,20 @@
   - `defer` を `return` / `let` / `var` と同等のステートメント優先順位で解釈する。
 
 ### フェーズ 2: AST/実行時セマンティクスの整合
+#### 進捗（完了済み）
+- Typed AST / MIR に `Block` と `Stmt` を導入し、`MirExprKind::Block { statements, defer_lifo }` を backend まで通す。
+- `compiler/rust/backend/llvm` の JSON ローダで `block`/`statement` を受理し、`MirStmt` を変換する。
+- `defer_lifo` を `return` / `propagate` / `panic` の lowering 経路へ挿入し、ブロック末尾にも展開する。
+- `LlvmTerminator::Unreachable` を追加し、`panic` を終端命令へ lowering する。
+- `let/var` を backend で `alloca`/`store`/`load` に落とす実装を追加する。
+- `Index` を backend に追加し、`@reml_index_access` の operand を生成する。
+- backend ビルドと IR ダンプを通し、`alloca`/`store`/`load` が出力されることを確認する。
+
+#### 残タスク（未完了）
+- `propagate` の payload 型解決（`Result/Option` の payload を `@reml_value` で期待型へ変換）。
+- `panic` 引数型の IR 仕様（`@panic(ptr)` と `Str` 変換の整合）を runtime 側仕様と突き合わせる。
+- `defer` 構文のパーサテスト・診断 0 件の確認（フェーズ 1 との整合も含む）。
+
 #### 設計方針（MIR/IR 低レイヤ）
 - **MIR に `block` と `defer` を保持する**: Typed AST に `Block` / `Stmt` を追加し、`MirExprKind::Block { statements, defers }` を新設する（`defers` は出現順保持）。
 - **LIFO 実行は lowering で明示化**: `return` / `?` / `panic` / ループ脱出の各パスに対し、スコープ終端で `defers` を逆順に展開して実行する。
