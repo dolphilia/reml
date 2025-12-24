@@ -11,6 +11,7 @@ set(RUNTIME_SOURCES
     src/refcount.c
     src/os.c
     src/string_compare.c
+    src/string_data.c
 )
 
 add_library(reml_runtime STATIC ${RUNTIME_SOURCES})

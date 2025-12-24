@@ -163,6 +163,17 @@ int32_t string_eq(const reml_string_t* s1, const reml_string_t* s2);
  */
 int32_t string_compare(const reml_string_t* s1, const reml_string_t* s2);
 
+/**
+ * 文字列データの取得（IR lowering 用の補助）
+ *
+ * LLVM IR 側の `@reml_str_data(Str) -> ptr` に対応し、
+ * `reml_string_t` からデータポインタを取り出す。
+ *
+ * @param value 文字列値（構造体）
+ * @return 文字列データへのポインタ（NULL 終端を想定）
+ */
+const char* reml_str_data(reml_string_t value);
+
 /* ========== 内部ヘルパー（実装側で使用） ========== */
 
 /**
