@@ -150,6 +150,14 @@ fn format_reml_type(ty: &RemlType) -> String {
         RemlType::F64 => "f64".to_string(),
         RemlType::Pointer => "ptr".to_string(),
         RemlType::String => "string".to_string(),
+        RemlType::Slice(inner) => format!("[{}]", format_reml_type(inner)),
+        RemlType::Ref { mutable, to } => {
+            if *mutable {
+                format!("&mut {}", format_reml_type(to))
+            } else {
+                format!("&{}", format_reml_type(to))
+            }
+        }
         RemlType::Unit => "unit".to_string(),
         RemlType::RowTuple(items) => {
             let inner = items

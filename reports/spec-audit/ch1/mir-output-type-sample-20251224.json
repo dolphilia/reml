@@ -1,0 +1,128 @@
+{
+  "schema_version": "frontend-mir/0.1",
+  "functions": [
+    {
+      "name": "take_ref",
+      "span": {
+        "start": 0,
+        "end": 34
+      },
+      "attributes": [],
+      "params": [
+        {
+          "name": "xs",
+          "span": {
+            "start": 12,
+            "end": 14
+          },
+          "ty": "&[i64]"
+        }
+      ],
+      "return_type": "i64",
+      "body": 0,
+      "exprs": [
+        {
+          "id": 0,
+          "span": {
+            "start": 33,
+            "end": 34
+          },
+          "ty": "i64",
+          "dict_ref_ids": [],
+          "kind": {
+            "kind": "literal",
+            "value": {
+              "kind": "int",
+              "value": 0,
+              "raw": "0",
+              "base": "base10"
+            }
+          }
+        }
+      ],
+      "dict_ref_ids": []
+    },
+    {
+      "name": "take_mut",
+      "span": {
+        "start": 35,
+        "end": 73
+      },
+      "attributes": [],
+      "params": [
+        {
+          "name": "xs",
+          "span": {
+            "start": 47,
+            "end": 49
+          },
+          "ty": "&mut [i64]"
+        }
+      ],
+      "return_type": "()",
+      "body": 0,
+      "exprs": [
+        {
+          "id": 0,
+          "span": {
+            "start": 71,
+            "end": 73
+          },
+          "ty": "()",
+          "dict_ref_ids": [],
+          "kind": {
+            "kind": "literal",
+            "value": {
+              "kind": "unit"
+            }
+          }
+        }
+      ],
+      "dict_ref_ids": []
+    },
+    {
+      "name": "take_ref_mut",
+      "span": {
+        "start": 74,
+        "end": 118
+      },
+      "attributes": [],
+      "params": [
+        {
+          "name": "x",
+          "span": {
+            "start": 90,
+            "end": 91
+          },
+          "ty": "&mut i64"
+        }
+      ],
+      "return_type": "&mut i64",
+      "body": 0,
+      "exprs": [
+        {
+          "id": 0,
+          "span": {
+            "start": 117,
+            "end": 118
+          },
+          "ty": "&mut i64",
+          "dict_ref_ids": [],
+          "kind": {
+            "kind": "identifier",
+            "ident": {
+              "name": "x",
+              "span": {
+                "start": 117,
+                "end": 118
+              }
+            }
+          }
+        }
+      ],
+      "dict_ref_ids": []
+    }
+  ],
+  "active_patterns": [],
+  "conductors": []
+}

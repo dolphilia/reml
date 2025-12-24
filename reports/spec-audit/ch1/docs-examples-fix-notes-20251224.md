@@ -51,3 +51,10 @@
 - `docs/spec/1-3-effects-safety.md` の G 節コードブロックを正準例へ復元。
 - `reml_frontend` を再ビルドし、diagnostics JSON を再生成。
   - `reports/spec-audit/ch1/1-3-effects-safety__sec_g-20251224-diagnostics.json` を更新（diagnostics 0 件）。
+
+## MIR 型表記の確認サンプル（2025-12-24）
+- `reports/spec-audit/ch1/mir-json-type-sample-20251224.json` を追加し、`&` / `&mut` / `[T]` の表記をそのまま MIR JSON に載せる形を固定。
+- Backend 側は `parse_reml_type` が `&` / `&mut` / `[T]` を再帰的に解析するため、サンプルの文字列表記が維持されていれば `RemlType::Ref` / `RemlType::Slice` に展開できる。
+- `reports/spec-audit/ch1/mir-input-type-sample-20251224.reml` から `reports/spec-audit/ch1/mir-output-type-sample-20251224.json` を生成し、`&` / `&mut` / `[T]` が `ty`/`return_type` に保持されることを確認。
+- MIR 出力では `Int`/`Unit` が混在していたため、`compiler/rust/frontend/src/semantics/mir.rs` で `i64`/`()` へ正規化する変換を追加。
+- `Str`/`Bytes` は 3-3 の型であり所有権表現と衝突するため、現時点の MIR では表記を維持する方針とする（`String` への寄せは行わない）。

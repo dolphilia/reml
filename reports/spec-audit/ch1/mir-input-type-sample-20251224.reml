@@ -1,0 +1,3 @@
+fn take_ref(xs: &[Int]) -> Int = 0
+fn take_mut(xs: &mut [Int]) -> () = ()
+fn take_ref_mut(x: &mut Int) -> &mut Int = x

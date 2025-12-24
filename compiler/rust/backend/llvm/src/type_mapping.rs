@@ -9,6 +9,8 @@ pub enum RemlType {
     F64,
     Pointer,
     String,
+    Slice(Box<RemlType>),
+    Ref { mutable: bool, to: Box<RemlType> },
     Unit,
     RowTuple(Vec<RemlType>),
     Adt {
@@ -72,6 +74,16 @@ impl TypeMappingContext {
                 size: 16,
                 align: 8,
                 description: "{i8*, i64}".into(),
+            },
+            RemlType::Slice(_) => TypeLayout {
+                size: 16,
+                align: 8,
+                description: "{ptr, i64}".into(),
+            },
+            RemlType::Ref { .. } => TypeLayout {
+                size: 8,
+                align: 8,
+                description: "ptr".into(),
             },
             RemlType::Unit => TypeLayout {
                 size: 0,

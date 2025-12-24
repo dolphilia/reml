@@ -29,6 +29,7 @@
 - 作業ステップ:
   - Typed / MIR の `ty` 文字列における表記ルールを `docs/spec/1-2-types-Inference.md` の表記と一致させる。
   - `&T` / `&mut T` / `[T]` の表記をそのまま JSON に出す前提を明記する。
+  - 確認用サンプルとして `reports/spec-audit/ch1/mir-json-type-sample-20251224.json` を追加する。
 
 2) Backend `RemlType` の拡張
 - 目的: `[T]` / `&T` / `&mut T` を `RemlType` とレイアウトに落とす。
@@ -101,7 +102,7 @@
 ## 進捗管理
 - 本計画書作成日: 2025-12-24
 - 進捗欄（運用用）:
-  - [ ] フェーズ 1 完了
+  - [x] フェーズ 1 完了
   - [ ] フェーズ 2 完了
   - [ ] フェーズ 3 完了
 

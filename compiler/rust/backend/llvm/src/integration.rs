@@ -1069,7 +1069,32 @@ pub fn generate_w3_snapshot() -> BackendDiffSnapshot {
 }
 
 fn parse_reml_type(token: &str) -> RemlType {
-    let normalized = token.trim().to_ascii_lowercase();
+    let trimmed = token.trim();
+    if trimmed.eq_ignore_ascii_case("&str") {
+        return RemlType::String;
+    }
+    if let Some(rest) = trimmed.strip_prefix('&') {
+        let rest = rest.trim_start();
+        let (mutable, inner) = match rest.strip_prefix("mut") {
+            Some(after_mut) => (true, after_mut.trim_start()),
+            None => (false, rest),
+        };
+        if inner.is_empty() {
+            return RemlType::Pointer;
+        }
+        return RemlType::Ref {
+            mutable,
+            to: Box::new(parse_reml_type(inner)),
+        };
+    }
+    if trimmed.starts_with('[') && trimmed.ends_with(']') && trimmed.len() >= 2 {
+        let inner = trimmed[1..trimmed.len() - 1].trim();
+        if inner.is_empty() {
+            return RemlType::Pointer;
+        }
+        return RemlType::Slice(Box::new(parse_reml_type(inner)));
+    }
+    let normalized = trimmed.to_ascii_lowercase();
     match normalized.as_str() {
         "unit" | "void" => RemlType::Unit,
         "bool" => RemlType::Bool,
@@ -1077,7 +1102,7 @@ fn parse_reml_type(token: &str) -> RemlType {
         "i64" | "int64" => RemlType::I64,
         "f64" | "double" => RemlType::F64,
         "pointer" | "ptr" | "i8*" => RemlType::Pointer,
-        "string" | "str" | "&str" => RemlType::String,
+        "string" | "str" => RemlType::String,
         _ => RemlType::Pointer,
     }
 }
@@ -1152,6 +1177,20 @@ mod tests {
         assert_eq!(parse_reml_type("Int64"), RemlType::I64);
         assert_eq!(parse_reml_type("ptr"), RemlType::Pointer);
         assert_eq!(parse_reml_type("unknown"), RemlType::Pointer);
+        assert_eq!(
+            parse_reml_type("&i64"),
+            RemlType::Ref {
+                mutable: false,
+                to: Box::new(RemlType::I64)
+            }
+        );
+        assert_eq!(
+            parse_reml_type("&mut [i32]"),
+            RemlType::Ref {
+                mutable: true,
+                to: Box::new(RemlType::Slice(Box::new(RemlType::I32)))
+            }
+        );
     }
 
     #[test]

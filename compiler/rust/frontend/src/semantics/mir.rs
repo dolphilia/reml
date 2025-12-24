@@ -348,6 +348,34 @@ pub struct PatternLowering {
     pub children: Vec<PatternLowering>,
 }
 
+fn normalize_mir_type_label(label: &str) -> String {
+    let mut out = String::with_capacity(label.len());
+    let mut token = String::new();
+    for ch in label.chars() {
+        if ch.is_ascii_alphanumeric() || ch == '_' {
+            token.push(ch);
+        } else {
+            if !token.is_empty() {
+                out.push_str(normalize_mir_type_ident(&token));
+                token.clear();
+            }
+            out.push(ch);
+        }
+    }
+    if !token.is_empty() {
+        out.push_str(normalize_mir_type_ident(&token));
+    }
+    out
+}
+
+fn normalize_mir_type_ident<'a>(token: &'a str) -> &'a str {
+    match token {
+        "Int" => "i64",
+        "Unit" => "()",
+        _ => token,
+    }
+}
+
 fn lower_function(function: &typed::TypedFunction) -> MirFunction {
     let mut builder = MirExprBuilder::default();
     let body = builder.lower_expr(&function.body);
@@ -361,10 +389,10 @@ fn lower_function(function: &typed::TypedFunction) -> MirFunction {
             .map(|param| MirParam {
                 name: param.name.clone(),
                 span: param.span,
-                ty: param.ty.clone(),
+                ty: normalize_mir_type_label(&param.ty),
             })
             .collect(),
-        return_type: function.return_type.clone(),
+        return_type: normalize_mir_type_label(&function.return_type),
         body,
         exprs: builder.finish(),
         dict_ref_ids: function.dict_ref_ids.clone(),
@@ -386,7 +414,7 @@ fn lower_active_pattern(pattern: &typed::TypedActivePattern) -> MirActivePattern
             .map(|param| MirParam {
                 name: param.name.clone(),
                 span: param.span,
-                ty: param.ty.clone(),
+                ty: normalize_mir_type_label(&param.ty),
             })
             .collect(),
         body,
@@ -405,14 +433,24 @@ fn lower_conductor(conductor: &typed::TypedConductor) -> MirConductor {
             .map(|dsl_def| MirConductorDslDef {
                 alias: dsl_def.alias.clone(),
                 target: dsl_def.target.clone(),
-                target_type: dsl_def.target_type.clone(),
-                pipeline_type: dsl_def.pipeline_type.clone(),
+                target_type: dsl_def
+                    .target_type
+                    .as_ref()
+                    .map(|ty| normalize_mir_type_label(ty)),
+                pipeline_type: dsl_def
+                    .pipeline_type
+                    .as_ref()
+                    .map(|ty| normalize_mir_type_label(ty)),
                 tails: dsl_def
                     .tails
                     .iter()
                     .map(|tail| MirConductorDslTail {
                         stage: tail.stage.clone(),
-                        arg_types: tail.arg_types.clone(),
+                        arg_types: tail
+                            .arg_types
+                            .iter()
+                            .map(|ty| normalize_mir_type_label(ty))
+                            .collect(),
                         span: tail.span,
                     })
                     .collect(),
@@ -430,7 +468,7 @@ fn lower_conductor(conductor: &typed::TypedConductor) -> MirConductor {
             })
             .collect(),
         execution: conductor.execution.as_ref().map(|block| MirConductorBlock {
-            ty: block.ty.clone(),
+            ty: normalize_mir_type_label(&block.ty),
             span: block.span,
         }),
         monitoring: conductor
@@ -438,7 +476,7 @@ fn lower_conductor(conductor: &typed::TypedConductor) -> MirConductor {
             .as_ref()
             .map(|block| MirConductorMonitoringBlock {
                 target: block.target.clone(),
-                ty: block.ty.clone(),
+                ty: normalize_mir_type_label(&block.ty),
                 span: block.span,
             }),
     }
@@ -594,6 +632,7 @@ impl MirExprBuilder {
         kind: MirExprKind,
     ) -> MirExprId {
         let id = self.exprs.len();
+        let ty = normalize_mir_type_label(&ty);
         self.exprs.push(MirExpr {
             id,
             span,
