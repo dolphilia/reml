@@ -25,7 +25,7 @@ const INTRINSIC_CALL: &str = "@reml_call";
 const INTRINSIC_STR_CONCAT: &str = "@reml_str_concat";
 const INTRINSIC_IF_ELSE: &str = "@reml_if_else";
 const INTRINSIC_PERFORM: &str = "@reml_perform";
-const INTRINSIC_PANIC: &str = "@reml_panic";
+const INTRINSIC_PANIC: &str = "@panic";
 
 fn intrinsic_is_ctor(name: &str) -> String {
     format!("@reml_is_ctor_{name}")
@@ -999,30 +999,64 @@ fn lower_match_to_blocks(
                     });
                 }
 
-                blocks.push(BasicBlock {
-                    label: body_label.clone(),
-                    instrs: vec![format!("exec body#{}", arm.body)],
-                    terminator: format!("br {}", end_label),
-                });
                 let result_type = lowering
                     .as_ref()
                     .and_then(|plan| plan.target_type.clone())
                     .unwrap_or_else(|| "unknown".into());
-                let (value, value_label, mut value_instrs) =
-                    emit_body_value(index, arm.body, &expr_map, &result_type, &mut ssa);
-                phi_sources.push((value, value_label));
-                llvm_blocks.push(LlvmBlock {
-                    label: body_label.clone(),
-                    instrs: {
-                        let mut instrs = Vec::new();
-                        instrs.push(LlvmInstr::Comment(format!("exec body#{}", arm.body)));
-                        instrs.append(&mut value_instrs);
-                        instrs
-                    },
-                    terminator: LlvmTerminator::Br {
-                        target: end_label.clone(),
-                    },
-                });
+                let early_exit = detect_arm_early_exit(arm.body, &expr_map);
+                match early_exit {
+                    Some(ArmEarlyExit::Panic) => {
+                        let value = emit_value_expr(arm.body, &expr_map, &mut ssa);
+                        let (block, llvm_block) = lower_panic_value_to_named_block(
+                            body_label.clone(),
+                            arm.body,
+                            value,
+                        );
+                        blocks.push(block);
+                        llvm_blocks.push(llvm_block);
+                    }
+                    Some(ArmEarlyExit::Propagate) => {
+                        let value = emit_value_expr(arm.body, &expr_map, &mut ssa);
+                        let (prop_blocks, prop_llvm_blocks, phi_source) =
+                            lower_propagate_value_to_match_blocks(
+                                index,
+                                arm.body,
+                                value,
+                                expr_map
+                                    .get(&arm.body)
+                                    .map(|expr| expr.ty.as_str())
+                                    .unwrap_or("Result"),
+                                &result_type,
+                                &end_label,
+                                &mut ssa,
+                            );
+                        blocks.extend(prop_blocks);
+                        llvm_blocks.extend(prop_llvm_blocks);
+                        phi_sources.push(phi_source);
+                    }
+                    None => {
+                        blocks.push(BasicBlock {
+                            label: body_label.clone(),
+                            instrs: vec![format!("exec body#{}", arm.body)],
+                            terminator: format!("br {}", end_label),
+                        });
+                        let (value, value_label, mut value_instrs) =
+                            emit_body_value(index, arm.body, &expr_map, &result_type, &mut ssa);
+                        phi_sources.push((value, value_label));
+                        llvm_blocks.push(LlvmBlock {
+                            label: body_label.clone(),
+                            instrs: {
+                                let mut instrs = Vec::new();
+                                instrs.push(LlvmInstr::Comment(format!("exec body#{}", arm.body)));
+                                instrs.append(&mut value_instrs);
+                                instrs
+                            },
+                            terminator: LlvmTerminator::Br {
+                                target: end_label.clone(),
+                            },
+                        });
+                    }
+                }
             }
 
             let result_type = lowering
@@ -1062,6 +1096,33 @@ fn lower_match_to_blocks(
         }
     }
     (blocks, llvm_blocks)
+}
+
+#[derive(Clone, Copy, Debug)]
+enum ArmEarlyExit {
+    Panic,
+    Propagate,
+}
+
+fn detect_arm_early_exit(
+    expr_id: MirExprId,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+) -> Option<ArmEarlyExit> {
+    let expr = expr_map.get(&expr_id)?;
+    match &expr.kind {
+        MirExprKind::Panic { .. } => Some(ArmEarlyExit::Panic),
+        MirExprKind::Propagate { .. } => Some(ArmEarlyExit::Propagate),
+        MirExprKind::Block { tail, .. } => {
+            let tail_id = tail?;
+            let tail_expr = expr_map.get(tail_id)?;
+            match &tail_expr.kind {
+                MirExprKind::Panic { .. } => Some(ArmEarlyExit::Panic),
+                MirExprKind::Propagate { .. } => Some(ArmEarlyExit::Propagate),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
 }
 
 fn lower_entry_expr_to_blocks(
@@ -1176,6 +1237,38 @@ fn lower_panic_value_to_blocks(
     (vec![block], vec![llvm_block])
 }
 
+fn lower_panic_value_to_named_block(
+    label: String,
+    body: MirExprId,
+    value: EmittedValue,
+) -> (BasicBlock, LlvmBlock) {
+    let mut instrs = value.instrs;
+    instrs.push(LlvmInstr::Comment(format!(
+        "panic expr#{body} -> {INTRINSIC_PANIC}"
+    )));
+    instrs.push(LlvmInstr::Call {
+        result: None,
+        ret_ty: "void".into(),
+        callee: INTRINSIC_PANIC.into(),
+        args: vec![(value.ty, value.operand)],
+    });
+    let block = BasicBlock {
+        label: label.clone(),
+        instrs: vec![format!("panic expr#{body}")],
+        terminator: "unreachable".into(),
+    };
+    let llvm_block = LlvmBlock {
+        label,
+        instrs: {
+            let mut buf = vec![LlvmInstr::Comment(format!("panic expr#{body}"))];
+            buf.extend(instrs);
+            buf
+        },
+        terminator: LlvmTerminator::Unreachable,
+    };
+    (block, llvm_block)
+}
+
 fn lower_propagate_value_to_blocks(
     body: MirExprId,
     value: EmittedValue,
@@ -1270,6 +1363,118 @@ fn lower_propagate_value_to_blocks(
     (
         vec![entry_block, ok_block, err_block],
         vec![entry_llvm_block, ok_llvm_block, err_llvm_block],
+    )
+}
+
+fn lower_propagate_value_to_match_blocks(
+    arm_index: usize,
+    body: MirExprId,
+    value: EmittedValue,
+    ty_hint: &str,
+    result_type: &str,
+    end_label: &str,
+    ssa: &mut LlvmBuilder,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>, (String, String)) {
+    let body_label = format!("arm{arm_index}.body#{body}");
+    let ok_label = format!("arm{arm_index}.propagate_ok#{body}");
+    let err_label = format!("arm{arm_index}.propagate_err#{body}");
+    let cond_label = format!("arm{arm_index}.propagate_cond#{body}");
+    let flavor = infer_propagate_flavor(ty_hint);
+    let residual = value.operand.clone();
+    let mut entry_instrs = vec![LlvmInstr::Comment(format!("exec propagate#{body}"))];
+    entry_instrs.extend(value.instrs);
+    let cond = ssa.new_tmp("propagate_ok");
+    match flavor {
+        PropagateFlavor::Option => {
+            entry_instrs.push(LlvmInstr::Comment(format!(
+                "{cond_label}: check Some/None"
+            )));
+            entry_instrs.push(LlvmInstr::Icmp {
+                result: cond.clone(),
+                pred: "ne".into(),
+                ty: ssa.pointer_type(),
+                lhs: residual.clone(),
+                rhs: "null".into(),
+            });
+        }
+        PropagateFlavor::Result => {
+            entry_instrs.push(LlvmInstr::Comment(format!(
+                "{cond_label}: check Ok/Err"
+            )));
+            entry_instrs.push(LlvmInstr::Call {
+                result: Some(cond.clone()),
+                ret_ty: ssa.bool_type(),
+                callee: intrinsic_is_ctor("Ok"),
+                args: vec![(ssa.pointer_type(), residual.clone())],
+            });
+        }
+    }
+    let entry_block = BasicBlock {
+        label: body_label.clone(),
+        instrs: vec![format!("exec propagate#{body}")],
+        terminator: format!("br_if {cond} then {ok_label} else {err_label}"),
+    };
+    let entry_llvm_block = LlvmBlock {
+        label: body_label,
+        instrs: entry_instrs,
+        terminator: LlvmTerminator::BrCond {
+            cond: cond.clone(),
+            then_bb: ok_label.clone(),
+            else_bb: err_label.clone(),
+        },
+    };
+
+    let payload = ssa.new_tmp("propagate_payload");
+    let result = ssa.new_tmp("match_result");
+    let ctor_name = match flavor {
+        PropagateFlavor::Option => "Some",
+        PropagateFlavor::Result => "Ok",
+    };
+    let mut ok_instrs = vec![LlvmInstr::Comment(format!(
+        "propagate ok#{body} -> payload"
+    ))];
+    ok_instrs.push(LlvmInstr::Call {
+        result: Some(payload.clone()),
+        ret_ty: ssa.pointer_type(),
+        callee: intrinsic_ctor_payload(ctor_name),
+        args: vec![(ssa.pointer_type(), residual.clone())],
+    });
+    ok_instrs.push(LlvmInstr::Call {
+        result: Some(result.clone()),
+        ret_ty: result_type.to_string(),
+        callee: INTRINSIC_VALUE.into(),
+        args: vec![(result_type.to_string(), payload)],
+    });
+    let ok_block = BasicBlock {
+        label: ok_label.clone(),
+        instrs: vec![format!("propagate ok#{body} -> end")],
+        terminator: format!("br {end_label}"),
+    };
+    let ok_llvm_block = LlvmBlock {
+        label: ok_label,
+        instrs: ok_instrs,
+        terminator: LlvmTerminator::Br {
+            target: end_label.to_string(),
+        },
+    };
+
+    let err_block = BasicBlock {
+        label: err_label.clone(),
+        instrs: vec![format!("propagate err#{body} -> return residual")],
+        terminator: format!("ret {residual}"),
+    };
+    let err_llvm_block = LlvmBlock {
+        label: err_label,
+        instrs: vec![LlvmInstr::Comment(format!(
+            "propagate err#{body} -> return residual"
+        ))],
+        terminator: LlvmTerminator::Ret(Some(residual)),
+    };
+
+    (
+        vec![entry_block, ok_block, err_block],
+        vec![entry_llvm_block, ok_llvm_block, err_llvm_block],
+        (result, format!("arm{arm_index}.propagate_ok#{body}")),
     )
 }
 
