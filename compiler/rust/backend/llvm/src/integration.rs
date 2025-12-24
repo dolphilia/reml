@@ -1012,6 +1012,7 @@ pub fn generate_w3_snapshot() -> BackendDiffSnapshot {
 fn parse_reml_type(token: &str) -> RemlType {
     let normalized = token.trim().to_ascii_lowercase();
     match normalized.as_str() {
+        "unit" | "void" => RemlType::Unit,
         "bool" => RemlType::Bool,
         "i32" | "int32" => RemlType::I32,
         "i64" | "int64" => RemlType::I64,

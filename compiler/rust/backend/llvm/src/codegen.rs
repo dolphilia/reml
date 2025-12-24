@@ -740,7 +740,16 @@ impl CodegenContext {
         let (basic_blocks, llvm_blocks) = if mir.exprs.is_empty() {
             (Vec::new(), Vec::new())
         } else {
-            lower_match_to_blocks(&mir.exprs, &self.type_mapping)
+            let (basic_blocks, llvm_blocks) = lower_match_to_blocks(&mir.exprs, &self.type_mapping);
+            if llvm_blocks.is_empty() {
+                if let Some(body) = mir.body {
+                    lower_entry_expr_to_blocks(&mir.exprs, body, &self.type_mapping)
+                } else {
+                    (basic_blocks, llvm_blocks)
+                }
+            } else {
+                (basic_blocks, llvm_blocks)
+            }
         };
         let llvm_fn = self.llvm_ir_builder.build_function(
             &mir.name,
@@ -1050,6 +1059,34 @@ fn lower_match_to_blocks(
         }
     }
     (blocks, llvm_blocks)
+}
+
+fn lower_entry_expr_to_blocks(
+    exprs: &[MirExpr],
+    body: MirExprId,
+    type_mapping: &TypeMappingContext,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>) {
+    let mut expr_map = HashMap::new();
+    for expr in exprs {
+        expr_map.insert(expr.id, expr);
+    }
+    let mut ssa = LlvmBuilder::new(type_mapping.clone());
+    let value = emit_value_expr(body, &expr_map, &mut ssa);
+    let block = BasicBlock {
+        label: "entry".into(),
+        instrs: vec![format!("exec body#{body}")],
+        terminator: format!("ret {}", value.operand),
+    };
+    let llvm_block = LlvmBlock {
+        label: "entry".into(),
+        instrs: {
+            let mut instrs = vec![LlvmInstr::Comment(format!("exec body#{body}"))];
+            instrs.extend(value.instrs);
+            instrs
+        },
+        terminator: LlvmTerminator::Ret(Some(value.operand)),
+    };
+    (vec![block], vec![llvm_block])
 }
 
 fn emit_guard_cond(

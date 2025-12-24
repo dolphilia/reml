@@ -9,6 +9,7 @@ pub enum RemlType {
     F64,
     Pointer,
     String,
+    Unit,
     RowTuple(Vec<RemlType>),
     Adt {
         tag_bits: u32,
@@ -71,6 +72,11 @@ impl TypeMappingContext {
                 size: 16,
                 align: 8,
                 description: "{i8*, i64}".into(),
+            },
+            RemlType::Unit => TypeLayout {
+                size: 0,
+                align: 1,
+                description: "ptr".into(),
             },
             RemlType::RowTuple(fields) => {
                 let mut size = 0;
