@@ -1,13 +1,13 @@
 // Parser 型（簡略）
-type Parser<T> = fn(&mut State) -> Reply<T>  // 実体は 2.1 §A（State/Reply 定義）に従う
+type Parser<T> = fn(State) -> Reply<T>  // 実体は 2.1 §A（State/Reply 定義）に従う（参照/可変指定は簡略化）
 
 // コア・コンビネータ（抜粋）
-fn map<A,B>(p: Parser<A>, f: A -> B) -> Parser<B>
-fn then<A,B>(p: Parser<A>, q: Parser<B>) -> Parser<(A,B)>
-fn or<A>(p: Parser<A>, q: Parser<A>) -> Parser<A>
-fn many<A>(p: Parser<A>) -> Parser<[A]>
-fn chainl1<A>(term: Parser<A>, op: Parser<(A,A)->A>) -> Parser<A>
-fn between<A>(l: Parser<()>, p: Parser<A>, r: Parser<()>) -> Parser<A>
+fn map<A,B>(p: Parser<A>, f: A -> B) -> Parser<B> = p
+fn then_<A,B>(p: Parser<A>, q: Parser<B>) -> Parser<(A,B)> = p  // then は予約語のため then_ を使用
+fn or<A>(p: Parser<A>, q: Parser<A>) -> Parser<A> = p
+fn many<A>(p: Parser<A>) -> Parser<List<A>> = p
+fn chainl1<A>(term: Parser<A>, op: Parser<(A,A)->A>) -> Parser<A> = term
+fn between<A>(l: Parser<()>, p: Parser<A>, r: Parser<()>) -> Parser<A> = p
 
 // 典型的な型推論の例
 let int  = digit.many1().map(parseInt)            // Parser<i64>

@@ -48,9 +48,9 @@
 ### docs/spec/1-2-types-Inference.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| B.3 トレイト制約の表記 | sec_b_3 | examples/docs-examples/spec/1-2-types-Inference/sec_b_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| F. 代表的な型（標準 API・コンビネータ想定） | sec_f | examples/docs-examples/spec/1-2-types-Inference/sec_f.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| H.2 制約の持ち上げ | sec_h_2-a | examples/docs-examples/spec/1-2-types-Inference/sec_h_2-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| B.3 トレイト制約の表記 | sec_b_3 | examples/docs-examples/spec/1-2-types-Inference/sec_b_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| F. 代表的な型（標準 API・コンビネータ想定） | sec_f | examples/docs-examples/spec/1-2-types-Inference/sec_f.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| H.2 制約の持ち上げ | sec_h_2-a | examples/docs-examples/spec/1-2-types-Inference/sec_h_2-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/1-3-effects-safety.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
