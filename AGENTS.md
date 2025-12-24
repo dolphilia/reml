@@ -32,6 +32,12 @@
     - 実装コード: Rust (2021 edition以上), OCaml (参照用)。
 3. **Rust 開発**: 
     - `cargo test`, `cargo fmt`, `cargo clippy` を活用し、品質を保ちます。
+    - ルートには衝突回避のため `Cargo.toml.ws` のみがあり、各作業単位は `compiler/rust/frontend/` や `compiler/rust/backend/`、`compiler/rust/runtime/` などの個別 `Cargo.toml` を直接指定して実行します（例: `cargo test --manifest-path compiler/rust/frontend/Cargo.toml`）。
+    - 実行手順:
+        - frontend: `cargo build --manifest-path compiler/rust/frontend/Cargo.toml`
+        - backend: `cargo build --manifest-path compiler/rust/backend/llvm/Cargo.toml`
+        - runtime: `cargo build --manifest-path compiler/rust/runtime/Cargo.toml`
+        - ルート: `mv Cargo.toml.ws Cargo.toml` → `cargo build` → `mv Cargo.toml Cargo.toml.ws`
     - エラーメッセージや識別子にはプロジェクトの命名規則に従います。
 4. **非破壊的編集**: 既存の資産（特に OCaml の参照実装や古いノート）を無断で削除せず、必要なら `deprecated` 扱いにして残します。
 

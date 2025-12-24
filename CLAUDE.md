@@ -29,10 +29,16 @@
 
 ### Rust コンパイラ開発 (`compiler/rust`)
 アクティブな開発はここで行われます。
-- **ビルド**: `cargo build`
-- **テスト**: `cargo test`
-- **リント**: `cargo clippy`
-- **フォーマット**: `cargo fmt`
+- ルートには衝突回避のため `Cargo.toml.ws` のみがあり、作業対象の `Cargo.toml` を直接指定して実行します（例: `compiler/rust/frontend/`、`compiler/rust/backend/`、`compiler/rust/runtime/`）。
+- **ビルド**: `cargo build --manifest-path compiler/rust/frontend/Cargo.toml`
+- **テスト**: `cargo test --manifest-path compiler/rust/frontend/Cargo.toml`
+- **リント**: `cargo clippy --manifest-path compiler/rust/frontend/Cargo.toml`
+- **フォーマット**: `cargo fmt --manifest-path compiler/rust/frontend/Cargo.toml`
+- **実行例（確認済み）**:
+  - frontend: `cargo build --manifest-path compiler/rust/frontend/Cargo.toml`
+  - backend: `cargo build --manifest-path compiler/rust/backend/llvm/Cargo.toml`
+  - runtime: `cargo build --manifest-path compiler/rust/runtime/Cargo.toml`
+  - ルート: `mv Cargo.toml.ws Cargo.toml` → `cargo build` → `mv Cargo.toml Cargo.toml.ws`
 
 ### ドキュメント編集
 - 仕様書は `docs/spec/` にあります。
