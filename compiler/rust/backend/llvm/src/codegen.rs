@@ -1101,15 +1101,13 @@ fn lower_match_to_blocks(
                     }
                     Some(ArmEarlyExit::Propagate) => {
                         let value = emit_value_expr(arm.body, &expr_map, &mut ssa);
+                        let body_ty_hint = infer_expr_type_hint(arm.body, &expr_map, &ssa);
                         let (prop_blocks, prop_llvm_blocks, phi_source) =
                             lower_propagate_value_to_match_blocks(
                                 index,
                                 arm.body,
                                 value,
-                                expr_map
-                                    .get(&arm.body)
-                                    .map(|expr| expr.ty.as_str())
-                                    .unwrap_or("Result"),
+                                &body_ty_hint,
                                 &result_type,
                                 &end_label,
                                 &mut ssa,
@@ -1197,7 +1195,7 @@ fn detect_arm_early_exit(
         MirExprKind::Panic { .. } => Some(ArmEarlyExit::Panic),
         MirExprKind::Propagate { .. } => Some(ArmEarlyExit::Propagate),
         MirExprKind::Block { tail, .. } => {
-            let tail_id = tail?;
+            let tail_id = tail.as_ref()?;
             let tail_expr = expr_map.get(tail_id)?;
             match &tail_expr.kind {
                 MirExprKind::Panic { .. } => Some(ArmEarlyExit::Panic),
@@ -1219,6 +1217,7 @@ fn lower_entry_expr_to_blocks(
         expr_map.insert(expr.id, expr);
     }
     let mut ssa = LlvmBuilder::new(type_mapping.clone());
+    let body_ty_hint = infer_expr_type_hint(body, &expr_map, &ssa);
     if let Some(expr) = expr_map.get(&body) {
         match &expr.kind {
             MirExprKind::Panic { .. } => {
@@ -1227,7 +1226,7 @@ fn lower_entry_expr_to_blocks(
             }
             MirExprKind::Propagate { .. } => {
                 let value = emit_value_expr(body, &expr_map, &mut ssa);
-                return lower_propagate_value_to_blocks(body, value, &expr.ty, &mut ssa);
+                return lower_propagate_value_to_blocks(body, value, &body_ty_hint, &mut ssa);
             }
             MirExprKind::Block {
                 statements,
@@ -1247,10 +1246,12 @@ fn lower_entry_expr_to_blocks(
                             }
                             MirExprKind::Propagate { .. } => {
                                 let value = emit_value_expr(body, &expr_map, &mut ssa);
+                                let tail_ty_hint =
+                                    infer_expr_type_hint(*tail_id, &expr_map, &ssa);
                                 return lower_propagate_value_to_blocks(
                                     body,
                                     value,
-                                    &expr.ty,
+                                    &tail_ty_hint,
                                     &mut ssa,
                                 );
                             }
@@ -1844,16 +1845,10 @@ fn lower_if_else_with_propagate_to_blocks(
     let else_label = format!("ifelse{}.else", body);
     let then_kind = classify_branch_kind(then_branch, expr_map);
     let else_kind = classify_branch_kind(else_branch, expr_map);
-    let then_ty = expr_map
-        .get(&then_branch)
-        .map(|expr| expr.ty.as_str())
-        .unwrap_or("unknown");
-    let else_ty = expr_map
-        .get(&else_branch)
-        .map(|expr| expr.ty.as_str())
-        .unwrap_or("unknown");
+    let then_ty = infer_expr_llvm_type(then_branch, expr_map, ssa);
+    let else_ty = infer_expr_llvm_type(else_branch, expr_map, ssa);
     let result_type = if then_ty == else_ty {
-        then_ty.to_string()
+        then_ty.clone()
     } else {
         ssa.pointer_type()
     };
@@ -1903,7 +1898,7 @@ fn lower_if_else_with_propagate_to_blocks(
                     then_label.clone(),
                     then_branch,
                     value,
-                    then_ty,
+                    &then_ty,
                     &result_type,
                     &end_label,
                     ssa,
@@ -1942,7 +1937,7 @@ fn lower_if_else_with_propagate_to_blocks(
                     else_label.clone(),
                     else_branch,
                     value,
-                    else_ty,
+                    &else_ty,
                     &result_type,
                     &end_label,
                     ssa,
@@ -2020,16 +2015,10 @@ fn lower_if_else_to_operand_blocks(
     let else_label = format!("ifelse{}.else", body);
     let then_kind = classify_branch_kind(then_branch, expr_map);
     let else_kind = classify_branch_kind(else_branch, expr_map);
-    let then_ty = expr_map
-        .get(&then_branch)
-        .map(|expr| expr.ty.as_str())
-        .unwrap_or("unknown");
-    let else_ty = expr_map
-        .get(&else_branch)
-        .map(|expr| expr.ty.as_str())
-        .unwrap_or("unknown");
+    let then_ty = infer_expr_llvm_type(then_branch, expr_map, ssa);
+    let else_ty = infer_expr_llvm_type(else_branch, expr_map, ssa);
     let result_type = if then_ty == else_ty {
-        then_ty.to_string()
+        then_ty.clone()
     } else {
         ssa.pointer_type()
     };
@@ -2079,7 +2068,7 @@ fn lower_if_else_to_operand_blocks(
                     then_label.clone(),
                     then_branch,
                     value,
-                    then_ty,
+                    &then_ty,
                     &result_type,
                     &end_label,
                     ssa,
@@ -2118,7 +2107,7 @@ fn lower_if_else_to_operand_blocks(
                     else_label.clone(),
                     else_branch,
                     value,
-                    else_ty,
+                    &else_ty,
                     &result_type,
                     &end_label,
                     ssa,
@@ -2190,16 +2179,10 @@ fn lower_block_tail_if_else_with_defer_to_blocks(
     let else_label = format!("block_ifelse{}.else", body);
     let then_kind = classify_branch_kind(then_branch, expr_map);
     let else_kind = classify_branch_kind(else_branch, expr_map);
-    let then_ty = expr_map
-        .get(&then_branch)
-        .map(|expr| expr.ty.as_str())
-        .unwrap_or("unknown");
-    let else_ty = expr_map
-        .get(&else_branch)
-        .map(|expr| expr.ty.as_str())
-        .unwrap_or("unknown");
+    let then_ty = infer_expr_llvm_type(then_branch, expr_map, ssa);
+    let else_ty = infer_expr_llvm_type(else_branch, expr_map, ssa);
     let result_type = if then_ty == else_ty {
-        then_ty.to_string()
+        then_ty.clone()
     } else {
         ssa.pointer_type()
     };
@@ -2252,7 +2235,7 @@ fn lower_block_tail_if_else_with_defer_to_blocks(
                     then_label.clone(),
                     then_branch,
                     value,
-                    then_ty,
+                    &then_ty,
                     &result_type,
                     &end_label,
                     defer_lifo,
@@ -2300,7 +2283,7 @@ fn lower_block_tail_if_else_with_defer_to_blocks(
                     else_label.clone(),
                     else_branch,
                     value,
-                    else_ty,
+                    &else_ty,
                     &result_type,
                     &end_label,
                     defer_lifo,
@@ -2387,16 +2370,10 @@ fn lower_block_tail_if_else_with_defer_to_operand_blocks(
     let else_label = format!("block_ifelse{}.else", body);
     let then_kind = classify_branch_kind(then_branch, expr_map);
     let else_kind = classify_branch_kind(else_branch, expr_map);
-    let then_ty = expr_map
-        .get(&then_branch)
-        .map(|expr| expr.ty.as_str())
-        .unwrap_or("unknown");
-    let else_ty = expr_map
-        .get(&else_branch)
-        .map(|expr| expr.ty.as_str())
-        .unwrap_or("unknown");
+    let then_ty = infer_expr_llvm_type(then_branch, expr_map, ssa);
+    let else_ty = infer_expr_llvm_type(else_branch, expr_map, ssa);
     let result_type = if then_ty == else_ty {
-        then_ty.to_string()
+        then_ty.clone()
     } else {
         ssa.pointer_type()
     };
@@ -2449,7 +2426,7 @@ fn lower_block_tail_if_else_with_defer_to_operand_blocks(
                     then_label.clone(),
                     then_branch,
                     value,
-                    then_ty,
+                    &then_ty,
                     &result_type,
                     &end_label,
                     defer_lifo,
@@ -2497,7 +2474,7 @@ fn lower_block_tail_if_else_with_defer_to_operand_blocks(
                     else_label.clone(),
                     else_branch,
                     value,
-                    else_ty,
+                    &else_ty,
                     &result_type,
                     &end_label,
                     defer_lifo,
@@ -2804,7 +2781,7 @@ fn infer_propagate_flavor(ty_hint: &str) -> PropagateFlavor {
 fn lower_panic_value_to_blocks(
     body: MirExprId,
     value: EmittedValue,
-    ssa: &mut LlvmBuilder,
+    _ssa: &mut LlvmBuilder,
 ) -> (Vec<BasicBlock>, Vec<LlvmBlock>) {
     let mut instrs = value.instrs;
     instrs.push(LlvmInstr::Comment(format!(
@@ -3429,12 +3406,13 @@ fn lower_expr_to_operand_blocks(
     match &expr.kind {
         MirExprKind::Propagate { .. } => {
             let value = emit_value_expr(expr_id, expr_map, ssa);
+            let ty_hint = infer_expr_type_hint(expr_id, expr_map, ssa);
             let (blocks, llvm_blocks, payload) = match defer_lifo {
                 Some(defers) if !defers.is_empty() => lower_propagate_operand_to_blocks_with_defers(
                     label,
                     expr_id,
                     value,
-                    expr.ty.as_str(),
+                    &ty_hint,
                     next_label,
                     defers,
                     expr_map,
@@ -3444,7 +3422,7 @@ fn lower_expr_to_operand_blocks(
                     label,
                     expr_id,
                     value,
-                    expr.ty.as_str(),
+                    &ty_hint,
                     next_label,
                     ssa,
                 ),
@@ -3854,6 +3832,82 @@ fn emit_unit_value(ssa: &LlvmBuilder) -> EmittedValue {
     }
 }
 
+fn infer_expr_type_hint(
+    expr_id: MirExprId,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    _ssa: &LlvmBuilder,
+) -> String {
+    let Some(expr) = expr_map.get(&expr_id) else {
+        return "Result".into();
+    };
+    match &expr.kind {
+        MirExprKind::Literal { summary } => {
+            if summary.trim() == "unit" {
+                return "Unit".into();
+            }
+            if let Some(value) = extract_literal_operand(summary) {
+                if value == "true" || value == "false" {
+                    return "Bool".into();
+                }
+                if value.starts_with('"') {
+                    return "String".into();
+                }
+                return "I64".into();
+            }
+            "Result".into()
+        }
+        MirExprKind::Call { .. }
+        | MirExprKind::Identifier { .. }
+        | MirExprKind::FieldAccess { .. }
+        | MirExprKind::Index { .. }
+        | MirExprKind::IfElse { .. }
+        | MirExprKind::Match { .. }
+        | MirExprKind::PerformCall { .. }
+        | MirExprKind::Block { .. }
+        | MirExprKind::Return { .. }
+        | MirExprKind::Propagate { .. }
+        | MirExprKind::Panic { .. }
+        | MirExprKind::Binary { .. }
+        | MirExprKind::Unknown => "Result".into(),
+    }
+}
+
+fn infer_expr_llvm_type(
+    expr_id: MirExprId,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &LlvmBuilder,
+) -> String {
+    let Some(expr) = expr_map.get(&expr_id) else {
+        return ssa.pointer_type();
+    };
+    match &expr.kind {
+        MirExprKind::Literal { summary } => {
+            if summary.trim() == "unit" {
+                return ssa.pointer_type();
+            }
+            if let Some(value) = extract_literal_operand(summary) {
+                if value == "true" || value == "false" {
+                    return ssa.bool_type();
+                }
+                if value.starts_with('"') {
+                    return "Str".into();
+                }
+                return "i64".into();
+            }
+            ssa.pointer_type()
+        }
+        MirExprKind::Call { callee, .. } => infer_call_return_type(*callee, expr_map, ssa),
+        MirExprKind::Binary { operator, .. } => match operator.as_str() {
+            "&&" | "and" | "||" | "or" | "==" | "!=" | "<" | "<=" | ">" | ">=" => {
+                ssa.bool_type()
+            }
+            "+" | "-" | "*" | "/" | "%" => "i64".into(),
+            _ => ssa.pointer_type(),
+        },
+        _ => ssa.pointer_type(),
+    }
+}
+
 fn emit_block_statement_instrs(
     statements: &[MirStmt],
     expr_map: &HashMap<MirExprId, &MirExpr>,
@@ -4030,16 +4084,16 @@ fn collect_pattern_binding_names(pattern: &MirPattern, names: &mut Vec<String>) 
                 collect_pattern_binding_names(variant, names);
             }
         }
-        MirPatternKind::Slice { head, rest, tail } => {
-            for item in head {
+        MirPatternKind::Slice(slice) => {
+            for item in &slice.head {
                 collect_pattern_binding_names(item, names);
             }
-            if let Some(rest) = rest {
+            if let Some(rest) = &slice.rest {
                 if let Some(binding) = &rest.binding {
                     names.push(binding.clone());
                 }
             }
-            for item in tail {
+            for item in &slice.tail {
                 collect_pattern_binding_names(item, names);
             }
         }

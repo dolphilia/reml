@@ -109,22 +109,22 @@ pub fn resolve_intrinsic_use(
 fn lookup_spec(name: &str) -> Option<IntrinsicSpec> {
     match name {
         "llvm.sqrt.f64" => Some(IntrinsicSpec {
-            name,
+            name: "llvm.sqrt.f64",
             signature: IntrinsicSignature::new(vec![RemlType::F64], Some(RemlType::F64)),
             required_feature: None,
         }),
         "llvm.ctpop.i64" => Some(IntrinsicSpec {
-            name,
+            name: "llvm.ctpop.i64",
             signature: IntrinsicSignature::new(vec![RemlType::I64], Some(RemlType::I64)),
             required_feature: Some("popcnt"),
         }),
         "llvm.ctpop.i32" => Some(IntrinsicSpec {
-            name,
+            name: "llvm.ctpop.i32",
             signature: IntrinsicSignature::new(vec![RemlType::I32], Some(RemlType::I32)),
             required_feature: Some("popcnt"),
         }),
         "llvm.memcpy.p0.p0.i64" => Some(IntrinsicSpec {
-            name,
+            name: "llvm.memcpy.p0.p0.i64",
             signature: IntrinsicSignature::new(
                 vec![RemlType::Pointer, RemlType::Pointer, RemlType::I64],
                 None,
@@ -150,6 +150,7 @@ fn format_reml_type(ty: &RemlType) -> String {
         RemlType::F64 => "f64".to_string(),
         RemlType::Pointer => "ptr".to_string(),
         RemlType::String => "string".to_string(),
+        RemlType::Unit => "unit".to_string(),
         RemlType::RowTuple(items) => {
             let inner = items
                 .iter()
