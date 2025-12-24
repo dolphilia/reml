@@ -56,6 +56,13 @@
 - **?（propagate）**: エラー分岐へ飛ぶ前に `defer_lifo` を評価し、成功パスは従来通り継続。
 - **panic**: panic 呼び出し直前に `defer_lifo` を評価し、以降は abort/ unwind の想定に従う。
 
+#### 早期脱出の IR 形（panic / propagate）
+- **panic を終端命令へ落とす**: `MirExprKind::Panic` は `call @reml_panic`（仮）後に `LlvmTerminator::Unreachable` を置く設計とする。値は返さず、`return` と同列の終端として扱う。`LlvmTerminator` に `Unreachable` を追加し、`panic` の lowering は必ず終端ブロックを生成する。
+- **propagate の分岐形**: `Result<T,E>` と `Option<T>` を想定し、`Ok/Err` または `Some/None` で分岐する IR に落とす。
+  - `Result`: `intrinsic_is_ctor("Ok")` で成功分岐、成功側は `intrinsic_ctor_payload("Ok")` で値を抽出、失敗側は元の `Result` 値を `ret` で即時返す（`defer_lifo` は先行評価済み）。
+  - `Option`: `null` 判定で分岐し、非 `null` 側は `intrinsic_ctor_payload("Some")` で値を抽出、`null` 側は `ret null` で即時返す。
+  - どちらも成功側は後続ブロックへ合流させ、必要なら `phi` で値を引き継ぐ（`propagate` が式位置で使われるため）。
+
 1) `defer` の実行保証
 - 目的: `return` / `?` / 例外的終了で `defer` が必ず実行されることを保証する。
 - 成果物: ブロック終了時の `defer` 実行がテストで確認できる。

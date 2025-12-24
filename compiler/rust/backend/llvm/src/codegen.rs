@@ -25,6 +25,7 @@ const INTRINSIC_CALL: &str = "@reml_call";
 const INTRINSIC_STR_CONCAT: &str = "@reml_str_concat";
 const INTRINSIC_IF_ELSE: &str = "@reml_if_else";
 const INTRINSIC_PERFORM: &str = "@reml_perform";
+const INTRINSIC_PANIC: &str = "@reml_panic";
 
 fn intrinsic_is_ctor(name: &str) -> String {
     format!("@reml_is_ctor_{name}")
@@ -568,6 +569,7 @@ pub enum LlvmTerminator {
         else_bb: String,
     },
     Ret(Option<String>),
+    Unreachable,
 }
 
 impl LlvmTerminator {
@@ -581,6 +583,7 @@ impl LlvmTerminator {
             } => format!("br i1 {cond}, label %{then_bb}, label %{else_bb}"),
             LlvmTerminator::Ret(Some(val)) => format!("ret {}", val),
             LlvmTerminator::Ret(None) => "ret void".into(),
+            LlvmTerminator::Unreachable => "unreachable".into(),
         }
     }
 }
@@ -1071,6 +1074,41 @@ fn lower_entry_expr_to_blocks(
         expr_map.insert(expr.id, expr);
     }
     let mut ssa = LlvmBuilder::new(type_mapping.clone());
+    if let Some(expr) = expr_map.get(&body) {
+        match &expr.kind {
+            MirExprKind::Panic { .. } => {
+                let value = emit_value_expr(body, &expr_map, &mut ssa);
+                return lower_panic_value_to_blocks(body, value, &mut ssa);
+            }
+            MirExprKind::Propagate { .. } => {
+                let value = emit_value_expr(body, &expr_map, &mut ssa);
+                return lower_propagate_value_to_blocks(body, value, &expr.ty, &mut ssa);
+            }
+            MirExprKind::Block { tail, .. } => {
+                if let Some(tail_id) = tail {
+                    if let Some(tail_expr) = expr_map.get(tail_id) {
+                        match &tail_expr.kind {
+                            MirExprKind::Panic { .. } => {
+                                let value = emit_value_expr(body, &expr_map, &mut ssa);
+                                return lower_panic_value_to_blocks(body, value, &mut ssa);
+                            }
+                            MirExprKind::Propagate { .. } => {
+                                let value = emit_value_expr(body, &expr_map, &mut ssa);
+                                return lower_propagate_value_to_blocks(
+                                    body,
+                                    value,
+                                    &expr.ty,
+                                    &mut ssa,
+                                );
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
     let value = emit_value_expr(body, &expr_map, &mut ssa);
     let block = BasicBlock {
         label: "entry".into(),
@@ -1087,6 +1125,152 @@ fn lower_entry_expr_to_blocks(
         terminator: LlvmTerminator::Ret(Some(value.operand)),
     };
     (vec![block], vec![llvm_block])
+}
+
+#[derive(Clone, Copy, Debug)]
+enum PropagateFlavor {
+    Result,
+    Option,
+}
+
+fn infer_propagate_flavor(ty_hint: &str) -> PropagateFlavor {
+    let trimmed = ty_hint.trim();
+    if trimmed.starts_with("Option") || trimmed.contains("Option<") {
+        return PropagateFlavor::Option;
+    }
+    if trimmed.starts_with("Result") || trimmed.contains("Result<") {
+        return PropagateFlavor::Result;
+    }
+    PropagateFlavor::Result
+}
+
+fn lower_panic_value_to_blocks(
+    body: MirExprId,
+    value: EmittedValue,
+    ssa: &mut LlvmBuilder,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>) {
+    let mut instrs = value.instrs;
+    instrs.push(LlvmInstr::Comment(format!(
+        "panic expr#{body} -> {INTRINSIC_PANIC}"
+    )));
+    instrs.push(LlvmInstr::Call {
+        result: None,
+        ret_ty: "void".into(),
+        callee: INTRINSIC_PANIC.into(),
+        args: vec![(value.ty, value.operand)],
+    });
+    let block = BasicBlock {
+        label: "entry".into(),
+        instrs: vec![format!("panic expr#{body}")],
+        terminator: "unreachable".into(),
+    };
+    let llvm_block = LlvmBlock {
+        label: "entry".into(),
+        instrs: {
+            let mut buf = vec![LlvmInstr::Comment(format!("panic expr#{body}"))];
+            buf.extend(instrs);
+            buf
+        },
+        terminator: LlvmTerminator::Unreachable,
+    };
+    (vec![block], vec![llvm_block])
+}
+
+fn lower_propagate_value_to_blocks(
+    body: MirExprId,
+    value: EmittedValue,
+    ty_hint: &str,
+    ssa: &mut LlvmBuilder,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>) {
+    let ok_label = format!("propagate.ok#{body}");
+    let err_label = format!("propagate.err#{body}");
+    let cond_label = format!("propagate.cond#{body}");
+    let flavor = infer_propagate_flavor(ty_hint);
+    let residual = value.operand.clone();
+    let mut entry_instrs = vec![LlvmInstr::Comment(format!("exec propagate#{body}"))];
+    entry_instrs.extend(value.instrs);
+    let cond = ssa.new_tmp("propagate_ok");
+    match flavor {
+        PropagateFlavor::Option => {
+            entry_instrs.push(LlvmInstr::Comment(format!(
+                "{cond_label}: check Some/None"
+            )));
+            entry_instrs.push(LlvmInstr::Icmp {
+                result: cond.clone(),
+                pred: "ne".into(),
+                ty: ssa.pointer_type(),
+                lhs: value.operand.clone(),
+                rhs: "null".into(),
+            });
+        }
+        PropagateFlavor::Result => {
+            entry_instrs.push(LlvmInstr::Comment(format!(
+                "{cond_label}: check Ok/Err"
+            )));
+            entry_instrs.push(LlvmInstr::Call {
+                result: Some(cond.clone()),
+                ret_ty: ssa.bool_type(),
+                callee: intrinsic_is_ctor("Ok"),
+                args: vec![(ssa.pointer_type(), value.operand.clone())],
+            });
+        }
+    }
+
+    let entry_block = BasicBlock {
+        label: "entry".into(),
+        instrs: vec![format!("exec propagate#{body}")],
+        terminator: format!("br_if {cond} then {ok_label} else {err_label}"),
+    };
+    let entry_llvm_block = LlvmBlock {
+        label: "entry".into(),
+        instrs: entry_instrs,
+        terminator: LlvmTerminator::BrCond {
+            cond: cond.clone(),
+            then_bb: ok_label.clone(),
+            else_bb: err_label.clone(),
+        },
+    };
+
+    let payload = ssa.new_tmp("propagate_payload");
+    let mut ok_instrs = vec![LlvmInstr::Comment(format!("propagate ok#{body} -> payload"))];
+    let ctor_name = match flavor {
+        PropagateFlavor::Option => "Some",
+        PropagateFlavor::Result => "Ok",
+    };
+    ok_instrs.push(LlvmInstr::Call {
+        result: Some(payload.clone()),
+        ret_ty: ssa.pointer_type(),
+        callee: intrinsic_ctor_payload(ctor_name),
+        args: vec![(ssa.pointer_type(), value.operand.clone())],
+    });
+    let ok_block = BasicBlock {
+        label: ok_label.clone(),
+        instrs: vec![format!("propagate ok#{body} -> payload")],
+        terminator: format!("ret {payload}"),
+    };
+    let ok_llvm_block = LlvmBlock {
+        label: ok_label,
+        instrs: ok_instrs,
+        terminator: LlvmTerminator::Ret(Some(payload)),
+    };
+
+    let err_block = BasicBlock {
+        label: err_label.clone(),
+        instrs: vec![format!("propagate err#{body} -> return residual")],
+        terminator: format!("ret {}", residual),
+    };
+    let err_llvm_block = LlvmBlock {
+        label: err_label,
+        instrs: vec![LlvmInstr::Comment(format!(
+            "propagate err#{body} -> return residual"
+        ))],
+        terminator: LlvmTerminator::Ret(Some(residual)),
+    };
+
+    (
+        vec![entry_block, ok_block, err_block],
+        vec![entry_llvm_block, ok_llvm_block, err_llvm_block],
+    )
 }
 
 fn emit_guard_cond(
