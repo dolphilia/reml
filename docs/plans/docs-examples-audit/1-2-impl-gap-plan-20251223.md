@@ -102,6 +102,12 @@
 - `reports/spec-audit/summary.md` に再検証結果を記録。
 - `reports/spec-audit/ch1/docs-examples-fix-notes-YYYYMMDD.md` を更新。
 
+## Backend / Runtime 影響の再確認（2025-12-24 追記）
+- `conductor` / `unsafe` / トップレベル式は **Rust Frontend 側の受理・診断が中心**であり、現行のドキュメント監査用途では Backend / Runtime の追加修正は不要。
+- `conductor` は実行フェーズで `CapabilityRegistry::verify_conductor_contract` と連動する設計のため、CLI/実行系の統合フェーズでは **Runtime 連携の再点検が必須**（仕様: `docs/spec/3-8-core-runtime-capability.md`）。
+- C 可変長引数 (`...`) は **Frontend では構文・型診断まで対応済み**だが、`compiler/rust/backend/llvm/src/ffi_lowering.rs` の `FfiCallSignature` に variadic 情報が無く、バックエンド lower で反映できない。
+- Runtime 側には `compiler/rust/runtime/src/ffi/dsl/mod.rs` に `FfiFnSig.variadic` が存在するため、**実行系で varargs を使う場合は Frontend → Backend/Runtime のシグネチャ伝搬を追加**する必要がある（サンプルが宣言のみの場合は当面不要）。
+
 ## 進捗管理
 - 本計画書作成日: 2025-12-23
 - 進捗欄（運用用）:

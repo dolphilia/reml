@@ -98,6 +98,12 @@
   - 追記した日付のファイル名に合わせて相互リンクを更新する。
   - 既存の診断 JSON が旧サンプル由来である場合、再生成が必要である旨を明示する。
 
+## Backend / Runtime 影響の再確認（2025-12-24 追記）
+- `[T]` と `&` / `&mut` は **Frontend の型表現に追加済み**だが、`compiler/rust/backend/llvm/src/integration.rs` の `parse_reml_type` は文字列トークンを `pointer` にフォールバックするため、バックエンドでは型情報が失われる。
+- `compiler/rust/backend/llvm/src/type_mapping.rs` の `RemlType` は `Slice` / `Ref` を持たないため、**コード生成を前提にする場合は型列挙とレイアウト計算を追加**する必要がある（`[T]` の `{ptr,len}` 表現、`&T` / `&mut T` の ABI 整理）。
+- Runtime 側は `List<T>` の実装はあるが、`[T]` に対応する **明示的な ABI/FFI 表現が未整理**のため、実行系で扱う場合は `docs/spec/1-2-types-Inference.md` と `docs/spec/3-2-core-collections.md` を参照して整合方針を確定する。
+- ドキュメント監査・サンプル復元の範囲では **Backend / Runtime 追加対応は不要**（型注釈の受理と診断整合が主目的）。
+
 ## 進捗管理
 - 本計画書作成日: 2025-12-24
 - 進捗欄（運用用）:
