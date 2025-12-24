@@ -63,6 +63,25 @@
   - `Option`: `null` 判定で分岐し、非 `null` 側は `intrinsic_ctor_payload("Some")` で値を抽出、`null` 側は `ret null` で即時返す。
   - どちらも成功側は後続ブロックへ合流させ、必要なら `phi` で値を引き継ぐ（`propagate` が式位置で使われるため）。
 
+#### match 以外の式コンテキストでの `propagate` ブロック化（設計案）
+- **対象**: `if/else`、`binary`、`call` 引数、`let` 右辺など、`match` 以外で `propagate` が式として現れるケース。
+- **方針**: `emit_value_expr` は「値を返す」関数であり分岐ブロック生成に向かないため、`propagate` を含む式は **外側の lowering でブロックへ持ち上げる**。
+  - `if/else`: cond 評価ブロック → then/else 評価ブロック（各ブロックで `propagate` を展開）→ end ブロックに合流し `phi` を構成。
+  - `call`/`binary`: 左右（または各引数）を順に評価するブロックを作り、途中で `propagate` が出たら早期 `ret` するエラーブロックへ分岐。
+  - `let` 右辺: 右辺評価ブロック内で `propagate` を展開し、成功時のみ束縛を継続、失敗時は `ret` で関数終端。
+- **導入方法**: `emit_value_expr` ではなく `emit_value_expr_to_blocks`（新設予定）で、`propagate` を含む式をブロック列に変換する。
+  - 最小実装は `if/else` から着手し、`match` と同様の `phi` 合流パターンを流用する。
+
+#### panic 引数型の IR 仕様合わせ（runtime 整合）
+- **現状**: runtime 側の `panic(const char*)` は `NULL` 終端文字列を受け取る設計で、`reml_string_t` ではない。
+- **方針**:
+  - LLVM IR の panic 呼び出しは **`@panic(ptr)` を正準**とする（`@reml_panic` の別名は廃止）。
+  - Reml 側の `Str` は `{ptr, i64}` を前提とするため、`panic` の引数は **`Str` → `ptr` への変換**を lowering 時に行う。
+  - `Str` 以外の引数は `@reml_value`/`@reml_call` 経由で `Str` に整形する既存規約に合わせる（未整備なら TODO 化）。
+- **TODO**:
+  - `runtime/native/include/reml_runtime.h` のコメントにある「LLVM IR 側では panic(ptr, i64)」の記述を現在の IR と一致させる。
+  - `@panic` の宣言形式（引数数・型）を `compiler/rust/backend/llvm` 側で固定化し、テストで IR 断片を確認する。
+
 1) `defer` の実行保証
 - 目的: `return` / `?` / 例外的終了で `defer` が必ず実行されることを保証する。
 - 成果物: ブロック終了時の `defer` 実行がテストで確認できる。
