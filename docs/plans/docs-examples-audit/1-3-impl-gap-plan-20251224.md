@@ -44,6 +44,7 @@
 - `propagate` の payload 型を `MirExpr.ty` から解決し、`@reml_value(payload_ty, ptr)` を挿入する。
 - `panic` の引数を `Str -> ptr` へ変換し、`@panic(ptr)` に統一する（runtime 注記も更新）。
 - runtime に `@reml_str_data(Str) -> ptr` の実体（`reml_str_data`）を追加する。
+- runtime の `test_os` で `mkstemp` を使う方針を明記し、テスト実装を更新する。
 
 #### 残タスク（未完了）
 - `defer` 構文のパーサテスト・診断 0 件の確認（フェーズ 1 との整合も含む）。
