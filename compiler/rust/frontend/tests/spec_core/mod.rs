@@ -1254,6 +1254,7 @@ fn run_typecheck(function: Function) -> TypecheckReport {
         active_patterns: Vec::new(),
         functions: vec![function],
         decls: Vec::new(),
+        exprs: Vec::new(),
     };
     TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default())
 }

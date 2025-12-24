@@ -32,6 +32,7 @@ fn sample_summary() -> CliSummary {
         finished_at: "2025-01-01T00:00:01Z".to_string(),
         artifact: Some("diagnostics.json".to_string()),
         stats,
+        dsl_embeddings: Vec::new(),
     }
 }
 

@@ -2794,10 +2794,12 @@ fn infer_expr(
                     loop_context,
                     context,
                 );
+                let dicts = result.dict_ref_ids.clone();
+                let ty = result.ty.clone();
                 (
                     Some(Box::new(result)),
-                    result.dict_ref_ids.clone(),
-                    result.ty.clone(),
+                    dicts,
+                    ty,
                 )
             } else {
                 (None, Vec::new(), Type::builtin(BuiltinType::Unit))
@@ -2823,13 +2825,15 @@ fn infer_expr(
                 loop_context,
                 context,
             );
+            let dicts = result.dict_ref_ids.clone();
+            let ty = result.ty.clone();
             make_typed(
                 expr,
                 TypedExprKindDraft::Propagate {
                     expr: Box::new(result),
                 },
-                result.ty.clone(),
-                result.dict_ref_ids.clone(),
+                ty,
+                dicts,
             )
         }
         ExprKind::Lambda { params, body, .. } => {
@@ -3028,7 +3032,7 @@ fn infer_block(
                     loop_context,
                     context,
                 );
-                block_dict_refs.extend(target_result.dict_ref_ids);
+                block_dict_refs.extend(target_result.dict_ref_ids.clone());
                 let value_result = infer_expr(
                     value,
                     &mut block_env,
@@ -3042,7 +3046,7 @@ fn infer_block(
                     loop_context,
                     context,
                 );
-                block_dict_refs.extend(value_result.dict_ref_ids);
+                block_dict_refs.extend(value_result.dict_ref_ids.clone());
                 typed_statements.push(TypedStmtDraft {
                     span: stmt.span,
                     kind: TypedStmtKindDraft::Assign {
@@ -3066,7 +3070,7 @@ fn infer_block(
                     context,
                 );
                 block_dict_refs.extend(defer_result.dict_ref_ids.clone());
-                defer_exprs.push(defer_result);
+                defer_exprs.push(defer_result.clone());
                 typed_statements.push(TypedStmtDraft {
                     span: stmt.span,
                     kind: TypedStmtKindDraft::Defer {
