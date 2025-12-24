@@ -142,6 +142,32 @@ pub struct MirExpr {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct MirStmt {
+    pub span: Span,
+    pub kind: MirStmtKind,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum MirStmtKind {
+    Let {
+        pattern: MirPattern,
+        value: MirExprId,
+        mutable: bool,
+    },
+    Expr {
+        expr: MirExprId,
+    },
+    Assign {
+        target: MirExprId,
+        value: MirExprId,
+    },
+    Defer {
+        expr: MirExprId,
+    },
+}
+
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum MirExprKind {
     Literal(Literal),
@@ -151,6 +177,8 @@ pub enum MirExprKind {
         args: Vec<MirExprId>,
     },
     Block {
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        statements: Vec<MirStmt>,
         #[serde(skip_serializing_if = "Option::is_none")]
         tail: Option<MirExprId>,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -448,13 +476,22 @@ impl MirExprBuilder {
                     }
                 }
             }
-            typed::TypedExprKind::Block { tail, defers } => {
+            typed::TypedExprKind::Block {
+                statements,
+                tail,
+                defers,
+            } => {
+                let statements = statements
+                    .iter()
+                    .map(|stmt| self.lower_stmt(stmt))
+                    .collect::<Vec<_>>();
                 let defers = defers
                     .iter()
                     .map(|defer| self.lower_expr(defer))
                     .collect::<Vec<_>>();
                 let defer_lifo = defers.iter().copied().rev().collect::<Vec<_>>();
                 MirExprKind::Block {
+                    statements,
                     tail: tail.as_ref().map(|tail| self.lower_expr(tail)),
                     defers,
                     defer_lifo,
@@ -518,6 +555,35 @@ impl MirExprBuilder {
             typed::TypedExprKind::Unknown => MirExprKind::Unknown,
         };
         self.push_expr(expr.span, expr.ty.clone(), expr.dict_ref_ids.clone(), kind)
+    }
+
+    fn lower_stmt(&mut self, stmt: &typed::TypedStmt) -> MirStmt {
+        let kind = match &stmt.kind {
+            typed::TypedStmtKind::Let { pattern, value } => MirStmtKind::Let {
+                pattern: lower_pattern(pattern),
+                value: self.lower_expr(value),
+                mutable: false,
+            },
+            typed::TypedStmtKind::Var { pattern, value } => MirStmtKind::Let {
+                pattern: lower_pattern(pattern),
+                value: self.lower_expr(value),
+                mutable: true,
+            },
+            typed::TypedStmtKind::Expr { expr } => MirStmtKind::Expr {
+                expr: self.lower_expr(expr),
+            },
+            typed::TypedStmtKind::Assign { target, value } => MirStmtKind::Assign {
+                target: self.lower_expr(target),
+                value: self.lower_expr(value),
+            },
+            typed::TypedStmtKind::Defer { expr } => MirStmtKind::Defer {
+                expr: self.lower_expr(expr),
+            },
+        };
+        MirStmt {
+            span: stmt.span,
+            kind,
+        }
     }
 
     fn push_expr(
@@ -875,7 +941,14 @@ fn collect_match_lowerings_from_expr(
             collect_match_lowerings_from_expr(then_branch, owner, plans);
             collect_match_lowerings_from_expr(else_branch, owner, plans);
         }
-        typed::TypedExprKind::Block { tail, defers } => {
+        typed::TypedExprKind::Block {
+            statements,
+            tail,
+            defers,
+        } => {
+            for stmt in statements {
+                collect_match_lowerings_from_stmt(stmt, owner, plans);
+            }
             if let Some(tail) = tail {
                 collect_match_lowerings_from_expr(tail, owner, plans);
             }
@@ -897,5 +970,28 @@ fn collect_match_lowerings_from_expr(
         typed::TypedExprKind::Literal(_)
         | typed::TypedExprKind::Identifier { .. }
         | typed::TypedExprKind::Unknown => {}
+    }
+}
+
+fn collect_match_lowerings_from_stmt(
+    stmt: &typed::TypedStmt,
+    owner: &str,
+    plans: &mut Vec<MatchLoweringPlan>,
+) {
+    match &stmt.kind {
+        typed::TypedStmtKind::Let { value, .. }
+        | typed::TypedStmtKind::Var { value, .. } => {
+            collect_match_lowerings_from_expr(value, owner, plans);
+        }
+        typed::TypedStmtKind::Expr { expr } => {
+            collect_match_lowerings_from_expr(expr, owner, plans);
+        }
+        typed::TypedStmtKind::Assign { target, value } => {
+            collect_match_lowerings_from_expr(target, owner, plans);
+            collect_match_lowerings_from_expr(value, owner, plans);
+        }
+        typed::TypedStmtKind::Defer { expr } => {
+            collect_match_lowerings_from_expr(expr, owner, plans);
+        }
     }
 }

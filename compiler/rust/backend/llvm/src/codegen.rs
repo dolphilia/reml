@@ -42,6 +42,30 @@ pub struct MirExpr {
 }
 
 #[derive(Clone, Debug)]
+pub struct MirStmt {
+    pub kind: MirStmtKind,
+}
+
+#[derive(Clone, Debug)]
+pub enum MirStmtKind {
+    Let {
+        pattern: MirPattern,
+        value: MirExprId,
+        mutable: bool,
+    },
+    Expr {
+        expr: MirExprId,
+    },
+    Assign {
+        target: MirExprId,
+        value: MirExprId,
+    },
+    Defer {
+        expr: MirExprId,
+    },
+}
+
+#[derive(Clone, Debug)]
 pub enum MirExprKind {
     Literal {
         summary: String,
@@ -58,6 +82,7 @@ pub enum MirExprKind {
         args: Vec<MirExprId>,
     },
     Block {
+        statements: Vec<MirStmt>,
         tail: Option<MirExprId>,
         defers: Vec<MirExprId>,
         defer_lifo: Vec<MirExprId>,
@@ -1145,7 +1170,15 @@ fn lower_entry_expr_to_blocks(
                 let value = emit_value_expr(body, &expr_map, &mut ssa);
                 return lower_propagate_value_to_blocks(body, value, &expr.ty, &mut ssa);
             }
-            MirExprKind::Block { tail, defer_lifo, .. } => {
+            MirExprKind::Block {
+                statements,
+                tail,
+                defer_lifo,
+                ..
+            } => {
+                if !statements.is_empty() {
+                    return lower_entry_expr_to_blocks_via_operand(&expr_map, body, &mut ssa);
+                }
                 if let Some(tail_id) = tail {
                     if let Some(tail_expr) = expr_map.get(tail_id) {
                         match &tail_expr.kind {
@@ -1264,6 +1297,37 @@ fn lower_entry_expr_to_blocks(
     (vec![block], vec![llvm_block])
 }
 
+fn lower_entry_expr_to_blocks_via_operand(
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    body: MirExprId,
+    ssa: &mut LlvmBuilder,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>) {
+    let end_label = "entry.end".to_string();
+    let (mut blocks, mut llvm_blocks, operand, terminated) = lower_expr_to_operand_blocks(
+        "entry".to_string(),
+        body,
+        expr_map,
+        ssa,
+        &end_label,
+        None,
+    );
+    if terminated {
+        return (blocks, llvm_blocks);
+    }
+    let (operand, _) = operand.unwrap_or_else(|| ("null".into(), ssa.pointer_type()));
+    blocks.push(BasicBlock {
+        label: end_label.clone(),
+        instrs: vec![format!("ret {operand}")],
+        terminator: format!("ret {operand}"),
+    });
+    llvm_blocks.push(LlvmBlock {
+        label: end_label,
+        instrs: vec![LlvmInstr::Comment("ret operand".into())],
+        terminator: LlvmTerminator::Ret(Some(operand)),
+    });
+    (blocks, llvm_blocks)
+}
+
 #[derive(Clone, Copy, Debug)]
 enum BranchKind {
     Normal,
@@ -1313,10 +1377,22 @@ fn expr_contains_early_exit(
     };
     match &expr.kind {
         MirExprKind::Propagate { .. } | MirExprKind::Panic { .. } => true,
-        MirExprKind::Block { tail, .. } => tail
-            .and_then(|tail_id| expr_map.get(&tail_id))
-            .map(|expr| expr_contains_early_exit(expr.id, expr_map))
-            .unwrap_or(false),
+        MirExprKind::Block { statements, tail, .. } => {
+            let stmt_exit = statements.iter().any(|stmt| match &stmt.kind {
+                MirStmtKind::Let { value, .. } => expr_contains_early_exit(*value, expr_map),
+                MirStmtKind::Expr { expr } => expr_contains_early_exit(*expr, expr_map),
+                MirStmtKind::Assign { target, value } => {
+                    expr_contains_early_exit(*target, expr_map)
+                        || expr_contains_early_exit(*value, expr_map)
+                }
+                MirStmtKind::Defer { expr } => expr_contains_early_exit(*expr, expr_map),
+            });
+            let tail_exit = tail
+                .and_then(|tail_id| expr_map.get(&tail_id))
+                .map(|expr| expr_contains_early_exit(expr.id, expr_map))
+                .unwrap_or(false);
+            stmt_exit || tail_exit
+        }
         MirExprKind::IfElse {
             condition,
             then_branch,
@@ -1366,6 +1442,7 @@ fn lower_call_with_propagate_to_blocks(
                 expr_map,
                 ssa,
                 &next_label,
+                None,
             );
         blocks.extend(step_blocks);
         llvm_blocks.extend(step_llvm_blocks);
@@ -1445,6 +1522,7 @@ fn lower_call_with_propagate_to_operand_blocks(
                 expr_map,
                 ssa,
                 &next_step_label,
+                None,
             );
         blocks.extend(step_blocks);
         llvm_blocks.extend(step_llvm_blocks);
@@ -1522,6 +1600,7 @@ fn lower_binary_with_propagate_to_blocks(
                 expr_map,
                 ssa,
                 &next_label,
+                None,
             );
         blocks.extend(step_blocks);
         llvm_blocks.extend(step_llvm_blocks);
@@ -1617,6 +1696,7 @@ fn lower_binary_with_propagate_to_operand_blocks(
                 expr_map,
                 ssa,
                 &next_step_label,
+                None,
             );
         blocks.extend(step_blocks);
         llvm_blocks.extend(step_llvm_blocks);
@@ -3145,12 +3225,120 @@ fn lower_propagate_operand_to_blocks(
     )
 }
 
+fn lower_propagate_operand_to_blocks_with_defers(
+    label: String,
+    body: MirExprId,
+    value: EmittedValue,
+    ty_hint: &str,
+    next_label: &str,
+    defer_lifo: &[MirExprId],
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>, String) {
+    let ok_label = format!("{label}.ok");
+    let err_label = format!("{label}.err");
+    let cond_label = format!("{label}.cond");
+    let flavor = infer_propagate_flavor(ty_hint);
+    let residual = value.operand.clone();
+    let mut entry_instrs = vec![LlvmInstr::Comment(format!("exec propagate#{body}"))];
+    entry_instrs.extend(value.instrs);
+    let cond = ssa.new_tmp("propagate_ok");
+    match flavor {
+        PropagateFlavor::Option => {
+            entry_instrs.push(LlvmInstr::Comment(format!(
+                "{cond_label}: check Some/None"
+            )));
+            entry_instrs.push(LlvmInstr::Icmp {
+                result: cond.clone(),
+                pred: "ne".into(),
+                ty: ssa.pointer_type(),
+                lhs: residual.clone(),
+                rhs: "null".into(),
+            });
+        }
+        PropagateFlavor::Result => {
+            entry_instrs.push(LlvmInstr::Comment(format!(
+                "{cond_label}: check Ok/Err"
+            )));
+            entry_instrs.push(LlvmInstr::Call {
+                result: Some(cond.clone()),
+                ret_ty: ssa.bool_type(),
+                callee: intrinsic_is_ctor("Ok"),
+                args: vec![(ssa.pointer_type(), residual.clone())],
+            });
+        }
+    }
+    let entry_block = BasicBlock {
+        label: label.clone(),
+        instrs: vec![format!("exec propagate#{body}")],
+        terminator: format!("br_if {cond} then {ok_label} else {err_label}"),
+    };
+    let entry_llvm_block = LlvmBlock {
+        label: label.clone(),
+        instrs: entry_instrs,
+        terminator: LlvmTerminator::BrCond {
+            cond: cond.clone(),
+            then_bb: ok_label.clone(),
+            else_bb: err_label.clone(),
+        },
+    };
+
+    let payload = ssa.new_tmp("propagate_payload");
+    let ctor_name = match flavor {
+        PropagateFlavor::Option => "Some",
+        PropagateFlavor::Result => "Ok",
+    };
+    let mut ok_instrs = vec![LlvmInstr::Comment(format!(
+        "propagate ok#{body} -> payload"
+    ))];
+    ok_instrs.push(LlvmInstr::Call {
+        result: Some(payload.clone()),
+        ret_ty: ssa.pointer_type(),
+        callee: intrinsic_ctor_payload(ctor_name),
+        args: vec![(ssa.pointer_type(), residual.clone())],
+    });
+    let ok_block = BasicBlock {
+        label: ok_label.clone(),
+        instrs: vec![format!("propagate ok#{body} -> {next_label}")],
+        terminator: format!("br {next_label}"),
+    };
+    let ok_llvm_block = LlvmBlock {
+        label: ok_label.clone(),
+        instrs: ok_instrs,
+        terminator: LlvmTerminator::Br {
+            target: next_label.to_string(),
+        },
+    };
+
+    let mut err_instrs = vec![LlvmInstr::Comment(format!(
+        "propagate err#{body} -> return residual"
+    ))];
+    emit_defer_lifo_instrs(defer_lifo, expr_map, ssa, &mut err_instrs);
+    let err_block = BasicBlock {
+        label: err_label.clone(),
+        instrs: vec![format!("propagate err#{body} -> return residual")],
+        terminator: format!("ret {residual}"),
+    };
+    let err_llvm_block = LlvmBlock {
+        label: err_label,
+        instrs: err_instrs,
+        terminator: LlvmTerminator::Ret(Some(residual)),
+    };
+
+    (
+        vec![entry_block, ok_block, err_block],
+        vec![entry_llvm_block, ok_llvm_block, err_llvm_block],
+        payload,
+    )
+}
+
 fn lower_expr_to_operand_blocks(
     label: String,
     expr_id: MirExprId,
     expr_map: &HashMap<MirExprId, &MirExpr>,
     ssa: &mut LlvmBuilder,
     next_label: &str,
+    defer_lifo: Option<&[MirExprId]>,
 ) -> (Vec<BasicBlock>, Vec<LlvmBlock>, Option<(String, String)>, bool) {
     let Some(expr) = expr_map.get(&expr_id) else {
         let block = BasicBlock {
@@ -3178,14 +3366,26 @@ fn lower_expr_to_operand_blocks(
     match &expr.kind {
         MirExprKind::Propagate { .. } => {
             let value = emit_value_expr(expr_id, expr_map, ssa);
-            let (blocks, llvm_blocks, payload) = lower_propagate_operand_to_blocks(
-                label,
-                expr_id,
-                value,
-                expr.ty.as_str(),
-                next_label,
-                ssa,
-            );
+            let (blocks, llvm_blocks, payload) = match defer_lifo {
+                Some(defers) if !defers.is_empty() => lower_propagate_operand_to_blocks_with_defers(
+                    label,
+                    expr_id,
+                    value,
+                    expr.ty.as_str(),
+                    next_label,
+                    defers,
+                    expr_map,
+                    ssa,
+                ),
+                _ => lower_propagate_operand_to_blocks(
+                    label,
+                    expr_id,
+                    value,
+                    expr.ty.as_str(),
+                    next_label,
+                    ssa,
+                ),
+            };
             (
                 blocks,
                 llvm_blocks,
@@ -3195,8 +3395,19 @@ fn lower_expr_to_operand_blocks(
         }
         MirExprKind::Panic { .. } => {
             let value = emit_value_expr(expr_id, expr_map, ssa);
-            let (block, llvm_block) =
-                lower_panic_value_to_named_block(label, expr_id, value);
+            let (block, llvm_block) = match defer_lifo {
+                Some(defers) if !defers.is_empty() => {
+                    lower_panic_value_to_named_block_with_defers(
+                        label,
+                        expr_id,
+                        value,
+                        defers,
+                        expr_map,
+                        ssa,
+                    )
+                }
+                _ => lower_panic_value_to_named_block(label, expr_id, value),
+            };
             (vec![block], vec![llvm_block], None, true)
         }
         MirExprKind::IfElse {
@@ -3247,95 +3458,149 @@ fn lower_expr_to_operand_blocks(
             )
         }
         MirExprKind::Block {
-            tail: Some(tail_id),
+            statements,
+            tail,
             defer_lifo,
             ..
         } => {
-            if let Some(tail_expr) = expr_map.get(tail_id) {
-                if let MirExprKind::IfElse {
-                    condition,
-                    then_branch,
-                    else_branch,
-                } = &tail_expr.kind
-                {
-                    if expr_contains_early_exit(*tail_id, expr_map) {
-                        if !defer_lifo.is_empty() {
-                            return lower_block_tail_if_else_with_defer_to_operand_blocks(
-                                label,
-                                expr_id,
-                                *condition,
-                                *then_branch,
-                                *else_branch,
-                                defer_lifo,
-                                expr_map,
-                                ssa,
-                                next_label,
-                            );
-                        }
-                        return lower_if_else_to_operand_blocks(
-                            label,
-                            *tail_id,
-                            *condition,
-                            *then_branch,
-                            *else_branch,
-                            expr_map,
-                            ssa,
-                            next_label,
-                        );
-                    }
-                }
-            }
-            match classify_branch_kind(expr_id, expr_map) {
-                BranchKind::Propagate => {
-                    let value = emit_value_expr(expr_id, expr_map, ssa);
-                    let (blocks, llvm_blocks, payload) = lower_propagate_operand_to_blocks(
-                        label,
-                        expr_id,
-                        value,
-                        expr.ty.as_str(),
-                        next_label,
+            let mut blocks = Vec::new();
+            let mut llvm_blocks = Vec::new();
+            let mut stmt_label = label.clone();
+            if !statements.is_empty() {
+                let (stmt_blocks, stmt_llvm_blocks, next_stmt_label, terminated) =
+                    lower_block_statements_to_blocks(
+                        stmt_label.clone(),
+                        statements,
+                        if defer_lifo.is_empty() { None } else { Some(defer_lifo) },
+                        expr_map,
                         ssa,
                     );
-                    return (
-                        blocks,
-                        llvm_blocks,
-                        Some((payload, ssa.pointer_type())),
-                        false,
-                    );
+                blocks.extend(stmt_blocks);
+                llvm_blocks.extend(stmt_llvm_blocks);
+                if terminated {
+                    return (blocks, llvm_blocks, None, true);
                 }
-                BranchKind::Panic => {
-                    let value = emit_value_expr(expr_id, expr_map, ssa);
-                    let (block, llvm_block) =
-                        lower_panic_value_to_named_block(label, expr_id, value);
-                    return (vec![block], vec![llvm_block], None, true);
-                }
-                BranchKind::Normal => {}
+                stmt_label = next_stmt_label;
             }
-            let value = emit_value_expr(expr_id, expr_map, ssa);
+            if let Some(tail_id) = tail {
+                if let Some(tail_expr) = expr_map.get(tail_id) {
+                    if let MirExprKind::IfElse {
+                        condition,
+                        then_branch,
+                        else_branch,
+                    } = &tail_expr.kind
+                    {
+                        if expr_contains_early_exit(*tail_id, expr_map) {
+                            if !defer_lifo.is_empty() {
+                                let (tail_blocks, tail_llvm_blocks, operand, terminated) =
+                                    lower_block_tail_if_else_with_defer_to_operand_blocks(
+                                        stmt_label,
+                                        expr_id,
+                                        *condition,
+                                        *then_branch,
+                                        *else_branch,
+                                        defer_lifo,
+                                        expr_map,
+                                        ssa,
+                                        next_label,
+                                    );
+                                blocks.extend(tail_blocks);
+                                llvm_blocks.extend(tail_llvm_blocks);
+                                return (blocks, llvm_blocks, operand, terminated);
+                            }
+                            let (tail_blocks, tail_llvm_blocks, operand, terminated) =
+                                lower_if_else_to_operand_blocks(
+                                    stmt_label,
+                                    *tail_id,
+                                    *condition,
+                                    *then_branch,
+                                    *else_branch,
+                                    expr_map,
+                                    ssa,
+                                    next_label,
+                                );
+                            blocks.extend(tail_blocks);
+                            llvm_blocks.extend(tail_llvm_blocks);
+                            return (blocks, llvm_blocks, operand, terminated);
+                        }
+                    }
+                }
+                let defer_label = if defer_lifo.is_empty() {
+                    next_label.to_string()
+                } else {
+                    format!("{stmt_label}.defer")
+                };
+                let (tail_blocks, tail_llvm_blocks, operand, terminated) =
+                    lower_expr_to_operand_blocks(
+                        stmt_label,
+                        *tail_id,
+                        expr_map,
+                        ssa,
+                        &defer_label,
+                        if defer_lifo.is_empty() { None } else { Some(defer_lifo) },
+                    );
+                blocks.extend(tail_blocks);
+                llvm_blocks.extend(tail_llvm_blocks);
+                if terminated {
+                    return (blocks, llvm_blocks, operand, terminated);
+                }
+                if !defer_lifo.is_empty() {
+                    let mut defer_instrs = Vec::new();
+                    emit_defer_lifo_instrs(defer_lifo, expr_map, ssa, &mut defer_instrs);
+                    blocks.push(BasicBlock {
+                        label: defer_label.clone(),
+                        instrs: vec![format!("block#{expr_id} defer")],
+                        terminator: format!("br {next_label}"),
+                    });
+                    llvm_blocks.push(LlvmBlock {
+                        label: defer_label,
+                        instrs: defer_instrs,
+                        terminator: LlvmTerminator::Br {
+                            target: next_label.to_string(),
+                        },
+                    });
+                }
+                return (blocks, llvm_blocks, operand, terminated);
+            }
+            let unit_operand = ("null".into(), ssa.pointer_type());
+            let defer_label = if defer_lifo.is_empty() {
+                next_label.to_string()
+            } else {
+                format!("{label}.defer")
+            };
             let block = BasicBlock {
-                label: label.clone(),
-                instrs: vec![format!("exec expr#{expr_id}")],
-                terminator: format!("br {next_label}"),
+                label: stmt_label.clone(),
+                instrs: vec![format!("exec block#{expr_id} -> unit")],
+                terminator: format!("br {defer_label}"),
             };
             let llvm_block = LlvmBlock {
-                label,
-                instrs: {
-                    let mut instrs = vec![LlvmInstr::Comment(format!(
-                        "exec expr#{expr_id}"
-                    ))];
-                    instrs.extend(value.instrs);
-                    instrs
-                },
+                label: stmt_label,
+                instrs: vec![LlvmInstr::Comment(format!(
+                    "block#{expr_id} -> unit"
+                ))],
                 terminator: LlvmTerminator::Br {
-                    target: next_label.to_string(),
+                    target: defer_label.clone(),
                 },
             };
-            (
-                vec![block],
-                vec![llvm_block],
-                Some((value.operand, value.ty)),
-                false,
-            )
+            blocks.push(block);
+            llvm_blocks.push(llvm_block);
+            if !defer_lifo.is_empty() {
+                let mut defer_instrs = Vec::new();
+                emit_defer_lifo_instrs(defer_lifo, expr_map, ssa, &mut defer_instrs);
+                blocks.push(BasicBlock {
+                    label: defer_label.clone(),
+                    instrs: vec![format!("block#{expr_id} defer")],
+                    terminator: format!("br {next_label}"),
+                });
+                llvm_blocks.push(LlvmBlock {
+                    label: defer_label,
+                    instrs: defer_instrs,
+                    terminator: LlvmTerminator::Br {
+                        target: next_label.to_string(),
+                    },
+                });
+            }
+            return (blocks, llvm_blocks, Some(unit_operand), false);
         }
         _ => {
             let value = emit_value_expr(expr_id, expr_map, ssa);
@@ -3367,6 +3632,114 @@ fn lower_expr_to_operand_blocks(
     }
 }
 
+fn lower_block_statements_to_blocks(
+    label: String,
+    statements: &[MirStmt],
+    defer_lifo: Option<&[MirExprId]>,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>, String, bool) {
+    let mut blocks = Vec::new();
+    let mut llvm_blocks = Vec::new();
+    let mut step_label = label;
+    for (index, stmt) in statements.iter().enumerate() {
+        let next_label = format!("{step_label}.stmt{index}");
+        let (stmt_blocks, stmt_llvm_blocks, terminated) = lower_stmt_to_blocks(
+            step_label.clone(),
+            stmt,
+            defer_lifo,
+            expr_map,
+            ssa,
+            &next_label,
+        );
+        blocks.extend(stmt_blocks);
+        llvm_blocks.extend(stmt_llvm_blocks);
+        if terminated {
+            return (blocks, llvm_blocks, next_label, true);
+        }
+        step_label = next_label;
+    }
+    (blocks, llvm_blocks, step_label, false)
+}
+
+fn lower_stmt_to_blocks(
+    label: String,
+    stmt: &MirStmt,
+    defer_lifo: Option<&[MirExprId]>,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+    next_label: &str,
+) -> (Vec<BasicBlock>, Vec<LlvmBlock>, bool) {
+    match &stmt.kind {
+        MirStmtKind::Let { value, .. } => {
+            let (blocks, llvm_blocks, _operand, terminated) = lower_expr_to_operand_blocks(
+                label,
+                *value,
+                expr_map,
+                ssa,
+                next_label,
+                defer_lifo,
+            );
+            (blocks, llvm_blocks, terminated)
+        }
+        MirStmtKind::Expr { expr } => {
+            let (blocks, llvm_blocks, _operand, terminated) = lower_expr_to_operand_blocks(
+                label,
+                *expr,
+                expr_map,
+                ssa,
+                next_label,
+                defer_lifo,
+            );
+            (blocks, llvm_blocks, terminated)
+        }
+        MirStmtKind::Assign { target, value } => {
+            let temp_label = format!("{label}.assign");
+            let (mut blocks, mut llvm_blocks, _operand, terminated) =
+                lower_expr_to_operand_blocks(
+                    label,
+                    *target,
+                    expr_map,
+                    ssa,
+                    &temp_label,
+                    defer_lifo,
+                );
+            if terminated {
+                return (blocks, llvm_blocks, true);
+            }
+            let (value_blocks, value_llvm_blocks, _operand, terminated) =
+                lower_expr_to_operand_blocks(
+                    temp_label,
+                    *value,
+                    expr_map,
+                    ssa,
+                    next_label,
+                    defer_lifo,
+                );
+            blocks.extend(value_blocks);
+            llvm_blocks.extend(value_llvm_blocks);
+            (blocks, llvm_blocks, terminated)
+        }
+        MirStmtKind::Defer { .. } => {
+            let block = BasicBlock {
+                label: label.clone(),
+                instrs: vec!["defer statement (handled separately)".into()],
+                terminator: format!("br {next_label}"),
+            };
+            let llvm_block = LlvmBlock {
+                label,
+                instrs: vec![LlvmInstr::Comment(
+                    "defer statement (handled separately)".into(),
+                )],
+                terminator: LlvmTerminator::Br {
+                    target: next_label.to_string(),
+                },
+            };
+            (vec![block], vec![llvm_block], false)
+        }
+    }
+}
+
 fn emit_guard_cond(
     expr_id: MirExprId,
     expr_map: &HashMap<MirExprId, &MirExpr>,
@@ -3388,6 +3761,38 @@ fn emit_unit_value(ssa: &LlvmBuilder) -> EmittedValue {
         operand: "null".into(),
         instrs: vec![LlvmInstr::Comment("unit -> null pointer".into())],
     }
+}
+
+fn emit_block_statement_instrs(
+    statements: &[MirStmt],
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+) -> Vec<LlvmInstr> {
+    let mut instrs = Vec::new();
+    for stmt in statements {
+        match &stmt.kind {
+            MirStmtKind::Let { value, .. } => {
+                let value = emit_value_expr(*value, expr_map, ssa);
+                instrs.extend(value.instrs);
+            }
+            MirStmtKind::Expr { expr } => {
+                let value = emit_value_expr(*expr, expr_map, ssa);
+                instrs.extend(value.instrs);
+            }
+            MirStmtKind::Assign { target, value } => {
+                let target_value = emit_value_expr(*target, expr_map, ssa);
+                instrs.extend(target_value.instrs);
+                let value_value = emit_value_expr(*value, expr_map, ssa);
+                instrs.extend(value_value.instrs);
+            }
+            MirStmtKind::Defer { .. } => {
+                instrs.push(LlvmInstr::Comment(
+                    "defer statement skipped in block statements".into(),
+                ));
+            }
+        }
+    }
+    instrs
 }
 
 fn emit_defer_lifo_instrs(
@@ -3669,10 +4074,12 @@ fn emit_value_expr(
             }
         }
         MirExprKind::Block {
+            statements,
             tail,
             defer_lifo,
             ..
         } => {
+            let stmt_instrs = emit_block_statement_instrs(statements, expr_map, ssa);
             if let Some(tail_id) = tail {
                 if let Some(tail_expr) = expr_map.get(tail_id) {
                     match &tail_expr.kind {
@@ -3682,6 +4089,11 @@ fn emit_value_expr(
                             } else {
                                 emit_unit_value(ssa)
                             };
+                            if !stmt_instrs.is_empty() {
+                                let mut instrs = stmt_instrs.clone();
+                                instrs.append(&mut value.instrs);
+                                value.instrs = instrs;
+                            }
                             emit_defer_lifo_instrs(
                                 defer_lifo,
                                 expr_map,
@@ -3695,6 +4107,11 @@ fn emit_value_expr(
                         }
                         MirExprKind::Propagate { expr } => {
                             let mut value = emit_value_expr(*expr, expr_map, ssa);
+                            if !stmt_instrs.is_empty() {
+                                let mut instrs = stmt_instrs.clone();
+                                instrs.append(&mut value.instrs);
+                                value.instrs = instrs;
+                            }
                             emit_defer_lifo_instrs(
                                 defer_lifo,
                                 expr_map,
@@ -3712,6 +4129,11 @@ fn emit_value_expr(
                             } else {
                                 emit_unit_value(ssa)
                             };
+                            if !stmt_instrs.is_empty() {
+                                let mut instrs = stmt_instrs.clone();
+                                instrs.append(&mut value.instrs);
+                                value.instrs = instrs;
+                            }
                             emit_defer_lifo_instrs(
                                 defer_lifo,
                                 expr_map,
@@ -3732,6 +4154,11 @@ fn emit_value_expr(
             } else {
                 emit_unit_value(ssa)
             };
+            if !stmt_instrs.is_empty() {
+                let mut instrs = stmt_instrs;
+                instrs.append(&mut tail_value.instrs);
+                tail_value.instrs = instrs;
+            }
             emit_defer_lifo_instrs(defer_lifo, expr_map, ssa, &mut tail_value.instrs);
             tail_value
         }

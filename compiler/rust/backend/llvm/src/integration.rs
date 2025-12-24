@@ -2,7 +2,7 @@ use crate::codegen::{
     summarize_pattern, ActivePatternKind, CodegenContext, GeneratedFunction, MatchArmLowering,
     MatchLoweringPlan, MirActivePatternCall, MirExpr, MirExprKind, MirFunction, MirJumpTarget,
     MirMatchArm, MirPattern, MirPatternKind, MirPatternRecordField, MirSlicePattern, MirSliceRest,
-    PatternLowering,
+    MirStmt, MirStmtKind, PatternLowering,
 };
 use crate::ffi_lowering::FfiCallSignature;
 use crate::target_machine::{
@@ -341,6 +341,8 @@ struct MirExprJson {
 enum MirExprKindJson {
     Block {
         #[serde(default)]
+        statements: Vec<MirStmtJson>,
+        #[serde(default)]
         tail: Option<usize>,
         #[serde(default)]
         defers: Vec<usize>,
@@ -395,6 +397,32 @@ enum MirExprKindJson {
         value: Value,
     },
     Unknown,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirStmtJson {
+    kind: MirStmtKindJson,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum MirStmtKindJson {
+    Let {
+        pattern: MirPatternJson,
+        value: usize,
+        #[serde(default)]
+        mutable: bool,
+    },
+    Expr {
+        expr: usize,
+    },
+    Assign {
+        target: usize,
+        value: usize,
+    },
+    Defer {
+        expr: usize,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -570,10 +598,15 @@ fn convert_exprs(exprs: Vec<MirExprJson>) -> Vec<MirExpr> {
 fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
     match kind {
         MirExprKindJson::Block {
+            statements,
             tail,
             defers,
             defer_lifo,
         } => MirExprKind::Block {
+            statements: statements
+                .into_iter()
+                .map(convert_stmt)
+                .collect(),
             tail,
             defers,
             defer_lifo,
@@ -622,6 +655,24 @@ fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
         },
         MirExprKindJson::Unknown => MirExprKind::Unknown,
     }
+}
+
+fn convert_stmt(stmt: MirStmtJson) -> MirStmt {
+    let kind = match stmt.kind {
+        MirStmtKindJson::Let {
+            pattern,
+            value,
+            mutable,
+        } => MirStmtKind::Let {
+            pattern: convert_pattern(pattern),
+            value,
+            mutable,
+        },
+        MirStmtKindJson::Expr { expr } => MirStmtKind::Expr { expr },
+        MirStmtKindJson::Assign { target, value } => MirStmtKind::Assign { target, value },
+        MirStmtKindJson::Defer { expr } => MirStmtKind::Defer { expr },
+    };
+    MirStmt { kind }
 }
 
 fn convert_match_lowering(plan: Option<MatchLoweringPlanJson>) -> Option<MatchLoweringPlan> {

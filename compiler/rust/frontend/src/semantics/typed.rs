@@ -129,6 +129,35 @@ pub struct TypedExpr {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct TypedStmt {
+    pub span: Span,
+    pub kind: TypedStmtKind,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TypedStmtKind {
+    Let {
+        pattern: TypedPattern,
+        value: TypedExpr,
+    },
+    Var {
+        pattern: TypedPattern,
+        value: TypedExpr,
+    },
+    Expr {
+        expr: TypedExpr,
+    },
+    Assign {
+        target: TypedExpr,
+        value: TypedExpr,
+    },
+    Defer {
+        expr: TypedExpr,
+    },
+}
+
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TypedExprKind {
     Literal(Literal),
@@ -140,6 +169,8 @@ pub enum TypedExprKind {
         args: Vec<TypedExpr>,
     },
     Block {
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        statements: Vec<TypedStmt>,
         #[serde(skip_serializing_if = "Option::is_none")]
         tail: Option<Box<TypedExpr>>,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]

@@ -2771,6 +2771,7 @@ fn infer_expr(
             make_typed(
                 expr,
                 TypedExprKindDraft::Block {
+                    statements: block_result.statements,
                     tail: block_result.tail_expr.map(Box::new),
                     defers: block_result.defer_exprs,
                 },
@@ -2879,6 +2880,7 @@ struct BlockInferenceResult {
     dict_ref_ids: Vec<typed::DictRefId>,
     tail_expr: Option<TypedExprDraft>,
     defer_exprs: Vec<TypedExprDraft>,
+    statements: Vec<TypedStmtDraft>,
 }
 
 fn infer_block(
@@ -2899,6 +2901,7 @@ fn infer_block(
     let mut block_dict_refs = Vec::new();
     let mut tail_expr = None;
     let mut defer_exprs = Vec::new();
+    let mut typed_statements = Vec::new();
     let mut terminated = false;
     for stmt in statements {
         if terminated {
@@ -2906,21 +2909,83 @@ fn infer_block(
         }
         match &stmt.kind {
             StmtKind::Decl { decl } => {
-                let stmt_refs = infer_decl(
-                    decl,
-                    &mut block_env,
-                    var_gen,
-                    solver,
-                    constraints,
-                    stats,
-                    metrics,
-                    violations,
-                    dict_refs,
-                    None,
-                    context,
-                    loop_context,
-                );
-                block_dict_refs.extend(stmt_refs);
+                match &decl.kind {
+                    DeclKind::Let { pattern, value, .. } => {
+                        let (value_result, stmt_refs) = infer_binding_with_value(
+                            pattern,
+                            value,
+                            &mut block_env,
+                            var_gen,
+                            solver,
+                            constraints,
+                            stats,
+                            metrics,
+                            violations,
+                            dict_refs,
+                            context,
+                            loop_context,
+                        );
+                        block_dict_refs.extend(stmt_refs.clone());
+                        typed_statements.push(TypedStmtDraft {
+                            span: stmt.span,
+                            kind: TypedStmtKindDraft::Let {
+                                pattern: lower_typed_pattern(pattern),
+                                value: Box::new(value_result),
+                            },
+                        });
+                    }
+                    DeclKind::Var {
+                        pattern,
+                        value,
+                        type_annotation,
+                    } => {
+                        let (value_result, stmt_refs) = infer_binding_with_value(
+                            pattern,
+                            value,
+                            &mut block_env,
+                            var_gen,
+                            solver,
+                            constraints,
+                            stats,
+                            metrics,
+                            violations,
+                            dict_refs,
+                            context,
+                            loop_context,
+                        );
+                        if type_annotation.is_none() {
+                            if let Some(name) = pattern_binding_name(pattern) {
+                                violations
+                                    .push(TypecheckViolation::value_restriction(decl.span, name));
+                            }
+                        }
+                        block_dict_refs.extend(stmt_refs.clone());
+                        typed_statements.push(TypedStmtDraft {
+                            span: stmt.span,
+                            kind: TypedStmtKindDraft::Var {
+                                pattern: lower_typed_pattern(pattern),
+                                value: Box::new(value_result),
+                            },
+                        });
+                    }
+                    _ => {
+                        let stmt_refs = infer_decl(
+                            decl,
+                            &mut block_env,
+                            var_gen,
+                            solver,
+                            constraints,
+                            stats,
+                            metrics,
+                            violations,
+                            dict_refs,
+                            None,
+                            context,
+                            loop_context,
+                        );
+                        block_dict_refs.extend(stmt_refs);
+                    }
+                }
             }
             StmtKind::Expr { expr } => {
                 let expr_result = infer_expr(
@@ -2938,6 +3003,12 @@ fn infer_block(
                 );
                 last_ty = expr_result.ty.clone();
                 block_dict_refs.extend(expr_result.dict_ref_ids.clone());
+                typed_statements.push(TypedStmtDraft {
+                    span: stmt.span,
+                    kind: TypedStmtKindDraft::Expr {
+                        expr: Box::new(expr_result.clone()),
+                    },
+                });
                 tail_expr = Some(expr_result);
                 if matches!(expr.kind, ExprKind::Return { .. } | ExprKind::Break { .. }) {
                     terminated = true;
@@ -2972,6 +3043,13 @@ fn infer_block(
                     context,
                 );
                 block_dict_refs.extend(value_result.dict_ref_ids);
+                typed_statements.push(TypedStmtDraft {
+                    span: stmt.span,
+                    kind: TypedStmtKindDraft::Assign {
+                        target: Box::new(target_result),
+                        value: Box::new(value_result),
+                    },
+                });
             }
             StmtKind::Defer { expr } => {
                 let defer_result = infer_expr(
@@ -2989,6 +3067,12 @@ fn infer_block(
                 );
                 block_dict_refs.extend(defer_result.dict_ref_ids.clone());
                 defer_exprs.push(defer_result);
+                typed_statements.push(TypedStmtDraft {
+                    span: stmt.span,
+                    kind: TypedStmtKindDraft::Defer {
+                        expr: Box::new(defer_result.clone()),
+                    },
+                });
             }
         }
     }
@@ -2997,6 +3081,7 @@ fn infer_block(
         dict_ref_ids: block_dict_refs,
         tail_expr,
         defer_exprs,
+        statements: typed_statements,
     }
 }
 
@@ -3103,6 +3188,44 @@ fn infer_binding(
     let scheme = generalize_type(env, resolved_ty.clone());
     bind_pattern_to_env(pattern, &scheme, env, var_gen);
     value_result.dict_ref_ids
+}
+
+fn infer_binding_with_value(
+    pattern: &Pattern,
+    value: &Expr,
+    env: &mut TypeEnv,
+    var_gen: &mut TypeVarGen,
+    solver: &mut ConstraintSolver,
+    constraints: &mut Vec<Constraint>,
+    stats: &mut FunctionStats,
+    metrics: &mut TypecheckMetrics,
+    violations: &mut Vec<TypecheckViolation>,
+    dict_refs: &mut Vec<DictRefDraft>,
+    context: FunctionContext<'_>,
+    loop_context: &mut LoopContextStack,
+) -> (TypedExprDraft, Vec<typed::DictRefId>) {
+    let value_result = infer_expr(
+        value,
+        env,
+        var_gen,
+        solver,
+        constraints,
+        stats,
+        metrics,
+        violations,
+        dict_refs,
+        loop_context,
+        context,
+    );
+    let substitution = solver.substitution().clone();
+    let resolved_ty = substitution.apply(&value_result.ty);
+    detect_duplicate_bindings(pattern, violations);
+    validate_pattern_against_type(pattern, &resolved_ty, violations);
+    detect_regex_target_mismatch(pattern, &resolved_ty, violations);
+    let scheme = generalize_type(env, resolved_ty.clone());
+    bind_pattern_to_env(pattern, &scheme, env, var_gen);
+    let dicts = value_result.dict_ref_ids.clone();
+    (value_result, dicts)
 }
 
 fn infer_conductor(
@@ -4186,6 +4309,7 @@ fn combine_numeric_types(left: &Type, right: &Type) -> Type {
     }
 }
 
+#[derive(Clone)]
 struct TypedExprDraft {
     span: Span,
     kind: TypedExprKindDraft,
@@ -4193,6 +4317,35 @@ struct TypedExprDraft {
     dict_ref_ids: Vec<typed::DictRefId>,
 }
 
+#[derive(Clone)]
+struct TypedStmtDraft {
+    span: Span,
+    kind: TypedStmtKindDraft,
+}
+
+#[derive(Clone)]
+enum TypedStmtKindDraft {
+    Let {
+        pattern: typed::TypedPattern,
+        value: Box<TypedExprDraft>,
+    },
+    Var {
+        pattern: typed::TypedPattern,
+        value: Box<TypedExprDraft>,
+    },
+    Expr {
+        expr: Box<TypedExprDraft>,
+    },
+    Assign {
+        target: Box<TypedExprDraft>,
+        value: Box<TypedExprDraft>,
+    },
+    Defer {
+        expr: Box<TypedExprDraft>,
+    },
+}
+
+#[derive(Clone)]
 enum TypedExprKindDraft {
     Literal(Literal),
     Identifier {
@@ -4211,6 +4364,7 @@ enum TypedExprKindDraft {
         index: Box<TypedExprDraft>,
     },
     Block {
+        statements: Vec<TypedStmtDraft>,
         tail: Option<Box<TypedExprDraft>>,
         defers: Vec<TypedExprDraft>,
     },
@@ -4244,11 +4398,13 @@ enum TypedExprKindDraft {
     Unknown,
 }
 
+#[derive(Clone)]
 struct TypedEffectCallDraft {
     effect: Ident,
     argument: Box<TypedExprDraft>,
 }
 
+#[derive(Clone)]
 struct TypedMatchArmDraft {
     pattern: typed::TypedPattern,
     guard: Option<TypedExprDraft>,
@@ -4383,7 +4539,15 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
             target: Box::new(finalize_typed_expr(*target, substitution)),
             index: Box::new(finalize_typed_expr(*index, substitution)),
         },
-        TypedExprKindDraft::Block { tail, defers } => typed::TypedExprKind::Block {
+        TypedExprKindDraft::Block {
+            statements,
+            tail,
+            defers,
+        } => typed::TypedExprKind::Block {
+            statements: statements
+                .into_iter()
+                .map(|stmt| finalize_typed_stmt(stmt, substitution))
+                .collect(),
             tail: tail
                 .map(|tail| Box::new(finalize_typed_expr(*tail, substitution))),
             defers: defers
@@ -4450,6 +4614,36 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
         kind,
         ty: ty.label(),
         dict_ref_ids: expr.dict_ref_ids,
+    }
+}
+
+fn finalize_typed_stmt(
+    stmt: TypedStmtDraft,
+    substitution: &Substitution,
+) -> typed::TypedStmt {
+    let kind = match stmt.kind {
+        TypedStmtKindDraft::Let { pattern, value } => typed::TypedStmtKind::Let {
+            pattern,
+            value: finalize_typed_expr(*value, substitution),
+        },
+        TypedStmtKindDraft::Var { pattern, value } => typed::TypedStmtKind::Var {
+            pattern,
+            value: finalize_typed_expr(*value, substitution),
+        },
+        TypedStmtKindDraft::Expr { expr } => typed::TypedStmtKind::Expr {
+            expr: finalize_typed_expr(*expr, substitution),
+        },
+        TypedStmtKindDraft::Assign { target, value } => typed::TypedStmtKind::Assign {
+            target: finalize_typed_expr(*target, substitution),
+            value: finalize_typed_expr(*value, substitution),
+        },
+        TypedStmtKindDraft::Defer { expr } => typed::TypedStmtKind::Defer {
+            expr: finalize_typed_expr(*expr, substitution),
+        },
+    };
+    typed::TypedStmt {
+        span: stmt.span,
+        kind,
     }
 }
 
