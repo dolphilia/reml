@@ -105,7 +105,7 @@ impl Add<i64, i64, i64> for i64 { fn add(a,b) = a + b }
 * 関数型に **制約**を付与：
 
   ```reml
-  fn sum<T>(xs: List<T>) -> T where Add<T, T, T>, Zero<T> = zero()
+  fn sum<T>(xs: [T]) -> T where Add<T, T, T>, Zero<T> = zero()
   ```
 
   *推論中は**制約集合**として保持され、呼出側で解決／辞書渡しに具体化。*
@@ -332,8 +332,8 @@ type DslExportSignature<T> = {
 > パーサーコンビネータ記述が短くなるように、要の関数型は**一読で意図が分かる**シグネチャに。
 
 ```reml
-// Parser 型（簡略）
-type Parser<T> = fn(State) -> Reply<T>  // 実体は 2.1 §A（State/Reply 定義）に従う（参照/可変指定は簡略化）
+// Parser 型（最小核）
+type Parser<T> = fn(&mut State) -> Reply<T>  // 実体は 2.1 §A（State/Reply 定義）に従う
 
 // コア・コンビネータ（抜粋）
 fn map<A,B>(p: Parser<A>, f: A -> B) -> Parser<B> = p
@@ -380,14 +380,14 @@ let s  = id("hi")            // inst a := String → String
 ### H.2 制約の持ち上げ
 
 ```reml
-fn sum<T>(xs: List<T>) -> T where Add<T, T, T>, Zero<T> =
+fn sum<T>(xs: [T]) -> T where Add<T, T, T>, Zero<T> =
   fold(xs, zero(), Add::add)
 ```
 
 呼出側：
 
 ```reml
-let r1 = sum(List::from([1,2,3]))  // T := i64, 既存 impl で解決
+let r1 = sum([1, 2, 3])  // T := i64, 既存 impl で解決
 let r2 = sum(users)          // エラー（Add<User,User,User> が未定義）
 ```
 

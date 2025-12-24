@@ -34,6 +34,8 @@
 |----------|----------|------|------|
 | 07:14 | `for file in sec_b_1_1 sec_b_4-f sec_b_5-c sec_b_8_3_2 sec_c_4-a sec_c_4-b sec_c_4-c sec_c_4-d sec_c_4-e sec_c_7 sec_section-b sec_e_2; do compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics --allow-top-level-expr examples/docs-examples/spec/1-1-syntax/$file.reml; done` | ✅ 対象 12 件 diagnostics 0 件 | `conductor`/`unsafe`/`...`/トップレベル式の復元分を再検証。`sec_b_1_1` の `conductor` は `@dsl_export` 省略のまま通過。 |
 | 07:30 | `for file in sec_b_3 sec_f sec_h_2-a sec_h_2-b; do compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics examples/docs-examples/spec/1-2-types-Inference/$file.reml > reports/spec-audit/ch1/1-2-types-Inference__${file}-20251224-diagnostics.json; done` | ✅ 対象 4 件 diagnostics 0 件 | `docs/spec/1-2-types-Inference.md` と `examples/docs-examples/spec/1-2-types-Inference/*.reml` を更新。`reports/spec-audit/ch1/docs-examples-fix-notes-20251224.md` に記録。 |
+| 13:24 | 手動編集（`docs/spec/1-2-types-Inference.md` / `examples/docs-examples/spec/1-2-types-Inference/*.reml`） | ⏳ 未再検証 | `[T]` / `&mut State` の正準表記へ復元。再検証は `reports/spec-audit/ch1/docs-examples-fix-notes-20251224.md` に記載。 |
+| 13:27 | `for file in sec_b_3 sec_f sec_h_2-a sec_h_2-b; do compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics examples/docs-examples/spec/1-2-types-Inference/$file.reml > reports/spec-audit/ch1/1-2-types-Inference__${file}-20251224-diagnostics.json; done` | ⚠️ 対象 4 件中 1 件 OK / 3 件 NG | `sec_b_3` / `sec_h_2-a` が `parser.syntax.expected_tokens`、`sec_f` が `parser.lexer.unknown_token` + `parser.syntax.expected_tokens`。在庫表を更新。 |
 
 ## Rust ツールチェーン更新（stable 版の確定）
 - `rust-toolchain.toml` を追加し、`channel = "stable"` と `components = ["rustfmt", "clippy"]` を設定。

@@ -1,5 +1,5 @@
-// Parser 型（簡略）
-type Parser<T> = fn(State) -> Reply<T>  // 実体は 2.1 §A（State/Reply 定義）に従う（参照/可変指定は簡略化）
+// Parser 型（最小核）
+type Parser<T> = fn(&mut State) -> Reply<T>  // 実体は 2.1 §A（State/Reply 定義）に従う
 
 // コア・コンビネータ（抜粋）
 fn map<A,B>(p: Parser<A>, f: A -> B) -> Parser<B> = p

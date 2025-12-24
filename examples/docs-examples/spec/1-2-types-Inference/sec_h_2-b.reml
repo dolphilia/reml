@@ -1,2 +1,2 @@
-let r1 = sum(List::from([1,2,3]))  // T := i64, 既存 impl で解決
+let r1 = sum([1, 2, 3])  // T := i64, 既存 impl で解決
 let r2 = sum(users)          // エラー（Add<User,User,User> が未定義）
