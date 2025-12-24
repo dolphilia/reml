@@ -818,3 +818,50 @@ pub fn insert_call_audit_metadata(envelope: &mut AuditEnvelope, info: &FfiCallAu
     }
     envelope.metadata.insert("ffi".into(), Value::Object(obj));
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{FfiCallSpec, FfiType};
+    use serde_json::Value;
+
+    #[test]
+    fn ffi_call_spec_from_mir_json_variadic_and_types() {
+        let payload = r#"
+{
+  "functions": [
+    {
+      "name": "@main",
+      "ffi_calls": [
+        {
+          "name": "printf",
+          "calling_conv": "ccc",
+          "args": ["i32", "&mut i64", "[u8]", "string", "()"],
+          "return": "i32",
+          "variadic": true
+        }
+      ]
+    }
+  ]
+}
+"#;
+        let json: Value = serde_json::from_str(payload).expect("MIR JSON を parse できること");
+        let call = json["functions"][0]["ffi_calls"][0].clone();
+        let spec: FfiCallSpec =
+            serde_json::from_value(call).expect("FfiCallSpec に変換できること");
+        let sig = spec
+            .to_signature()
+            .expect("FfiFnSig へ変換できること");
+        assert!(sig.variadic, "variadic が維持されること");
+        assert_eq!(
+            sig.params,
+            vec![
+                FfiType::I32,
+                FfiType::Ptr(Box::new(FfiType::I64)),
+                FfiType::Ptr(Box::new(FfiType::U8)),
+                FfiType::ConstPtr(Box::new(FfiType::U8)),
+                FfiType::Void,
+            ]
+        );
+        assert_eq!(*sig.returns, FfiType::I32);
+    }
+}
