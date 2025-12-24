@@ -347,6 +347,17 @@ enum MirExprKindJson {
         #[serde(default)]
         defer_lifo: Vec<usize>,
     },
+    Return {
+        #[serde(default)]
+        value: Option<usize>,
+    },
+    Propagate {
+        expr: usize,
+    },
+    Panic {
+        #[serde(default)]
+        argument: Option<usize>,
+    },
     Match {
         target: usize,
         #[serde(default)]
@@ -558,7 +569,18 @@ fn convert_exprs(exprs: Vec<MirExprJson>) -> Vec<MirExpr> {
 
 fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
     match kind {
-        MirExprKindJson::Block { .. } => MirExprKind::Unknown,
+        MirExprKindJson::Block {
+            tail,
+            defers,
+            defer_lifo,
+        } => MirExprKind::Block {
+            tail,
+            defers,
+            defer_lifo,
+        },
+        MirExprKindJson::Return { value } => MirExprKind::Return { value },
+        MirExprKindJson::Propagate { expr } => MirExprKind::Propagate { expr },
+        MirExprKindJson::Panic { argument } => MirExprKind::Panic { argument },
         MirExprKindJson::Match {
             target,
             arms,

@@ -145,6 +145,13 @@ pub enum TypedExprKind {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         defers: Vec<TypedExpr>,
     },
+    Return {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        value: Option<Box<TypedExpr>>,
+    },
+    Propagate {
+        expr: Box<TypedExpr>,
+    },
     Binary {
         operator: String,
         left: Box<TypedExpr>,

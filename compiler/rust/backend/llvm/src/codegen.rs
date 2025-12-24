@@ -56,6 +56,20 @@ pub enum MirExprKind {
         callee: MirExprId,
         args: Vec<MirExprId>,
     },
+    Block {
+        tail: Option<MirExprId>,
+        defers: Vec<MirExprId>,
+        defer_lifo: Vec<MirExprId>,
+    },
+    Return {
+        value: Option<MirExprId>,
+    },
+    Propagate {
+        expr: MirExprId,
+    },
+    Panic {
+        argument: Option<MirExprId>,
+    },
     Binary {
         operator: String,
         left: MirExprId,
@@ -1344,6 +1358,60 @@ fn emit_value_expr(
             defer_lifo,
             ..
         } => {
+            if let Some(tail_id) = tail {
+                if let Some(tail_expr) = expr_map.get(tail_id) {
+                    match &tail_expr.kind {
+                        MirExprKind::Return { value } => {
+                            let mut value = if let Some(value_id) = value {
+                                emit_value_expr(*value_id, expr_map, ssa)
+                            } else {
+                                emit_unit_value(ssa)
+                            };
+                            emit_defer_lifo_instrs(
+                                defer_lifo,
+                                expr_map,
+                                ssa,
+                                &mut value.instrs,
+                            );
+                            value
+                                .instrs
+                                .push(LlvmInstr::Comment(format!("return expr#{tail_id}")));
+                            return value;
+                        }
+                        MirExprKind::Propagate { expr } => {
+                            let mut value = emit_value_expr(*expr, expr_map, ssa);
+                            emit_defer_lifo_instrs(
+                                defer_lifo,
+                                expr_map,
+                                ssa,
+                                &mut value.instrs,
+                            );
+                            value.instrs.push(LlvmInstr::Comment(format!(
+                                "propagate expr#{tail_id}"
+                            )));
+                            return value;
+                        }
+                        MirExprKind::Panic { argument } => {
+                            let mut value = if let Some(arg_id) = argument {
+                                emit_value_expr(*arg_id, expr_map, ssa)
+                            } else {
+                                emit_unit_value(ssa)
+                            };
+                            emit_defer_lifo_instrs(
+                                defer_lifo,
+                                expr_map,
+                                ssa,
+                                &mut value.instrs,
+                            );
+                            value
+                                .instrs
+                                .push(LlvmInstr::Comment(format!("panic expr#{tail_id}")));
+                            return value;
+                        }
+                        _ => {}
+                    }
+                }
+            }
             let mut tail_value = if let Some(tail_id) = tail {
                 emit_value_expr(*tail_id, expr_map, ssa)
             } else {
@@ -1351,6 +1419,35 @@ fn emit_value_expr(
             };
             emit_defer_lifo_instrs(defer_lifo, expr_map, ssa, &mut tail_value.instrs);
             tail_value
+        }
+        MirExprKind::Return { value } => {
+            let mut inner = if let Some(value_id) = value {
+                emit_value_expr(*value_id, expr_map, ssa)
+            } else {
+                emit_unit_value(ssa)
+            };
+            inner
+                .instrs
+                .push(LlvmInstr::Comment(format!("return expr#{expr_id}")));
+            inner
+        }
+        MirExprKind::Propagate { expr } => {
+            let mut inner = emit_value_expr(*expr, expr_map, ssa);
+            inner
+                .instrs
+                .push(LlvmInstr::Comment(format!("propagate expr#{expr_id}")));
+            inner
+        }
+        MirExprKind::Panic { argument } => {
+            let mut inner = if let Some(arg_id) = argument {
+                emit_value_expr(*arg_id, expr_map, ssa)
+            } else {
+                emit_unit_value(ssa)
+            };
+            inner
+                .instrs
+                .push(LlvmInstr::Comment(format!("panic expr#{expr_id}")));
+            inner
         }
         MirExprKind::Binary {
             operator,

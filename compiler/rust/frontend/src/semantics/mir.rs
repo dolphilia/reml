@@ -158,6 +158,17 @@ pub enum MirExprKind {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         defer_lifo: Vec<MirExprId>,
     },
+    Return {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        value: Option<MirExprId>,
+    },
+    Propagate {
+        expr: MirExprId,
+    },
+    Panic {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        argument: Option<MirExprId>,
+    },
     Binary {
         operator: String,
         left: MirExprId,
@@ -417,10 +428,26 @@ impl MirExprBuilder {
             typed::TypedExprKind::Identifier { ident } => MirExprKind::Identifier {
                 ident: ident.clone(),
             },
-            typed::TypedExprKind::Call { callee, args } => MirExprKind::Call {
-                callee: self.lower_expr(callee),
-                args: args.iter().map(|arg| self.lower_expr(arg)).collect(),
-            },
+            typed::TypedExprKind::Call { callee, args } => {
+                if let typed::TypedExprKind::Identifier { ident } = &callee.kind {
+                    if ident.name == "panic" {
+                        let argument = args
+                            .get(0)
+                            .map(|arg| self.lower_expr(arg));
+                        MirExprKind::Panic { argument }
+                    } else {
+                        MirExprKind::Call {
+                            callee: self.lower_expr(callee),
+                            args: args.iter().map(|arg| self.lower_expr(arg)).collect(),
+                        }
+                    }
+                } else {
+                    MirExprKind::Call {
+                        callee: self.lower_expr(callee),
+                        args: args.iter().map(|arg| self.lower_expr(arg)).collect(),
+                    }
+                }
+            }
             typed::TypedExprKind::Block { tail, defers } => {
                 let defers = defers
                     .iter()
@@ -433,6 +460,12 @@ impl MirExprBuilder {
                     defer_lifo,
                 }
             }
+            typed::TypedExprKind::Return { value } => MirExprKind::Return {
+                value: value.as_ref().map(|value| self.lower_expr(value)),
+            },
+            typed::TypedExprKind::Propagate { expr } => MirExprKind::Propagate {
+                expr: self.lower_expr(expr),
+            },
             typed::TypedExprKind::Binary {
                 operator,
                 left,
@@ -849,6 +882,14 @@ fn collect_match_lowerings_from_expr(
             for defer in defers {
                 collect_match_lowerings_from_expr(defer, owner, plans);
             }
+        }
+        typed::TypedExprKind::Return { value } => {
+            if let Some(value) = value {
+                collect_match_lowerings_from_expr(value, owner, plans);
+            }
+        }
+        typed::TypedExprKind::Propagate { expr } => {
+            collect_match_lowerings_from_expr(expr, owner, plans);
         }
         typed::TypedExprKind::PerformCall { call } => {
             collect_match_lowerings_from_expr(&call.argument, owner, plans);

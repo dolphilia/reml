@@ -2778,6 +2778,59 @@ fn infer_expr(
                 block_result.dict_ref_ids,
             )
         }
+        ExprKind::Return { value } => {
+            let (typed_value, dicts, ty) = if let Some(inner) = value {
+                let result = infer_expr(
+                    inner,
+                    env,
+                    var_gen,
+                    solver,
+                    constraints,
+                    stats,
+                    metrics,
+                    violations,
+                    dict_refs,
+                    loop_context,
+                    context,
+                );
+                (
+                    Some(Box::new(result)),
+                    result.dict_ref_ids.clone(),
+                    result.ty.clone(),
+                )
+            } else {
+                (None, Vec::new(), Type::builtin(BuiltinType::Unit))
+            };
+            make_typed(
+                expr,
+                TypedExprKindDraft::Return { value: typed_value },
+                ty,
+                dicts,
+            )
+        }
+        ExprKind::Propagate { expr: inner } => {
+            let result = infer_expr(
+                inner,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            make_typed(
+                expr,
+                TypedExprKindDraft::Propagate {
+                    expr: Box::new(result),
+                },
+                result.ty.clone(),
+                result.dict_ref_ids.clone(),
+            )
+        }
         ExprKind::Lambda { params, body, .. } => {
             let mut lambda_env = env.enter_scope();
             let mut param_types = Vec::new();
@@ -4161,6 +4214,12 @@ enum TypedExprKindDraft {
         tail: Option<Box<TypedExprDraft>>,
         defers: Vec<TypedExprDraft>,
     },
+    Return {
+        value: Option<Box<TypedExprDraft>>,
+    },
+    Propagate {
+        expr: Box<TypedExprDraft>,
+    },
     Match {
         target: Box<TypedExprDraft>,
         arms: Vec<TypedMatchArmDraft>,
@@ -4331,6 +4390,13 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
                 .into_iter()
                 .map(|defer| finalize_typed_expr(defer, substitution))
                 .collect(),
+        },
+        TypedExprKindDraft::Return { value } => typed::TypedExprKind::Return {
+            value: value
+                .map(|value| Box::new(finalize_typed_expr(*value, substitution))),
+        },
+        TypedExprKindDraft::Propagate { expr } => typed::TypedExprKind::Propagate {
+            expr: Box::new(finalize_typed_expr(*expr, substitution)),
         },
         TypedExprKindDraft::Binary {
             operator,
