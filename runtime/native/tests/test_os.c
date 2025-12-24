@@ -7,6 +7,8 @@
 
 #ifdef REML_PLATFORM_WINDOWS
 #include <windows.h>
+#else
+#include <unistd.h>
 #endif
 
 static const char* test_make_temp_path(char* buffer, size_t buffer_size) {
@@ -17,14 +19,17 @@ static const char* test_make_temp_path(char* buffer, size_t buffer_size) {
     }
     return buffer;
 #else
-    char* result = tmpnam(buffer);
-    if (result == NULL) {
+    const char* pattern = "/tmp/reml_os_test_XXXXXX";
+    size_t pattern_len = strlen(pattern);
+    if (pattern_len + 1 > buffer_size) {
         return NULL;
     }
-    if (buffer != result) {
-        strncpy(buffer, result, buffer_size);
-        buffer[buffer_size - 1] = '\0';
+    memcpy(buffer, pattern, pattern_len + 1);
+    int fd = mkstemp(buffer);
+    if (fd == -1) {
+        return NULL;
     }
+    close(fd);
     return buffer;
 #endif
 }

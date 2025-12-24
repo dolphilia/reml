@@ -70,6 +70,11 @@ make clean && DEBUG=1 make runtime && DEBUG=1 make test
 
 Valgrind と AddressSanitizer は同時に有効化するとメモリマップが衝突するため、上記のようにビルドを分けて実行してください。
 
+### テスト方針: 一時ファイル作成
+
+`tests/test_os.c` では POSIX 環境で `tmpnam` を使用せず、`mkstemp` により一意なパスを確保したうえで書き込み・読み込みを検証する。
+セキュリティ上の理由と macOS での API 非推奨警告を避けるため、同テストは `mkstemp` を標準とする。
+
 ### Docker での検証
 
 CI 環境と同じ Ubuntu 22.04 + LLVM 18 環境で検証する場合：
