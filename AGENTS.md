@@ -21,6 +21,7 @@
 - `guides/`: 実務ガイド（AI 連携、プラグイン開発など）。
 - `notes/`: 調査ノート、将来計画、RFC 相当の文書。
 - `plans/`: Reml 実装ロードマップや運用計画。
+- `schemas/`: JSON Schema definitions (Diagnostics, Plugins 등).
 
 ### 実装 (`compiler/`, `runtime/`, etc.)
 
@@ -29,6 +30,8 @@
 - `runtime/`: ランタイムライブラリの実装。
 - `tooling/`: LSP サーバー、フォーマッタ、CLI ツールなど。
 - `examples/`: Reml 言語のサンプルコード、テストケース。
+- `reports/`: 監査ログ、メトリクスレポート、CI 成果物。
+- `scripts/`: 開発・運用支援スクリプト。
 
 ## 作業の基本原則
 

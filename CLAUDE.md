@@ -16,6 +16,8 @@
 - `docs/spec/`: 言語仕様書 (Core, Parser, Stdlib, Plugins, Ecosystem)。
 - `docs/guides/`: 開発者向けガイド。
 - `docs/notes/`: 設計ノート、リサーチ、RFC。
+- `docs/plans/`: 実装計画、ロードマップ。
+- `docs/schemas/`: JSON Schema (Diagnostics, Plugins)。
 
 ### 実装 (`compiler/`, `tooling/`)
 
@@ -23,6 +25,7 @@
 - `compiler/ocaml/`: 参照用実装。
 - `tooling/`: エコシステムツール（LSP 等）。
 - `runtime/`: ランタイムライブラリ。
+- `reports/`: 監査ログ、メトリクスレポート。
 
 ### その他
 
