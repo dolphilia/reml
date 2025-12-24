@@ -52,6 +52,12 @@
 - `reml_frontend` を再ビルドし、diagnostics JSON を再生成。
   - `reports/spec-audit/ch1/1-3-effects-safety__sec_g-20251224-diagnostics.json` を更新（diagnostics 0 件）。
 
+## Backend/Runtime 追随メモ（2025-12-24）
+- `sec_b_3` / `sec_h_2-a`: `fn sum<T>(xs: [T]) -> T` の `[T]` が Backend の型変換対象。`parse_reml_type` が `[T]` を `RemlType::Slice` に落とせることが前提。
+- `sec_f`: `type Parser<T> = fn(&mut State) -> Reply<T>` の `&mut` が Backend の参照型変換と Runtime ABI 定義の対象。`RemlType::Ref { mutable: true }` を想定。
+- `sec_b_4-f`: `extern "C"` ブロック内の `...`（C variadic）が `FfiCallSignature.variadic` と Runtime `FfiFnSig.variadic` に伝搬されることが前提。
+- MIR JSON 上では `ty`/`return_type` に `&T` / `&mut T` / `[T]` をそのまま保持し、Backend/Runtime で再解析する方針（詳細は `docs/plans/docs-examples-audit/1-2-impl-gap-backend-runtime-plan-20251224.md`）。
+
 ## MIR 型表記の確認サンプル（2025-12-24）
 - `reports/spec-audit/ch1/mir-json-type-sample-20251224.json` を追加し、`&` / `&mut` / `[T]` の表記をそのまま MIR JSON に載せる形を固定。
 - Backend 側は `parse_reml_type` が `&` / `&mut` / `[T]` を再帰的に解析するため、サンプルの文字列表記が維持されていれば `RemlType::Ref` / `RemlType::Slice` に展開できる。

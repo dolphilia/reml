@@ -49,18 +49,22 @@
 - 作業ステップ:
   - `compiler/rust/frontend/src/semantics/typed.rs` と `compiler/rust/frontend/src/semantics/mir.rs` に `varargs` を追加する。
   - 既存の型チェック診断（`ffi.varargs.*`）と矛盾しない形式で保持する。
+ - 対応状況: 完了（Typed/MIR の `varargs` 追加と JSON 出力を反映済み）。
 
 2) Backend FFI 署名の拡張
 - 目的: Backend の `FfiCallSignature` に variadic 情報を持たせる。
 - 作業ステップ:
   - `compiler/rust/backend/llvm/src/ffi_lowering.rs` の `FfiCallSignature` に `variadic: bool` を追加する。
   - `compiler/rust/backend/llvm/src/integration.rs` の `FfiCallJson` に `variadic` を追加し、MIR JSON から受理する。
+ - 対応状況: 完了（JSON 取り込みとテスト `ffi_call_variadic_is_loaded_from_json` を追加済み）。
 
 3) Runtime 連携方針の整理
 - 目的: Runtime の `FfiFnSig.variadic` と一致する経路を作る。
 - 作業ステップ:
   - `compiler/rust/runtime/src/ffi/dsl/mod.rs` の `fn_sig` への入力元が Backend/MIR から流れてくる箇所を整理する。
   - 実行系が未接続の場合は TODO として導線を記録する。
+ - 対応状況: 完了（`FfiCallSpec` と `to_signature` を追加し、MIR JSON から `variadic` と型変換を反映）。
+ - 簡易検証: `cargo test ffi_call_spec_from_mir_json_variadic_and_types` を実行し成功。
 
 ### フェーズ 3: 監査・検証
 1) 監査ログへの追記
@@ -104,7 +108,7 @@
 - 進捗欄（運用用）:
   - [x] フェーズ 1 完了
   - [x] フェーズ 2 完了
-  - [ ] フェーズ 3 完了
+  - [x] フェーズ 3 完了
 
 ## 関連リンク
 - `docs/plans/docs-examples-audit/1-2-impl-gap-plan-20251223.md`
