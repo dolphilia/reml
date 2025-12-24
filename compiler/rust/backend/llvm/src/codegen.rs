@@ -464,6 +464,7 @@ impl LlvmFunction {
 struct LlvmBuilder {
     type_mapping: TypeMappingContext,
     counter: usize,
+    scopes: Vec<HashMap<String, String>>,
 }
 
 impl LlvmBuilder {
@@ -471,6 +472,7 @@ impl LlvmBuilder {
         Self {
             type_mapping,
             counter: 0,
+            scopes: vec![HashMap::new()],
         }
     }
 
@@ -485,6 +487,31 @@ impl LlvmBuilder {
 
     fn pointer_type(&self) -> String {
         self.type_mapping.layout_of(&RemlType::Pointer).description
+    }
+
+    fn push_scope(&mut self) {
+        self.scopes.push(HashMap::new());
+    }
+
+    fn pop_scope(&mut self) {
+        if self.scopes.len() > 1 {
+            self.scopes.pop();
+        }
+    }
+
+    fn bind_local(&mut self, name: String, operand: String) {
+        if let Some(scope) = self.scopes.last_mut() {
+            scope.insert(name, operand);
+        }
+    }
+
+    fn resolve_local(&self, name: &str) -> Option<String> {
+        for scope in self.scopes.iter().rev() {
+            if let Some(value) = scope.get(name) {
+                return Some(value.clone());
+            }
+        }
+        None
     }
 }
 
@@ -3463,6 +3490,7 @@ fn lower_expr_to_operand_blocks(
             defer_lifo,
             ..
         } => {
+            ssa.push_scope();
             let mut blocks = Vec::new();
             let mut llvm_blocks = Vec::new();
             let mut stmt_label = label.clone();
@@ -3478,6 +3506,7 @@ fn lower_expr_to_operand_blocks(
                 blocks.extend(stmt_blocks);
                 llvm_blocks.extend(stmt_llvm_blocks);
                 if terminated {
+                    ssa.pop_scope();
                     return (blocks, llvm_blocks, None, true);
                 }
                 stmt_label = next_stmt_label;
@@ -3506,6 +3535,7 @@ fn lower_expr_to_operand_blocks(
                                     );
                                 blocks.extend(tail_blocks);
                                 llvm_blocks.extend(tail_llvm_blocks);
+                                ssa.pop_scope();
                                 return (blocks, llvm_blocks, operand, terminated);
                             }
                             let (tail_blocks, tail_llvm_blocks, operand, terminated) =
@@ -3521,6 +3551,7 @@ fn lower_expr_to_operand_blocks(
                                 );
                             blocks.extend(tail_blocks);
                             llvm_blocks.extend(tail_llvm_blocks);
+                            ssa.pop_scope();
                             return (blocks, llvm_blocks, operand, terminated);
                         }
                     }
@@ -3542,6 +3573,7 @@ fn lower_expr_to_operand_blocks(
                 blocks.extend(tail_blocks);
                 llvm_blocks.extend(tail_llvm_blocks);
                 if terminated {
+                    ssa.pop_scope();
                     return (blocks, llvm_blocks, operand, terminated);
                 }
                 if !defer_lifo.is_empty() {
@@ -3560,6 +3592,7 @@ fn lower_expr_to_operand_blocks(
                         },
                     });
                 }
+                ssa.pop_scope();
                 return (blocks, llvm_blocks, operand, terminated);
             }
             let unit_operand = ("null".into(), ssa.pointer_type());
@@ -3600,6 +3633,7 @@ fn lower_expr_to_operand_blocks(
                     },
                 });
             }
+            ssa.pop_scope();
             return (blocks, llvm_blocks, Some(unit_operand), false);
         }
         _ => {
@@ -3671,8 +3705,8 @@ fn lower_stmt_to_blocks(
     next_label: &str,
 ) -> (Vec<BasicBlock>, Vec<LlvmBlock>, bool) {
     match &stmt.kind {
-        MirStmtKind::Let { value, .. } => {
-            let (blocks, llvm_blocks, _operand, terminated) = lower_expr_to_operand_blocks(
+        MirStmtKind::Let { pattern, value, .. } => {
+            let (blocks, llvm_blocks, operand, terminated) = lower_expr_to_operand_blocks(
                 label,
                 *value,
                 expr_map,
@@ -3680,6 +3714,11 @@ fn lower_stmt_to_blocks(
                 next_label,
                 defer_lifo,
             );
+            if !terminated {
+                if let Some((operand, _)) = operand {
+                    bind_pattern_operand(pattern, operand, ssa);
+                }
+            }
             (blocks, llvm_blocks, terminated)
         }
         MirStmtKind::Expr { expr } => {
@@ -3707,7 +3746,7 @@ fn lower_stmt_to_blocks(
             if terminated {
                 return (blocks, llvm_blocks, true);
             }
-            let (value_blocks, value_llvm_blocks, _operand, terminated) =
+            let (value_blocks, value_llvm_blocks, operand, terminated) =
                 lower_expr_to_operand_blocks(
                     temp_label,
                     *value,
@@ -3716,6 +3755,9 @@ fn lower_stmt_to_blocks(
                     next_label,
                     defer_lifo,
                 );
+            if let Some((operand, _)) = operand {
+                rebind_target_operand(*target, operand, expr_map, ssa);
+            }
             blocks.extend(value_blocks);
             llvm_blocks.extend(value_llvm_blocks);
             (blocks, llvm_blocks, terminated)
@@ -3771,9 +3813,10 @@ fn emit_block_statement_instrs(
     let mut instrs = Vec::new();
     for stmt in statements {
         match &stmt.kind {
-            MirStmtKind::Let { value, .. } => {
+            MirStmtKind::Let { pattern, value, .. } => {
                 let value = emit_value_expr(*value, expr_map, ssa);
                 instrs.extend(value.instrs);
+                bind_pattern_operand(pattern, value.operand, ssa);
             }
             MirStmtKind::Expr { expr } => {
                 let value = emit_value_expr(*expr, expr_map, ssa);
@@ -3784,6 +3827,7 @@ fn emit_block_statement_instrs(
                 instrs.extend(target_value.instrs);
                 let value_value = emit_value_expr(*value, expr_map, ssa);
                 instrs.extend(value_value.instrs);
+                rebind_target_operand(*target, value_value.operand, expr_map, ssa);
             }
             MirStmtKind::Defer { .. } => {
                 instrs.push(LlvmInstr::Comment(
@@ -3806,6 +3850,94 @@ fn emit_defer_lifo_instrs(
         let defer_value = emit_value_expr(*defer_id, expr_map, ssa);
         instrs.extend(defer_value.instrs);
         instrs.push(LlvmInstr::Comment(format!("defer_lifo expr#{defer_id}")));
+    }
+}
+
+fn bind_pattern_operand(pattern: &MirPattern, operand: String, ssa: &mut LlvmBuilder) {
+    let mut names = Vec::new();
+    collect_pattern_binding_names(pattern, &mut names);
+    for name in names {
+        ssa.bind_local(name, operand.clone());
+    }
+}
+
+fn rebind_target_operand(
+    target_id: MirExprId,
+    operand: String,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+) {
+    let Some(expr) = expr_map.get(&target_id) else {
+        return;
+    };
+    if let MirExprKind::Identifier { summary } = &expr.kind {
+        if let Some(name) = extract_local_name_from_summary(summary) {
+            ssa.bind_local(name, operand);
+        }
+    }
+}
+
+fn collect_pattern_binding_names(pattern: &MirPattern, names: &mut Vec<String>) {
+    match &pattern.kind {
+        MirPatternKind::Var { name } => names.push(name.clone()),
+        MirPatternKind::Binding { name, pattern, .. } => {
+            names.push(name.clone());
+            collect_pattern_binding_names(pattern, names);
+        }
+        MirPatternKind::Tuple { elements } => {
+            for element in elements {
+                collect_pattern_binding_names(element, names);
+            }
+        }
+        MirPatternKind::Record { fields, .. } => {
+            for field in fields {
+                if let Some(value) = &field.value {
+                    collect_pattern_binding_names(value, names);
+                } else {
+                    names.push(field.key.clone());
+                }
+            }
+        }
+        MirPatternKind::Constructor { args, .. } => {
+            for arg in args {
+                collect_pattern_binding_names(arg, names);
+            }
+        }
+        MirPatternKind::Or { variants } => {
+            for variant in variants {
+                collect_pattern_binding_names(variant, names);
+            }
+        }
+        MirPatternKind::Slice { head, rest, tail } => {
+            for item in head {
+                collect_pattern_binding_names(item, names);
+            }
+            if let Some(rest) = rest {
+                if let Some(binding) = &rest.binding {
+                    names.push(binding.clone());
+                }
+            }
+            for item in tail {
+                collect_pattern_binding_names(item, names);
+            }
+        }
+        MirPatternKind::Range { start, end, .. } => {
+            if let Some(start) = start {
+                collect_pattern_binding_names(start, names);
+            }
+            if let Some(end) = end {
+                collect_pattern_binding_names(end, names);
+            }
+        }
+        MirPatternKind::Active(active) => {
+            if let Some(binding) = &active.input_binding {
+                names.push(binding.clone());
+            }
+            if let Some(argument) = &active.argument {
+                collect_pattern_binding_names(argument, names);
+            }
+        }
+        MirPatternKind::Wildcard | MirPatternKind::Literal { .. } | MirPatternKind::Regex { .. } => {}
     }
 }
 
@@ -4023,7 +4155,9 @@ fn emit_value_expr(
         }
         MirExprKind::Identifier { summary } => EmittedValue {
             ty: ssa.pointer_type(),
-            operand: format_operand_from_summary(summary),
+            operand: extract_local_name_from_summary(summary)
+                .and_then(|name| ssa.resolve_local(&name))
+                .unwrap_or_else(|| format_operand_from_summary(summary)),
             instrs: vec![],
         },
         MirExprKind::FieldAccess { target, field } => {
@@ -4079,6 +4213,7 @@ fn emit_value_expr(
             defer_lifo,
             ..
         } => {
+            ssa.push_scope();
             let stmt_instrs = emit_block_statement_instrs(statements, expr_map, ssa);
             if let Some(tail_id) = tail {
                 if let Some(tail_expr) = expr_map.get(tail_id) {
@@ -4103,6 +4238,7 @@ fn emit_value_expr(
                             value
                                 .instrs
                                 .push(LlvmInstr::Comment(format!("return expr#{tail_id}")));
+                            ssa.pop_scope();
                             return value;
                         }
                         MirExprKind::Propagate { expr } => {
@@ -4121,6 +4257,7 @@ fn emit_value_expr(
                             value.instrs.push(LlvmInstr::Comment(format!(
                                 "propagate expr#{tail_id}"
                             )));
+                            ssa.pop_scope();
                             return value;
                         }
                         MirExprKind::Panic { argument } => {
@@ -4143,6 +4280,7 @@ fn emit_value_expr(
                             value
                                 .instrs
                                 .push(LlvmInstr::Comment(format!("panic expr#{tail_id}")));
+                            ssa.pop_scope();
                             return value;
                         }
                         _ => {}
@@ -4160,6 +4298,7 @@ fn emit_value_expr(
                 tail_value.instrs = instrs;
             }
             emit_defer_lifo_instrs(defer_lifo, expr_map, ssa, &mut tail_value.instrs);
+            ssa.pop_scope();
             tail_value
         }
         MirExprKind::Return { value } => {
@@ -4549,6 +4688,27 @@ fn format_operand_from_summary(summary: &str) -> String {
         return trimmed.to_string();
     }
     trimmed.to_string()
+}
+
+fn extract_local_name_from_summary(summary: &str) -> Option<String> {
+    let trimmed = summary.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed.starts_with('{') && trimmed.ends_with('}') {
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(trimmed) {
+            if let Some(name) = value.get("name").and_then(|v| v.as_str()) {
+                return Some(name.to_string());
+            }
+        }
+    }
+    if trimmed
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.')
+    {
+        return Some(trimmed.to_string());
+    }
+    None
 }
 
 fn extract_literal_operand(summary: &str) -> Option<String> {
