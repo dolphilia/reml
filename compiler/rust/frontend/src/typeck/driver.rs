@@ -3412,9 +3412,7 @@ fn classify_active_pattern_return(expr: &Expr) -> ActiveReturnKind {
 fn classify_block_return(statements: &[Stmt]) -> ActiveReturnKind {
     for stmt in statements.iter().rev() {
         match &stmt.kind {
-            StmtKind::Expr { expr } | StmtKind::Defer { expr } => {
-                return classify_active_pattern_return(expr)
-            }
+            StmtKind::Expr { expr } => return classify_active_pattern_return(expr),
             _ => continue,
         }
     }

@@ -33,6 +33,12 @@
   - `defer` を `return` / `let` / `var` と同等のステートメント優先順位で解釈する。
 
 ### フェーズ 2: AST/実行時セマンティクスの整合
+#### 設計方針（MIR/IR 低レイヤ）
+- **MIR に `block` と `defer` を保持する**: Typed AST に `Block` / `Stmt` を追加し、`MirExprKind::Block { statements, defers }` を新設する（`defers` は出現順保持）。
+- **LIFO 実行は lowering で明示化**: `return` / `?` / `panic` / ループ脱出の各パスに対し、スコープ終端で `defers` を逆順に展開して実行する。
+- **互換性**: フロントエンド MIR スキーマに `block` を追加するため、`compiler/rust/backend/llvm` の JSON ローダは未対応期間中 `block` を `unknown` として受理するガードを入れる。
+- **スコープ単位**: `if` / `match` / `loop` の各ブロックに `defer` を束縛し、親ブロックへは持ち上げない。
+
 1) `defer` の実行保証
 - 目的: `return` / `?` / 例外的終了で `defer` が必ず実行されることを保証する。
 - 成果物: ブロック終了時の `defer` 実行がテストで確認できる。

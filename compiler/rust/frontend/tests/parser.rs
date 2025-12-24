@@ -5,3 +5,6 @@
 
 #[path = "parser/packrat.rs"]
 mod packrat;
+
+#[path = "parser/defer.rs"]
+mod defer;

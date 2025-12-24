@@ -943,7 +943,11 @@ fn collect_intrinsic_attribute_diagnostics(
 
     fn inspect_expr(expr: &Expr, diagnostics: &mut Vec<FrontendDiagnostic>) {
         match &expr.kind {
-            ExprKind::Block { attrs, statements } => {
+            ExprKind::Block {
+                attrs,
+                statements,
+                ..
+            } => {
                 validate_attrs(attrs, false, "ブロック", diagnostics);
                 for stmt in statements {
                     inspect_stmt(stmt, diagnostics);
@@ -1324,7 +1328,11 @@ fn inspect_cfg_expr(
     registry: &CfgTargetRegistry,
 ) {
     match &expr.kind {
-        ExprKind::Block { attrs, statements } => {
+        ExprKind::Block {
+            attrs,
+            statements,
+            ..
+        } => {
             evaluate_cfg_attributes(attrs, diagnostics, registry);
             for stmt in statements {
                 inspect_cfg_stmt(stmt, diagnostics, registry);

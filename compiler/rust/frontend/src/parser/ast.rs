@@ -612,6 +612,8 @@ pub enum ExprKind {
     Block {
         attrs: Vec<Attribute>,
         statements: Vec<Stmt>,
+        /// ブロックスコープ内の defer を出現順で保持する。
+        defers: Vec<Expr>,
     },
     Unsafe {
         body: Box<Expr>,
@@ -1483,9 +1485,14 @@ impl Expr {
     }
 
     pub fn block_with_attrs(statements: Vec<Stmt>, attrs: Vec<Attribute>, span: Span) -> Self {
+        let defers = collect_block_defers(&statements);
         Self {
             span,
-            kind: ExprKind::Block { attrs, statements },
+            kind: ExprKind::Block {
+                attrs,
+                statements,
+                defers,
+            },
         }
     }
 
@@ -1577,6 +1584,16 @@ impl Expr {
             other => format!("expr({:?})", other),
         }
     }
+}
+
+fn collect_block_defers(statements: &[Stmt]) -> Vec<Expr> {
+    let mut defers = Vec::new();
+    for stmt in statements {
+        if let StmtKind::Defer { expr } = &stmt.kind {
+            defers.push((**expr).clone());
+        }
+    }
+    defers
 }
 
 impl ToString for Stmt {
