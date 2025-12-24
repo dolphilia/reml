@@ -223,8 +223,7 @@ fn popcount(x: i64) -> i64 = Core.Native.ctpop_fallback(x)
   fn write(path: String, bytes: [u8]) -> Result<(), Error> = {
     let f = File.open(path, "wb")?
     f.writeAll(bytes)?
-    // defer f.close() は Rust Frontend 未対応のため明示的に close する
-    f.close()
+    defer f.close()
     Ok(())
   }
   ```

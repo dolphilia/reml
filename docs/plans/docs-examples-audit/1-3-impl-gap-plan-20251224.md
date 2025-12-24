@@ -149,13 +149,14 @@
 - `compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics <sample>` を実行し、診断 JSON を再生成する。
 - `reports/spec-audit/ch1/1-3-effects-safety__sec_g-YYYYMMDD-diagnostics.json` を最新に置き換える。
 - `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` の `validation` 欄を更新する。
+  - 実施記録: 2025-12-24 に再ビルドと診断生成を実施し、diagnostics 0 件を確認。
 
 ## 進捗管理
 - 本計画書作成日: 2025-12-24
 - 進捗欄（運用用）:
   - [x] フェーズ 1 完了
   - [x] フェーズ 2 完了
-  - [ ] フェーズ 3 完了
+  - [x] フェーズ 3 完了
 
 ## 関連リンク
 - `docs/spec/1-3-effects-safety.md`

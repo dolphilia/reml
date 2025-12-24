@@ -45,3 +45,9 @@
 - `docs/spec/1-3-effects-safety.md` の C / E / F / G / J.3 / J.4 のコードブロックを更新。
 - `defer` 未対応に伴う実装ギャップ対応計画を `docs/plans/docs-examples-audit/1-3-impl-gap-plan-20251224.md` に追加。
 - 再検証は `compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics <sample>` を使用し、対象 7 件は diagnostics 0 件を確認。
+
+## 1-3-effects-safety `defer` 復元（2025-12-24）
+- `examples/docs-examples/spec/1-3-effects-safety/sec_g.reml` を `defer f.close()` に復元。
+- `docs/spec/1-3-effects-safety.md` の G 節コードブロックを正準例へ復元。
+- `reml_frontend` を再ビルドし、diagnostics JSON を再生成。
+  - `reports/spec-audit/ch1/1-3-effects-safety__sec_g-20251224-diagnostics.json` を更新（diagnostics 0 件）。
