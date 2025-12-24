@@ -7,3 +7,5 @@
 @must_await   // Future/Task の未使用を警告
 @must_use     // 戻り値の未使用を禁止（Result 等に推奨）
 @inline       // 最適化ヒント
+fn effect_contract_sample(xs: [i64]) -> i64 =
+  fold(xs, 0, |acc, x| acc + x)

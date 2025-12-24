@@ -94,6 +94,8 @@ Chapter 3 の標準ライブラリは `Σ_core` / `Σ_system` を細分化する
 @must_await   // Future/Task の未使用を警告
 @must_use     // 戻り値の未使用を禁止（Result 等に推奨）
 @inline       // 最適化ヒント
+fn effect_contract_sample(xs: [i64]) -> i64 =
+  fold(xs, 0, |acc, x| acc + x)
 ```
 
 * **主な属性の役割**：
@@ -105,7 +107,10 @@ Chapter 3 の標準ライブラリは `Σ_core` / `Σ_system` を細分化する
 
 ```reml
 @pure
-fn sum(xs: [i64]) -> i64 = { print("x"); fold(xs, 0, (+)) }
+fn sum(xs: [i64]) -> i64 = {
+  print("x")
+  fold(xs, 0, |acc, x| acc + x)
+}
 // error: @pure 関数で io 効果が検出されました … at print
 ```
 
@@ -160,9 +165,12 @@ fn sum(xs: [i64]) -> i64 = { print("x"); fold(xs, 0, (+)) }
 * **再代入**は `var` 束縛に限定（`mut` 効果）。
 
   ```reml
+fn sum(xs: [i64]) -> i64 = {
   var acc = 0
   for x in xs { acc := acc + x }   // `:=` は再代入
-  ```
+  acc
+}
+```
 * **可変コンテナ**は標準ライブラリで提供（例：`Vec<T>`, `Cell<T>`, `Map<K,V>`）。
   これらの更新操作は `mut` 効果。
 * **性能指針**：実装は参照カウント（RC）＋**コピーオンライト**を併用し、関数型スタイルでも実用性能を確保（仕様上の約束事）。
@@ -176,7 +184,7 @@ fn sum(xs: [i64]) -> i64 = { print("x"); fold(xs, 0, (+)) }
 * **FFI 宣言**：
 
   ```reml
-  extern "C" fn puts(ptr: Ptr<u8>) -> i32
+  extern "C" fn puts(ptr: Ptr<u8>) -> i32;
   ```
 
   * FFI は **`ffi` 効果**を持つ。呼び出しは **`unsafe` ブロック**内でのみ許可。
@@ -213,8 +221,11 @@ fn popcount(x: i64) -> i64 = Core.Native.ctpop_fallback(x)
 
   ```reml
   fn write(path: String, bytes: [u8]) -> Result<(), Error> = {
-    let f = File.open(path, "wb")?; defer f.close()
-    f.writeAll(bytes)?; Ok(())
+    let f = File.open(path, "wb")?
+    f.writeAll(bytes)?
+    // defer f.close() は Rust Frontend 未対応のため明示的に close する
+    f.close()
+    Ok(())
   }
   ```
 * RC の**破棄順序は未規定**だが、`defer` で**局所的な確実性**を担保。
@@ -395,7 +406,7 @@ fn parseFile(path: String) -> Result<AST, Error> = {
 ### J.3 unsafe と FFI
 
 ```reml
-extern "C" fn qsort(ptr: Ptr<u8>, len: usize, elem: usize, cmp: Ptr<void>) -> void
+extern "C" fn qsort(ptr: Ptr<u8>, len: usize, elem: usize, cmp: Ptr<void>) -> void;
 
 fn sortBytes(xs: Vec<u8>) -> Vec<u8> = {
   unsafe {
@@ -409,13 +420,13 @@ fn sortBytes(xs: Vec<u8>) -> Vec<u8> = {
 
 ```reml
 @no_panic
-fn strictlyPositive(n: i64) -> Result<i64, Error> = {
-  if n <= 0 { return Err(Error::Invalid) }
-  Ok(n)
-}
+fn strictlyPositive(n: i64) -> Result<i64, Error> =
+  if n <= 0 then Err(Error::Invalid) else Ok(n)
 
-fn total(xs: [i64]) -> Result<i64, Error> =
-  xs |> map(strictlyPositive) |> sequence ? |> sumOk
+fn total(xs: [i64]) -> Result<i64, Error> = {
+  let ys = (xs |> map(strictlyPositive) |> sequence)?
+  sumOk(ys)
+}
 ```
 ## K. 拡張効果タグの扱い
 

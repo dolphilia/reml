@@ -55,13 +55,13 @@
 ### docs/spec/1-3-effects-safety.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| C. 効果の宣言と抑制（属性） | sec_c-a | examples/docs-examples/spec/1-3-effects-safety/sec_c-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C. 効果の宣言と抑制（属性） | sec_c-b | examples/docs-examples/spec/1-3-effects-safety/sec_c-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| E. 可変性（mut）とデータの不変性 | sec_e | examples/docs-examples/spec/1-3-effects-safety/sec_e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| F. FFI と unsafe | sec_f | examples/docs-examples/spec/1-3-effects-safety/sec_f.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| G. リソース安全（スコープ終端保証） | sec_g | examples/docs-examples/spec/1-3-effects-safety/sec_g.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| J.3 unsafe と FFI | sec_j_3 | examples/docs-examples/spec/1-3-effects-safety/sec_j_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| J.4 `@no_panic` と `?` | sec_j_4 | examples/docs-examples/spec/1-3-effects-safety/sec_j_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| C. 効果の宣言と抑制（属性） | sec_c-a | examples/docs-examples/spec/1-3-effects-safety/sec_c-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C. 効果の宣言と抑制（属性） | sec_c-b | examples/docs-examples/spec/1-3-effects-safety/sec_c-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| E. 可変性（mut）とデータの不変性 | sec_e | examples/docs-examples/spec/1-3-effects-safety/sec_e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| F. FFI と unsafe | sec_f | examples/docs-examples/spec/1-3-effects-safety/sec_f.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| G. リソース安全（スコープ終端保証） | sec_g | examples/docs-examples/spec/1-3-effects-safety/sec_g.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| J.3 unsafe と FFI | sec_j_3 | examples/docs-examples/spec/1-3-effects-safety/sec_j_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| J.4 `@no_panic` と `?` | sec_j_4 | examples/docs-examples/spec/1-3-effects-safety/sec_j_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/1-4-test-unicode-model.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
