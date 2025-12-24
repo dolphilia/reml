@@ -76,6 +76,8 @@ pub fn fn_sig(params: Vec<FfiType>, returns: FfiType, variadic: bool) -> FfiFnSi
     }
 }
 
+// TODO: Backend/MIR 由来の署名情報から variadic を設定する導線を整理する。
+
 /// 構造体表現。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FfiStruct {

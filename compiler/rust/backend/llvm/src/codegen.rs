@@ -795,6 +795,7 @@ impl CodegenContext {
                 description: "void".into(),
             });
         let mut lowered_calls = Vec::new();
+        // TODO: variadic FFI の stub 生成方針を整理して lowering に反映する。
         for sig in &mir.ffi_calls {
             let lowered = self.ffi_lowering.lower_call(sig);
             self.bridge_metadata.record_stub(&lowered.stub_plan);

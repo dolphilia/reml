@@ -312,6 +312,8 @@ struct FfiCallJson {
     args: Vec<String>,
     #[serde(alias = "return")]
     ret: Option<String>,
+    #[serde(default)]
+    variadic: bool,
 }
 
 impl FfiCallJson {
@@ -325,6 +327,7 @@ impl FfiCallJson {
                 .map(|arg| parse_reml_type(&arg))
                 .collect(),
             ret: self.ret.map(|ret| parse_reml_type(&ret)),
+            variadic: self.variadic,
         }
     }
 }
@@ -1026,12 +1029,14 @@ pub fn generate_w3_snapshot() -> BackendDiffSnapshot {
             calling_conv: "ccc".into(),
             args: vec![RemlType::I64],
             ret: Some(RemlType::Pointer),
+            variadic: false,
         })
         .with_ffi_call(FfiCallSignature {
             name: "panic".into(),
             calling_conv: "ccc".into(),
             args: vec![RemlType::String],
             ret: None,
+            variadic: false,
         });
 
     let _ = codegen.emit_function(&entry);

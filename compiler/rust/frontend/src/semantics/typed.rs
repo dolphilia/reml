@@ -5,6 +5,10 @@ use crate::span::Span;
 
 pub type DictRefId = usize;
 
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 /// TypecheckDriver が生成する型付き AST。
 /// `docs/plans/rust-migration/appendix/typed_ast_schema_draft.md` に記された構造に合わせ、
 /// TypedModule に関数・dict_ref・scheme を含める。
@@ -23,6 +27,8 @@ pub struct TypedFunction {
     pub span: Span,
     pub attributes: Vec<String>,
     pub params: Vec<TypedParam>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub varargs: bool,
     pub return_type: String,
     pub body: TypedExpr,
     pub dict_ref_ids: Vec<DictRefId>,

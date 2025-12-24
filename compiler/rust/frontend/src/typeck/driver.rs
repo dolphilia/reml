@@ -354,6 +354,7 @@ impl TypecheckDriver {
                 span: function.span,
                 attributes: intrinsic_attribute_strings(&function.attrs),
                 params: typed_params,
+                varargs: false,
                 return_type: return_label,
                 body: typed_body,
                 dict_ref_ids,

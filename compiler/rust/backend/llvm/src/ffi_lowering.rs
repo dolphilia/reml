@@ -8,6 +8,7 @@ pub struct FfiCallSignature {
     pub calling_conv: String,
     pub args: Vec<RemlType>,
     pub ret: Option<RemlType>,
+    pub variadic: bool,
 }
 
 /// Register Save Area 情報。

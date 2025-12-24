@@ -8,6 +8,10 @@ pub const MIR_SCHEMA_VERSION: &str = "frontend-mir/0.1";
 
 pub type MirExprId = usize;
 
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct MirModule {
     pub schema_version: &'static str,
@@ -51,6 +55,8 @@ pub struct MirFunction {
     pub span: Span,
     pub attributes: Vec<String>,
     pub params: Vec<MirParam>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub varargs: bool,
     pub return_type: String,
     pub body: MirExprId,
     pub exprs: Vec<MirExpr>,
@@ -392,6 +398,7 @@ fn lower_function(function: &typed::TypedFunction) -> MirFunction {
                 ty: normalize_mir_type_label(&param.ty),
             })
             .collect(),
+        varargs: function.varargs,
         return_type: normalize_mir_type_label(&function.return_type),
         body,
         exprs: builder.finish(),
