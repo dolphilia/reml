@@ -3815,6 +3815,17 @@ fn module_parser<'src>(
         Expr(Expr),
     }
 
+    let top_level_defer = just(TokenKind::KeywordDefer)
+        .ignore_then(expr.clone().cut())
+        .then_ignore(just(TokenKind::Semicolon).repeated())
+        .map_with_span(|body, span: Range<usize>| Expr {
+            span: range_to_span(span),
+            kind: ExprKind::Defer {
+                body: Box::new(body),
+            },
+        })
+        .map(ModuleItem::Expr);
+
     let top_level_expr = expr
         .clone()
         .then_ignore(just(TokenKind::Semicolon).repeated())
@@ -3831,6 +3842,7 @@ fn module_parser<'src>(
         conductor_decl.clone().map(ModuleItem::Decl),
         active_pattern_decl.clone().map(ModuleItem::ActivePattern),
         function.clone().map(ModuleItem::Function),
+        top_level_defer,
         top_level_expr,
     ));
 
@@ -4657,6 +4669,15 @@ where
             span: range_to_span(span),
         });
 
+    let defer_stmt = just(TokenKind::KeywordDefer)
+        .ignore_then(expr.clone().cut())
+        .map_with_span(|expression, span: Range<usize>| Stmt {
+            kind: StmtKind::Defer {
+                expr: Box::new(expression),
+            },
+            span: range_to_span(span),
+        });
+
     let expr_stmt = expr.map_with_span(|expression, span: Range<usize>| Stmt {
         kind: StmtKind::Expr {
             expr: Box::new(expression),
@@ -4664,7 +4685,7 @@ where
         span: range_to_span(span),
     });
 
-    choice((decl_stmt, assign_stmt, expr_stmt))
+    choice((decl_stmt, defer_stmt, assign_stmt, expr_stmt))
 }
 
 fn build_attribute_parser<P, Q>(
