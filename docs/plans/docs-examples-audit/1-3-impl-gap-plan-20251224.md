@@ -39,6 +39,23 @@
 - **互換性**: フロントエンド MIR スキーマに `block` を追加するため、`compiler/rust/backend/llvm` の JSON ローダは未対応期間中 `block` を `unknown` として受理するガードを入れる。
 - **スコープ単位**: `if` / `match` / `loop` の各ブロックに `defer` を束縛し、親ブロックへは持ち上げない。
 
+#### 展開ポイント（実行系）
+- **採用方針**: `MirExprKind::Block.defer_lifo` を「バックエンド/実行系の lowering」で展開する。
+- **理由**: 実行順序の保証は IR 変換時点で明示化するほうが、`return` / `?` / `panic` の早期脱出経路に一貫して挿入しやすい。
+- **具体化**: `compiler/rust/backend/llvm` が `block` を受理する段階で、`return`/`break`/`propagate` の直前に `defer_lifo` を展開する（フロントエンド MIR では順序のみ保持）。
+- **補足**: 既存の簡易 runtime フェーズは診断生成用途のため、`defer` 実行の責務は持たせない。
+
+#### バックエンド対応タスク（起票）
+- **対象**: `compiler/rust/backend/llvm/src/codegen.rs`
+- **タスク1**: `MirExprKind::Block` を受理するケースを追加し、`defer_lifo` を順に評価する lowering を実装する。
+- **タスク2**: `return` / `propagate(? 相当)` / `panic` の分岐生成直前に `defer_lifo` 展開を挿入する。
+- **タスク3**: `block` 未対応時の fallback を `unknown` に落とすガードを削除し、実行パスへ統合する。
+
+#### 早期脱出の挿入位置（設計メモ）
+- **return**: return 直前に `defer_lifo` を順に評価してから戻る。
+- **?（propagate）**: エラー分岐へ飛ぶ前に `defer_lifo` を評価し、成功パスは従来通り継続。
+- **panic**: panic 呼び出し直前に `defer_lifo` を評価し、以降は abort/ unwind の想定に従う。
+
 1) `defer` の実行保証
 - 目的: `return` / `?` / 例外的終了で `defer` が必ず実行されることを保証する。
 - 成果物: ブロック終了時の `defer` 実行がテストで確認できる。
