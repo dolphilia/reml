@@ -1271,6 +1271,39 @@ mod tests {
     }
 
     #[test]
+    fn ffi_call_variadic_is_loaded_from_json() -> Result<(), MirSnapshotError> {
+        let spec = r#"
+    {
+      "functions": [
+        {
+          "name": "@json_main",
+          "calling_conv": "ccc",
+          "ffi_calls": [
+            {
+              "name": "printf",
+              "calling_conv": "ccc",
+              "args": ["i32"],
+              "return": "i32",
+              "variadic": true
+            }
+          ]
+        }
+      ]
+    }
+    "#;
+        let tmp = env::temp_dir().join("reml_mir_variadic_test.json");
+        fs::write(&tmp, spec)?;
+        let functions = load_mir_functions_from_json(&tmp)?;
+        let sig = functions
+            .get(0)
+            .and_then(|func| func.ffi_calls.get(0))
+            .expect("ffi_calls が1件以上あること");
+        assert!(sig.variadic, "variadic が true であること");
+        fs::remove_file(tmp)?;
+        Ok(())
+    }
+
+    #[test]
     fn llvm_ir_option_canonical_has_ctor_payload_and_expr_lowering() -> Result<(), MirSnapshotError> {
         let repo_root = env!("CARGO_MANIFEST_DIR");
         let path = std::path::Path::new(repo_root)

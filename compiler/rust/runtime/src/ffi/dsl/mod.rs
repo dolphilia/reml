@@ -20,6 +20,7 @@ const FFI_WRAP_NULL_RETURN_CODE: &str = "ffi.wrap.null_return";
 const FFI_WRAP_OWNERSHIP_VIOLATION_CODE: &str = "ffi.wrap.ownership_violation";
 const FFI_CALL_EXECUTOR_MISSING_CODE: &str = "ffi.call.executor_missing";
 const FFI_CALL_EXECUTOR_ALREADY_SET_CODE: &str = "ffi.call.executor_already_set";
+const FFI_SIGNATURE_INVALID_CODE: &str = "ffi.signature.invalid";
 
 static FFI_CALL_EXECUTOR: OnceCell<Arc<dyn FfiCallExecutor>> = OnceCell::new();
 
@@ -76,7 +77,98 @@ pub fn fn_sig(params: Vec<FfiType>, returns: FfiType, variadic: bool) -> FfiFnSi
     }
 }
 
-// TODO: Backend/MIR 由来の署名情報から variadic を設定する導線を整理する。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FfiCallSpec {
+    pub name: String,
+    pub calling_conv: String,
+    #[serde(default)]
+    pub args: Vec<String>,
+    #[serde(alias = "return")]
+    pub ret: Option<String>,
+    #[serde(default)]
+    pub variadic: bool,
+}
+
+impl FfiCallSpec {
+    pub fn to_signature(&self) -> Result<FfiFnSig, FfiError> {
+        let mut params = Vec::with_capacity(self.args.len());
+        for label in &self.args {
+            params.push(parse_mir_ffi_type(label)?);
+        }
+        let returns = match &self.ret {
+            Some(label) => parse_mir_ffi_type(label)?,
+            None => FfiType::Void,
+        };
+        Ok(FfiFnSig {
+            params,
+            returns: Box::new(returns),
+            variadic: self.variadic,
+        })
+    }
+}
+
+fn parse_mir_ffi_type(label: &str) -> Result<FfiType, FfiError> {
+    let trimmed = label.trim();
+    if trimmed.is_empty() {
+        return Err(FfiError::new(
+            FfiErrorKind::InvalidSignature,
+            "FFI 型が空のため解析できません",
+        )
+        .with_code(FFI_SIGNATURE_INVALID_CODE));
+    }
+    if trimmed.eq_ignore_ascii_case("&str") {
+        return Ok(FfiType::ConstPtr(Box::new(FfiType::U8)));
+    }
+    if let Some(rest) = trimmed.strip_prefix('&') {
+        let rest = rest.trim_start();
+        let (mutable, inner) = match rest.strip_prefix("mut") {
+            Some(after_mut) => (true, after_mut.trim_start()),
+            None => (false, rest),
+        };
+        let inner = if inner.is_empty() {
+            FfiType::Void
+        } else {
+            parse_mir_ffi_type(inner)?
+        };
+        return Ok(if mutable {
+            FfiType::Ptr(Box::new(inner))
+        } else {
+            FfiType::ConstPtr(Box::new(inner))
+        });
+    }
+    if trimmed.starts_with('[') && trimmed.ends_with(']') && trimmed.len() >= 2 {
+        let inner = trimmed[1..trimmed.len() - 1].trim();
+        let inner = if inner.is_empty() {
+            FfiType::Void
+        } else {
+            parse_mir_ffi_type(inner)?
+        };
+        // スライスは FFI 型に直接対応がないため、要素型ポインタとして扱う。
+        return Ok(FfiType::Ptr(Box::new(inner)));
+    }
+    let normalized = trimmed.to_ascii_lowercase();
+    match normalized.as_str() {
+        "unit" | "void" | "()" => Ok(FfiType::Void),
+        "bool" => Ok(FfiType::Bool),
+        "i8" | "int8" => Ok(FfiType::I8),
+        "u8" | "uint8" => Ok(FfiType::U8),
+        "i16" | "int16" => Ok(FfiType::I16),
+        "u16" | "uint16" => Ok(FfiType::U16),
+        "i32" | "int32" => Ok(FfiType::I32),
+        "u32" | "uint32" => Ok(FfiType::U32),
+        "i64" | "int64" | "int" => Ok(FfiType::I64),
+        "u64" | "uint64" => Ok(FfiType::U64),
+        "f32" | "float" => Ok(FfiType::F32),
+        "f64" | "double" => Ok(FfiType::F64),
+        "pointer" | "ptr" | "i8*" => Ok(FfiType::Ptr(Box::new(FfiType::Void))),
+        "string" | "str" => Ok(FfiType::ConstPtr(Box::new(FfiType::U8))),
+        _ => Err(FfiError::new(
+            FfiErrorKind::InvalidSignature,
+            format!("未対応の FFI 型です: {}", label),
+        )
+        .with_code(FFI_SIGNATURE_INVALID_CODE)),
+    }
+}
 
 /// 構造体表現。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -181,6 +273,11 @@ impl FfiLibrary {
             library: self.handle.clone(),
             call_handler: None,
         })
+    }
+
+    pub fn bind_fn_from_mir_spec(&self, spec: &FfiCallSpec) -> Result<FfiRawFn, FfiError> {
+        let signature = spec.to_signature()?;
+        self.bind_fn(&spec.name, signature)
     }
 }
 
