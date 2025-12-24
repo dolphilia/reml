@@ -1053,6 +1053,28 @@ struct EmittedValue {
     instrs: Vec<LlvmInstr>,
 }
 
+fn emit_unit_value(ssa: &LlvmBuilder) -> EmittedValue {
+    EmittedValue {
+        ty: ssa.pointer_type(),
+        operand: "null".into(),
+        instrs: vec![LlvmInstr::Comment("unit -> null pointer".into())],
+    }
+}
+
+fn emit_defer_lifo_instrs(
+    defer_lifo: &[MirExprId],
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &mut LlvmBuilder,
+    instrs: &mut Vec<LlvmInstr>,
+) {
+    // return / propagate / panic の終端挿入でも同じ順序で評価する。
+    for defer_id in defer_lifo {
+        let defer_value = emit_value_expr(*defer_id, expr_map, ssa);
+        instrs.extend(defer_value.instrs);
+        instrs.push(LlvmInstr::Comment(format!("defer_lifo expr#{defer_id}")));
+    }
+}
+
 fn emit_bool_expr(
     expr_id: MirExprId,
     expr_map: &HashMap<MirExprId, &MirExpr>,
@@ -1239,6 +1261,10 @@ fn emit_value_expr(
 
     match &expr.kind {
         MirExprKind::Literal { summary } => {
+            if summary.trim() == "unit" {
+                let unit = emit_unit_value(ssa);
+                return (unit.operand, unit.instrs);
+            }
             if let Some(value) = extract_literal_operand(summary) {
                 let ty = if value == "true" || value == "false" {
                     ssa.bool_type()
@@ -1312,6 +1338,19 @@ fn emit_value_expr(
                 operand: result,
                 instrs,
             }
+        }
+        MirExprKind::Block {
+            tail,
+            defer_lifo,
+            ..
+        } => {
+            let mut tail_value = if let Some(tail_id) = tail {
+                emit_value_expr(*tail_id, expr_map, ssa)
+            } else {
+                emit_unit_value(ssa)
+            };
+            emit_defer_lifo_instrs(defer_lifo, expr_map, ssa, &mut tail_value.instrs);
+            tail_value
         }
         MirExprKind::Binary {
             operator,
