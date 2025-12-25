@@ -104,13 +104,19 @@ fn unicode_profile_accepts_non_ascii_identifiers() {
 fn unicode_profile_preserves_normalized_identifiers() {
     let profile = IdentifierProfile::Unicode;
     let combining_source = "let cafe\u{0301} = 1";
-    let combining_expected = "café";
     let combining_output = collect_tokens(combining_source, profile);
-    let combining_token = find_token(&combining_output, TokenKind::Identifier, combining_expected)
-        .expect("正規化された識別子が生成されていません");
     assert!(
-        combining_token.lexeme.as_deref() == Some(combining_expected),
-        "正規化された lexeme が期待値ではありません"
+        combining_output
+            .errors
+            .iter()
+            .any(|err| matches!(err.kind, FrontendErrorKind::UnexpectedStructure { .. })),
+        "NFC ではない識別子がエラーになりませんでした"
+    );
+    let combining_token = find_token(&combining_output, TokenKind::Unknown, "cafe\u{0301}")
+        .expect("NFC でない識別子が Unknown トークンになりませんでした");
+    assert!(
+        combining_token.lexeme.as_deref() == Some("cafe\u{0301}"),
+        "NFC でない識別子の lexeme が期待値ではありません"
     );
 
     let joiner_identifier = "مثال\u{200D}اختبار";

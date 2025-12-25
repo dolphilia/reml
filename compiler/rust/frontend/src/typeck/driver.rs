@@ -186,6 +186,7 @@ impl TypecheckDriver {
                     display: param.pattern.render(),
                     span: param.span,
                     ty,
+                    annotation: param.type_annotation.as_ref().map(|annot| annot.render()),
                 });
             }
             let mut loop_context = LoopContextStack::default();
@@ -211,6 +212,7 @@ impl TypecheckDriver {
                     name: binding.display,
                     span: binding.span,
                     ty: substitution.apply(&binding.ty).label(),
+                    annotation: binding.annotation,
                 })
                 .collect::<Vec<_>>();
             let typed_body = finalize_typed_expr(typed_body_draft, &substitution);
@@ -271,6 +273,7 @@ impl TypecheckDriver {
                     display: param.pattern.render(),
                     span: param.span,
                     ty,
+                    annotation: param.type_annotation.as_ref().map(|annot| annot.render()),
                 });
             }
 
@@ -329,6 +332,7 @@ impl TypecheckDriver {
                     name: binding.display,
                     span: binding.span,
                     ty: substitution.apply(&binding.ty).label(),
+                    annotation: binding.annotation,
                 })
                 .collect::<Vec<_>>();
             let param_type_labels = typed_params
@@ -356,6 +360,7 @@ impl TypecheckDriver {
                 params: typed_params,
                 varargs: false,
                 return_type: return_label,
+                return_annotation: function.ret_type.as_ref().map(|ty| ty.render()),
                 body: typed_body,
                 dict_ref_ids,
                 scheme_id: Some(scheme_id),
@@ -4437,6 +4442,7 @@ struct ParamBinding {
     display: String,
     span: Span,
     ty: Type,
+    annotation: Option<String>,
 }
 
 struct IntrinsicAttribute {

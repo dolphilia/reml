@@ -30,6 +30,8 @@ pub struct TypedFunction {
     #[serde(default, skip_serializing_if = "is_false")]
     pub varargs: bool,
     pub return_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub return_annotation: Option<String>,
     pub body: TypedExpr,
     pub dict_ref_ids: Vec<DictRefId>,
     pub scheme_id: Option<usize>,
@@ -40,6 +42,8 @@ pub struct TypedParam {
     pub name: String,
     pub span: Span,
     pub ty: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub annotation: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
