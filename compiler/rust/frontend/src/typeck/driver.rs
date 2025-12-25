@@ -1555,7 +1555,7 @@ fn visit_literal_for_opbuilder(
                 visit_expr_for_opbuilder(element, tracker, violations);
             }
         }
-        LiteralKind::Record { fields } => {
+        LiteralKind::Record { fields, .. } => {
             for field in fields {
                 visit_expr_for_opbuilder(&field.value, tracker, violations);
             }
@@ -1887,7 +1887,7 @@ fn infer_expr(
                     dicts,
                 )
             }
-            LiteralKind::Record { fields } => {
+            LiteralKind::Record { fields, .. } => {
                 let mut dicts = Vec::new();
                 let mut field_types = Vec::new();
                 for field in fields {
@@ -4254,6 +4254,7 @@ fn type_from_annotation_kind(kind: &TypeKind) -> Option<Type> {
             "Bytes" => Some(Type::builtin(BuiltinType::Bytes)),
             _ => None,
         },
+        TypeKind::Literal { .. } => Some(Type::builtin(BuiltinType::Str)),
         TypeKind::App { callee, args } => {
             let mut resolved_args = Vec::new();
             for arg in args {
@@ -4264,6 +4265,24 @@ fn type_from_annotation_kind(kind: &TypeKind) -> Option<Type> {
                 }
             }
             Some(Type::app(callee.name.clone(), resolved_args))
+        }
+        TypeKind::Union { variants } => {
+            let mut resolved = Vec::new();
+            for variant in variants {
+                if let Some(ty) = type_from_annotation_kind(&variant.kind) {
+                    resolved.push(ty);
+                } else {
+                    return None;
+                }
+            }
+            if resolved
+                .iter()
+                .all(|ty| matches!(ty, Type::Builtin(BuiltinType::Str)))
+            {
+                Some(Type::builtin(BuiltinType::Str))
+            } else {
+                None
+            }
         }
         TypeKind::Slice { element } => type_from_annotation_kind(&element.kind).map(Type::slice),
         TypeKind::Ref { target, mutable } => {

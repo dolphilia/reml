@@ -777,6 +777,8 @@ pub enum LiteralKind {
         elements: Vec<Expr>,
     },
     Record {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        type_name: Option<Ident>,
         fields: Vec<RecordField>,
     },
 }
@@ -812,15 +814,26 @@ impl Literal {
                     .collect::<Vec<_>>()
                     .join(", "),
             ),
-            LiteralKind::Record { fields } => {
+            LiteralKind::Record { fields, .. } => {
                 let entries = fields
                     .iter()
                     .map(|field| format!("{}: {}", field.key.name, field.value.render()))
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("record({})", entries)
+                let prefix = match &literal_type_name(self) {
+                    Some(type_name) => format!("{} ", type_name),
+                    None => String::new(),
+                };
+                format!("record({}{{{}}})", prefix, entries)
             }
         }
+    }
+}
+
+fn literal_type_name(literal: &Literal) -> Option<String> {
+    match &literal.value {
+        LiteralKind::Record { type_name, .. } => type_name.as_ref().map(|ident| ident.name.clone()),
+        _ => None,
     }
 }
 
@@ -1273,15 +1286,18 @@ pub enum TypeKind {
     Ident {
         name: Ident,
     },
+    Literal {
+        value: String,
+    },
     App {
         callee: Ident,
         args: Vec<TypeAnnot>,
     },
     Tuple {
-        elements: Vec<TypeAnnot>,
+        elements: Vec<TypeTupleElement>,
     },
     Record {
-        fields: Vec<(Ident, TypeAnnot)>,
+        fields: Vec<TypeRecordField>,
     },
     Slice {
         element: Box<TypeAnnot>,
@@ -1294,12 +1310,16 @@ pub enum TypeKind {
         params: Vec<TypeAnnot>,
         ret: Box<TypeAnnot>,
     },
+    Union {
+        variants: Vec<TypeAnnot>,
+    },
 }
 
 impl TypeKind {
     fn render(&self) -> String {
         match self {
             TypeKind::Ident { name } => name.name.clone(),
+            TypeKind::Literal { value } => format!("\"{}\"", value),
             TypeKind::App { callee, args } => format!(
                 "{}<{}>",
                 callee.name,
@@ -1312,14 +1332,14 @@ impl TypeKind {
                 "({})",
                 elements
                     .iter()
-                    .map(|ty| ty.render())
+                    .map(TypeTupleElement::render)
                     .collect::<Vec<_>>()
                     .join(", "),
             ),
             TypeKind::Record { fields } => {
                 let entries = fields
                     .iter()
-                    .map(|(key, ty)| format!("{}: {}", key.name, ty.render()))
+                    .map(TypeRecordField::render)
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("record({})", entries)
@@ -1341,7 +1361,46 @@ impl TypeKind {
                     .join(", "),
                 ret.render(),
             ),
+            TypeKind::Union { variants } => variants
+                .iter()
+                .map(|ty| ty.render())
+                .collect::<Vec<_>>()
+                .join(" | "),
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypeTupleElement {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<Ident>,
+    pub ty: TypeAnnot,
+}
+
+impl TypeTupleElement {
+    fn render(&self) -> String {
+        match &self.label {
+            Some(label) => format!("{}: {}", label.name, self.ty.render()),
+            None => self.ty.render(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypeRecordField {
+    pub label: Ident,
+    pub ty: TypeAnnot,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_expr: Option<Expr>,
+}
+
+impl TypeRecordField {
+    fn render(&self) -> String {
+        let mut rendered = format!("{}: {}", self.label.name, self.ty.render());
+        if let Some(default_expr) = &self.default_expr {
+            rendered.push_str(&format!(" = {}", default_expr.render()));
+        }
+        rendered
     }
 }
 

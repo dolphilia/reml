@@ -191,6 +191,7 @@ collect_map_duplicate: {
     }
   },
   "message": "MapCollector failed: duplicate key: \"dup\"",
+  "notes": [],
   "severity": "error"
 }
 collect_set_stage: {
@@ -332,6 +333,7 @@ collect_string_invalid: {
     }
   },
   "message": "StringCollector failed: invalid UTF-8 byte 0x28 at offset 1 (expected continuation byte in 0x80..=0xBF)",
+  "notes": [],
   "severity": "error"
 }
 collect_table_baseline: {
@@ -479,6 +481,7 @@ collect_table_duplicate: {
     }
   },
   "message": "TableCollector failed: duplicate key: \"dup\"",
+  "notes": [],
   "severity": "error"
 }
 collect_cell_ref_effects: {
@@ -677,6 +680,7 @@ config_compat_event: {
       "pipeline.dsl_id": "sample",
       "pipeline.id": "dsl://tests/snapshots/config_compat/sample.reml",
       "pipeline.node": "sample.reml",
+      "scenario.id": "sample",
       "schema.version": "3.0.0-alpha",
       "timestamp": "2025-01-01T00:00:00Z"
     }
@@ -684,61 +688,67 @@ config_compat_event: {
   "timestamp": "2025-01-01T00:00:00Z"
 }
 config_diff_report: {
+  "change_set": {
+    "category": "collections.diff",
+    "items": [
+      {
+        "current": "750m",
+        "key": "limits.cpu",
+        "kind": "collections.diff.updated",
+        "previous": "500m"
+      },
+      {
+        "current": "2Gi",
+        "key": "limits.memory",
+        "kind": "collections.diff.updated",
+        "previous": "1Gi"
+      },
+      {
+        "key": "service.features[1]",
+        "kind": "collections.diff.removed",
+        "previous": "telemetry"
+      },
+      {
+        "current": 3,
+        "key": "service.replicas",
+        "kind": "collections.diff.updated",
+        "previous": 2
+      },
+      {
+        "current": "stable",
+        "key": "service.stage",
+        "kind": "collections.diff.updated",
+        "previous": "beta"
+      },
+      {
+        "current": true,
+        "key": "telemetry.enabled",
+        "kind": "collections.diff.added"
+      }
+    ],
+    "kind": "collections.diff.map",
+    "metadata": {
+      "category": "collections.diff",
+      "kind": "collections.diff.map",
+      "origin": "core.collections",
+      "stage": "stable"
+    },
+    "origin": "core.collections",
+    "policy": "core.collections.audit.v1",
+    "stage": "stable",
+    "summary": {
+      "added": 1,
+      "removed": 1,
+      "total": 6,
+      "updated": 4
+    },
+    "total": 6
+  },
   "kind": "config_diff",
   "summary": {
     "added": 1,
     "removed": 1,
-    "updated": 3,
-    "total": 5
-  },
-  "change_set": {
-    "origin": "core.collections",
-    "policy": "core.collections.audit.v1",
-    "category": "collections.diff",
-    "stage": "stable",
-    "kind": "collections.diff.map",
-    "summary": {
-      "added": 1,
-      "removed": 1,
-      "updated": 3,
-      "total": 5
-    },
-    "metadata": {
-      "stage": "stable",
-      "category": "collections.diff",
-      "kind": "collections.diff.map",
-      "origin": "core.collections"
-    },
-    "items": [
-      {
-        "kind": "collections.diff.updated",
-        "key": "limits.cpu",
-        "previous": "500m",
-        "current": "750m"
-      },
-      {
-        "kind": "collections.diff.updated",
-        "key": "limits.memory",
-        "previous": "1Gi",
-        "current": "2Gi"
-      },
-      {
-        "kind": "collections.diff.removed",
-        "key": "service.features[1]",
-        "previous": "telemetry"
-      },
-      {
-        "kind": "collections.diff.updated",
-        "key": "service.replicas",
-        "previous": 2,
-        "current": 3
-      },
-      {
-        "kind": "collections.diff.added",
-        "key": "telemetry.enabled",
-        "current": true
-      }
-    ],
-    "total": 5
+    "total": 6,
+    "updated": 4
   }
 }

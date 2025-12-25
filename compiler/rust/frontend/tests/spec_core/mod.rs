@@ -1058,7 +1058,7 @@ fn expr_contains_array(expr: &Expr) -> bool {
         ExprKind::Literal(literal) => match &literal.value {
             LiteralKind::Array { .. } => true,
             LiteralKind::Tuple { elements } => elements.iter().any(expr_contains_array),
-            LiteralKind::Record { fields } => {
+            LiteralKind::Record { fields, .. } => {
                 fields.iter().any(|field| expr_contains_array(&field.value))
             }
             _ => false,

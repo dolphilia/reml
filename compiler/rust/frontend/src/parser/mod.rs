@@ -2,6 +2,7 @@
 
 use chumsky::error::{Simple, SimpleReason};
 use chumsky::prelude::*;
+use chumsky::recursive::Recursive;
 use chumsky::stream::Stream;
 use chumsky::Parser as ChumskyParser;
 use reml_runtime::text::{LocaleId, UnicodeError};
@@ -52,8 +53,8 @@ use ast::{
     FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry, Ident, ImplDecl, ImplItem, IntBase,
     Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath, OperationDecl, Param,
     Pattern, PatternKind, PatternRecordField, RecordField, RelativeHead, SlicePatternItem, Stmt,
-    StmtKind, StringKind, TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind, UseDecl, UseItem,
-    UseTree, Visibility, WherePredicate,
+    StmtKind, StringKind, TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind, TypeRecordField,
+    TypeTupleElement, UseDecl, UseItem, UseTree, Visibility, WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -1735,6 +1736,14 @@ fn module_parser<'src>(
             }
         });
 
+    let upper_ident = just(TokenKind::UpperIdentifier).map_with_span(move |_, span: Range<usize>| {
+        let slice = &source[span.start..span.end];
+        Ident {
+            name: slice.to_string(),
+            span: range_to_span(span),
+        }
+    });
+
     let int_literal = just(TokenKind::IntLiteral).map_with_span(move |_, span: Range<usize>| {
         let slice = &source[span.start..span.end];
         let value = slice.parse::<i64>().unwrap_or_default();
@@ -1758,145 +1767,7 @@ fn module_parser<'src>(
         .then(just(TokenKind::Dot).ignore_then(ident.clone()).repeated())
         .map(|(first, rest)| merge_dotted_ident(first, rest));
 
-    let type_parser = recursive(|ty| {
-        let args = ty
-            .clone()
-            .separated_by(just(TokenKind::Comma))
-            .allow_trailing()
-            .delimited_by(just(TokenKind::Lt), just(TokenKind::Gt));
-
-        let tuple_type = delimited_with_cut(
-            TokenKind::LParen,
-            ty.clone()
-                .cut()
-                .separated_by(just(TokenKind::Comma))
-                .allow_trailing(),
-            TokenKind::RParen,
-        )
-        .map_with_span(|elements, span: Range<usize>| TypeAnnot {
-            span: range_to_span(span),
-            kind: TypeKind::Tuple { elements },
-            annotation_kind: None,
-        });
-
-        let slice_type =
-            delimited_with_cut(TokenKind::LBracket, ty.clone().cut(), TokenKind::RBracket)
-                .map_with_span(|element, span: Range<usize>| TypeAnnot {
-                    span: range_to_span(span),
-                    kind: TypeKind::Slice {
-                        element: Box::new(element),
-                    },
-                    annotation_kind: None,
-                });
-
-        let simple = qualified_ident.clone().map(|name| TypeAnnot {
-            span: name.span,
-            kind: TypeKind::Ident { name },
-            annotation_kind: None,
-        });
-
-        let app = qualified_ident.clone().then(args.clone()).map_with_span(
-            |(callee, args), span: Range<usize>| TypeAnnot {
-                span: range_to_span(span),
-                kind: TypeKind::App { callee, args },
-                annotation_kind: None,
-            },
-        );
-
-        let record_field = ident
-            .clone()
-            .then_ignore(just(TokenKind::Colon))
-            .then(ty.clone().cut());
-
-        let record_type = delimited_with_cut(
-            TokenKind::LBrace,
-            record_field
-                .cut()
-                .separated_by(just(TokenKind::Comma))
-                .allow_trailing(),
-            TokenKind::RBrace,
-        )
-        .map_with_span(|fields, span: Range<usize>| TypeAnnot {
-            span: range_to_span(span),
-            kind: TypeKind::Record { fields },
-            annotation_kind: None,
-        });
-
-        let fn_type = just(TokenKind::KeywordFn)
-            .ignore_then(delimited_with_cut(
-                TokenKind::LParen,
-                ty.clone()
-                    .cut()
-                    .separated_by(just(TokenKind::Comma))
-                    .allow_trailing()
-                    .or_not()
-                    .map(|params| params.unwrap_or_default()),
-                TokenKind::RParen,
-            ))
-            .then_ignore(just(TokenKind::Arrow))
-            .then(ty.clone().cut())
-            .map_with_span(|(params, ret_ty), span: Range<usize>| TypeAnnot {
-                span: range_to_span(span),
-                kind: TypeKind::Fn {
-                    params,
-                    ret: Box::new(ret_ty),
-                },
-                annotation_kind: None,
-            });
-
-        let atom = recursive(|atom| {
-            let ref_type = just(TokenKind::Ampersand)
-                .then(just(TokenKind::KeywordMut).or_not())
-                .then(atom.clone().cut())
-                .map_with_span(|((_, mut_kw), target), span: Range<usize>| TypeAnnot {
-                    span: range_to_span(span),
-                    kind: TypeKind::Ref {
-                        target: Box::new(target),
-                        mutable: mut_kw.is_some(),
-                    },
-                    annotation_kind: None,
-                });
-            let base = choice((fn_type, tuple_type, record_type, slice_type, app, simple));
-            choice((ref_type, base))
-        });
-
-        atom.clone()
-            .then(just(TokenKind::Arrow).ignore_then(ty.clone()).or_not())
-            .map(|(left, ret_opt)| {
-                if let Some(ret_ty) = ret_opt {
-                    let span = Span::new(left.span.start, ret_ty.span.end);
-                    let left_span = left.span;
-                    let left_annotation_kind = left.annotation_kind;
-                    match left.kind {
-                        TypeKind::Tuple { elements } => TypeAnnot {
-                            span,
-                            kind: TypeKind::Fn {
-                                params: elements,
-                                ret: Box::new(ret_ty),
-                            },
-                            annotation_kind: None,
-                        },
-                        other_kind => {
-                            let param = TypeAnnot {
-                                span: left_span,
-                                kind: other_kind,
-                                annotation_kind: left_annotation_kind,
-                            };
-                            TypeAnnot {
-                                span,
-                                kind: TypeKind::Fn {
-                                    params: vec![param],
-                                    ret: Box::new(ret_ty),
-                                },
-                                annotation_kind: None,
-                            }
-                        }
-                    }
-                } else {
-                    left
-                }
-            })
-    });
+    let mut type_parser = Recursive::declare();
 
     let type_parser_for_expr = type_parser.clone();
     let pattern_var = lower_ident.clone().map(|ident| Pattern {
@@ -2349,22 +2220,43 @@ fn module_parser<'src>(
                 RecordField { key, value }
             });
 
-        let record_literal = delimited_with_cut(
+        let record_literal_fields = delimited_with_cut(
             TokenKind::LBrace,
             record_literal_field
                 .cut()
                 .separated_by(just(TokenKind::Comma))
                 .allow_trailing(),
             TokenKind::RBrace,
-        )
-        .map_with_span(|fields, span: Range<usize>| {
-            Expr::literal(
-                Literal {
-                    value: LiteralKind::Record { fields },
-                },
-                range_to_span(span),
-            )
-        });
+        );
+
+        let record_literal = record_literal_fields
+            .clone()
+            .map_with_span(|fields, span: Range<usize>| {
+                Expr::literal(
+                    Literal {
+                        value: LiteralKind::Record {
+                            type_name: None,
+                            fields,
+                        },
+                    },
+                    range_to_span(span),
+                )
+            });
+
+        let typed_record_literal = upper_ident
+            .clone()
+            .then(record_literal_fields.clone())
+            .map_with_span(|(type_name, fields), span: Range<usize>| {
+                Expr::literal(
+                    Literal {
+                        value: LiteralKind::Record {
+                            type_name: Some(type_name),
+                            fields,
+                        },
+                    },
+                    range_to_span(span),
+                )
+            });
 
         let stmt = build_stmt_parser(
             expr.clone(),
@@ -2731,7 +2623,10 @@ fn module_parser<'src>(
                 ];
                 Expr::literal(
                     Literal {
-                        value: LiteralKind::Record { fields },
+                        value: LiteralKind::Record {
+                            type_name: None,
+                            fields,
+                        },
                     },
                     span,
                 )
@@ -2781,6 +2676,7 @@ fn module_parser<'src>(
             string_literal,
             fixity_literal,
             array_literal,
+            typed_record_literal,
             record_literal,
             tuple_literal,
             unit_literal,
@@ -3023,6 +2919,206 @@ fn module_parser<'src>(
         ))
         .boxed()
     });
+
+    let type_parser_definition = recursive(|ty| {
+        let args = ty
+            .clone()
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing()
+            .delimited_by(just(TokenKind::Lt), just(TokenKind::Gt));
+
+        let literal_type = just(TokenKind::StringLiteral).map_with_span(
+            move |_, span: Range<usize>| TypeAnnot {
+                span: range_to_span(span.clone()),
+                kind: TypeKind::Literal {
+                    value: parse_string_literal_value(source, span),
+                },
+                annotation_kind: None,
+            },
+        );
+
+        let tuple_element_labeled = ident
+            .clone()
+            .then_ignore(just(TokenKind::Colon))
+            .then(ty.clone())
+            .map(|(label, ty)| TypeTupleElement {
+                label: Some(label),
+                ty,
+            });
+
+        let tuple_element = choice((
+            tuple_element_labeled,
+            ty.clone().map(|ty| TypeTupleElement { label: None, ty }),
+        ));
+
+        let tuple_type = delimited_with_cut(
+            TokenKind::LParen,
+            tuple_element
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing(),
+            TokenKind::RParen,
+        )
+        .map_with_span(|elements, span: Range<usize>| TypeAnnot {
+            span: range_to_span(span),
+            kind: TypeKind::Tuple { elements },
+            annotation_kind: None,
+        });
+
+        let slice_type =
+            delimited_with_cut(TokenKind::LBracket, ty.clone().cut(), TokenKind::RBracket)
+                .map_with_span(|element, span: Range<usize>| TypeAnnot {
+                    span: range_to_span(span),
+                    kind: TypeKind::Slice {
+                        element: Box::new(element),
+                    },
+                    annotation_kind: None,
+                });
+
+        let simple = qualified_ident.clone().map(|name| TypeAnnot {
+            span: name.span,
+            kind: TypeKind::Ident { name },
+            annotation_kind: None,
+        });
+
+        let app = qualified_ident.clone().then(args.clone()).map_with_span(
+            |(callee, args), span: Range<usize>| TypeAnnot {
+                span: range_to_span(span),
+                kind: TypeKind::App { callee, args },
+                annotation_kind: None,
+            },
+        );
+
+        let record_field = ident
+            .clone()
+            .then_ignore(just(TokenKind::Colon))
+            .then(ty.clone().cut())
+            .then(
+                just(TokenKind::Assign)
+                    .ignore_then(expr.clone().cut())
+                    .or_not(),
+            )
+            .map(|((label, ty), default_expr)| TypeRecordField {
+                label,
+                ty,
+                default_expr,
+            });
+
+        let record_type = delimited_with_cut(
+            TokenKind::LBrace,
+            record_field
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing(),
+            TokenKind::RBrace,
+        )
+        .map_with_span(|fields, span: Range<usize>| TypeAnnot {
+            span: range_to_span(span),
+            kind: TypeKind::Record { fields },
+            annotation_kind: None,
+        });
+
+        let fn_type = just(TokenKind::KeywordFn)
+            .ignore_then(delimited_with_cut(
+                TokenKind::LParen,
+                ty.clone()
+                    .cut()
+                    .separated_by(just(TokenKind::Comma))
+                    .allow_trailing()
+                    .or_not()
+                    .map(|params| params.unwrap_or_default()),
+                TokenKind::RParen,
+            ))
+            .then_ignore(just(TokenKind::Arrow))
+            .then(ty.clone().cut())
+            .map_with_span(|(params, ret_ty), span: Range<usize>| TypeAnnot {
+                span: range_to_span(span),
+                kind: TypeKind::Fn {
+                    params,
+                    ret: Box::new(ret_ty),
+                },
+                annotation_kind: None,
+            });
+
+        let atom = recursive(|atom| {
+            let ref_type = just(TokenKind::Ampersand)
+                .then(just(TokenKind::KeywordMut).or_not())
+                .then(atom.clone().cut())
+                .map_with_span(|((_, mut_kw), target), span: Range<usize>| TypeAnnot {
+                    span: range_to_span(span),
+                    kind: TypeKind::Ref {
+                        target: Box::new(target),
+                        mutable: mut_kw.is_some(),
+                    },
+                    annotation_kind: None,
+                });
+            let base = choice((
+                fn_type,
+                tuple_type,
+                record_type,
+                slice_type,
+                app,
+                simple,
+                literal_type,
+            ));
+            choice((ref_type, base))
+        });
+
+        let arrow_type = atom
+            .clone()
+            .then(just(TokenKind::Arrow).ignore_then(ty.clone()).or_not())
+            .map(|(left, ret_opt)| {
+                if let Some(ret_ty) = ret_opt {
+                    let span = Span::new(left.span.start, ret_ty.span.end);
+                    let left_span = left.span;
+                    let left_annotation_kind = left.annotation_kind;
+                    match left.kind {
+                        TypeKind::Tuple { elements } => TypeAnnot {
+                            span,
+                            kind: TypeKind::Fn {
+                                params: elements.into_iter().map(|elem| elem.ty).collect(),
+                                ret: Box::new(ret_ty),
+                            },
+                            annotation_kind: None,
+                        },
+                        other_kind => {
+                            let param = TypeAnnot {
+                                span: left_span,
+                                kind: other_kind,
+                                annotation_kind: left_annotation_kind,
+                            };
+                            TypeAnnot {
+                                span,
+                                kind: TypeKind::Fn {
+                                    params: vec![param],
+                                    ret: Box::new(ret_ty),
+                                },
+                                annotation_kind: None,
+                            }
+                        }
+                    }
+                } else {
+                    left
+                }
+            });
+
+        arrow_type
+            .clone()
+            .separated_by(just(TokenKind::Bar))
+            .at_least(1)
+            .map_with_span(|variants, span: Range<usize>| {
+                if variants.len() == 1 {
+                    variants.into_iter().next().unwrap()
+                } else {
+                    TypeAnnot {
+                        span: range_to_span(span),
+                        kind: TypeKind::Union { variants },
+                        annotation_kind: None,
+                    }
+                }
+            })
+    });
+    type_parser.define(type_parser_definition);
 
     let attribute = build_attribute_parser(expr.clone(), ident.clone());
     let attr_list = attribute.clone().repeated();
@@ -3267,6 +3363,11 @@ fn module_parser<'src>(
         .clone()
         .then_ignore(just(TokenKind::Colon))
         .then(type_parser.clone().cut())
+        .then(
+            just(TokenKind::Assign)
+                .ignore_then(expr.clone().cut())
+                .or_not(),
+        )
         .map(|_| ());
 
     let record_decl_rest = just(TokenKind::DotDot).map(|_| ());
@@ -3281,7 +3382,17 @@ fn module_parser<'src>(
     )
     .map(|_| ());
 
-    let sum_variant_arg = choice((record_decl_body.clone(), type_parser.clone().map(|_| ())));
+    let sum_variant_labeled_arg = ident
+        .clone()
+        .then_ignore(just(TokenKind::Colon))
+        .then(type_parser.clone().cut())
+        .map(|_| ());
+
+    let sum_variant_arg = choice((
+        record_decl_body.clone(),
+        sum_variant_labeled_arg,
+        type_parser.clone().map(|_| ()),
+    ));
 
     let sum_variant_args = delimited_with_cut(
         TokenKind::LParen,
@@ -3811,14 +3922,23 @@ fn module_parser<'src>(
 
     let effect_decl = just(TokenKind::KeywordEffect)
         .ignore_then(ident.clone())
-        .then_ignore(just(TokenKind::Colon))
-        .then(ident.clone())
-        .then(effect_body.clone())
-        .map_with_span(|((name, tag), operations), span: Range<usize>| EffectDecl {
-            span: range_to_span(span.clone()),
-            name,
-            tag: Some(tag),
-            operations,
+        .then(
+            just(TokenKind::Colon)
+                .ignore_then(ident.clone())
+                .then(effect_body.clone())
+                .or_not(),
+        )
+        .map_with_span(|(name, detail), span: Range<usize>| {
+            let (tag, operations) = match detail {
+                Some((tag, operations)) => (Some(tag), operations),
+                None => (None, Vec::new()),
+            };
+            EffectDecl {
+                span: range_to_span(span.clone()),
+                name,
+                tag,
+                operations,
+            }
         });
 
     #[derive(Clone)]
@@ -4145,7 +4265,7 @@ fn record_literal_trace_events(literal: &Literal, events: &mut Vec<ParserTraceEv
                 record_expr_trace_events(element, events);
             }
         }
-        LiteralKind::Record { fields } => {
+        LiteralKind::Record { fields, .. } => {
             for field in fields {
                 record_expr_trace_events(&field.value, events);
             }
@@ -5054,7 +5174,7 @@ mod driver {
 fn emit(msg: String) = perform ConsoleLog(msg)
 fn main() = emit("leak")"#,
                 expected_ast: Some(
-                    "effect ConsoleLog\nfn emit(msg) = perform ConsoleLog var(msg)\nfn main() = call(var(emit))[str(\"leak\")]",
+                    "effect ConsoleLog\nfn emit(msg: String) = perform ConsoleLog var(msg)\nfn main() = call(var(emit))[str(\"leak\")]",
                 ),
                 expected_messages: &[],
             },
@@ -5077,7 +5197,7 @@ fn main() = emit("leak")"#,
         assert_eq!(diag.notes[0].label, "recover.expected_tokens");
         assert_eq!(
             diag.notes[0].message,
-            "ここで`)`、`,` または `:`のいずれかが必要です"
+            "ここで`!=`、`%`、`(`、`)`、`*`、`+`、`,`、`-`、`.`、`..`、`/`、`:`、`<`、`<=`、`==`、`>`、`>=`、`?` または `|>`のいずれかが必要です"
         );
     }
 

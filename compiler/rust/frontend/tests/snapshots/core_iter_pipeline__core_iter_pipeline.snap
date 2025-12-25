@@ -1,22 +1,22 @@
 ---
 source: tests/core_iter_pipeline.rs
-assertion_line: 168
+assertion_line: 179
 expression: cases
 ---
 - case: list_roundtrip
   collector:
     effects:
-      mem: false
-      mutating: false
-      debug: false
       async_pending: false
       audit: false
+      debug: false
+      mem: true
+      mem_bytes: 32
+      mutating: false
       predicate_calls: 0
-      mem_bytes: 0
     kind: list
     markers:
       finish: 1
-      mem_reservation: 0
+      mem_reservation: 32
       reserve: 0
     stage:
       actual: stable
@@ -27,12 +27,12 @@ expression: cases
         stage: stable
       source: "ListCollector::finish"
   effects:
-    mem: false
-    mutating: false
-    debug: false
     async_pending: false
     audit: false
+    debug: false
+    mem: false
     mem_bytes: 0
+    mutating: false
     predicate_calls: 0
   stage:
     actual: beta
@@ -50,13 +50,13 @@ expression: cases
 - case: map_filter_vec
   collector:
     effects:
-      mem: true
-      mutating: true
-      debug: false
       async_pending: false
       audit: false
+      debug: false
+      mem: true
+      mem_bytes: 12
+      mutating: true
       predicate_calls: 0
-      mem_bytes: 0
     kind: vec
     markers:
       finish: 1
@@ -71,12 +71,12 @@ expression: cases
         stage: beta
       source: "VecCollector::finish"
   effects:
-    mem: false
-    mutating: true
-    debug: false
     async_pending: false
     audit: false
+    debug: false
+    mem: false
     mem_bytes: 0
+    mutating: true
     predicate_calls: 4
   stage:
     actual: stable
@@ -93,13 +93,13 @@ expression: cases
 - case: zip_collect_list
   collector:
     effects:
-      mem: true
-      mutating: true
-      debug: false
       async_pending: false
       audit: false
+      debug: false
+      mem: true
+      mem_bytes: 96
+      mutating: true
       predicate_calls: 0
-      mem_bytes: 0
     kind: vec
     markers:
       finish: 1
@@ -114,12 +114,12 @@ expression: cases
         stage: beta
       source: "VecCollector::finish"
   effects:
-    mem: false
-    mutating: true
-    debug: false
     async_pending: false
     audit: false
+    debug: false
+    mem: false
     mem_bytes: 0
+    mutating: true
     predicate_calls: 0
   stage:
     actual: beta
@@ -139,13 +139,13 @@ expression: cases
 - case: buffered_mem_case
   collector:
     effects:
-      mem: true
-      mutating: true
-      debug: false
       async_pending: false
       audit: false
+      debug: false
+      mem: true
+      mem_bytes: 20
+      mutating: true
       predicate_calls: 0
-      mem_bytes: 0
     kind: vec
     markers:
       finish: 1
@@ -160,12 +160,12 @@ expression: cases
         stage: beta
       source: "VecCollector::finish"
   effects:
-    mem: true
-    mutating: false
-    debug: false
     async_pending: false
     audit: false
+    debug: false
+    mem: true
     mem_bytes: 2
+    mutating: false
     predicate_calls: 0
   stage:
     actual: beta
@@ -184,17 +184,17 @@ expression: cases
 - case: from_iter_and_into_iter
   collector:
     effects:
-      mem: false
-      mutating: false
-      debug: false
       async_pending: false
       audit: false
+      debug: false
+      mem: true
+      mem_bytes: 24
+      mutating: false
       predicate_calls: 0
-      mem_bytes: 0
     kind: list
     markers:
       finish: 1
-      mem_reservation: 0
+      mem_reservation: 24
       reserve: 0
     stage:
       actual: stable
@@ -205,12 +205,12 @@ expression: cases
         stage: stable
       source: "ListCollector::finish"
   effects:
-    mem: false
-    mutating: false
-    debug: false
     async_pending: false
     audit: false
+    debug: false
+    mem: false
     mem_bytes: 0
+    mutating: false
     predicate_calls: 0
   stage:
     actual: beta
@@ -231,13 +231,13 @@ expression: cases
 - case: try_collect_success
   collector:
     effects:
-      mem: true
-      mutating: true
-      debug: false
       async_pending: false
       audit: false
+      debug: false
+      mem: true
+      mem_bytes: 32
+      mutating: true
       predicate_calls: 0
-      mem_bytes: 0
     kind: vec
     markers:
       finish: 1
@@ -252,12 +252,12 @@ expression: cases
         stage: beta
       source: "VecCollector::finish"
   effects:
-    mem: false
-    mutating: false
-    debug: false
     async_pending: false
     audit: false
+    debug: false
+    mem: false
     mem_bytes: 0
+    mutating: false
     predicate_calls: 0
   stage:
     actual: beta
@@ -267,8 +267,4 @@ expression: cases
       mode: at_least
       stage: beta
     source: "core_iter_pipeline::try_collect_success"
-  value:
-    - 1
-    - 2
-    - 3
-    - 4
+  value: []

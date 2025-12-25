@@ -729,24 +729,12 @@ impl DiagnosticBuilder {
 
     fn ensure_fields(diagnostic: &FrontendDiagnostic) -> Result<(), DiagnosticBuilderError> {
         if diagnostic.severity.is_none() {
-            debug_assert!(
-                false,
-                "diagnostic.severity must be set before push (spec 3-6 §1)"
-            );
             return Err(DiagnosticBuilderError::MissingSeverity);
         }
         if diagnostic.domain.is_none() {
-            debug_assert!(
-                false,
-                "diagnostic.domain must be set before push (spec 3-6 §1)"
-            );
             return Err(DiagnosticBuilderError::MissingDomain);
         }
         if diagnostic.code.is_none() && diagnostic.codes.is_empty() {
-            debug_assert!(
-                false,
-                "diagnostic.code must be set before push (spec 3-6 §1)"
-            );
             return Err(DiagnosticBuilderError::MissingCode);
         }
         Ok(())
