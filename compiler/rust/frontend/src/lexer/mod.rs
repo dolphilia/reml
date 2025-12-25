@@ -604,6 +604,7 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
                 if options.identifier_profile == IdentifierProfile::AsciiCompat && !slice.is_ascii()
                 {
                     push_ascii_error(span, slice, &mut errors, &mut tokens);
+                    offset += consumed;
                     continue;
                 }
                 if slice == "_" {
