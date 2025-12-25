@@ -32,6 +32,53 @@
 - 対象コレクションの初期セット（`List`/`Str` 等）を定義し、将来拡張時の差分方針をメモ化する。
 - 決定事項を本計画書に追記し、必要があれば関連仕様 (`docs/spec`) の追記タスクを起票する。
 
+#### 決定事項（フェーズ 1 / Backend・Runtime 共有）
+
+1) `@reml_value` の位置付け
+- **責務**: 値の型整形（アンボックス／キャスト／型合わせ）を行うバックエンド専用の補助 intrinsic とし、監査用途では使わない。
+- **可視性**: Reml の表層仕様には露出させず、IR lowering の内部境界として扱う。
+- **実行時効果**: 原則は **副作用なし**（pure）。失敗時のエラー契約は持たせず、型不一致は Backend 側のバグとして扱う。
+
+2) `@reml_value` の命名とバリエーション
+- **命名規則**: `@reml_value_<suffix>` を採用する（`<suffix>` は返却型の短縮名）。
+- **Phase 1 の最小セット**:
+  - `@reml_value_i64`
+  - `@reml_value_bool`
+  - `@reml_value_ptr`
+  - `@reml_value_str`（`reml_string_t`）
+- **将来拡張**: `i32` / `f32` / `f64` / `usize` などは Phase 2 以降で追加。
+
+3) LLVM IR 上の表現方針
+- **基本方針**: `@reml_value_*` はコンパイラ intrinsic として扱い、**最終 IR では `load`/`bitcast`/`zext`/`trunc`/`ptrtoint`/`inttoptr` に置換**する。
+- **Runtime への依存**: 置換後は runtime に実体を持たせない。置換が完了するまでの暫定期間は `runtime/native/src` に **identity stub** を置く方針で、ABI は下記の表に合わせる。
+
+4) ABI 仕様（Phase 1 / x86_64 前提）
+| 論理型 | LLVM IR 表現 | C 側型 | サイズ | アラインメント | 備考 |
+| --- | --- | --- | --- | --- | --- |
+| `i64` | `i64` | `int64_t` | 8 | 8 | 符号付き |
+| `bool` | `i1`（IR）/`i8`（C ABI） | `uint8_t` | 1 | 1 | C ABI 側は 1 byte で受ける |
+| `ptr` | `ptr` | `void*` | 8 | 8 | 不透明ポインタ |
+| `Str` | `{ptr, i64}` | `reml_string_t` | 16 | 8 | `data` は NULL 終端を想定 |
+- **呼び出し規約**: `C` ABI（SystemV / Win64）に従う。`TargetMachine` の `CallingConvention` を踏襲。
+
+5) `@reml_value_*` の暫定 ABI（置換前提）
+- **シグネチャ**: `T @reml_value_<suffix>(const T value)` を基本とし、最終的には IR 側で `T` の値に合わせた `load`/`cast` に置換する。
+- **注意**: payload ポインタから `T` を得るケースは Backend 側で `load` を生成してから `@reml_value_*` を呼ぶ方針に寄せる（`@reml_value` に unbox 責務を持たせない）。
+
+6) `@reml_index_access` の ABI とセマンティクス
+- **シグネチャ（暫定）**: `ptr @reml_index_access(ptr target, i64 index)`
+- **戻り値**: 要素の **payload ポインタ**。呼び出し側で `@reml_value_*` による整形を行う。
+- **境界外/NULL**: 例外（panic）を発行し、`@panic(ptr)` を呼ぶ。`null` 戻りは使用しない。
+- **対象コレクション（Phase 1）**:
+  - `List<T>`: 0-based で線形走査し、該当要素の payload ポインタを返す。
+  - `Str`: **byte index** を採用し、`reml_string_t.data + index` のポインタを返す（UTF-8 グラフェム単位の処理は Core.Text API に委譲）。
+- **未対応型**: `panic` による即時停止（「unsupported index target」）。
+
+7) 仕様追記タスク（起票予定）
+- `docs/spec/1-1-syntax.md`: `index` 式の結果型・境界外契約の明文化。
+- `docs/spec/3-2-core-collections.md`: `List` の index 仕様（0-based / O(n) / panic）。
+- `docs/spec/3-3-core-text-unicode.md`: `Str` の `[]` が **byte index** であることを明記し、`grapheme` 単位 API との差別化を追記。
+
 ### フェーズ 2: Backend 側の呼び出し整理
 - `compiler/rust/backend/llvm/src/codegen.rs` で `@reml_value` 呼び出し箇所を洗い出す。
 - 決定した命名規則に従って、型別関数 or LLVM cast への置換を行う。
@@ -57,7 +104,7 @@
 ## 進捗管理
 - 本計画書作成日: 2025-12-24
 - 進捗欄（運用用）:
-  - [ ] フェーズ 1 完了
+  - [x] フェーズ 1 完了（ABI/セマンティクス確定・決定事項追記）
   - [ ] フェーズ 2 完了
   - [ ] フェーズ 3 完了
   - [ ] フェーズ 4 完了
