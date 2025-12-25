@@ -43,7 +43,7 @@
 
 ### 仕様整合メモ
 - `docs/spec/1-3-effects-safety.md` の C / E / F / G / J.3 / J.4 のコードブロックを更新。
-- `defer` 未対応に伴う実装ギャップ対応計画を `docs/plans/docs-examples-audit/1-3-impl-gap-plan-20251224.md` に追加。
+- `defer` 未対応に伴う実装ギャップ対応計画を `docs/plans/docs-examples-audit/1-2-impl-gap-plan-20251224-2.md` に追加。
 - 再検証は `compiler/rust/frontend/target/debug/reml_frontend --emit-diagnostics <sample>` を使用し、対象 7 件は diagnostics 0 件を確認。
 
 ## 1-3-effects-safety `defer` 復元（2025-12-24）
