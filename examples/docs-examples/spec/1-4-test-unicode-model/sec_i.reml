@@ -1,37 +1,43 @@
-// 生成・変換
-fn string(bytes: Bytes, validate_utf8: Bool = true) -> Result<String, Utf8Error>
-fn to_string(chars: Iterator<Char>) -> String
+type UnicodeApi = {
+  // 生成・変換
+  string: fn(Bytes, Bool) -> Result<String, Utf8Error>, // validate_utf8 default true
+  to_string: fn(Iterator<Char>) -> String,
 
-// 長さ
-fn byte_len(s: Str) -> usize
-fn char_len(s: Str) -> usize            // コードポイント数（必要時のみ計算）
-fn grapheme_len(s: Str) -> usize
+  // 長さ
+  byte_len: fn(Str) -> usize,
+  char_len: fn(Str) -> usize,            // コードポイント数（必要時のみ計算）
+  grapheme_len: fn(Str) -> usize,
 
-// 反復
-fn bytes(s: Str) -> Iterator<u8>
-fn codepoints(s: Str) -> Iterator<Char>
-fn graphemes(s: Str) -> Iterator<Grapheme>
+  // 反復
+  bytes: fn(Str) -> Iterator<u8>,
+  codepoints: fn(Str) -> Iterator<Char>,
+  graphemes: fn(Str) -> Iterator<Grapheme>,
 
-// スライス
-fn slice_bytes(s: Str, r: Range<usize>) -> Bytes
-fn slice_codepoints(s: Str, r: Range<usize>) -> Str
-fn slice_graphemes(s: Str, r: Range<usize>) -> Str
+  // スライス
+  slice_bytes: fn(Str, Range<usize>) -> Bytes,
+  slice_codepoints: fn(Str, Range<usize>) -> Str,
+  slice_graphemes: fn(Str, Range<usize>) -> Str,
 
-// 検索
-fn find(s: Str, pat: Str) -> Option<usize>                 // バイトオフセット
-fn find_grapheme(s: Str, pred: Grapheme -> Bool) -> Option<usize>
+  // 検索
+  find: fn(Str, Str) -> Option<usize>,                 // バイトオフセット
+  find_grapheme: fn(Str, fn(Grapheme) -> Bool) -> Option<usize>,
 
-// 正規化・大小
-fn normalize_nfc(s: Str)  -> String
-fn normalize_nfd(s: Str)  -> String
-fn normalize_nfkc(s: Str) -> String
-fn normalize_nfkd(s: Str) -> String
-fn to_lower(s: Str, locale: Option<Locale>) -> String
-fn to_upper(s: Str, locale: Option<Locale>) -> String
-fn to_casefold(s: Str) -> String
+  // 正規化・大小
+  normalize_nfc: fn(Str) -> String,
+  normalize_nfd: fn(Str) -> String,
+  normalize_nfkc: fn(Str) -> String,
+  normalize_nfkd: fn(Str) -> String,
+  to_lower: fn(Str, Option<Locale>) -> String,
+  to_upper: fn(Str, Option<Locale>) -> String,
+  to_casefold: fn(Str) -> String,
 
-// 比較
-fn eq_bytes(a: Str, b: Str) -> Bool
-fn eq_codepoint(a: Str, b: Str) -> Bool
+  // 比較
+  eq_bytes: fn(Str, Str) -> Bool,
+  eq_codepoint: fn(Str, Str) -> Bool,
+}
+
 type Collator
-impl Collator { fn new(locale: Locale) -> Collator; fn compare(&self, a: Str, b: Str) -> Ordering }
+impl Collator {
+  fn create(locale: Locale) -> Collator = todo
+  fn compare(self, a: Str, b: Str) -> Ordering = todo
+}

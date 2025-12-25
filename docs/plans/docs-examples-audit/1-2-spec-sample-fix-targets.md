@@ -66,7 +66,7 @@
 ### docs/spec/1-4-test-unicode-model.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| I. 標準 API（抜粋シグネチャ） | sec_i | examples/docs-examples/spec/1-4-test-unicode-model/sec_i.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| I. 標準 API（抜粋シグネチャ） | sec_i | examples/docs-examples/spec/1-4-test-unicode-model/sec_i.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/2-1-parser-type.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
