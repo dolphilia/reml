@@ -87,6 +87,24 @@
 - 既存の IR スナップショット/テストがある場合は差分を更新し、変更理由をメモする。
 - 変更箇所に対応する TODO/コメントがあれば整理して削除・更新する。
 
+#### フェーズ 2 着手チェックリスト（Backend）
+- [ ] `@reml_value` 呼び出し位置の棚卸し（`compiler/rust/backend/llvm/src/codegen.rs` の `emit_value_expr` / `lower_*` 系を単位に一覧化）
+- [ ] 変換対象の型分類（`i64`/`bool`/`ptr`/`Str`）を整理し、置換優先順位を決める（`emit_value_expr` の `MirExprKind::Literal` / `MirExprKind::Identifier` 参照）
+- [ ] `@reml_value` を `@reml_value_<suffix>` へ置換する方針を明記（`@reml_value_i64` など）（`INTRINSIC_VALUE` 定義と呼び出し箇所）
+- [ ] `@reml_value` を IR cast/`load` へ置換する箇所の判断基準をメモ化（`emit_value_expr` / `lower_if_else_branch_value_with_defers`）
+- [ ] `@reml_value` の戻り型・引数型の整合チェック（`i1`/`i8` の扱いを含む）（`emit_value_expr` と `lower_binary_expr_to_blocks` の戻り型）
+- [ ] `@reml_index_access` 呼び出しの引数型を `ptr` + `i64` に合わせる（`emit_value_expr` の `MirExprKind::Index`）
+- [ ] `@reml_index_access` の戻り値 `ptr` 前提で downstream の `@reml_value_*` を挿入する箇所を確認（`emit_value_expr` の戻り型と `MirExprKind::Index` の利用箇所）
+- [ ] 既存の `@reml_str_data` / `@panic` の引数変換と干渉しないことを確認（`INTRINSIC_STR_DATA` / `INTRINSIC_PANIC` の呼び出し周辺）
+- [ ] 置換後に `LlvmInstr::Call`/`LlvmInstr::Cast` の生成が壊れていないかを点検（`LlvmInstr` 生成箇所）
+- [ ] 影響範囲のメモ（IR スナップショット/テスト/診断ログ）を更新方針として追記（`compiler/rust/backend/llvm/src/integration.rs` のスナップショット生成）
+
+#### フェーズ 2 完了条件（成果物ベース）
+- `compiler/rust/backend/llvm/src/codegen.rs` に `@reml_value_<suffix>` 置換が反映され、`@reml_value` 生呼び出しが残っていないこと
+- IR 断片の差分ログ（`reports/backend-ir-diff/` または相当ログ）に `@reml_value_<suffix>` の出力が確認できること
+- `@reml_index_access` が `ptr` + `i64` の ABI で呼ばれている IR 断片を記録できること
+- 置換前後の差分理由メモを本計画書に追記し、スナップショット更新時の根拠が追跡可能であること
+
 ### フェーズ 3: Runtime 実装
 - `runtime/native/include/reml_runtime.h` に ABI 仕様に沿った宣言を追加する。
 - `runtime/native/src` に最小限の実装（stub / identity / boundary check）を追加する。
