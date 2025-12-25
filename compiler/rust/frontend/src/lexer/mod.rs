@@ -289,7 +289,11 @@ enum RawToken {
     #[token("'", lex_char_literal)]
     CharLiteral,
 
-    #[regex(r"(?u)(?:_|\p{XID_Start})(?:\p{XID_Continue}|\u200D)*", priority = 1)]
+    // 絵文字/Zwj と bidi 制御を字句で取り込み、識別子準備段階の診断に回す。
+    #[regex(
+        r"(?u)(?:_|\p{XID_Start})(?:\p{XID_Continue}|\u200D|\uFE0F|\p{Extended_Pictographic}|\p{Emoji_Component}|\u200E|\u200F|\u202A|\u202B|\u202C|\u202D|\u202E|\u2066|\u2067|\u2068|\u2069)*",
+        priority = 1
+    )]
     Identifier,
 }
 

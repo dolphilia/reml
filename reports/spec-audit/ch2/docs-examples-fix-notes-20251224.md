@@ -9,16 +9,18 @@
 - `examples/docs-examples/spec/2-1-parser-type/sec_g.reml`
 
 ## 変更概要
-- 仕様コードブロックとサンプルを同期し、Rust Frontend が受理する構文へ簡略化。
-- 実装未対応の構文は暫定的にフォールバック表記へ置換。
+- フェーズ 3 の復元方針に従い、仕様コードブロックとサンプルを正準表記へ戻した。
+- Rust Frontend 側の構文受理拡張に合わせ、従来のフォールバック表記を解消した。
 
 ## 主な修正点
-- `Reply<T>` のバリアントをラベル付き引数から位置引数へ変更。
-- `SpanTrace` を `List<(String, Span)>` に簡略化。
-- `RunConfig` のデフォルト値と文字列リテラル型を削除し、許容値はコメントへ退避。
-- `RunConfig.with_extension` を `= todo` 付きスタブに変更。
-- CLI/LSP 共有設定サンプルを `fn configure` に移動し、ラムダと `DemandHint` の組み立てを分解。
-- `G` 節コードブロックの終端を明示し、`.reml` 抽出範囲を正規化。
+- `Reply<T>` のバリアントをラベル付き引数へ復元。
+- `SpanTrace` を `List<(name: String, span: Span)>` に復元。
+- `RunConfig` にデフォルト値を復元し、`left_recursion` を文字列リテラル和型へ戻した。
+- CLI/LSP 共有設定サンプルで `Any::from(DemandHint{...})` をインライン復元。
 
 ## 実装ギャップ
 - 追加計画: `docs/plans/docs-examples-audit/1-2-impl-gap-plan-20251224-3.md`
+
+## 再検証
+- `for file in examples/docs-examples/spec/2-1-parser-type/sec_*.reml; do compiler/rust/frontend/target/debug/reml_frontend "$file"; done`
+- diagnostics 0 件（`sec_a`/`sec_c`/`sec_d`/`sec_clilsp` を含む全 `sec_*`）

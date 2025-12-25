@@ -16,12 +16,11 @@ fn configure(parser: Parser<Any>, file: Path, project_id: ProjectId) -> () = {
         map
       })
       .with_extension("stream", |map| {
-        let hint = DemandHint{
+        map.insert("resume_hint", Any::from(DemandHint{
           min_bytes: 256,
           preferred_bytes: Some(1024),
           frame_boundary: None
-        };
-        map.insert("resume_hint", Any::from(hint));
+        }));
         map
       });
 

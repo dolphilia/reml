@@ -41,6 +41,12 @@
 | 13:28 | `for file in sec_a sec_c sec_d sec_d_1 sec_clilsp sec_g; do compiler/rust/frontend/target/debug/reml_frontend examples/docs-examples/spec/2-1-parser-type/${file}.reml; done` | ✅ 対象 6 件 diagnostics 0 件 | `docs/spec/2-1-parser-type.md` とサンプルを整合更新。`reports/spec-audit/ch2/docs-examples-fix-notes-20251224.md` に記録。 |
 | 15:10 | 手動整理（Backend/Runtime 追随ログ） | ✅ 記録 | docs-examples 由来の実装修正に着手。対象: `sec_b_3`/`sec_f`/`sec_h_2-a`（`[T]`/`&mut`/`Parser<T>` の型表記）、`sec_b_4-f`（`extern "C"` の `...` variadic）。詳細メモは `reports/spec-audit/ch1/docs-examples-fix-notes-20251224.md` に追記。 |
 
+## 2025-12-26 docs-examples-audit フェーズ 3 再検証
+| JST 時刻 | コマンド | 結果 | 備考 |
+|----------|----------|------|------|
+| 07:26 | `for file in examples/docs-examples/spec/2-1-parser-type/sec_*.reml; do compiler/rust/frontend/target/debug/reml_frontend "$file"; done` | ✅ 対象 7 件 diagnostics 0 件 | `sec_a` / `sec_c` / `sec_d` / `sec_clilsp` を復元済みのまま通過。`reports/spec-audit/ch2/docs-examples-fix-notes-20251224.md` に追記。 |
+| 07:27 | `cargo test --manifest-path compiler/rust/frontend/Cargo.toml` | ❌ `lexer_unicode_identifier` 2 件失敗 | `unicode_identifier_error_matrix` が `UnknownToken`、`unicode_identifier_success_matrix` が未定義トークンで失敗。 |
+
 ## Rust ツールチェーン更新（stable 版の確定）
 - `rust-toolchain.toml` を追加し、`channel = "stable"` と `components = ["rustfmt", "clippy"]` を設定。
 - `rustup` を導入して `rustup update stable` を実行し、`rustc 1.92.0 (ded5c06cf 2025-12-08)` を stable として確定。

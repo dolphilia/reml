@@ -14,8 +14,8 @@ type Parser<T> = fn(&mut State) -> Reply<T>
 
 // 実行結果（consumed/committed の2ビットを明示）
 type Reply<T> =
-  | Ok(T, Input, Span, Bool)
-  | Err(ParseError, Bool, Bool)
+  | Ok(value: T, rest: Input, span: Span, consumed: Bool)
+  | Err(error: ParseError, consumed: Bool, committed: Bool)
 
 // ランナーが外部へ返す“エラー不可能”結果（AST + 診断）
 type ParseResult<T> = {
@@ -81,7 +81,7 @@ type Span = {
 }
 
 // 成功断片の履歴（IDE/可視化目的）。既定は OFF。
-type SpanTrace = List<(String, Span)>
+type SpanTrace = List<(name: String, span: Span)>
 ```
 
 * 既定では **成功スパンのみ**保持（軽量）。
@@ -94,14 +94,14 @@ type SpanTrace = List<(String, Span)>
 
 ```reml
 type RunConfig = {
-  require_eof: Bool,            // 全消費を要求（parse_all 相当）
-  packrat: Bool,                // Packrat メモ化を明示的に有効化
-  left_recursion: Str,           // "off" | "on" | "auto"
-  trace: Bool,
-  merge_warnings: Bool,
-  legacy_result: Bool,         // 旧 API (`Result<(T, Span), ParseError>`) 互換
-  locale: Option<Locale>,      // 診断・Pretty 表示のロケール
-  extensions: RunConfigExtensions // モジュール毎の拡張設定
+  require_eof: Bool = false,            // 全消費を要求（parse_all 相当）
+  packrat: Bool = false,                // Packrat メモ化を明示的に有効化
+  left_recursion: "off" | "on" | "auto" = "auto",
+  trace: Bool = false,
+  merge_warnings: Bool = true,
+  legacy_result: Bool = false,         // 旧 API (`Result<(T, Span), ParseError>`) 互換
+  locale: Option<Locale> = None,      // 診断・Pretty 表示のロケール
+  extensions: RunConfigExtensions = {} // モジュール毎の拡張設定
 }
 
 type RunConfigExtensions = Map<Str, Any>
@@ -174,12 +174,11 @@ fn configure(parser: Parser<Any>, file: Path, project_id: ProjectId) -> () = {
         map
       })
       .with_extension("stream", |map| {
-        let hint = DemandHint{
+        map.insert("resume_hint", Any::from(DemandHint{
           min_bytes: 256,
           preferred_bytes: Some(1024),
           frame_boundary: None
-        };
-        map.insert("resume_hint", Any::from(hint));
+        }));
         map
       });
 

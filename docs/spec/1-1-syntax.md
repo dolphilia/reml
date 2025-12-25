@@ -24,8 +24,9 @@
 
 ### A.3 識別子とキーワード
 
-* 識別子：`XID_Start` + `XID_Continue*`（Unicode 準拠）。
-  例）`parse`, `ユーザー`, `_aux1`。
+* 識別子：`XID_Start` + (`XID_Continue` / `U+200D` / `U+FE0F` / `Extended_Pictographic` / `Emoji_Component`)*（Unicode 準拠）。
+  例）`parse`, `ユーザー`, `_aux1`, `foo👨‍👩‍👧‍👦bar`。
+  - **拒否規則**: bidi 制御文字（`U+200E..U+200F`, `U+202A..U+202E`, `U+2066..U+2069`）が混入した識別子は診断で拒否する。
   - **トークン分類**: Lexer は先頭文字が大文字の識別子を `UPPER_IDENT`、それ以外を `IDENT` として返す。両者とも同じ Unicode 制約を共有し、構文解析では `ident` 非終端を通じて共通的に扱う。
   - **目的**: `UPPER_IDENT` を導入することで、パターン文脈で列挙子（`Option.None` など）と変数の曖昧さを解消し、Menhir 上での縮約衝突を防ぐ。
   - **互換プロファイル**: `RunConfig.extensions["lex"].identifier_profile` で `ascii-compat` を指定すると、Phase 1 系ツールとの互換用に ASCII 限定モードへ切り替えられる。CLI／LSP／Streaming いずれのランナーでも同じ設定キーを共有し、監査ログでは `unicode.identifier_profile` で実際に使用されたプロファイルを記録する。
