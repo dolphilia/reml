@@ -71,12 +71,12 @@
 ### docs/spec/2-1-parser-type.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| A. 主要型 | sec_a | examples/docs-examples/spec/2-1-parser-type/sec_a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C. スパンとトレース | sec_c | examples/docs-examples/spec/2-1-parser-type/sec_c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| D. 実行設定 `RunConfig` とメモ | sec_d | examples/docs-examples/spec/2-1-parser-type/sec_d.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| D-1. `RunConfig` ユーティリティ | sec_d_1 | examples/docs-examples/spec/2-1-parser-type/sec_d_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 利用例（CLI/LSP 共通設定） | sec_clilsp | examples/docs-examples/spec/2-1-parser-type/sec_clilsp.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| G. ランナー API（外部からの呼び出し） | sec_g | examples/docs-examples/spec/2-1-parser-type/sec_g.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| A. 主要型 | sec_a | examples/docs-examples/spec/2-1-parser-type/sec_a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C. スパンとトレース | sec_c | examples/docs-examples/spec/2-1-parser-type/sec_c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| D. 実行設定 `RunConfig` とメモ | sec_d | examples/docs-examples/spec/2-1-parser-type/sec_d.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| D-1. `RunConfig` ユーティリティ | sec_d_1 | examples/docs-examples/spec/2-1-parser-type/sec_d_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 利用例（CLI/LSP 共通設定） | sec_clilsp | examples/docs-examples/spec/2-1-parser-type/sec_clilsp.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| G. ランナー API（外部からの呼び出し） | sec_g | examples/docs-examples/spec/2-1-parser-type/sec_g.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/2-2-core-combinator.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

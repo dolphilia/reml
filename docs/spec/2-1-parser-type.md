@@ -14,8 +14,8 @@ type Parser<T> = fn(&mut State) -> Reply<T>
 
 // 実行結果（consumed/committed の2ビットを明示）
 type Reply<T> =
-  | Ok(value: T, rest: Input, span: Span, consumed: Bool)
-  | Err(error: ParseError, consumed: Bool, committed: Bool)
+  | Ok(T, Input, Span, Bool)
+  | Err(ParseError, Bool, Bool)
 
 // ランナーが外部へ返す“エラー不可能”結果（AST + 診断）
 type ParseResult<T> = {
@@ -81,7 +81,7 @@ type Span = {
 }
 
 // 成功断片の履歴（IDE/可視化目的）。既定は OFF。
-type SpanTrace = List<(name: String, span: Span)>
+type SpanTrace = List<(String, Span)>
 ```
 
 * 既定では **成功スパンのみ**保持（軽量）。
@@ -94,14 +94,14 @@ type SpanTrace = List<(name: String, span: Span)>
 
 ```reml
 type RunConfig = {
-  require_eof: Bool = false,            // 全消費を要求（parse_all 相当）
-  packrat: Bool = false,                // Packrat メモ化を明示的に有効化
-  left_recursion: "off" | "on" | "auto" = "auto",
-  trace: Bool = false,
-  merge_warnings: Bool = true,
-  legacy_result: Bool = false,         // 旧 API (`Result<(T, Span), ParseError>`) 互換
-  locale: Option<Locale> = None,       // 診断・Pretty 表示のロケール
-  extensions: RunConfigExtensions = {} // モジュール毎の拡張設定
+  require_eof: Bool,            // 全消費を要求（parse_all 相当）
+  packrat: Bool,                // Packrat メモ化を明示的に有効化
+  left_recursion: Str,           // "off" | "on" | "auto"
+  trace: Bool,
+  merge_warnings: Bool,
+  legacy_result: Bool,         // 旧 API (`Result<(T, Span), ParseError>`) 互換
+  locale: Option<Locale>,      // 診断・Pretty 表示のロケール
+  extensions: RunConfigExtensions // モジュール毎の拡張設定
 }
 
 type RunConfigExtensions = Map<Str, Any>
@@ -144,7 +144,7 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
 
 ```reml
 impl RunConfig {
-  fn with_extension(self, key: Str, update: fn(Map<Str, Any>) -> Map<Str, Any>) -> RunConfig
+  fn with_extension(self, key: Str, update: fn(Map<Str, Any>) -> Map<Str, Any>) -> RunConfig = todo
 }
 ```
 
@@ -156,30 +156,36 @@ impl RunConfig {
 #### 利用例（CLI/LSP 共通設定） {#runconfig-cli-lsp-example}
 
 ```reml
-let base = RunConfig{};
-let shared =
-  base
-    .with_extension("lex", fn(map) {
-      map.insert("profile", Any::from(ConfigTriviaProfile::strict_json))
-    })
-    .with_extension("recover", fn(map) {
-      map.insert("mode", Any::from("collect"));
-      map.insert("sync_tokens", Any::from(Set::from([";", "\n"])));
-      map.insert("max_diagnostics", Any::from(64));
-      map.insert("max_resync_bytes", Any::from(4096));
-      map.insert("max_recoveries", Any::from(128));
-      map.insert("notes", Any::from(true))
-    })
-    .with_extension("stream", fn(map) {
-      map.insert("resume_hint", Any::from(DemandHint{
-        min_bytes: 256,
-        preferred_bytes: Some(1024),
-        frame_boundary: None
-      }))
-    });
+fn configure(parser: Parser<Any>, file: Path, project_id: ProjectId) -> () = {
+  let base = RunConfig{};
+  let shared =
+    base
+      .with_extension("lex", |map| {
+        map.insert("profile", Any::from(ConfigTriviaProfile::strict_json));
+        map
+      })
+      .with_extension("recover", |map| {
+        map.insert("mode", Any::from("collect"));
+        map.insert("sync_tokens", Any::from(Set::from([";", "\n"])));
+        map.insert("max_diagnostics", Any::from(64));
+        map.insert("max_resync_bytes", Any::from(4096));
+        map.insert("max_recoveries", Any::from(128));
+        map.insert("notes", Any::from(true));
+        map
+      })
+      .with_extension("stream", |map| {
+        let hint = DemandHint{
+          min_bytes: 256,
+          preferred_bytes: Some(1024),
+          frame_boundary: None
+        };
+        map.insert("resume_hint", Any::from(hint));
+        map
+      });
 
-Core.CLI.parse_file(parser, file, shared);
-Core.LSP.Parser.attach(project_id, parser, shared);
+  Core.CLI.parse_file(parser, file, shared);
+  Core.LSP.Parser.attach(project_id, parser, shared);
+}
 ```
 
 * CLI/LSP が同じ `RunConfig` を受け取ることで、字句設定・回復戦略・ストリーミングヒントが一致する。`collect-iterator-audit-metrics.py` はこの設定を JSON・監査ログから読み取り、`parser.runconfig_extension_pass_rate` を算出する。
@@ -259,16 +265,17 @@ type ParseError = {
 ## G. ランナー API（外部からの呼び出し）
 
 ```reml
-fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T>
+fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T> = todo
 // AST と診断を常に返す。cfg.require_eof=true なら余剰入力は Diagnostic として報告。
 
-fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResultWithRest<T>
+fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResultWithRest<T> = todo
 // 部分パース：残り Input を `rest` に格納し、result.diagnostics も一緒に返す。
 
 type ParseResultWithRest<T> = {
   result: ParseResult<T>,
   rest: Option<Input>
 }
+```
 
 * `ParseResult` は成功/失敗にかかわらず診断を含むため、IDE や CI でのフィードバックが一貫する。
 * `ParseResultWithRest` は REPL や差分適用で再利用しやすいよう、未消費入力を同梱する。

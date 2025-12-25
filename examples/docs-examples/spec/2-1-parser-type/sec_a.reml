@@ -3,8 +3,8 @@ type Parser<T> = fn(&mut State) -> Reply<T>
 
 // 実行結果（consumed/committed の2ビットを明示）
 type Reply<T> =
-  | Ok(value: T, rest: Input, span: Span, consumed: Bool)
-  | Err(error: ParseError, consumed: Bool, committed: Bool)
+  | Ok(T, Input, Span, Bool)
+  | Err(ParseError, Bool, Bool)
 
 // ランナーが外部へ返す“エラー不可能”結果（AST + 診断）
 type ParseResult<T> = {

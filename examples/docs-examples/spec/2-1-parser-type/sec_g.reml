@@ -1,72 +1,10 @@
-fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T>
+fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T> = todo
 // AST と診断を常に返す。cfg.require_eof=true なら余剰入力は Diagnostic として報告。
 
-fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResultWithRest<T>
+fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResultWithRest<T> = todo
 // 部分パース：残り Input を `rest` に格納し、result.diagnostics も一緒に返す。
 
 type ParseResultWithRest<T> = {
   result: ParseResult<T>,
   rest: Option<Input>
 }
-
-* `ParseResult` は成功/失敗にかかわらず診断を含むため、IDE や CI でのフィードバックが一貫する。
-* `ParseResultWithRest` は REPL や差分適用で再利用しやすいよう、未消費入力を同梱する。
-* `src` は `Input.bytes` へ参照共有され、コピーを発生させない。文字位置は 1.4 節の Unicode モデルに従う。
-
-> ストリーミング処理や継続再開、バックプレッシャ制御などの高度なランナーは `Core.Parse.Streaming` 拡張（別途定義）で提供します。コア仕様ではバッチ実行と部分パースのみを扱います。
----
-
-## H. 代数則（使用者向けの直観）
-
-* **純度**：`Parser<T>` は参照透過（同じ `State` → 同じ `Reply`）。
-* **Functor**：`map` は恒等・合成を保つ。
-* **Applicative/Monadic**：`then/andThen` は結合律を満たす（エラー統合規則の範囲で）。
-* **`or` の単位**：`fail("x")` は空失敗（`consumed=false, committed=false`）。
-* **`cut`**：`label("x", cut(p))` で「ここから先は x を期待」を強制。
-
----
-
-## I. プラグイン連携の位置付け
-
-Reml コアの `Core.Parse` はプラグイン登録 API を持ちません。DSL 拡張や capability 管理が必要な場合は、オプションモジュール `Core.Parse.Plugin`（[4-7](4-7-core-parse-plugin.md) 参照）を読み込み、そこで提供される `register_plugin`/`register_capability` 等を介して機能を注入してください。運用指針やテンプレートは `../guides/DSL-plugin.md` を参照にします。これにより、コア API は小さく安定したまま、プロジェクト固有の拡張点を opt-in で追加できます。
-
----
-
-## J. メモリと性能（実装規約）
-
-* **Input**：COW/RC・SSO（短文字列インライン）・部分文字列は親バッファ参照。
-* **Span**：必要最小を保持。`SpanTrace` は OFF 既定。
-* **Packrat**：
-
-  * キーは `(ParserId, byte_off)`、値は `Reply<T>`。
-  * LRU/リングで上限を設け、巨大入力でのメモリ爆発を回避。
-* **左再帰**：`left_recursion=true` のとき、既知の **種別変換法**（seed-growing）を使用（ルールに `ParserId` が必須）。
-* **ステップ上限**：必要に応じて実装側が安全弁を設ける（診断には直近のルール列を含めることを推奨）。
-
-### J-4. 拡張（Core.Async への導線）
-
-非同期ランナーやバックプレッシャ制御を含むストリーミング実行はコア仕様の対象外です。必要に応じて `Core.Parse.Streaming` と `Core.Async` 系の拡張ライブラリを読み込み、ここで定義した `Parser` の意味論と互換な形で実装してください。
-
----
-
-## K. ミニ例（意味論の確認）
-
-```reml
-// トークン
-let sym = |s: Str| rule("sym(" + s + ")", Lex.symbol(sc, s))
-
-// 式: atom ('*' atom)*
-let atom: Parser<i64> =
-  rule("atom",
-    (Lex.int(10).map(|n| n)                      // Ok(..., consumed=true)
-     .or(sym("(").then(expr).then(sym(")")).map(|(_,v,_)| v))  // 括弧
-     .or(label("number or '('", fail())))        // 空失敗 → or が次を試す
-  )
-
-let term: Parser<i64> =
-  rule("term",
-    atom.andThen( many( sym("*").cut().then(atom) ) )
-        .map(|(h, tail)| tail.fold(h, |a, (_,b)| a * b))
-  )
-// '*' の直後に cut → 以降の err は committed=true になり、
-// `atom or (...)` に戻らず “ここは '*' の右項が必要” と報告される。

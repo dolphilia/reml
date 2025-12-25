@@ -6,4 +6,4 @@ type Span = {
 }
 
 // 成功断片の履歴（IDE/可視化目的）。既定は OFF。
-type SpanTrace = List<(name: String, span: Span)>
+type SpanTrace = List<(String, Span)>
