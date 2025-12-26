@@ -1,6 +1,6 @@
 use reml_runtime::parse::{
-    cut_here, layout_token, ok, position, run, symbol, sync_to, ParseError, ParseFixIt, Parser,
-    RecoverAction, Reply, Span,
+    cut_here, keyword, layout_token, ok, position, run, symbol, sync_to, ParseError, ParseFixIt,
+    Parser, RecoverAction, Reply, Span,
 };
 use reml_runtime::run_config::RunConfig;
 use serde_json::{Map, Value};
@@ -68,6 +68,11 @@ fn non_consuming_fail(msg: &'static str) -> Parser<()> {
             committed: false,
         }
     })
+}
+
+fn run_keyword(input: &str, kw: &str) -> reml_runtime::parse::ParseResult<()> {
+    let parser = keyword(None::<Parser<()>>, kw);
+    run(&parser, input, &RunConfig::default())
 }
 
 fn committed_fail(msg: &'static str) -> Parser<i32> {
@@ -188,6 +193,50 @@ fn chainr1_is_right_associative() {
     };
     let result = run(&parser, "2^3^2", &cfg);
     assert_eq!(result.value, Some(512));
+}
+
+#[test]
+fn keyword_boundary_rejects_emoji_continuations() {
+    let cases = [
+        "let🚀",
+        "let👨‍💻",
+        "let\u{200D}",
+        "let\u{FE0F}",
+    ];
+    for input in cases {
+        let result = run_keyword(input, "let");
+        assert!(
+            result.value.is_none(),
+            "キーワード境界の失敗を想定しています: input={input}"
+        );
+        let message = result
+            .diagnostics
+            .first()
+            .map(|diag| diag.message.as_str())
+            .unwrap_or("");
+        assert!(
+            message.contains("キーワード 'let' の後ろに識別子が続いています"),
+            "想定メッセージが含まれません: input={input}, message={message}"
+        );
+    }
+}
+
+#[test]
+fn keyword_boundary_rejects_bidi_control() {
+    let result = run_keyword("let\u{202E}", "let");
+    assert!(
+        result.value.is_none(),
+        "Bidi 制御文字の拒否を想定しています"
+    );
+    let message = result
+        .diagnostics
+        .first()
+        .map(|diag| diag.message.as_str())
+        .unwrap_or("");
+    assert!(
+        message.contains("Bidi 制御文字"),
+        "Bidi 制御文字の診断が含まれません: {message}"
+    );
 }
 
 #[test]

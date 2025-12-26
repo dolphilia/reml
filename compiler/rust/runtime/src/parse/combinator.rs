@@ -5,6 +5,8 @@ use super::op_builder::FixitySymbol;
 use crate::prelude::ensure::{DiagnosticNote, DiagnosticSeverity, GuardDiagnostic};
 use crate::run_config::{LeftRecursionStrategy, RunConfig};
 use crate::text::{Str, String as TextString};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serde_json::{json, Map, Value};
 use std::any::Any;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -285,6 +287,11 @@ fn parser_id_from_name(name: &str) -> ParserId {
     ParserId::from_raw(raw.wrapping_add(1))
 }
 
+static EXTENDED_PICTOGRAPHIC_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^\p{Extended_Pictographic}$").expect("emoji regex init failed"));
+static EMOJI_COMPONENT_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^\p{Emoji_Component}$").expect("emoji regex init failed"));
+
 /// 簡易的な識別子継続文字の判定。
 fn is_ident_start(ch: char, profile: IdentifierProfile) -> bool {
     match profile {
@@ -295,9 +302,27 @@ fn is_ident_start(ch: char, profile: IdentifierProfile) -> bool {
 
 fn is_ident_continue(ch: char, profile: IdentifierProfile) -> bool {
     match profile {
-        IdentifierProfile::Unicode => ch == '_' || is_xid_continue(ch),
+        IdentifierProfile::Unicode => {
+            ch == '_'
+                || is_xid_continue(ch)
+                || matches!(ch, '\u{200D}' | '\u{FE0F}')
+                || is_extended_pictographic(ch)
+                || is_emoji_component(ch)
+        }
         IdentifierProfile::AsciiCompat => ch == '_' || ch.is_ascii_alphanumeric(),
     }
+}
+
+fn is_extended_pictographic(ch: char) -> bool {
+    let mut buf = [0u8; 4];
+    let s = ch.encode_utf8(&mut buf);
+    EXTENDED_PICTOGRAPHIC_RE.is_match(s)
+}
+
+fn is_emoji_component(ch: char) -> bool {
+    let mut buf = [0u8; 4];
+    let s = ch.encode_utf8(&mut buf);
+    EMOJI_COMPONENT_RE.is_match(s)
 }
 
 fn is_bidi_control(ch: char) -> bool {
