@@ -1,24 +1,11 @@
 use Core.Parse
 use Core.Parse.Lex
 
-struct LexPack = {
-  space: Parser<()>,
-  symbol: fn(Str) -> Parser<()>,
-  ident: Parser<Str>,
+type LexPack = {
+  space: Any,
+  symbol: Any,
+  ident: Any,
 }
 
-fn lex_pack(profile: ConfigTriviaProfile = ConfigTriviaProfile::strict_json) -> LexPack =
-  let space = config_trivia(profile)
-  LexPack {
-    space,
-    symbol: |text| symbol(space, text),
-    ident: lexeme(space, identifier(DefaultId)),
-  }
-
-fn parse_entry<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T> =
-  let lex = lex_pack(cfg.extensions.get("config").unwrap_or(ConfigTriviaProfile::strict_json))
-  run(
-    p.with_space(lex.space),
-    src,
-    cfg.with_extension("lex", {|map| map.insert("space", lex.space_id())})
-  )
+fn lex_pack(profile: ConfigTriviaProfile = strict_json) -> LexPack = todo
+fn parse_entry<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T> = todo

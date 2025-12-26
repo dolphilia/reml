@@ -4,5 +4,5 @@ type NumericOverflow = {
   target: Str,
 }
 
-fn numeric_overflow_error(span: Span, digits: Str, info: NumericOverflow, radix: u8) -> ParseError
-fn numeric_parse_error(span: Span, repr: Str, cause: ParseFloatError) -> ParseError
+fn numeric_overflow_error(span: Span, digits: Str, info: NumericOverflow, radix: u8) -> ParseError = todo
+fn numeric_parse_error(span: Span, repr: Str, cause: ParseFloatError) -> ParseError = todo

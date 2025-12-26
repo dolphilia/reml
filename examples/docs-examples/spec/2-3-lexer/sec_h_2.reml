@@ -6,5 +6,5 @@ type LayoutProfile = {
   allow_mixed_tabs: Bool = false, // タブとスペース混在を許容するか
 }
 
-fn layout(profile: LayoutProfile) -> Parser<()>           // レイアウトトークンを生成
-fn layout_token(profile: LayoutProfile, s: Str) -> Parser<()> // indent/dedent/newline 判定
+fn layout(profile: LayoutProfile) -> Parser<()> = todo           // レイアウトトークンを生成
+fn layout_token(profile: LayoutProfile, s: Str) -> Parser<()> = todo // indent/dedent/newline 判定

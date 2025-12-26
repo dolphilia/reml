@@ -7,4 +7,4 @@ type IdentifierProfile = {
   confusable_warn: Bool = true     // 見かけ紛らわし警告
 }
 
-fn identifier(profile: IdentifierProfile = DefaultId) -> Parser<Str>
+fn identifier(profile: IdentifierProfile = DefaultId) -> Parser<Str> = todo

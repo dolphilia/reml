@@ -16,24 +16,24 @@
 
 ```reml
 // 1) 一文字（コードポイント）判定
-fn satisfy(pred: Char -> Bool) -> Parser<Char>
+fn satisfy(pred: Char -> Bool) -> Parser<Char> = todo
 
 // 2) 固定文字列（最長一致、NFC 前提）
-fn string(s: Str) -> Parser<Str>
+fn string(s: Str) -> Parser<Str> = todo
 
 // 3) 1 文字でも良い “集合”
-fn oneOf(chars: Str) -> Parser<Char>      // 任意の 1 文字が含まれていれば
-fn noneOf(chars: Str) -> Parser<Char>     // いずれでもない
+fn oneOf(chars: Str) -> Parser<Char> = todo      // 任意の 1 文字が含まれていれば
+fn noneOf(chars: Str) -> Parser<Char> = todo     // いずれでもない
 
 // 4) 走査（※空成功を返さない版も提供）
-fn takeWhile(pred: Char -> Bool)  -> Parser<Str>     // 0 文字以上
-fn takeWhile1(pred: Char -> Bool) -> Parser<Str>     // 1 文字以上（空なら失敗）
+fn takeWhile(pred: Char -> Bool)  -> Parser<Str> = todo     // 0 文字以上
+fn takeWhile1(pred: Char -> Bool) -> Parser<Str> = todo     // 1 文字以上（空なら失敗）
 
 // 5) 直後を覗くだけ（非消費）
-fn peek() -> Parser<Option<Char>>
+fn peek() -> Parser<Option<Char>> = todo
 
 // 6) 行区切り（CR/LF/CRLF を LF へ正規化）
-fn lineEnding() -> Parser<()>    // 行末を 1 回読む（非返却）
+fn lineEnding() -> Parser<()> = todo    // 行末を 1 回読む（非返却）
 ```
 
 **注意**
@@ -47,17 +47,17 @@ fn lineEnding() -> Parser<()>    // 行末を 1 回読む（非返却）
 
 ```reml
 // Unicode White_Space（UAX #44）、タブ/全角空白を含む
-fn whitespace() -> Parser<()>                   // 1 つ以上
-fn spaces0() -> Parser<()>                      // 0 以上
-fn hspace0() -> Parser<()>                      // 水平のみ
-fn vspace0() -> Parser<()>                      // 垂直のみ（改行系）
+fn whitespace() -> Parser<()> = todo                   // 1 つ以上
+fn spaces0() -> Parser<()> = todo                      // 0 以上
+fn hspace0() -> Parser<()> = todo                      // 水平のみ
+fn vspace0() -> Parser<()> = todo                      // 垂直のみ（改行系）
 
 // コメント
-fn commentLine(prefix: Str) -> Parser<()>       // 例: "//"
-fn commentBlock(start: Str, end: Str, nested: Bool = true) -> Parser<()>
+fn commentLine(prefix: Str) -> Parser<()> = todo       // 例: "//"
+fn commentBlock(start: Str, end: Str, nested: Bool = true) -> Parser<()> = todo
 
 // スキップ合成：空白・コメントを任意数
-fn skipMany(p: Parser<()>) -> Parser<()>
+fn skipMany(p: Parser<()>) -> Parser<()> = todo
 ```
 
 **推奨定義（例）**
@@ -76,22 +76,22 @@ let sc =
 
 ```reml
 // 後ろの空白・コメントを食う “lexeme”
-fn lexeme<A>(space: Parser<()>, p: Parser<A>) -> Parser<A>
+fn lexeme<A>(space: Parser<()>, p: Parser<A>) -> Parser<A> = todo
 
 // 固定記号（; , ( ) など）。成功時は () を返す
-fn symbol(space: Parser<()>, s: Str) -> Parser<()>   // = lexeme(space, string(s)).skipR(space)
+fn symbol(space: Parser<()>, s: Str) -> Parser<()> = todo   // = lexeme(space, string(s)).skipR(space)
 
 // 先頭側だけをスキップする糖衣
-fn leading<A>(space: Parser<()>, p: Parser<A>) -> Parser<A>
+fn leading<A>(space: Parser<()>, p: Parser<A>) -> Parser<A> = todo
 
 // 前後をまとめて処理する（`leading` + `lexeme`）
-fn trim<A>(space: Parser<()>, p: Parser<A>) -> Parser<A>
+fn trim<A>(space: Parser<()>, p: Parser<A>) -> Parser<A> = todo
 
 // 前後を食う
-fn padded<A>(p: Parser<A>, space: Parser<()>) -> Parser<A>
+fn padded<A>(p: Parser<A>, space: Parser<()>) -> Parser<A> = todo
 
 // 位置付きトークン（値 + Span）
-fn token<A>(p: Parser<A>, space: Parser<()>) -> Parser<(A, Span)>
+fn token<A>(p: Parser<A>, space: Parser<()>) -> Parser<(A, Span)> = todo
 ```
 
 * `symbol(sc, "(")` は `"("` を読んで**後続の `sc` を必ず消費**。
@@ -117,7 +117,7 @@ type IdentifierProfile = {
   confusable_warn: Bool = true     // 見かけ紛らわし警告
 }
 
-fn identifier(profile: IdentifierProfile = DefaultId) -> Parser<Str>
+fn identifier(profile: IdentifierProfile = DefaultId) -> Parser<Str> = todo
 ```
 
 * 既定プロファイル `DefaultId` は **XID\_Start/XID\_Continue + '\_'**。`RunConfig.extensions["lex"].identifier_profile` で `ascii-compat` を指定すると Phase 1 互換の ASCII 限定挙動に切り替えられる。
@@ -128,10 +128,10 @@ fn identifier(profile: IdentifierProfile = DefaultId) -> Parser<Str>
 
 ```reml
 // ident と同一文字列ならキーワードとして成功し、直後が ident-continue なら失敗
-fn keyword(space: Parser<()>, kw: Str) -> Parser<()>     // lexeme + 境界確認
+fn keyword(space: Parser<()>, kw: Str) -> Parser<()> = todo     // lexeme + 境界確認
 
 // 予約語集合をまとめて拒否（identifier と組み合わせ）
-fn reserved(profile: IdentifierProfile, set: Set<Str>) -> Parser<Never>
+fn reserved(profile: IdentifierProfile, set: Set<Str>) -> Parser<Never> = todo
 ```
 
 * `keyword(sc, "if")` は `ifx` を**誤認しない**（`notFollowedBy(ident-continue)` を内部使用）。
@@ -144,18 +144,18 @@ fn reserved(profile: IdentifierProfile, set: Set<Str>) -> Parser<Never>
 
 ```reml
 // 10 進（"1_234" 許容）
-fn int10() -> Parser<Str>                     // “文字列” として取得（桁を維持）
-fn int(radix: 2|8|10|16, allow_prefix: Bool = false) -> Parser<Str>
+fn int10() -> Parser<Str> = todo                     // “文字列” として取得（桁を維持）
+fn int(radix: u8, allow_prefix: Bool = false) -> Parser<Str> = todo // radix: 2|8|10|16
 // 0b / 0o / 0x プレフィックス対応
-fn intAuto() -> Parser<(radix: u8, digits: Str)> // 0x..., 0o..., 0b..., それ以外は 10
+fn intAuto() -> Parser<(radix: u8, digits: Str)> = todo // 0x..., 0o..., 0b..., それ以外は 10
 
 // 浮動小数（10 進、"1.23", ".5", "1e-9", "1_000.0" など）
-fn float() -> Parser<Str>
+fn float() -> Parser<Str> = todo
 
 // 文字列から数値へ（範囲チェック付き）
-fn parseI64(digits: Str, radix: u8 = 10)  -> Result<i64, Overflow>
-fn parseU64(digits: Str, radix: u8 = 10)  -> Result<u64, Overflow>
-fn parseF64(repr: Str)                    -> Result<f64, ParseFloatError>
+fn parseI64(digits: Str, radix: u8 = 10)  -> Result<i64, Overflow> = todo
+fn parseU64(digits: Str, radix: u8 = 10)  -> Result<u64, Overflow> = todo
+fn parseF64(repr: Str)                    -> Result<f64, ParseFloatError> = todo
 ```
 
 **指針**
@@ -174,8 +174,8 @@ type NumericOverflow = {
   target: Str,
 }
 
-fn numeric_overflow_error(span: Span, digits: Str, info: NumericOverflow, radix: u8) -> ParseError
-fn numeric_parse_error(span: Span, repr: Str, cause: ParseFloatError) -> ParseError
+fn numeric_overflow_error(span: Span, digits: Str, info: NumericOverflow, radix: u8) -> ParseError = todo
+fn numeric_parse_error(span: Span, repr: Str, cause: ParseFloatError) -> ParseError = todo
 ```
 
 * `numeric_overflow_error` は `parseI64`/`parseU64` が返した `Overflow` 情報から `NumericOverflow` を構築し、`DiagnosticDomain::Parser`・`message_key = "parser.number.overflow"`・`expected = {Range(info.target)}` を設定する。`notes` には `min`/`max` を記録し、`extensions["numeric"].radix = radix` を付与することで IDE が基数を明示できる。
@@ -189,17 +189,17 @@ fn numeric_parse_error(span: Span, repr: Str, cause: ParseFloatError) -> ParseEr
 
 ```reml
 // 通常文字列（C 風エスケープ、\u{...} は Unicode スカラ値）
-fn stringLit() -> Parser<String>
+fn stringLit() -> Parser<String> = todo
 
 // 原文を保持したい場合（アンエスケープしない）
-fn stringRaw() -> Parser<Str>                // r" ... "
-fn stringRawHash(level: usize) -> Parser<Str>// r#" ... "#, r##" ... "## など
+fn stringRaw() -> Parser<Str> = todo                // r" ... "
+fn stringRawHash(level: usize) -> Parser<Str> = todo// r#" ... "#, r##" ... "## など
 
 // 複数行（トリプルクォート）。インデント除去オプション
-fn stringMultiline(dedent: Bool = true) -> Parser<String>
+fn stringMultiline(dedent: Bool = true) -> Parser<String> = todo
 
 // 1 文字リテラル（Unicode スカラ値 1 個）
-fn charLit() -> Parser<Char>
+fn charLit() -> Parser<Char> = todo
 ```
 
 **エスケープ仕様（抜粋）**
@@ -213,10 +213,10 @@ fn charLit() -> Parser<Char>
 ## G. 汎用“取り込み”ユーティリティ
 
 ```reml
-fn till<A>(end: Parser<A>) -> Parser<Str>            // end が来るまで（非貪欲）
-fn take(n_bytes: usize) -> Parser<Bytes>             // バイト数で取得（テキスト前提なし）
-fn takeCodepoints(n: usize) -> Parser<Str>           // コードポイント数で取得
-fn grapheme() -> Parser<Grapheme>                    // 拡張書記素 1 つ
+fn till<A>(end: Parser<A>) -> Parser<Str> = todo            // end が来るまで（非貪欲）
+fn take(n_bytes: usize) -> Parser<Bytes> = todo             // バイト数で取得（テキスト前提なし）
+fn takeCodepoints(n: usize) -> Parser<Str> = todo           // コードポイント数で取得
+fn grapheme() -> Parser<Grapheme> = todo                    // 拡張書記素 1 つ
 ```
 
 * `till` は **ゼロ幅 end** に注意（実装で guard）。
@@ -241,13 +241,13 @@ type CommentPair = {
   nested: Bool = true,
 }
 
-const ConfigTriviaProfile::strict_json: ConfigTriviaProfile
-const ConfigTriviaProfile::json_relaxed: ConfigTriviaProfile
-const ConfigTriviaProfile::toml_relaxed: ConfigTriviaProfile
+let strict_json: ConfigTriviaProfile = todo
+let json_relaxed: ConfigTriviaProfile = todo
+let toml_relaxed: ConfigTriviaProfile = todo
 
-fn config_trivia(profile: ConfigTriviaProfile) -> Parser<()>
-fn config_lexeme<A>(profile: ConfigTriviaProfile, p: Parser<A>) -> Parser<A>
-fn config_symbol(profile: ConfigTriviaProfile, s: Str) -> Parser<()>
+fn config_trivia(profile: ConfigTriviaProfile) -> Parser<()> = todo
+fn config_lexeme<A>(profile: ConfigTriviaProfile, p: Parser<A>) -> Parser<A> = todo
+fn config_symbol(profile: ConfigTriviaProfile, s: Str) -> Parser<()> = todo
 ```
 
 * `strict_json` はコメント禁止・`shebang=false`・`hash_inline=false`。JSON 仕様準拠の入力に使用する。
@@ -271,11 +271,11 @@ fn config_symbol(profile: ConfigTriviaProfile, s: Str) -> Parser<()>
 Reml 本体はオフサイド規則を採用しないが、DSL 用に提供。
 
 ```reml
-fn bol() -> Parser<()>                     // 行頭（BOL）
-fn eol() -> Parser<()>                     // 行末（EOL）
-fn indentEq(n: usize) -> Parser<()>        // その行の列 == n
-fn indentGt(n: usize) -> Parser<()>        // 列 > n
-fn column() -> Parser<usize>               // 現在列（グラフェム数）
+fn bol() -> Parser<()> = todo                     // 行頭（BOL）
+fn eol() -> Parser<()> = todo                     // 行末（EOL）
+fn indentEq(n: usize) -> Parser<()> = todo        // その行の列 == n
+fn indentGt(n: usize) -> Parser<()> = todo        // 列 > n
+fn column() -> Parser<usize> = todo               // 現在列（グラフェム数）
 ```
 
 ### H-2. LayoutProfile（Phase 9 ドラフト）
@@ -289,8 +289,8 @@ type LayoutProfile = {
   allow_mixed_tabs: Bool = false, // タブとスペース混在を許容するか
 }
 
-fn layout(profile: LayoutProfile) -> Parser<()>           // レイアウトトークンを生成
-fn layout_token(profile: LayoutProfile, s: Str) -> Parser<()> // indent/dedent/newline 判定
+fn layout(profile: LayoutProfile) -> Parser<()> = todo           // レイアウトトークンを生成
+fn layout_token(profile: LayoutProfile, s: Str) -> Parser<()> = todo // indent/dedent/newline 判定
 ```
 
 * `layout` は Lex 側でインデント幅を追跡し、オフサイド規則に従って仮想トークン（`indent_token`/`dedent_token`/`newline_token`）を発行する。`Core.Parse` からは通常の `symbol`/`keyword` と同様に扱え、`autoWhitespace`（2-2 §B-2）経由で空白スキップと併用できる。
@@ -304,13 +304,13 @@ fn layout_token(profile: LayoutProfile, s: Str) -> Parser<()> // indent/dedent/n
 
 ```reml
 // 入力ストリームから Bidi 制御（U+2066…U+2069, RLO/LRO/RLE/LRE/PDF など）を拒否/警告
-fn forbidBidiControls() -> Parser<()>      // 文字列/コメント以外の出現でエラー
+fn forbidBidiControls() -> Parser<()> = todo      // 文字列/コメント以外の出現でエラー
 
 // NFC でない連なりを検出（識別子などで使用）
-fn requireNfc(s: Str) -> Result<Str, NfcError>
+fn requireNfc(s: Str) -> Result<Str, NfcError> = todo
 
 // 見かけ紛らわし（UAX #39）を検出して notes に追加
-fn warnConfusable(s: Str) -> ()
+fn warnConfusable(s: Str) -> () = todo
 ```
 
 ---
@@ -320,8 +320,8 @@ fn warnConfusable(s: Str) -> ()
 * **`label` と `expect`（= label+cut）**
 
   ```reml
-  let sym(s) = expect("symbol '" + s + "'", symbol(sc, s))
-  let kw(s)  = expect("keyword " + s, keyword(sc, s))
+  let sym = |s| expect("symbol '" + s + "'", symbol(sc, s))
+  let kw  = |s| expect("keyword " + s, keyword(sc, s))
   ```
 * **“最長一致”の曖昧は `lookahead`/`notFollowedBy`** で解消
   例：`ident` と `keyword("if")` の競合。
@@ -347,13 +347,13 @@ fn warnConfusable(s: Str) -> ()
 
 ```reml
 let sc = (whitespace().or(commentLine("//")).or(commentBlock("/*","*/", true))) |> skipMany
-let sym(s) = symbol(sc, s)
-let kw(s)  = expect("keyword " + s, keyword(sc, s))
+let sym = |s| symbol(sc, s)
+let kw  = |s| expect("keyword " + s, keyword(sc, s))
 
 let ident = lexeme(sc, identifier(DefaultId))
   |> label("identifier")
 
-let reservedSet = {"fn","let","var","type","match","with","if","then","else","use","pub","return","true","false"}
+let reservedSet = ["fn","let","var","type","match","with","if","then","else","use","pub","return","true","false"]
 let nonReservedIdent =
   ident.andThen(|name| if reservedSet.contains(name) then fail("reserved") else ok(name))
 ```
@@ -385,27 +385,14 @@ let strLit: Parser<String> =
 use Core.Parse
 use Core.Parse.Lex
 
-struct LexPack = {
-  space: Parser<()>,
-  symbol: fn(Str) -> Parser<()>,
-  ident: Parser<Str>,
+type LexPack = {
+  space: Any,
+  symbol: Any,
+  ident: Any,
 }
 
-fn lex_pack(profile: ConfigTriviaProfile = ConfigTriviaProfile::strict_json) -> LexPack =
-  let space = config_trivia(profile)
-  LexPack {
-    space,
-    symbol: |text| symbol(space, text),
-    ident: lexeme(space, identifier(DefaultId)),
-  }
-
-fn parse_entry<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T> =
-  let lex = lex_pack(cfg.extensions.get("config").unwrap_or(ConfigTriviaProfile::strict_json))
-  run(
-    p.with_space(lex.space),
-    src,
-    cfg.with_extension("lex", {|map| map.insert("space", lex.space_id())})
-  )
+fn lex_pack(profile: ConfigTriviaProfile = strict_json) -> LexPack = todo
+fn parse_entry<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T> = todo
 ```
 
 * `lex_pack` はコードベースで 1 箇所だけ定義し、空白・コメント・識別子スキーマを共有する。`ConfigTriviaProfile` を受け取ることで JSON/TOML 対応などの互換モードを即座に選べる。
@@ -447,16 +434,16 @@ fn parse_entry<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult
 
 ```reml
 // 文字レベルでの解析
-fn grapheme() -> Parser<Grapheme>                    // 拡張書記素クラスタ単位
-fn char_where(pred: Char -> Bool) -> Parser<Char>    // Unicode スカラ値での条件解析
+fn grapheme() -> Parser<Grapheme> = todo                    // 拡張書記素クラスタ単位
+fn char_where(pred: Char -> Bool) -> Parser<Char> = todo    // Unicode スカラ値での条件解析
 
 // Unicode プロパティベース解析
-fn unicode_category(cat: String) -> Parser<Char>     // "Lu", "Nd" など
-fn unicode_script(name: String) -> Parser<Char>      // "Han", "Hiragana" など
-fn unicode_property(name: String) -> Parser<Char>    // "White_Space" など
+fn unicode_category(cat: String) -> Parser<Char> = todo     // "Lu", "Nd" など
+fn unicode_script(name: String) -> Parser<Char> = todo      // "Han", "Hiragana" など
+fn unicode_property(name: String) -> Parser<Char> = todo    // "White_Space" など
 
 // UAX #31 識別子解析（安全性統合）
-fn identifier(profile: IdentifierProfile) -> Parser<Str>  // NFC・Bidi・Confusable検査含む
+fn identifier(profile: IdentifierProfile) -> Parser<Str> = todo  // NFC・Bidi・Confusable検査含む
 ```
 
 **文字モデル統合のポイント：**

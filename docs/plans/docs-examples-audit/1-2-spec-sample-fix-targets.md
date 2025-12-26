@@ -111,23 +111,23 @@
 ### docs/spec/2-3-lexer.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| A. 設計の核（プリミティブ 6） | sec_a | examples/docs-examples/spec/2-3-lexer/sec_a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B. 空白・改行・コメント（スキップ系） | sec_b-a | examples/docs-examples/spec/2-3-lexer/sec_b-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C. トークン化の基本ユーティリティ | sec_c | examples/docs-examples/spec/2-3-lexer/sec_c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| D-1. プロファイル | sec_d_1 | examples/docs-examples/spec/2-3-lexer/sec_d_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| D-2. キーワードと境界 | sec_d_2 | examples/docs-examples/spec/2-3-lexer/sec_d_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| E. 数値リテラル（区切り `_` / 基数 / 範囲チェック） | sec_e | examples/docs-examples/spec/2-3-lexer/sec_e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| E-1. 数値エラーの診断変換 | sec_e_1 | examples/docs-examples/spec/2-3-lexer/sec_e_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| F. 文字列・文字リテラル（エスケープ/生/複数行） | sec_f | examples/docs-examples/spec/2-3-lexer/sec_f.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| G. 汎用“取り込み”ユーティリティ | sec_g | examples/docs-examples/spec/2-3-lexer/sec_g.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| G-1. 設定ファイル互換プロファイル | sec_g_1 | examples/docs-examples/spec/2-3-lexer/sec_g_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| H. 行頭・行末・インデント（任意） | sec_h | examples/docs-examples/spec/2-3-lexer/sec_h.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| H-2. LayoutProfile（Phase 9 ドラフト） | sec_h_2 | examples/docs-examples/spec/2-3-lexer/sec_h_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| I. セキュリティ・正規化（安全モード） | sec_i | examples/docs-examples/spec/2-3-lexer/sec_i.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| J. エラー品質のための流儀 | sec_j | examples/docs-examples/spec/2-3-lexer/sec_j.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| L-1. Reml 識別子/キーワード | sec_l_1 | examples/docs-examples/spec/2-3-lexer/sec_l_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| L-4. 既定ランナー統合 | sec_l_4 | examples/docs-examples/spec/2-3-lexer/sec_l_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| O. 文字モデル統合（1.4 連携） | sec_o | examples/docs-examples/spec/2-3-lexer/sec_o.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| A. 設計の核（プリミティブ 6） | sec_a | examples/docs-examples/spec/2-3-lexer/sec_a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B. 空白・改行・コメント（スキップ系） | sec_b-a | examples/docs-examples/spec/2-3-lexer/sec_b-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C. トークン化の基本ユーティリティ | sec_c | examples/docs-examples/spec/2-3-lexer/sec_c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| D-1. プロファイル | sec_d_1 | examples/docs-examples/spec/2-3-lexer/sec_d_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| D-2. キーワードと境界 | sec_d_2 | examples/docs-examples/spec/2-3-lexer/sec_d_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| E. 数値リテラル（区切り `_` / 基数 / 範囲チェック） | sec_e | examples/docs-examples/spec/2-3-lexer/sec_e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| E-1. 数値エラーの診断変換 | sec_e_1 | examples/docs-examples/spec/2-3-lexer/sec_e_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| F. 文字列・文字リテラル（エスケープ/生/複数行） | sec_f | examples/docs-examples/spec/2-3-lexer/sec_f.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| G. 汎用“取り込み”ユーティリティ | sec_g | examples/docs-examples/spec/2-3-lexer/sec_g.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| G-1. 設定ファイル互換プロファイル | sec_g_1 | examples/docs-examples/spec/2-3-lexer/sec_g_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| H. 行頭・行末・インデント（任意） | sec_h | examples/docs-examples/spec/2-3-lexer/sec_h.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| H-2. LayoutProfile（Phase 9 ドラフト） | sec_h_2 | examples/docs-examples/spec/2-3-lexer/sec_h_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| I. セキュリティ・正規化（安全モード） | sec_i | examples/docs-examples/spec/2-3-lexer/sec_i.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| J. エラー品質のための流儀 | sec_j | examples/docs-examples/spec/2-3-lexer/sec_j.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| L-1. Reml 識別子/キーワード | sec_l_1 | examples/docs-examples/spec/2-3-lexer/sec_l_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| L-4. 既定ランナー統合 | sec_l_4 | examples/docs-examples/spec/2-3-lexer/sec_l_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| O. 文字モデル統合（1.4 連携） | sec_o | examples/docs-examples/spec/2-3-lexer/sec_o.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/2-4-op-builder.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
