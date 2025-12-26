@@ -12,9 +12,9 @@ type CommentPair = {
   nested: Bool = true,
 }
 
-let strict_json: ConfigTriviaProfile = todo
-let json_relaxed: ConfigTriviaProfile = todo
-let toml_relaxed: ConfigTriviaProfile = todo
+const ConfigTriviaProfile::strict_json: ConfigTriviaProfile = todo
+const ConfigTriviaProfile::json_relaxed: ConfigTriviaProfile = todo
+const ConfigTriviaProfile::toml_relaxed: ConfigTriviaProfile = todo
 
 fn config_trivia(profile: ConfigTriviaProfile) -> Parser<()> = todo
 fn config_lexeme<A>(profile: ConfigTriviaProfile, p: Parser<A>) -> Parser<A> = todo

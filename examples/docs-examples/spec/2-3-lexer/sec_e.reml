@@ -1,6 +1,6 @@
 // 10 進（"1_234" 許容）
 fn int10() -> Parser<Str> = todo                     // “文字列” として取得（桁を維持）
-fn int(radix: u8, allow_prefix: Bool = false) -> Parser<Str> = todo // radix: 2|8|10|16
+fn int(radix: 2|8|10|16, allow_prefix: Bool = false) -> Parser<Str> = todo
 // 0b / 0o / 0x プレフィックス対応
 fn intAuto() -> Parser<(radix: u8, digits: Str)> = todo // 0x..., 0o..., 0b..., それ以外は 10
 

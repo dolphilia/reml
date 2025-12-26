@@ -145,7 +145,7 @@ fn reserved(profile: IdentifierProfile, set: Set<Str>) -> Parser<Never> = todo
 ```reml
 // 10 進（"1_234" 許容）
 fn int10() -> Parser<Str> = todo                     // “文字列” として取得（桁を維持）
-fn int(radix: u8, allow_prefix: Bool = false) -> Parser<Str> = todo // radix: 2|8|10|16
+fn int(radix: 2|8|10|16, allow_prefix: Bool = false) -> Parser<Str> = todo
 // 0b / 0o / 0x プレフィックス対応
 fn intAuto() -> Parser<(radix: u8, digits: Str)> = todo // 0x..., 0o..., 0b..., それ以外は 10
 
@@ -241,25 +241,25 @@ type CommentPair = {
   nested: Bool = true,
 }
 
-let strict_json: ConfigTriviaProfile = todo
-let json_relaxed: ConfigTriviaProfile = todo
-let toml_relaxed: ConfigTriviaProfile = todo
+const ConfigTriviaProfile::strict_json: ConfigTriviaProfile = todo
+const ConfigTriviaProfile::json_relaxed: ConfigTriviaProfile = todo
+const ConfigTriviaProfile::toml_relaxed: ConfigTriviaProfile = todo
 
 fn config_trivia(profile: ConfigTriviaProfile) -> Parser<()> = todo
 fn config_lexeme<A>(profile: ConfigTriviaProfile, p: Parser<A>) -> Parser<A> = todo
 fn config_symbol(profile: ConfigTriviaProfile, s: Str) -> Parser<()> = todo
 ```
 
-* `strict_json` はコメント禁止・`shebang=false`・`hash_inline=false`。JSON 仕様準拠の入力に使用する。
-* `json_relaxed` は `line=["//"]`・`block=[CommentPair("/*","*/", nested=false)]`・`shebang=true` を既定とし、`../examples/language-impl-comparison/reml/json_extended.reml` が手書きしていた設定を置き換えられる。
-* `toml_relaxed` は `line=["#","//"]`・`block=[]`・`hash_inline=true` を既定とし、`Cargo.toml` 互換のコメント挙動を提供する。
+* `ConfigTriviaProfile::strict_json` はコメント禁止・`shebang=false`・`hash_inline=false`。JSON 仕様準拠の入力に使用する。
+* `ConfigTriviaProfile::json_relaxed` は `line=["//"]`・`block=[CommentPair("/*","*/", nested=false)]`・`shebang=true` を既定とし、`../examples/language-impl-comparison/reml/json_extended.reml` が手書きしていた設定を置き換えられる。
+* `ConfigTriviaProfile::toml_relaxed` は `line=["#","//"]`・`block=[]`・`hash_inline=true` を既定とし、`Cargo.toml` 互換のコメント挙動を提供する。
 
 **診断と RunConfig 連携**
 
 * `config_trivia` は `whitespace()`/`commentLine()`/`commentBlock()` を内部で合成し、`shebang` が有効な場合は入力先頭に限り `#!` を読み飛ばす。複数回呼び出しても二行目以降の `#!` はコメント扱いしない。
 * 失敗時には `ParseError.label = "lex.config.trivia"` を付与し、3-6 §2.2 の `from_parse_error` で `Diagnostic.code = "config.trivia.invalid"` が生成される。
 * `doc_comment=Some(prefix)` の場合、そのコメントを `Diagnostic.notes` に `comment.doc` ラベルで追記し、LSP/CLI が設定項目の説明を提示できるようにする。
-* `RunConfig.extensions["config"].trivia` に `ConfigTriviaProfile` を格納すると、`config_trivia`/`config_lexeme`/`config_symbol` が同じプロファイルを共有し、CLI・LSP・テストが互換モードを自動で揃えられる。未指定時は `strict_json`。
+* `RunConfig.extensions["config"].trivia` に `ConfigTriviaProfile` を格納すると、`config_trivia`/`config_lexeme`/`config_symbol` が同じプロファイルを共有し、CLI・LSP・テストが互換モードを自動で揃えられる。未指定時は `ConfigTriviaProfile::strict_json`。
 * トレーリングカンマや未定義フィールドなど、構文側で処理すべき互換機能は 3-7 §1.5 の `ConfigCompatibility` と連携する。字句段階はカンマの存在を正確に報告し、許可されていない場合は構文が `Diagnostic.severity = Error` として拒否する。
 
 > **実装メモ**: `ConfigTriviaProfile` は `RunConfig.extensions["config"].features` による feature guard と併用し、互換機能を本番環境で段階的に有効化できるようにする（3-10 §2）。
@@ -320,8 +320,8 @@ fn warnConfusable(s: Str) -> () = todo
 * **`label` と `expect`（= label+cut）**
 
   ```reml
-  let sym = |s| expect("symbol '" + s + "'", symbol(sc, s))
-  let kw  = |s| expect("keyword " + s, keyword(sc, s))
+  let sym(s) = expect("symbol '" + s + "'", symbol(sc, s))
+  let kw(s)  = expect("keyword " + s, keyword(sc, s))
   ```
 * **“最長一致”の曖昧は `lookahead`/`notFollowedBy`** で解消
   例：`ident` と `keyword("if")` の競合。
@@ -347,13 +347,13 @@ fn warnConfusable(s: Str) -> () = todo
 
 ```reml
 let sc = (whitespace().or(commentLine("//")).or(commentBlock("/*","*/", true))) |> skipMany
-let sym = |s| symbol(sc, s)
-let kw  = |s| expect("keyword " + s, keyword(sc, s))
+let sym(s) = symbol(sc, s)
+let kw(s)  = expect("keyword " + s, keyword(sc, s))
 
 let ident = lexeme(sc, identifier(DefaultId))
   |> label("identifier")
 
-let reservedSet = ["fn","let","var","type","match","with","if","then","else","use","pub","return","true","false"]
+let reservedSet = {"fn","let","var","type","match","with","if","then","else","use","pub","return","true","false"}
 let nonReservedIdent =
   ident.andThen(|name| if reservedSet.contains(name) then fail("reserved") else ok(name))
 ```
@@ -385,13 +385,14 @@ let strLit: Parser<String> =
 use Core.Parse
 use Core.Parse.Lex
 
-type LexPack = {
+struct LexPack {
   space: Any,
   symbol: Any,
   ident: Any,
 }
 
-fn lex_pack(profile: ConfigTriviaProfile = strict_json) -> LexPack = todo
+fn lex_pack(profile: ConfigTriviaProfile = ConfigTriviaProfile::strict_json) -> LexPack =
+  LexPack { space: todo, symbol: todo, ident: todo }
 fn parse_entry<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T> = todo
 ```
 

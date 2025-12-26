@@ -64,3 +64,6 @@
 ## TODO
 - NG を診断コード別に集計するための補助スクリプトの要否を確認する。
 - rustcap サンプルの命名規則を `docs/spec/0-3-code-style-guide.md` に追記するか検討する。
+
+## 実施メモ
+- 2025-12-26: `docs/spec/2-3-lexer.md` と `examples/docs-examples/spec/2-3-lexer/*.reml` を正準例へ復元（const/型レベル union/let 関数糖衣/集合リテラル/struct・レコード構築）。`reml_frontend --output json` で全サンプル診断 0 件を確認。
