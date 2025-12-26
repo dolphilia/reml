@@ -29,8 +29,21 @@
 - `docs/spec/2-3-lexer.md` の集合リテラル記述を再確認し、`Set<T>` の意味論をメモする。
 - stdlib 仕様（`docs/spec/3-x`）で集合型の想定があるか確認する。
 - Runtime/Backend の既存コレクション実装（配列/スライス）との整合点を洗い出す。
-  - [ ] 仕様メモの作成
-  - [ ] 既存コレクション実装の調査
+  - [x] 仕様メモの作成
+  - [x] 既存コレクション実装の調査
+
+### フェーズ 0 実施メモ
+
+#### 仕様メモ
+- `docs/spec/2-3-lexer.md` では `reserved(profile, set: Set<Str>)` と `reservedSet = {"fn", ...}` が登場し、`Set<Str>` と `{...}` リテラル、および `contains` の利用例が示されている（字句レイヤのレシピ内で使用）。
+- `docs/spec/3-2-core-collections.md` で `Set<T> = PersistentSet<T>` が定義され、`empty_set`/`contains`/`insert`/`diff`/`partition` を提供する。`Set` は `Map<T, Unit>` のラッパで `Ord` 制約を前提に順序付き反復を共有する。
+- `docs/spec/3-1-core-prelude-iteration.md` に `collect_set<T: Ord>(iter: Iter<T>) -> Result<Set<T>, CollectError>` が定義され、重複キーは `CollectError::DuplicateKey` で扱う方針が明記されている。
+
+#### 既存コレクション実装の調査
+- Runtime (`runtime/native/include/reml_runtime.h`) には `reml_list_node_t`（暫定 List）と `reml_index_access`（List/Str 対応）があり、`Set`/`Slice`/`Array` 相当の ABI は未定義。
+- Runtime の `reml_type_tag_t` は基本型のみで、`Set` 系のタグは未追加。
+- Backend (`compiler/rust/backend/llvm/src/type_mapping.rs`) は `RemlType::Slice` を `{ptr, i64}` として扱うが、`Set` の型マッピングは未定義。
+- Backend (`compiler/rust/backend/llvm/src/codegen.rs`) のリテラル解釈は `bool/int/string` のみで、集合リテラルの構造は未対応（それ以外は "unsupported literal" 扱い）。
 
 ### フェーズ 1: MIR/JSON 表現の安定化
 - MIR JSON の `Literal` における `set` 形状を明文化する。
@@ -69,7 +82,7 @@
 ## 進捗管理
 - 本計画書作成日: 2025-12-26
 - 進捗欄（運用用）:
-  - [ ] フェーズ 0 完了
+  - [x] フェーズ 0 完了
   - [ ] フェーズ 1 完了
   - [ ] フェーズ 2 完了
   - [ ] フェーズ 3 完了
