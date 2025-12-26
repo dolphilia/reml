@@ -64,7 +64,7 @@
 - 仕様上の識別子範囲と Backend 内部名の差分がドキュメント化されていることを確認する。
 
 #### 実施結果
-- Runtime: `cargo test --manifest-path compiler/rust/runtime/Cargo.toml` は `tests/audit_capability.rs` が失敗（golden 差分 + PoisonError）。
+- Runtime: `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --test audit_capability` は成功（golden 更新 + newline 正規化で解消）。
 - Backend: `cargo test --manifest-path compiler/rust/backend/llvm/Cargo.toml --lib llvm_ir_sanitizes_emoji_identifiers` は成功。
 - emoji 識別子の IR 出力確認は `integration::tests::llvm_ir_sanitizes_emoji_identifiers` で `@main_u01F680` を確認。
 - 仕様差分の注記は `docs/spec/1-1-syntax.md` に記載済み。

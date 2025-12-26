@@ -85,8 +85,9 @@ fn assert_matches_golden(event: &AuditEvent, golden_name: &str) {
     normalized.timestamp = "1970-01-01T00:00:00Z".into();
     let json = serde_json::to_string(&normalized).expect("serialize capability audit log");
     let path = golden_path(golden_name);
-    let expected =
-        fs::read_to_string(&path).unwrap_or_else(|err| panic!("missing golden {:?}: {err}", path));
+    let expected = fs::read_to_string(&path)
+        .unwrap_or_else(|err| panic!("missing golden {:?}: {err}", path));
+    let expected = expected.trim_end_matches(|c| c == '\n' || c == '\r');
     assert_eq!(
         json, expected,
         "capability audit event differed from golden {:?}",
