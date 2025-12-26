@@ -1384,6 +1384,7 @@ dependencies = [
  "once_cell",
  "ordered-float",
  "proptest",
+ "regex",
  "rust_decimal",
  "schemars",
  "serde",

@@ -63,6 +63,12 @@
 - emoji を含む識別子のサンプルを用意し、IR 出力でサニタイズ結果が期待通りの形式になることを確認する（必要なら簡易サンプルを追加）。
 - 仕様上の識別子範囲と Backend 内部名の差分がドキュメント化されていることを確認する。
 
+#### 実施結果
+- Runtime: `cargo test --manifest-path compiler/rust/runtime/Cargo.toml` は `text::pretty::tests::render_group_uses_flat_layout_when_it_fits` が失敗（`compiler/rust/runtime/src/text/pretty.rs:279`）。
+- Backend: `cargo test --manifest-path compiler/rust/backend/llvm/Cargo.toml` は成功。
+- emoji 識別子の IR 出力確認は未実施（簡易サンプルの追加が必要）。
+- 仕様差分の注記は `docs/spec/1-1-syntax.md` に記載済み。
+
 ## 受け入れ基準
 - Runtime の `keyword` が emoji/ZWJ を含む識別子で誤検出しない。
 - Backend の LLVM IR 出力が非 ASCII 識別子を含んでも生成エラーにならない。
