@@ -1,8 +1,8 @@
 use Core.Parse
 use Core.Parse.Lex
 
-let sc     = Lex.spaceOrTabsOrNewlines |> Lex.skipMany
-let sym(s) = symbol(sc, s)
+let sc = Lex.spaceOrTabsOrNewlines |> Lex.skipMany
+fn sym(s: Str) -> Parser<()> = symbol(sc, s)
 let int    = lexeme(sc, Lex.int(10))
 
 let expr: Parser<i64> = rule("expr", chainl1(term, addOp))
@@ -18,6 +18,6 @@ let mulOp: Parser<(i64,i64)->i64> =
 
 let factor: Parser<i64> = rule("factor",
   (sym("(").then(cut(expr)).then(sym(")")).map(|(_,v,_)| v))   // 括弧に cut
-    .or(sym("-").then(factor).map(|(_,x)| -x))                  // 単項 -
+    .or(sym("-").then(factor).map(|(_,x)| 0 - x))               // 単項 -
     .or(int)
 )

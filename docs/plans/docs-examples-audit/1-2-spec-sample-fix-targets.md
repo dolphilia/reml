@@ -81,32 +81,32 @@
 ### docs/spec/2-2-core-combinator.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| A-1. 基本 | sec_a_1 | examples/docs-examples/spec/2-2-core-combinator/sec_a_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| A-2. 直列・選択 | sec_a_2 | examples/docs-examples/spec/2-2-core-combinator/sec_a_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| A-3. 変換・コミット・回復 | sec_a_3 | examples/docs-examples/spec/2-2-core-combinator/sec_a_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| A-3-a. 回復糖衣（最小セット） | sec_a_3_a | examples/docs-examples/spec/2-2-core-combinator/sec_a_3_a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| A-3-b. 回復ヘルパ（同期点／パニック／欠落補挿） | sec_a_3_b | examples/docs-examples/spec/2-2-core-combinator/sec_a_3_b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| A-4. 繰り返し・任意 | sec_a_4 | examples/docs-examples/spec/2-2-core-combinator/sec_a_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| A-5. 括り・前後関係 | sec_a_5 | examples/docs-examples/spec/2-2-core-combinator/sec_a_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| A-6. 先読み・否定 | sec_a_6 | examples/docs-examples/spec/2-2-core-combinator/sec_a_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| A-7. チェーン（演算子の左/右結合） | sec_a_7 | examples/docs-examples/spec/2-2-core-combinator/sec_a_7.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| A-8. スパン・位置 | sec_a_8 | examples/docs-examples/spec/2-2-core-combinator/sec_a_8.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B. 前後空白（字句インターフェイス） | sec_b | examples/docs-examples/spec/2-2-core-combinator/sec_b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B-1. 空白プロファイルの共有 | sec_b_1 | examples/docs-examples/spec/2-2-core-combinator/sec_b_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B-2. autoWhitespace / Layout（Phase 9 ドラフト） | sec_b_2 | examples/docs-examples/spec/2-2-core-combinator/sec_b_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C-1. CST ノードと Trivia | sec_c_1-a | examples/docs-examples/spec/2-2-core-combinator/sec_c_1-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C-2. ロスレスパース API | sec_c_2 | examples/docs-examples/spec/2-2-core-combinator/sec_c_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C-5. 埋め込み DSL インターフェイス（Phase 4 草案） | sec_c_5 | examples/docs-examples/spec/2-2-core-combinator/sec_c_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B-2-a. layout_token（Layout 連携） | sec_b_2_a | examples/docs-examples/spec/2-2-core-combinator/sec_b_2_a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B-3. 観測/プロファイル（Phase 10 実験フラグ） | sec_b_3 | examples/docs-examples/spec/2-2-core-combinator/sec_b_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C. 便利だが派生（derived）に落とすもの | sec_c | examples/docs-examples/spec/2-2-core-combinator/sec_c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C-1. 優先度ビルダー（Phase 8 ドラフト） | sec_c_1-b | examples/docs-examples/spec/2-2-core-combinator/sec_c_1-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| D. 消費／コミットの要点（実務上の指針） | sec_d-a | examples/docs-examples/spec/2-2-core-combinator/sec_d-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| D. 消費／コミットの要点（実務上の指針） | sec_d-b | examples/docs-examples/spec/2-2-core-combinator/sec_d-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| D. 消費／コミットの要点（実務上の指針） | sec_d-c | examples/docs-examples/spec/2-2-core-combinator/sec_d-c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| E. 例：四則演算（べき乗右結合、カッコ、単項 -） | sec_e | examples/docs-examples/spec/2-2-core-combinator/sec_e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| G-1. ParserMeta の最小構造 | sec_g_1 | examples/docs-examples/spec/2-2-core-combinator/sec_g_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| J. Capability 要求パターン | sec_j | examples/docs-examples/spec/2-2-core-combinator/sec_j.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| A-1. 基本 | sec_a_1 | examples/docs-examples/spec/2-2-core-combinator/sec_a_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| A-2. 直列・選択 | sec_a_2 | examples/docs-examples/spec/2-2-core-combinator/sec_a_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| A-3. 変換・コミット・回復 | sec_a_3 | examples/docs-examples/spec/2-2-core-combinator/sec_a_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| A-3-a. 回復糖衣（最小セット） | sec_a_3_a | examples/docs-examples/spec/2-2-core-combinator/sec_a_3_a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| A-3-b. 回復ヘルパ（同期点／パニック／欠落補挿） | sec_a_3_b | examples/docs-examples/spec/2-2-core-combinator/sec_a_3_b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| A-4. 繰り返し・任意 | sec_a_4 | examples/docs-examples/spec/2-2-core-combinator/sec_a_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| A-5. 括り・前後関係 | sec_a_5 | examples/docs-examples/spec/2-2-core-combinator/sec_a_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| A-6. 先読み・否定 | sec_a_6 | examples/docs-examples/spec/2-2-core-combinator/sec_a_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| A-7. チェーン（演算子の左/右結合） | sec_a_7 | examples/docs-examples/spec/2-2-core-combinator/sec_a_7.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| A-8. スパン・位置 | sec_a_8 | examples/docs-examples/spec/2-2-core-combinator/sec_a_8.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B. 前後空白（字句インターフェイス） | sec_b | examples/docs-examples/spec/2-2-core-combinator/sec_b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B-1. 空白プロファイルの共有 | sec_b_1 | examples/docs-examples/spec/2-2-core-combinator/sec_b_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B-2. autoWhitespace / Layout（Phase 9 ドラフト） | sec_b_2 | examples/docs-examples/spec/2-2-core-combinator/sec_b_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C-1. CST ノードと Trivia | sec_c_1-a | examples/docs-examples/spec/2-2-core-combinator/sec_c_1-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C-2. ロスレスパース API | sec_c_2 | examples/docs-examples/spec/2-2-core-combinator/sec_c_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C-5. 埋め込み DSL インターフェイス（Phase 4 草案） | sec_c_5 | examples/docs-examples/spec/2-2-core-combinator/sec_c_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B-2-a. layout_token（Layout 連携） | sec_b_2_a | examples/docs-examples/spec/2-2-core-combinator/sec_b_2_a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B-3. 観測/プロファイル（Phase 10 実験フラグ） | sec_b_3 | examples/docs-examples/spec/2-2-core-combinator/sec_b_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C. 便利だが派生（derived）に落とすもの | sec_c | examples/docs-examples/spec/2-2-core-combinator/sec_c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C-1. 優先度ビルダー（Phase 8 ドラフト） | sec_c_1-b | examples/docs-examples/spec/2-2-core-combinator/sec_c_1-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| D. 消費／コミットの要点（実務上の指針） | sec_d-a | examples/docs-examples/spec/2-2-core-combinator/sec_d-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| D. 消費／コミットの要点（実務上の指針） | sec_d-b | examples/docs-examples/spec/2-2-core-combinator/sec_d-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| D. 消費／コミットの要点（実務上の指針） | sec_d-c | examples/docs-examples/spec/2-2-core-combinator/sec_d-c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| E. 例：四則演算（べき乗右結合、カッコ、単項 -） | sec_e | examples/docs-examples/spec/2-2-core-combinator/sec_e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| G-1. ParserMeta の最小構造 | sec_g_1 | examples/docs-examples/spec/2-2-core-combinator/sec_g_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| J. Capability 要求パターン | sec_j | examples/docs-examples/spec/2-2-core-combinator/sec_j.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/2-3-lexer.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

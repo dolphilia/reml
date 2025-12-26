@@ -7,7 +7,7 @@ type ParserProfile = {
   memo_entries: Int,
 }
 
-RunConfig.profile: Bool = false
-RunConfig.extensions["parse"].profile: Bool
-RunConfig.extensions["parse"].profile_output: Str
-ParseResult.profile: Option<ParserProfile>
+let run_config_profile: Bool = false
+let run_config_profile_enabled: Bool = todo // RunConfig.extensions["parse"].profile
+let run_config_profile_output: Str = todo // RunConfig.extensions["parse"].profile_output
+let parse_result_profile: Option<ParserProfile> = todo // ParseResult.profile

@@ -1,6 +1,6 @@
-pub enum ParserMetaKind = Rule | Keyword | Symbol | Token
+type ParserMetaKind = Rule | Keyword | Symbol | Token
 
-pub type ParserMeta = {
+type ParserMeta = {
   id: ParserId,
   kind: ParserMetaKind,
   name: Str,

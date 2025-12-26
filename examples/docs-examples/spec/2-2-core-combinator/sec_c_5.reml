@@ -8,11 +8,11 @@ type EmbeddedDslSpec<T> = {
   context: ContextBridge,
 }
 
-enum EmbeddedMode { ParallelSafe, SequentialOnly, Exclusive }
+type EmbeddedMode = ParallelSafe | SequentialOnly | Exclusive
 
-enum ContextBridge
-  = Inherit { keys: [Str] }
-  | Custom { handler: ContextBridgeHandler }
+type ContextBridge =
+  | Inherit([Str])
+  | Custom(ContextBridgeHandler)
 
 type ContextBridgePayload = Map<Str, Json>
 type ContextBridgeHandler = fn(ContextBridgePayload) -> ContextBridgePayload
@@ -25,4 +25,4 @@ type EmbeddedNode<T> = {
   diagnostics: List<Diagnostic>,
 }
 
-fn embedded_dsl<T>(spec: EmbeddedDslSpec<T>) -> Parser<EmbeddedNode<T>>
+fn embedded_dsl<T>(spec: EmbeddedDslSpec<T>) -> Parser<EmbeddedNode<T>> = todo

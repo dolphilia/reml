@@ -6,8 +6,8 @@ type CstNode = {
   span: Span,
 }
 
-type CstChild
-  = Node(CstNode)
+type CstChild =
+  | Node(CstNode)
   | Token(Token)
 
 type Trivia = {
@@ -16,4 +16,4 @@ type Trivia = {
   span: Span,
 }
 
-enum TriviaKind { Whitespace, Comment, Layout }
+type TriviaKind = Whitespace | Comment | Layout

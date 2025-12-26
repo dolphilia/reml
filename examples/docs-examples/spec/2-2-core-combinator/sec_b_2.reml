@@ -4,10 +4,9 @@ type AutoWhitespaceConfig = {
   strategy: AutoWhitespaceStrategy = AutoWhitespaceStrategy::PreferRunConfig,
 }
 
-enum AutoWhitespaceStrategy {
-  PreferRunConfig,   // RunConfig.extensions["lex"] 優先（無ければ profile を使用）
-  ForceProfile,      // RunConfig を無視して profile を強制
-  NoLexBridge,       // 現行 space を維持し、ParserId 共有のみ
-}
+type AutoWhitespaceStrategy
+  = PreferRunConfig   // RunConfig.extensions["lex"] 優先（無ければ profile を使用）
+  | ForceProfile      // RunConfig を無視して profile を強制
+  | NoLexBridge       // 現行 space を維持し、ParserId 共有のみ
 
-fn autoWhitespace<A>(p: Parser<A>, cfg: AutoWhitespaceConfig = {}) -> Parser<A>
+fn autoWhitespace<A>(p: Parser<A>, cfg: AutoWhitespaceConfig = {}) -> Parser<A> = todo
