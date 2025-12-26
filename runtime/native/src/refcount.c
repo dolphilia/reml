@@ -38,6 +38,7 @@ static void destroy_tuple(void* ptr);
 static void destroy_record(void* ptr);
 static void destroy_closure(void* ptr);
 static void destroy_adt(void* ptr);
+static void destroy_set(void* ptr);
 
 /* ========== 参照カウント操作 ========== */
 
@@ -128,6 +129,9 @@ void dec_ref(void* ptr) {
                 break;
             case REML_TAG_ADT:
                 destroy_adt(ptr);
+                break;
+            case REML_TAG_SET:
+                destroy_set(ptr);
                 break;
             case REML_TAG_INT:
             case REML_TAG_FLOAT:
@@ -303,4 +307,24 @@ static void destroy_adt(void* ptr) {
 
     // Phase 2 以降: tag に基づいてペイロードの型を判定し、
     // 適切なデストラクタを呼び出す
+}
+
+/**
+ * Set オブジェクトのデストラクタ
+ *
+ * Phase 3 実装注記:
+ *   Set は {len, capacity, items[]} を持つ。
+ *   items はポインタ同値で管理し、要素は RC 管理対象とする。
+ *
+ * @param ptr Set オブジェクトへのポインタ
+ */
+static void destroy_set(void* ptr) {
+    reml_set_t* set = (reml_set_t*)ptr;
+    if (set->items != NULL) {
+        for (int64_t i = 0; i < set->len; i++) {
+            dec_ref(set->items[i]);
+        }
+        free(set->items);
+        set->items = NULL;
+    }
 }

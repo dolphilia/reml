@@ -48,6 +48,7 @@ typedef enum {
     REML_TAG_RECORD    = 6,  ///< レコード型
     REML_TAG_CLOSURE   = 7,  ///< クロージャ（{env*, code_ptr}）
     REML_TAG_ADT       = 8,  ///< 代数的データ型（{tag, payload}）
+    REML_TAG_SET       = 9,  ///< Set 型（Phase 3: 最小 ABI）
     // Phase 2 以降で追加予定:
     // REML_TAG_ARRAY, REML_TAG_SLICE, REML_TAG_CUSTOM, ...
 } reml_type_tag_t;
@@ -133,6 +134,47 @@ void panic(const char* msg) REML_NORETURN;
  * @note 改行は自動的に付与される
  */
 void print_i64(int64_t value);
+
+/* ========== Set ABI（Phase 3: 最小実装） ========== */
+
+typedef struct {
+    int64_t len;        ///< 要素数
+    int64_t capacity;   ///< バッファ容量
+    void** items;       ///< 要素配列（ポインタ同値で比較）
+} reml_set_t;
+
+/**
+ * 空の Set を生成する
+ *
+ * @return 新しい Set オブジェクト（不透明ポインタとして扱う）
+ */
+void* reml_set_new(void);
+
+/**
+ * Set に要素を追加する（永続データ構造として新しい Set を返す）
+ *
+ * @param set_ptr 既存の Set
+ * @param value_ptr 追加する要素
+ * @return 追加後の新しい Set
+ */
+void* reml_set_insert(void* set_ptr, void* value_ptr);
+
+/**
+ * Set に要素が含まれているかを判定する
+ *
+ * @param set_ptr Set
+ * @param value_ptr 判定対象
+ * @return 含まれていれば 1、含まれていなければ 0
+ */
+int32_t reml_set_contains(void* set_ptr, void* value_ptr);
+
+/**
+ * Set の要素数を返す
+ *
+ * @param set_ptr Set
+ * @return 要素数
+ */
+int64_t reml_set_len(void* set_ptr);
 
 /* ========== 型クラスビルトイン実装（Phase 2 Week 22-23） ========== */
 

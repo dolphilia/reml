@@ -13,6 +13,7 @@ set(RUNTIME_SOURCES
     src/os.c
     src/string_compare.c
     src/string_data.c
+    src/set.c
 )
 
 add_library(reml_runtime STATIC ${RUNTIME_SOURCES})
@@ -52,4 +53,5 @@ if(BUILD_TESTING)
     reml_runtime_add_test(test_refcount)
     reml_runtime_add_test(test_ffi_bridge)
     reml_runtime_add_test(test_os)
+    reml_runtime_add_test(test_set)
 endif()
