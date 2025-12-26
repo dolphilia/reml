@@ -32,12 +32,50 @@ const INTRINSIC_IF_ELSE: &str = "@reml_if_else";
 const INTRINSIC_PERFORM: &str = "@reml_perform";
 const INTRINSIC_PANIC: &str = "@panic";
 
+fn sanitize_llvm_ident(source: &str) -> String {
+    let mut buf = String::new();
+    for ch in source.chars() {
+        if ch.is_ascii_alphanumeric() || ch == '_' {
+            buf.push(ch);
+        } else {
+            let code = ch as u32;
+            if code <= 0xFFFF {
+                let _ = write!(&mut buf, "_u{code:04X}");
+            } else {
+                let _ = write!(&mut buf, "_u{code:06X}");
+            }
+        }
+    }
+    if buf.is_empty() {
+        return "_u0000".to_string();
+    }
+    if buf
+        .chars()
+        .next()
+        .map(|c| c.is_ascii_digit())
+        .unwrap_or(false)
+    {
+        buf.insert(0, '_');
+    }
+    buf
+}
+
+fn sanitize_llvm_symbol(name: &str) -> String {
+    if let Some(rest) = name.strip_prefix('@') {
+        format!("@{}", sanitize_llvm_ident(rest))
+    } else if let Some(rest) = name.strip_prefix('%') {
+        format!("%{}", sanitize_llvm_ident(rest))
+    } else {
+        sanitize_llvm_ident(name)
+    }
+}
+
 fn intrinsic_is_ctor(name: &str) -> String {
-    format!("@reml_is_ctor_{name}")
+    format!("@reml_is_ctor_{}", sanitize_llvm_ident(name))
 }
 
 fn intrinsic_ctor_payload(name: &str) -> String {
-    format!("@reml_ctor_payload_{name}")
+    format!("@reml_ctor_payload_{}", sanitize_llvm_ident(name))
 }
 
 fn intrinsic_value_for_type<'a>(ty: &str, ssa: &'a LlvmBuilder) -> &'a str {
@@ -510,6 +548,7 @@ impl LlvmBuilder {
 
     fn new_tmp(&mut self, hint: &str) -> String {
         self.counter += 1;
+        let hint = sanitize_llvm_ident(hint);
         format!("%{hint}{}", self.counter)
     }
 
@@ -928,7 +967,7 @@ impl LlvmIrBuilder {
             .map(|ty| self.type_mapping.layout_of(ty).description)
             .unwrap_or_else(|| "void".into());
         LlvmFunction {
-            name: name.into(),
+            name: sanitize_llvm_symbol(name),
             params,
             ret,
             blocks,
@@ -4997,7 +5036,7 @@ fn format_operand_from_summary(summary: &str) -> String {
     if trimmed.starts_with('{') && trimmed.ends_with('}') {
         if let Ok(value) = serde_json::from_str::<serde_json::Value>(trimmed) {
             if let Some(name) = value.get("name").and_then(|v| v.as_str()) {
-                return format!("%{name}");
+                return format!("%{}", sanitize_llvm_ident(name));
             }
         }
     }
@@ -5529,7 +5568,7 @@ fn emit_pattern_blocks(
             llvm_instrs.push(LlvmInstr::Call {
                 result: Some(call_var.clone()),
                 ret_ty: "ptr".into(),
-                callee: format!("@{}", name),
+                callee: format!("@{}", sanitize_llvm_ident(name)),
                 args: vec![(ssa.pointer_type(), target_operand.into())],
             });
             let cond = match kind {

@@ -30,6 +30,7 @@
   - **トークン分類**: Lexer は先頭文字が大文字の識別子を `UPPER_IDENT`、それ以外を `IDENT` として返す。両者とも同じ Unicode 制約を共有し、構文解析では `ident` 非終端を通じて共通的に扱う。
   - **目的**: `UPPER_IDENT` を導入することで、パターン文脈で列挙子（`Option.None` など）と変数の曖昧さを解消し、Menhir 上での縮約衝突を防ぐ。
   - **互換プロファイル**: `RunConfig.extensions["lex"].identifier_profile` で `ascii-compat` を指定すると、Phase 1 系ツールとの互換用に ASCII 限定モードへ切り替えられる。CLI／LSP／Streaming いずれのランナーでも同じ設定キーを共有し、監査ログでは `unicode.identifier_profile` で実際に使用されたプロファイルを記録する。
+  - **バックエンド内部名**: LLVM IR などの内部表現では非 ASCII の識別子を `_uXXXX`（必要に応じて `_uXXXXXX`）形式へ正規化し、先頭が数字になる場合は `_` を付与する。これは内部名の変換であり、言語仕様上の識別子範囲を狭めるものではない。
 * 予約語（全一覧）：
   - **モジュール/可視性**: `module`, `use`, `as`, `pub`, `self`, `super`
   - **宣言と定義**: `let`, `var`, `fn`, `type`, `alias`, `new`, `trait`, `impl`, `extern`, `effect`, `operation`, `handler`, `conductor`, `channels`, `execution`, `monitoring`
