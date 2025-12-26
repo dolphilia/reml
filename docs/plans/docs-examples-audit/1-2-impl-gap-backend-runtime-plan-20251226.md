@@ -68,6 +68,10 @@
 - Backend: `cargo test --manifest-path compiler/rust/backend/llvm/Cargo.toml --lib llvm_ir_sanitizes_emoji_identifiers` は成功。
 - emoji 識別子の IR 出力確認は `integration::tests::llvm_ir_sanitizes_emoji_identifiers` で `@main_u01F680` を確認。
 - 仕様差分の注記は `docs/spec/1-1-syntax.md` に記載済み。
+- `REML_WATCHER_BACKEND=poll` の運用方針:
+  - 本番は `RecommendedWatcher` を既定とし、`REML_WATCHER_BACKEND` を未設定で運用する。
+  - 開発/CI で watcher テストが不安定な場合のみ `REML_WATCHER_BACKEND=poll` を許可し、テストで明示的に切り替える。
+  - 互換性確認のため、poll 使用時はポーリング間隔を短く設定しつつ、性能面の影響は本番へ持ち込まない。
 
 ## 受け入れ基準
 - Runtime の `keyword` が emoji/ZWJ を含む識別子で誤検出しない。

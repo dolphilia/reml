@@ -38,7 +38,7 @@ static REGISTRY: Lazy<RwLock<Option<&'static CapabilityRegistry>>> =
 #[cfg(test)]
 static LEAKED_FOR_TESTS: Lazy<Mutex<Vec<Box<CapabilityRegistry>>>> =
     Lazy::new(|| Mutex::new(Vec::new()));
-static REGISTRY_TEST_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+static REGISTRY_TEST_LOCK: Lazy<RwLock<()>> = Lazy::new(|| RwLock::new(()));
 const CAPABILITY_SCHEMA_VERSION: &str = "3.0.0-alpha";
 
 /// Capability を検証するためのレジストリ。
@@ -51,7 +51,7 @@ pub struct CapabilityRegistry {
 impl CapabilityRegistry {
     /// シングルトンのレジストリを取得する。
     pub fn registry() -> &'static Self {
-        let _test_guard = REGISTRY_TEST_LOCK.lock().unwrap();
+        let _test_guard = REGISTRY_TEST_LOCK.read().unwrap();
         if let Some(instance) = Self::try_get_cached(REGISTRY.read().unwrap()) {
             return instance;
         }
@@ -1107,7 +1107,11 @@ where
 }
 
 pub fn reset_for_tests() {
-    let _test_guard = REGISTRY_TEST_LOCK.lock().unwrap();
+    let _test_guard = REGISTRY_TEST_LOCK.write().unwrap();
+    reset_for_tests_inner();
+}
+
+fn reset_for_tests_inner() {
     if let Some(instance) = REGISTRY.write().unwrap().take() {
         unsafe {
             #[cfg(test)]
@@ -1132,6 +1136,7 @@ mod tests {
 
     #[test]
     fn registry_returns_same_instance() {
+        let _test_guard = REGISTRY_TEST_LOCK.read().unwrap();
         let first = CapabilityRegistry::registry() as *const CapabilityRegistry;
         let second = CapabilityRegistry::registry() as *const CapabilityRegistry;
         assert_eq!(first, second);
@@ -1140,7 +1145,10 @@ mod tests {
     #[test]
     fn reset_for_tests_clears_instance() {
         let first = CapabilityRegistry::registry() as *const CapabilityRegistry;
-        reset_for_tests();
+        {
+            let _test_guard = REGISTRY_TEST_LOCK.write().unwrap();
+            reset_for_tests_inner();
+        }
         let second = CapabilityRegistry::registry() as *const CapabilityRegistry;
         assert_ne!(first, second);
     }
