@@ -13,6 +13,8 @@ use tempfile::tempdir;
 
 #[test]
 fn watch_reports_create_and_delete_events() {
+    let prev_backend = std::env::var("REML_WATCHER_BACKEND").ok();
+    std::env::set_var("REML_WATCHER_BACKEND", "poll");
     let temp_dir = tempdir().expect("tempdir should create directory");
     let watch_path = temp_dir.path().to_path_buf();
     let file_path = watch_path.join("sample.txt");
@@ -27,6 +29,8 @@ fn watch_reports_create_and_delete_events() {
     })
     .expect("watch should initialize");
     let handle = watcher.handle();
+    // Give the backend watcher time to start before we trigger filesystem events.
+    thread::sleep(Duration::from_millis(200));
 
     fs::copy(simple_case_fixture("initial.txt"), &file_path).expect("copy fixture file");
     thread::sleep(Duration::from_millis(100));
@@ -35,31 +39,31 @@ fn watch_reports_create_and_delete_events() {
     fs::remove_file(&file_path).expect("remove sample file");
 
     let mut collected: Vec<WatchEvent> = Vec::new();
+    let mut seen_created = false;
+    let mut seen_deleted = false;
     let start = Instant::now();
-    while collected.len() < 2 && start.elapsed() < Duration::from_secs(3) {
+    while start.elapsed() < Duration::from_secs(3) && (!seen_created || !seen_deleted) {
         if let Ok(event) = rx.recv_timeout(Duration::from_millis(200)) {
+            if matches!(
+                event,
+                WatchEvent::Created(ref path)
+                    if path.file_name().map_or(false, |name| name == "sample.txt")
+            ) {
+                seen_created = true;
+            }
+            if matches!(
+                event,
+                WatchEvent::Deleted(ref path)
+                    if path.file_name().map_or(false, |name| name == "sample.txt")
+            ) {
+                seen_deleted = true;
+            }
             collected.push(event);
         }
     }
 
-    assert!(
-        collected.iter().any(|event| {
-            matches!(
-                event,
-                WatchEvent::Created(path) if path.file_name().map_or(false, |name| name == "sample.txt")
-            )
-        }),
-        "expected created event, got {collected:?}"
-    );
-    assert!(
-        collected.iter().any(|event| {
-            matches!(
-                event,
-                WatchEvent::Deleted(path) if path.file_name().map_or(false, |name| name == "sample.txt")
-            )
-        }),
-        "expected deleted event, got {collected:?}"
-    );
+    assert!(seen_created, "expected created event, got {collected:?}");
+    assert!(seen_deleted, "expected deleted event, got {collected:?}");
 
     close_watcher(watcher).expect("watcher should close");
     let snapshot = handle.audit_snapshot();
@@ -68,6 +72,11 @@ fn watch_reports_create_and_delete_events() {
         "audit snapshot should contain at least 2 events"
     );
     persist_watcher_audit_report("simple_case", &snapshot);
+    if let Some(prev_backend) = prev_backend {
+        std::env::set_var("REML_WATCHER_BACKEND", prev_backend);
+    } else {
+        std::env::remove_var("REML_WATCHER_BACKEND");
+    }
 }
 
 #[test]

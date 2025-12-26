@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -10,7 +11,9 @@ use std::time::{Duration, Instant};
 
 use glob::Pattern;
 use notify::event::{CreateKind, EventKind, ModifyKind, RemoveKind};
-use notify::{Config as NotifyConfig, Event, RecommendedWatcher, RecursiveMode, Watcher as _};
+use notify::{
+    Config as NotifyConfig, Event, PollWatcher, RecommendedWatcher, RecursiveMode, Watcher as _,
+};
 
 use super::{
     adapters::{
@@ -149,7 +152,10 @@ where
 {
     let resolved_paths: Vec<PathBuf> = paths
         .into_iter()
-        .map(|p| p.as_ref().to_path_buf())
+        .map(|p| {
+            let path = p.as_ref();
+            fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+        })
         .collect();
     if resolved_paths.is_empty() {
         return Err(invalid_input_error(
@@ -189,8 +195,12 @@ where
     let exclude =
         build_exclude_set(&limits).map_err(|err| err.with_context(base_context.clone()))?;
 
+    let comparison_paths: Vec<PathBuf> = resolved_paths
+        .iter()
+        .map(|path| fs::canonicalize(path).unwrap_or_else(|_| path.clone()))
+        .collect();
     let config = WatchRuntimeConfig {
-        base_paths: resolved_paths.clone(),
+        comparison_paths,
         limits: limits.clone(),
         exclude,
     };
@@ -199,19 +209,45 @@ where
     let (event_tx, event_rx) = mpsc::channel();
     let queue_depth = Arc::new(AtomicUsize::new(0));
     let sender_depth = queue_depth.clone();
-    let mut watcher = RecommendedWatcher::new(
-        move |res: notify::Result<Event>| {
-            sender_depth.fetch_add(1, Ordering::SeqCst);
-            let timestamp = Instant::now();
-            if event_tx.send((timestamp, res)).is_err() {
-                sender_depth.fetch_sub(1, Ordering::SeqCst);
+    let use_poll_backend = std::env::var("REML_WATCHER_BACKEND")
+        .map(|value| value.eq_ignore_ascii_case("poll"))
+        .unwrap_or(false);
+    let notify_config = if use_poll_backend {
+        NotifyConfig::default().with_poll_interval(Duration::from_millis(100))
+    } else {
+        NotifyConfig::default()
+    };
+    let make_event_handler =
+        |event_tx: Sender<ScheduledEvent>, sender_depth: Arc<AtomicUsize>| {
+            move |res: notify::Result<Event>| {
+                sender_depth.fetch_add(1, Ordering::SeqCst);
+                let timestamp = Instant::now();
+                if event_tx.send((timestamp, res)).is_err() {
+                    sender_depth.fetch_sub(1, Ordering::SeqCst);
+                }
             }
-        },
-        NotifyConfig::default(),
-    )
-    .map_err(|err| {
-        notify_to_io_error(err, None, base_context.clone(), WatchMetricsSnapshot::EMPTY)
-    })?;
+        };
+    let mut watcher: Box<dyn notify::Watcher + Send> = if use_poll_backend {
+        Box::new(
+            PollWatcher::new(
+                make_event_handler(event_tx.clone(), Arc::clone(&sender_depth)),
+                notify_config,
+            )
+            .map_err(|err| {
+                notify_to_io_error(err, None, base_context.clone(), WatchMetricsSnapshot::EMPTY)
+            })?,
+        )
+    } else {
+        Box::new(
+            RecommendedWatcher::new(
+                make_event_handler(event_tx, sender_depth),
+                notify_config,
+            )
+            .map_err(|err| {
+                notify_to_io_error(err, None, base_context.clone(), WatchMetricsSnapshot::EMPTY)
+            })?,
+        )
+    };
 
     let recursive_mode = recursive_mode(&limits);
     for path in &resolved_paths {
@@ -237,11 +273,12 @@ where
         error_state: Arc::clone(&state.error),
         base_context: base_context.clone(),
         audit: audit_recorder,
+        watcher,
     };
 
     let join_handle = thread::Builder::new()
         .name("core-io-watcher".into())
-        .spawn(move || run_watcher(runtime, watcher))
+        .spawn(move || run_watcher(runtime))
         .map_err(|err| {
             IoError::new(
                 IoErrorKind::OutOfMemory,
@@ -258,7 +295,8 @@ pub fn close_watcher(watcher: Watcher) -> IoResult<()> {
     watcher.close()
 }
 
-fn run_watcher(runtime: WatchRuntime, _watcher: RecommendedWatcher) {
+fn run_watcher(runtime: WatchRuntime) {
+    let _watcher = &runtime.watcher;
     let mut rate_limiter = RateLimiter::new(runtime.config.limits.max_events_per_second);
     loop {
         if runtime.should_stop() {
@@ -297,6 +335,7 @@ struct WatchRuntime {
     error_state: Arc<Mutex<Option<IoError>>>,
     base_context: IoContext,
     audit: WatcherEventRecorder,
+    watcher: Box<dyn notify::Watcher + Send>,
 }
 
 impl WatchRuntime {
@@ -425,7 +464,7 @@ impl WatcherState {
 }
 
 struct WatchRuntimeConfig {
-    base_paths: Vec<PathBuf>,
+    comparison_paths: Vec<PathBuf>,
     limits: WatchLimits,
     exclude: Option<Vec<Pattern>>,
 }
@@ -436,13 +475,15 @@ impl WatchRuntimeConfig {
     }
 
     fn within_depth(&self, path: &Path) -> bool {
+        let candidate = normalize_event_path(path);
         match self.limits.max_depth {
             None => true,
-            Some(limit) => self.base_paths.iter().any(|base| {
-                if base == path {
+            Some(limit) => self.comparison_paths.iter().any(|base| {
+                if base == &candidate {
                     return true;
                 }
-                path.strip_prefix(base)
+                candidate
+                    .strip_prefix(base)
                     .ok()
                     .map(|relative| relative.components().count() <= limit as usize)
                     .unwrap_or(false)
@@ -461,6 +502,20 @@ impl WatchRuntimeConfig {
 struct RateLimiter {
     limit: Option<u32>,
     window: VecDeque<Instant>,
+}
+
+fn normalize_event_path(path: &Path) -> PathBuf {
+    if let Ok(canonical) = fs::canonicalize(path) {
+        return canonical;
+    }
+    if let Some(parent) = path.parent() {
+        if let Ok(canonical_parent) = fs::canonicalize(parent) {
+            if let Some(name) = path.file_name() {
+                return canonical_parent.join(name);
+            }
+        }
+    }
+    path.to_path_buf()
 }
 
 impl RateLimiter {
