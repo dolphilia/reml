@@ -245,6 +245,9 @@ fn fits(remaining: isize, stack: &[DocFrame]) -> bool {
                 });
             }
         }
+        if remaining < 0 {
+            return false;
+        }
     }
 
     true

@@ -1372,4 +1372,44 @@ mod tests {
         );
         Ok(())
     }
+
+    #[test]
+    fn llvm_ir_sanitizes_emoji_identifiers() -> Result<(), MirSnapshotError> {
+        let spec = r#"
+    {
+      "functions": [
+        {
+          "name": "@main\uD83D\uDE80",
+          "calling_conv": "ccc",
+          "params": [],
+          "return": "i32"
+        }
+      ]
+    }
+    "#;
+        let tmp = env::temp_dir().join("reml_mir_emoji_ident.json");
+        fs::write(&tmp, spec)?;
+        let snapshot = generate_snapshot_from_mir_json(
+            &tmp,
+            test_target_machine(),
+            vec![],
+            vec!["phase=test".into()],
+            "mir_test",
+        )?;
+        let func = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "@main\u{1F680}")
+            .expect("emoji 識別子の関数が存在すること");
+        assert!(
+            func.llvm_ir.contains("@main_u01F680"),
+            "LLVM IR では emoji 識別子がサニタイズされること"
+        );
+        assert!(
+            !func.llvm_ir.contains("\u{1F680}"),
+            "LLVM IR に生の emoji が残らないこと"
+        );
+        fs::remove_file(tmp)?;
+        Ok(())
+    }
 }
