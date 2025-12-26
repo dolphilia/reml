@@ -17,7 +17,7 @@ use crate::parser::ast::{
     Attribute, BinaryOp, ConductorDecl, ConductorMonitorTarget, Decl, DeclKind, EffectAnnotation,
     Expr, ExprKind, FixityKind, Function, HandlerEntry, Ident, Literal, LiteralKind, MatchArm,
     Module, ModulePath, Pattern, PatternKind, RelativeHead, SlicePatternItem, Stmt, StmtKind,
-    TypeKind,
+    TypeKind, TypeLiteral,
 };
 use crate::semantics::{mir, typed};
 use crate::span::Span;
@@ -1508,7 +1508,9 @@ fn visit_decl_for_opbuilder(
     violations: &mut Vec<TypecheckViolation>,
 ) {
     match &decl.kind {
-        DeclKind::Let { value, .. } | DeclKind::Var { value, .. } => {
+        DeclKind::Let { value, .. }
+        | DeclKind::Var { value, .. }
+        | DeclKind::Const { value, .. } => {
             visit_expr_for_opbuilder(value, tracker, violations);
         }
         DeclKind::Effect(effect) => {
@@ -1555,7 +1557,9 @@ fn visit_literal_for_opbuilder(
     violations: &mut Vec<TypecheckViolation>,
 ) {
     match &literal.value {
-        LiteralKind::Tuple { elements } | LiteralKind::Array { elements } => {
+        LiteralKind::Tuple { elements }
+        | LiteralKind::Array { elements }
+        | LiteralKind::Set { elements } => {
             for element in elements {
                 visit_expr_for_opbuilder(element, tracker, violations);
             }
@@ -1885,6 +1889,38 @@ fn infer_expr(
                     let _ = solver.unify(result.ty.clone(), element_ty.clone());
                 }
                 let ty = Type::slice(solver.substitution().apply(&element_ty));
+                make_typed(
+                    expr,
+                    TypedExprKindDraft::Literal(literal.clone()),
+                    ty,
+                    dicts,
+                )
+            }
+            LiteralKind::Set { elements } => {
+                let mut dicts = Vec::new();
+                let element_ty = var_gen.fresh_type();
+                for element in elements {
+                    let result = infer_expr(
+                        element,
+                        env,
+                        var_gen,
+                        solver,
+                        constraints,
+                        stats,
+                        metrics,
+                        violations,
+                        dict_refs,
+                        loop_context,
+                        context,
+                    );
+                    dicts.extend(result.dict_ref_ids);
+                    stats.constraints += 1;
+                    metrics.record_constraint("literal.set.element");
+                    constraints.push(Constraint::equal(result.ty.clone(), element_ty.clone()));
+                    metrics.record_unify_call();
+                    let _ = solver.unify(result.ty.clone(), element_ty.clone());
+                }
+                let ty = Type::app("Set", vec![solver.substitution().apply(&element_ty)]);
                 make_typed(
                     expr,
                     TypedExprKindDraft::Literal(literal.clone()),
@@ -2934,6 +2970,38 @@ fn infer_block(
                         },
                     });
                 }
+                DeclKind::Const {
+                    name,
+                    value,
+                    type_annotation: _,
+                } => {
+                    let pattern = Pattern {
+                        span: name.span,
+                        kind: PatternKind::Var(name.clone()),
+                    };
+                    let (value_result, stmt_refs) = infer_binding_with_value(
+                        &pattern,
+                        value,
+                        &mut block_env,
+                        var_gen,
+                        solver,
+                        constraints,
+                        stats,
+                        metrics,
+                        violations,
+                        dict_refs,
+                        context,
+                        loop_context,
+                    );
+                    block_dict_refs.extend(stmt_refs.clone());
+                    typed_statements.push(TypedStmtDraft {
+                        span: stmt.span,
+                        kind: TypedStmtKindDraft::Let {
+                            pattern: lower_typed_pattern(&pattern),
+                            value: Box::new(value_result),
+                        },
+                    });
+                }
                 DeclKind::Var {
                     pattern,
                     value,
@@ -3108,6 +3176,33 @@ fn infer_decl(
             }
             infer_binding(
                 pattern,
+                value,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                context,
+                loop_context,
+            )
+        }
+        DeclKind::Const {
+            name,
+            value,
+            type_annotation: _,
+        } => {
+            let pattern = Pattern {
+                span: name.span,
+                kind: PatternKind::Var(name.clone()),
+            };
+            if let Some(tracker) = unicode_tracker {
+                tracker.observe_pattern(&pattern, decl.span, violations);
+            }
+            infer_binding(
+                &pattern,
                 value,
                 env,
                 var_gen,
@@ -4259,7 +4354,10 @@ fn type_from_annotation_kind(kind: &TypeKind) -> Option<Type> {
             "Bytes" => Some(Type::builtin(BuiltinType::Bytes)),
             _ => None,
         },
-        TypeKind::Literal { .. } => Some(Type::builtin(BuiltinType::Str)),
+        TypeKind::Literal { value } => match value {
+            TypeLiteral::String { .. } => Some(Type::builtin(BuiltinType::Str)),
+            TypeLiteral::Int { .. } => Some(Type::builtin(BuiltinType::Int)),
+        },
         TypeKind::App { callee, args } => {
             let mut resolved_args = Vec::new();
             for arg in args {
@@ -4280,11 +4378,22 @@ fn type_from_annotation_kind(kind: &TypeKind) -> Option<Type> {
                     return None;
                 }
             }
-            if resolved
-                .iter()
-                .all(|ty| matches!(ty, Type::Builtin(BuiltinType::Str)))
-            {
-                Some(Type::builtin(BuiltinType::Str))
+            let first_builtin = resolved.iter().find_map(|ty| {
+                if let Type::Builtin(builtin) = ty {
+                    Some(*builtin)
+                } else {
+                    None
+                }
+            });
+            if let Some(builtin) = first_builtin {
+                if resolved
+                    .iter()
+                    .all(|ty| matches!(ty, Type::Builtin(next) if *next == builtin))
+                {
+                    Some(Type::builtin(builtin))
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -5152,7 +5261,9 @@ fn visit_module_exprs(module: &Module, visitor: &mut impl FnMut(&Expr)) {
 
 fn visit_decl(decl: &Decl, visitor: &mut impl FnMut(&Expr)) {
     match &decl.kind {
-        DeclKind::Let { value, .. } | DeclKind::Var { value, .. } => visit_expr(value, visitor),
+        DeclKind::Let { value, .. }
+        | DeclKind::Var { value, .. }
+        | DeclKind::Const { value, .. } => visit_expr(value, visitor),
         _ => {}
     }
 }
@@ -5256,9 +5367,16 @@ fn visit_expr(expr: &Expr, visitor: &mut impl FnMut(&Expr)) {
 
 fn visit_literal(literal: &Literal, visitor: &mut impl FnMut(&Expr)) {
     match &literal.value {
-        LiteralKind::Tuple { elements } | LiteralKind::Array { elements } => {
+        LiteralKind::Tuple { elements }
+        | LiteralKind::Array { elements }
+        | LiteralKind::Set { elements } => {
             for element in elements {
                 visit_expr(element, visitor);
+            }
+        }
+        LiteralKind::Record { fields, .. } => {
+            for field in fields {
+                visit_expr(&field.value, visitor);
             }
         }
         _ => {}
@@ -5441,7 +5559,9 @@ fn collect_perform_effects_in_stmt(stmt: &Stmt, usages: &mut Vec<EffectUsage>) {
 
 fn collect_perform_effects_in_decl(decl: &Decl, usages: &mut Vec<EffectUsage>) {
     match &decl.kind {
-        DeclKind::Let { value, .. } | DeclKind::Var { value, .. } => {
+        DeclKind::Let { value, .. }
+        | DeclKind::Var { value, .. }
+        | DeclKind::Const { value, .. } => {
             collect_perform_effects(value, usages);
         }
         _ => {}

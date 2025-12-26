@@ -83,5 +83,13 @@
     "mirrors": [
       "https://mirror.example"
     ]
+  },
+  "config": {
+    "compatibility": {}
+  },
+  "run": {
+    "target": {
+      "capabilities": []
+    }
   }
 }

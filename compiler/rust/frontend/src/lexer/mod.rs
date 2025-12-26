@@ -106,12 +106,16 @@ enum RawToken {
     KeywordLet,
     #[token("var")]
     KeywordVar,
+    #[token("const")]
+    KeywordConst,
     #[token("mut")]
     KeywordMut,
     #[token("fn")]
     KeywordFn,
     #[token("type")]
     KeywordType,
+    #[token("struct")]
+    KeywordStruct,
     #[token("alias")]
     KeywordAlias,
     #[token("new")]
@@ -497,12 +501,18 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             Ok(RawToken::KeywordVar) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordVar, "var")
             }
+            Ok(RawToken::KeywordConst) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordConst, "const")
+            }
             Ok(RawToken::KeywordMut) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordMut, "mut")
             }
             Ok(RawToken::KeywordFn) => push_keyword(&mut tokens, span, TokenKind::KeywordFn, "fn"),
             Ok(RawToken::KeywordType) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordType, "type")
+            }
+            Ok(RawToken::KeywordStruct) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordStruct, "struct")
             }
             Ok(RawToken::KeywordAlias) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordAlias, "alias")

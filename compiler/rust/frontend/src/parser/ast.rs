@@ -237,9 +237,13 @@ impl Decl {
             DeclKind::Var { pattern, value, .. } => {
                 format!("var {} = {}", pattern.render(), value.render())
             }
+            DeclKind::Const { name, value, .. } => {
+                format!("const {} = {}", name.name, value.render())
+            }
             DeclKind::Fn { name, .. } => format!("fn {} ...", name.name),
             DeclKind::Effect(effect) => format!("effect {}", effect.name.name),
             DeclKind::Type { name, .. } => format!("type {}", name.name),
+            DeclKind::Struct(decl) => format!("struct {}", decl.name.name),
             DeclKind::Trait(trait_decl) => format!("trait {}", trait_decl.name.name),
             DeclKind::Impl(impl_decl) => {
                 let mut label = String::from("impl");
@@ -274,6 +278,11 @@ pub enum DeclKind {
         value: Expr,
         type_annotation: Option<TypeAnnot>,
     },
+    Const {
+        name: Ident,
+        value: Expr,
+        type_annotation: TypeAnnot,
+    },
     Fn {
         name: Ident,
         span: Span,
@@ -283,6 +292,7 @@ pub enum DeclKind {
         generics: Vec<Ident>,
         span: Span,
     },
+    Struct(StructDecl),
     Trait(TraitDecl),
     Impl(ImplDecl),
     Extern {
@@ -351,6 +361,14 @@ pub struct TraitDecl {
     pub generics: Vec<Ident>,
     pub where_clause: Vec<WherePredicate>,
     pub items: Vec<TraitItem>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct StructDecl {
+    pub name: Ident,
+    pub generics: Vec<Ident>,
+    pub fields: Vec<TypeRecordField>,
     pub span: Span,
 }
 
@@ -776,6 +794,9 @@ pub enum LiteralKind {
     Array {
         elements: Vec<Expr>,
     },
+    Set {
+        elements: Vec<Expr>,
+    },
     Record {
         #[serde(skip_serializing_if = "Option::is_none")]
         type_name: Option<Ident>,
@@ -808,6 +829,14 @@ impl Literal {
             ),
             LiteralKind::Array { elements } => format!(
                 "array([{}])",
+                elements
+                    .iter()
+                    .map(Expr::render)
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            ),
+            LiteralKind::Set { elements } => format!(
+                "set([{}])",
                 elements
                     .iter()
                     .map(Expr::render)
@@ -1287,7 +1316,7 @@ pub enum TypeKind {
         name: Ident,
     },
     Literal {
-        value: String,
+        value: TypeLiteral,
     },
     App {
         callee: Ident,
@@ -1319,7 +1348,7 @@ impl TypeKind {
     fn render(&self) -> String {
         match self {
             TypeKind::Ident { name } => name.name.clone(),
-            TypeKind::Literal { value } => format!("\"{}\"", value),
+            TypeKind::Literal { value } => value.render(),
             TypeKind::App { callee, args } => format!(
                 "{}<{}>",
                 callee.name,
@@ -1366,6 +1395,22 @@ impl TypeKind {
                 .map(|ty| ty.render())
                 .collect::<Vec<_>>()
                 .join(" | "),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TypeLiteral {
+    Int { value: i64, raw: String },
+    String { value: String },
+}
+
+impl TypeLiteral {
+    fn render(&self) -> String {
+        match self {
+            TypeLiteral::Int { raw, .. } => raw.clone(),
+            TypeLiteral::String { value } => format!("\"{value}\""),
         }
     }
 }
