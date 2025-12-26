@@ -64,14 +64,20 @@
 - 仕様上の識別子範囲と Backend 内部名の差分がドキュメント化されていることを確認する。
 
 #### 実施結果
-- Runtime: `cargo test --manifest-path compiler/rust/runtime/Cargo.toml` は `tests/watcher.rs` が失敗（`watch_reports_create_and_delete_events` のイベント未取得）。`tests/text_stream.rs` は修正済み。
+- Runtime:
+  - `cargo test --manifest-path compiler/rust/runtime/Cargo.toml -- --test-threads=1` は成功（全テスト完走）。
+  - `cargo test --manifest-path compiler/rust/runtime/Cargo.toml -- --nocapture` は 240s でタイムアウト（進行表示のみで停止）。
 - Backend: `cargo test --manifest-path compiler/rust/backend/llvm/Cargo.toml --lib llvm_ir_sanitizes_emoji_identifiers` は成功。
+- Backend: `cargo test --manifest-path compiler/rust/backend/llvm/Cargo.toml` は成功。
 - emoji 識別子の IR 出力確認は `integration::tests::llvm_ir_sanitizes_emoji_identifiers` で `@main_u01F680` を確認。
 - 仕様差分の注記は `docs/spec/1-1-syntax.md` に記載済み。
 - `REML_WATCHER_BACKEND=poll` の運用方針:
   - 本番は `RecommendedWatcher` を既定とし、`REML_WATCHER_BACKEND` を未設定で運用する。
   - 開発/CI で watcher テストが不安定な場合のみ `REML_WATCHER_BACKEND=poll` を許可し、テストで明示的に切り替える。
   - 互換性確認のため、poll 使用時はポーリング間隔を短く設定しつつ、性能面の影響は本番へ持ち込まない。
+- `--nocapture` タイムアウト調査:
+  - 進行表示に出ていた `capability::registry::tests::registry_returns_same_instance` / `io::adapters::tests::fs_adapter_ensures_capabilities` / `tests/verify_capability.rs` は個別実行で完走。
+  - 全体実行時のみタイムアウトが出るため、並列実行や大量出力による詰まりが疑われる。
 
 ## 受け入れ基準
 - Runtime の `keyword` が emoji/ZWJ を含む識別子で誤検出しない。
@@ -83,7 +89,7 @@
 - 進捗欄（運用用）:
   - [x] フェーズ 1 完了
   - [x] フェーズ 2 完了
-  - [ ] フェーズ 3 完了
+  - [x] フェーズ 3 完了（`--nocapture` 実行はタイムアウトのため継続調査）
 
 ## 関連リンク
 - `docs/plans/docs-examples-audit/1-2-impl-gap-plan-20251224-3.md`
