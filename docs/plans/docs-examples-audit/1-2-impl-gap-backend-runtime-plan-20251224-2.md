@@ -131,7 +131,14 @@
   - [x] フェーズ 1 完了（ABI/セマンティクス確定・決定事項追記）
   - [x] フェーズ 2 完了
   - [x] フェーズ 3 完了
-  - [ ] フェーズ 4 完了
+  - [x] フェーズ 4 完了
+
+### 進捗メモ（実施ログ）
+- 2025-12-24: runtime/native に `@reml_value_*` / `@reml_index_access` の宣言と実装を追加。
+- 2025-12-24: `make -C runtime/native runtime` を実行し、`build/libreml_runtime.a` の生成を確認。
+- 2025-12-24: `make -C runtime/native test` を実行し、`test_ffi_bridge`/`test_mem_alloc`/`test_os`/`test_refcount` がすべて成功。
+- 2025-12-24: `reports/backend-ir-diff/reml-value-index-log.json` に `@reml_value_i64` / `@reml_index_access` の呼び出し出力を確認。
+- 2025-12-24: `tmp/runtime-link-min.ll` を作成し、`llc` + `clang`（`-isysroot`/`-L` 追加）でリンクに成功。実行結果は `123 / 42 / 98` を出力。
 
 ## 関連リンク
 - `docs/plans/docs-examples-audit/1-2-impl-gap-plan-20251224-2.md`
