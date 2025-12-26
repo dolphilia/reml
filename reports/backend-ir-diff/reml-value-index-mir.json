@@ -1,0 +1,30 @@
+{
+  "module": "ir_diff_reml_value_index",
+  "metadata": ["phase=ir-diff", "note=reml_value_suffix_index_access"],
+  "functions": [
+    {
+      "name": "@ir_diff_index",
+      "calling_conv": "ccc",
+      "params": ["pointer"],
+      "return": "pointer",
+      "exprs": [
+        {
+          "id": 0,
+          "ty": "pointer",
+          "kind": { "kind": "identifier", "ident": "#0" }
+        },
+        {
+          "id": 1,
+          "ty": "bool",
+          "kind": { "kind": "literal", "value": true }
+        },
+        {
+          "id": 2,
+          "ty": "pointer",
+          "kind": { "kind": "index", "target": 0, "index": 1 }
+        }
+      ],
+      "body": 2
+    }
+  ]
+}

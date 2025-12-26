@@ -105,6 +105,12 @@
 - `@reml_index_access` が `ptr` + `i64` の ABI で呼ばれている IR 断片を記録できること
 - 置換前後の差分理由メモを本計画書に追記し、スナップショット更新時の根拠が追跡可能であること
 
+#### フェーズ 2 実施メモ
+- `compiler/rust/backend/llvm/src/codegen.rs` の `@reml_value` 呼び出しを `@reml_value_i64`/`@reml_value_bool`/`@reml_value_ptr`/`@reml_value_str` に置換（`intrinsic_value_for_type` を追加）。
+- `MirExprKind::Index` の index 引数を `i64` に整形してから `@reml_index_access` を呼ぶように調整（`ptr` + `i64` で統一）。
+- `panic` 変換で `Str` 化する箇所は `@reml_value_str` に差し替え。
+- IR 差分ログを `reports/backend-ir-diff/reml-value-index-log.json` に保存（`@reml_value_i64` と `@reml_index_access` の出力を確認）。
+
 ### フェーズ 3: Runtime 実装
 - `runtime/native/include/reml_runtime.h` に ABI 仕様に沿った宣言を追加する。
 - `runtime/native/src` に最小限の実装（stub / identity / boundary check）を追加する。
@@ -123,7 +129,7 @@
 - 本計画書作成日: 2025-12-24
 - 進捗欄（運用用）:
   - [x] フェーズ 1 完了（ABI/セマンティクス確定・決定事項追記）
-  - [ ] フェーズ 2 完了
+  - [x] フェーズ 2 完了
   - [ ] フェーズ 3 完了
   - [ ] フェーズ 4 完了
 

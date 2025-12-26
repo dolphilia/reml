@@ -1,0 +1,57 @@
+{
+  "module": "ir_diff_reml_value_index",
+  "target_triple": "x86_64-unknown-linux-gnu",
+  "backend_abi": "system_v",
+  "data_layout": "e-m:e-p:64:64-f64:64:64-a:0:64",
+  "functions": [
+    {
+      "name": "@ir_diff_index",
+      "return_layout": "ptr",
+      "calling_conv": "ccc",
+      "attributes": [],
+      "ffi_calls": [],
+      "match_branches": [],
+      "basic_blocks": [
+        "entry:
+  ; exec body#2
+  ret %index1"
+      ],
+      "llvm_blocks": [
+        "entry:
+  ; exec body#2
+  %index_i642 = call i64 @reml_value_i64(i64 true)
+  ; index_access %arg0[%index_i642]
+  %index1 = call ptr @reml_index_access(ptr %arg0, i64 %index_i642)
+  ret %index1"
+      ],
+      "llvm_ir": "define ptr @ir_diff_index(ptr) {
+entry:
+  ; exec body#2
+  %index_i642 = call i64 @reml_value_i64(i64 true)
+  ; index_access %arg0[%index_i642]
+  %index1 = call ptr @reml_index_access(ptr %arg0, i64 %index_i642)
+  ret %index1
+}"
+
+    }
+  ],
+  "diagnostics": [
+    "Target.target.profile.missing: ターゲットプロファイルが指定されていません",
+    "Target.target.config.mismatch: 要求されたターゲットフィールド (os, arch) が実行環境と一致しません"
+  ],
+  "audit_entries": [
+    "audit.source=opt.verify ir_diff_reml_value_index",
+    "backend.triple=x86_64-unknown-linux-gnu",
+    "backend.abi=system_v",
+    "backend.datalayout=e-m:e-p:64:64-f64:64:64-a:0:64",
+    "backend.reloc_model=Static",
+    "audit.target=Triple=x86_64-unknown-linux-gnu ABI=system_v CPU=x86-64 features=+sse4.2,+popcnt layout=e-m:e-p:64:64-f64:64:64-a:0:64",
+    "audit.module=ir_diff_reml_value_index",
+    "target.requested={\"abi\":\"system_v\",\"arch\":\"x86_64\",\"capabilities\":[],\"diagnostics\":true,\"env\":null,\"extra\":{},\"family\":\"unix\",\"feature_requirements\":[],\"features\":[\"+sse4.2\",\"+popcnt\"],\"os\":\"linux\",\"profile_id\":null,\"runtime_revision\":null,\"stdlib_version\":null,\"triple\":\"x86_64-unknown-linux-gnu\",\"vendor\":null}",
+    "target.detected={\"arch\":\"aarch64\",\"family\":\"unix\",\"features\":[],\"os\":\"macos\",\"profile_id\":null,\"runtime_capabilities\":[],\"runtime_revision\":null,\"stdlib_version\":null,\"target_capabilities\":[],\"triple\":null,\"variant\":null}",
+    "target.verdict=\"fail\"",
+    "audit.verdict=fail"
+  ],
+  "bridge_metadata": [],
+  "passed": false
+}

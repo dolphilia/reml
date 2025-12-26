@@ -17,7 +17,10 @@ pub type MirExprId = usize;
 pub type MirBlockLabel = String;
 
 // LLVM 風 IR で使用する暫定 intrinsic（将来の実 LLVM IR/Runtime Bridge へ移行するための境界）。
-const INTRINSIC_VALUE: &str = "@reml_value";
+const INTRINSIC_VALUE_I64: &str = "@reml_value_i64";
+const INTRINSIC_VALUE_BOOL: &str = "@reml_value_bool";
+const INTRINSIC_VALUE_PTR: &str = "@reml_value_ptr";
+const INTRINSIC_VALUE_STR: &str = "@reml_value_str";
 const INTRINSIC_MATCH_CHECK: &str = "@reml_match_check";
 const INTRINSIC_REGEX_MATCH: &str = "@reml_regex_match";
 const INTRINSIC_FIELD_ACCESS: &str = "@reml_field_access";
@@ -35,6 +38,22 @@ fn intrinsic_is_ctor(name: &str) -> String {
 
 fn intrinsic_ctor_payload(name: &str) -> String {
     format!("@reml_ctor_payload_{name}")
+}
+
+fn intrinsic_value_for_type<'a>(ty: &str, ssa: &'a LlvmBuilder) -> &'a str {
+    if ty == "i64" {
+        return INTRINSIC_VALUE_I64;
+    }
+    if ty == ssa.bool_type() {
+        return INTRINSIC_VALUE_BOOL;
+    }
+    if ty == ssa.pointer_type() {
+        return INTRINSIC_VALUE_PTR;
+    }
+    if ty == "Str" {
+        return INTRINSIC_VALUE_STR;
+    }
+    INTRINSIC_VALUE_PTR
 }
 
 #[derive(Clone, Debug)]
@@ -1682,7 +1701,7 @@ fn lower_binary_with_propagate_to_blocks(
         instrs.push(LlvmInstr::Call {
             result: Some(cast.clone()),
             ret_ty: "i64".into(),
-            callee: INTRINSIC_VALUE.into(),
+            callee: INTRINSIC_VALUE_I64.into(),
             args: vec![("i64".into(), lhs_operand.clone())],
         });
         lhs_operand = cast;
@@ -1692,7 +1711,7 @@ fn lower_binary_with_propagate_to_blocks(
         instrs.push(LlvmInstr::Call {
             result: Some(cast.clone()),
             ret_ty: "i64".into(),
-            callee: INTRINSIC_VALUE.into(),
+            callee: INTRINSIC_VALUE_I64.into(),
             args: vec![("i64".into(), rhs_operand.clone())],
         });
         rhs_operand = cast;
@@ -1782,7 +1801,7 @@ fn lower_binary_with_propagate_to_operand_blocks(
         instrs.push(LlvmInstr::Call {
             result: Some(cast.clone()),
             ret_ty: "i64".into(),
-            callee: INTRINSIC_VALUE.into(),
+            callee: INTRINSIC_VALUE_I64.into(),
             args: vec![("i64".into(), lhs_operand.clone())],
         });
         lhs_operand = cast;
@@ -1792,7 +1811,7 @@ fn lower_binary_with_propagate_to_operand_blocks(
         instrs.push(LlvmInstr::Call {
             result: Some(cast.clone()),
             ret_ty: "i64".into(),
-            callee: INTRINSIC_VALUE.into(),
+            callee: INTRINSIC_VALUE_I64.into(),
             args: vec![("i64".into(), rhs_operand.clone())],
         });
         rhs_operand = cast;
@@ -2543,7 +2562,7 @@ fn lower_if_else_branch_value_with_defers(
     instrs.push(LlvmInstr::Call {
         result: Some(result.clone()),
         ret_ty: result_type.to_string(),
-        callee: INTRINSIC_VALUE.into(),
+        callee: intrinsic_value_for_type(result_type, ssa).into(),
         args: vec![(result_type.to_string(), value.operand)],
     });
     let block = BasicBlock {
@@ -2635,7 +2654,7 @@ fn lower_block_propagate_with_defers_to_if_blocks(
     ok_instrs.push(LlvmInstr::Call {
         result: Some(result.clone()),
         ret_ty: result_type.to_string(),
-        callee: INTRINSIC_VALUE.into(),
+        callee: intrinsic_value_for_type(result_type, ssa).into(),
         args: vec![(result_type.to_string(), payload)],
     });
     let ok_block = BasicBlock {
@@ -2725,7 +2744,7 @@ fn lower_if_else_branch_value(
     instrs.push(LlvmInstr::Call {
         result: Some(result.clone()),
         ret_ty: result_type.to_string(),
-        callee: INTRINSIC_VALUE.into(),
+        callee: intrinsic_value_for_type(result_type, ssa).into(),
         args: vec![(result_type.to_string(), value.operand)],
     });
     let block = BasicBlock {
@@ -2776,7 +2795,7 @@ fn lower_panic_argument(
         instrs.push(LlvmInstr::Call {
             result: Some(converted.clone()),
             ret_ty: "Str".into(),
-            callee: INTRINSIC_VALUE.into(),
+            callee: INTRINSIC_VALUE_STR.into(),
             args: vec![("Str".into(), operand.to_string())],
         });
         converted
@@ -3034,7 +3053,7 @@ fn lower_propagate_value_to_match_blocks(
         ok_instrs.push(LlvmInstr::Call {
             result: Some(result.clone()),
             ret_ty: result_type.to_string(),
-            callee: INTRINSIC_VALUE.into(),
+            callee: intrinsic_value_for_type(result_type, ssa).into(),
             args: vec![(result_type.to_string(), payload_value)],
         });
         result
@@ -3043,7 +3062,7 @@ fn lower_propagate_value_to_match_blocks(
         ok_instrs.push(LlvmInstr::Call {
             result: Some(result.clone()),
             ret_ty: result_type.to_string(),
-            callee: INTRINSIC_VALUE.into(),
+            callee: intrinsic_value_for_type(result_type, ssa).into(),
             args: vec![(result_type.to_string(), payload)],
         });
         result
@@ -3158,7 +3177,7 @@ fn lower_propagate_value_to_if_blocks(
         ok_instrs.push(LlvmInstr::Call {
             result: Some(result.clone()),
             ret_ty: result_type.to_string(),
-            callee: INTRINSIC_VALUE.into(),
+            callee: intrinsic_value_for_type(result_type, ssa).into(),
             args: vec![(result_type.to_string(), payload_value)],
         });
         result
@@ -3167,7 +3186,7 @@ fn lower_propagate_value_to_if_blocks(
         ok_instrs.push(LlvmInstr::Call {
             result: Some(result.clone()),
             ret_ty: result_type.to_string(),
-            callee: INTRINSIC_VALUE.into(),
+            callee: intrinsic_value_for_type(result_type, ssa).into(),
             args: vec![(result_type.to_string(), payload)],
         });
         result
@@ -3954,7 +3973,7 @@ fn convert_propagate_payload(
             instrs.push(LlvmInstr::Call {
                 result: Some(result.clone()),
                 ret_ty: target_ty.clone(),
-                callee: INTRINSIC_VALUE.into(),
+                callee: intrinsic_value_for_type(&target_ty, ssa).into(),
                 args: vec![(target_ty.clone(), payload_ptr)],
             });
             return (result, target_ty);
@@ -4471,9 +4490,20 @@ fn emit_value_expr(
             let result = ssa.new_tmp("index");
             let mut instrs = target_value.instrs;
             instrs.extend(index_value.instrs);
+            let mut index_operand = index_value.operand;
+            if index_value.ty != "i64" {
+                let cast = ssa.new_tmp("index_i64");
+                instrs.push(LlvmInstr::Call {
+                    result: Some(cast.clone()),
+                    ret_ty: "i64".into(),
+                    callee: INTRINSIC_VALUE_I64.into(),
+                    args: vec![("i64".into(), index_operand.clone())],
+                });
+                index_operand = cast;
+            }
             instrs.push(LlvmInstr::Comment(format!(
                 "index_access {}[{}]",
-                target_value.operand, index_value.operand
+                target_value.operand, index_operand
             )));
             instrs.push(LlvmInstr::Call {
                 result: Some(result.clone()),
@@ -4481,7 +4511,7 @@ fn emit_value_expr(
                 callee: INTRINSIC_INDEX_ACCESS.into(),
                 args: vec![
                     (ssa.pointer_type(), target_value.operand),
-                    (index_value.ty, index_value.operand),
+                    ("i64".into(), index_operand),
                 ],
             });
             EmittedValue {
@@ -4864,7 +4894,7 @@ fn emit_body_value(
     instrs.push(LlvmInstr::Call {
         result: Some(result.clone()),
         ret_ty: result_type.to_string(),
-        callee: INTRINSIC_VALUE.into(),
+        callee: intrinsic_value_for_type(result_type, ssa).into(),
         args: vec![(result_type.to_string(), value.operand)],
     });
     (result, body_label, instrs)
