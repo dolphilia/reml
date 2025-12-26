@@ -2,7 +2,7 @@
   "code": "core.path.security.violation",
   "extensions": {
     "security": {
-      "reason": "outside_allowed_root"
+      "reason": "traversal_detected"
     }
   }
 }

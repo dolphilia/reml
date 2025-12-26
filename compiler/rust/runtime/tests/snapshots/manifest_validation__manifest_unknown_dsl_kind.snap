@@ -20,4 +20,5 @@ extensions:
     path: /virtual/workspace/reml.toml
     source: manifest
 message: "DSL `demo` の kind `custom_bridge` は未対応です"
+notes: []
 severity: error

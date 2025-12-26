@@ -20,4 +20,5 @@ extensions:
     path: /virtual/workspace/reml.toml
     source: manifest
 message: "必須フィールド `dsl.demo.entry` が未設定です"
+notes: []
 severity: error

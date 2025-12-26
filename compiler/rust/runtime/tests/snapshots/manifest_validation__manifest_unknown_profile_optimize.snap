@@ -22,4 +22,5 @@ extensions:
     path: /virtual/workspace/reml.toml
     source: manifest
 message: "`build.profiles.custom.optimize` に未対応の optimize 値 `hyper` が指定されました"
+notes: []
 severity: error

@@ -18,4 +18,5 @@ extensions:
     path: /virtual/workspace/reml.toml
     source: manifest
 message: "`build.optimize` に未対応の optimize 値 `turbo` が指定されました"
+notes: []
 severity: error

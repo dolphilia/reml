@@ -22,4 +22,5 @@ extensions:
     path: /virtual/workspace/reml.toml
     source: manifest
 message: "`dsl.demo.stage_bounds.minimum` に未対応の Stage `legacy` が指定されました"
+notes: []
 severity: error

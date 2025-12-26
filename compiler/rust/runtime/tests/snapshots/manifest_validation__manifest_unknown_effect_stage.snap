@@ -20,4 +20,5 @@ extensions:
     path: /virtual/workspace/reml.toml
     source: manifest
 message: "`dsl.demo.expect_effects_stage` に未対応の Stage `gamma` が指定されました"
+notes: []
 severity: error

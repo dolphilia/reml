@@ -118,7 +118,13 @@ where
                 Ok(0) => {
                     reached_eof = true;
                 }
-                Ok(read) => buffer.extend_from_slice(&chunk[..read]),
+                Ok(read) => {
+                    if read > 0 {
+                        io_effects::record_io_operation(read);
+                        merge_pending_io_effects();
+                    }
+                    buffer.extend_from_slice(&chunk[..read]);
+                }
                 Err(err) => {
                     merge_pending_io_effects();
                     return Err(io_decode_error(err));

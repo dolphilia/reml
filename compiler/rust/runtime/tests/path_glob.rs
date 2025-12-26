@@ -55,7 +55,7 @@ fn glob_invalid_pattern_reports_diagnostic_metadata() {
                 }
             }
         },
-        "audit_metadata": {
+        "audit": {
             "io.glob.pattern": invalid_pattern
         }
     });
