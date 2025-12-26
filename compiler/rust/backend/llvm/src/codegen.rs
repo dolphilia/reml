@@ -25,6 +25,8 @@ const INTRINSIC_MATCH_CHECK: &str = "@reml_match_check";
 const INTRINSIC_REGEX_MATCH: &str = "@reml_regex_match";
 const INTRINSIC_FIELD_ACCESS: &str = "@reml_field_access";
 const INTRINSIC_INDEX_ACCESS: &str = "@reml_index_access";
+const INTRINSIC_SET_NEW: &str = "@reml_set_new";
+const INTRINSIC_SET_INSERT: &str = "@reml_set_insert";
 const INTRINSIC_CALL: &str = "@reml_call";
 const INTRINSIC_STR_CONCAT: &str = "@reml_str_concat";
 const INTRINSIC_STR_DATA: &str = "@reml_str_data";
@@ -4468,6 +4470,9 @@ fn emit_value_expr(
                     instrs: vec![],
                 };
             }
+            if let Some(value) = emit_set_literal_value(summary, ssa) {
+                return value;
+            }
             EmittedValue {
                 ty: ssa.pointer_type(),
                 operand: format_operand_from_summary(summary),
@@ -5101,6 +5106,135 @@ fn extract_literal_operand(summary: &str) -> Option<String> {
         }
     }
     None
+}
+
+fn emit_set_literal_value(summary: &str, ssa: &mut LlvmBuilder) -> Option<EmittedValue> {
+    let elements = extract_set_literal_elements(summary)?;
+    let mut instrs = Vec::new();
+    instrs.push(LlvmInstr::Comment("set literal -> reml_set_new".into()));
+    let mut set_operand = ssa.new_tmp("set");
+    instrs.push(LlvmInstr::Call {
+        result: Some(set_operand.clone()),
+        ret_ty: ssa.pointer_type(),
+        callee: INTRINSIC_SET_NEW.into(),
+        args: vec![],
+    });
+    for (index, element) in elements.iter().enumerate() {
+        let value = emit_set_element_expr(element, ssa);
+        instrs.extend(value.instrs);
+        instrs.push(LlvmInstr::Comment(format!("set element {index}")));
+        let inserted = ssa.new_tmp("set");
+        instrs.push(LlvmInstr::Call {
+            result: Some(inserted.clone()),
+            ret_ty: ssa.pointer_type(),
+            callee: INTRINSIC_SET_INSERT.into(),
+            args: vec![
+                (ssa.pointer_type(), set_operand.clone()),
+                (value.ty, value.operand),
+            ],
+        });
+        set_operand = inserted;
+    }
+    Some(EmittedValue {
+        ty: ssa.pointer_type(),
+        operand: set_operand,
+        instrs,
+    })
+}
+
+fn extract_set_literal_elements(summary: &str) -> Option<Vec<serde_json::Value>> {
+    let trimmed = summary.trim();
+    if !(trimmed.starts_with('{') && trimmed.ends_with('}')) {
+        return None;
+    }
+    let value = serde_json::from_str::<serde_json::Value>(trimmed).ok()?;
+    if value.get("kind").and_then(|v| v.as_str())? != "set" {
+        return None;
+    }
+    let elements = value.get("elements")?.as_array()?;
+    Some(elements.clone())
+}
+
+fn emit_set_element_expr(element: &serde_json::Value, ssa: &mut LlvmBuilder) -> EmittedValue {
+    if let Some(kind) = element.get("kind").and_then(|v| v.as_str()) {
+        match kind {
+            "literal" => {
+                if let Some(literal) = element.get("value") {
+                    if let Some(value) = emit_literal_value_from_json(literal, ssa) {
+                        return value;
+                    }
+                }
+            }
+            "identifier" => {
+                if let Some(name) = element
+                    .get("ident")
+                    .and_then(|ident| ident.get("name"))
+                    .and_then(|value| value.as_str())
+                {
+                    if let Some(binding) = ssa.resolve_local(name) {
+                        let result = ssa.new_tmp("load");
+                        return EmittedValue {
+                            ty: binding.ty.clone(),
+                            operand: result.clone(),
+                            instrs: vec![LlvmInstr::Load {
+                                result,
+                                ty: binding.ty,
+                                ptr: binding.ptr,
+                            }],
+                        };
+                    }
+                    return EmittedValue {
+                        ty: ssa.pointer_type(),
+                        operand: format!("%{}", sanitize_llvm_ident(name)),
+                        instrs: vec![LlvmInstr::Comment(format!(
+                            "set element ident {name} -> unresolved"
+                        ))],
+                    };
+                }
+            }
+            _ => {}
+        }
+    }
+    EmittedValue {
+        ty: ssa.pointer_type(),
+        operand: "null".into(),
+        instrs: vec![LlvmInstr::Comment(
+            "set element unsupported -> null".into(),
+        )],
+    }
+}
+
+fn emit_literal_value_from_json(
+    literal: &serde_json::Value,
+    ssa: &LlvmBuilder,
+) -> Option<EmittedValue> {
+    let kind = literal.get("kind").and_then(|v| v.as_str())?;
+    match kind {
+        "unit" => Some(emit_unit_value(ssa)),
+        "bool" => literal.get("value").and_then(|value| value.as_bool()).map(|value| {
+            EmittedValue {
+                ty: ssa.bool_type(),
+                operand: if value { "true".into() } else { "false".into() },
+                instrs: vec![],
+            }
+        }),
+        "int" => literal.get("value").and_then(|value| value.as_i64()).map(|value| {
+            EmittedValue {
+                ty: "i64".into(),
+                operand: value.to_string(),
+                instrs: vec![],
+            }
+        }),
+        "string" => literal
+            .get("value")
+            .and_then(|value| value.as_str())
+            .map(|value| EmittedValue {
+                ty: "Str".into(),
+                operand: format!("\"{}\"", value.replace('"', "\\\"")),
+                instrs: vec![],
+            }),
+        _ => None,
+    }
 }
 
 fn emit_pattern_cond(

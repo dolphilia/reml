@@ -154,6 +154,7 @@ fn format_reml_type(ty: &RemlType) -> String {
         RemlType::Pointer => "ptr".to_string(),
         RemlType::String => "string".to_string(),
         RemlType::Slice(inner) => format!("[{}]", format_reml_type(inner)),
+        RemlType::Set(inner) => format!("Set<{}>", format_reml_type(inner)),
         RemlType::Ref { mutable, to } => {
             if *mutable {
                 format!("&mut {}", format_reml_type(to))

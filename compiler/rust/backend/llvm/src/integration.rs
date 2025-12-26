@@ -1098,6 +1098,16 @@ fn parse_reml_type(token: &str) -> RemlType {
         }
         return RemlType::Slice(Box::new(parse_reml_type(inner)));
     }
+    if let Some((name, inner)) = split_generic_type(trimmed) {
+        if name.eq_ignore_ascii_case("set") {
+            let inner = if inner.is_empty() {
+                RemlType::Pointer
+            } else {
+                parse_reml_type(inner)
+            };
+            return RemlType::Set(Box::new(inner));
+        }
+    }
     let normalized = trimmed.to_ascii_lowercase();
     match normalized.as_str() {
         "unit" | "void" => RemlType::Unit,
@@ -1109,6 +1119,20 @@ fn parse_reml_type(token: &str) -> RemlType {
         "string" | "str" => RemlType::String,
         _ => RemlType::Pointer,
     }
+}
+
+fn split_generic_type(token: &str) -> Option<(&str, &str)> {
+    let trimmed = token.trim();
+    let open = trimmed.find('<')?;
+    if !trimmed.ends_with('>') {
+        return None;
+    }
+    let name = trimmed[..open].trim();
+    let inner = trimmed[open + 1..trimmed.len() - 1].trim();
+    if name.is_empty() {
+        return None;
+    }
+    Some((name, inner))
 }
 
 #[cfg(test)]
@@ -1181,6 +1205,10 @@ mod tests {
         assert_eq!(parse_reml_type("Int64"), RemlType::I64);
         assert_eq!(parse_reml_type("ptr"), RemlType::Pointer);
         assert_eq!(parse_reml_type("unknown"), RemlType::Pointer);
+        assert_eq!(
+            parse_reml_type("Set<Str>"),
+            RemlType::Set(Box::new(RemlType::String))
+        );
         assert_eq!(
             parse_reml_type("&i64"),
             RemlType::Ref {

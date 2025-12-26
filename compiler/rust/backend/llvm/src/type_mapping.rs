@@ -10,6 +10,7 @@ pub enum RemlType {
     Pointer,
     String,
     Slice(Box<RemlType>),
+    Set(Box<RemlType>),
     Ref {
         mutable: bool,
         to: Box<RemlType>,
@@ -82,6 +83,11 @@ impl TypeMappingContext {
                 size: 16,
                 align: 8,
                 description: "{ptr, i64}".into(),
+            },
+            RemlType::Set(inner) => TypeLayout {
+                size: 8,
+                align: 8,
+                description: format!("set<{}>", self.layout_of(inner).description),
             },
             RemlType::Ref { .. } => TypeLayout {
                 size: 8,
