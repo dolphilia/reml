@@ -6,6 +6,7 @@ option(REML_RUNTIME_ENABLE_DEBUG "Enable runtime debug instrumentation" OFF)
 set(RUNTIME_SOURCES
     src/ffi_bridge.c
     src/mem_alloc.c
+    src/intrinsics.c
     src/panic.c
     src/print_i64.c
     src/refcount.c

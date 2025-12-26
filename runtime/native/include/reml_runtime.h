@@ -174,6 +174,39 @@ int32_t string_compare(const reml_string_t* s1, const reml_string_t* s2);
  */
 const char* reml_str_data(reml_string_t value);
 
+/* ========== LLVM lowering intrinsic (Phase 1) ========== */
+
+/**
+ * Reml List の暫定ノード表現
+ *
+ * Phase 1 の LLVM lowering 向けに、単純な連結リストとして扱う。
+ * Nil は NULL とし、index は先頭から線形走査で評価する。
+ * 将来の永続データ構造へ移行する際は ABI を再定義する。
+ */
+typedef struct reml_list_node {
+    void* head;                  ///< 要素の payload ポインタ
+    struct reml_list_node* tail; ///< 次ノード（NULL で終端）
+} reml_list_node_t;
+
+/**
+ * 型整形 intrinsic（Phase 1: identity stub）
+ *
+ * LLVM IR 側での cast/unbox 置換前の暫定シンボルとして提供する。
+ */
+int64_t reml_value_i64(int64_t value);
+uint8_t reml_value_bool(uint8_t value);
+void* reml_value_ptr(void* value);
+reml_string_t reml_value_str(reml_string_t value);
+
+/**
+ * index アクセス intrinsic（Phase 1）
+ *
+ * - target は List/Str のいずれかを想定（暫定）。
+ * - Str は byte index を採用し、境界外は panic。
+ * - List は先頭から線形走査し、境界外は panic。
+ */
+void* reml_index_access(void* target, int64_t index);
+
 /* ========== 内部ヘルパー（実装側で使用） ========== */
 
 /**
