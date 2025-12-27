@@ -141,9 +141,14 @@
 - Backend の差分スナップショットに `set` リテラルの例を追加する。
 - Runtime 側にセット構築/要素追加の基本テストを追加する。
 - Frontend → Backend → Runtime の結合確認（最小サンプル）を行う。
-  - [ ] Backend スナップショット追加
-  - [ ] Runtime テスト追加
-  - [ ] 結合確認の手順整理
+  - [x] Backend スナップショット追加
+  - [x] Runtime テスト追加
+  - [x] 結合確認の手順整理
+
+### フェーズ 4 実施メモ
+1. Backend スナップショット: `reports/backend-ir-diff/reml-set-literal-mir.json` と `reports/backend-ir-diff/reml-set-literal-log.json` を追加。
+2. Runtime テスト: `runtime/native/tests/test_set.c` で `set_new`/`set_insert`/`set_contains`/`set_len` を検証。
+3. 結合確認（最小）手順: `compiler/rust/frontend` で MIR JSON を出力 → `MIR_PATH=... cargo test --manifest-path compiler/rust/backend/llvm/Cargo.toml dump_llvm_ir_from_mir_path -- --ignored --nocapture` で `@reml_set_new`/`@reml_set_insert` を確認 → `make test` (`runtime/native`) で ABI を検証。
 
 ### フェーズ 5: ドキュメントの更新
 - `docs/spec/2-3-lexer.md` から参照できる形で Set の実行時表現を記録する。
@@ -157,7 +162,7 @@
   - [x] フェーズ 1 完了
   - [x] フェーズ 2 完了
   - [x] フェーズ 3 完了
-  - [ ] フェーズ 4 完了
+  - [x] フェーズ 4 完了
   - [ ] フェーズ 5 完了
 
 ## 関連リンク

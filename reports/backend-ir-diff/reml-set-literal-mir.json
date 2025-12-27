@@ -1,0 +1,30 @@
+{
+  "module": "ir_diff_set_literal",
+  "metadata": ["phase=ir-diff", "note=set_literal"],
+  "functions": [
+    {
+      "name": "@ir_diff_set_literal",
+      "calling_conv": "ccc",
+      "params": [],
+      "return": "Set<i64>",
+      "exprs": [
+        {
+          "id": 0,
+          "ty": "Set<i64>",
+          "kind": {
+            "kind": "literal",
+            "value": {
+              "kind": "set",
+              "elements": [
+                { "kind": "literal", "value": { "kind": "int", "value": 1 } },
+                { "kind": "literal", "value": { "kind": "int", "value": 2 } },
+                { "kind": "literal", "value": { "kind": "int", "value": 1 } }
+              ]
+            }
+          }
+        }
+      ],
+      "body": 0
+    }
+  ]
+}
