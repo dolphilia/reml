@@ -1600,4 +1600,102 @@ mod tests {
 
         Ok(())
     }
+
+    fn assert_ordered_occurrences(llvm_ir: &str, labels: &[&str], note: &str) {
+        let mut last = None;
+        for label in labels {
+            let pos = llvm_ir
+                .find(label)
+                .unwrap_or_else(|| panic!("{note}: {label} が見つかりません"));
+            if let Some(prev) = last {
+                assert!(
+                    prev < pos,
+                    "{note}: {label} が想定より前に出現しています"
+                );
+            }
+            last = Some(pos);
+        }
+    }
+
+    #[test]
+    fn llvm_ir_record_literal_layout_is_sorted_by_field_name() -> Result<(), MirSnapshotError> {
+        let repo_root = env!("CARGO_MANIFEST_DIR");
+        let path = std::path::Path::new(repo_root).join("../../../../tmp/mir-record-layout.json");
+        let snapshot = generate_snapshot_from_mir_json(
+            &path,
+            test_target_machine(),
+            vec![],
+            vec!["phase=test".into()],
+            "mir_test",
+        )?;
+
+        let point_yxz = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "record_layout_point_yxz")
+            .expect("record_layout_point_yxz 関数が存在すること");
+        let llvm_ir = &point_yxz.llvm_ir;
+        assert!(
+            llvm_ir.contains("record literal field_count=3 type_name=Point"),
+            "type_name 付き record のコメントが含まれること"
+        );
+        assert_ordered_occurrences(
+            llvm_ir,
+            &[
+                "record field 0 -> y",
+                "record field 1 -> x",
+                "record field 2 -> z",
+            ],
+            "record field の評価順序",
+        );
+        assert_ordered_occurrences(
+            llvm_ir,
+            &["record slot 0 = x", "record slot 1 = y", "record slot 2 = z"],
+            "record slot の格納順序",
+        );
+
+        let point_xzy = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "record_layout_point_xzy")
+            .expect("record_layout_point_xzy 関数が存在すること");
+        let llvm_ir = &point_xzy.llvm_ir;
+        assert_ordered_occurrences(
+            llvm_ir,
+            &[
+                "record field 0 -> x",
+                "record field 1 -> z",
+                "record field 2 -> y",
+            ],
+            "record field の評価順序 (別順序)",
+        );
+        assert_ordered_occurrences(
+            llvm_ir,
+            &["record slot 0 = x", "record slot 1 = y", "record slot 2 = z"],
+            "record slot の格納順序 (別順序)",
+        );
+
+        let dup_fields = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "record_layout_duplicate_fields")
+            .expect("record_layout_duplicate_fields 関数が存在すること");
+        let llvm_ir = &dup_fields.llvm_ir;
+        assert_ordered_occurrences(
+            llvm_ir,
+            &[
+                "record field 0 -> a",
+                "record field 1 -> a",
+                "record field 2 -> b",
+            ],
+            "record field の評価順序 (duplicate)",
+        );
+        assert_ordered_occurrences(
+            llvm_ir,
+            &["record slot 0 = a", "record slot 1 = a", "record slot 2 = b"],
+            "record slot の格納順序 (duplicate)",
+        );
+
+        Ok(())
+    }
 }
