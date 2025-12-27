@@ -1510,4 +1510,96 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn llvm_ir_array_literal_snapshots_cover_array_shapes() -> Result<(), MirSnapshotError> {
+        let repo_root = env!("CARGO_MANIFEST_DIR");
+        let path = std::path::Path::new(repo_root).join("../../../../tmp/mir-array-literals.json");
+        let snapshot = generate_snapshot_from_mir_json(
+            &path,
+            test_target_machine(),
+            vec![],
+            vec!["phase=test".into()],
+            "mir_test",
+        )?;
+
+        let empty = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "array_empty_dynamic")
+            .expect("array_empty_dynamic 関数が存在すること");
+        assert!(
+            empty
+                .llvm_ir
+                .contains("; array literal dynamic len=0")
+                && empty.llvm_ir.contains("@reml_array_from(i64 0"),
+            "空配列は len=0 の reml_array_from で生成されること"
+        );
+
+        let single = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "array_single_dynamic")
+            .expect("array_single_dynamic 関数が存在すること");
+        assert!(
+            single
+                .llvm_ir
+                .contains("; array literal dynamic len=1")
+                && single.llvm_ir.contains("array element 0"),
+            "単一要素配列は len=1 かつ element 0 のコメントが含まれること"
+        );
+
+        let multi = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "array_multi_dynamic")
+            .expect("array_multi_dynamic 関数が存在すること");
+        assert!(
+            multi
+                .llvm_ir
+                .contains("; array literal dynamic len=3")
+                && multi.llvm_ir.contains("array element 2"),
+            "複数要素配列は len=3 かつ element 2 のコメントが含まれること"
+        );
+
+        let fixed_match = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "array_fixed_matched")
+            .expect("array_fixed_matched 関数が存在すること");
+        assert!(
+            fixed_match
+                .llvm_ir
+                .contains("array literal fixed-length matched: expected=2, actual=2"),
+            "固定長配列は length matched コメントが含まれること"
+        );
+
+        let fixed_mismatch = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "array_fixed_mismatch")
+            .expect("array_fixed_mismatch 関数が存在すること");
+        assert!(
+            fixed_mismatch
+                .llvm_ir
+                .contains("array literal fixed-length mismatch: expected=3, actual=2"),
+            "固定長配列の不一致は mismatch コメントが含まれること"
+        );
+
+        let nested = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "array_nested")
+            .expect("array_nested 関数が存在すること");
+        let array_from_calls = nested
+            .llvm_ir
+            .matches("@reml_array_from")
+            .count();
+        assert!(
+            array_from_calls >= 3,
+            "ネスト配列は複数回の reml_array_from 呼び出しが含まれること"
+        );
+
+        Ok(())
+    }
 }
