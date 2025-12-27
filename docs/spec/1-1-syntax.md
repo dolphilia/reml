@@ -55,7 +55,7 @@
 * ブール：`true`, `false`
 * タプル：`(a, b, c)`／**単位**：`()`
 * 配列：`[1, 2, 3]`
-* レコード：`{ x: 1, y: 2 }`（順序不問）
+* レコード：`{ x: 1, y: 2 }`（構文上は順序不問、レイアウトは E.1.2 に従う）
 
 ---
 
@@ -717,7 +717,7 @@ let xs = [1, 2, 3]
 
 * アクセス：`t.0`, `p.x`, `xs[2]`
 * 末尾カンマ許可：`(a, b,)`, `{x:1, y:2,}`
-* レコードフィールドは `key: expr` と `key = expr` を等価に扱い、`{ x, y = rhs }` のように値を省略した場合は `x: x` へデシュガされる（punning）。プロパティ順序は不問。
+* レコードフィールドは `key: expr` と `key = expr` を等価に扱い、`{ x, y = rhs }` のように値を省略した場合は `x: x` へデシュガされる（punning）。評価順はソース順、格納順は E.1.2 の正規化順に従う。
 
 #### E.1.1 MIR/JSON のリテラル表現（Frontend 出力）
 
@@ -787,9 +787,25 @@ typedef struct {
 - `items` / `values` は `void*` 配列へのポインタで、各スロットは RC 対象のヒープポインタを保持する。非ポインタ値はボックス化して格納する。
 - 配列バッファは `malloc/calloc` 相当で確保し、`reml_destroy_tuple` / `reml_destroy_record` / `reml_destroy_array` が `dec_ref` と合わせて解放する。
 - Char は Unicode scalar value を `reml_char_t` で表現する（UTF-8 文字列ではない）。
+- Record の `values` 配列順序は **フィールド名の正規化順（Unicode スカラ値の昇順）**で固定する。ロケールやケース折り畳みは行わず、識別子の表記そのものを比較する。
+- レコードリテラルのフィールド式は **ソース順で評価**し、**格納順序のみ**正規化順へ整列する。
+- フィールド名は Runtime に保持せず、`record.x` の解決はコンパイル時に正規化順インデックスへ変換する。
+- 同名フィールドの重複は許可しない。
 
-@unstable("literal_record_layout")
-Record の `values` 配列順序は Backend が決定する。現状はソース順だが、ハッシュ順や型定義順への切替は将来検討対象とする。
+**例（ソース順とレイアウト順）**
+
+```reml
+let r = { b: 1, a: 2 }
+```
+
+`values` は `{ a, b }` の順序（`a` → `b`）で格納される。
+
+**診断**
+
+- `type.record.literal.duplicate_field`: 同名フィールド重複。
+- `type.record.literal.missing_field`: 型注釈に存在するがリテラルに欠けるフィールド。
+- `type.record.literal.unknown_field`: リテラルに存在するが注釈型に存在しないフィールド。
+- `type.record.access.unknown_field`: 存在しないフィールドへのアクセス。
 
 #### E.1.3 Array リテラルの意味論（型付けの概要）
 
