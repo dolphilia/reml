@@ -788,11 +788,18 @@ typedef struct {
 - 配列バッファは `malloc/calloc` 相当で確保し、`reml_destroy_tuple` / `reml_destroy_record` / `reml_destroy_array` が `dec_ref` と合わせて解放する。
 - Char は Unicode scalar value を `reml_char_t` で表現する（UTF-8 文字列ではない）。
 
-@unstable("literal_array_semantics")
-`[T; N]` と `[T]` のどちらに降ろすかは未確定であり、現行の `reml_array_t` は動的配列として扱う前提で実装されている。
-
 @unstable("literal_record_layout")
 Record の `values` 配列順序は Backend が決定する。現状はソース順だが、ハッシュ順や型定義順への切替は将来検討対象とする。
+
+#### E.1.3 Array リテラルの意味論（型付けの概要）
+
+Array リテラルは **既定で `[T]`（動的配列）** として型付けされる。**期待型**または**明示注釈**が `[T; N]` の場合のみ固定長配列として型付けし、`[T; N]` と `[T]` の **暗黙変換は行わない**。詳細な推論ルールと診断は [1.2 型と推論](1-2-types-Inference.md) を参照。
+
+```reml
+let xs = [1, 2, 3]           // 既定は [i64]
+let ys: [i64; 3] = [1, 2, 3]  // 注釈がある場合は固定長
+let zs: [String] = []        // 空配列は注釈または期待型が必須
+```
 
 ### E.2 代数的データ型（ADT）
 
