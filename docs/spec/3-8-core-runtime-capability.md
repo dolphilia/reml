@@ -124,6 +124,8 @@ pub enum IsolationLevel = None | Sandboxed | FullIsolation
 fn verify_capability_security(handle: CapabilityHandle, security: CapabilitySecurity) -> Result<(), SecurityError>
 ```
 
+> **NOTE**: 本章の `Set<T>` は [3.2 Core Collections](3-2-core-collections.md) の永続コレクションとして扱う。実行時表現の概要は [3.2 §2.2.1](3-2-core-collections.md#set-runtime-abi) を参照。
+
 * `EffectTag` は [1.3 効果と安全性](1-3-effects-safety.md) に定義された `Σ` のタグ名。Capability が生成し得る効果を宣言し、`register` 時に `effect_scope ⊇ actual_effects` を検証する。
 * `SecurityPolicyRef` は `SecurityCapability` が管理するポリシーへの参照で、`enforce_security_policy` 実行時に `verify_capability_security` と一致することを要求する。
 * `SandboxProfile` は CPU・メモリ・ネットワークの制約を記述する共通構造体で、§6.1 の `SandboxConfig` を再利用して定義する。

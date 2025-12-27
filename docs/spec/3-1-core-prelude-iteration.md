@@ -252,6 +252,8 @@ fn collect_set<T: Ord>(iter: Iter<T>) -> Result<Set<T>, CollectError>   // `@pur
 fn collect_string(iter: Iter<char>) -> Result<String, StringError>      // `effect {mem}`
 ```
 
+> **NOTE**: `Set<T>` の API は [3.2 Core Collections](3-2-core-collections.md) に準拠し、実行時表現の詳細は [3.2 §2.2.1](3-2-core-collections.md#set-runtime-abi) を参照。
+
 ### 4.2 カスタムコレクタの実装例
 
 ```reml

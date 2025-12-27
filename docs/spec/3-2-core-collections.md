@@ -67,6 +67,13 @@ fn partition<T: Ord>(set: Set<T>, pred: (T) -> Bool) -> (Set<T>, Set<T>)
 - `merge` と `diff` は `Core.Data` の `SchemaDiff` や `Change` と整合し、監査ログで差分を共有する前提を提供する。【F:3-7-core-config-data.md†L16-L55】
 - `Set` は `Map<T, Unit>` の薄いラッパーであり、`Collector` 実装を共有する。
 
+#### 2.2.1 Set の実行時表現（Backend/Runtime） {#set-runtime-abi}
+
+- `Set<T>` はランタイムのヒープオブジェクトとして扱い、Backend は不透明ポインタ（`ptr`）で受け渡す。
+- 最小 ABI は `runtime/native/include/reml_runtime.h` に定義された `reml_set_new` / `reml_set_insert` / `reml_set_contains` / `reml_set_len` を利用し、`REML_TAG_SET` で型識別する。
+- 現行実装の `reml_set_t` は可変配列ベースで、重複判定はポインタ同値に限定する。`Ord` に基づく比較フックは将来拡張（Phase 4 以降）で導入予定。
+- `reml_set_insert` は永続構造として新しい Set を返し、要素は参照カウントで保持する。破棄は `dec_ref` 経由で `REML_TAG_SET` のデストラクタが担当する。
+
 ### 2.3 バッチ変換ヘルパ
 
 | 関数 | シグネチャ | 効果 | 説明 |

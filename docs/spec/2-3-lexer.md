@@ -358,6 +358,8 @@ let nonReservedIdent =
   ident.andThen(|name| if reservedSet.contains(name) then fail("reserved") else ok(name))
 ```
 
+> **NOTE**: `Set<T>` の実行時表現は Runtime の `reml_set_*` ABI に委譲され、Backend は不透明ポインタとして扱う。詳細は [3.2 Core Collections §2.2.1](3-2-core-collections.md#set-runtime-abi) を参照。
+
 ### L-2. 数値（整数 or 浮動小数）
 
 ```reml

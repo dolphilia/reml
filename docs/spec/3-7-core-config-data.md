@@ -68,6 +68,8 @@ type RegistrySection = {
 }
 ```
 
+> **NOTE**: 本章で利用する `Set<T>` 型は [3.2 Core Collections](3-2-core-collections.md) の定義に従う。実行時表現の概要は [3.2 §2.2.1](3-2-core-collections.md#set-runtime-abi) を参照。
+
 - `DslExportRef.signature` はコンパイラが `@dsl_export` から抽出した `DslExportSignature` を JSON にシリアライズして格納する（未解析時は `None`）。
 - `expect_effects` は 1.3 §I.1 の効果境界と突き合わせるための期待集合。CI などではこれを上限として用いる。
 - `allow_prerelease` が `true` の場合、互換判定で pre-release バージョンを許容する（1.2 §G 参照）。

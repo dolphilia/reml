@@ -75,6 +75,8 @@ type ParseError = {
 }
 ```
 
+> **NOTE**: `Set<Expectation>` の `Set` は [3.2 Core Collections](3-2-core-collections.md) の永続コレクションを指す。実行時表現の概要は [3.2 §2.2.1](3-2-core-collections.md#set-runtime-abi) を参照。
+
 * **`ParseError` は集約用の“素の事実”**、**`Diagnostic` は表示用**（`Err.pretty` が `ParseError` から `Diagnostic` を起こす）。
 * `Expectation` は**種類別**に持ち、message 生成時に**まとまりで整形**（例：「期待：`)`・`number`・識別子のいずれか」）。
 * `expected_summary` はテンプレート ID と文脈を保持し、IDE/LSP がローカライズ済みメッセージを生成できるようにする。Phase 2-5 ERR-001 で OCaml 実装が Menhir 期待集合を収集する経路を整備し、CLI/LSP/監査すべてで `ExpectationSummary` が出力される状態へ移行した[^err001-phase25].
