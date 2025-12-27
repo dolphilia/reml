@@ -4,6 +4,7 @@ project(reml_runtime C)
 option(REML_RUNTIME_ENABLE_DEBUG "Enable runtime debug instrumentation" OFF)
 
 set(RUNTIME_SOURCES
+    src/boxing.c
     src/ffi_bridge.c
     src/mem_alloc.c
     src/intrinsics.c

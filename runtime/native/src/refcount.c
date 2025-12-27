@@ -36,6 +36,7 @@ void reml_debug_print_refcount_stats(void) {
 static void destroy_string(void* ptr);
 static void destroy_tuple(void* ptr);
 static void destroy_record(void* ptr);
+static void destroy_array(void* ptr);
 static void destroy_closure(void* ptr);
 static void destroy_adt(void* ptr);
 static void destroy_set(void* ptr);
@@ -124,6 +125,9 @@ void dec_ref(void* ptr) {
             case REML_TAG_RECORD:
                 destroy_record(ptr);
                 break;
+            case REML_TAG_ARRAY:
+                destroy_array(ptr);
+                break;
             case REML_TAG_CLOSURE:
                 destroy_closure(ptr);
                 break;
@@ -136,6 +140,7 @@ void dec_ref(void* ptr) {
             case REML_TAG_INT:
             case REML_TAG_FLOAT:
             case REML_TAG_BOOL:
+            case REML_TAG_CHAR:
                 // プリミティブ型：子オブジェクトなし、デストラクタ不要
                 break;
             default:
@@ -200,27 +205,7 @@ static void destroy_string(void* ptr) {
  * @param ptr タプルオブジェクトへのポインタ
  */
 static void destroy_tuple(void* ptr) {
-    // Phase 1: 簡易実装
-    // タプル構造: {void* elem0, void* elem1, ...}
-    // すべての要素が参照型（ポインタ）であると仮定し、dec_ref を呼び出す
-    // TODO: Phase 2 でメタデータテーブルを導入し、要素ごとの型情報に基づいて処理
-
-    // Phase 1 では具体的なタプル構造が未定義のため、プレースホルダーとする
-    (void)ptr;  // 未使用警告抑制
-
-#ifdef DEBUG
-    fprintf(stderr, "[DEBUG] destroy_tuple: ptr=%p (placeholder implementation)\n", ptr);
-#endif
-
-    // Phase 2 以降: タプルメタデータから要素数と型情報を取得し、
-    // 各要素に対して再帰的に dec_ref を呼び出す
-    // 例:
-    //   for (size_t i = 0; i < tuple_metadata->num_elements; i++) {
-    //       if (tuple_metadata->element_types[i] == POINTER_TYPE) {
-    //           void** elem_ptr = (void**)((char*)ptr + tuple_metadata->offsets[i]);
-    //           dec_ref(*elem_ptr);
-    //       }
-    //   }
+    reml_destroy_tuple(ptr);
 }
 
 /**
@@ -234,15 +219,20 @@ static void destroy_tuple(void* ptr) {
  * @param ptr レコードオブジェクトへのポインタ
  */
 static void destroy_record(void* ptr) {
-    // Phase 1: 簡易実装（タプルと同様のプレースホルダー）
-    (void)ptr;  // 未使用警告抑制
+    reml_destroy_record(ptr);
+}
 
-#ifdef DEBUG
-    fprintf(stderr, "[DEBUG] destroy_record: ptr=%p (placeholder implementation)\n", ptr);
-#endif
-
-    // Phase 2 以降: レコードメタデータから各フィールドの型情報を取得し、
-    // ポインタ型フィールドに対して dec_ref を呼び出す
+/**
+ * 配列オブジェクトのデストラクタ
+ *
+ * Phase 3 実装注記:
+ *   配列は {len, items} の最小 ABI を採用し、items は void* 配列。
+ *   すべての要素を RC 対象として dec_ref し、配列バッファを解放する。
+ *
+ * @param ptr 配列オブジェクトへのポインタ
+ */
+static void destroy_array(void* ptr) {
+    reml_destroy_array(ptr);
 }
 
 /**
@@ -326,5 +316,58 @@ static void destroy_set(void* ptr) {
         }
         free(set->items);
         set->items = NULL;
+    }
+}
+
+/* ========== Phase 3: 破棄 API 実装 ========== */
+
+void reml_destroy_tuple(void* ptr) {
+    if (ptr == NULL) {
+        return;
+    }
+
+    reml_tuple_t* tuple = (reml_tuple_t*)ptr;
+    if (tuple->items != NULL) {
+        for (int64_t i = 0; i < tuple->len; i++) {
+            if (tuple->items[i] != NULL) {
+                dec_ref(tuple->items[i]);
+            }
+        }
+        free(tuple->items);
+        tuple->items = NULL;
+    }
+}
+
+void reml_destroy_record(void* ptr) {
+    if (ptr == NULL) {
+        return;
+    }
+
+    reml_record_t* record = (reml_record_t*)ptr;
+    if (record->values != NULL) {
+        for (int64_t i = 0; i < record->field_count; i++) {
+            if (record->values[i] != NULL) {
+                dec_ref(record->values[i]);
+            }
+        }
+        free(record->values);
+        record->values = NULL;
+    }
+}
+
+void reml_destroy_array(void* ptr) {
+    if (ptr == NULL) {
+        return;
+    }
+
+    reml_array_t* array = (reml_array_t*)ptr;
+    if (array->items != NULL) {
+        for (int64_t i = 0; i < array->len; i++) {
+            if (array->items[i] != NULL) {
+                dec_ref(array->items[i]);
+            }
+        }
+        free(array->items);
+        array->items = NULL;
     }
 }

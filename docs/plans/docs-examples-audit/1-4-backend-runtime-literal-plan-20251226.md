@@ -156,11 +156,23 @@
 - Tuple/Record/Array の破棄処理を最低限実装する。
 - Float/Char のボックス化/アンボックス化の補助関数を追加する。
 - 参照カウント管理の適用範囲を明文化する。
-  - [ ] `runtime/native/src/refcount.c` の既存実装を確認し、タグ別の分岐を追加する
-  - [ ] Tuple/Record/Array の要素走査と参照カウント減算を実装する
-  - [ ] Float/Char 用の boxing/unboxing API を追加し、ヘッダに宣言する
-  - [ ] 参照カウント対象（ヒープ/即値）の区分を文書化する
-  - [ ] Backend が呼び出す補助関数の利用例をメモに残す
+  - [x] `runtime/native/src/refcount.c` の既存実装を確認し、タグ別の分岐を追加する
+  - [x] Tuple/Record/Array の要素走査と参照カウント減算を実装する
+  - [x] Float/Char 用の boxing/unboxing API を追加し、ヘッダに宣言する
+  - [x] 参照カウント対象（ヒープ/即値）の区分を文書化する
+  - [x] Backend が呼び出す補助関数の利用例をメモに残す
+
+#### フェーズ 3 メモ（2025-12-26）
+- `runtime/native/src/refcount.c` で `REML_TAG_ARRAY` を追加し、Tuple/Record/Array の破棄 API を実装した。
+  - `reml_destroy_tuple/record/array` が `items/values` を走査して `dec_ref` し、配列バッファを `free` で解放する。
+  - `REML_TAG_CHAR` はプリミティブ扱いでデストラクタ不要とする。
+- `runtime/native/src/boxing.c` を追加し、`reml_box_float` / `reml_unbox_float` / `reml_box_char` / `reml_unbox_char` を実装した。
+  - Char は Unicode scalar value として妥当性チェックを行い、不正値は `panic` で停止する。
+- 参照カウント対象の区分を `runtime/native/include/reml_runtime.h` に追記した。
+- Backend での呼び出し例（想定）:
+  - Float: `@reml_box_float(f64)` → `ptr` をリテラル値として保持
+  - Char: `@reml_box_char(i32)` → `ptr` をリテラル値として保持
+  - Tuple/Record/Array: `@reml_destroy_*` は `dec_ref` の破棄パスから呼ばれる（Backend は直接呼ばない）。
 
 ### フェーズ 4: テストと結合検証
 - Backend スナップショットに各リテラルの例を追加する。
@@ -186,7 +198,7 @@
   - [x] フェーズ 0 完了
   - [x] フェーズ 1 完了
   - [x] フェーズ 2 完了
-  - [ ] フェーズ 3 完了
+  - [x] フェーズ 3 完了
   - [ ] フェーズ 4 完了
   - [ ] フェーズ 5 完了
 

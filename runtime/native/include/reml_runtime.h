@@ -73,6 +73,7 @@ typedef uint32_t reml_char_t;
  *
  * items は void* 配列へのポインタを保持し、各スロットは RC 対象の
  * ヒープポインタを格納する。非ポインタ値はボックス化して格納する。
+ * items 配列の確保は malloc/calloc を想定し、破棄時に free で解放する。
  */
 typedef struct {
     int64_t len;    ///< 要素数
@@ -87,6 +88,7 @@ typedef struct {
  *
  * fields の順序は Backend が確定する（現在はソース順を想定）。
  * 値スロットは RC 対象のヒープポインタを格納する。
+ * values 配列の確保は malloc/calloc を想定し、破棄時に free で解放する。
  */
 typedef struct {
     int64_t field_count; ///< フィールド数
@@ -100,12 +102,24 @@ typedef struct {
  *   [reml_object_header_t] [reml_array_t payload]
  *
  * items は void* 配列へのポインタを保持し、RC 対象の要素を格納する。
+ * items 配列の確保は malloc/calloc を想定し、破棄時に free で解放する。
  * 要素の非ポインタ化は Phase 3 でメタデータ化を検討する。
  */
 typedef struct {
     int64_t len;    ///< 要素数
     void** items;   ///< 要素ポインタ配列
 } reml_array_t;
+
+/* ========== 参照カウント対象の区分（Phase 3） ========== */
+
+/**
+ * 参照カウント管理の対象
+ *
+ * - mem_alloc で確保したヒープオブジェクトは RC 対象。
+ * - 即値（i64/bool/float/char の生値）は RC 対象外。
+ * - box_* API を通じてボックス化されたプリミティブは RC 対象。
+ * - Tuple/Record/Array の items/values 配列は RC 対象の要素ポインタを保持する。
+ */
 
 /* ========== メモリ管理 API ========== */
 
@@ -183,6 +197,40 @@ void reml_destroy_record(void* ptr);
  * @note Phase 3 で実装し、各要素の dec_ref と配列解放を行う
  */
 void reml_destroy_array(void* ptr);
+
+/* ========== Float/Char の boxing API（Phase 3） ========== */
+
+/**
+ * 浮動小数点値をボックス化する
+ *
+ * @param value f64 値
+ * @return ボックス化されたヒープポインタ
+ */
+void* reml_box_float(double value);
+
+/**
+ * 浮動小数点値をアンボックス化する
+ *
+ * @param ptr REML_TAG_FLOAT のヒープポインタ
+ * @return f64 値
+ */
+double reml_unbox_float(void* ptr);
+
+/**
+ * Char 値をボックス化する
+ *
+ * @param value Unicode scalar value
+ * @return ボックス化されたヒープポインタ
+ */
+void* reml_box_char(reml_char_t value);
+
+/**
+ * Char 値をアンボックス化する
+ *
+ * @param ptr REML_TAG_CHAR のヒープポインタ
+ * @return Unicode scalar value
+ */
+reml_char_t reml_unbox_char(void* ptr);
 
 /* ========== エラー処理 API ========== */
 
