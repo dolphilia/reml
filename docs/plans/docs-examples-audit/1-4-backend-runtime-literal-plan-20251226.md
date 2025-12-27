@@ -178,11 +178,20 @@
 - Backend スナップショットに各リテラルの例を追加する。
 - Runtime のユニットテスト（破棄/参照カウント）を追加する。
 - Frontend → Backend → Runtime の最小経路を確認する。
-  - [ ] Backend のスナップショットテストに Float/Char/Tuple/Array/Record の入力例を追加する
-  - [ ] Literal の JSON 形状が想定どおりに解釈されることを検証する
-  - [ ] Runtime の破棄処理で参照カウントが正しく減少するテストを追加する
-  - [ ] Char/Float の boxing/unboxing が往復で一致するテストを追加する
-  - [ ] 最小経路の手順（対象ソース、コマンド、期待出力）を計画書に記載する
+  - [x] Backend のスナップショットテストに Float/Char/Tuple/Array/Record の入力例を追加する
+  - [x] Literal の JSON 形状が想定どおりに解釈されることを検証する
+  - [x] Runtime の破棄処理で参照カウントが正しく減少するテストを追加する
+  - [x] Char/Float の boxing/unboxing が往復で一致するテストを追加する
+  - [x] 最小経路の手順（対象ソース、コマンド、期待出力）を計画書に記載する
+
+#### 最小経路メモ（2025-12-26）
+- 対象ソース: Float/Char/Tuple/Array/Record を含む `.reml`
+- Frontend: `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json <source>.reml > tmp/mir-literals-backend.json`
+  - 期待: JSON に `kind: "float"|"char"|"tuple"|"array"|"record"` が出力される
+- Backend: `cargo test --manifest-path compiler/rust/backend/llvm/Cargo.toml llvm_ir_literal_snapshots_cover_complex_literals`
+  - 期待: `@reml_box_float`/`@reml_box_char` と `diag backend.literal.unsupported.*` が IR に含まれる
+- Runtime: `make test -C runtime/native`
+  - 期待: `test_refcount` と `test_boxing` が完走する
 
 ### フェーズ 5: ドキュメント更新
 - 実装済みのリテラル表現と ABI を仕様に反映する。
@@ -199,7 +208,7 @@
   - [x] フェーズ 1 完了
   - [x] フェーズ 2 完了
   - [x] フェーズ 3 完了
-  - [ ] フェーズ 4 完了
+  - [x] フェーズ 4 完了
   - [ ] フェーズ 5 完了
 
 ## 関連リンク

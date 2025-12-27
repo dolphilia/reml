@@ -266,7 +266,96 @@ void test_destructor_adt(void) {
 }
 
 /**
- * Test 8: 複数回の inc_ref / dec_ref
+ * Test 8: 型別デストラクタ - Tuple/Record/Array
+ *
+ * Tuple/Record/Array のデストラクタが子要素の参照カウントを減算することを確認。
+ */
+void test_destructor_tuple_record_array(void) {
+    TEST("型別デストラクタ - Tuple/Record/Array");
+
+    // Tuple
+    void* tuple_elem1 = mem_alloc(sizeof(int64_t));
+    void* tuple_elem2 = mem_alloc(sizeof(int64_t));
+    reml_set_type_tag(tuple_elem1, REML_TAG_INT);
+    reml_set_type_tag(tuple_elem2, REML_TAG_INT);
+    reml_object_header_t* tuple_elem1_header = REML_GET_HEADER(tuple_elem1);
+    reml_object_header_t* tuple_elem2_header = REML_GET_HEADER(tuple_elem2);
+    inc_ref(tuple_elem1);
+    inc_ref(tuple_elem2);
+    ASSERT(tuple_elem1_header->refcount == 2, "tuple elem1 refcount should be 2");
+    ASSERT(tuple_elem2_header->refcount == 2, "tuple elem2 refcount should be 2");
+
+    reml_tuple_t* tuple = (reml_tuple_t*)mem_alloc(sizeof(reml_tuple_t));
+    reml_set_type_tag(tuple, REML_TAG_TUPLE);
+    tuple->len = 2;
+    tuple->items = (void**)calloc((size_t)tuple->len, sizeof(void*));
+    ASSERT(tuple->items != NULL, "tuple items alloc failed");
+    tuple->items[0] = tuple_elem1;
+    tuple->items[1] = tuple_elem2;
+    dec_ref(tuple);
+
+    ASSERT(tuple_elem1_header->refcount == 1, "tuple elem1 refcount should be 1");
+    ASSERT(tuple_elem2_header->refcount == 1, "tuple elem2 refcount should be 1");
+    dec_ref(tuple_elem1);
+    dec_ref(tuple_elem2);
+
+    // Record
+    void* record_value1 = mem_alloc(sizeof(int64_t));
+    void* record_value2 = mem_alloc(sizeof(int64_t));
+    reml_set_type_tag(record_value1, REML_TAG_INT);
+    reml_set_type_tag(record_value2, REML_TAG_INT);
+    reml_object_header_t* record_value1_header = REML_GET_HEADER(record_value1);
+    reml_object_header_t* record_value2_header = REML_GET_HEADER(record_value2);
+    inc_ref(record_value1);
+    inc_ref(record_value2);
+    ASSERT(record_value1_header->refcount == 2, "record value1 refcount should be 2");
+    ASSERT(record_value2_header->refcount == 2, "record value2 refcount should be 2");
+
+    reml_record_t* record = (reml_record_t*)mem_alloc(sizeof(reml_record_t));
+    reml_set_type_tag(record, REML_TAG_RECORD);
+    record->field_count = 2;
+    record->values = (void**)calloc((size_t)record->field_count, sizeof(void*));
+    ASSERT(record->values != NULL, "record values alloc failed");
+    record->values[0] = record_value1;
+    record->values[1] = record_value2;
+    dec_ref(record);
+
+    ASSERT(record_value1_header->refcount == 1, "record value1 refcount should be 1");
+    ASSERT(record_value2_header->refcount == 1, "record value2 refcount should be 1");
+    dec_ref(record_value1);
+    dec_ref(record_value2);
+
+    // Array
+    void* array_elem1 = mem_alloc(sizeof(int64_t));
+    void* array_elem2 = mem_alloc(sizeof(int64_t));
+    reml_set_type_tag(array_elem1, REML_TAG_INT);
+    reml_set_type_tag(array_elem2, REML_TAG_INT);
+    reml_object_header_t* array_elem1_header = REML_GET_HEADER(array_elem1);
+    reml_object_header_t* array_elem2_header = REML_GET_HEADER(array_elem2);
+    inc_ref(array_elem1);
+    inc_ref(array_elem2);
+    ASSERT(array_elem1_header->refcount == 2, "array elem1 refcount should be 2");
+    ASSERT(array_elem2_header->refcount == 2, "array elem2 refcount should be 2");
+
+    reml_array_t* array = (reml_array_t*)mem_alloc(sizeof(reml_array_t));
+    reml_set_type_tag(array, REML_TAG_ARRAY);
+    array->len = 2;
+    array->items = (void**)calloc((size_t)array->len, sizeof(void*));
+    ASSERT(array->items != NULL, "array items alloc failed");
+    array->items[0] = array_elem1;
+    array->items[1] = array_elem2;
+    dec_ref(array);
+
+    ASSERT(array_elem1_header->refcount == 1, "array elem1 refcount should be 1");
+    ASSERT(array_elem2_header->refcount == 1, "array elem2 refcount should be 1");
+    dec_ref(array_elem1);
+    dec_ref(array_elem2);
+
+    PASS();
+}
+
+/**
+ * Test 9: 複数回の inc_ref / dec_ref
  *
  * 同じオブジェクトに対して複数回 inc_ref と dec_ref を呼び出し、
  * 正しくカウントが管理されることを確認。
@@ -311,6 +400,7 @@ int main(void) {
     test_destructor_closure();
     test_no_leaks();
     test_destructor_adt();
+    test_destructor_tuple_record_array();
     test_multiple_inc_dec();
 
     printf("\n========================================\n");

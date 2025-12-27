@@ -1440,4 +1440,76 @@ mod tests {
         fs::remove_file(tmp)?;
         Ok(())
     }
+
+    #[test]
+    fn llvm_ir_literal_snapshots_cover_complex_literals() -> Result<(), MirSnapshotError> {
+        let repo_root = env!("CARGO_MANIFEST_DIR");
+        let path = std::path::Path::new(repo_root)
+            .join("../../../../tmp/mir-literals-backend.json");
+        let snapshot = generate_snapshot_from_mir_json(
+            &path,
+            test_target_machine(),
+            vec![],
+            vec!["phase=test".into()],
+            "mir_test",
+        )?;
+
+        let float_fn = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "literal_float")
+            .expect("literal_float 関数が存在すること");
+        assert!(
+            float_fn.llvm_ir.contains("@reml_box_float"),
+            "Float literal が reml_box_float に変換されること"
+        );
+
+        let char_fn = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "literal_char")
+            .expect("literal_char 関数が存在すること");
+        assert!(
+            char_fn.llvm_ir.contains("@reml_box_char"),
+            "Char literal が reml_box_char に変換されること"
+        );
+
+        let tuple_fn = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "literal_tuple")
+            .expect("literal_tuple 関数が存在すること");
+        assert!(
+            tuple_fn
+                .llvm_ir
+                .contains("diag backend.literal.unsupported.tuple: len=2"),
+            "Tuple literal の JSON 形状が len=2 として認識されること"
+        );
+
+        let array_fn = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "literal_array")
+            .expect("literal_array 関数が存在すること");
+        assert!(
+            array_fn
+                .llvm_ir
+                .contains("diag backend.literal.unsupported.array: len=2"),
+            "Array literal の JSON 形状が len=2 として認識されること"
+        );
+
+        let record_fn = snapshot
+            .functions
+            .iter()
+            .find(|func| func.name == "literal_record")
+            .expect("literal_record 関数が存在すること");
+        assert!(
+            record_fn
+                .llvm_ir
+                .contains("diag backend.literal.unsupported.record: type_name=Point, fields=2"),
+            "Record literal の JSON 形状が type_name/field_count として認識されること"
+        );
+
+        Ok(())
+    }
 }
