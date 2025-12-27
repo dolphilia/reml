@@ -110,6 +110,19 @@ typedef struct {
     void** items;   ///< 要素ポインタ配列
 } reml_array_t;
 
+/* ========== Array API（Phase 3） ========== */
+
+/**
+ * Array リテラル用の配列を生成する
+ *
+ * @param len 要素数
+ * @return 新しい Array オブジェクト（不透明ポインタとして扱う）
+ *
+ * @note 可変長引数には各要素のヒープポインタを渡す（RC 対象）。
+ * @note 要素は `inc_ref` され、破棄時に `dec_ref` される。
+ */
+void* reml_array_from(int64_t len, ...);
+
 /* ========== 参照カウント対象の区分（Phase 3） ========== */
 
 /**
@@ -120,6 +133,17 @@ typedef struct {
  * - box_* API を通じてボックス化されたプリミティブは RC 対象。
  * - Tuple/Record/Array の items/values 配列は RC 対象の要素ポインタを保持する。
  */
+
+/* ========== String ABI（Phase 2） ========== */
+
+/**
+ * Reml String 型の構造（C側での便宜的定義）
+ * LLVM IR では { ptr, i64 } として表現される
+ */
+typedef struct {
+    const char* data;  ///< 文字列データへのポインタ
+    int64_t length;    ///< 文字列の長さ（バイト数）
+} reml_string_t;
 
 /* ========== メモリ管理 API ========== */
 
@@ -198,7 +222,39 @@ void reml_destroy_record(void* ptr);
  */
 void reml_destroy_array(void* ptr);
 
-/* ========== Float/Char の boxing API（Phase 3） ========== */
+/* ========== プリミティブの boxing API（Phase 3） ========== */
+
+/**
+ * i64 値をボックス化する
+ *
+ * @param value i64 値
+ * @return ボックス化されたヒープポインタ
+ */
+void* reml_box_i64(int64_t value);
+
+/**
+ * i64 値をアンボックス化する
+ *
+ * @param ptr REML_TAG_INT のヒープポインタ
+ * @return i64 値
+ */
+int64_t reml_unbox_i64(void* ptr);
+
+/**
+ * Bool 値をボックス化する
+ *
+ * @param value bool 値（0/1）
+ * @return ボックス化されたヒープポインタ
+ */
+void* reml_box_bool(uint8_t value);
+
+/**
+ * Bool 値をアンボックス化する
+ *
+ * @param ptr REML_TAG_BOOL のヒープポインタ
+ * @return bool 値（0/1）
+ */
+uint8_t reml_unbox_bool(void* ptr);
 
 /**
  * 浮動小数点値をボックス化する
@@ -231,6 +287,22 @@ void* reml_box_char(reml_char_t value);
  * @return Unicode scalar value
  */
 reml_char_t reml_unbox_char(void* ptr);
+
+/**
+ * String 値をボックス化する
+ *
+ * @param value 文字列値
+ * @return ボックス化されたヒープポインタ
+ */
+void* reml_box_string(reml_string_t value);
+
+/**
+ * String 値をアンボックス化する
+ *
+ * @param ptr REML_TAG_STRING のヒープポインタ
+ * @return 文字列値
+ */
+reml_string_t reml_unbox_string(void* ptr);
 
 /* ========== エラー処理 API ========== */
 
@@ -305,15 +377,6 @@ int32_t reml_set_contains(void* set_ptr, void* value_ptr);
 int64_t reml_set_len(void* set_ptr);
 
 /* ========== 型クラスビルトイン実装（Phase 2 Week 22-23） ========== */
-
-/**
- * Reml String 型の構造（C側での便宜的定義）
- * LLVM IR では { ptr, i64 } として表現される
- */
-typedef struct {
-    const char* data;  ///< 文字列データへのポインタ
-    int64_t length;    ///< 文字列の長さ（バイト数）
-} reml_string_t;
 
 /**
  * 文字列の等価比較（Eq<String>::eq の実装）

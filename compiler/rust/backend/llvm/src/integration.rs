@@ -1492,10 +1492,8 @@ mod tests {
             .find(|func| func.name == "literal_array")
             .expect("literal_array 関数が存在すること");
         assert!(
-            array_fn
-                .llvm_ir
-                .contains("diag backend.literal.unsupported.array: len=2"),
-            "Array literal の JSON 形状が len=2 として認識されること"
+            array_fn.llvm_ir.contains("@reml_array_from"),
+            "Array literal が reml_array_from に変換されること"
         );
 
         let record_fn = snapshot

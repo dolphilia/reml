@@ -27,6 +27,10 @@ const INTRINSIC_FIELD_ACCESS: &str = "@reml_field_access";
 const INTRINSIC_INDEX_ACCESS: &str = "@reml_index_access";
 const INTRINSIC_SET_NEW: &str = "@reml_set_new";
 const INTRINSIC_SET_INSERT: &str = "@reml_set_insert";
+const INTRINSIC_ARRAY_FROM: &str = "@reml_array_from";
+const INTRINSIC_BOX_I64: &str = "@reml_box_i64";
+const INTRINSIC_BOX_BOOL: &str = "@reml_box_bool";
+const INTRINSIC_BOX_STRING: &str = "@reml_box_string";
 const INTRINSIC_BOX_FLOAT: &str = "@reml_box_float";
 const INTRINSIC_BOX_CHAR: &str = "@reml_box_char";
 const INTRINSIC_CALL: &str = "@reml_call";
@@ -4494,11 +4498,7 @@ fn emit_value_expr(
                     );
                 }
                 LiteralSummary::Array { elements } => {
-                    return emit_unsupported_literal_value(
-                        ssa,
-                        "array",
-                        Some(format!("len={}", elements.len())),
-                    );
+                    return emit_array_literal_value_from_elements(&elements, &expr.ty, ssa);
                 }
                 LiteralSummary::Record {
                     type_name,
@@ -5132,6 +5132,31 @@ enum LiteralSummary {
     Unknown { kind: Option<String> },
 }
 
+#[derive(Clone, Copy, Debug)]
+enum ArrayLiteralTarget {
+    Dynamic,
+    Fixed(usize),
+    Unknown,
+}
+
+fn parse_array_literal_target(ty: &str) -> ArrayLiteralTarget {
+    let trimmed = ty.trim();
+    if !(trimmed.starts_with('[') && trimmed.ends_with(']') && trimmed.len() >= 2) {
+        return ArrayLiteralTarget::Unknown;
+    }
+    let inner = trimmed[1..trimmed.len() - 1].trim();
+    if inner.is_empty() {
+        return ArrayLiteralTarget::Unknown;
+    }
+    if let Some((_, len)) = inner.rsplit_once(';') {
+        if let Ok(parsed) = len.trim().parse::<usize>() {
+            return ArrayLiteralTarget::Fixed(parsed);
+        }
+        return ArrayLiteralTarget::Unknown;
+    }
+    ArrayLiteralTarget::Dynamic
+}
+
 fn extract_literal_operand(summary: &str) -> Option<String> {
     match parse_literal_summary(summary) {
         LiteralSummary::Bool(value) => Some(if value { "true" } else { "false" }.to_string()),
@@ -5325,6 +5350,156 @@ fn emit_char_literal_value(value: &str, ssa: &mut LlvmBuilder) -> EmittedValue {
     }
 }
 
+fn emit_array_literal_value_from_elements(
+    elements: &[serde_json::Value],
+    expr_ty: &str,
+    ssa: &mut LlvmBuilder,
+) -> EmittedValue {
+    let mut instrs = Vec::new();
+    let target = parse_array_literal_target(expr_ty);
+    match target {
+        ArrayLiteralTarget::Dynamic => {
+            instrs.push(LlvmInstr::Comment(format!(
+                "array literal dynamic len={}",
+                elements.len()
+            )));
+        }
+        ArrayLiteralTarget::Fixed(expected) => {
+            let note = if expected == elements.len() {
+                "array literal fixed-length matched"
+            } else {
+                "array literal fixed-length mismatch"
+            };
+            instrs.push(LlvmInstr::Comment(format!(
+                "{note}: expected={expected}, actual={}",
+                elements.len()
+            )));
+        }
+        ArrayLiteralTarget::Unknown => {
+            instrs.push(LlvmInstr::Comment(format!(
+                "array literal target unknown len={}",
+                elements.len()
+            )));
+        }
+    }
+
+    instrs.push(LlvmInstr::Comment("array literal -> reml_array_from".into()));
+    let mut args = vec![("i64".into(), elements.len().to_string())];
+    for (index, element) in elements.iter().enumerate() {
+        let value = emit_array_element_expr(element, ssa);
+        instrs.extend(value.instrs);
+        instrs.push(LlvmInstr::Comment(format!("array element {index}")));
+        args.push((ssa.pointer_type(), value.operand));
+    }
+
+    let result = ssa.new_tmp("array");
+    instrs.push(LlvmInstr::Call {
+        result: Some(result.clone()),
+        ret_ty: ssa.pointer_type(),
+        callee: INTRINSIC_ARRAY_FROM.into(),
+        args,
+    });
+
+    EmittedValue {
+        ty: ssa.pointer_type(),
+        operand: result,
+        instrs,
+    }
+}
+
+fn emit_array_element_expr(element: &serde_json::Value, ssa: &mut LlvmBuilder) -> EmittedValue {
+    if let Some(kind) = element.get("kind").and_then(|v| v.as_str()) {
+        match kind {
+            "literal" => {
+                if let Some(literal) = element.get("value") {
+                    if let Some(value) = emit_literal_value_from_json(literal, ssa) {
+                        return ensure_array_element_pointer(value, ssa);
+                    }
+                }
+            }
+            "identifier" => {
+                if let Some(name) = element
+                    .get("ident")
+                    .and_then(|ident| ident.get("name"))
+                    .and_then(|value| value.as_str())
+                {
+                    if let Some(binding) = ssa.resolve_local(name) {
+                        let result = ssa.new_tmp("load");
+                        let value = EmittedValue {
+                            ty: binding.ty.clone(),
+                            operand: result.clone(),
+                            instrs: vec![LlvmInstr::Load {
+                                result,
+                                ty: binding.ty,
+                                ptr: binding.ptr,
+                            }],
+                        };
+                        return ensure_array_element_pointer(value, ssa);
+                    }
+                    return EmittedValue {
+                        ty: ssa.pointer_type(),
+                        operand: format!("%{}", sanitize_llvm_ident(name)),
+                        instrs: vec![LlvmInstr::Comment(format!(
+                            "array element ident {name} -> unresolved"
+                        ))],
+                    };
+                }
+            }
+            _ => {}
+        }
+    }
+    EmittedValue {
+        ty: ssa.pointer_type(),
+        operand: "null".into(),
+        instrs: vec![LlvmInstr::Comment(
+            "array element unsupported -> null".into(),
+        )],
+    }
+}
+
+fn ensure_array_element_pointer(value: EmittedValue, ssa: &mut LlvmBuilder) -> EmittedValue {
+    if value.ty == ssa.pointer_type() {
+        return value;
+    }
+
+    let mut instrs = value.instrs;
+    let (callee, arg_ty) = if value.ty == "i64" {
+        (INTRINSIC_BOX_I64, "i64".to_string())
+    } else if value.ty == ssa.bool_type() {
+        (INTRINSIC_BOX_BOOL, ssa.bool_type())
+    } else if value.ty == "Str" {
+        (INTRINSIC_BOX_STRING, "Str".to_string())
+    } else {
+        instrs.push(LlvmInstr::Comment(format!(
+            "array element unsupported type {} -> null",
+            value.ty
+        )));
+        return EmittedValue {
+            ty: ssa.pointer_type(),
+            operand: "null".into(),
+            instrs,
+        };
+    };
+
+    instrs.push(LlvmInstr::Comment(format!(
+        "array element boxing -> {}",
+        callee
+    )));
+    let result = ssa.new_tmp("box");
+    instrs.push(LlvmInstr::Call {
+        result: Some(result.clone()),
+        ret_ty: ssa.pointer_type(),
+        callee: callee.into(),
+        args: vec![(arg_ty, value.operand)],
+    });
+
+    EmittedValue {
+        ty: ssa.pointer_type(),
+        operand: result,
+        instrs,
+    }
+}
+
 fn emit_set_literal_value_from_elements(
     elements: &[serde_json::Value],
     ssa: &mut LlvmBuilder,
@@ -5438,11 +5613,9 @@ fn emit_literal_value_from_json(
             "tuple",
             Some(format!("len={}", elements.len())),
         )),
-        LiteralSummary::Array { elements } => Some(emit_unsupported_literal_value(
-            ssa,
-            "array",
-            Some(format!("len={}", elements.len())),
-        )),
+        LiteralSummary::Array { elements } => {
+            Some(emit_array_literal_value_from_elements(&elements, "", ssa))
+        }
         LiteralSummary::Set { elements } => Some(emit_unsupported_literal_value(
             ssa,
             "set",
