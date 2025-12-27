@@ -92,11 +92,65 @@
 - `REML_TAG_*` に Char/Array のタグを追加する。
 - Tuple/Record/Array の最小構造を C 側で定義する（破棄処理含む）。
 - Char の表現（UTF-8 1byte or Unicode scalar）を決める。
-  - [ ] `runtime/native/include/reml_runtime.h` の既存タグを確認し、追加タグの値レンジを決める
-  - [ ] Tuple/Record/Array のレイアウト（ヘッダ、長さ、要素ポインタ）を最小構成で設計する
-  - [ ] Char の表現を仕様に合わせて決定し、ABI への影響点をメモする
-  - [ ] ABI レイアウトのコメントをヘッダに追記し、Backend が参照できる形にする
-  - [ ] 破棄処理のインタフェース（関数名、引数、責務）を定義する
+  - [x] `runtime/native/include/reml_runtime.h` の既存タグを確認し、追加タグの値レンジを決める
+  - [x] Tuple/Record/Array のレイアウト（ヘッダ、長さ、要素ポインタ）を最小構成で設計する
+  - [x] Char の表現を仕様に合わせて決定し、ABI への影響点をメモする
+  - [x] ABI レイアウトのコメントをヘッダに追記し、Backend が参照できる形にする
+  - [x] 破棄処理のインタフェース（関数名、引数、責務）を定義する
+
+#### フェーズ 2 メモ（2025-12-26）
+- `REML_TAG_CHAR = 10` / `REML_TAG_ARRAY = 11` を追加し、既存タグの値を維持。
+- Char は Unicode scalar value を `reml_char_t`（`uint32_t`）で表現する方針に確定。
+  - ボックス化する場合は `REML_TAG_CHAR` を用い、payload で `reml_char_t` を保持。
+- Tuple/Record/Array は最小 ABI として `{len, items}` / `{field_count, values}` を採用。
+  - payload は `reml_object_header_t` 直後に配置され、要素配列は `void*` スロットを保持。
+  - Record のフィールド順序は Backend で決定（現状はソース順を想定）。
+- 破棄処理インタフェース `reml_destroy_tuple/record/array` を Phase 3 実装前提で宣言。
+
+#### Backend ABI 接続メモ（2025-12-26）
+- Backend (`compiler/rust/backend/llvm/src/codegen.rs`) は現状 `float/char/tuple/array/record` を未対応として診断コメントを出すのみで、Runtime ABI との接続は未実装。
+- Runtime ABI 参照は `@reml_*` intrinsic 名に限定され、`REML_TAG_*` や `reml_tuple_t` 等のレイアウト参照は存在しない。
+  - 既存の ABI 依存は `mem_alloc/inc_ref/dec_ref/panic` と `reml_set_new/insert` のみ。
+- `type_mapping.rs` の `RowTuple` はサイズ概算のみで、Runtime Tuple/Record/Array と直接対応しない。
+- 接続方針:
+  - Backend からは **Runtime の公開 API でヒープオブジェクトを構築**する前提とし、
+    直接レイアウトを書き込むのは Phase 3 以降に限定する。
+  - Tuple/Record/Array/Char の構築用に `@reml_*` intrinsic を追加し、
+    `reml_runtime.h` の ABI と一致する C 実装を用意する。
+  - 直接構築を行う場合は `mem_alloc` + `reml_set_type_tag` を必須とし、
+    items 配列の確保/解放責務を Runtime 側で統一する。
+
+#### Runtime API 候補（@reml_*）メモ（2025-12-26）
+- 目的: Backend が ABI レイアウトを直接書かずに、リテラル構築の責務を Runtime に委譲する。
+- 署名候補（LLVM IR での呼び出しを想定）:
+  - `@reml_char_new(i32) -> ptr`
+    - `reml_char_t` をボックス化して `REML_TAG_CHAR` を設定したヒープポインタを返す。
+  - `@reml_tuple_new(i64 len, ptr items) -> ptr`
+    - `items` は `void**` 相当（要素のヒープポインタ配列）。
+  - `@reml_record_new(i64 field_count, ptr values) -> ptr`
+    - `values` は `void**` 相当（フィールド値配列）。順序は Backend 側で決定。
+  - `@reml_array_new(i64 len, ptr items) -> ptr`
+    - `items` は `void**` 相当。
+  - `@reml_array_from_span(i64 len, ptr items, i1 take_ownership) -> ptr`（将来候補）
+    - 既存バッファの所有権を Runtime 側に移す場合に利用。
+- 破棄 API は `dec_ref` に統合し、明示的な `@reml_*_destroy` を Backend からは呼ばない。
+- 文字列同様に、非ポインタ要素は Backend がボックス化して `items` に格納する方針。
+
+#### Backend emit_value_expr 構築パスの設計メモ（2025-12-26）
+- `LiteralSummary::Char/Tuple/Array/Record` に対して以下の構築パスを追加する想定。
+- Char:
+  - `reml_char_t` 相当の `i32` を生成 → `@reml_char_new` 呼び出し → `ptr` を返す。
+- Tuple/Array:
+  - 各要素を `emit_value_expr` で評価し、`ptr` へ正規化（非 ptr は boxing）。
+  - `mem_alloc` で `void**` 配列を確保して格納 → `@reml_tuple_new` / `@reml_array_new` を呼ぶ。
+  - `items` の所有権は Runtime 側が保持し、Backend は解放しない。
+- Record:
+  - フィールド順序は MIR の `fields` 順で固定し、`values` 配列へ格納。
+  - `@reml_record_new` を呼ぶ。
+- Boxing 方針（候補）:
+  - 既存の `INTRINSIC_VALUE_I64/BOOL/STR` 相当の補助関数に合わせ、
+    `@reml_box_i64` / `@reml_box_bool` / `@reml_box_f64` 等の追加を検討。
+  - 追加が間に合わない場合は `mem_alloc` + `reml_set_type_tag` を Backend から行う。
 
 ### フェーズ 3: Runtime 実装（最小機能）
 - Tuple/Record/Array の破棄処理を最低限実装する。
@@ -131,7 +185,7 @@
 - 進捗欄（運用用）:
   - [x] フェーズ 0 完了
   - [x] フェーズ 1 完了
-  - [ ] フェーズ 2 完了
+  - [x] フェーズ 2 完了
   - [ ] フェーズ 3 完了
   - [ ] フェーズ 4 完了
   - [ ] フェーズ 5 完了

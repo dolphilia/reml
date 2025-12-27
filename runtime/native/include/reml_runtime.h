@@ -49,9 +49,63 @@ typedef enum {
     REML_TAG_CLOSURE   = 7,  ///< クロージャ（{env*, code_ptr}）
     REML_TAG_ADT       = 8,  ///< 代数的データ型（{tag, payload}）
     REML_TAG_SET       = 9,  ///< Set 型（Phase 3: 最小 ABI）
+    REML_TAG_CHAR      = 10, ///< 文字型（Unicode scalar）
+    REML_TAG_ARRAY     = 11, ///< 配列型
     // Phase 2 以降で追加予定:
-    // REML_TAG_ARRAY, REML_TAG_SLICE, REML_TAG_CUSTOM, ...
+    // REML_TAG_SLICE, REML_TAG_CUSTOM, ...
 } reml_type_tag_t;
+
+/* ========== リテラル ABI（Phase 2） ========== */
+
+/**
+ * Reml Char 型（Unicode scalar value）
+ *
+ * 有効範囲は U+0000..U+10FFFF（サロゲート除外）。
+ * ABI 上は 32bit のスカラ値として扱う。
+ */
+typedef uint32_t reml_char_t;
+
+/**
+ * Reml Tuple 型の最小 ABI
+ *
+ * メモリレイアウト:
+ *   [reml_object_header_t] [reml_tuple_t payload]
+ *
+ * items は void* 配列へのポインタを保持し、各スロットは RC 対象の
+ * ヒープポインタを格納する。非ポインタ値はボックス化して格納する。
+ */
+typedef struct {
+    int64_t len;    ///< 要素数
+    void** items;   ///< 要素ポインタ配列
+} reml_tuple_t;
+
+/**
+ * Reml Record 型の最小 ABI
+ *
+ * メモリレイアウト:
+ *   [reml_object_header_t] [reml_record_t payload]
+ *
+ * fields の順序は Backend が確定する（現在はソース順を想定）。
+ * 値スロットは RC 対象のヒープポインタを格納する。
+ */
+typedef struct {
+    int64_t field_count; ///< フィールド数
+    void** values;       ///< 値ポインタ配列
+} reml_record_t;
+
+/**
+ * Reml Array 型の最小 ABI
+ *
+ * メモリレイアウト:
+ *   [reml_object_header_t] [reml_array_t payload]
+ *
+ * items は void* 配列へのポインタを保持し、RC 対象の要素を格納する。
+ * 要素の非ポインタ化は Phase 3 でメタデータ化を検討する。
+ */
+typedef struct {
+    int64_t len;    ///< 要素数
+    void** items;   ///< 要素ポインタ配列
+} reml_array_t;
 
 /* ========== メモリ管理 API ========== */
 
@@ -103,6 +157,32 @@ void inc_ref(void* ptr);
  * @note NULL ポインタを渡した場合は何もしない
  */
 void dec_ref(void* ptr);
+
+/* ========== 破棄処理インタフェース（Phase 2 定義） ========== */
+
+/**
+ * タプルの破棄処理
+ *
+ * @param ptr タプル payload へのポインタ（ヘッダ直後）
+ * @note Phase 3 で実装し、各要素の dec_ref と配列解放を行う
+ */
+void reml_destroy_tuple(void* ptr);
+
+/**
+ * レコードの破棄処理
+ *
+ * @param ptr レコード payload へのポインタ（ヘッダ直後）
+ * @note Phase 3 で実装し、各フィールドの dec_ref と配列解放を行う
+ */
+void reml_destroy_record(void* ptr);
+
+/**
+ * 配列の破棄処理
+ *
+ * @param ptr 配列 payload へのポインタ（ヘッダ直後）
+ * @note Phase 3 で実装し、各要素の dec_ref と配列解放を行う
+ */
+void reml_destroy_array(void* ptr);
 
 /* ========== エラー処理 API ========== */
 
