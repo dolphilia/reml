@@ -27,6 +27,8 @@ const INTRINSIC_FIELD_ACCESS: &str = "@reml_field_access";
 const INTRINSIC_INDEX_ACCESS: &str = "@reml_index_access";
 const INTRINSIC_SET_NEW: &str = "@reml_set_new";
 const INTRINSIC_SET_INSERT: &str = "@reml_set_insert";
+const INTRINSIC_BOX_FLOAT: &str = "@reml_box_float";
+const INTRINSIC_BOX_CHAR: &str = "@reml_box_char";
 const INTRINSIC_CALL: &str = "@reml_call";
 const INTRINSIC_STR_CONCAT: &str = "@reml_str_concat";
 const INTRINSIC_STR_DATA: &str = "@reml_str_data";
@@ -4479,18 +4481,10 @@ fn emit_value_expr(
                     return emit_set_literal_value_from_elements(&elements, ssa);
                 }
                 LiteralSummary::Float { raw } => {
-                    return emit_unsupported_literal_value(
-                        ssa,
-                        "float",
-                        Some(format!("raw={raw}")),
-                    );
+                    return emit_float_literal_value(&raw, ssa);
                 }
                 LiteralSummary::Char { value } => {
-                    return emit_unsupported_literal_value(
-                        ssa,
-                        "char",
-                        Some(format!("value={value}")),
-                    );
+                    return emit_char_literal_value(&value, ssa);
                 }
                 LiteralSummary::Tuple { elements } => {
                     return emit_unsupported_literal_value(
@@ -5264,6 +5258,73 @@ fn extract_ident_name(value: &serde_json::Value) -> Option<String> {
     }
 }
 
+fn emit_float_literal_value(raw: &str, ssa: &mut LlvmBuilder) -> EmittedValue {
+    let normalized = raw.replace('_', "");
+    let value = match normalized.parse::<f64>() {
+        Ok(value) => value,
+        Err(_) => {
+            return emit_unsupported_literal_value(
+                ssa,
+                "float",
+                Some(format!("raw={raw}")),
+            );
+        }
+    };
+
+    let mut instrs = Vec::new();
+    instrs.push(LlvmInstr::Comment("float literal -> reml_box_float".into()));
+    let result = ssa.new_tmp("float");
+    instrs.push(LlvmInstr::Call {
+        result: Some(result.clone()),
+        ret_ty: ssa.pointer_type(),
+        callee: INTRINSIC_BOX_FLOAT.into(),
+        args: vec![("double".into(), value.to_string())],
+    });
+
+    EmittedValue {
+        ty: ssa.pointer_type(),
+        operand: result,
+        instrs,
+    }
+}
+
+fn emit_char_literal_value(value: &str, ssa: &mut LlvmBuilder) -> EmittedValue {
+    let mut chars = value.chars();
+    let ch = match chars.next() {
+        Some(ch) => ch,
+        None => {
+            return emit_unsupported_literal_value(
+                ssa,
+                "char",
+                Some(format!("value={value}")),
+            );
+        }
+    };
+    if chars.next().is_some() {
+        return emit_unsupported_literal_value(
+            ssa,
+            "char",
+            Some(format!("value={value}")),
+        );
+    }
+
+    let mut instrs = Vec::new();
+    instrs.push(LlvmInstr::Comment("char literal -> reml_box_char".into()));
+    let result = ssa.new_tmp("char");
+    instrs.push(LlvmInstr::Call {
+        result: Some(result.clone()),
+        ret_ty: ssa.pointer_type(),
+        callee: INTRINSIC_BOX_CHAR.into(),
+        args: vec![("i32".into(), (ch as u32).to_string())],
+    });
+
+    EmittedValue {
+        ty: ssa.pointer_type(),
+        operand: result,
+        instrs,
+    }
+}
+
 fn emit_set_literal_value_from_elements(
     elements: &[serde_json::Value],
     ssa: &mut LlvmBuilder,
@@ -5370,16 +5431,8 @@ fn emit_literal_value_from_json(
             operand: format!("\"{}\"", value.replace('"', "\\\"")),
             instrs: vec![],
         }),
-        LiteralSummary::Float { raw } => Some(emit_unsupported_literal_value(
-            ssa,
-            "float",
-            Some(format!("raw={raw}")),
-        )),
-        LiteralSummary::Char { value } => Some(emit_unsupported_literal_value(
-            ssa,
-            "char",
-            Some(format!("value={value}")),
-        )),
+        LiteralSummary::Float { raw } => Some(emit_float_literal_value(&raw, ssa)),
+        LiteralSummary::Char { value } => Some(emit_char_literal_value(&value, ssa)),
         LiteralSummary::Tuple { elements } => Some(emit_unsupported_literal_value(
             ssa,
             "tuple",
