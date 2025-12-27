@@ -5412,7 +5412,7 @@ fn emit_set_element_expr(element: &serde_json::Value, ssa: &mut LlvmBuilder) -> 
 
 fn emit_literal_value_from_json(
     literal: &serde_json::Value,
-    ssa: &LlvmBuilder,
+    ssa: &mut LlvmBuilder,
 ) -> Option<EmittedValue> {
     match parse_literal_value(literal) {
         LiteralSummary::Unit => Some(emit_unit_value(ssa)),
