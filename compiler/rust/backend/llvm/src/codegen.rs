@@ -28,6 +28,7 @@ const INTRINSIC_INDEX_ACCESS: &str = "@reml_index_access";
 const INTRINSIC_SET_NEW: &str = "@reml_set_new";
 const INTRINSIC_SET_INSERT: &str = "@reml_set_insert";
 const INTRINSIC_ARRAY_FROM: &str = "@reml_array_from";
+const INTRINSIC_RECORD_FROM: &str = "@reml_record_from";
 const INTRINSIC_BOX_I64: &str = "@reml_box_i64";
 const INTRINSIC_BOX_BOOL: &str = "@reml_box_bool";
 const INTRINSIC_BOX_STRING: &str = "@reml_box_string";
@@ -4502,16 +4503,12 @@ fn emit_value_expr(
                 }
                 LiteralSummary::Record {
                     type_name,
-                    field_count,
+                    fields,
                 } => {
-                    return emit_unsupported_literal_value(
+                    return emit_record_literal_value_from_fields(
+                        &fields,
+                        type_name.as_deref(),
                         ssa,
-                        "record",
-                        Some(format!(
-                            "type_name={}, fields={}",
-                            type_name.unwrap_or_else(|| "none".into()),
-                            field_count
-                        )),
                     );
                 }
                 LiteralSummary::Unknown { kind } => {
@@ -5127,9 +5124,25 @@ enum LiteralSummary {
     String(String),
     Tuple { elements: Vec<serde_json::Value> },
     Array { elements: Vec<serde_json::Value> },
-    Record { type_name: Option<String>, field_count: usize },
+    Record {
+        type_name: Option<String>,
+        fields: Vec<RecordLiteralField>,
+    },
     Set { elements: Vec<serde_json::Value> },
     Unknown { kind: Option<String> },
+}
+
+#[derive(Clone, Debug)]
+struct RecordLiteralField {
+    key: String,
+    value: serde_json::Value,
+}
+
+#[derive(Clone, Debug)]
+struct RecordFieldValue {
+    key: String,
+    operand: String,
+    source_index: usize,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -5252,11 +5265,7 @@ fn parse_literal_value(value: &serde_json::Value) -> LiteralSummary {
             type_name: literal
                 .get("type_name")
                 .and_then(extract_ident_name),
-            field_count: literal
-                .get("fields")
-                .and_then(|value| value.as_array())
-                .map(|fields| fields.len())
-                .unwrap_or(0),
+            fields: parse_record_literal_fields(literal),
         },
         Some(_) | None => LiteralSummary::Unknown { kind },
     }
@@ -5281,6 +5290,23 @@ fn extract_ident_name(value: &serde_json::Value) -> Option<String> {
             .map(|value| value.to_string()),
         _ => None,
     }
+}
+
+fn parse_record_literal_fields(literal: &serde_json::Value) -> Vec<RecordLiteralField> {
+    literal
+        .get("fields")
+        .and_then(|value| value.as_array())
+        .map(|fields| {
+            fields
+                .iter()
+                .filter_map(|field| {
+                    let key = field.get("key").and_then(extract_ident_name)?;
+                    let value = field.get("value")?.clone();
+                    Some(RecordLiteralField { key, value })
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn emit_float_literal_value(raw: &str, ssa: &mut LlvmBuilder) -> EmittedValue {
@@ -5407,6 +5433,72 @@ fn emit_array_literal_value_from_elements(
     }
 }
 
+fn emit_record_literal_value_from_fields(
+    fields: &[RecordLiteralField],
+    type_name: Option<&str>,
+    ssa: &mut LlvmBuilder,
+) -> EmittedValue {
+    let mut instrs = Vec::new();
+    let type_suffix = type_name
+        .filter(|name| !name.is_empty())
+        .map(|name| format!(" type_name={name}"))
+        .unwrap_or_default();
+    instrs.push(LlvmInstr::Comment(format!(
+        "record literal field_count={}{}",
+        fields.len(),
+        type_suffix
+    )));
+
+    let mut evaluated: Vec<RecordFieldValue> = Vec::new();
+    for (index, field) in fields.iter().enumerate() {
+        let value = emit_record_field_expr(&field.value, ssa);
+        let value = ensure_record_field_pointer(value, ssa);
+        instrs.extend(value.instrs);
+        instrs.push(LlvmInstr::Comment(format!(
+            "record field {index} -> {}",
+            field.key
+        )));
+        evaluated.push(RecordFieldValue {
+            key: field.key.clone(),
+            operand: value.operand,
+            source_index: index,
+        });
+    }
+
+    let mut sorted = evaluated;
+    sorted.sort_by(|lhs, rhs| {
+        lhs.key
+            .cmp(&rhs.key)
+            .then(lhs.source_index.cmp(&rhs.source_index))
+    });
+
+    instrs.push(LlvmInstr::Comment(
+        "record literal -> reml_record_from".into(),
+    ));
+    let mut args = vec![("i64".into(), sorted.len().to_string())];
+    for (index, field) in sorted.iter().enumerate() {
+        instrs.push(LlvmInstr::Comment(format!(
+            "record slot {index} = {}",
+            field.key
+        )));
+        args.push((ssa.pointer_type(), field.operand.clone()));
+    }
+
+    let result = ssa.new_tmp("record");
+    instrs.push(LlvmInstr::Call {
+        result: Some(result.clone()),
+        ret_ty: ssa.pointer_type(),
+        callee: INTRINSIC_RECORD_FROM.into(),
+        args,
+    });
+
+    EmittedValue {
+        ty: ssa.pointer_type(),
+        operand: result,
+        instrs,
+    }
+}
+
 fn emit_array_element_expr(element: &serde_json::Value, ssa: &mut LlvmBuilder) -> EmittedValue {
     if let Some(kind) = element.get("kind").and_then(|v| v.as_str()) {
         match kind {
@@ -5457,6 +5549,55 @@ fn emit_array_element_expr(element: &serde_json::Value, ssa: &mut LlvmBuilder) -
     }
 }
 
+fn emit_record_field_expr(field: &serde_json::Value, ssa: &mut LlvmBuilder) -> EmittedValue {
+    if let Some(kind) = field.get("kind").and_then(|v| v.as_str()) {
+        match kind {
+            "literal" => {
+                if let Some(literal) = field.get("value") {
+                    if let Some(value) = emit_literal_value_from_json(literal, ssa) {
+                        return value;
+                    }
+                }
+            }
+            "identifier" => {
+                if let Some(name) = field
+                    .get("ident")
+                    .and_then(|ident| ident.get("name"))
+                    .and_then(|value| value.as_str())
+                {
+                    if let Some(binding) = ssa.resolve_local(name) {
+                        let result = ssa.new_tmp("load");
+                        return EmittedValue {
+                            ty: binding.ty.clone(),
+                            operand: result.clone(),
+                            instrs: vec![LlvmInstr::Load {
+                                result,
+                                ty: binding.ty,
+                                ptr: binding.ptr,
+                            }],
+                        };
+                    }
+                    return EmittedValue {
+                        ty: ssa.pointer_type(),
+                        operand: format!("%{}", sanitize_llvm_ident(name)),
+                        instrs: vec![LlvmInstr::Comment(format!(
+                            "record field ident {name} -> unresolved"
+                        ))],
+                    };
+                }
+            }
+            _ => {}
+        }
+    }
+    EmittedValue {
+        ty: ssa.pointer_type(),
+        operand: "null".into(),
+        instrs: vec![LlvmInstr::Comment(
+            "record field unsupported -> null".into(),
+        )],
+    }
+}
+
 fn ensure_array_element_pointer(value: EmittedValue, ssa: &mut LlvmBuilder) -> EmittedValue {
     if value.ty == ssa.pointer_type() {
         return value;
@@ -5483,6 +5624,49 @@ fn ensure_array_element_pointer(value: EmittedValue, ssa: &mut LlvmBuilder) -> E
 
     instrs.push(LlvmInstr::Comment(format!(
         "array element boxing -> {}",
+        callee
+    )));
+    let result = ssa.new_tmp("box");
+    instrs.push(LlvmInstr::Call {
+        result: Some(result.clone()),
+        ret_ty: ssa.pointer_type(),
+        callee: callee.into(),
+        args: vec![(arg_ty, value.operand)],
+    });
+
+    EmittedValue {
+        ty: ssa.pointer_type(),
+        operand: result,
+        instrs,
+    }
+}
+
+fn ensure_record_field_pointer(value: EmittedValue, ssa: &mut LlvmBuilder) -> EmittedValue {
+    if value.ty == ssa.pointer_type() {
+        return value;
+    }
+
+    let mut instrs = value.instrs;
+    let (callee, arg_ty) = if value.ty == "i64" {
+        (INTRINSIC_BOX_I64, "i64".to_string())
+    } else if value.ty == ssa.bool_type() {
+        (INTRINSIC_BOX_BOOL, ssa.bool_type())
+    } else if value.ty == "Str" {
+        (INTRINSIC_BOX_STRING, "Str".to_string())
+    } else {
+        instrs.push(LlvmInstr::Comment(format!(
+            "record field unsupported type {} -> null",
+            value.ty
+        )));
+        return EmittedValue {
+            ty: ssa.pointer_type(),
+            operand: "null".into(),
+            instrs,
+        };
+    };
+
+    instrs.push(LlvmInstr::Comment(format!(
+        "record field boxing -> {}",
         callee
     )));
     let result = ssa.new_tmp("box");
@@ -5623,15 +5807,11 @@ fn emit_literal_value_from_json(
         )),
         LiteralSummary::Record {
             type_name,
-            field_count,
-        } => Some(emit_unsupported_literal_value(
+            fields,
+        } => Some(emit_record_literal_value_from_fields(
+            &fields,
+            type_name.as_deref(),
             ssa,
-            "record",
-            Some(format!(
-                "type_name={}, fields={}",
-                type_name.unwrap_or_else(|| "none".into()),
-                field_count
-            )),
         )),
         LiteralSummary::Unknown { kind } => Some(emit_unsupported_literal_value(
             ssa,

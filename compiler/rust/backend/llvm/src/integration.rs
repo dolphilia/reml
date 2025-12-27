@@ -1502,10 +1502,8 @@ mod tests {
             .find(|func| func.name == "literal_record")
             .expect("literal_record 関数が存在すること");
         assert!(
-            record_fn
-                .llvm_ir
-                .contains("diag backend.literal.unsupported.record: type_name=Point, fields=2"),
-            "Record literal の JSON 形状が type_name/field_count として認識されること"
+            record_fn.llvm_ir.contains("@reml_record_from"),
+            "Record literal が reml_record_from に変換されること"
         );
 
         Ok(())

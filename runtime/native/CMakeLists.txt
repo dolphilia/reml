@@ -12,6 +12,7 @@ set(RUNTIME_SOURCES
     src/panic.c
     src/print_i64.c
     src/refcount.c
+    src/record.c
     src/os.c
     src/string_compare.c
     src/string_data.c

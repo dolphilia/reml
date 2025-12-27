@@ -86,7 +86,7 @@ typedef struct {
  * メモリレイアウト:
  *   [reml_object_header_t] [reml_record_t payload]
  *
- * fields の順序は Backend が確定する（現在はソース順を想定）。
+ * values の順序は Backend が確定する（フィールド名の正規化順）。
  * 値スロットは RC 対象のヒープポインタを格納する。
  * values 配列の確保は malloc/calloc を想定し、破棄時に free で解放する。
  */
@@ -109,6 +109,19 @@ typedef struct {
     int64_t len;    ///< 要素数
     void** items;   ///< 要素ポインタ配列
 } reml_array_t;
+
+/* ========== Record API（Phase 3） ========== */
+
+/**
+ * Record リテラル用のレコードを生成する
+ *
+ * @param field_count フィールド数
+ * @return 新しい Record オブジェクト（不透明ポインタとして扱う）
+ *
+ * @note 可変長引数には正規化順の値スロットを渡す（RC 対象）。
+ * @note フィールド値は `inc_ref` され、破棄時に `dec_ref` される。
+ */
+void* reml_record_from(int64_t field_count, ...);
 
 /* ========== Array API（Phase 3） ========== */
 
