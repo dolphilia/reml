@@ -28,11 +28,55 @@
 ### フェーズ 0: 仕様・MIR 形状の確認
 - 各リテラルの JSON 形状を整理し、MIR/JSON の安定仕様としてメモ化する。
 - 仕様側の記述（`docs/spec`）で意味論が確定しているか確認する。
-  - [ ] `compiler/rust/frontend/src/semantics/mir.rs` の `Literal` 構造と JSON 変換箇所を洗い出す
-  - [ ] `Literal` ごとの JSON 形状（キー名、配列/オブジェクトの入れ子、型ヒント）を一覧化する
-  - [ ] 仕様書（`docs/spec`）のリテラル定義箇所を特定し、意味論の不足点をメモする
-  - [ ] Float/Char/Tuple/Array/Record の未確定事項（精度、表現、型推論ルール）を TODO として整理する
-  - [ ] まとめを本計画書に追記してレビュー待ちにする
+  - [x] `compiler/rust/frontend/src/semantics/mir.rs` の `Literal` 構造と JSON 変換箇所を洗い出す
+  - [x] `Literal` ごとの JSON 形状（キー名、配列/オブジェクトの入れ子、型ヒント）を一覧化する
+  - [x] 仕様書（`docs/spec`）のリテラル定義箇所を特定し、意味論の不足点をメモする
+  - [x] Float/Char/Tuple/Array/Record の未確定事項（精度、表現、型推論ルール）を TODO として整理する
+  - [x] まとめを本計画書に追記してレビュー待ちにする
+
+#### フェーズ 0 メモ（2025-12-26）
+- MIR の `Literal` は `compiler/rust/frontend/src/semantics/mir.rs` の `MirExprKind::Literal(Literal)` で表現され、`Literal` 自体は `compiler/rust/frontend/src/parser/ast.rs` の `Literal`/`LiteralKind` を `serde` 直列化した JSON がそのまま使われる。
+- `Literal` は `{ "value": LiteralKind }` の 1 フィールド構造で、`MirExpr.kind` の `literal` 直下に `value` が入る（二重の `value` に注意）。
+- `LiteralKind` は `serde(tag = "kind", rename_all = "snake_case")` の内部タグ形式。
+
+```json
+{
+  "kind": "literal",
+  "value": {
+    "value": {
+      "kind": "int",
+      "value": 1,
+      "raw": "1",
+      "base": "base10"
+    }
+  }
+}
+```
+
+**LiteralKind の JSON 形状（主要リテラル）**
+- Int: `{ "kind": "int", "value": i64, "raw": "1_000", "base": "base10|base2|base8|base16" }`
+- Float: `{ "kind": "float", "raw": "3.14" }`
+- Char: `{ "kind": "char", "value": "A" }`（`String` として保持）
+- String: `{ "kind": "string", "value": "...", "string_kind": "normal|raw|multiline" }`
+- Bool: `{ "kind": "bool", "value": true }`
+- Unit: `{ "kind": "unit" }`
+- Tuple: `{ "kind": "tuple", "elements": [Expr, ...] }`
+- Array: `{ "kind": "array", "elements": [Expr, ...] }`
+- Record: `{ "kind": "record", "type_name": Ident?, "fields": [ { "key": Ident, "value": Expr }, ... ] }`
+  - `Ident` は `{ "name": String, "span": Span }` で直列化される（`RecordField.key` も同様）。
+
+**仕様での該当箇所**
+- リテラル構文: `docs/spec/1-1-syntax.md`（A.4, E.1）
+- 数値/文字リテラルの字句仕様: `docs/spec/2-3-lexer.md`（E, F）
+- 文字（Unicode スカラ値）: `docs/spec/1-4-test-unicode-model.md`（C）
+- 型・既定型: `docs/spec/1-2-types-Inference.md`（A.1, A.2, C.5/H.4 近辺の数値既定）
+
+**TODO（意味論の未確定事項）**
+- Float: `raw` のみ保持しているため、MIR/Backend での即値化タイミングと既定型（`f64` 固定か、`RunConfig` で切替可能か）を明記する必要がある。
+- Char: 仕様上は Unicode スカラ値（`Char`）だが、Runtime ABI で `u32`/UTF-8/タグ付きボックスのどれを採るか未確定。
+- Tuple: リテラルの ABI（レイアウト/ヒープ化）と、空タプル `()` の Runtime 表現が明文化不足。
+- Array: リテラルが `[T; N]`（固定長）なのか、`[T]`（動的配列）へ自動デシュガするのか未確定。
+- Record: フィールド順序は不問とされるが、Runtime のレイアウト順序/ハッシュ化戦略が未確定。
 
 ### フェーズ 1: Backend リテラル解釈の追加
 - `Literal` サマリから Float/Char/Tuple/Array/Record を識別できるようにする。
@@ -85,7 +129,7 @@
 ## 進捗管理
 - 本計画書作成日: 2025-12-26
 - 進捗欄（運用用）:
-  - [ ] フェーズ 0 完了
+  - [x] フェーズ 0 完了
   - [ ] フェーズ 1 完了
   - [ ] フェーズ 2 完了
   - [ ] フェーズ 3 完了
