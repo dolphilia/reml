@@ -3900,19 +3900,19 @@ fn infer_expr_type_hint(
     }
     match &expr.kind {
         MirExprKind::Literal { summary } => {
-            if summary.trim() == "unit" {
-                return "Unit".into();
+            match parse_literal_summary(summary) {
+                LiteralSummary::Unit => "Unit".into(),
+                LiteralSummary::Bool(_) => "Bool".into(),
+                LiteralSummary::Int(_) => "I64".into(),
+                LiteralSummary::String(_) => "String".into(),
+                LiteralSummary::Float { .. }
+                | LiteralSummary::Char { .. }
+                | LiteralSummary::Tuple { .. }
+                | LiteralSummary::Array { .. }
+                | LiteralSummary::Record { .. }
+                | LiteralSummary::Set { .. }
+                | LiteralSummary::Unknown { .. } => "Ptr".into(),
             }
-            if let Some(value) = extract_literal_operand(summary) {
-                if value == "true" || value == "false" {
-                    return "Bool".into();
-                }
-                if value.starts_with('"') {
-                    return "String".into();
-                }
-                return "I64".into();
-            }
-            "Result".into()
         }
         MirExprKind::Call { .. }
         | MirExprKind::Identifier { .. }
@@ -4036,19 +4036,19 @@ fn infer_expr_llvm_type(
     }
     match &expr.kind {
         MirExprKind::Literal { summary } => {
-            if summary.trim() == "unit" {
-                return ssa.pointer_type();
+            match parse_literal_summary(summary) {
+                LiteralSummary::Unit => ssa.pointer_type(),
+                LiteralSummary::Bool(_) => ssa.bool_type(),
+                LiteralSummary::Int(_) => "i64".into(),
+                LiteralSummary::String(_) => "Str".into(),
+                LiteralSummary::Float { .. }
+                | LiteralSummary::Char { .. }
+                | LiteralSummary::Tuple { .. }
+                | LiteralSummary::Array { .. }
+                | LiteralSummary::Record { .. }
+                | LiteralSummary::Set { .. }
+                | LiteralSummary::Unknown { .. } => ssa.pointer_type(),
             }
-            if let Some(value) = extract_literal_operand(summary) {
-                if value == "true" || value == "false" {
-                    return ssa.bool_type();
-                }
-                if value.starts_with('"') {
-                    return "Str".into();
-                }
-                return "i64".into();
-            }
-            ssa.pointer_type()
         }
         MirExprKind::Call { callee, .. } => infer_call_return_type(*callee, expr_map, ssa),
         MirExprKind::Binary { operator, .. } => match operator.as_str() {
@@ -4452,33 +4452,81 @@ fn emit_value_expr(
 
     match &expr.kind {
         MirExprKind::Literal { summary } => {
-            if summary.trim() == "unit" {
-                let unit = emit_unit_value(ssa);
-                return unit;
-            }
-            if let Some(value) = extract_literal_operand(summary) {
-                let ty = if value == "true" || value == "false" {
-                    ssa.bool_type()
-                } else if value.starts_with('"') {
-                    "Str".into()
-                } else {
-                    "i64".into()
-                };
-                return EmittedValue {
-                    ty,
-                    operand: value,
-                    instrs: vec![],
-                };
-            }
-            if let Some(value) = emit_set_literal_value(summary, ssa) {
-                return value;
-            }
-            EmittedValue {
-                ty: ssa.pointer_type(),
-                operand: format_operand_from_summary(summary),
-                instrs: vec![LlvmInstr::Comment(format!(
-                    "literal {summary} (unsupported) -> as operand"
-                ))],
+            match parse_literal_summary(summary) {
+                LiteralSummary::Unit => return emit_unit_value(ssa),
+                LiteralSummary::Bool(value) => {
+                    return EmittedValue {
+                        ty: ssa.bool_type(),
+                        operand: if value { "true".into() } else { "false".into() },
+                        instrs: vec![],
+                    };
+                }
+                LiteralSummary::Int(value) => {
+                    return EmittedValue {
+                        ty: "i64".into(),
+                        operand: value.to_string(),
+                        instrs: vec![],
+                    };
+                }
+                LiteralSummary::String(value) => {
+                    return EmittedValue {
+                        ty: "Str".into(),
+                        operand: format!("\"{}\"", value.replace('"', "\\\"")),
+                        instrs: vec![],
+                    };
+                }
+                LiteralSummary::Set { elements } => {
+                    return emit_set_literal_value_from_elements(&elements, ssa);
+                }
+                LiteralSummary::Float { raw } => {
+                    return emit_unsupported_literal_value(
+                        ssa,
+                        "float",
+                        Some(format!("raw={raw}")),
+                    );
+                }
+                LiteralSummary::Char { value } => {
+                    return emit_unsupported_literal_value(
+                        ssa,
+                        "char",
+                        Some(format!("value={value}")),
+                    );
+                }
+                LiteralSummary::Tuple { elements } => {
+                    return emit_unsupported_literal_value(
+                        ssa,
+                        "tuple",
+                        Some(format!("len={}", elements.len())),
+                    );
+                }
+                LiteralSummary::Array { elements } => {
+                    return emit_unsupported_literal_value(
+                        ssa,
+                        "array",
+                        Some(format!("len={}", elements.len())),
+                    );
+                }
+                LiteralSummary::Record {
+                    type_name,
+                    field_count,
+                } => {
+                    return emit_unsupported_literal_value(
+                        ssa,
+                        "record",
+                        Some(format!(
+                            "type_name={}, fields={}",
+                            type_name.unwrap_or_else(|| "none".into()),
+                            field_count
+                        )),
+                    );
+                }
+                LiteralSummary::Unknown { kind } => {
+                    return emit_unsupported_literal_value(
+                        ssa,
+                        "unknown",
+                        kind.map(|value| format!("kind={value}")),
+                    );
+                }
             }
         }
         MirExprKind::Identifier { summary } => {
@@ -5075,41 +5123,151 @@ fn extract_local_name_from_summary(summary: &str) -> Option<String> {
     None
 }
 
-fn extract_literal_operand(summary: &str) -> Option<String> {
-    let trimmed = summary.trim();
-    if trimmed == "true" || trimmed == "false" {
-        return Some(trimmed.to_string());
-    }
-    if let Ok(value) = trimmed.parse::<i64>() {
-        return Some(value.to_string());
-    }
-    if !(trimmed.starts_with('{') && trimmed.ends_with('}')) {
-        return None;
-    }
-    let value = serde_json::from_str::<serde_json::Value>(trimmed).ok()?;
-    if let Some(number) = value.get("value").and_then(|v| v.as_i64()) {
-        return Some(number.to_string());
-    }
-    if let Some(kind) = value.get("kind").and_then(|v| v.as_str()) {
-        match kind {
-            "int" => {
-                if let Some(number) = value.get("value").and_then(|v| v.as_i64()) {
-                    return Some(number.to_string());
-                }
-            }
-            "string" => {
-                if let Some(text) = value.get("value").and_then(|v| v.as_str()) {
-                    return Some(format!("\"{}\"", text.replace('"', "\\\"")));
-                }
-            }
-            _ => {}
-        }
-    }
-    None
+#[derive(Clone, Debug)]
+enum LiteralSummary {
+    Unit,
+    Bool(bool),
+    Int(i64),
+    Float { raw: String },
+    Char { value: String },
+    String(String),
+    Tuple { elements: Vec<serde_json::Value> },
+    Array { elements: Vec<serde_json::Value> },
+    Record { type_name: Option<String>, field_count: usize },
+    Set { elements: Vec<serde_json::Value> },
+    Unknown { kind: Option<String> },
 }
 
-fn emit_set_literal_value(summary: &str, ssa: &mut LlvmBuilder) -> Option<EmittedValue> {
-    let elements = extract_set_literal_elements(summary)?;
+fn extract_literal_operand(summary: &str) -> Option<String> {
+    match parse_literal_summary(summary) {
+        LiteralSummary::Bool(value) => Some(if value { "true" } else { "false" }.to_string()),
+        LiteralSummary::Int(value) => Some(value.to_string()),
+        LiteralSummary::String(text) => Some(format!("\"{}\"", text.replace('"', "\\\""))),
+        _ => None,
+    }
+}
+
+fn parse_literal_summary(summary: &str) -> LiteralSummary {
+    let trimmed = summary.trim();
+    if trimmed == "unit" {
+        return LiteralSummary::Unit;
+    }
+    if trimmed == "true" || trimmed == "false" {
+        return LiteralSummary::Bool(trimmed == "true");
+    }
+    if let Ok(value) = trimmed.parse::<i64>() {
+        return LiteralSummary::Int(value);
+    }
+    if trimmed.starts_with('{') && trimmed.ends_with('}') {
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(trimmed) {
+            return parse_literal_value(&value);
+        }
+    }
+    LiteralSummary::Unknown { kind: None }
+}
+
+fn parse_literal_value(value: &serde_json::Value) -> LiteralSummary {
+    let literal = unwrap_literal_object(value);
+    let Some(literal) = literal else {
+        return LiteralSummary::Unknown { kind: None };
+    };
+    let kind = literal
+        .get("kind")
+        .and_then(|value| value.as_str())
+        .map(|value| value.to_string());
+    match kind.as_deref() {
+        Some("unit") => LiteralSummary::Unit,
+        Some("bool") => literal
+            .get("value")
+            .and_then(|value| value.as_bool())
+            .map(LiteralSummary::Bool)
+            .unwrap_or(LiteralSummary::Unknown { kind }),
+        Some("int") => literal
+            .get("value")
+            .and_then(|value| value.as_i64())
+            .map(LiteralSummary::Int)
+            .unwrap_or(LiteralSummary::Unknown { kind }),
+        Some("string") => literal
+            .get("value")
+            .and_then(|value| value.as_str())
+            .map(|value| LiteralSummary::String(value.to_string()))
+            .unwrap_or(LiteralSummary::Unknown { kind }),
+        Some("float") => {
+            let raw = literal
+                .get("raw")
+                .and_then(|value| value.as_str())
+                .unwrap_or("")
+                .to_string();
+            LiteralSummary::Float { raw }
+        }
+        Some("char") => {
+            let value = literal
+                .get("value")
+                .and_then(|value| value.as_str())
+                .unwrap_or("")
+                .to_string();
+            LiteralSummary::Char { value }
+        }
+        Some("tuple") => LiteralSummary::Tuple {
+            elements: literal
+                .get("elements")
+                .and_then(|value| value.as_array())
+                .cloned()
+                .unwrap_or_default(),
+        },
+        Some("array") => LiteralSummary::Array {
+            elements: literal
+                .get("elements")
+                .and_then(|value| value.as_array())
+                .cloned()
+                .unwrap_or_default(),
+        },
+        Some("set") => LiteralSummary::Set {
+            elements: literal
+                .get("elements")
+                .and_then(|value| value.as_array())
+                .cloned()
+                .unwrap_or_default(),
+        },
+        Some("record") => LiteralSummary::Record {
+            type_name: literal
+                .get("type_name")
+                .and_then(extract_ident_name),
+            field_count: literal
+                .get("fields")
+                .and_then(|value| value.as_array())
+                .map(|fields| fields.len())
+                .unwrap_or(0),
+        },
+        Some(_) | None => LiteralSummary::Unknown { kind },
+    }
+}
+
+fn unwrap_literal_object(value: &serde_json::Value) -> Option<&serde_json::Value> {
+    if value.get("kind").and_then(|value| value.as_str()).is_some() {
+        return Some(value);
+    }
+    value
+        .get("value")
+        .and_then(|inner| inner.get("kind"))
+        .and_then(|_| value.get("value"))
+}
+
+fn extract_ident_name(value: &serde_json::Value) -> Option<String> {
+    match value {
+        serde_json::Value::String(text) => Some(text.to_string()),
+        serde_json::Value::Object(map) => map
+            .get("name")
+            .and_then(|value| value.as_str())
+            .map(|value| value.to_string()),
+        _ => None,
+    }
+}
+
+fn emit_set_literal_value_from_elements(
+    elements: &[serde_json::Value],
+    ssa: &mut LlvmBuilder,
+) -> EmittedValue {
     let mut instrs = Vec::new();
     instrs.push(LlvmInstr::Comment("set literal -> reml_set_new".into()));
     let mut set_operand = ssa.new_tmp("set");
@@ -5135,24 +5293,11 @@ fn emit_set_literal_value(summary: &str, ssa: &mut LlvmBuilder) -> Option<Emitte
         });
         set_operand = inserted;
     }
-    Some(EmittedValue {
+    EmittedValue {
         ty: ssa.pointer_type(),
         operand: set_operand,
         instrs,
-    })
-}
-
-fn extract_set_literal_elements(summary: &str) -> Option<Vec<serde_json::Value>> {
-    let trimmed = summary.trim();
-    if !(trimmed.starts_with('{') && trimmed.ends_with('}')) {
-        return None;
     }
-    let value = serde_json::from_str::<serde_json::Value>(trimmed).ok()?;
-    if value.get("kind").and_then(|v| v.as_str())? != "set" {
-        return None;
-    }
-    let elements = value.get("elements")?.as_array()?;
-    Some(elements.clone())
 }
 
 fn emit_set_element_expr(element: &serde_json::Value, ssa: &mut LlvmBuilder) -> EmittedValue {
@@ -5208,32 +5353,82 @@ fn emit_literal_value_from_json(
     literal: &serde_json::Value,
     ssa: &LlvmBuilder,
 ) -> Option<EmittedValue> {
-    let kind = literal.get("kind").and_then(|v| v.as_str())?;
-    match kind {
-        "unit" => Some(emit_unit_value(ssa)),
-        "bool" => literal.get("value").and_then(|value| value.as_bool()).map(|value| {
-            EmittedValue {
-                ty: ssa.bool_type(),
-                operand: if value { "true".into() } else { "false".into() },
-                instrs: vec![],
-            }
+    match parse_literal_value(literal) {
+        LiteralSummary::Unit => Some(emit_unit_value(ssa)),
+        LiteralSummary::Bool(value) => Some(EmittedValue {
+            ty: ssa.bool_type(),
+            operand: if value { "true".into() } else { "false".into() },
+            instrs: vec![],
         }),
-        "int" => literal.get("value").and_then(|value| value.as_i64()).map(|value| {
-            EmittedValue {
-                ty: "i64".into(),
-                operand: value.to_string(),
-                instrs: vec![],
-            }
+        LiteralSummary::Int(value) => Some(EmittedValue {
+            ty: "i64".into(),
+            operand: value.to_string(),
+            instrs: vec![],
         }),
-        "string" => literal
-            .get("value")
-            .and_then(|value| value.as_str())
-            .map(|value| EmittedValue {
-                ty: "Str".into(),
-                operand: format!("\"{}\"", value.replace('"', "\\\"")),
-                instrs: vec![],
-            }),
-        _ => None,
+        LiteralSummary::String(value) => Some(EmittedValue {
+            ty: "Str".into(),
+            operand: format!("\"{}\"", value.replace('"', "\\\"")),
+            instrs: vec![],
+        }),
+        LiteralSummary::Float { raw } => Some(emit_unsupported_literal_value(
+            ssa,
+            "float",
+            Some(format!("raw={raw}")),
+        )),
+        LiteralSummary::Char { value } => Some(emit_unsupported_literal_value(
+            ssa,
+            "char",
+            Some(format!("value={value}")),
+        )),
+        LiteralSummary::Tuple { elements } => Some(emit_unsupported_literal_value(
+            ssa,
+            "tuple",
+            Some(format!("len={}", elements.len())),
+        )),
+        LiteralSummary::Array { elements } => Some(emit_unsupported_literal_value(
+            ssa,
+            "array",
+            Some(format!("len={}", elements.len())),
+        )),
+        LiteralSummary::Set { elements } => Some(emit_unsupported_literal_value(
+            ssa,
+            "set",
+            Some(format!("len={}", elements.len())),
+        )),
+        LiteralSummary::Record {
+            type_name,
+            field_count,
+        } => Some(emit_unsupported_literal_value(
+            ssa,
+            "record",
+            Some(format!(
+                "type_name={}, fields={}",
+                type_name.unwrap_or_else(|| "none".into()),
+                field_count
+            )),
+        )),
+        LiteralSummary::Unknown { kind } => Some(emit_unsupported_literal_value(
+            ssa,
+            "unknown",
+            kind.map(|value| format!("kind={value}")),
+        )),
+    }
+}
+
+fn emit_unsupported_literal_value(
+    ssa: &LlvmBuilder,
+    kind: &str,
+    detail: Option<String>,
+) -> EmittedValue {
+    let mut message = format!("diag backend.literal.unsupported.{kind}");
+    if let Some(detail) = detail {
+        message.push_str(": ");
+        message.push_str(&detail);
+    }
+    EmittedValue {
+        ty: ssa.pointer_type(),
+        operand: "null".into(),
+        instrs: vec![LlvmInstr::Comment(message)],
     }
 }
 

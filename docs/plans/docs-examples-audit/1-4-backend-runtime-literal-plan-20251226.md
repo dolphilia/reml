@@ -82,11 +82,11 @@
 - `Literal` サマリから Float/Char/Tuple/Array/Record を識別できるようにする。
 - `emit_value_expr` と型推論補助の「literal 解析」を拡張する。
 - 未対応の型は明示的に診断ログに残す。
-  - [ ] `compiler/rust/backend/llvm/src/codegen.rs` で現状の `Literal` 解釈パスを把握する
-  - [ ] JSON 形状に対応した判定分岐と、内部表現（型タグ/初期化式）を設計する
-  - [ ] Float/Char/Tuple/Array/Record の解釈結果を `emit_value_expr` に接続する
-  - [ ] 未対応リテラルの診断メッセージを整理し、識別子命名規則に合わせる
-  - [ ] 既存リテラル（int/string/bool/unit）への影響がないことを確認する
+  - [x] `compiler/rust/backend/llvm/src/codegen.rs` で現状の `Literal` 解釈パスを把握する
+  - [x] JSON 形状に対応した判定分岐と、内部表現（型タグ/初期化式）を設計する
+  - [x] Float/Char/Tuple/Array/Record の解釈結果を `emit_value_expr` に接続する
+  - [x] 未対応リテラルの診断メッセージを整理し、識別子命名規則に合わせる
+  - [x] 既存リテラル（int/string/bool/unit）への影響がないことを確認する
 
 ### フェーズ 2: Runtime 型タグと ABI の定義
 - `REML_TAG_*` に Char/Array のタグを追加する。
@@ -130,7 +130,7 @@
 - 本計画書作成日: 2025-12-26
 - 進捗欄（運用用）:
   - [x] フェーズ 0 完了
-  - [ ] フェーズ 1 完了
+  - [x] フェーズ 1 完了
   - [ ] フェーズ 2 完了
   - [ ] フェーズ 3 完了
   - [ ] フェーズ 4 完了
