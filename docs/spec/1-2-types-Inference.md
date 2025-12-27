@@ -419,6 +419,12 @@ let b = 10.0      // b : f64
 let c: f32 = 10   // 単一化で c : f32（数値多相の縮退）
 ```
 
+#### H.4.1 Float リテラルの即値化タイミング
+
+- フロントエンドは Float リテラルを `raw` 文字列として保持し、MIR/JSON にそのまま出力する。
+- Backend はコード生成時に `raw` の区切り文字 `_` を除去して `f64` に変換し、`reml_box_float` でヒープ値へ即値化する。
+- 既定の Float 型は `f64` とし、`RunConfig.extensions["type"].numeric_defaults.float` を指定した場合は型推論の既定がそちらへ切り替わる（ただし Backend が扱う Float ABI は `f64` を前提とする）。
+
 ---
 
 ## I. エラーメッセージの形（例）

@@ -719,6 +719,81 @@ let xs = [1, 2, 3]
 * 末尾カンマ許可：`(a, b,)`, `{x:1, y:2,}`
 * レコードフィールドは `key: expr` と `key = expr` を等価に扱い、`{ x, y = rhs }` のように値を省略した場合は `x: x` へデシュガされる（punning）。プロパティ順序は不問。
 
+#### E.1.1 MIR/JSON のリテラル表現（Frontend 出力）
+
+フロントエンドが出力する MIR/JSON では、`MirExpr.kind = "literal"` の直下に `Literal` が入り、`Literal` は `value` フィールドで `LiteralKind` を包む。`LiteralKind` は `kind` を持つ内部タグ形式で直列化する。
+
+```json
+{
+  "kind": "literal",
+  "value": {
+    "value": {
+      "kind": "int",
+      "value": 1,
+      "raw": "1",
+      "base": "base10"
+    }
+  }
+}
+```
+
+`LiteralKind` の JSON 形状（主要リテラル）は以下の通り。
+
+- Int: `{ "kind": "int", "value": i64, "raw": "1_000", "base": "base10|base2|base8|base16" }`
+- Float: `{ "kind": "float", "raw": "3.14" }`
+- Char: `{ "kind": "char", "value": "A" }`（1 文字の `String`）
+- String: `{ "kind": "string", "value": "...", "string_kind": "normal|raw|multiline" }`
+- Bool: `{ "kind": "bool", "value": true }`
+- Unit: `{ "kind": "unit" }`
+- Tuple: `{ "kind": "tuple", "elements": [Expr, ...] }`
+- Array: `{ "kind": "array", "elements": [Expr, ...] }`
+- Record: `{ "kind": "record", "type_name": Ident?, "fields": [ { "key": Ident, "value": Expr }, ... ] }`
+  - `Ident` は `{ "name": String, "span": Span }` の形で直列化される。
+
+#### E.1.2 リテラル実行時 ABI（Backend/Runtime）
+
+Backend はリテラル値を Runtime API 経由でヒープオブジェクト化し、`REML_TAG_*` によって型識別を行う。タグ値と最小 ABI は `runtime/native/include/reml_runtime.h` に準拠する。
+
+| 型 | タグ | 備考 |
+| --- | --- | --- |
+| Int | `REML_TAG_INT` | 即値はボックス化して扱う |
+| Float | `REML_TAG_FLOAT` | `reml_box_float` / `reml_unbox_float` |
+| Bool | `REML_TAG_BOOL` | 即値はボックス化して扱う |
+| String | `REML_TAG_STRING` | `reml_string_t` を使用 |
+| Tuple | `REML_TAG_TUPLE` | `reml_tuple_t` |
+| Record | `REML_TAG_RECORD` | `reml_record_t` |
+| Char | `REML_TAG_CHAR` | `reml_char_t`（Unicode scalar） |
+| Array | `REML_TAG_ARRAY` | `reml_array_t` |
+
+```c
+typedef uint32_t reml_char_t; // Unicode scalar value (U+0000..U+10FFFF)
+
+typedef struct {
+    int64_t len;
+    void** items;
+} reml_tuple_t;
+
+typedef struct {
+    int64_t field_count;
+    void** values;
+} reml_record_t;
+
+typedef struct {
+    int64_t len;
+    void** items;
+} reml_array_t;
+```
+
+- `items` / `values` は `void*` 配列へのポインタで、各スロットは RC 対象のヒープポインタを保持する。非ポインタ値はボックス化して格納する。
+- 配列バッファは `malloc/calloc` 相当で確保し、`reml_destroy_tuple` / `reml_destroy_record` / `reml_destroy_array` が `dec_ref` と合わせて解放する。
+- Char は Unicode scalar value を `reml_char_t` で表現する（UTF-8 文字列ではない）。
+
+@unstable("literal_array_semantics")
+`[T; N]` と `[T]` のどちらに降ろすかは未確定であり、現行の `reml_array_t` は動的配列として扱う前提で実装されている。
+
+@unstable("literal_record_layout")
+Record の `values` 配列順序は Backend が決定する。現状はソース順だが、ハッシュ順や型定義順への切替は将来検討対象とする。
+
 ### E.2 代数的データ型（ADT）
 
 ```reml
