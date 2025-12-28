@@ -3479,7 +3479,20 @@ fn module_parser<'src>(
         .or_not()
         .map(|vis| vis.unwrap_or(Visibility::Private));
 
-    let param = pattern_for_block
+    let receiver_pattern = just(TokenKind::Ampersand)
+        .then(just(TokenKind::KeywordMut).or_not())
+        .then(just(TokenKind::KeywordSelf))
+        .map_with_span(|_, span: Range<usize>| Pattern {
+            span: range_to_span(span.clone()),
+            kind: PatternKind::Var(Ident {
+                name: "self".to_string(),
+                span: range_to_span(span),
+            }),
+        });
+
+    let param_pattern = choice((receiver_pattern, pattern_for_block.clone()));
+
+    let param = param_pattern
         .clone()
         .then(
             just(TokenKind::Colon)
@@ -3859,9 +3872,11 @@ fn module_parser<'src>(
     )
     .map(|_| ());
 
+    let sum_variant_payload = choice((record_decl_body.clone(), sum_variant_args.clone()));
+
     let sum_variant = just(TokenKind::Bar)
         .ignore_then(ident.clone())
-        .then(sum_variant_args.clone().or_not())
+        .then(sum_variant_payload.or_not())
         .map(|_| ());
 
     let sum_body = sum_variant.repeated().at_least(1).map(|_| ());

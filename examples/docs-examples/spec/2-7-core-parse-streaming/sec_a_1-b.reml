@@ -1,5 +1,3 @@
-type StreamOutcome<T> = Completed<T> | Pending<T>
-
-type Completed<T> = { result: ParseResult<T>, meta: StreamMeta }
-
-type Pending<T> = { continuation: Continuation<T>, demand: DemandHint, meta: StreamMeta }
+type StreamOutcome<T> =
+  | Completed { result: ParseResult<T>, meta: StreamMeta }
+  | Pending { continuation: Continuation<T>, demand: DemandHint, meta: StreamMeta }

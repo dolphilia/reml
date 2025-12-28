@@ -29,11 +29,9 @@ fn resume<T>(continuation: Continuation<T>, more: Bytes) -> StreamOutcome<T> = t
 * `resume` は前回の `Pending` から追加バイト列 `more` を受け取り続きから再開する。ランナーはチャンク境界で `RunConfig` を再評価しないため、再開時も同じ設定が適用される。
 
 ```reml
-type StreamOutcome<T> = Completed<T> | Pending<T>
-
-type Completed<T> = { result: ParseResult<T>, meta: StreamMeta }
-
-type Pending<T> = { continuation: Continuation<T>, demand: DemandHint, meta: StreamMeta }
+type StreamOutcome<T> =
+  | Completed { result: ParseResult<T>, meta: StreamMeta }
+  | Pending { continuation: Continuation<T>, demand: DemandHint, meta: StreamMeta }
 ```
 
 * `Completed`：`ParseResult<T>`（2.1 §C）と同様に AST・診断・recover 情報を返し、`meta` にストリーム処理の統計値を含める。
@@ -43,7 +41,7 @@ type Pending<T> = { continuation: Continuation<T>, demand: DemandHint, meta: Str
 
 ```reml
 type StreamingConfig = {
-  mode: FlowMode = "auto",
+  mode: FlowMode = FlowMode::Auto,
   demand_cap: Option<Demand> = None,
   on_diagnostic: StreamDiagnosticHook = default_stream_hook,
   resume_notes: Bool = false,
@@ -51,7 +49,7 @@ type StreamingConfig = {
 }
 ```
 
-* `mode` は FlowController の初期モード（§D）を規定する。`"auto"` は Feeder が `FlowCapability` を宣言している場合に自動切替えを許可する。
+* `mode` は FlowController の初期モード（§D）を規定する。`FlowMode::Auto` は Feeder が `FlowCapability` を宣言している場合に自動切替えを許可する。
 * `demand_cap` でチャンク要求の上限（バイト数・フレーム数）を設定し、過大なメモリ使用を抑制する。
 * `on_diagnostic` は ストリーム処理中に発生した `StreamEvent` を受け取り、IDE や監査ログへ転送するためのフック。既定では監査ログ (`audit.log("parser.stream", ...)`) へ送る。
 * `resume_notes` を `true` にすると `Pending` を返す際に `ContinuationMeta.resume_hint` に加えて復旧候補（§C-2）を添付する。
@@ -70,7 +68,9 @@ type DemandHint = {
   frame_boundary: Option<TokenClass>
 }
 
-type Feeder = { pull: fn(&mut Feeder, DemandHint) -> FeederYield }
+trait Feeder {
+  fn pull(&mut self, demand: DemandHint) -> FeederYield
+}
 
 type FeederYield = Chunk | Await | Closed | FeederError
 
@@ -98,7 +98,7 @@ type StreamError = {
   cause: Option<Json>
 }
 
-type StreamErrorKind = IoFailed | DecoderFailed | FeederBug | UserCancelled
+enum StreamErrorKind = IoFailed | DecoderFailed | FeederBug | UserCancelled
 ```
 
 * `IoFailed`：基底 I/O が失敗。`cause` に OS エラーコード（`errno` 等）を格納する。
@@ -156,13 +156,11 @@ type FlowController = {
   policy: FlowPolicy
 }
 
-type FlowMode = "push" | "pull" | "hybrid"
+enum FlowMode = Auto | Push | Pull | Hybrid
 
-type FlowPolicy = Manual | Auto
-
-type Manual = { on_demand: fn() -> Demand }
-
-type Auto = { backpressure: BackpressureSpec }
+type FlowPolicy =
+  | Manual { on_demand: fn() -> Demand }
+  | Auto { backpressure: BackpressureSpec }
 
 type Demand = { bytes: usize, frames: usize }
 
@@ -173,7 +171,7 @@ struct BackpressureSpec {
 }
 ```
 
-* `mode`：`push` はストリーム側が能動的にチャンクを送る用途（ログ収集等）に適し、`pull` は IDE の差分適用など必要時にのみ取得する用途向け。`hybrid` は実行途中で切替え可能。
+* `mode`：`Auto` は Feeder の `FlowCapability` を参照し `Push`/`Pull`/`Hybrid` を選ぶ初期モード。`Push` はストリーム側が能動的にチャンクを送る用途（ログ収集等）に適し、`Pull` は IDE の差分適用など必要時にのみ取得する用途向け。`Hybrid` は実行途中で切替え可能。
 * `high_watermark`/`low_watermark`：内部バッファの閾値。バッファ量が `high` を超えると Feeder へ抑制、`low` を下回るとチャンク要求を再開する。
 * `policy`：Manual モードでは `on_demand` で外部からの明示的な要求を行う。Auto モードではバックプレッシャ仕様を用い、遅延(`lag`)、デバウンス(`debounce`)、スロットリング(`throttle`)を自動適用する。
 
@@ -196,15 +194,12 @@ struct StreamDriver<T, Sink> {
 
 type StreamDiagnosticHook = fn(StreamEvent) -> ()
 
-type StreamEvent = Progress | Pending | StreamEventError
+type StreamEvent =
+  | Progress { consumed: usize, produced: usize, lap: Duration }
+  | Pending { reason: PendingReason, meta: ContinuationMeta }
+  | StreamEventError { diagnostic: ParseError, continuation: Option<ContinuationMeta> }
 
-type Progress = { consumed: usize, produced: usize, lap: Duration }
-
-type Pending = { reason: PendingReason, meta: ContinuationMeta }
-
-type StreamEventError = { diagnostic: ParseError, continuation: Option<ContinuationMeta> }
-
-type PendingReason = "Backpressure" | "InputExhausted" | "FeederAwait" | "FeederClosed"
+enum PendingReason = Backpressure | InputExhausted | FeederAwait | FeederClosed
 ```
 
 * `StreamDriver::pump()`（実装提供）は 1 ステップ進め、`Sink` に `StreamOutcome` を渡す。`pump` が `Pending` を受け取った場合、`FlowController` と `DemandHint` を用いて次のチャンク要求を決定する。
@@ -269,7 +264,7 @@ struct StreamMeta {
 * `run_stream` は常に `run`（2.6 §A）と同じ結果を生成する境界条件を維持しなければならない。チャンクを一度にすべて渡した場合、`Completed.result` は `run` とビット単位で一致する。
 * Packrat が無効 (`RunConfig.packrat=false`) でもストリーミングは利用可能だが、`commit_watermark` と差分再利用の効果は限定的になる。
 * 左再帰（2.6 §C-3）が有効な場合、ストリーム再開時には最新の種成長状態を継続に含める必要がある。継続が古い `seed` を保持している場合は `StreamErrorKind::FeederBug` として再初期化を要求する。
-* `Await` を返す Feeder を利用する場合は `Core.Async` または同等のランタイムが必要となる。`StreamingConfig.mode="push"` で同期実装を強制し、`Await` を禁止する構成も可能。
+* `Await` を返す Feeder を利用する場合は `Core.Async` または同等のランタイムが必要となる。`StreamingConfig.mode=FlowMode::Push` で同期実装を強制し、`Await` を禁止する構成も可能。
 
 ---
 

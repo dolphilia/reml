@@ -3,7 +3,10 @@ use reml_frontend::output::cli::{
     render_human_output_to_string, CliCommandKind, CliDiagnosticEnvelope, CliExitCode,
     CliPhaseKind, CliSummary,
 };
+use reml_frontend::parser::ParserDriver;
 use serde_json::{json, Map, Value};
+use std::fs;
+use std::path::PathBuf;
 use uuid::Uuid;
 
 fn load_fixture_diagnostics() -> Vec<Value> {
@@ -48,6 +51,28 @@ fn sample_envelope() -> CliDiagnosticEnvelope {
     )
 }
 
+fn workspace_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../..")
+        .canonicalize()
+        .expect("workspace root must resolve")
+}
+
+fn assert_parses_without_diagnostics(path: PathBuf) {
+    let source =
+        fs::read_to_string(&path).unwrap_or_else(|err| panic!("{path:?} の読み込みに失敗: {err}"));
+    let result = ParserDriver::parse(&source);
+    assert!(
+        result.diagnostics.is_empty(),
+        "{path:?} で診断が発生しました: {:?}",
+        result
+            .diagnostics
+            .iter()
+            .map(|diag| &diag.message)
+            .collect::<Vec<_>>()
+    );
+}
+
 #[test]
 fn cli_json_output_snapshot() {
     let envelope = sample_envelope();
@@ -61,4 +86,21 @@ fn cli_human_output_snapshot() {
     let human = render_human_output_to_string(&envelope)
         .expect("human output must render without io error");
     assert_snapshot!("cli_human_output", human);
+}
+
+#[test]
+fn streaming_examples_parse_without_diagnostics() {
+    let root = workspace_root();
+    let samples = [
+        "examples/docs-examples/spec/2-7-core-parse-streaming/sec_a_1-b.reml",
+        "examples/docs-examples/spec/2-7-core-parse-streaming/sec_a_2.reml",
+        "examples/docs-examples/spec/2-7-core-parse-streaming/sec_b_1.reml",
+        "examples/docs-examples/spec/2-7-core-parse-streaming/sec_b_2.reml",
+        "examples/docs-examples/spec/2-7-core-parse-streaming/sec_d.reml",
+        "examples/docs-examples/spec/2-7-core-parse-streaming/sec_e.reml",
+    ];
+
+    for sample in samples {
+        assert_parses_without_diagnostics(root.join(sample));
+    }
 }

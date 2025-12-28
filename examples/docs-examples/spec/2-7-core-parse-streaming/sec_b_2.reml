@@ -4,4 +4,4 @@ type StreamError = {
   cause: Option<Json>
 }
 
-type StreamErrorKind = IoFailed | DecoderFailed | FeederBug | UserCancelled
+enum StreamErrorKind = IoFailed | DecoderFailed | FeederBug | UserCancelled

@@ -4,7 +4,9 @@ type DemandHint = {
   frame_boundary: Option<TokenClass>
 }
 
-type Feeder = { pull: fn(&mut Feeder, DemandHint) -> FeederYield }
+trait Feeder {
+  fn pull(&mut self, demand: DemandHint) -> FeederYield
+}
 
 type FeederYield = Chunk | Await | Closed | FeederError
 
