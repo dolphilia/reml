@@ -210,7 +210,10 @@ impl fmt::Display for Type {
 #[serde(rename_all = "snake_case")]
 pub enum BuiltinType {
     Int,
+    UInt,
+    Float,
     Bool,
+    Char,
     Str,
     Bytes,
     Unit,
@@ -221,7 +224,10 @@ impl BuiltinType {
     pub fn as_str(&self) -> &'static str {
         match self {
             BuiltinType::Int => "Int",
+            BuiltinType::UInt => "UInt",
+            BuiltinType::Float => "Float",
             BuiltinType::Bool => "Bool",
+            BuiltinType::Char => "Char",
             BuiltinType::Str => "Str",
             BuiltinType::Bytes => "Bytes",
             BuiltinType::Unit => "Unit",

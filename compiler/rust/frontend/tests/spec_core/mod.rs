@@ -1,8 +1,8 @@
 use reml_frontend::diagnostic::FrontendDiagnostic;
 use reml_frontend::parser::ast::{
     Attribute, ConductorMonitorTarget, Decl, DeclKind, EffectCall, Expr, ExprKind, Function, Ident,
-    ImplDecl, ImplItem, LiteralKind, Module, Param, Pattern, PatternKind, Stmt, StmtKind, TypeKind,
-    UseTree, Visibility,
+    ImplDecl, ImplItem, LiteralKind, Module, Param, Pattern, PatternKind, Stmt, StmtKind,
+    TraitItemKind, TypeKind, UseTree, Visibility,
 };
 use reml_frontend::parser::{ParserDriver, ParserOptions, RunConfig};
 use reml_frontend::span::Span;
@@ -1003,20 +1003,36 @@ fn ch1_trait_decl_handles_generics_and_where_clause() {
         "two trait methods should be recorded"
     );
     let first_item = &trait_decl.items[0];
-    assert_eq!(first_item.signature.name.name, "show");
-    assert!(
-        first_item.default_body.is_none(),
-        "trait method without body should not synthesize a block"
-    );
+    match &first_item.kind {
+        TraitItemKind::Function {
+            signature,
+            default_body,
+        } => {
+            assert_eq!(signature.name.name, "show");
+            assert!(
+                default_body.is_none(),
+                "trait method without body should not synthesize a block"
+            );
+        }
+        other => panic!("expected function trait item, got {:?}", other),
+    }
     let second_item = &trait_decl.items[1];
-    assert_eq!(second_item.signature.name.name, "show_with_label");
-    assert!(
-        matches!(
-            second_item.default_body.as_ref().map(|expr| &expr.kind),
-            Some(ExprKind::Block { .. })
-        ),
-        "default implementation should be parsed as a block expression"
-    );
+    match &second_item.kind {
+        TraitItemKind::Function {
+            signature,
+            default_body,
+        } => {
+            assert_eq!(signature.name.name, "show_with_label");
+            assert!(
+                matches!(
+                    default_body.as_ref().map(|expr| &expr.kind),
+                    Some(ExprKind::Block { .. })
+                ),
+                "default implementation should be parsed as a block expression"
+            );
+        }
+        other => panic!("expected function trait item, got {:?}", other),
+    }
 }
 
 #[test]

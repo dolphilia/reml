@@ -1,8 +1,5 @@
 fn __rustcap_guard__(unit: Int) = unit
 
-type Float = Int
-type f64 = Float
-type u32 = Int
 type Map<K, V> = ()
 type Range<T> = { start: T, end: T }
 type Histogram = ()

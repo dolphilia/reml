@@ -3585,7 +3585,9 @@ fn module_parser<'src>(
 
     let where_predicate = choice((
         type_bound,
-        trait_reference.map(|trait_ref| WherePredicate::Trait { trait_ref }),
+        trait_reference
+            .clone()
+            .map(|trait_ref| WherePredicate::Trait { trait_ref }),
     ));
 
     let where_clause = just(TokenKind::KeywordWhere)

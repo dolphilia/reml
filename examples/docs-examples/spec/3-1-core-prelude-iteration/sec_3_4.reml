@@ -1,5 +1,4 @@
 fn __rustcap_guard__(unit: Int) = unit
 
-type usize = Int
 type Result<T, E> = ()
 type Collector<T, C, E> = ()

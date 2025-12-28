@@ -6,7 +6,6 @@ type Vec<T> = ()
 type Map<K, V> = ()
 type Set<T> = ()
 type String = Str
-type Char = Int
 type Result<T, E> = ()
 type MemoryError = ()
 type CollectError = ()

@@ -5779,6 +5779,9 @@ impl<'a> TypeAliasResolver<'a> {
 
     fn enter_alias(&mut self, name: &Ident, span: Span) -> bool {
         if self.stack.iter().any(|entry| entry == name.name.as_str()) {
+            if name.name == "Never" {
+                return false;
+            }
             let mut chain = self.stack.clone();
             chain.push(name.name.clone());
             self.violations
@@ -5836,7 +5839,10 @@ fn type_from_annotation_kind_with_generics(
         TypeKind::Ident { name } => {
             let literal = match name.name.as_str() {
                 "Int" => Some(Type::builtin(BuiltinType::Int)),
+                "UInt" | "u32" | "usize" => Some(Type::builtin(BuiltinType::UInt)),
+                "Float" | "f64" => Some(Type::builtin(BuiltinType::Float)),
                 "Bool" => Some(Type::builtin(BuiltinType::Bool)),
+                "Char" => Some(Type::builtin(BuiltinType::Char)),
                 "Str" => Some(Type::builtin(BuiltinType::Str)),
                 "Bytes" => Some(Type::builtin(BuiltinType::Bytes)),
                 _ => None,
@@ -6062,7 +6068,11 @@ fn collect_type_param_names_from_annotation(annotation: &TypeAnnot) -> Vec<Strin
                     return;
                 }
                 let name = name.name.as_str();
-                if matches!(name, "Int" | "Bool" | "Str" | "Bytes") {
+                if matches!(
+                    name,
+                    "Int" | "UInt" | "u32" | "usize" | "Float" | "f64" | "Bool" | "Char"
+                        | "Str" | "Bytes"
+                ) {
                     return;
                 }
                 if seen.insert(name.to_string()) {
