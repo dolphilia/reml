@@ -10,14 +10,14 @@ use super::constraint::{
 use super::env::{StageRequirement, TypeEnv, TypecheckConfig};
 use super::metrics::TypecheckMetrics;
 use super::scheme::Scheme;
-use super::types::{BuiltinType, Type, TypeVarGen};
+use super::types::{BuiltinType, Type, TypeVarGen, TypeVariable};
 use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
     Attribute, BinaryOp, ConductorDecl, ConductorMonitorTarget, Decl, DeclKind, EffectAnnotation,
-    Expr, ExprKind, FixityKind, Function, HandlerEntry, Ident, Literal, LiteralKind, MatchArm,
-    Module, ModulePath, Pattern, PatternKind, RelativeHead, SlicePatternItem, Stmt, StmtKind,
-    TypeKind, TypeLiteral,
+    Expr, ExprKind, FixityKind, Function, HandlerEntry, Ident, ImplItem, Literal, LiteralKind,
+    MatchArm, Module, ModulePath, Pattern, PatternKind, RelativeHead, SlicePatternItem, Stmt,
+    StmtKind, TypeAnnot, TypeKind, TypeLiteral, UnaryOp,
 };
 use crate::semantics::{mir, typed};
 use crate::span::Span;
@@ -178,7 +178,7 @@ impl TypecheckDriver {
                 let ty = param
                     .type_annotation
                     .as_ref()
-                    .and_then(|annot| type_from_annotation_kind(&annot.kind))
+                    .and_then(|annot| type_from_annotation_kind_with_generics(&annot.kind, None))
                     .unwrap_or_else(|| var_gen.fresh_type());
                 let scheme = Scheme::simple(ty.clone());
                 bind_pattern_to_env(&param.pattern, &scheme, &mut env, &mut var_gen);
@@ -258,6 +258,12 @@ impl TypecheckDriver {
             let mut constraints = Vec::new();
             let mut env = module_env.clone();
             let mut param_bindings = Vec::new();
+            let mut generic_map = build_generic_map(&function.generics, &mut var_gen);
+            let generic_map_ref = if generic_map.is_empty() {
+                None
+            } else {
+                Some(&generic_map)
+            };
             let is_pure = function.attrs.iter().any(|attr| attr.name.name == "pure");
             let function_context = FunctionContext::function(function.name.name.as_str(), is_pure);
 
@@ -265,7 +271,9 @@ impl TypecheckDriver {
                 let ty = param
                     .type_annotation
                     .as_ref()
-                    .and_then(|annot| type_from_annotation_kind(&annot.kind))
+                    .and_then(|annot| {
+                        type_from_annotation_kind_with_generics(&annot.kind, generic_map_ref)
+                    })
                     .unwrap_or_else(|| var_gen.fresh_type());
                 let scheme = Scheme::simple(ty.clone());
                 bind_pattern_to_env(&param.pattern, &scheme, &mut env, &mut var_gen);
@@ -365,6 +373,58 @@ impl TypecheckDriver {
                 dict_ref_ids,
                 scheme_id: Some(scheme_id),
             });
+        }
+
+        for decl in &module.decls {
+            let DeclKind::Impl(impl_decl) = &decl.kind else {
+                continue;
+            };
+            for item in &impl_decl.items {
+                let ImplItem::Function(function) = item else {
+                    continue;
+                };
+                metrics.record_function();
+                let mut stats = FunctionStats::default();
+                let mut constraints = Vec::new();
+                let mut env = module_env.clone();
+                let is_pure = function.attrs.iter().any(|attr| attr.name.name == "pure");
+                let receiver_generics = collect_type_param_names_from_annotation(&impl_decl.target);
+                let mut generic_map = build_generic_map(&function.generics, &mut var_gen);
+                for name in receiver_generics {
+                    insert_generic(&mut generic_map, name.as_str(), &mut var_gen);
+                }
+                let generic_map_ref = if generic_map.is_empty() {
+                    None
+                } else {
+                    Some(&generic_map)
+                };
+                for param in &function.params {
+                    let ty = param
+                        .type_annotation
+                        .as_ref()
+                        .and_then(|annot| {
+                            type_from_annotation_kind_with_generics(&annot.kind, generic_map_ref)
+                        })
+                        .unwrap_or_else(|| var_gen.fresh_type());
+                    let scheme = Scheme::simple(ty.clone());
+                    bind_pattern_to_env(&param.pattern, &scheme, &mut env, &mut var_gen);
+                }
+                let method_label = format!("{}.{}", impl_decl.target.render(), function.name.name);
+                let function_context = FunctionContext::function(method_label.as_str(), is_pure);
+                let _typed_body = infer_function(
+                    function,
+                    &mut env,
+                    &mut var_gen,
+                    &mut solver,
+                    &mut constraints,
+                    &mut stats,
+                    &mut metrics,
+                    &mut violations,
+                    &mut dict_ref_drafts,
+                    function_context,
+                );
+                all_constraints.extend(constraints.drain(..));
+            }
         }
 
         for decl in &module.decls {
@@ -554,6 +614,7 @@ pub enum TypecheckViolationKind {
     StageMismatch,
     IteratorStageMismatch,
     ValueRestriction,
+    RecursionInfinite,
     PurityViolation,
     ImplDuplicate,
     CoreParseRecoverBranch,
@@ -796,6 +857,24 @@ impl TypecheckViolation {
             notes: vec![ViolationNote::plain(
                 "可変セルを共有する場合は `fn` で包むか、明示的な型を指定してください。",
             )],
+            capability: None,
+            function: None,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn recursion_infinite(span: Span, binding: &str) -> Self {
+        Self {
+            kind: TypecheckViolationKind::RecursionInfinite,
+            code: "core.parse.recursion.infinite",
+            message: "rec による再帰参照が無限再帰になります".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "`{binding}` は rec で自身を直接参照しています"
+            ))],
             capability: None,
             function: None,
             expected: None,
@@ -2870,6 +2949,57 @@ fn infer_expr(
                 dicts,
             )
         }
+        ExprKind::Unary { operator, expr: inner } => {
+            let result = infer_expr(
+                inner,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            let expected = match operator {
+                UnaryOp::Not => Type::builtin(BuiltinType::Bool),
+                UnaryOp::Neg => Type::builtin(BuiltinType::Int),
+            };
+            stats.constraints += 1;
+            metrics.record_constraint("unary.operand");
+            constraints.push(Constraint::equal(result.ty.clone(), expected.clone()));
+            metrics.record_unify_call();
+            let _ = solver.unify(result.ty.clone(), expected.clone());
+            make_typed(
+                expr,
+                TypedExprKindDraft::Unknown,
+                solver.substitution().apply(&expected),
+                result.dict_ref_ids.clone(),
+            )
+        }
+        ExprKind::Rec { expr: inner } => {
+            let result = infer_expr(
+                inner,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            make_typed(
+                expr,
+                TypedExprKindDraft::Unknown,
+                result.ty.clone(),
+                result.dict_ref_ids.clone(),
+            )
+        }
         ExprKind::Lambda { params, body, .. } => {
             let mut lambda_env = env.enter_scope();
             let mut param_types = Vec::new();
@@ -2877,7 +3007,7 @@ fn infer_expr(
                 let ty = param
                     .type_annotation
                     .as_ref()
-                    .and_then(|annot| type_from_annotation_kind(&annot.kind))
+                    .and_then(|annot| type_from_annotation_kind_with_generics(&annot.kind, None))
                     .unwrap_or_else(|| var_gen.fresh_type());
                 let scheme = Scheme::simple(ty.clone());
                 bind_pattern_to_env(&param.pattern, &scheme, &mut lambda_env, var_gen);
@@ -3261,6 +3391,20 @@ fn infer_binding(
     context: FunctionContext<'_>,
     loop_context: &mut LoopContextStack,
 ) -> Vec<typed::DictRefId> {
+    if let PatternKind::Var(ident) = &pattern.kind {
+        if is_direct_recursion(value, ident.name.as_str()) {
+            violations.push(TypecheckViolation::recursion_infinite(
+                value.span(),
+                ident.name.as_str(),
+            ));
+        }
+    }
+    let value_context = match (&pattern.kind, &value.kind) {
+        (PatternKind::Var(ident), ExprKind::Lambda { .. }) => {
+            FunctionContext::function(ident.name.as_str(), context.is_pure)
+        }
+        _ => context,
+    };
     let value_result = infer_expr(
         value,
         env,
@@ -3272,7 +3416,7 @@ fn infer_binding(
         violations,
         dict_refs,
         loop_context,
-        context,
+        value_context,
     );
     let substitution = solver.substitution().clone();
     let resolved_ty = substitution.apply(&value_result.ty);
@@ -3298,6 +3442,20 @@ fn infer_binding_with_value(
     context: FunctionContext<'_>,
     loop_context: &mut LoopContextStack,
 ) -> (TypedExprDraft, Vec<typed::DictRefId>) {
+    if let PatternKind::Var(ident) = &pattern.kind {
+        if is_direct_recursion(value, ident.name.as_str()) {
+            violations.push(TypecheckViolation::recursion_infinite(
+                value.span(),
+                ident.name.as_str(),
+            ));
+        }
+    }
+    let value_context = match (&pattern.kind, &value.kind) {
+        (PatternKind::Var(ident), ExprKind::Lambda { .. }) => {
+            FunctionContext::function(ident.name.as_str(), context.is_pure)
+        }
+        _ => context,
+    };
     let value_result = infer_expr(
         value,
         env,
@@ -3309,7 +3467,7 @@ fn infer_binding_with_value(
         violations,
         dict_refs,
         loop_context,
-        context,
+        value_context,
     );
     let substitution = solver.substitution().clone();
     let resolved_ty = substitution.apply(&value_result.ty);
@@ -3410,9 +3568,9 @@ fn infer_conductor(
         .channels
         .iter()
         .map(|route| {
-            let payload = type_from_annotation_kind(&route.payload.kind)
-                .map(|ty| solver.substitution().apply(&ty).label())
-                .unwrap_or_else(|| route.payload.render());
+        let payload = type_from_annotation_kind(&route.payload.kind)
+            .map(|ty| solver.substitution().apply(&ty).label())
+            .unwrap_or_else(|| route.payload.render());
             typed::TypedConductorChannel {
                 source: route.source.path.name.clone(),
                 target: route.target.path.name.clone(),
@@ -3642,6 +3800,16 @@ fn pattern_binding_name(pattern: &Pattern) -> Option<String> {
     match &pattern.kind {
         PatternKind::Var(ident) => Some(ident.name.clone()),
         _ => None,
+    }
+}
+
+fn is_direct_recursion(expr: &Expr, name: &str) -> bool {
+    match &expr.kind {
+        ExprKind::Rec { expr: inner } => match &inner.kind {
+            ExprKind::Identifier(ident) => ident.name == name,
+            _ => false,
+        },
+        _ => false,
     }
 }
 
@@ -4347,14 +4515,29 @@ impl ExhaustivenessTracker {
 }
 
 fn type_from_annotation_kind(kind: &TypeKind) -> Option<Type> {
+    type_from_annotation_kind_with_generics(kind, None)
+}
+
+fn type_from_annotation_kind_with_generics(
+    kind: &TypeKind,
+    generics: Option<&HashMap<String, TypeVariable>>,
+) -> Option<Type> {
     match kind {
-        TypeKind::Ident { name } => match name.name.as_str() {
-            "Int" => Some(Type::builtin(BuiltinType::Int)),
-            "Bool" => Some(Type::builtin(BuiltinType::Bool)),
-            "Str" => Some(Type::builtin(BuiltinType::Str)),
-            "Bytes" => Some(Type::builtin(BuiltinType::Bytes)),
-            _ => None,
-        },
+        TypeKind::Ident { name } => {
+            let literal = match name.name.as_str() {
+                "Int" => Some(Type::builtin(BuiltinType::Int)),
+                "Bool" => Some(Type::builtin(BuiltinType::Bool)),
+                "Str" => Some(Type::builtin(BuiltinType::Str)),
+                "Bytes" => Some(Type::builtin(BuiltinType::Bytes)),
+                _ => None,
+            };
+            if literal.is_some() {
+                return literal;
+            }
+            generics
+                .and_then(|map| map.get(name.name.as_str()))
+                .map(|var| Type::var(*var))
+        }
         TypeKind::Literal { value } => match value {
             TypeLiteral::String { .. } => Some(Type::builtin(BuiltinType::Str)),
             TypeLiteral::Int { .. } => Some(Type::builtin(BuiltinType::Int)),
@@ -4362,7 +4545,7 @@ fn type_from_annotation_kind(kind: &TypeKind) -> Option<Type> {
         TypeKind::App { callee, args } => {
             let mut resolved_args = Vec::new();
             for arg in args {
-                if let Some(arg_ty) = type_from_annotation_kind(&arg.kind) {
+                if let Some(arg_ty) = type_from_annotation_kind_with_generics(&arg.kind, generics) {
                     resolved_args.push(arg_ty);
                 } else {
                     return None;
@@ -4373,7 +4556,7 @@ fn type_from_annotation_kind(kind: &TypeKind) -> Option<Type> {
         TypeKind::Union { variants } => {
             let mut resolved = Vec::new();
             for variant in variants {
-                if let Some(ty) = type_from_annotation_kind(&variant.kind) {
+                if let Some(ty) = type_from_annotation_kind_with_generics(&variant.kind, generics) {
                     resolved.push(ty);
                 } else {
                     return None;
@@ -4399,12 +4582,133 @@ fn type_from_annotation_kind(kind: &TypeKind) -> Option<Type> {
                 None
             }
         }
-        TypeKind::Slice { element } => type_from_annotation_kind(&element.kind).map(Type::slice),
+        TypeKind::Slice { element } => {
+            type_from_annotation_kind_with_generics(&element.kind, generics).map(Type::slice)
+        }
         TypeKind::Ref { target, mutable } => {
-            type_from_annotation_kind(&target.kind).map(|inner| Type::reference(inner, *mutable))
+            type_from_annotation_kind_with_generics(&target.kind, generics)
+                .map(|inner| Type::reference(inner, *mutable))
+        }
+        TypeKind::Fn { params, ret } => {
+            let mut resolved_params = Vec::new();
+            for param in params {
+                if let Some(param_ty) =
+                    type_from_annotation_kind_with_generics(&param.kind, generics)
+                {
+                    resolved_params.push(param_ty);
+                } else {
+                    return None;
+                }
+            }
+            let resolved_ret =
+                type_from_annotation_kind_with_generics(&ret.kind, generics)?;
+            Some(Type::arrow(resolved_params, resolved_ret))
+        }
+        TypeKind::Tuple { elements } => {
+            let mut resolved = Vec::new();
+            for element in elements {
+                if let Some(ty) =
+                    type_from_annotation_kind_with_generics(&element.ty.kind, generics)
+                {
+                    resolved.push(ty);
+                } else {
+                    return None;
+                }
+            }
+            Some(Type::app("Tuple", resolved))
+        }
+        TypeKind::Record { fields } => {
+            let mut resolved = Vec::new();
+            for field in fields {
+                if let Some(ty) =
+                    type_from_annotation_kind_with_generics(&field.ty.kind, generics)
+                {
+                    resolved.push(ty);
+                } else {
+                    return None;
+                }
+            }
+            Some(Type::app("Record", resolved))
         }
         _ => None,
     }
+}
+
+fn insert_generic(
+    map: &mut HashMap<String, TypeVariable>,
+    name: &str,
+    var_gen: &mut TypeVarGen,
+) {
+    if map.contains_key(name) {
+        return;
+    }
+    map.insert(name.to_string(), var_gen.next());
+}
+
+fn build_generic_map(generics: &[Ident], var_gen: &mut TypeVarGen) -> HashMap<String, TypeVariable> {
+    let mut map = HashMap::new();
+    for ident in generics {
+        insert_generic(&mut map, ident.name.as_str(), var_gen);
+    }
+    map
+}
+
+fn collect_type_param_names_from_annotation(annotation: &TypeAnnot) -> Vec<String> {
+    fn visit(
+        kind: &TypeKind,
+        is_root: bool,
+        seen: &mut HashSet<String>,
+        names: &mut Vec<String>,
+    ) {
+        match kind {
+            TypeKind::Ident { name } => {
+                if is_root {
+                    return;
+                }
+                let name = name.name.as_str();
+                if matches!(name, "Int" | "Bool" | "Str" | "Bytes") {
+                    return;
+                }
+                if seen.insert(name.to_string()) {
+                    names.push(name.to_string());
+                }
+            }
+            TypeKind::App { args, .. } => {
+                for arg in args {
+                    visit(&arg.kind, false, seen, names);
+                }
+            }
+            TypeKind::Tuple { elements } => {
+                for element in elements {
+                    visit(&element.ty.kind, false, seen, names);
+                }
+            }
+            TypeKind::Record { fields } => {
+                for field in fields {
+                    visit(&field.ty.kind, false, seen, names);
+                }
+            }
+            TypeKind::Slice { element } => visit(&element.kind, false, seen, names),
+            TypeKind::Ref { target, .. } => visit(&target.kind, false, seen, names),
+            TypeKind::Fn { params, ret } => {
+                for param in params {
+                    visit(&param.kind, false, seen, names);
+                }
+                visit(&ret.kind, false, seen, names);
+            }
+            TypeKind::Union { variants } => {
+                for variant in variants {
+                    visit(&variant.kind, false, seen, names);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let mut seen = HashSet::new();
+    let mut names = Vec::new();
+    visit(&annotation.kind, true, &mut seen, &mut names);
+    names
 }
 
 fn type_for_literal(literal: &Literal) -> Type {
