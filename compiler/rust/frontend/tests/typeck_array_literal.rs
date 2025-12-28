@@ -21,7 +21,10 @@ fn typecheck_source(source: &str) -> TypecheckReport {
     TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default())
 }
 
-fn find_function<'a>(report: &'a TypecheckReport, name: &str) -> &'a reml_frontend::semantics::typed::TypedFunction {
+fn find_function<'a>(
+    report: &'a TypecheckReport,
+    name: &str,
+) -> &'a reml_frontend::semantics::typed::TypedFunction {
     report
         .typed_module
         .functions

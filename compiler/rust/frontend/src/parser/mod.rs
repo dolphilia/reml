@@ -54,8 +54,8 @@ use ast::{
     ImplDecl, ImplItem, IntBase, Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath,
     OperationDecl, Param, Pattern, PatternKind, PatternRecordField, RecordField, RelativeHead,
     SlicePatternItem, Stmt, StmtKind, StringKind, StructDecl, TraitDecl, TraitItem, TraitRef,
-    TypeAnnot, TypeKind, TypeLiteral, TypeRecordField, TypeTupleElement, UnaryOp, UseDecl,
-    UseItem, UseTree, Visibility, WherePredicate,
+    TypeAnnot, TypeKind, TypeLiteral, TypeRecordField, TypeTupleElement, TypeUnionVariant, UnaryOp,
+    UseDecl, UseItem, UseTree, VariantPayload, Visibility, WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -1412,13 +1412,11 @@ fn collect_rec_lambda_diagnostics(module: &Module, diagnostics: &mut Vec<Fronten
                 walk_expr(start, diagnostics);
                 walk_expr(end, diagnostics);
             }
-            ExprKind::Loop { body }
-            | ExprKind::Unsafe { body }
-            | ExprKind::Defer { body } => walk_expr(body, diagnostics),
+            ExprKind::Loop { body } | ExprKind::Unsafe { body } | ExprKind::Defer { body } => {
+                walk_expr(body, diagnostics)
+            }
             ExprKind::Block {
-                statements,
-                defers,
-                ..
+                statements, defers, ..
             } => {
                 for stmt in statements {
                     walk_stmt(stmt, diagnostics);
@@ -1446,9 +1444,7 @@ fn collect_rec_lambda_diagnostics(module: &Module, diagnostics: &mut Vec<Fronten
                 | DeclKind::Const { value, .. } => walk_expr(value, diagnostics),
                 _ => {}
             },
-            StmtKind::Expr { expr } | StmtKind::Defer { expr } => {
-                walk_expr(expr, diagnostics)
-            }
+            StmtKind::Expr { expr } | StmtKind::Defer { expr } => walk_expr(expr, diagnostics),
             StmtKind::Assign { target, value } => {
                 if matches!(target.kind, ExprKind::Rec { .. }) {
                     diagnostics.push(rec_unsupported_position(target.span));
@@ -1930,13 +1926,14 @@ fn module_parser<'src>(
             }
         });
 
-    let upper_ident = just(TokenKind::UpperIdentifier).map_with_span(move |_, span: Range<usize>| {
-        let slice = &source[span.start..span.end];
-        Ident {
-            name: slice.to_string(),
-            span: range_to_span(span),
-        }
-    });
+    let upper_ident =
+        just(TokenKind::UpperIdentifier).map_with_span(move |_, span: Range<usize>| {
+            let slice = &source[span.start..span.end];
+            Ident {
+                name: slice.to_string(),
+                span: range_to_span(span),
+            }
+        });
 
     let int_literal = just(TokenKind::IntLiteral).map_with_span(move |_, span: Range<usize>| {
         let slice = &source[span.start..span.end];
@@ -2408,11 +2405,7 @@ fn module_parser<'src>(
                     .ignore_then(type_parser_for_expr.clone())
                     .or_not(),
             )
-            .then(
-                just(TokenKind::Assign)
-                    .ignore_then(expr.clone())
-                    .or_not(),
-            )
+            .then(just(TokenKind::Assign).ignore_then(expr.clone()).or_not())
             .map(|((pattern, ty), default)| Param {
                 span: pattern.span,
                 pattern,
@@ -2466,19 +2459,20 @@ fn module_parser<'src>(
             )
             .then_ignore(just(TokenKind::RBrace));
 
-        let record_literal = record_literal_fields
-            .clone()
-            .map_with_span(|fields, span: Range<usize>| {
-                Expr::literal(
-                    Literal {
-                        value: LiteralKind::Record {
-                            type_name: None,
-                            fields,
+        let record_literal =
+            record_literal_fields
+                .clone()
+                .map_with_span(|fields, span: Range<usize>| {
+                    Expr::literal(
+                        Literal {
+                            value: LiteralKind::Record {
+                                type_name: None,
+                                fields,
+                            },
                         },
-                    },
-                    range_to_span(span),
-                )
-            });
+                        range_to_span(span),
+                    )
+                });
 
         let typed_record_literal = upper_ident
             .clone()
@@ -3020,38 +3014,39 @@ fn module_parser<'src>(
                 })
             });
 
-        let unary: Recursive<'src, TokenKind, Expr, Simple<TokenKind>> =
-            recursive(|unary: Recursive<'src, TokenKind, Expr, Simple<TokenKind>>| {
-            let prefix_op = choice((
-                just(TokenKind::Not).to(UnaryOp::Not),
-                just(TokenKind::Minus).to(UnaryOp::Neg),
-            ))
-            .map_with_span(|op, span: Range<usize>| (op, range_to_span(span)));
+        let unary: Recursive<'src, TokenKind, Expr, Simple<TokenKind>> = recursive(
+            |unary: Recursive<'src, TokenKind, Expr, Simple<TokenKind>>| {
+                let prefix_op = choice((
+                    just(TokenKind::Not).to(UnaryOp::Not),
+                    just(TokenKind::Minus).to(UnaryOp::Neg),
+                ))
+                .map_with_span(|op, span: Range<usize>| (op, range_to_span(span)));
 
-            let unary_expr = prefix_op.clone().then(unary.clone()).map(|(op, inner)| {
-                let (operator, op_span) = op;
-                let span = span_union(op_span, inner.span());
-                Expr {
-                    span,
-                    kind: ExprKind::Unary {
-                        operator,
-                        expr: Box::new(inner),
-                    },
-                }
-            });
+                let unary_expr = prefix_op.clone().then(unary.clone()).map(|(op, inner)| {
+                    let (operator, op_span) = op;
+                    let span = span_union(op_span, inner.span());
+                    Expr {
+                        span,
+                        kind: ExprKind::Unary {
+                            operator,
+                            expr: Box::new(inner),
+                        },
+                    }
+                });
 
-            let rec_expr = just(TokenKind::KeywordRec)
-                .map_with_span(|_, span: Range<usize>| range_to_span(span))
-                .then(unary.clone())
-                .map(|(rec_span, inner)| Expr {
-                span: span_union(rec_span, inner.span()),
-                kind: ExprKind::Rec {
-                    expr: Box::new(inner),
-                },
-            });
+                let rec_expr = just(TokenKind::KeywordRec)
+                    .map_with_span(|_, span: Range<usize>| range_to_span(span))
+                    .then(unary.clone())
+                    .map(|(rec_span, inner)| Expr {
+                        span: span_union(rec_span, inner.span()),
+                        kind: ExprKind::Rec {
+                            expr: Box::new(inner),
+                        },
+                    });
 
-            choice((rec_expr, unary_expr, call.clone()))
-        });
+                choice((rec_expr, unary_expr, call.clone()))
+            },
+        );
 
         let multiplicative = unary
             .clone()
@@ -3218,8 +3213,8 @@ fn module_parser<'src>(
             .allow_trailing()
             .delimited_by(just(TokenKind::Lt), just(TokenKind::Gt));
 
-        let string_literal_type = just(TokenKind::StringLiteral).map_with_span(
-            move |_, span: Range<usize>| TypeAnnot {
+        let string_literal_type =
+            just(TokenKind::StringLiteral).map_with_span(move |_, span: Range<usize>| TypeAnnot {
                 span: range_to_span(span.clone()),
                 kind: TypeKind::Literal {
                     value: TypeLiteral::String {
@@ -3227,8 +3222,7 @@ fn module_parser<'src>(
                     },
                 },
                 annotation_kind: None,
-            },
-        );
+            });
 
         let int_literal_type =
             just(TokenKind::IntLiteral).map_with_span(move |_, span: Range<usize>| {
@@ -3263,6 +3257,7 @@ fn module_parser<'src>(
         let tuple_type = delimited_with_cut(
             TokenKind::LParen,
             tuple_element
+                .clone()
                 .cut()
                 .separated_by(just(TokenKind::Comma))
                 .allow_trailing(),
@@ -3316,6 +3311,7 @@ fn module_parser<'src>(
         let record_type = delimited_with_cut(
             TokenKind::LBrace,
             record_field
+                .clone()
                 .cut()
                 .separated_by(just(TokenKind::Comma))
                 .allow_trailing(),
@@ -3326,6 +3322,30 @@ fn module_parser<'src>(
             kind: TypeKind::Record { fields },
             annotation_kind: None,
         });
+
+        let variant_record_payload = delimited_with_cut(
+            TokenKind::LBrace,
+            record_field
+                .clone()
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing(),
+            TokenKind::RBrace,
+        )
+        .map(|fields| VariantPayload::Record { fields });
+
+        let variant_tuple_payload = delimited_with_cut(
+            TokenKind::LParen,
+            tuple_element
+                .clone()
+                .cut()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing(),
+            TokenKind::RParen,
+        )
+        .map(|elements| VariantPayload::Tuple { elements });
+
+        let variant_payload = choice((variant_record_payload, variant_tuple_payload));
 
         let fn_type = just(TokenKind::KeywordFn)
             .ignore_then(delimited_with_cut(
@@ -3412,13 +3432,35 @@ fn module_parser<'src>(
                 }
             });
 
-        arrow_type
+        let union_variant_payload = ident.clone().then(variant_payload.clone()).map_with_span(
+            |(name, payload), span: Range<usize>| TypeUnionVariant::Variant {
+                name,
+                payload: Some(payload),
+                span: range_to_span(span),
+            },
+        );
+
+        let union_variant = choice((
+            union_variant_payload,
+            arrow_type.clone().map(|ty| TypeUnionVariant::Type { ty }),
+        ));
+
+        union_variant
             .clone()
             .separated_by(just(TokenKind::Bar))
             .at_least(1)
             .map_with_span(|variants, span: Range<usize>| {
                 if variants.len() == 1 {
-                    variants.into_iter().next().unwrap()
+                    match variants.into_iter().next().unwrap() {
+                        TypeUnionVariant::Type { ty } => ty,
+                        variant => TypeAnnot {
+                            span: range_to_span(span),
+                            kind: TypeKind::Union {
+                                variants: vec![variant],
+                            },
+                            annotation_kind: None,
+                        },
+                    }
                 } else {
                     TypeAnnot {
                         span: range_to_span(span),
@@ -3638,13 +3680,7 @@ fn module_parser<'src>(
             |(
                 (
                     (
-                        (
-                            (
-                                (((fn_span, receiver), name), generics),
-                                (params, varargs),
-                            ),
-                            ret_type,
-                        ),
+                        (((((fn_span, receiver), name), generics), (params, varargs)), ret_type),
                         effect_before_where,
                     ),
                     where_clause,
@@ -3664,7 +3700,10 @@ fn module_parser<'src>(
                         ret_type,
                         where_clause,
                         effect,
-                        span: Span::new(fn_span.start.min(signature_span.start), signature_span.end),
+                        span: Span::new(
+                            fn_span.start.min(signature_span.start),
+                            signature_span.end,
+                        ),
                     },
                 )
             },
@@ -3747,16 +3786,18 @@ fn module_parser<'src>(
         .then(type_parser.clone().cut())
         .then_ignore(just(TokenKind::Assign))
         .then(expr.clone())
-        .map_with_span(|((name, type_annotation), value), span: Range<usize>| Decl {
-            attrs: Vec::new(),
-            visibility: Visibility::Private,
-            span: range_to_span(span),
-            kind: DeclKind::Const {
-                name,
-                value,
-                type_annotation,
+        .map_with_span(
+            |((name, type_annotation), value), span: Range<usize>| Decl {
+                attrs: Vec::new(),
+                visibility: Visibility::Private,
+                span: range_to_span(span),
+                kind: DeclKind::Const {
+                    name,
+                    value,
+                    type_annotation,
+                },
             },
-        });
+        );
 
     let const_decl = attr_list
         .clone()
@@ -3911,10 +3952,65 @@ fn module_parser<'src>(
             decl
         });
 
+    let enum_tuple_element_labeled = ident
+        .clone()
+        .then_ignore(just(TokenKind::Colon))
+        .then(type_parser.clone())
+        .map(|(label, ty)| TypeTupleElement {
+            label: Some(label),
+            ty,
+        });
+
+    let enum_tuple_element = choice((
+        enum_tuple_element_labeled,
+        type_parser
+            .clone()
+            .map(|ty| TypeTupleElement { label: None, ty }),
+    ));
+
+    let enum_record_field = ident
+        .clone()
+        .then_ignore(just(TokenKind::Colon))
+        .then(type_parser.clone().cut())
+        .then(
+            just(TokenKind::Assign)
+                .ignore_then(expr.clone().cut())
+                .or_not(),
+        )
+        .map(|((label, ty), default_expr)| TypeRecordField {
+            label,
+            ty,
+            default_expr,
+        });
+
+    let enum_variant_record_payload = delimited_with_cut(
+        TokenKind::LBrace,
+        enum_record_field
+            .cut()
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing(),
+        TokenKind::RBrace,
+    )
+    .map(|fields| VariantPayload::Record { fields });
+
+    let enum_variant_tuple_payload = delimited_with_cut(
+        TokenKind::LParen,
+        enum_tuple_element
+            .cut()
+            .separated_by(just(TokenKind::Comma))
+            .allow_trailing(),
+        TokenKind::RParen,
+    )
+    .map(|elements| VariantPayload::Tuple { elements });
+
+    let enum_variant_payload = choice((enum_variant_record_payload, enum_variant_tuple_payload));
+
     let enum_variant = ident
         .clone()
-        .map_with_span(|name, span: Range<usize>| EnumVariant {
+        .then(enum_variant_payload.clone().or_not())
+        .map_with_span(|(name, payload), span: Range<usize>| EnumVariant {
             name,
+            payload,
             span: range_to_span(span),
         });
 
@@ -4050,16 +4146,19 @@ fn module_parser<'src>(
             },
         );
 
-    let method_decl = attr_list.clone().then(method_core.clone()).map(|(attrs, mut decl)| {
-        if !attrs.is_empty() {
-            if let DeclKind::Impl(impl_decl) = &mut decl.kind {
-                if let Some(ImplItem::Function(function)) = impl_decl.items.first_mut() {
-                    function.attrs = attrs;
+    let method_decl = attr_list
+        .clone()
+        .then(method_core.clone())
+        .map(|(attrs, mut decl)| {
+            if !attrs.is_empty() {
+                if let DeclKind::Impl(impl_decl) = &mut decl.kind {
+                    if let Some(ImplItem::Function(function)) = impl_decl.items.first_mut() {
+                        function.attrs = attrs;
+                    }
                 }
             }
-        }
-        decl
-    });
+            decl
+        });
 
     let active_pattern_head = just(TokenKind::KeywordPattern).ignore_then(
         just(TokenKind::LParen)
@@ -4528,24 +4627,24 @@ fn module_parser<'src>(
         .then_ignore(just(TokenKind::Semicolon).repeated())
         .map(ModuleItem::Expr);
 
-        let module_item = choice((
-            effect_decl.clone().map(ModuleItem::Effect),
-            trait_decl.clone().map(ModuleItem::Decl),
-            impl_decl.clone().map(ModuleItem::Decl),
-            type_decl.clone().map(ModuleItem::Decl),
-            struct_decl.clone().map(ModuleItem::Decl),
-            enum_decl.clone().map(ModuleItem::Decl),
-            extern_decl.clone().map(ModuleItem::Decl),
-            const_decl.clone().map(ModuleItem::Decl),
-            let_decl.clone().map(ModuleItem::Decl),
-            var_decl.clone().map(ModuleItem::Decl),
-            conductor_decl.clone().map(ModuleItem::Decl),
-            active_pattern_decl.clone().map(ModuleItem::ActivePattern),
-            method_decl.clone().map(ModuleItem::Decl),
-            function.clone().map(ModuleItem::Function),
-            top_level_defer,
-            top_level_expr,
-        ));
+    let module_item = choice((
+        effect_decl.clone().map(ModuleItem::Effect),
+        trait_decl.clone().map(ModuleItem::Decl),
+        impl_decl.clone().map(ModuleItem::Decl),
+        type_decl.clone().map(ModuleItem::Decl),
+        struct_decl.clone().map(ModuleItem::Decl),
+        enum_decl.clone().map(ModuleItem::Decl),
+        extern_decl.clone().map(ModuleItem::Decl),
+        const_decl.clone().map(ModuleItem::Decl),
+        let_decl.clone().map(ModuleItem::Decl),
+        var_decl.clone().map(ModuleItem::Decl),
+        conductor_decl.clone().map(ModuleItem::Decl),
+        active_pattern_decl.clone().map(ModuleItem::ActivePattern),
+        method_decl.clone().map(ModuleItem::Decl),
+        function.clone().map(ModuleItem::Function),
+        top_level_defer,
+        top_level_expr,
+    ));
 
     module_item
         .repeated()

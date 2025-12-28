@@ -18,7 +18,7 @@ use crate::parser::ast::{
     EffectDecl, EnumDecl, Expr, ExprKind, FixityKind, Function, HandlerDecl, HandlerEntry, Ident,
     ImplItem, Literal, LiteralKind, MatchArm, Module, ModulePath, Param, Pattern, PatternKind,
     RelativeHead, SlicePatternItem, Stmt, StmtKind, StructDecl, TraitDecl, TypeAnnot, TypeKind,
-    TypeLiteral, UnaryOp,
+    TypeLiteral, TypeUnionVariant, UnaryOp, VariantPayload,
 };
 use crate::semantics::{mir, typed};
 use crate::span::Span;
@@ -419,11 +419,8 @@ impl TypecheckDriver {
                     });
                 }
                 let method_label = format!("{}.{}", impl_decl.target.render(), function.name.name);
-                let function_name = format!(
-                    "{}__{}",
-                    impl_decl.target.render(),
-                    function.name.name
-                );
+                let function_name =
+                    format!("{}__{}", impl_decl.target.render(), function.name.name);
                 let function_context = FunctionContext::function(method_label.as_str(), is_pure);
                 let typed_body = infer_function(
                     function,
@@ -450,9 +447,11 @@ impl TypecheckDriver {
                             function_label.clone(),
                         ));
                     }
-                    if let Some(invalid_label) =
-                        first_intrinsic_invalid_type(&param_bindings, &resolved_return, &substitution)
-                    {
+                    if let Some(invalid_label) = first_intrinsic_invalid_type(
+                        &param_bindings,
+                        &resolved_return,
+                        &substitution,
+                    ) {
                         violations.push(TypecheckViolation::intrinsic_invalid_type(
                             intrinsic_attr.span,
                             Some(intrinsic_attr.name),
@@ -3168,7 +3167,10 @@ fn infer_expr(
                 dicts,
             )
         }
-        ExprKind::Unary { operator, expr: inner } => {
+        ExprKind::Unary {
+            operator,
+            expr: inner,
+        } => {
             let result = infer_expr(
                 inner,
                 env,
@@ -3848,9 +3850,9 @@ fn infer_conductor(
         .channels
         .iter()
         .map(|route| {
-        let payload = type_from_annotation_kind(&route.payload.kind)
-            .map(|ty| solver.substitution().apply(&ty).label())
-            .unwrap_or_else(|| route.payload.render());
+            let payload = type_from_annotation_kind(&route.payload.kind)
+                .map(|ty| solver.substitution().apply(&ty).label())
+                .unwrap_or_else(|| route.payload.render());
             typed::TypedConductorChannel {
                 source: route.source.path.name.clone(),
                 target: route.target.path.name.clone(),
@@ -4384,14 +4386,18 @@ fn collect_function_bindings(params: &[Param], body: &Expr) -> HashSet<String> {
                 walk_expr(condition, bindings);
                 walk_expr(body, bindings);
             }
-            ExprKind::For { pattern, start, end } => {
+            ExprKind::For {
+                pattern,
+                start,
+                end,
+            } => {
                 collect_pattern_binding_names(pattern, bindings);
                 walk_expr(start, bindings);
                 walk_expr(end, bindings);
             }
-            ExprKind::Loop { body }
-            | ExprKind::Unsafe { body }
-            | ExprKind::Defer { body } => walk_expr(body, bindings),
+            ExprKind::Loop { body } | ExprKind::Unsafe { body } | ExprKind::Defer { body } => {
+                walk_expr(body, bindings)
+            }
             ExprKind::Assign { target, value } => {
                 walk_expr(target, bindings);
                 walk_expr(value, bindings);
@@ -4410,8 +4416,7 @@ fn collect_function_bindings(params: &[Param], body: &Expr) -> HashSet<String> {
     fn walk_stmt(stmt: &Stmt, bindings: &mut HashSet<String>) {
         match &stmt.kind {
             StmtKind::Decl { decl } => match &decl.kind {
-                DeclKind::Let { pattern, value, .. }
-                | DeclKind::Var { pattern, value, .. } => {
+                DeclKind::Let { pattern, value, .. } | DeclKind::Var { pattern, value, .. } => {
                     walk_expr(value, bindings);
                     collect_pattern_binding_names(pattern, bindings);
                 }
@@ -4489,10 +4494,7 @@ fn detect_lambda_captures(
         }
 
         fn is_local(&self, name: &str) -> bool {
-            self.scopes
-                .iter()
-                .rev()
-                .any(|scope| scope.contains(name))
+            self.scopes.iter().rev().any(|scope| scope.contains(name))
         }
 
         fn insert_binding(&mut self, name: String) {
@@ -4602,14 +4604,18 @@ fn detect_lambda_captures(
                 walk_expr(condition, state);
                 walk_expr(body, state);
             }
-            ExprKind::For { pattern, start, end } => {
+            ExprKind::For {
+                pattern,
+                start,
+                end,
+            } => {
                 state.record_pattern(pattern);
                 walk_expr(start, state);
                 walk_expr(end, state);
             }
-            ExprKind::Loop { body }
-            | ExprKind::Unsafe { body }
-            | ExprKind::Defer { body } => walk_expr(body, state),
+            ExprKind::Loop { body } | ExprKind::Unsafe { body } | ExprKind::Defer { body } => {
+                walk_expr(body, state)
+            }
             ExprKind::Break { value: None }
             | ExprKind::Return { value: None }
             | ExprKind::Continue
@@ -4623,8 +4629,7 @@ fn detect_lambda_captures(
     fn walk_stmt(stmt: &Stmt, state: &mut CaptureState<'_>) {
         match &stmt.kind {
             StmtKind::Decl { decl } => match &decl.kind {
-                DeclKind::Let { pattern, value, .. }
-                | DeclKind::Var { pattern, value, .. } => {
+                DeclKind::Let { pattern, value, .. } | DeclKind::Var { pattern, value, .. } => {
                     walk_expr(value, state);
                     state.record_pattern(pattern);
                 }
@@ -5055,7 +5060,8 @@ fn analyze_match_exhaustiveness(arms: &[MatchArm], target_ty: &Type) -> Exhausti
     }
     ExhaustivenessResult {
         coverage_reached: tracker.coverage_reached(),
-        should_report_missing: domain != ExhaustivenessDomain::Unknown || has_partial_active_pattern,
+        should_report_missing: domain != ExhaustivenessDomain::Unknown
+            || has_partial_active_pattern,
         unreachable_arm_indices,
     }
 }
@@ -5089,9 +5095,9 @@ fn contains_partial_active_pattern(pattern: &Pattern) -> bool {
                 .map(|value| contains_partial_active_pattern(value))
                 .unwrap_or(false)
         }),
-        PatternKind::Constructor { args, .. } => args
-            .iter()
-            .any(|arg| contains_partial_active_pattern(arg)),
+        PatternKind::Constructor { args, .. } => {
+            args.iter().any(|arg| contains_partial_active_pattern(arg))
+        }
         PatternKind::Or { variants } => variants
             .iter()
             .any(|variant| contains_partial_active_pattern(variant)),
@@ -5296,7 +5302,13 @@ fn type_from_annotation_kind_with_generics(
         TypeKind::Union { variants } => {
             let mut resolved = Vec::new();
             for variant in variants {
-                if let Some(ty) = type_from_annotation_kind_with_generics(&variant.kind, generics) {
+                let ty = match variant {
+                    TypeUnionVariant::Type { ty } => {
+                        type_from_annotation_kind_with_generics(&ty.kind, generics)
+                    }
+                    TypeUnionVariant::Variant { .. } => None,
+                };
+                if let Some(ty) = ty {
                     resolved.push(ty);
                 } else {
                     return None;
@@ -5340,8 +5352,7 @@ fn type_from_annotation_kind_with_generics(
                     return None;
                 }
             }
-            let resolved_ret =
-                type_from_annotation_kind_with_generics(&ret.kind, generics)?;
+            let resolved_ret = type_from_annotation_kind_with_generics(&ret.kind, generics)?;
             Some(Type::arrow(resolved_params, resolved_ret))
         }
         TypeKind::Tuple { elements } => {
@@ -5360,8 +5371,7 @@ fn type_from_annotation_kind_with_generics(
         TypeKind::Record { fields } => {
             let mut resolved = Vec::new();
             for field in fields {
-                if let Some(ty) =
-                    type_from_annotation_kind_with_generics(&field.ty.kind, generics)
+                if let Some(ty) = type_from_annotation_kind_with_generics(&field.ty.kind, generics)
                 {
                     resolved.push(ty);
                 } else {
@@ -5374,18 +5384,17 @@ fn type_from_annotation_kind_with_generics(
     }
 }
 
-fn insert_generic(
-    map: &mut HashMap<String, TypeVariable>,
-    name: &str,
-    var_gen: &mut TypeVarGen,
-) {
+fn insert_generic(map: &mut HashMap<String, TypeVariable>, name: &str, var_gen: &mut TypeVarGen) {
     if map.contains_key(name) {
         return;
     }
     map.insert(name.to_string(), var_gen.next());
 }
 
-fn build_generic_map(generics: &[Ident], var_gen: &mut TypeVarGen) -> HashMap<String, TypeVariable> {
+fn build_generic_map(
+    generics: &[Ident],
+    var_gen: &mut TypeVarGen,
+) -> HashMap<String, TypeVariable> {
     let mut map = HashMap::new();
     for ident in generics {
         insert_generic(&mut map, ident.name.as_str(), var_gen);
@@ -5394,12 +5403,7 @@ fn build_generic_map(generics: &[Ident], var_gen: &mut TypeVarGen) -> HashMap<St
 }
 
 fn collect_type_param_names_from_annotation(annotation: &TypeAnnot) -> Vec<String> {
-    fn visit(
-        kind: &TypeKind,
-        is_root: bool,
-        seen: &mut HashSet<String>,
-        names: &mut Vec<String>,
-    ) {
+    fn visit(kind: &TypeKind, is_root: bool, seen: &mut HashSet<String>, names: &mut Vec<String>) {
         match kind {
             TypeKind::Ident { name } => {
                 if is_root {
@@ -5438,7 +5442,27 @@ fn collect_type_param_names_from_annotation(annotation: &TypeAnnot) -> Vec<Strin
             }
             TypeKind::Union { variants } => {
                 for variant in variants {
-                    visit(&variant.kind, false, seen, names);
+                    match variant {
+                        TypeUnionVariant::Type { ty } => {
+                            visit(&ty.kind, false, seen, names);
+                        }
+                        TypeUnionVariant::Variant {
+                            payload: Some(payload),
+                            ..
+                        } => match payload {
+                            VariantPayload::Record { fields } => {
+                                for field in fields {
+                                    visit(&field.ty.kind, false, seen, names);
+                                }
+                            }
+                            VariantPayload::Tuple { elements } => {
+                                for element in elements {
+                                    visit(&element.ty.kind, false, seen, names);
+                                }
+                            }
+                        },
+                        TypeUnionVariant::Variant { .. } => {}
+                    }
                 }
             }
             _ => {}

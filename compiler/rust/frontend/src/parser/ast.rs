@@ -383,8 +383,40 @@ pub struct EnumDecl {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum VariantPayload {
+    Record { fields: Vec<TypeRecordField> },
+    Tuple { elements: Vec<TypeTupleElement> },
+}
+
+impl VariantPayload {
+    fn render(&self) -> String {
+        match self {
+            VariantPayload::Record { fields } => {
+                let entries = fields
+                    .iter()
+                    .map(TypeRecordField::render)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{{ {} }}", entries)
+            }
+            VariantPayload::Tuple { elements } => {
+                let entries = elements
+                    .iter()
+                    .map(TypeTupleElement::render)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("({})", entries)
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct EnumVariant {
     pub name: Ident,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payload: Option<VariantPayload>,
     pub span: Span,
 }
 
@@ -1321,6 +1353,37 @@ impl TypeAnnot {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TypeUnionVariant {
+    Type {
+        ty: TypeAnnot,
+    },
+    Variant {
+        name: Ident,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        payload: Option<VariantPayload>,
+        span: Span,
+    },
+}
+
+impl TypeUnionVariant {
+    fn render(&self) -> String {
+        match self {
+            TypeUnionVariant::Type { ty } => ty.render(),
+            TypeUnionVariant::Variant {
+                name,
+                payload: Some(payload),
+                ..
+            } => match payload {
+                VariantPayload::Record { .. } => format!("{} {}", name.name, payload.render()),
+                VariantPayload::Tuple { .. } => format!("{}{}", name.name, payload.render()),
+            },
+            TypeUnionVariant::Variant { name, .. } => name.name.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AnnotationKind {
     Return,
@@ -1359,7 +1422,7 @@ pub enum TypeKind {
         ret: Box<TypeAnnot>,
     },
     Union {
-        variants: Vec<TypeAnnot>,
+        variants: Vec<TypeUnionVariant>,
     },
 }
 
@@ -1411,7 +1474,7 @@ impl TypeKind {
             ),
             TypeKind::Union { variants } => variants
                 .iter()
-                .map(|ty| ty.render())
+                .map(TypeUnionVariant::render)
                 .collect::<Vec<_>>()
                 .join(" | "),
         }

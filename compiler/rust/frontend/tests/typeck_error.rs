@@ -60,8 +60,7 @@ fn effect_stage_mismatch_is_serialized() {
     let config = TypecheckConfig::builder()
         .experimental_effects(true)
         .build();
-    let report =
-        typecheck_with_config(r#"fn log() = perform Console.log("hello")"#, config);
+    let report = typecheck_with_config(r#"fn log() = perform Console.log("hello")"#, config);
     assert!(
         report
             .violations
