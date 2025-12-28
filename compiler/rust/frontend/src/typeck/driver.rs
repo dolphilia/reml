@@ -1621,6 +1621,7 @@ fn visit_expr_for_opbuilder(
             visit_expr_for_opbuilder(right, tracker, violations);
         }
         ExprKind::Unary { expr: body, .. }
+        | ExprKind::Rec { expr: body }
         | ExprKind::Propagate { expr: body }
         | ExprKind::Loop { body }
         | ExprKind::Defer { body }
@@ -5305,6 +5306,7 @@ fn visit_expr(expr: &Expr, visitor: &mut impl FnMut(&Expr)) {
             visit_expr(right, visitor);
         }
         ExprKind::Unary { expr: inner, .. }
+        | ExprKind::Rec { expr: inner }
         | ExprKind::Propagate { expr: inner }
         | ExprKind::Return { value: Some(inner) } => {
             visit_expr(inner, visitor);
@@ -5519,6 +5521,7 @@ fn collect_perform_effects(expr: &Expr, usages: &mut Vec<EffectUsage>) {
             collect_perform_effects(right, usages);
         }
         ExprKind::Unary { expr: inner, .. }
+        | ExprKind::Rec { expr: inner }
         | ExprKind::Propagate { expr: inner }
         | ExprKind::Return { value: Some(inner) } => {
             collect_perform_effects(inner, usages);

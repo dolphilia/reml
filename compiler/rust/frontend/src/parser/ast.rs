@@ -584,6 +584,9 @@ pub enum ExprKind {
         operator: UnaryOp,
         expr: Box<Expr>,
     },
+    Rec {
+        expr: Box<Expr>,
+    },
     FieldAccess {
         target: Box<Expr>,
         field: Ident,
@@ -1643,6 +1646,7 @@ impl Expr {
                 operator.symbol(),
                 right.render()
             ),
+            ExprKind::Rec { expr } => format!("rec {}", expr.render()),
             ExprKind::IfElse {
                 condition,
                 then_branch,

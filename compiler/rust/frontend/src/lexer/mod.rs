@@ -184,6 +184,8 @@ enum RawToken {
     KeywordBreak,
     #[token("continue")]
     KeywordContinue,
+    #[token("rec")]
+    KeywordRec,
 
     #[token("|>")]
     PipeForward,
@@ -612,6 +614,9 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             }
             Ok(RawToken::KeywordContinue) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordContinue, "continue")
+            }
+            Ok(RawToken::KeywordRec) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordRec, "rec")
             }
             Ok(RawToken::Identifier) => {
                 let slice = lexer.slice();
