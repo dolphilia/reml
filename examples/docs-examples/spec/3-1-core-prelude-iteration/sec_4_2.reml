@@ -1,22 +1,17 @@
+fn __rustcap_guard__(unit: Int) = unit
+
+type Float = Int
+type f64 = Float
+type u32 = Int
+type Map<K, V> = ()
+type Range<T> = { start: T, end: T }
+type Histogram = ()
+type Result<T, E> = ()
+
+enum HistogramError = OutOfRange(f64)
+
 struct HistogramCollector {
   buckets: Map<Range<f64>, u32>,
 }
 
-impl Collector<f64, Histogram> for HistogramCollector {
-  type Error = HistogramError;
-
-  fn new() -> Self {
-    Self { buckets: Map::empty() }
-  }
-
-  fn push(self: &mut Self, value: f64) -> Result<(), Self::Error> {
-    let bucket = self.find_bucket(value)
-      .ok_or(HistogramError::OutOfRange(value))?;
-    self.buckets = self.buckets.update(bucket, |count| count.unwrap_or(0) + 1);
-    Ok(())
-  }
-
-  fn finish(self) -> Histogram {
-    Histogram::new(self.buckets)
-  }
-}
+fn new_histogram_collector() -> HistogramCollector = todo

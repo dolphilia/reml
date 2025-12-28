@@ -1,3 +1,9 @@
+fn __rustcap_guard__(unit: Int) = unit
+
+type Iter<T> = ()
+type AsyncStream<T> = ()
+type Future<T> = ()
+
 // 将来の async Stream との統合例（予定）
-fn from_async_stream<T>(stream: AsyncStream<T>) -> Iter<Future<T>>  // `effect {io.async}`
-fn to_async_stream<T>(iter: Iter<T>) -> AsyncStream<T>              // `effect {io.async}`
+fn from_async_stream<T>(stream: AsyncStream<T>) -> Iter<Future<T>> = todo // `effect {io.async}`
+fn to_async_stream<T>(iter: Iter<T>) -> AsyncStream<T> = todo            // `effect {io.async}`

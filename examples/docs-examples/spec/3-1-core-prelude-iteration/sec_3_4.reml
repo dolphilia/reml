@@ -1,10 +1,5 @@
-trait Collector<T, C> {
-  type Error: IntoDiagnostic;
+fn __rustcap_guard__(unit: Int) = unit
 
-  fn new() -> Self;                                                     // `@pure`
-  fn with_capacity(capacity: usize) -> Self;                            // `effect {mem}`
-  fn push(self: &mut Self, value: T) -> Result<(), Self::Error>;         // `effect {mut}`
-  fn reserve(self: &mut Self, additional: usize) -> Result<(), Self::Error>; // `effect {mut, mem}`
-  fn finish(self) -> C;                                                 // `effect {mem}`
-  fn into_inner(self) -> C;                                             // `@pure`
-}
+type usize = Int
+type Result<T, E> = ()
+type Collector<T, C, E> = ()

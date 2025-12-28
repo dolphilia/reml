@@ -182,13 +182,13 @@
 ### docs/spec/3-1-core-prelude-iteration.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2.1 型定義 | sec_2_1 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.2 生成関数 | sec_3_2 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.4 終端操作 | sec_3_4 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_3_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.5 パイプライン使用例 | sec_3_5 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_3_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.1 専用コレクタ | sec_4_1 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.2 カスタムコレクタの実装例 | sec_4_2 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6.2 非同期処理との将来統合 | sec_6_2 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_6_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 2.1 型定義 | sec_2_1 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.2 生成関数 | sec_3_2 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.4 終端操作 | sec_3_4 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_3_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.5 パイプライン使用例 | sec_3_5 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_3_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.1 専用コレクタ | sec_4_1 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.2 カスタムコレクタの実装例 | sec_4_2 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6.2 非同期処理との将来統合 | sec_6_2 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_6_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-10-core-env.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

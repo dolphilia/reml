@@ -1,7 +1,24 @@
-use Core;
+fn __rustcap_guard__(unit: Int) = unit
+
+type List<T> = ()
+type Iter<T> = ()
+
+type Result<T, E> =
+  | Ok(value: T)
+  | Err(error: E)
+
+type Diagnostic = {
+  message: Str,
+}
+
+fn diagnostic_invalid_value(value: Int) -> Diagnostic = todo
+fn ensure<T>(cond: Bool, value: T, err: Diagnostic) -> Result<T, Diagnostic> = todo
+fn iter_from_list<T>(values: List<T>) -> Iter<T> = todo
+fn iter_map<T, U>(iter: Iter<T>, f: fn(T) -> U) -> Iter<U> = todo
+fn iter_try_fold<T, S, E>(iter: Iter<T>, init: S, f: fn(S, T) -> Result<S, E>) -> Result<S, E> = todo
 
 fn sum_positive(xs: List<Int>) -> Result<Int, Diagnostic> =
   xs
-    |> Iter.from_list
-    |> Iter.map(|x| ensure(x >= 0, || Diagnostic::invalid_value(x))?)
-    |> Iter.try_fold(0, |acc, x| Ok(acc + x))
+    |> iter_from_list
+    |> iter_map(|x| ensure(x >= 0, x, diagnostic_invalid_value(x))?)
+    |> iter_try_fold(0, |acc, x| Ok(acc + x))

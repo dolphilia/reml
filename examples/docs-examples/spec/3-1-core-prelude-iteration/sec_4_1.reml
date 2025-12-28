@@ -1,11 +1,25 @@
-struct ListCollector<T>;
-struct VecCollector<T>;
-struct MapCollector<K, V>;
-struct SetCollector<T>;
-struct StringCollector;
+fn __rustcap_guard__(unit: Int) = unit
 
-fn collect_list<T>(iter: Iter<T>) -> List<T>                           // `@pure`
-fn collect_vec<T>(iter: Iter<T>) -> Result<Vec<T>, MemoryError>         // `effect {mut, mem}`
-fn collect_map<K: Ord, V>(iter: Iter<(K, V)>) -> Result<Map<K, V>, CollectError> // `@pure`
-fn collect_set<T: Ord>(iter: Iter<T>) -> Result<Set<T>, CollectError>   // `@pure`
-fn collect_string(iter: Iter<char>) -> Result<String, StringError>      // `effect {mem}`
+type Iter<T> = ()
+type List<T> = ()
+type Vec<T> = ()
+type Map<K, V> = ()
+type Set<T> = ()
+type String = Str
+type Char = Int
+type Result<T, E> = ()
+type MemoryError = ()
+type CollectError = ()
+type StringError = ()
+
+struct ListCollector<T> { marker: T }
+struct VecCollector<T> { marker: T }
+struct MapCollector<K, V> { marker: (K, V) }
+struct SetCollector<T> { marker: T }
+struct StringCollector { marker: Str }
+
+fn collect_list<T>(iter: Iter<T>) -> List<T> = todo                     // `@pure`
+fn collect_vec<T>(iter: Iter<T>) -> Result<Vec<T>, MemoryError> = todo   // `effect {mut, mem}`
+fn collect_map<K, V>(iter: Iter<(K, V)>) -> Result<Map<K, V>, CollectError> = todo // `@pure`
+fn collect_set<T>(iter: Iter<T>) -> Result<Set<T>, CollectError> = todo // `@pure`
+fn collect_string(iter: Iter<Char>) -> Result<String, StringError> = todo // `effect {mem}`
