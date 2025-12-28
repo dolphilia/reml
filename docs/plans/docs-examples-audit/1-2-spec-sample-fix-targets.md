@@ -132,13 +132,13 @@
 ### docs/spec/2-4-op-builder.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| A-1. ビルダーの入口 | sec_a_1 | examples/docs-examples/spec/2-4-op-builder/sec_a_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| A-2. レベル宣言（fixity） | sec_a_2 | examples/docs-examples/spec/2-4-op-builder/sec_a_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| A-3. 完成 | sec_a_3 | examples/docs-examples/spec/2-4-op-builder/sec_a_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B. 使い方（API と DSL） | sec_b | examples/docs-examples/spec/2-4-op-builder/sec_b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| E. 拡張：演算子パーサの“型” | sec_e | examples/docs-examples/spec/2-4-op-builder/sec_e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| I-1. 右結合の `?:` 三項 | sec_i_1 | examples/docs-examples/spec/2-4-op-builder/sec_i_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| I-2. パイプ演算子（最弱） | sec_i_2 | examples/docs-examples/spec/2-4-op-builder/sec_i_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| A-1. ビルダーの入口 | sec_a_1 | examples/docs-examples/spec/2-4-op-builder/sec_a_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| A-2. レベル宣言（fixity） | sec_a_2 | examples/docs-examples/spec/2-4-op-builder/sec_a_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| A-3. 完成 | sec_a_3 | examples/docs-examples/spec/2-4-op-builder/sec_a_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B. 使い方（API と DSL） | sec_b | examples/docs-examples/spec/2-4-op-builder/sec_b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| E. 拡張：演算子パーサの“型” | sec_e | examples/docs-examples/spec/2-4-op-builder/sec_e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| I-1. 右結合の `?:` 三項 | sec_i_1 | examples/docs-examples/spec/2-4-op-builder/sec_i_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| I-2. パイプ演算子（最弱） | sec_i_2 | examples/docs-examples/spec/2-4-op-builder/sec_i_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/2-5-error.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

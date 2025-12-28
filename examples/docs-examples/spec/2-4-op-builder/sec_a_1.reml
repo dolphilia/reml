@@ -2,4 +2,4 @@
 fn precedence<A>(
   operand: Parser<A>,
   config: OpConfig = {}
-) -> PrecedenceBuilder<A>
+) -> PrecedenceBuilder<A> = todo

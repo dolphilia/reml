@@ -1,6 +1,7 @@
-precedence(atom)
-  // ... 他レベル ...
-  .level(|lvl| {
-    lvl.infixl(keyword(sc, "|>").map(|_| (|x,f| f(x))))
-  })
-  .build()
+let expr =
+  precedence(atom)
+    // ... 他レベル ...
+    .level(|lvl| {
+      lvl.infixl(keyword(sc, "|>").map(|_| (|x,f| f(x))))
+    })
+    .build()

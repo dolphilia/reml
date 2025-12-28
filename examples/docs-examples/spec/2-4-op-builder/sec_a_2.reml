@@ -1,17 +1,15 @@
 // 1 つの“優先度レベル”を追加
-PrecedenceBuilder<A>.level(
-  |lvl: Level<A>| {
-    lvl.prefix(op: Parser<A -> A>)
-    lvl.postfix(op: Parser<A -> A>)
-    lvl.infixl(op: Parser<(A, A) -> A>)
-    lvl.infixr(op: Parser<(A, A) -> A>)
-    lvl.infixn(op: Parser<(A, A) -> A>)  // 非結合（a < b < c はエラー）
-    lvl.ternary(op: Ternary<A>)          // 任意（下で定義）
-  }
-) -> PrecedenceBuilder<A>
+fn level<A>(builder: PrecedenceBuilder<A>, f: Level<A> -> Level<A>) -> PrecedenceBuilder<A> = todo
+
+fn prefix<A>(lvl: Level<A>, op: Parser<A -> A>) -> Level<A> = todo
+fn postfix<A>(lvl: Level<A>, op: Parser<A -> A>) -> Level<A> = todo
+fn infixl<A>(lvl: Level<A>, op: Parser<(A, A) -> A>) -> Level<A> = todo
+fn infixr<A>(lvl: Level<A>, op: Parser<(A, A) -> A>) -> Level<A> = todo
+fn infixn<A>(lvl: Level<A>, op: Parser<(A, A) -> A>) -> Level<A> = todo  // 非結合（a < b < c はエラー）
+fn ternary<A>(lvl: Level<A>, op: Ternary<A>) -> Level<A> = todo          // 任意（下で定義）
 
 type Ternary<A> = {
-  head: Parser<()>        // 例: '?'
-  mid:  Parser<()>        // 例: ':'
-  build: (cond: A, t: A, f: A) -> A
+  head: Parser<()>,        // 例: '?'
+  mid:  Parser<()>,        // 例: ':'
+  build: (cond: A, t: A, f: A) -> A,
 }
