@@ -23,45 +23,50 @@
 
 ### フェーズ 0: 現状の棚卸し
 - Frontend の型宣言 AST/型環境の現状を確認する。
+  - [ ] `compiler/rust/frontend` の型宣言 AST ノードを列挙し、alias/newtype/sum の表現差分を表にまとめる
+  - [ ] 型環境に格納される型定義のキー（型名/モジュールパス/スコープ）と参照箇所を整理する
 - MIR/JSON へ型情報がどこまで渡るかを確認する。
+  - [ ] MIR 生成時に `type` 宣言がどの構造体へ載るかをトレースする
+  - [ ] JSON 出力に型名・展開後型・名義型 ID が含まれるかを確認し、欠けている項目を一覧化する
 - Backend の `RemlType` / `type_mapping` が受け取れる型表現の範囲を整理する。
+  - [ ] `compiler/rust/backend/llvm/src/type_mapping.rs` の `RemlType` 変種と対応する IR 型を表に整理する
+  - [ ] `parse_reml_type` の入力 JSON 仕様と、想定外ケースの扱いを確認する
 - Runtime に newtype / 合成型のレイアウト前提があるか確認する。
+  - [ ] `runtime/native` 内の型タグ定義や ABI 前提のコメント/ドキュメントを確認する
+  - [ ] newtype を識別する必要の有無を判断するため、ランタイム API 参照箇所を洗い出す
 - `examples/docs-examples/spec/` から `type` 宣言を含む `.reml` を抽出し、alias/newtype/sum の内訳を整理する。
-  - [ ] Frontend で alias/newtype/sum を保持できる前提を整理する
-  - [ ] MIR/JSON の型情報（型名・展開後型・名義型 ID）の有無を確認する
-  - [ ] Backend の `RemlType` 受け口と `parse_reml_type` の対応範囲を確認する
-  - [ ] Runtime 側の型タグ/レイアウト前提があるかを確認する
-  - [ ] `examples/docs-examples/spec/` の `type` 宣言を分類する
+  - [ ] `examples/docs-examples/spec/` の `type` 宣言を列挙し、alias/newtype/sum の件数と代表例を記録する
+  - [ ] 仕様書（`docs/spec/1-1-syntax.md` など）のサンプルと対応付ける
 
 ### フェーズ 1: IR 方針の決定（alias/newtype/sum）
 - alias は **展開後の型を IR に渡す** 方針を既定とする（レイアウト影響なし）。
 - newtype は **IR では内側の型へマップ**し、**名義情報はデバッグ/診断メタデータ**として保持する方針を検討する。
 - sum 型は **`RemlType::Adt` に落とす**方針を採用し、タグ幅と payload の計算ルールを定義する。
-  - [ ] alias の展開タイミングを決める（typeck 後 / MIR 生成時）
-  - [ ] newtype の名義情報の保持場所（IR メタデータ or Frontend のみ）を決める
-  - [ ] sum 型のタグ幅算出ルール（`ceil(log2(variants))`）を決める
-  - [ ] IR レイアウトが変わるケース（newtype の ABI 差分有無）を列挙する
+  - [ ] alias の展開タイミングを決める（typeck 後 / MIR 生成時）うえで、選択理由を 1 行で記録する
+  - [ ] newtype の名義情報の保持場所（IR メタデータ or Frontend のみ）を決め、必要なメタデータ項目を列挙する
+  - [ ] sum 型のタグ幅算出ルール（`ceil(log2(variants))`）を決め、空バリアント・単一バリアントの扱いを補足する
+  - [ ] IR レイアウトが変わるケース（newtype の ABI 差分有無）を列挙し、影響範囲を Backend/Runtime に分類する
 
 ### フェーズ 2: Backend/Runtime 側の整合ポイント整理
 - Backend の型マッピングが alias/newtype/sum を受け取れる前提を整理する。
 - newtype が Runtime で識別可能である必要があるか確認する（基本は同一レイアウト）。
 - 合成型の payload/タグの配置ルールが既存の `TypeMappingContext` と矛盾しないか確認する。
-  - [ ] `RemlType` へ alias/newtype/sum を渡す経路を洗い出す
-  - [ ] `TypeMappingContext::layout_of` と sum 型の tag/payload 仕様を整合させる
-  - [ ] Runtime の ABI 影響がある場合は別計画へ切り出す
+  - [ ] `RemlType` へ alias/newtype/sum を渡す経路を洗い出し、必要な JSON フィールドを列挙する
+  - [ ] `TypeMappingContext::layout_of` と sum 型の tag/payload 仕様を整合させ、既存の record/layout ルールとの共通化方針を決める
+  - [ ] Runtime の ABI 影響がある場合は別計画へ切り出し、切り出し条件と担当範囲を明文化する
 
 ### フェーズ 3: docs-examples-audit の整合チェック
 - 影響が出る `.reml` を `docs-examples-audit` の検証対象としてマークする。
 - IR 形状やレイアウトが変わる場合は、検証手順・期待値を追記する。
-  - [ ] alias/newtype/sum の `.reml` を一覧化し、検証優先度を付ける
-  - [ ] 変更が必要な場合は `reports/spec-audit/summary.md` に起票メモを残す
-  - [ ] 代表ケースの `.reml` を追加または更新する（必要時）
+  - [ ] alias/newtype/sum の `.reml` を一覧化し、検証優先度（高/中/低）と理由を付与する
+  - [ ] 変更が必要な場合は `reports/spec-audit/summary.md` に起票メモを残し、追跡 ID を付ける
+  - [ ] 代表ケースの `.reml` を追加または更新する（必要時）うえで、検証観点（型名/展開/タグ）を明記する
 
 ### フェーズ 4: 検証計画
 - Frontend の型宣言実体化後に `.reml` の診断が 0 件であることを確認する。
 - Backend に影響が出る場合は IR スナップショットで形状を確認する。
-  - [ ] `compiler/rust/frontend` のテストで alias/newtype/sum を確認する
-  - [ ] Backend へ合成型が降りる場合の IR 形状を確認する
+  - [ ] `compiler/rust/frontend` のテストで alias/newtype/sum を確認し、期待診断ゼロの条件を記録する
+  - [ ] Backend へ合成型が降りる場合の IR 形状を確認し、スナップショット差分の受け入れ基準を定義する
 
 ## 受け入れ基準
 - alias/newtype/sum の IR 方針が文書化されている。
