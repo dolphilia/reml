@@ -64,9 +64,22 @@
 - Backend の型マッピングが alias/newtype/sum を受け取れる前提を整理する。
 - newtype が Runtime で識別可能である必要があるか確認する（基本は同一レイアウト）。
 - 合成型の payload/タグの配置ルールが既存の `TypeMappingContext` と矛盾しないか確認する。
-  - [ ] `RemlType` へ alias/newtype/sum を渡す経路を洗い出し、必要な JSON フィールドを列挙する
-  - [ ] `TypeMappingContext::layout_of` と sum 型の tag/payload 仕様を整合させ、既存の record/layout ルールとの共通化方針を決める
-  - [ ] Runtime の ABI 影響がある場合は別計画へ切り出し、切り出し条件と担当範囲を明文化する
+  - [x] `RemlType` へ alias/newtype/sum を渡す経路を洗い出し、必要な JSON フィールドを列挙する
+    - 経路: `compiler/rust/backend/llvm/src/integration.rs` の `MirFunctionJson.params` / `return` / `ffi_calls.args` / `ffi_calls.return` が `parse_reml_type` で `RemlType` へ変換される。`MirExprJson.ty` は型トークン文字列だが `parse_reml_type` の入力には未使用。
+    - 現行 JSON は文字列トークンのみで、`RemlType::Adt` は生成されない。alias/newtype は Frontend 側で展開済みを前提とし、Backend には渡さない想定。
+    - sum 型を渡すには構造化 JSON が必要（例: `{"kind":"adt","tag_bits":2,"variants":[{"kind":"tuple","items":["i64"]}, "unit"]}`）。最低限は `kind/tag_bits/variants` を想定し、型名や `module_path` はデバッグ用途で任意。
+  - [x] `TypeMappingContext::layout_of` と sum 型の tag/payload 仕様を整合させ、既存の record/layout ルールとの共通化方針を決める
+    - `TypeMappingContext::layout_of` の `RemlType::Adt` は `payload=max(variants)` + `tag_size=ceil(tag_bits/8)` の単純合算で、`align=8` 固定。タグ位置は payload の後ろに付与される想定。
+    - `RemlType::RowTuple` はフィールドごとのアラインメントでサイズ計算されるが、record は Runtime 側で `reml_record_t` 配列 ABI を使うため `layout_of` の対象外。
+    - 既存ルールとの共通化方針: sum 型は「payload 最大 + tag 末尾」の軽量レイアウトで固定し、record/tuple は別系統（heap オブジェクト）として扱う。alignment を 8 固定のままにするかは、`variants` の最大アラインメントが 8 を超える型が導入された時点で再評価する。
+  - [x] Runtime の ABI 影響がある場合は別計画へ切り出し、切り出し条件と担当範囲を明文化する
+    - `runtime/native/include/reml_runtime.h` では `REML_TAG_ADT` が定義済みだが newtype 固有タグは存在しない。現状は newtype を内側型と同一レイアウトで扱う前提に一致する。
+    - 別計画に切り出す条件: FFI 境界で名義型 ID が必要になる、もしくはランタイムの動的型検証/シリアライズで newtype/alias を区別する必要が出た場合。
+    - 担当範囲: Runtime 側の型タグ拡張・メタデータ格納は `runtime/native`、Backend 側の型タグ埋め込みは `compiler/rust/backend/llvm`、Frontend 側のメタデータ保持は `compiler/rust/frontend` に切り分ける。
+
+#### フェーズ 2 整理メモ
+- Backend は MIR JSON の型トークン文字列のみを `RemlType` に変換するため、sum 型のタグ/variant 情報は JSON で構造化しない限り伝播できない。
+- Runtime は ADT タグを持つが newtype 用の識別子はなく、現時点で ABI 変更は不要。
 
 ### フェーズ 3: docs-examples-audit の整合チェック
 - 影響が出る `.reml` を `docs-examples-audit` の検証対象としてマークする。
@@ -91,12 +104,15 @@
 - 進捗欄（運用用）:
   - [ ] フェーズ 0 完了
   - [x] フェーズ 1 完了
-  - [ ] フェーズ 2 完了
+  - [x] フェーズ 2 完了
   - [ ] フェーズ 3 完了
   - [ ] フェーズ 4 完了
 
 ## 関連リンク
 - `docs/plans/typeck-improvement/1-0-type-decl-realization-plan.md`
+- `docs/plans/docs-examples-audit/1-7-frontend-mir-type-token-plan-20251227.md`
+- `docs/plans/docs-examples-audit/1-7-backend-mir-type-json-plan-20251227.md`
+- `docs/plans/docs-examples-audit/1-7-backend-runtime-sum-mir-json-draft-20251227.md`
 - `docs/spec/1-1-syntax.md`
 - `docs/spec/1-2-types-Inference.md`
 - `docs/spec/1-3-effects-safety.md`
