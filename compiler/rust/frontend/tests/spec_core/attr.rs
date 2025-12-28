@@ -2,7 +2,7 @@ use reml_frontend::parser::ast::{ExprKind, LiteralKind, StmtKind};
 
 mod common;
 
-use common::parse_example_module;
+use common::{parse_example_module, parse_example_module_with_diagnostics};
 
 #[test]
 fn ch1_attr_101_records_block_attributes() {
@@ -43,8 +43,15 @@ fn ch1_attr_101_records_block_attributes() {
 
 #[test]
 fn ch1_attr_102_attaches_attributes_to_functions() {
-    let module = parse_example_module(
+    let (module, diagnostics) = parse_example_module_with_diagnostics(
         "examples/spec_core/chapter1/attributes/bnf-attr-cfg-missing-flag-error.reml",
+    );
+    assert!(
+        diagnostics.iter().any(|message| {
+            message.contains("未定義ターゲット") && message.contains("quantum")
+        }),
+        "expected @cfg to report missing target, got {:?}",
+        diagnostics
     );
     let hidden_fn = module
         .functions

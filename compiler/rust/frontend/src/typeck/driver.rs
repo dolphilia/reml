@@ -1957,6 +1957,63 @@ fn render_opbuilder_target(expr: &Expr) -> Option<String> {
     }
 }
 
+fn is_type_like_ident(name: &str) -> bool {
+    name.chars()
+        .next()
+        .map(|ch| ch.is_ascii_uppercase())
+        .unwrap_or(false)
+}
+
+fn collect_type_path_parts(expr: &Expr, parts: &mut Vec<String>) -> bool {
+    match &expr.kind {
+        ExprKind::Identifier(ident) => {
+            parts.push(ident.name.clone());
+            true
+        }
+        ExprKind::ModulePath(path) => match path {
+            ModulePath::Root { segments } => {
+                for segment in segments {
+                    parts.push(segment.name.clone());
+                }
+                !segments.is_empty()
+            }
+            ModulePath::Relative { head, segments } => match head {
+                RelativeHead::PlainIdent(ident) => {
+                    parts.push(ident.name.clone());
+                    for segment in segments {
+                        parts.push(segment.name.clone());
+                    }
+                    true
+                }
+                RelativeHead::Self_ | RelativeHead::Super(_) => false,
+            },
+        },
+        ExprKind::FieldAccess { target, field } => {
+            if collect_type_path_parts(target, parts) {
+                parts.push(field.name.clone());
+                true
+            } else {
+                false
+            }
+        }
+        _ => false,
+    }
+}
+
+fn type_method_target_name(expr: &Expr) -> Option<String> {
+    let mut parts = Vec::new();
+    if !collect_type_path_parts(expr, &mut parts) {
+        return None;
+    }
+    if parts.is_empty() {
+        return None;
+    }
+    if !parts.iter().all(|part| is_type_like_ident(part)) {
+        return None;
+    }
+    Some(parts.join("__"))
+}
+
 fn extract_priority(expr: &Expr) -> Option<i64> {
     match &expr.kind {
         ExprKind::Literal(Literal {
@@ -2536,8 +2593,18 @@ fn infer_expr(
         }
         ExprKind::Call { callee, args } => {
             metrics.record_call_site();
+            let mut desugared_callee = None;
+            if let ExprKind::FieldAccess { target, field } = &callee.kind {
+                if let Some(target_name) = type_method_target_name(target) {
+                    desugared_callee = Some(Expr::identifier(Ident {
+                        name: format!("{target_name}__{}", field.name),
+                        span: field.span,
+                    }));
+                }
+            }
+            let callee_expr = desugared_callee.as_ref().unwrap_or(callee);
             let callee_result = infer_expr(
-                callee,
+                callee_expr,
                 env,
                 var_gen,
                 solver,

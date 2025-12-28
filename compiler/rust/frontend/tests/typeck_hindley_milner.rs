@@ -44,7 +44,7 @@ fn hindley_milner_collects_binary_constraints() {
 #[test]
 fn hindley_milner_flags_non_bool_condition() {
     let report = typecheck_source(
-        "fn check(flag_bool, value_int) = if value_int then flag_bool else flag_bool",
+        "fn check(flag_bool: Bool, value_int: Int) = if value_int then flag_bool else flag_bool",
     );
     assert_eq!(report.functions.len(), 1);
     assert!(
