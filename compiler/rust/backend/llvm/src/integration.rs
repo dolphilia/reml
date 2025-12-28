@@ -1,8 +1,8 @@
 use crate::codegen::{
     summarize_pattern, ActivePatternKind, CodegenContext, GeneratedFunction, MatchArmLowering,
     MatchLoweringPlan, MirActivePatternCall, MirExpr, MirExprKind, MirFunction, MirJumpTarget,
-    MirMatchArm, MirPattern, MirPatternKind, MirPatternRecordField, MirSlicePattern, MirSliceRest,
-    MirStmt, MirStmtKind, PatternLowering,
+    MirLambdaCapture, MirLambdaParam, MirMatchArm, MirPattern, MirPatternKind,
+    MirPatternRecordField, MirSlicePattern, MirSliceRest, MirStmt, MirStmtKind, PatternLowering,
 };
 use crate::ffi_lowering::FfiCallSignature;
 use crate::target_machine::{
@@ -649,8 +649,31 @@ fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
         MirExprKindJson::Return { value } => MirExprKind::Return { value },
         MirExprKindJson::Propagate { expr } => MirExprKind::Propagate { expr },
         MirExprKindJson::Panic { argument } => MirExprKind::Panic { argument },
-        MirExprKindJson::Lambda { .. } => MirExprKind::Unknown,
-        MirExprKindJson::Rec { .. } => MirExprKind::Unknown,
+        MirExprKindJson::Lambda {
+            params,
+            body,
+            captures,
+        } => MirExprKind::Lambda {
+            params: params
+                .into_iter()
+                .map(|param| MirLambdaParam {
+                    name: param.name,
+                    ty: param.ty,
+                })
+                .collect(),
+            body,
+            captures: captures
+                .into_iter()
+                .map(|capture| MirLambdaCapture {
+                    name: capture.name,
+                    mutable: capture.mutable,
+                })
+                .collect(),
+        },
+        MirExprKindJson::Rec { target, ident } => MirExprKind::Rec {
+            target,
+            ident: ident.map(value_summary),
+        },
         MirExprKindJson::Match {
             target,
             arms,

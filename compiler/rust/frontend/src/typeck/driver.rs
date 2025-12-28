@@ -400,6 +400,7 @@ impl TypecheckDriver {
                 } else {
                     Some(&generic_map)
                 };
+                let mut param_bindings = Vec::new();
                 for param in &function.params {
                     let ty = param
                         .type_annotation
@@ -410,10 +411,21 @@ impl TypecheckDriver {
                         .unwrap_or_else(|| var_gen.fresh_type());
                     let scheme = Scheme::simple(ty.clone());
                     bind_pattern_to_env(&param.pattern, &scheme, &mut env, &mut var_gen);
+                    param_bindings.push(ParamBinding {
+                        display: param.pattern.render(),
+                        span: param.span,
+                        ty,
+                        annotation: param.type_annotation.as_ref().map(|annot| annot.render()),
+                    });
                 }
                 let method_label = format!("{}.{}", impl_decl.target.render(), function.name.name);
+                let function_name = format!(
+                    "{}__{}",
+                    impl_decl.target.render(),
+                    function.name.name
+                );
                 let function_context = FunctionContext::function(method_label.as_str(), is_pure);
-                let _typed_body = infer_function(
+                let typed_body = infer_function(
                     function,
                     &mut env,
                     &mut var_gen,
@@ -426,6 +438,81 @@ impl TypecheckDriver {
                     function_context,
                 );
                 all_constraints.extend(constraints.drain(..));
+
+                let substitution = solver.substitution().clone();
+                let resolved_return = substitution.apply(&typed_body.ty);
+                if let Some(intrinsic_attr) = extract_intrinsic_attr(&function.attrs) {
+                    let function_label = Some(method_label.clone());
+                    if !effect_has_native(&function.effect) {
+                        violations.push(TypecheckViolation::intrinsic_missing_effect(
+                            intrinsic_attr.span,
+                            Some(intrinsic_attr.name.clone()),
+                            function_label.clone(),
+                        ));
+                    }
+                    if let Some(invalid_label) =
+                        first_intrinsic_invalid_type(&param_bindings, &resolved_return, &substitution)
+                    {
+                        violations.push(TypecheckViolation::intrinsic_invalid_type(
+                            intrinsic_attr.span,
+                            Some(intrinsic_attr.name),
+                            invalid_label,
+                            function_label,
+                        ));
+                    }
+                }
+
+                let param_types = param_bindings
+                    .iter()
+                    .map(|binding| substitution.apply(&binding.ty))
+                    .collect::<Vec<_>>();
+                let function_type = Type::arrow(param_types.clone(), resolved_return.clone());
+                let scheme = generalize_type(&module_env, function_type);
+                let scheme_id = typed_module.schemes.len();
+                typed_module
+                    .schemes
+                    .push(build_scheme_info(scheme_id, &scheme, &substitution));
+                module_env.insert(function_name.clone(), scheme.clone());
+
+                let typed_params = param_bindings
+                    .into_iter()
+                    .map(|binding| typed::TypedParam {
+                        name: binding.display,
+                        span: binding.span,
+                        ty: substitution.apply(&binding.ty).label(),
+                        annotation: binding.annotation,
+                    })
+                    .collect::<Vec<_>>();
+                let param_type_labels = typed_params
+                    .iter()
+                    .map(|param| param.ty.clone())
+                    .collect::<Vec<_>>();
+
+                let typed_body = finalize_typed_expr(typed_body, &substitution);
+                let dict_ref_ids = typed_body.dict_ref_ids.clone();
+                let return_label = resolved_return.label();
+
+                functions.push(TypedFunctionSummary {
+                    name: function_name.clone(),
+                    param_types: param_type_labels,
+                    return_type: return_label.clone(),
+                    typed_exprs: stats.typed_exprs,
+                    constraints: stats.constraints,
+                    unresolved_identifiers: stats.unresolved_identifiers,
+                });
+
+                typed_module.functions.push(typed::TypedFunction {
+                    name: function_name,
+                    span: function.span,
+                    attributes: intrinsic_attribute_strings(&function.attrs),
+                    params: typed_params,
+                    varargs: false,
+                    return_type: return_label,
+                    return_annotation: function.ret_type.as_ref().map(|ty| ty.render()),
+                    body: typed_body,
+                    dict_ref_ids,
+                    scheme_id: Some(scheme_id),
+                });
             }
         }
 

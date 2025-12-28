@@ -87,6 +87,11 @@ fn intrinsic_ctor_payload(name: &str) -> String {
     format!("@reml_ctor_payload_{}", sanitize_llvm_ident(name))
 }
 
+fn lambda_stub_symbol(expr_id: MirExprId, has_captures: bool) -> String {
+    let suffix = if has_captures { "capture" } else { "nocapture" };
+    sanitize_llvm_symbol(&format!("@reml_lambda_{suffix}_{expr_id}"))
+}
+
 fn intrinsic_value_for_type<'a>(ty: &str, ssa: &'a LlvmBuilder) -> &'a str {
     if ty == "i64" {
         return INTRINSIC_VALUE_I64;
@@ -108,6 +113,18 @@ pub struct MirExpr {
     pub id: MirExprId,
     pub ty: String,
     pub kind: MirExprKind,
+}
+
+#[derive(Clone, Debug)]
+pub struct MirLambdaParam {
+    pub name: String,
+    pub ty: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct MirLambdaCapture {
+    pub name: String,
+    pub mutable: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -153,6 +170,15 @@ pub enum MirExprKind {
     Call {
         callee: MirExprId,
         args: Vec<MirExprId>,
+    },
+    Lambda {
+        params: Vec<MirLambdaParam>,
+        body: MirExprId,
+        captures: Vec<MirLambdaCapture>,
+    },
+    Rec {
+        target: MirExprId,
+        ident: Option<String>,
     },
     Block {
         statements: Vec<MirStmt>,
@@ -1265,6 +1291,7 @@ fn detect_arm_early_exit(
     match &expr.kind {
         MirExprKind::Panic { .. } => Some(ArmEarlyExit::Panic),
         MirExprKind::Propagate { .. } => Some(ArmEarlyExit::Propagate),
+        MirExprKind::Rec { target, .. } => detect_arm_early_exit(*target, expr_map),
         MirExprKind::Block { tail, .. } => {
             let tail_id = tail.as_ref()?;
             let tail_expr = expr_map.get(tail_id)?;
@@ -1463,6 +1490,7 @@ fn classify_branch_kind(expr_id: MirExprId, expr_map: &HashMap<MirExprId, &MirEx
     match &expr.kind {
         MirExprKind::Propagate { .. } => BranchKind::Propagate,
         MirExprKind::Panic { .. } => BranchKind::Panic,
+        MirExprKind::Rec { target, .. } => classify_branch_kind(*target, expr_map),
         MirExprKind::Block { tail, .. } => {
             let Some(tail_id) = tail else {
                 return BranchKind::Normal;
@@ -1486,6 +1514,7 @@ fn expr_contains_early_exit(expr_id: MirExprId, expr_map: &HashMap<MirExprId, &M
     };
     match &expr.kind {
         MirExprKind::Propagate { .. } | MirExprKind::Panic { .. } => true,
+        MirExprKind::Rec { target, .. } => expr_contains_early_exit(*target, expr_map),
         MirExprKind::Block {
             statements, tail, ..
         } => {
@@ -3925,6 +3954,8 @@ fn infer_expr_type_hint(
         | MirExprKind::Identifier { .. }
         | MirExprKind::FieldAccess { .. }
         | MirExprKind::Index { .. }
+        | MirExprKind::Lambda { .. }
+        | MirExprKind::Rec { .. }
         | MirExprKind::IfElse { .. }
         | MirExprKind::Match { .. }
         | MirExprKind::PerformCall { .. }
@@ -4063,6 +4094,7 @@ fn infer_expr_llvm_type(
             "+" | "-" | "*" | "/" | "%" => "i64".into(),
             _ => ssa.pointer_type(),
         },
+        MirExprKind::Rec { target, .. } => infer_expr_llvm_type(*target, expr_map, ssa),
         _ => ssa.pointer_type(),
     }
 }
@@ -4409,6 +4441,7 @@ fn emit_bool_expr(
                 (cond, instrs)
             }
         },
+        MirExprKind::Rec { target, .. } => emit_bool_expr(*target, expr_map, ssa),
         _ => {
             let value = emit_value_expr(expr_id, expr_map, ssa);
             let cond = match value.ty.as_str() {
@@ -4540,6 +4573,29 @@ fn emit_value_expr(
                 operand: format_operand_from_summary(summary),
                 instrs: vec![],
             }
+        }
+        MirExprKind::Lambda { captures, .. } => {
+            let symbol = lambda_stub_symbol(expr_id, !captures.is_empty());
+            EmittedValue {
+                ty: ssa.pointer_type(),
+                operand: symbol.clone(),
+                instrs: vec![LlvmInstr::Comment(format!(
+                    "lambda expr#{expr_id} -> {symbol}"
+                ))],
+            }
+        }
+        MirExprKind::Rec { target, ident } => {
+            let mut value = emit_value_expr(*target, expr_map, ssa);
+            if let Some(name) = ident {
+                value
+                    .instrs
+                    .push(LlvmInstr::Comment(format!("rec marker: {name}")));
+            } else {
+                value
+                    .instrs
+                    .push(LlvmInstr::Comment("rec marker".into()));
+            }
+            value
         }
         MirExprKind::FieldAccess { target, field } => {
             let target_value = emit_value_expr(*target, expr_map, ssa);
@@ -4955,6 +5011,11 @@ fn infer_call_return_type(
                 _ => ssa.pointer_type(),
             }
         }
+        MirExprKind::Lambda { body, .. } => expr_map
+            .get(body)
+            .and_then(|expr| map_type_token_to_llvm(&expr.ty, ssa))
+            .unwrap_or_else(|| ssa.pointer_type()),
+        MirExprKind::Rec { target, .. } => infer_call_return_type(*target, expr_map, ssa),
         _ => ssa.pointer_type(),
     }
 }
