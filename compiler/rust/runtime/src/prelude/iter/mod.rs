@@ -179,9 +179,7 @@ impl<T> Iter<T> {
                 }
                 IterStep::Pending => continue,
                 IterStep::Finished => return acc,
-                IterStep::Error(err) => {
-                    panic!("Iter::fold encountered iterator error: {err:?}");
-                }
+                IterStep::Error(_err) => return acc,
             }
         }
     }
@@ -203,9 +201,7 @@ impl<T> Iter<T> {
                 }
                 IterStep::Pending => continue,
                 IterStep::Finished => return accumulator,
-                IterStep::Error(err) => {
-                    panic!("Iter::reduce encountered iterator error: {err:?}");
-                }
+                IterStep::Error(_err) => return accumulator,
             }
         }
     }
@@ -225,9 +221,7 @@ impl<T> Iter<T> {
                 }
                 IterStep::Pending => continue,
                 IterStep::Finished => return true,
-                IterStep::Error(err) => {
-                    panic!("Iter::all encountered iterator error: {err:?}");
-                }
+                IterStep::Error(_err) => return false,
             }
         }
     }
@@ -247,9 +241,7 @@ impl<T> Iter<T> {
                 }
                 IterStep::Pending => continue,
                 IterStep::Finished => return false,
-                IterStep::Error(err) => {
-                    panic!("Iter::any encountered iterator error: {err:?}");
-                }
+                IterStep::Error(_err) => return false,
             }
         }
     }
@@ -269,9 +261,7 @@ impl<T> Iter<T> {
                 }
                 IterStep::Pending => continue,
                 IterStep::Finished => return None,
-                IterStep::Error(err) => {
-                    panic!("Iter::find encountered iterator error: {err:?}");
-                }
+                IterStep::Error(_err) => return None,
             }
         }
     }
@@ -290,9 +280,7 @@ impl<T> Iter<T> {
                 }
                 IterStep::Pending => continue,
                 IterStep::Finished => return Ok(acc),
-                IterStep::Error(err) => {
-                    panic!("Iter::try_fold encountered iterator error: {err:?}");
-                }
+                IterStep::Error(_err) => return Ok(acc),
             }
         }
     }

@@ -4886,7 +4886,11 @@ fn analyze_match_exhaustiveness(arms: &[MatchArm], target_ty: &Type) -> Exhausti
     let domain = exhaustiveness_domain_for_type(target_ty);
     let mut tracker = ExhaustivenessTracker::new(domain);
     let mut unreachable_arm_indices = Vec::new();
+    let mut has_partial_active_pattern = false;
     for (idx, arm) in arms.iter().enumerate() {
+        if contains_partial_active_pattern(&arm.pattern) {
+            has_partial_active_pattern = true;
+        }
         if tracker.coverage_reached() {
             unreachable_arm_indices.push(idx);
             continue;
@@ -4895,8 +4899,64 @@ fn analyze_match_exhaustiveness(arms: &[MatchArm], target_ty: &Type) -> Exhausti
     }
     ExhaustivenessResult {
         coverage_reached: tracker.coverage_reached(),
-        should_report_missing: domain != ExhaustivenessDomain::Unknown,
+        should_report_missing: domain != ExhaustivenessDomain::Unknown || has_partial_active_pattern,
         unreachable_arm_indices,
+    }
+}
+
+fn contains_partial_active_pattern(pattern: &Pattern) -> bool {
+    match &pattern.kind {
+        PatternKind::ActivePattern {
+            is_partial,
+            argument,
+            ..
+        } => {
+            if *is_partial {
+                true
+            } else {
+                argument
+                    .as_ref()
+                    .map(|inner| contains_partial_active_pattern(inner))
+                    .unwrap_or(false)
+            }
+        }
+        PatternKind::Binding { pattern, .. } | PatternKind::Guard { pattern, .. } => {
+            contains_partial_active_pattern(pattern)
+        }
+        PatternKind::Tuple { elements } => elements
+            .iter()
+            .any(|element| contains_partial_active_pattern(element)),
+        PatternKind::Record { fields, .. } => fields.iter().any(|field| {
+            field
+                .value
+                .as_ref()
+                .map(|value| contains_partial_active_pattern(value))
+                .unwrap_or(false)
+        }),
+        PatternKind::Constructor { args, .. } => args
+            .iter()
+            .any(|arg| contains_partial_active_pattern(arg)),
+        PatternKind::Or { variants } => variants
+            .iter()
+            .any(|variant| contains_partial_active_pattern(variant)),
+        PatternKind::Slice { elements } => elements.iter().any(|element| match element {
+            SlicePatternItem::Element(inner) => contains_partial_active_pattern(inner),
+            SlicePatternItem::Rest { .. } => false,
+        }),
+        PatternKind::Range { start, end, .. } => {
+            start
+                .as_ref()
+                .map(|inner| contains_partial_active_pattern(inner))
+                .unwrap_or(false)
+                || end
+                    .as_ref()
+                    .map(|inner| contains_partial_active_pattern(inner))
+                    .unwrap_or(false)
+        }
+        PatternKind::Wildcard
+        | PatternKind::Var(_)
+        | PatternKind::Literal(_)
+        | PatternKind::Regex { .. } => false,
     }
 }
 
