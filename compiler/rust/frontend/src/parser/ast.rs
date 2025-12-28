@@ -47,6 +47,21 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 
+fn render_generics(generics: &[Ident]) -> String {
+    if generics.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "<{}>",
+            generics
+                .iter()
+                .map(|ident| ident.name.clone())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct ModuleHeader {
     pub path: ModulePath,
@@ -242,7 +257,7 @@ impl Decl {
             }
             DeclKind::Fn { name, .. } => format!("fn {} ...", name.name),
             DeclKind::Effect(effect) => format!("effect {}", effect.name.name),
-            DeclKind::Type { name, .. } => format!("type {}", name.name),
+            DeclKind::Type { decl } => decl.render(),
             DeclKind::Struct(decl) => format!("struct {}", decl.name.name),
             DeclKind::Enum(decl) => format!("enum {}", decl.name.name),
             DeclKind::Trait(trait_decl) => format!("trait {}", trait_decl.name.name),
@@ -289,9 +304,8 @@ pub enum DeclKind {
         span: Span,
     },
     Type {
-        name: Ident,
-        generics: Vec<Ident>,
-        span: Span,
+        #[serde(flatten)]
+        decl: TypeDecl,
     },
     Struct(StructDecl),
     Enum(EnumDecl),
@@ -305,6 +319,122 @@ pub enum DeclKind {
     Effect(EffectDecl),
     Handler(HandlerDecl),
     Conductor(ConductorDecl),
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypeDecl {
+    pub name: Ident,
+    pub generics: Vec<Ident>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body: Option<TypeDeclBody>,
+    pub span: Span,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body_span: Option<Span>,
+}
+
+impl TypeDecl {
+    pub fn render(&self) -> String {
+        let generics = render_generics(&self.generics);
+        match &self.body {
+            Some(TypeDeclBody::Alias { ty }) => {
+                format!("type alias {}{} = {}", self.name.name, generics, ty.render())
+            }
+            Some(TypeDeclBody::Newtype { ty }) => {
+                format!("type {}{} = new {}", self.name.name, generics, ty.render())
+            }
+            Some(TypeDeclBody::Sum { variants }) => format!(
+                "type {}{} = {}",
+                self.name.name,
+                generics,
+                variants
+                    .iter()
+                    .map(TypeDeclVariant::render)
+                    .collect::<Vec<_>>()
+                    .join(" | ")
+            ),
+            None => format!("type {}{}", self.name.name, generics),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TypeDeclBody {
+    Alias { ty: TypeAnnot },
+    Newtype { ty: TypeAnnot },
+    Sum { variants: Vec<TypeDeclVariant> },
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypeDeclVariant {
+    pub name: Ident,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payload: Option<TypeDeclVariantPayload>,
+    pub span: Span,
+}
+
+impl TypeDeclVariant {
+    fn render(&self) -> String {
+        match &self.payload {
+            Some(TypeDeclVariantPayload::Record { .. }) => {
+                format!("{} {}", self.name.name, self.payload_render())
+            }
+            Some(TypeDeclVariantPayload::Tuple { .. }) => {
+                format!("{}{}", self.name.name, self.payload_render())
+            }
+            None => self.name.name.clone(),
+        }
+    }
+
+    fn payload_render(&self) -> String {
+        self.payload
+            .as_ref()
+            .map(TypeDeclVariantPayload::render)
+            .unwrap_or_default()
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TypeDeclVariantPayload {
+    Record {
+        fields: Vec<TypeRecordField>,
+        #[serde(default, skip_serializing_if = "is_false")]
+        has_rest: bool,
+    },
+    Tuple {
+        elements: Vec<TypeTupleElement>,
+    },
+}
+
+impl TypeDeclVariantPayload {
+    fn render(&self) -> String {
+        match self {
+            TypeDeclVariantPayload::Record { fields, has_rest } => {
+                let mut entries = fields
+                    .iter()
+                    .map(TypeRecordField::render)
+                    .collect::<Vec<_>>();
+                if *has_rest {
+                    entries.push("..".to_string());
+                }
+                let joined = entries.join(", ");
+                if joined.is_empty() {
+                    "{}".to_string()
+                } else {
+                    format!("{{ {} }}", joined)
+                }
+            }
+            TypeDeclVariantPayload::Tuple { elements } => {
+                let entries = elements
+                    .iter()
+                    .map(TypeTupleElement::render)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("({})", entries)
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

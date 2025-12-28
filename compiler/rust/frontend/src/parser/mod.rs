@@ -54,8 +54,9 @@ use ast::{
     ImplDecl, ImplItem, IntBase, Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath,
     OperationDecl, Param, Pattern, PatternKind, PatternRecordField, RecordField, RelativeHead,
     SlicePatternItem, Stmt, StmtKind, StringKind, StructDecl, TraitDecl, TraitItem, TraitRef,
-    TypeAnnot, TypeKind, TypeLiteral, TypeRecordField, TypeTupleElement, TypeUnionVariant, UnaryOp,
-    UseDecl, UseItem, UseTree, VariantPayload, Visibility, WherePredicate,
+    TypeAnnot, TypeDecl, TypeDeclBody, TypeDeclVariant, TypeDeclVariantPayload, TypeKind,
+    TypeLiteral, TypeRecordField, TypeTupleElement, TypeUnionVariant, UnaryOp, UseDecl, UseItem,
+    UseTree, VariantPayload, Visibility, WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -3827,6 +3828,11 @@ fn module_parser<'src>(
         .then(parse_generics.clone())
         .map(|(name, generics)| (name, generics));
 
+    enum RecordDeclItem {
+        Field(TypeRecordField),
+        Rest,
+    }
+
     let record_decl_field = ident
         .clone()
         .then_ignore(just(TokenKind::Colon))
@@ -3836,75 +3842,144 @@ fn module_parser<'src>(
                 .ignore_then(expr.clone().cut())
                 .or_not(),
         )
-        .map(|_| ());
+        .map(|((label, ty), default_expr)| TypeRecordField {
+            label,
+            ty,
+            default_expr,
+        });
 
-    let record_decl_rest = just(TokenKind::DotDot).map(|_| ());
+    let record_decl_rest = just(TokenKind::DotDot).map(|_| RecordDeclItem::Rest);
 
     let record_decl_body = delimited_with_cut(
         TokenKind::LBrace,
-        choice((record_decl_field, record_decl_rest))
-            .cut()
-            .separated_by(just(TokenKind::Comma))
-            .allow_trailing(),
+        choice((
+            record_decl_field.clone().map(RecordDeclItem::Field),
+            record_decl_rest,
+        ))
+        .cut()
+        .separated_by(just(TokenKind::Comma))
+        .allow_trailing(),
         TokenKind::RBrace,
     )
-    .map(|_| ());
+    .map(|items| {
+        let mut fields = Vec::new();
+        let mut has_rest = false;
+        for item in items {
+            match item {
+                RecordDeclItem::Field(field) => fields.push(field),
+                RecordDeclItem::Rest => has_rest = true,
+            }
+        }
+        TypeDeclVariantPayload::Record { fields, has_rest }
+    });
 
-    let sum_variant_labeled_arg = ident
+    let sum_tuple_element_labeled = ident
         .clone()
         .then_ignore(just(TokenKind::Colon))
         .then(type_parser.clone().cut())
-        .map(|_| ());
+        .map(|(label, ty)| TypeTupleElement {
+            label: Some(label),
+            ty,
+        });
 
-    let sum_variant_arg = choice((
-        record_decl_body.clone(),
-        sum_variant_labeled_arg,
-        type_parser.clone().map(|_| ()),
+    let sum_tuple_element = choice((
+        sum_tuple_element_labeled,
+        type_parser
+            .clone()
+            .map(|ty| TypeTupleElement { label: None, ty }),
     ));
 
-    let sum_variant_args = delimited_with_cut(
+    let sum_variant_tuple_payload = delimited_with_cut(
         TokenKind::LParen,
-        sum_variant_arg
+        sum_tuple_element
             .cut()
             .separated_by(just(TokenKind::Comma))
             .allow_trailing(),
         TokenKind::RParen,
     )
-    .map(|_| ());
+    .map(|elements| TypeDeclVariantPayload::Tuple { elements });
 
-    let sum_variant_payload = choice((record_decl_body.clone(), sum_variant_args.clone()));
+    let sum_variant_payload = choice((record_decl_body.clone(), sum_variant_tuple_payload));
 
     let sum_variant = just(TokenKind::Bar)
         .ignore_then(ident.clone())
         .then(sum_variant_payload.or_not())
-        .map(|_| ());
+        .map_with_span(|(name, payload), span: Range<usize>| TypeDeclVariant {
+            name,
+            payload,
+            span: range_to_span(span),
+        });
 
-    let sum_body = sum_variant.repeated().at_least(1).map(|_| ());
+    let sum_body = sum_variant.repeated().at_least(1);
 
-    let type_decl_body = just(TokenKind::Assign)
-        .ignore_then(choice((
+    let type_decl_body_alias = just(TokenKind::Assign)
+        .map_with_span(|_, span: Range<usize>| span)
+        .then(type_parser.clone().cut())
+        .map_with_span(|(assign_span, ty), span: Range<usize>| {
+            (
+                TypeDeclBody::Alias { ty },
+                range_to_span(assign_span.start..span.end),
+            )
+        });
+
+    let type_decl_body_default = just(TokenKind::Assign)
+        .map_with_span(|_, span: Range<usize>| span)
+        .then(choice((
             just(TokenKind::KeywordNew)
-                .ignore_then(record_decl_body.clone())
-                .map(|_| ()),
-            sum_body,
-            type_parser.clone().map(|_| ()),
+                .ignore_then(type_parser.clone().cut())
+                .map(|ty| TypeDeclBody::Newtype { ty }),
+            sum_body
+                .clone()
+                .map(|variants| TypeDeclBody::Sum { variants }),
+            type_parser.clone().map(|ty| TypeDeclBody::Alias { ty }),
         )))
-        .or_not();
+        .map_with_span(|(assign_span, body), span: Range<usize>| {
+            (body, range_to_span(assign_span.start..span.end))
+        });
 
-    let type_decl_raw = just(TokenKind::KeywordType)
-        .ignore_then(just(TokenKind::KeywordAlias).or_not())
-        .ignore_then(type_decl_name)
-        .then(type_decl_body)
-        .map_with_span(|((name, generics), _body), span: Range<usize>| Decl {
+    let type_alias_decl_raw = just(TokenKind::KeywordType)
+        .ignore_then(just(TokenKind::KeywordAlias))
+        .ignore_then(type_decl_name.clone())
+        .then(type_decl_body_alias)
+        .map_with_span(|((name, generics), (body, body_span)), span: Range<usize>| Decl {
             attrs: Vec::new(),
             visibility: Visibility::Private,
             span: range_to_span(span.clone()),
             kind: DeclKind::Type {
-                name,
-                generics,
-                span: range_to_span(span),
+                decl: TypeDecl {
+                    name,
+                    generics,
+                    body: Some(body),
+                    span: range_to_span(span),
+                    body_span: Some(body_span),
+                },
             },
         });
+
+    let type_decl_raw = just(TokenKind::KeywordType)
+        .ignore_then(type_decl_name)
+        .then(type_decl_body_default.or_not())
+        .map_with_span(|((name, generics), body), span: Range<usize>| {
+            let (body, body_span) = body
+                .map(|(body, body_span)| (Some(body), Some(body_span)))
+                .unwrap_or((None, None));
+            Decl {
+                attrs: Vec::new(),
+                visibility: Visibility::Private,
+                span: range_to_span(span.clone()),
+                kind: DeclKind::Type {
+                    decl: TypeDecl {
+                        name,
+                        generics,
+                        body,
+                        span: range_to_span(span),
+                        body_span,
+                    },
+                },
+            }
+        });
+
+    let type_decl_raw = choice((type_alias_decl_raw, type_decl_raw));
 
     let type_decl = attr_list
         .clone()

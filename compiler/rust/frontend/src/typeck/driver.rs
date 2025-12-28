@@ -17,8 +17,8 @@ use crate::parser::ast::{
     Attribute, BinaryOp, ConductorDecl, ConductorMonitorTarget, Decl, DeclKind, EffectAnnotation,
     EffectDecl, EnumDecl, Expr, ExprKind, FixityKind, Function, HandlerDecl, HandlerEntry, Ident,
     ImplItem, Literal, LiteralKind, MatchArm, Module, ModulePath, Param, Pattern, PatternKind,
-    RelativeHead, SlicePatternItem, Stmt, StmtKind, StructDecl, TraitDecl, TypeAnnot, TypeKind,
-    TypeLiteral, TypeUnionVariant, UnaryOp, VariantPayload,
+    RelativeHead, SlicePatternItem, Stmt, StmtKind, StructDecl, TraitDecl, TypeAnnot, TypeDecl,
+    TypeKind, TypeLiteral, TypeUnionVariant, UnaryOp, VariantPayload,
 };
 use crate::semantics::{mir, typed};
 use crate::span::Span;
@@ -4425,7 +4425,9 @@ fn collect_function_bindings(params: &[Param], body: &Expr) -> HashSet<String> {
                     bindings.insert(name.name.clone());
                 }
                 DeclKind::Fn { name, .. }
-                | DeclKind::Type { name, .. }
+                | DeclKind::Type {
+                    decl: TypeDecl { name, .. },
+                }
                 | DeclKind::Struct(StructDecl { name, .. })
                 | DeclKind::Enum(EnumDecl { name, .. })
                 | DeclKind::Trait(TraitDecl { name, .. })
@@ -4638,7 +4640,9 @@ fn detect_lambda_captures(
                     state.insert_binding(name.name.clone());
                 }
                 DeclKind::Fn { name, .. }
-                | DeclKind::Type { name, .. }
+                | DeclKind::Type {
+                    decl: TypeDecl { name, .. },
+                }
                 | DeclKind::Struct(StructDecl { name, .. })
                 | DeclKind::Enum(EnumDecl { name, .. })
                 | DeclKind::Trait(TraitDecl { name, .. })
