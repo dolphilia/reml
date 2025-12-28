@@ -245,22 +245,26 @@ pub struct Decl {
 
 impl Decl {
     pub fn render(&self) -> String {
+        let visibility = match self.visibility {
+            Visibility::Public => "pub ",
+            Visibility::Private => "",
+        };
         match &self.kind {
             DeclKind::Let { pattern, value, .. } => {
-                format!("let {} = {}", pattern.render(), value.render())
+                format!("{visibility}let {} = {}", pattern.render(), value.render())
             }
             DeclKind::Var { pattern, value, .. } => {
-                format!("var {} = {}", pattern.render(), value.render())
+                format!("{visibility}var {} = {}", pattern.render(), value.render())
             }
             DeclKind::Const { name, value, .. } => {
-                format!("const {} = {}", name.name, value.render())
+                format!("{visibility}const {} = {}", name.name, value.render())
             }
-            DeclKind::Fn { name, .. } => format!("fn {} ...", name.name),
-            DeclKind::Effect(effect) => format!("effect {}", effect.name.name),
-            DeclKind::Type { decl } => decl.render(),
-            DeclKind::Struct(decl) => format!("struct {}", decl.name.name),
-            DeclKind::Enum(decl) => format!("enum {}", decl.name.name),
-            DeclKind::Trait(trait_decl) => format!("trait {}", trait_decl.name.name),
+            DeclKind::Fn { signature } => format!("{visibility}{}", signature.render()),
+            DeclKind::Effect(effect) => format!("{visibility}effect {}", effect.name.name),
+            DeclKind::Type { decl } => format!("{visibility}{}", decl.render()),
+            DeclKind::Struct(decl) => format!("{visibility}struct {}", decl.name.name),
+            DeclKind::Enum(decl) => format!("{visibility}enum {}", decl.name.name),
+            DeclKind::Trait(trait_decl) => format!("{visibility}trait {}", trait_decl.name.name),
             DeclKind::Impl(impl_decl) => {
                 let mut label = String::from("impl");
                 if let Some(trait_ref) = &impl_decl.trait_ref {
@@ -272,11 +276,11 @@ impl Decl {
                     label.push(' ');
                 }
                 label.push_str(&impl_decl.target.render());
-                label
+                format!("{visibility}{label}")
             }
-            DeclKind::Extern { abi, .. } => format!("extern \"{abi}\" ..."),
-            DeclKind::Handler(handler) => format!("handler {}", handler.name.name),
-            DeclKind::Conductor(decl) => format!("conductor {}", decl.name.name),
+            DeclKind::Extern { abi, .. } => format!("{visibility}extern \"{abi}\" ..."),
+            DeclKind::Handler(handler) => format!("{visibility}handler {}", handler.name.name),
+            DeclKind::Conductor(decl) => format!("{visibility}conductor {}", decl.name.name),
         }
     }
 }
@@ -300,8 +304,7 @@ pub enum DeclKind {
         type_annotation: TypeAnnot,
     },
     Fn {
-        name: Ident,
-        span: Span,
+        signature: FunctionSignature,
     },
     Type {
         #[serde(flatten)]
@@ -487,6 +490,55 @@ pub struct FunctionSignature {
     pub span: Span,
 }
 
+impl FunctionSignature {
+    pub fn render(&self) -> String {
+        let params = self
+            .params
+            .iter()
+            .map(Param::render)
+            .collect::<Vec<_>>()
+            .join(", ");
+        let generics = if self.generics.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "<{}>",
+                self.generics
+                    .iter()
+                    .map(|ident| ident.name.clone())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            )
+        };
+        let ret = self
+            .ret_type
+            .as_ref()
+            .map(|ty| format!(" -> {}", ty.render()))
+            .unwrap_or_default();
+        let where_clause = if self.where_clause.is_empty() {
+            String::new()
+        } else {
+            format!(
+                " where {}",
+                self.where_clause
+                    .iter()
+                    .map(WherePredicate::render)
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            )
+        };
+        let effect = self
+            .effect
+            .as_ref()
+            .map(|annot| format!(" !{{{}}}", annot.render()))
+            .unwrap_or_default();
+        format!(
+            "fn {}{}({}){}{}{}",
+            self.name.name, generics, params, ret, where_clause, effect
+        )
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct TraitDecl {
     pub name: Ident,
@@ -553,9 +605,25 @@ pub struct EnumVariant {
 #[derive(Debug, Clone, Serialize)]
 pub struct TraitItem {
     pub attrs: Vec<Attribute>,
-    pub signature: FunctionSignature,
-    pub default_body: Option<Expr>,
+    pub kind: TraitItemKind,
     pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TraitItemKind {
+    Function {
+        signature: FunctionSignature,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default_body: Option<Expr>,
+    },
+    AssociatedType {
+        name: Ident,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        bounds: Vec<TraitRef>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<TypeAnnot>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]

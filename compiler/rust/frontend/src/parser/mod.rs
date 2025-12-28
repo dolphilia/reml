@@ -3655,7 +3655,7 @@ fn module_parser<'src>(
             },
         );
 
-    let receiver_type = qualified_ident
+    let receiver_type = dotted_ident
         .clone()
         .then(
             type_parser
@@ -3678,7 +3678,7 @@ fn module_parser<'src>(
     let method_signature = just(TokenKind::KeywordFn)
         .map_with_span(move |_, span: Range<usize>| range_to_span(span))
         .then(receiver_type.clone())
-        .then_ignore(just(TokenKind::Dot))
+        .then_ignore(separator.clone())
         .then(ident.clone())
         .then(parse_generics.clone())
         .then(params_with_varargs.clone())
@@ -3937,35 +3937,45 @@ fn module_parser<'src>(
             (body, range_to_span(assign_span.start..span.end))
         });
 
-    let type_alias_decl_raw = just(TokenKind::KeywordType)
-        .ignore_then(just(TokenKind::KeywordAlias))
-        .ignore_then(type_decl_name.clone())
-        .then(type_decl_body_alias)
-        .map_with_span(|((name, generics), (body, body_span)), span: Range<usize>| Decl {
-            attrs: Vec::new(),
-            visibility: Visibility::Private,
-            span: range_to_span(span.clone()),
-            kind: DeclKind::Type {
-                decl: TypeDecl {
-                    name,
-                    generics,
-                    body: Some(body),
-                    span: range_to_span(span),
-                    body_span: Some(body_span),
+    let type_alias_decl_raw = visibility
+        .clone()
+        .then(
+            just(TokenKind::KeywordType)
+                .ignore_then(just(TokenKind::KeywordAlias))
+                .ignore_then(type_decl_name.clone())
+                .then(type_decl_body_alias),
+        )
+        .map_with_span(
+            |(visibility, ((name, generics), (body, body_span))), span: Range<usize>| Decl {
+                attrs: Vec::new(),
+                visibility,
+                span: range_to_span(span.clone()),
+                kind: DeclKind::Type {
+                    decl: TypeDecl {
+                        name,
+                        generics,
+                        body: Some(body),
+                        span: range_to_span(span),
+                        body_span: Some(body_span),
+                    },
                 },
             },
-        });
+        );
 
-    let type_decl_raw = just(TokenKind::KeywordType)
-        .ignore_then(type_decl_name)
-        .then(type_decl_body_default.or_not())
-        .map_with_span(|((name, generics), body), span: Range<usize>| {
+    let type_decl_raw = visibility
+        .clone()
+        .then(
+            just(TokenKind::KeywordType)
+                .ignore_then(type_decl_name)
+                .then(type_decl_body_default.or_not()),
+        )
+        .map_with_span(|(visibility, ((name, generics), body)), span: Range<usize>| {
             let (body, body_span) = body
                 .map(|(body, body_span)| (Some(body), Some(body_span)))
                 .unwrap_or((None, None));
             Decl {
                 attrs: Vec::new(),
-                visibility: Visibility::Private,
+                visibility,
                 span: range_to_span(span.clone()),
                 kind: DeclKind::Type {
                     decl: TypeDecl {
@@ -4017,12 +4027,16 @@ fn module_parser<'src>(
         TokenKind::RBrace,
     );
 
-    let struct_decl_raw = just(TokenKind::KeywordStruct)
-        .ignore_then(type_decl_name.clone())
-        .then(struct_body)
-        .map_with_span(|((name, generics), fields), span: Range<usize>| Decl {
+    let struct_decl_raw = visibility
+        .clone()
+        .then(
+            just(TokenKind::KeywordStruct)
+                .ignore_then(type_decl_name.clone())
+                .then(struct_body),
+        )
+        .map_with_span(|(visibility, ((name, generics), fields)), span: Range<usize>| Decl {
             attrs: Vec::new(),
-            visibility: Visibility::Private,
+            visibility,
             span: range_to_span(span.clone()),
             kind: DeclKind::Struct(StructDecl {
                 name,
@@ -4116,21 +4130,27 @@ fn module_parser<'src>(
         .ignore_then(enum_variant_list.clone())
         .or(enum_variant_list);
 
-    let enum_decl_raw = just(TokenKind::KeywordEnum)
-        .ignore_then(type_decl_name.clone())
-        .then_ignore(just(TokenKind::Assign))
-        .then(enum_variants)
-        .map_with_span(|((name, generics), variants), span: Range<usize>| Decl {
-            attrs: Vec::new(),
-            visibility: Visibility::Private,
-            span: range_to_span(span.clone()),
-            kind: DeclKind::Enum(EnumDecl {
-                name,
-                generics,
-                variants,
-                span: range_to_span(span),
-            }),
-        });
+    let enum_decl_raw = visibility
+        .clone()
+        .then(
+            just(TokenKind::KeywordEnum)
+                .ignore_then(type_decl_name.clone())
+                .then_ignore(just(TokenKind::Assign))
+                .then(enum_variants),
+        )
+        .map_with_span(
+            |(visibility, ((name, generics), variants)), span: Range<usize>| Decl {
+                attrs: Vec::new(),
+                visibility,
+                span: range_to_span(span.clone()),
+                kind: DeclKind::Enum(EnumDecl {
+                    name,
+                    generics,
+                    variants,
+                    span: range_to_span(span),
+                }),
+            },
+        );
 
     let enum_decl = attr_list
         .clone()
@@ -4198,6 +4218,27 @@ fn module_parser<'src>(
                 function.attrs = attrs;
             }
             function
+        });
+
+    let fn_decl_raw = visibility
+        .clone()
+        .then(fn_signature.clone())
+        .then_ignore(just(TokenKind::Semicolon).or_not())
+        .map_with_span(|(visibility, signature), span: Range<usize>| Decl {
+            attrs: Vec::new(),
+            visibility,
+            span: range_to_span(span),
+            kind: DeclKind::Fn { signature },
+        });
+
+    let fn_decl = attr_list
+        .clone()
+        .then(fn_decl_raw.clone())
+        .map(|(attrs, mut decl)| {
+            if !attrs.is_empty() {
+                decl.attrs = attrs;
+            }
+            decl
         });
 
     let method_core = visibility
@@ -4343,28 +4384,71 @@ fn module_parser<'src>(
     .or_not()
     .map(|result| result.unwrap_or(None));
 
-    let trait_item = attr_list
+    let trait_function_item = attr_list
         .clone()
         .then(fn_signature.clone())
         .then(trait_item_body.clone())
         .map_with_span(|((attrs, signature), body), span: Range<usize>| TraitItem {
             attrs,
-            signature,
-            default_body: body,
+            kind: ast::TraitItemKind::Function {
+                signature,
+                default_body: body,
+            },
             span: range_to_span(span),
         });
 
-    let trait_decl_raw = just(TokenKind::KeywordTrait)
+    let trait_assoc_bounds = just(TokenKind::Colon)
+        .ignore_then(
+            trait_reference
+                .clone()
+                .separated_by(just(TokenKind::Comma))
+                .at_least(1),
+        )
+        .or_not()
+        .map(|bounds| bounds.unwrap_or_default());
+
+    let trait_assoc_default = just(TokenKind::Assign)
+        .ignore_then(type_parser.clone().cut())
+        .or_not();
+
+    let trait_associated_type_raw = just(TokenKind::KeywordType)
         .ignore_then(ident.clone())
-        .then(parse_generics.clone())
-        .then(where_clause.clone())
+        .then(trait_assoc_bounds)
+        .then(trait_assoc_default)
+        .then_ignore(just(TokenKind::Semicolon).or_not());
+
+    let trait_associated_type = attr_list
+        .clone()
+        .then(trait_associated_type_raw)
+        .map_with_span(
+            |(attrs, ((name, bounds), default)), span: Range<usize>| TraitItem {
+                attrs,
+                kind: ast::TraitItemKind::AssociatedType {
+                    name,
+                    bounds,
+                    default,
+                },
+                span: range_to_span(span),
+            },
+        );
+
+    let trait_item = choice((trait_associated_type, trait_function_item));
+
+    let trait_decl_raw = visibility
+        .clone()
         .then(
-            just(TokenKind::LBrace)
-                .ignore_then(trait_item.repeated())
-                .then_ignore(just(TokenKind::RBrace)),
+            just(TokenKind::KeywordTrait)
+                .ignore_then(ident.clone())
+                .then(parse_generics.clone())
+                .then(where_clause.clone())
+                .then(
+                    just(TokenKind::LBrace)
+                        .ignore_then(trait_item.repeated())
+                        .then_ignore(just(TokenKind::RBrace)),
+                ),
         )
         .map_with_span(
-            |(((name, generics), where_clause), items), span: Range<usize>| {
+            |(visibility, (((name, generics), where_clause), items)), span: Range<usize>| {
                 let trait_decl = TraitDecl {
                     name,
                     generics,
@@ -4374,7 +4458,7 @@ fn module_parser<'src>(
                 };
                 Decl {
                     attrs: Vec::new(),
-                    visibility: Visibility::Private,
+                    visibility,
                     span: range_to_span(span),
                     kind: DeclKind::Trait(trait_decl),
                 }
@@ -4732,6 +4816,7 @@ fn module_parser<'src>(
         active_pattern_decl.clone().map(ModuleItem::ActivePattern),
         method_decl.clone().map(ModuleItem::Decl),
         function.clone().map(ModuleItem::Function),
+        fn_decl.clone().map(ModuleItem::Decl),
         top_level_defer,
         top_level_expr,
     ));

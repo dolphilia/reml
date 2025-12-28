@@ -19,10 +19,10 @@ use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
     Attribute, BinaryOp, ConductorDecl, ConductorMonitorTarget, Decl, DeclKind, EffectAnnotation,
     EffectDecl, EnumDecl, Expr, ExprKind, FixityKind, Function, HandlerDecl, HandlerEntry, Ident,
-    ImplItem, Literal, LiteralKind, MatchArm, Module, ModulePath, Param, Pattern, PatternKind,
-    RelativeHead, SlicePatternItem, Stmt, StmtKind, StructDecl, TraitDecl, TypeAnnot, TypeDecl,
-    TypeDeclBody, TypeDeclVariantPayload, TypeKind, TypeLiteral, TypeUnionVariant, UnaryOp,
-    VariantPayload,
+    FunctionSignature, ImplItem, Literal, LiteralKind, MatchArm, Module, ModulePath, Param,
+    Pattern, PatternKind, RelativeHead, SlicePatternItem, Stmt, StmtKind, StructDecl, TraitDecl,
+    TypeAnnot, TypeDecl, TypeDeclBody, TypeDeclVariantPayload, TypeKind, TypeLiteral,
+    TypeUnionVariant, UnaryOp, VariantPayload,
 };
 use crate::semantics::{mir, typed};
 use crate::span::Span;
@@ -147,6 +147,7 @@ impl TypecheckDriver {
 
         register_type_decls(&module.decls, &mut module_env);
         validate_type_decl_bodies(&module.decls, &module_env, &mut violations);
+        register_function_decls(&module.decls, &mut module_env, &mut var_gen, &mut violations);
         collect_opbuilder_violations(module, &mut violations);
         violations.extend(detect_active_pattern_conflicts(module));
 
@@ -1816,6 +1817,42 @@ fn register_type_decls(decls: &[Decl], env: &mut TypeEnv) {
                 env.insert_type_constructor(ctor_binding);
             }
         }
+    }
+}
+
+fn register_function_decls(
+    decls: &[Decl],
+    env: &mut TypeEnv,
+    var_gen: &mut TypeVarGen,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    for decl in decls {
+        let DeclKind::Fn { signature } = &decl.kind else {
+            continue;
+        };
+        let generic_map = build_generic_map(&signature.generics, var_gen);
+        let generic_map_ref = if generic_map.is_empty() {
+            None
+        } else {
+            Some(&generic_map)
+        };
+        let mut param_types = Vec::new();
+        for param in &signature.params {
+            let ty = param
+                .type_annotation
+                .as_ref()
+                .and_then(|annot| type_from_annotation(annot, generic_map_ref, env, violations))
+                .unwrap_or_else(|| var_gen.fresh_type());
+            param_types.push(ty);
+        }
+        let ret_type = signature
+            .ret_type
+            .as_ref()
+            .and_then(|annot| type_from_annotation(annot, generic_map_ref, env, violations))
+            .unwrap_or_else(|| var_gen.fresh_type());
+        let function_type = Type::arrow(param_types, ret_type);
+        let scheme = generalize_type(env, function_type);
+        env.insert(signature.name.name.clone(), scheme);
     }
 }
 
@@ -4658,7 +4695,9 @@ fn collect_function_bindings(params: &[Param], body: &Expr) -> HashSet<String> {
                     walk_expr(value, bindings);
                     bindings.insert(name.name.clone());
                 }
-                DeclKind::Fn { name, .. }
+                DeclKind::Fn {
+                    signature: FunctionSignature { name, .. },
+                }
                 | DeclKind::Type {
                     decl: TypeDecl { name, .. },
                 }
@@ -4873,7 +4912,9 @@ fn detect_lambda_captures(
                     walk_expr(value, state);
                     state.insert_binding(name.name.clone());
                 }
-                DeclKind::Fn { name, .. }
+                DeclKind::Fn {
+                    signature: FunctionSignature { name, .. },
+                }
                 | DeclKind::Type {
                     decl: TypeDecl { name, .. },
                 }
