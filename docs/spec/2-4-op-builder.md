@@ -134,6 +134,15 @@ fn build_expr_parser(atom: Parser<Int>) -> Parser<Int> {
 
 DSL ではトークン配列（`["+", "-"]` 等）を `symbol` パーサへ自動変換し、`builder.level` ごとに `Lex.space` を共有する。`fixity` とトークンの組み合わせが DSL 側で判定されるため、仕様どおりでない宣言（例: 同一レベルに `:infix_left` と `:infix_right` を同居）を行うと `core.parse.opbuilder.level_conflict` 診断が発生する。
 
+### B-2. 実装注記（暫定）
+
+本章のサンプルに含まれる構文について、現行 Frontend の実行モデルは以下の制約で運用する。
+
+- `Type.method` 宣言はトップレベル関数の糖衣として扱い、受け手は第1引数へ展開する（`Type.method(x, y)` → `Type__method(x, y)`）。
+- 静的ディスパッチのみを対象とし、`impl` ブロック自体は実行系には残さない。
+- ラムダ式は**キャプチャ無し**のみを許可し、トップレベル関数へ降格する（キャプチャありは未実装）。
+- `rec` は再帰参照の静的マーカーとして扱い、`rec <ident>` 以外の形は受理しない。
+
 ---
 
 ## C. 意味論（消費/コミット・長さ・曖昧性）

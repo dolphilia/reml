@@ -15,9 +15,10 @@ use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSum
 use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
     Attribute, BinaryOp, ConductorDecl, ConductorMonitorTarget, Decl, DeclKind, EffectAnnotation,
-    Expr, ExprKind, FixityKind, Function, HandlerEntry, Ident, ImplItem, Literal, LiteralKind,
-    MatchArm, Module, ModulePath, Pattern, PatternKind, RelativeHead, SlicePatternItem, Stmt,
-    StmtKind, TypeAnnot, TypeKind, TypeLiteral, UnaryOp,
+    EffectDecl, Expr, ExprKind, FixityKind, Function, HandlerDecl, HandlerEntry, Ident, ImplItem,
+    Literal, LiteralKind, MatchArm, Module, ModulePath, Param, Pattern, PatternKind, RelativeHead,
+    SlicePatternItem, Stmt, StmtKind, StructDecl, TraitDecl, TypeAnnot, TypeKind, TypeLiteral,
+    UnaryOp,
 };
 use crate::semantics::{mir, typed};
 use crate::span::Span;
@@ -189,6 +190,7 @@ impl TypecheckDriver {
                     annotation: param.type_annotation.as_ref().map(|annot| annot.render()),
                 });
             }
+            stats.local_bindings = collect_function_bindings(&active.params, &active.body);
             let mut loop_context = LoopContextStack::default();
             let typed_body_draft = infer_expr(
                 &active.body,
@@ -629,6 +631,9 @@ pub enum TypecheckViolationKind {
     VarargsInvalidAbi,
     VarargsMissingFixedParam,
     UnsafeInPureContext,
+    LambdaCaptureUnsupported,
+    LambdaCaptureMutUnsupported,
+    RecUnresolvedIdent,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -1108,6 +1113,60 @@ impl TypecheckViolation {
         }
     }
 
+    fn lambda_capture_unsupported(span: Span, name: &str) -> Self {
+        Self {
+            kind: TypecheckViolationKind::LambdaCaptureUnsupported,
+            code: "typeck.lambda.capture_unsupported",
+            message: "キャプチャ付きラムダは未実装です".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "`{name}` は外側の束縛です。引数として渡してください。"
+            ))],
+            capability: None,
+            function: None,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn lambda_capture_mut_unsupported(span: Span, name: &str) -> Self {
+        Self {
+            kind: TypecheckViolationKind::LambdaCaptureMutUnsupported,
+            code: "typeck.lambda.capture_mut_unsupported",
+            message: "可変キャプチャは未実装です".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "`{name}` を更新する場合は明示的に引数で渡してください。"
+            ))],
+            capability: None,
+            function: None,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn rec_unresolved_ident(span: Span, name: &str) -> Self {
+        Self {
+            kind: TypecheckViolationKind::RecUnresolvedIdent,
+            code: "typeck.rec.unresolved_ident",
+            message: "`rec` 参照が未解決です".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "`rec {name}` の参照先が見つかりません。"
+            ))],
+            capability: None,
+            function: None,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
     fn active_pattern_return_contract(
         span: Span,
         name: &str,
@@ -1495,7 +1554,10 @@ impl TypecheckViolation {
             | TypecheckViolationKind::ConductorDslIdDuplicate
             | TypecheckViolationKind::VarargsInvalidAbi
             | TypecheckViolationKind::VarargsMissingFixedParam
-            | TypecheckViolationKind::RecursionInfinite => "type",
+            | TypecheckViolationKind::RecursionInfinite
+            | TypecheckViolationKind::LambdaCaptureUnsupported
+            | TypecheckViolationKind::LambdaCaptureMutUnsupported
+            | TypecheckViolationKind::RecUnresolvedIdent => "type",
             TypecheckViolationKind::ResidualLeak
             | TypecheckViolationKind::StageMismatch
             | TypecheckViolationKind::IteratorStageMismatch
@@ -1529,6 +1591,7 @@ struct FunctionStats {
     typed_exprs: usize,
     constraints: usize,
     unresolved_identifiers: usize,
+    local_bindings: HashSet<String>,
 }
 
 fn collect_opbuilder_violations(module: &Module, violations: &mut Vec<TypecheckViolation>) {
@@ -1883,6 +1946,7 @@ fn infer_function(
     context: FunctionContext<'_>,
 ) -> TypedExprDraft {
     let mut loop_context = LoopContextStack::default();
+    stats.local_bindings = collect_function_bindings(&function.params, &function.body);
     infer_expr(
         &function.body,
         env,
@@ -2982,6 +3046,14 @@ fn infer_expr(
             )
         }
         ExprKind::Rec { expr: inner } => {
+            if let ExprKind::Identifier(ident) = &inner.kind {
+                if env.lookup(ident.name.as_str()).is_none() {
+                    violations.push(TypecheckViolation::rec_unresolved_ident(
+                        ident.span,
+                        ident.name.as_str(),
+                    ));
+                }
+            }
             let result = infer_expr(
                 inner,
                 env,
@@ -3003,6 +3075,21 @@ fn infer_expr(
             )
         }
         ExprKind::Lambda { params, body, .. } => {
+            let capture_report = if stats.local_bindings.is_empty() {
+                None
+            } else {
+                Some(detect_lambda_captures(body, params, &stats.local_bindings))
+            };
+            if let Some(report) = capture_report {
+                for (name, span) in report.captures {
+                    violations.push(TypecheckViolation::lambda_capture_unsupported(span, &name));
+                }
+                for (name, span) in report.mut_captures {
+                    violations.push(TypecheckViolation::lambda_capture_mut_unsupported(
+                        span, &name,
+                    ));
+                }
+            }
             let mut lambda_env = env.enter_scope();
             let mut param_types = Vec::new();
             for param in params {
@@ -3984,6 +4071,404 @@ fn detect_duplicate_bindings(pattern: &Pattern, violations: &mut Vec<TypecheckVi
 
     let mut seen = HashSet::new();
     walk(pattern, &mut seen, violations);
+}
+
+fn collect_pattern_binding_names(pattern: &Pattern, names: &mut HashSet<String>) {
+    match &pattern.kind {
+        PatternKind::Var(ident) => {
+            names.insert(ident.name.clone());
+        }
+        PatternKind::Binding { name, pattern, .. } => {
+            names.insert(name.name.clone());
+            collect_pattern_binding_names(pattern, names);
+        }
+        PatternKind::Tuple { elements } => {
+            for element in elements {
+                collect_pattern_binding_names(element, names);
+            }
+        }
+        PatternKind::Record { fields, .. } => {
+            for field in fields {
+                if let Some(value) = &field.value {
+                    collect_pattern_binding_names(value, names);
+                } else {
+                    names.insert(field.key.name.clone());
+                }
+            }
+        }
+        PatternKind::Constructor { args, .. } => {
+            for arg in args {
+                collect_pattern_binding_names(arg, names);
+            }
+        }
+        PatternKind::Guard { pattern: inner, .. } => {
+            collect_pattern_binding_names(inner, names);
+        }
+        PatternKind::ActivePattern { argument, .. } => {
+            if let Some(arg) = argument {
+                collect_pattern_binding_names(arg, names);
+            }
+        }
+        PatternKind::Or { variants } => {
+            for variant in variants {
+                collect_pattern_binding_names(variant, names);
+            }
+        }
+        PatternKind::Slice { elements } => {
+            for element in elements {
+                match element {
+                    SlicePatternItem::Element(pat) => collect_pattern_binding_names(pat, names),
+                    SlicePatternItem::Rest { ident: Some(ident) } => {
+                        names.insert(ident.name.clone());
+                    }
+                    SlicePatternItem::Rest { ident: None } => {}
+                }
+            }
+        }
+        PatternKind::Range { start, end, .. } => {
+            if let Some(start) = start {
+                collect_pattern_binding_names(start, names);
+            }
+            if let Some(end) = end {
+                collect_pattern_binding_names(end, names);
+            }
+        }
+        PatternKind::Regex { .. } | PatternKind::Literal(_) | PatternKind::Wildcard => {}
+    }
+}
+
+fn collect_function_bindings(params: &[Param], body: &Expr) -> HashSet<String> {
+    fn walk_expr(expr: &Expr, bindings: &mut HashSet<String>) {
+        match &expr.kind {
+            ExprKind::Lambda { .. } => {}
+            ExprKind::Block { statements, .. } => {
+                for stmt in statements {
+                    walk_stmt(stmt, bindings);
+                }
+            }
+            ExprKind::Call { callee, args } => {
+                walk_expr(callee, bindings);
+                for arg in args {
+                    walk_expr(arg, bindings);
+                }
+            }
+            ExprKind::PerformCall { call } => walk_expr(&call.argument, bindings),
+            ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
+                walk_expr(left, bindings);
+                walk_expr(right, bindings);
+            }
+            ExprKind::Unary { expr: inner, .. }
+            | ExprKind::Rec { expr: inner }
+            | ExprKind::Propagate { expr: inner }
+            | ExprKind::Return { value: Some(inner) } => walk_expr(inner, bindings),
+            ExprKind::Break { value: Some(inner) } => walk_expr(inner, bindings),
+            ExprKind::FieldAccess { target, .. }
+            | ExprKind::TupleAccess { target, .. }
+            | ExprKind::Index { target, .. } => walk_expr(target, bindings),
+            ExprKind::IfElse {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                walk_expr(condition, bindings);
+                walk_expr(then_branch, bindings);
+                if let Some(branch) = else_branch.as_deref() {
+                    walk_expr(branch, bindings);
+                }
+            }
+            ExprKind::Match { target, arms } => {
+                walk_expr(target, bindings);
+                for arm in arms {
+                    collect_pattern_binding_names(&arm.pattern, bindings);
+                    if let Some(alias) = &arm.alias {
+                        bindings.insert(alias.name.clone());
+                    }
+                    if let Some(guard) = &arm.guard {
+                        walk_expr(guard, bindings);
+                    }
+                    walk_expr(&arm.body, bindings);
+                }
+            }
+            ExprKind::While { condition, body } => {
+                walk_expr(condition, bindings);
+                walk_expr(body, bindings);
+            }
+            ExprKind::For { pattern, start, end } => {
+                collect_pattern_binding_names(pattern, bindings);
+                walk_expr(start, bindings);
+                walk_expr(end, bindings);
+            }
+            ExprKind::Loop { body }
+            | ExprKind::Unsafe { body }
+            | ExprKind::Defer { body } => walk_expr(body, bindings),
+            ExprKind::Assign { target, value } => {
+                walk_expr(target, bindings);
+                walk_expr(value, bindings);
+            }
+            ExprKind::Literal(_)
+            | ExprKind::FixityLiteral(_)
+            | ExprKind::Identifier(_)
+            | ExprKind::ModulePath(_)
+            | ExprKind::Handle { .. }
+            | ExprKind::Break { value: None }
+            | ExprKind::Return { value: None }
+            | ExprKind::Continue => {}
+        }
+    }
+
+    fn walk_stmt(stmt: &Stmt, bindings: &mut HashSet<String>) {
+        match &stmt.kind {
+            StmtKind::Decl { decl } => match &decl.kind {
+                DeclKind::Let { pattern, value, .. }
+                | DeclKind::Var { pattern, value, .. } => {
+                    walk_expr(value, bindings);
+                    collect_pattern_binding_names(pattern, bindings);
+                }
+                DeclKind::Const { name, value, .. } => {
+                    walk_expr(value, bindings);
+                    bindings.insert(name.name.clone());
+                }
+                DeclKind::Fn { name, .. }
+                | DeclKind::Type { name, .. }
+                | DeclKind::Struct(StructDecl { name, .. })
+                | DeclKind::Trait(TraitDecl { name, .. })
+                | DeclKind::Effect(EffectDecl { name, .. })
+                | DeclKind::Handler(HandlerDecl { name, .. })
+                | DeclKind::Conductor(ConductorDecl { name, .. }) => {
+                    bindings.insert(name.name.clone());
+                }
+                _ => {}
+            },
+            StmtKind::Expr { expr } | StmtKind::Defer { expr } => walk_expr(expr, bindings),
+            StmtKind::Assign { target, value } => {
+                walk_expr(target, bindings);
+                walk_expr(value, bindings);
+            }
+        }
+    }
+
+    let mut bindings = HashSet::new();
+    for param in params {
+        collect_pattern_binding_names(&param.pattern, &mut bindings);
+    }
+    walk_expr(body, &mut bindings);
+    bindings
+}
+
+struct LambdaCaptureReport {
+    captures: Vec<(String, Span)>,
+    mut_captures: Vec<(String, Span)>,
+}
+
+fn detect_lambda_captures(
+    body: &Expr,
+    params: &[Param],
+    function_bindings: &HashSet<String>,
+) -> LambdaCaptureReport {
+    struct CaptureState<'a> {
+        function_bindings: &'a HashSet<String>,
+        scopes: Vec<HashSet<String>>,
+        captures: HashMap<String, Span>,
+        mut_captures: HashMap<String, Span>,
+    }
+
+    impl<'a> CaptureState<'a> {
+        fn new(function_bindings: &'a HashSet<String>, params: &[Param]) -> Self {
+            let mut scopes = Vec::new();
+            let mut current = HashSet::new();
+            for param in params {
+                collect_pattern_binding_names(&param.pattern, &mut current);
+            }
+            scopes.push(current);
+            Self {
+                function_bindings,
+                scopes,
+                captures: HashMap::new(),
+                mut_captures: HashMap::new(),
+            }
+        }
+
+        fn push_scope(&mut self) {
+            self.scopes.push(HashSet::new());
+        }
+
+        fn pop_scope(&mut self) {
+            self.scopes.pop();
+        }
+
+        fn is_local(&self, name: &str) -> bool {
+            self.scopes
+                .iter()
+                .rev()
+                .any(|scope| scope.contains(name))
+        }
+
+        fn insert_binding(&mut self, name: String) {
+            if let Some(scope) = self.scopes.last_mut() {
+                scope.insert(name);
+            }
+        }
+
+        fn record_pattern(&mut self, pattern: &Pattern) {
+            let mut names = HashSet::new();
+            collect_pattern_binding_names(pattern, &mut names);
+            for name in names {
+                self.insert_binding(name);
+            }
+        }
+
+        fn consider_capture(&mut self, ident: &Ident) {
+            if self.is_local(ident.name.as_str()) {
+                return;
+            }
+            if !self.function_bindings.contains(ident.name.as_str()) {
+                return;
+            }
+            self.captures
+                .entry(ident.name.clone())
+                .or_insert(ident.span);
+        }
+
+        fn consider_mut_capture(&mut self, ident: &Ident) {
+            if self.is_local(ident.name.as_str()) {
+                return;
+            }
+            if !self.function_bindings.contains(ident.name.as_str()) {
+                return;
+            }
+            self.mut_captures
+                .entry(ident.name.clone())
+                .or_insert(ident.span);
+        }
+    }
+
+    fn walk_expr(expr: &Expr, state: &mut CaptureState<'_>) {
+        match &expr.kind {
+            ExprKind::Lambda { .. } => {}
+            ExprKind::Identifier(ident) => state.consider_capture(ident),
+            ExprKind::Assign { target, value } => {
+                if let ExprKind::Identifier(ident) = &target.kind {
+                    state.consider_mut_capture(ident);
+                } else {
+                    walk_expr(target, state);
+                }
+                walk_expr(value, state);
+            }
+            ExprKind::Block { statements, .. } => {
+                state.push_scope();
+                for stmt in statements {
+                    walk_stmt(stmt, state);
+                }
+                state.pop_scope();
+            }
+            ExprKind::Call { callee, args } => {
+                walk_expr(callee, state);
+                for arg in args {
+                    walk_expr(arg, state);
+                }
+            }
+            ExprKind::PerformCall { call } => walk_expr(&call.argument, state),
+            ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
+                walk_expr(left, state);
+                walk_expr(right, state);
+            }
+            ExprKind::Unary { expr: inner, .. }
+            | ExprKind::Rec { expr: inner }
+            | ExprKind::Propagate { expr: inner }
+            | ExprKind::Return { value: Some(inner) } => walk_expr(inner, state),
+            ExprKind::Break { value: Some(inner) } => walk_expr(inner, state),
+            ExprKind::FieldAccess { target, .. }
+            | ExprKind::TupleAccess { target, .. }
+            | ExprKind::Index { target, .. } => walk_expr(target, state),
+            ExprKind::IfElse {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                walk_expr(condition, state);
+                walk_expr(then_branch, state);
+                if let Some(branch) = else_branch.as_deref() {
+                    walk_expr(branch, state);
+                }
+            }
+            ExprKind::Match { target, arms } => {
+                walk_expr(target, state);
+                for arm in arms {
+                    state.push_scope();
+                    state.record_pattern(&arm.pattern);
+                    if let Some(alias) = &arm.alias {
+                        state.insert_binding(alias.name.clone());
+                    }
+                    if let Some(guard) = &arm.guard {
+                        walk_expr(guard, state);
+                    }
+                    walk_expr(&arm.body, state);
+                    state.pop_scope();
+                }
+            }
+            ExprKind::While { condition, body } => {
+                walk_expr(condition, state);
+                walk_expr(body, state);
+            }
+            ExprKind::For { pattern, start, end } => {
+                state.record_pattern(pattern);
+                walk_expr(start, state);
+                walk_expr(end, state);
+            }
+            ExprKind::Loop { body }
+            | ExprKind::Unsafe { body }
+            | ExprKind::Defer { body } => walk_expr(body, state),
+            ExprKind::Break { value: None }
+            | ExprKind::Return { value: None }
+            | ExprKind::Continue
+            | ExprKind::Literal(_)
+            | ExprKind::FixityLiteral(_)
+            | ExprKind::ModulePath(_)
+            | ExprKind::Handle { .. } => {}
+        }
+    }
+
+    fn walk_stmt(stmt: &Stmt, state: &mut CaptureState<'_>) {
+        match &stmt.kind {
+            StmtKind::Decl { decl } => match &decl.kind {
+                DeclKind::Let { pattern, value, .. }
+                | DeclKind::Var { pattern, value, .. } => {
+                    walk_expr(value, state);
+                    state.record_pattern(pattern);
+                }
+                DeclKind::Const { name, value, .. } => {
+                    walk_expr(value, state);
+                    state.insert_binding(name.name.clone());
+                }
+                DeclKind::Fn { name, .. }
+                | DeclKind::Type { name, .. }
+                | DeclKind::Struct(StructDecl { name, .. })
+                | DeclKind::Trait(TraitDecl { name, .. })
+                | DeclKind::Effect(EffectDecl { name, .. })
+                | DeclKind::Handler(HandlerDecl { name, .. })
+                | DeclKind::Conductor(ConductorDecl { name, .. }) => {
+                    state.insert_binding(name.name.clone());
+                }
+                _ => {}
+            },
+            StmtKind::Expr { expr } | StmtKind::Defer { expr } => walk_expr(expr, state),
+            StmtKind::Assign { target, value } => {
+                if let ExprKind::Identifier(ident) = &target.kind {
+                    state.consider_mut_capture(ident);
+                } else {
+                    walk_expr(target, state);
+                }
+                walk_expr(value, state);
+            }
+        }
+    }
+
+    let mut state = CaptureState::new(function_bindings, params);
+    walk_expr(body, &mut state);
+    LambdaCaptureReport {
+        captures: state.captures.into_iter().collect(),
+        mut_captures: state.mut_captures.into_iter().collect(),
+    }
 }
 
 fn is_string_like(ty: &Type) -> bool {

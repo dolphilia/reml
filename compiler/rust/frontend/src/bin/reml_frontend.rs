@@ -3590,10 +3590,10 @@ fn build_type_diagnostics(
             }
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
             extensions.insert("cfg".to_string(), args.target_cfg_extension.clone());
-            let mut severity_label = messages::find_pattern_message(violation.code)
+            let mut severity_label = messages::find_message(violation.code)
                 .map(|template| template.severity.as_str())
                 .unwrap_or("error");
-            if let Some(template) = messages::find_pattern_message(violation.code) {
+            if let Some(template) = messages::find_message(violation.code) {
                 extensions.insert(
                     "diagnostic.message".to_string(),
                     json!({

@@ -577,6 +577,7 @@ fn parse_result_from_module(
         collect_cfg_diagnostics(module, &run_config, &mut diagnostics);
         collect_use_diagnostics(module, &mut diagnostics);
         collect_match_guard_diagnostics(module, &mut diagnostics);
+        collect_rec_lambda_diagnostics(module, &mut diagnostics);
     }
 
     let farthest_error_offset = diagnostics
@@ -1310,6 +1311,174 @@ fn collect_match_guard_diagnostics(module: &Module, diagnostics: &mut Vec<Fronte
         {
             walk_expr(value, diagnostics);
         }
+    }
+    for expr in &module.exprs {
+        walk_expr(expr, diagnostics);
+    }
+}
+
+fn collect_rec_lambda_diagnostics(module: &Module, diagnostics: &mut Vec<FrontendDiagnostic>) {
+    fn rec_invalid_form(span: Span) -> FrontendDiagnostic {
+        FrontendDiagnostic::new("`rec` の後ろは識別子のみ許可されます。")
+            .with_severity(DiagnosticSeverity::Error)
+            .with_domain(DiagnosticDomain::Parser)
+            .with_code("parser.rec.invalid_form")
+            .with_recoverability(Recoverability::Recoverable)
+            .with_span(span)
+    }
+
+    fn rec_unsupported_position(span: Span) -> FrontendDiagnostic {
+        FrontendDiagnostic::new("`rec` を代入対象として使用できません。")
+            .with_severity(DiagnosticSeverity::Error)
+            .with_domain(DiagnosticDomain::Parser)
+            .with_code("parser.rec.unsupported_position")
+            .with_recoverability(Recoverability::Recoverable)
+            .with_span(span)
+    }
+
+    fn lambda_param_missing(span: Span) -> FrontendDiagnostic {
+        FrontendDiagnostic::new("ラムダ式には 1 つ以上の引数が必要です。")
+            .with_severity(DiagnosticSeverity::Error)
+            .with_domain(DiagnosticDomain::Parser)
+            .with_code("parser.lambda.param_missing")
+            .with_recoverability(Recoverability::Recoverable)
+            .with_span(span)
+    }
+
+    fn walk_expr(expr: &Expr, diagnostics: &mut Vec<FrontendDiagnostic>) {
+        match &expr.kind {
+            ExprKind::Lambda { params, body, .. } => {
+                if params.is_empty() {
+                    diagnostics.push(lambda_param_missing(expr.span));
+                }
+                walk_expr(body, diagnostics);
+            }
+            ExprKind::Rec { expr: inner } => {
+                if !matches!(inner.kind, ExprKind::Identifier(_)) {
+                    diagnostics.push(rec_invalid_form(inner.span));
+                }
+                walk_expr(inner, diagnostics);
+            }
+            ExprKind::Assign { target, value } => {
+                if matches!(target.kind, ExprKind::Rec { .. }) {
+                    diagnostics.push(rec_unsupported_position(target.span));
+                }
+                walk_expr(target, diagnostics);
+                walk_expr(value, diagnostics);
+            }
+            ExprKind::Call { callee, args } => {
+                walk_expr(callee, diagnostics);
+                for arg in args {
+                    walk_expr(arg, diagnostics);
+                }
+            }
+            ExprKind::PerformCall { call } => walk_expr(&call.argument, diagnostics),
+            ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
+                walk_expr(left, diagnostics);
+                walk_expr(right, diagnostics);
+            }
+            ExprKind::Unary { expr: inner, .. }
+            | ExprKind::Propagate { expr: inner }
+            | ExprKind::Return { value: Some(inner) } => walk_expr(inner, diagnostics),
+            ExprKind::Break { value: Some(inner) } => walk_expr(inner, diagnostics),
+            ExprKind::FieldAccess { target, .. }
+            | ExprKind::TupleAccess { target, .. }
+            | ExprKind::Index { target, .. } => walk_expr(target, diagnostics),
+            ExprKind::IfElse {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                walk_expr(condition, diagnostics);
+                walk_expr(then_branch, diagnostics);
+                if let Some(branch) = else_branch.as_deref() {
+                    walk_expr(branch, diagnostics);
+                }
+            }
+            ExprKind::Match { target, arms } => {
+                walk_expr(target, diagnostics);
+                for arm in arms {
+                    if let Some(guard) = &arm.guard {
+                        walk_expr(guard, diagnostics);
+                    }
+                    walk_expr(&arm.body, diagnostics);
+                }
+            }
+            ExprKind::While { condition, body } => {
+                walk_expr(condition, diagnostics);
+                walk_expr(body, diagnostics);
+            }
+            ExprKind::For { start, end, .. } => {
+                walk_expr(start, diagnostics);
+                walk_expr(end, diagnostics);
+            }
+            ExprKind::Loop { body }
+            | ExprKind::Unsafe { body }
+            | ExprKind::Defer { body } => walk_expr(body, diagnostics),
+            ExprKind::Break { value: None }
+            | ExprKind::Return { value: None }
+            | ExprKind::Continue
+            | ExprKind::Literal(_)
+            | ExprKind::FixityLiteral(_)
+            | ExprKind::Identifier(_)
+            | ExprKind::ModulePath(_)
+            | ExprKind::Handle { .. } => {}
+        }
+    }
+
+    fn walk_stmt(stmt: &Stmt, diagnostics: &mut Vec<FrontendDiagnostic>) {
+        match &stmt.kind {
+            StmtKind::Decl { decl } => match &decl.kind {
+                DeclKind::Let { value, .. }
+                | DeclKind::Var { value, .. }
+                | DeclKind::Const { value, .. } => walk_expr(value, diagnostics),
+                _ => {}
+            },
+            StmtKind::Expr { expr } | StmtKind::Defer { expr } => {
+                walk_expr(expr, diagnostics)
+            }
+            StmtKind::Assign { target, value } => {
+                if matches!(target.kind, ExprKind::Rec { .. }) {
+                    diagnostics.push(rec_unsupported_position(target.span));
+                }
+                walk_expr(target, diagnostics);
+                walk_expr(value, diagnostics);
+            }
+        }
+    }
+
+    fn walk_decl(decl: &Decl, diagnostics: &mut Vec<FrontendDiagnostic>) {
+        match &decl.kind {
+            DeclKind::Let { value, .. }
+            | DeclKind::Var { value, .. }
+            | DeclKind::Const { value, .. } => walk_expr(value, diagnostics),
+            DeclKind::Handler(handler) => {
+                for entry in &handler.entries {
+                    if let HandlerEntry::Operation { body, .. } = entry {
+                        walk_expr(body, diagnostics);
+                    }
+                }
+            }
+            DeclKind::Conductor(conductor) => {
+                if let Some(exec) = &conductor.execution {
+                    walk_expr(&exec.body, diagnostics);
+                }
+                if let Some(monitor) = &conductor.monitoring {
+                    walk_expr(&monitor.body, diagnostics);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    for function in &module.functions {
+        walk_expr(&function.body, diagnostics);
+    }
+    for active in &module.active_patterns {
+        walk_expr(&active.body, diagnostics);
+    }
+    for decl in &module.decls {
+        walk_decl(decl, diagnostics);
     }
     for expr in &module.exprs {
         walk_expr(expr, diagnostics);
