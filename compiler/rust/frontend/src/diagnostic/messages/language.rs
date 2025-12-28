@@ -51,6 +51,24 @@ pub fn language_messages() -> &'static [LanguageDiagnosticMessage] {
             severity: DiagnosticSeverity::Error,
         },
         LanguageDiagnosticMessage {
+            code: "type.unresolved_ident",
+            title: "型参照が未解決です",
+            message: "型名に対応する `type` 宣言が見つかりません。",
+            severity: DiagnosticSeverity::Error,
+        },
+        LanguageDiagnosticMessage {
+            code: "type.alias.cycle",
+            title: "型エイリアスが循環参照しています",
+            message: "型エイリアスの循環参照が検出されました。",
+            severity: DiagnosticSeverity::Error,
+        },
+        LanguageDiagnosticMessage {
+            code: "type.alias.expansion_limit",
+            title: "型エイリアスの展開上限に達しました",
+            message: "型エイリアスの展開が上限に達しました。",
+            severity: DiagnosticSeverity::Error,
+        },
+        LanguageDiagnosticMessage {
             code: "type.sum.constructor_arity_mismatch",
             title: "合成型コンストラクタの引数数が一致しません",
             message: "合成型コンストラクタへ渡した引数の数が期待と一致しません。",
@@ -72,6 +90,9 @@ mod tests {
         assert!(find_language_message("typeck.lambda.capture_unsupported").is_some());
         assert!(find_language_message("typeck.lambda.capture_mut_unsupported").is_some());
         assert!(find_language_message("typeck.rec.unresolved_ident").is_some());
+        assert!(find_language_message("type.unresolved_ident").is_some());
+        assert!(find_language_message("type.alias.cycle").is_some());
+        assert!(find_language_message("type.alias.expansion_limit").is_some());
         assert!(find_language_message("type.sum.constructor_arity_mismatch").is_some());
     }
 }

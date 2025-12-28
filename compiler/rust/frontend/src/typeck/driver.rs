@@ -146,6 +146,7 @@ impl TypecheckDriver {
         let mut unicode_shadow_tracker = UnicodeShadowTracker::default();
 
         register_type_decls(&module.decls, &mut module_env);
+        validate_type_decl_bodies(&module.decls, &module_env, &mut violations);
         collect_opbuilder_violations(module, &mut violations);
         violations.extend(detect_active_pattern_conflicts(module));
 
@@ -727,6 +728,7 @@ pub enum TypecheckViolationKind {
     LambdaCaptureUnsupported,
     LambdaCaptureMutUnsupported,
     RecUnresolvedIdent,
+    TypeUnresolvedIdent,
     TypeAliasCycle,
     TypeAliasExpansionLimit,
     ConstructorArityMismatch,
@@ -1263,6 +1265,24 @@ impl TypecheckViolation {
         }
     }
 
+    fn type_unresolved_ident(span: Span, name: &str) -> Self {
+        Self {
+            kind: TypecheckViolationKind::TypeUnresolvedIdent,
+            code: "type.unresolved_ident",
+            message: "型参照が未解決です".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "`{name}` に対応する型宣言が見つかりません。"
+            ))],
+            capability: None,
+            function: None,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
     fn type_alias_cycle(span: Span, chain: Vec<String>) -> Self {
         let chain_label = chain.join(" -> ");
         Self {
@@ -1714,6 +1734,7 @@ impl TypecheckViolation {
             | TypecheckViolationKind::LambdaCaptureUnsupported
             | TypecheckViolationKind::LambdaCaptureMutUnsupported
             | TypecheckViolationKind::RecUnresolvedIdent
+            | TypecheckViolationKind::TypeUnresolvedIdent
             | TypecheckViolationKind::TypeAliasCycle
             | TypecheckViolationKind::TypeAliasExpansionLimit
             | TypecheckViolationKind::ConstructorArityMismatch => "type",
@@ -1793,6 +1814,84 @@ fn register_type_decls(decls: &[Decl], env: &mut TypeEnv) {
                     variant.span,
                 );
                 env.insert_type_constructor(ctor_binding);
+            }
+        }
+    }
+}
+
+fn validate_type_decl_bodies(
+    decls: &[Decl],
+    env: &TypeEnv,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    let mut var_gen = TypeVarGen::default();
+    for decl in decls {
+        let DeclKind::Type { decl } = &decl.kind else {
+            continue;
+        };
+        let generic_map = build_generic_map(&decl.generics, &mut var_gen);
+        let generic_map_ref = if generic_map.is_empty() {
+            None
+        } else {
+            Some(&generic_map)
+        };
+        match decl.body.as_ref() {
+            Some(TypeDeclBody::Alias { ty }) | Some(TypeDeclBody::Newtype { ty }) => {
+                let mut resolver = TypeAliasResolver::new(env, violations);
+                let _ = type_from_annotation_kind_with_generics(
+                    &ty.kind,
+                    ty.span,
+                    generic_map_ref,
+                    None,
+                    &mut resolver,
+                );
+            }
+            Some(TypeDeclBody::Sum { variants }) => {
+                for variant in variants {
+                    if let Some(payload) = &variant.payload {
+                        validate_type_decl_payload(
+                            payload,
+                            generic_map_ref,
+                            env,
+                            violations,
+                        );
+                    }
+                }
+            }
+            None => {}
+        }
+    }
+}
+
+fn validate_type_decl_payload(
+    payload: &TypeDeclVariantPayload,
+    generics: Option<&HashMap<String, TypeVariable>>,
+    env: &TypeEnv,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    match payload {
+        TypeDeclVariantPayload::Tuple { elements } => {
+            for element in elements {
+                let mut resolver = TypeAliasResolver::new(env, violations);
+                let _ = type_from_annotation_kind_with_generics(
+                    &element.ty.kind,
+                    element.ty.span,
+                    generics,
+                    None,
+                    &mut resolver,
+                );
+            }
+        }
+        TypeDeclVariantPayload::Record { fields, .. } => {
+            for field in fields {
+                let mut resolver = TypeAliasResolver::new(env, violations);
+                let _ = type_from_annotation_kind_with_generics(
+                    &field.ty.kind,
+                    field.ty.span,
+                    generics,
+                    None,
+                    &mut resolver,
+                );
             }
         }
     }
@@ -5632,6 +5731,11 @@ impl<'a> TypeAliasResolver<'a> {
         }
     }
 
+    fn report_unresolved(&mut self, span: Span, name: &str) {
+        self.violations
+            .push(TypecheckViolation::type_unresolved_ident(span, name));
+    }
+
     fn enter_alias(&mut self, name: &Ident, span: Span) -> bool {
         if self.stack.iter().any(|entry| entry == name.name.as_str()) {
             let mut chain = self.stack.clone();
@@ -5673,6 +5777,13 @@ fn type_from_annotation(
     )
 }
 
+fn is_builtin_type_constructor(name: &str) -> bool {
+    matches!(
+        name,
+        "Option" | "Result" | "Array" | "Slice" | "Record" | "Tuple"
+    )
+}
+
 fn type_from_annotation_kind_with_generics(
     kind: &TypeKind,
     span: Span,
@@ -5703,6 +5814,7 @@ fn type_from_annotation_kind_with_generics(
             if let Some(binding) = resolver.env.lookup_type_decl(name.name.as_str()) {
                 return expand_type_alias(name, span, Vec::new(), generics, binding, resolver);
             }
+            resolver.report_unresolved(name.span, name.name.as_str());
             Some(Type::app(name.name.clone(), Vec::new()))
         }
         TypeKind::Literal { value } => match value {
@@ -5726,6 +5838,9 @@ fn type_from_annotation_kind_with_generics(
             }
             if let Some(binding) = resolver.env.lookup_type_decl(callee.name.as_str()) {
                 return expand_type_alias(callee, span, resolved_args, generics, binding, resolver);
+            }
+            if !is_builtin_type_constructor(callee.name.as_str()) {
+                resolver.report_unresolved(callee.span, callee.name.as_str());
             }
             Some(Type::app(callee.name.clone(), resolved_args))
         }

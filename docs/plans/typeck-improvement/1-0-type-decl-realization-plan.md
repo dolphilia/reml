@@ -75,6 +75,7 @@
 - newtype の名義型が IR で保持される場合のタグ付けルールを定義する。
 - Backend で必要な場合のみ type mapping を拡張（名義型の保持/剥離ルール）。
 - レイアウトが変わる可能性がある場合、`docs/plans/docs-examples-audit/` との整合チェックを起票する。
+  - `docs/plans/docs-examples-audit/1-7-backend-runtime-type-decl-layout-plan-20251227.md` を起票。
 
 ## テスト計画
 
