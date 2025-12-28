@@ -110,6 +110,20 @@ typedef struct {
     void** items;   ///< 要素ポインタ配列
 } reml_array_t;
 
+/**
+ * Reml Closure 型の最小 ABI
+ *
+ * メモリレイアウト:
+ *   [reml_object_header_t] [reml_closure_t payload]
+ *
+ * env はクロージャ環境へのポインタ。RC 管理対象のヒープオブジェクトか NULL。
+ * code_ptr は関数ポインタ（具体的な呼び出し規約は Backend で定義）。
+ */
+typedef struct {
+    void* env;       ///< 環境ポインタ（NULL 可）
+    void* code_ptr;  ///< 関数ポインタ（不透明）
+} reml_closure_t;
+
 /* ========== Record API（Phase 3） ========== */
 
 /**
@@ -135,6 +149,36 @@ void* reml_record_from(int64_t field_count, ...);
  * @note 要素は `inc_ref` され、破棄時に `dec_ref` される。
  */
 void* reml_array_from(int64_t len, ...);
+
+/* ========== Closure API（Phase 4） ========== */
+
+/**
+ * クロージャオブジェクトを生成する
+ *
+ * @param env クロージャ環境（RC 管理対象のヒープポインタ or NULL）
+ * @param code_ptr 関数ポインタ（不透明）
+ * @return 新しい Closure オブジェクト（不透明ポインタとして扱う）
+ *
+ * @note env が NULL でない場合は inc_ref で参照を保持する。
+ * @note destroy 時に env は dec_ref される。
+ */
+void* reml_closure_new(void* env, void* code_ptr);
+
+/**
+ * クロージャの環境ポインタを取得する
+ *
+ * @param closure_ptr Closure オブジェクトへのポインタ
+ * @return 環境ポインタ（NULL 可）
+ */
+void* reml_closure_env(void* closure_ptr);
+
+/**
+ * クロージャの関数ポインタを取得する
+ *
+ * @param closure_ptr Closure オブジェクトへのポインタ
+ * @return 関数ポインタ
+ */
+void* reml_closure_code_ptr(void* closure_ptr);
 
 /* ========== 参照カウント対象の区分（Phase 3） ========== */
 

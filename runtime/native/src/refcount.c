@@ -246,12 +246,7 @@ static void destroy_array(void* ptr) {
  * @param ptr クロージャオブジェクトへのポインタ
  */
 static void destroy_closure(void* ptr) {
-    // Phase 1: クロージャ構造: {void* env, void* code_ptr}
-    typedef struct {
-        void* env;
-        void* code_ptr;
-    } closure_t;
-    closure_t* closure = (closure_t*)ptr;
+    reml_closure_t* closure = (reml_closure_t*)ptr;
 
     // 環境ポインタが NULL でなければ dec_ref で解放
     if (closure->env != NULL) {

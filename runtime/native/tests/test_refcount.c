@@ -169,18 +169,10 @@ void test_destructor_closure(void) {
     ASSERT(env_header->refcount == 1, "env initial refcount should be 1");
 
     // クロージャオブジェクトを作成
-    typedef struct {
-        void* env;
-        void* code_ptr;
-    } closure_t;
-    closure_t* closure = (closure_t*)mem_alloc(sizeof(closure_t));
-    reml_set_type_tag(closure, REML_TAG_CLOSURE);
-
-    // env を設定し、inc_ref で参照を増やす
-    closure->env = env;
-    closure->code_ptr = NULL;  // ダミー
-    inc_ref(env);  // closure が env を参照するため inc_ref
-    ASSERT(env_header->refcount == 2, "env refcount should be 2 after inc_ref");
+    void* closure = reml_closure_new(env, NULL);
+    ASSERT(reml_closure_env(closure) == env, "closure env should match");
+    ASSERT(reml_closure_code_ptr(closure) == NULL, "closure code_ptr should match");
+    ASSERT(env_header->refcount == 2, "env refcount should be 2 after closure new");
 
     // クロージャを解放（env の refcount が 1 に減る）
     dec_ref(closure);
