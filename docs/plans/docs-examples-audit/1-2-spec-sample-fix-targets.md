@@ -169,15 +169,15 @@
 ### docs/spec/2-7-core-parse-streaming.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| A-1. 署名と戻り値 | sec_a_1-a | examples/docs-examples/spec/2-7-core-parse-streaming/sec_a_1-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| A-1. 署名と戻り値 | sec_a_1-b | examples/docs-examples/spec/2-7-core-parse-streaming/sec_a_1-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| A-2. StreamingConfig | sec_a_2 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_a_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B-1. 入出力契約 | sec_b_1 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_b_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B-2. StreamError | sec_b_2 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_b_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C-1. Continuation 型 | sec_c_1 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_c_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| D. フロー制御とバックプレッシャ | sec_d | examples/docs-examples/spec/2-7-core-parse-streaming/sec_d.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| E. StreamDriver ヘルパ | sec_e | examples/docs-examples/spec/2-7-core-parse-streaming/sec_e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| G-1. StreamMeta | sec_g_1 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_g_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| A-1. 署名と戻り値 | sec_a_1-a | examples/docs-examples/spec/2-7-core-parse-streaming/sec_a_1-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| A-1. 署名と戻り値 | sec_a_1-b | examples/docs-examples/spec/2-7-core-parse-streaming/sec_a_1-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| A-2. StreamingConfig | sec_a_2 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_a_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B-1. 入出力契約 | sec_b_1 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_b_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B-2. StreamError | sec_b_2 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_b_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C-1. Continuation 型 | sec_c_1 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_c_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| D. フロー制御とバックプレッシャ | sec_d | examples/docs-examples/spec/2-7-core-parse-streaming/sec_d.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| E. StreamDriver ヘルパ | sec_e | examples/docs-examples/spec/2-7-core-parse-streaming/sec_e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| G-1. StreamMeta | sec_g_1 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_g_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-1-core-prelude-iteration.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

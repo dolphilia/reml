@@ -5,11 +5,13 @@ type FlowController = {
   policy: FlowPolicy
 }
 
-enum FlowMode = "push" | "pull" | "hybrid"
+type FlowMode = "push" | "pull" | "hybrid"
 
-enum FlowPolicy =
-  | Manual { on_demand: fn() -> Demand }
-  | Auto { backpressure: BackpressureSpec }
+type FlowPolicy = Manual | Auto
+
+type Manual = { on_demand: fn() -> Demand }
+
+type Auto = { backpressure: BackpressureSpec }
 
 type Demand = { bytes: usize, frames: usize }
 

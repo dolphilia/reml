@@ -21,17 +21,19 @@
 ### A-1. 署名と戻り値
 
 ```reml
-fn run_stream<T>(parser: Parser<T>, feeder: Feeder, cfg: StreamingConfig = {}) -> StreamOutcome<T>
-fn resume<T>(continuation: Continuation<T>, more: Bytes) -> StreamOutcome<T>
+fn run_stream<T>(parser: Parser<T>, feeder: Feeder, cfg: StreamingConfig = {}) -> StreamOutcome<T> = todo
+fn resume<T>(continuation: Continuation<T>, more: Bytes) -> StreamOutcome<T> = todo
 ```
 
 * `run_stream` はバッチランナー（2.6 §A）と同じ診断ポリシーを保ちつつ、入力を **チャンク** 単位で処理する。チャンクが不足すると `StreamOutcome::Pending` を返し、継続（Continuation）を通じて再開できる。
 * `resume` は前回の `Pending` から追加バイト列 `more` を受け取り続きから再開する。ランナーはチャンク境界で `RunConfig` を再評価しないため、再開時も同じ設定が適用される。
 
 ```reml
-type StreamOutcome<T> =
-  | Completed { result: ParseResult<T>, meta: StreamMeta }
-  | Pending   { continuation: Continuation<T>, demand: DemandHint, meta: StreamMeta }
+type StreamOutcome<T> = Completed<T> | Pending<T>
+
+type Completed<T> = { result: ParseResult<T>, meta: StreamMeta }
+
+type Pending<T> = { continuation: Continuation<T>, demand: DemandHint, meta: StreamMeta }
 ```
 
 * `Completed`：`ParseResult<T>`（2.1 §C）と同様に AST・診断・recover 情報を返し、`meta` にストリーム処理の統計値を含める。
@@ -68,15 +70,17 @@ type DemandHint = {
   frame_boundary: Option<TokenClass>
 }
 
-trait Feeder {
-  fn pull(&mut self, hint: DemandHint) -> FeederYield;
-}
+type Feeder = { pull: fn(&mut Feeder, DemandHint) -> FeederYield }
 
-type FeederYield =
-  | Chunk(Bytes)
-  | Await
-  | Closed
-  | Error(StreamError)
+type FeederYield = Chunk | Await | Closed | FeederError
+
+type Chunk = { bytes: Bytes }
+
+type Await = {}
+
+type Closed = {}
+
+type FeederError = { error: StreamError }
 ```
 
 * `min_bytes` は再開に必要な最小バイト数。満たさないチャンクを渡すとランナーは再び `Pending` を返す。
@@ -94,7 +98,7 @@ type StreamError = {
   cause: Option<Json>
 }
 
-enum StreamErrorKind = IoFailed | DecoderFailed | FeederBug | UserCancelled
+type StreamErrorKind = IoFailed | DecoderFailed | FeederBug | UserCancelled
 ```
 
 * `IoFailed`：基底 I/O が失敗。`cause` に OS エラーコード（`errno` 等）を格納する。
@@ -152,11 +156,13 @@ type FlowController = {
   policy: FlowPolicy
 }
 
-enum FlowMode = "push" | "pull" | "hybrid"
+type FlowMode = "push" | "pull" | "hybrid"
 
-enum FlowPolicy =
-  | Manual { on_demand: fn() -> Demand }
-  | Auto { backpressure: BackpressureSpec }
+type FlowPolicy = Manual | Auto
+
+type Manual = { on_demand: fn() -> Demand }
+
+type Auto = { backpressure: BackpressureSpec }
 
 type Demand = { bytes: usize, frames: usize }
 
@@ -190,12 +196,15 @@ struct StreamDriver<T, Sink> {
 
 type StreamDiagnosticHook = fn(StreamEvent) -> ()
 
-enum StreamEvent =
-  | Progress { consumed: usize, produced: usize, lap: Duration }
-  | Pending  { reason: PendingReason, meta: ContinuationMeta }
-  | Error    { diagnostic: ParseError, continuation: Option<ContinuationMeta> }
+type StreamEvent = Progress | Pending | StreamEventError
 
-enum PendingReason = "Backpressure" | "InputExhausted" | "FeederAwait" | "FeederClosed"
+type Progress = { consumed: usize, produced: usize, lap: Duration }
+
+type Pending = { reason: PendingReason, meta: ContinuationMeta }
+
+type StreamEventError = { diagnostic: ParseError, continuation: Option<ContinuationMeta> }
+
+type PendingReason = "Backpressure" | "InputExhausted" | "FeederAwait" | "FeederClosed"
 ```
 
 * `StreamDriver::pump()`（実装提供）は 1 ステップ進め、`Sink` に `StreamOutcome` を渡す。`pump` が `Pending` を受け取った場合、`FlowController` と `DemandHint` を用いて次のチャンク要求を決定する。
