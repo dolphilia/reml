@@ -1,1 +1,1 @@
-fn build<A>(builder: PrecedenceBuilder<A>) -> Parser<A> = todo
+fn PrecedenceBuilder<A>.build() -> Parser<A> = todo

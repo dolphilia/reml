@@ -2,12 +2,12 @@ use Core.Parse
 use Core.Parse.Lex
 
 let sc = Lex.spaceOrTabsOrNewlines |> Lex.skipMany
-fn sym(s: Str) -> Parser<()> = symbol(sc, s)
+let sym(s) = symbol(sc, s)
 let int = lexeme(sc, Lex.int(10)).map(|digits| parseI64(digits))
 
 // operand: 括弧 / 単項マイナス(後述の prefix レベルでも可) / 数
 let atom: Parser<i64> =
-  (sym("(").then(cut_here()).then(expr).then(expect("')'", sym(")"))).map(|(_,v,_)| v))
+  (sym("(").then(cut_here()).then(rec expr).then(expect("')'", sym(")"))).map(|(_,v,_)| v))
     .or(int)
     .label("atom")
 
@@ -17,7 +17,7 @@ let expr: Parser<i64> =
       lvl.postfix(sym("!").map(|_| (|a| fact(a))))
     })
     .level(|lvl| {                   // prefix（右結合）
-      lvl.prefix(sym("-").map(|_| (|a| 0 - a)))
+      lvl.prefix(sym("-").map(|_| (|a| -a)))
         .prefix(sym("+").map(|_| (|a| a)))
     })
     .level(|lvl| {                   // べき乗は右結合

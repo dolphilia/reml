@@ -1494,7 +1494,8 @@ impl TypecheckViolation {
             | TypecheckViolationKind::IntrinsicInvalidType
             | TypecheckViolationKind::ConductorDslIdDuplicate
             | TypecheckViolationKind::VarargsInvalidAbi
-            | TypecheckViolationKind::VarargsMissingFixedParam => "type",
+            | TypecheckViolationKind::VarargsMissingFixedParam
+            | TypecheckViolationKind::RecursionInfinite => "type",
             TypecheckViolationKind::ResidualLeak
             | TypecheckViolationKind::StageMismatch
             | TypecheckViolationKind::IteratorStageMismatch
@@ -2966,6 +2967,7 @@ fn infer_expr(
             let expected = match operator {
                 UnaryOp::Not => Type::builtin(BuiltinType::Bool),
                 UnaryOp::Neg => Type::builtin(BuiltinType::Int),
+                UnaryOp::Custom(_) => result.ty.clone(),
             };
             stats.constraints += 1;
             metrics.record_constraint("unary.operand");

@@ -2839,7 +2839,8 @@ fn module_parser<'src>(
                 })
             });
 
-        let unary = recursive(|unary| {
+        let unary: Recursive<'src, TokenKind, Expr, Simple<TokenKind>> =
+            recursive(|unary: Recursive<'src, TokenKind, Expr, Simple<TokenKind>>| {
             let prefix_op = choice((
                 just(TokenKind::Not).to(UnaryOp::Not),
                 just(TokenKind::Minus).to(UnaryOp::Neg),
@@ -2862,11 +2863,11 @@ fn module_parser<'src>(
                 .map_with_span(|_, span: Range<usize>| range_to_span(span))
                 .then(unary.clone())
                 .map(|(rec_span, inner)| Expr {
-                    span: span_union(rec_span, inner.span()),
-                    kind: ExprKind::Rec {
-                        expr: Box::new(inner),
-                    },
-                });
+                span: span_union(rec_span, inner.span()),
+                kind: ExprKind::Rec {
+                    expr: Box::new(inner),
+                },
+            });
 
             choice((rec_expr, unary_expr, call.clone()))
         });
@@ -3417,9 +3418,29 @@ fn module_parser<'src>(
             },
         );
 
+    let receiver_type = qualified_ident
+        .clone()
+        .then(
+            type_parser
+                .clone()
+                .separated_by(just(TokenKind::Comma))
+                .allow_trailing()
+                .delimited_by(just(TokenKind::Lt), just(TokenKind::Gt))
+                .or_not(),
+        )
+        .map_with_span(|(callee, args), span: Range<usize>| TypeAnnot {
+            span: range_to_span(span),
+            kind: if let Some(args) = args {
+                TypeKind::App { callee, args }
+            } else {
+                TypeKind::Ident { name: callee }
+            },
+            annotation_kind: None,
+        });
+
     let method_signature = just(TokenKind::KeywordFn)
         .map_with_span(move |_, span: Range<usize>| range_to_span(span))
-        .then(type_parser.clone())
+        .then(receiver_type.clone())
         .then_ignore(just(TokenKind::Dot))
         .then(ident.clone())
         .then(parse_generics.clone())
@@ -3733,13 +3754,16 @@ fn module_parser<'src>(
         block_body_parser.clone(),
     ));
 
+    let streaming_state_success_fn = streaming_state_success.clone();
+    let streaming_state_success_method = streaming_state_success.clone();
+
     let fn_core = visibility
         .clone()
         .then(fn_signature.clone())
-        .then(fn_body)
+        .then(fn_body.clone())
         .map(move |((visibility, signature), body)| {
             let function_span = Span::new(signature.span.start, body.span().end);
-            record_streaming_success(&streaming_state_success, function_span);
+            record_streaming_success(&streaming_state_success_fn, function_span);
             Function {
                 name: signature.name.clone(),
                 visibility,
@@ -3769,9 +3793,9 @@ fn module_parser<'src>(
         .then(method_signature.clone())
         .then(fn_body)
         .map_with_span(
-            |((visibility, (receiver, signature)), body), span: Range<usize>| {
+            move |((visibility, (receiver, signature)), body), span: Range<usize>| {
                 let function_span = Span::new(signature.span.start, body.span().end);
-                record_streaming_success(&streaming_state_success, function_span);
+                record_streaming_success(&streaming_state_success_method, function_span);
                 let function = Function {
                     name: signature.name.clone(),
                     visibility,
