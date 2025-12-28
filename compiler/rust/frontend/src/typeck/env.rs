@@ -12,6 +12,8 @@ use serde_json::{Map, Value};
 use super::capability::RuntimeCapability;
 use super::scheme::Scheme;
 use super::types::TypeVariable;
+use crate::parser::ast::{TypeDeclBody, TypeDeclVariantPayload};
+use crate::span::Span;
 use indexmap::IndexMap;
 use once_cell::sync::OnceCell;
 use serde::Serialize;
@@ -835,10 +837,80 @@ pub struct Binding {
     pub scheme: Scheme,
 }
 
+/// 型宣言の種別。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TypeDeclKind {
+    Alias,
+    Newtype,
+    Sum,
+    Opaque,
+}
+
+/// 型環境で保持する型宣言情報。
+#[derive(Debug, Clone)]
+pub struct TypeDeclBinding {
+    pub name: String,
+    pub generics: Vec<String>,
+    pub kind: TypeDeclKind,
+    pub body: Option<TypeDeclBody>,
+    pub span: Span,
+    pub body_span: Option<Span>,
+}
+
+impl TypeDeclBinding {
+    pub fn new(
+        name: impl Into<String>,
+        generics: Vec<String>,
+        kind: TypeDeclKind,
+        body: Option<TypeDeclBody>,
+        span: Span,
+        body_span: Option<Span>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            generics,
+            kind,
+            body,
+            span,
+            body_span,
+        }
+    }
+}
+
+/// 合成型のコンストラクタ情報。
+#[derive(Debug, Clone)]
+pub struct TypeConstructorBinding {
+    pub name: String,
+    pub parent: String,
+    pub generics: Vec<String>,
+    pub payload: Option<TypeDeclVariantPayload>,
+    pub span: Span,
+}
+
+impl TypeConstructorBinding {
+    pub fn new(
+        name: impl Into<String>,
+        parent: impl Into<String>,
+        generics: Vec<String>,
+        payload: Option<TypeDeclVariantPayload>,
+        span: Span,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            parent: parent.into(),
+            generics,
+            payload,
+            span,
+        }
+    }
+}
+
 /// 型推論で利用する環境。新しいスコープは `enter_scope` で作られ、`exit_scope` で親に戻る。
 #[derive(Debug, Clone)]
 pub struct TypeEnv {
     bindings: IndexMap<String, Binding>,
+    type_decls: IndexMap<String, TypeDeclBinding>,
+    type_constructors: IndexMap<String, TypeConstructorBinding>,
     parent: Option<Box<TypeEnv>>,
 }
 
@@ -852,6 +924,8 @@ impl TypeEnv {
     pub fn new() -> Self {
         Self {
             bindings: IndexMap::new(),
+            type_decls: IndexMap::new(),
+            type_constructors: IndexMap::new(),
             parent: None,
         }
     }
@@ -870,9 +944,40 @@ impl TypeEnv {
         }
     }
 
+    pub fn insert_type_decl(&mut self, binding: TypeDeclBinding) {
+        self.type_decls.insert(binding.name.clone(), binding);
+    }
+
+    pub fn lookup_type_decl(&self, name: &str) -> Option<&TypeDeclBinding> {
+        if let Some(binding) = self.type_decls.get(name) {
+            Some(binding)
+        } else {
+            self.parent
+                .as_deref()
+                .and_then(|parent| parent.lookup_type_decl(name))
+        }
+    }
+
+    pub fn insert_type_constructor(&mut self, binding: TypeConstructorBinding) {
+        self.type_constructors
+            .insert(binding.name.clone(), binding);
+    }
+
+    pub fn lookup_type_constructor(&self, name: &str) -> Option<&TypeConstructorBinding> {
+        if let Some(binding) = self.type_constructors.get(name) {
+            Some(binding)
+        } else {
+            self.parent
+                .as_deref()
+                .and_then(|parent| parent.lookup_type_constructor(name))
+        }
+    }
+
     pub fn enter_scope(&self) -> TypeEnv {
         TypeEnv {
             bindings: IndexMap::new(),
+            type_decls: IndexMap::new(),
+            type_constructors: IndexMap::new(),
             parent: Some(Box::new(self.clone())),
         }
     }

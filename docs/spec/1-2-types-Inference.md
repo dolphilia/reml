@@ -311,6 +311,7 @@ type RunConfigTarget = {
 
 * `match` の各分岐で **スクラティニーの型**と**残余集合**（未到達バリアントや値範囲）を追跡し、ガード付きパターンは「一致しても `cond` が偽なら残余へ戻る」ものとして扱う。
 * 型推論は `CoverageResidue{missing: Set<VariantLike>, span: Span}`（`VariantLike` は ADT コンストラクタや列挙的リテラル集合を指す）をノードへ付与し、後続のエラー整形（2.5）と効果検査（1.3）に回す。残余が空であれば診断は出ない。
+* 合成型（`type Foo = | Bar | Baz`）の網羅性は **コンストラクタ集合**で判定する。ガードのない分岐で `Foo` の全コンストラクタが現れた場合にのみ網羅済みとみなし、欠落があれば `pattern.exhaustiveness.missing` を発行する。
 * 残余が非空の場合は **`panic` 効果を伴う式**としてマークされる（実装上は暗黙の `panic_unreachable` が生成されるため）。`@no_panic` や `@pure` を持つ関数／ブロックではこの効果が禁止されるため、**非網羅は即エラー**になる。
 * それ以外のケースでは、既定の lint レベル `non_exhaustive_match = Warning` で診断を発行し、プロジェクト設定や CLI（例：`--fail-on-warning` や lint 設定で `error` 指定）で**エラーへ昇格**できる。`@no_panic` が付いていなくても、明示的に `lint.non_exhaustive_match = "error"` を選択した場合は型検査段階で致命扱いとなる。
 

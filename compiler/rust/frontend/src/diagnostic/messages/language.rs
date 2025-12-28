@@ -50,6 +50,12 @@ pub fn language_messages() -> &'static [LanguageDiagnosticMessage] {
             message: "`rec <ident>` の参照先が見つかりません。",
             severity: DiagnosticSeverity::Error,
         },
+        LanguageDiagnosticMessage {
+            code: "type.sum.constructor_arity_mismatch",
+            title: "合成型コンストラクタの引数数が一致しません",
+            message: "合成型コンストラクタへ渡した引数の数が期待と一致しません。",
+            severity: DiagnosticSeverity::Error,
+        },
     ];
     REGISTRY
 }
@@ -66,5 +72,6 @@ mod tests {
         assert!(find_language_message("typeck.lambda.capture_unsupported").is_some());
         assert!(find_language_message("typeck.lambda.capture_mut_unsupported").is_some());
         assert!(find_language_message("typeck.rec.unresolved_ident").is_some());
+        assert!(find_language_message("type.sum.constructor_arity_mismatch").is_some());
     }
 }

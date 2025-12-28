@@ -74,3 +74,36 @@ fn classify(x: Int) -> Int =
         "ワイルドカード後の範囲は到達不能として報告されるはず"
     );
 }
+
+#[test]
+fn sum_type_missing_arm_reports_exhaustiveness() {
+    let source = r#"
+type Foo = | Bar(Int) | Baz
+fn classify(x: Foo) -> Int =
+  match x with
+  | Bar(_) -> 1
+"#;
+    let module = parse_module(source);
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        has_violation(&report, "pattern.exhaustiveness.missing"),
+        "合成型の分岐が欠ける場合は網羅性診断が必要"
+    );
+}
+
+#[test]
+fn sum_type_all_arms_satisfy_exhaustiveness() {
+    let source = r#"
+type Foo = | Bar(Int) | Baz
+fn classify(x: Foo) -> Int =
+  match x with
+  | Bar(_) -> 1
+  | Baz -> 0
+"#;
+    let module = parse_module(source);
+    let report = TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default());
+    assert!(
+        !has_violation(&report, "pattern.exhaustiveness.missing"),
+        "合成型の全分岐がある場合は網羅性診断が不要"
+    );
+}

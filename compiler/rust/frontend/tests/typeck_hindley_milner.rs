@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use reml_frontend::parser::ast::Module;
 use reml_frontend::parser::ParserDriver;
 use reml_frontend::typeck::{
@@ -76,5 +78,154 @@ fn reports_ast_unavailable_when_module_is_absent() {
     assert!(
         report.typed_module.functions.is_empty(),
         "AST 不在時は typed_module が空のまま"
+    );
+}
+
+#[test]
+fn type_alias_cycle_reports_violation() {
+    let report = typecheck_source(
+        "type alias A = B\n\
+type alias B = A\n\
+fn apply(x: A) = x",
+    );
+    assert!(
+        report.violations.iter().any(|violation| {
+            matches!(violation.kind, TypecheckViolationKind::TypeAliasCycle)
+        }),
+        "循環エイリアスは TypeAliasCycle を報告する"
+    );
+}
+
+#[test]
+fn type_alias_expansion_limit_reports_violation() {
+    let mut source = String::new();
+    for idx in 0..=32 {
+        let _ = writeln!(&mut source, "type alias A{idx} = A{}", idx + 1);
+    }
+    let _ = writeln!(&mut source, "type alias A33 = Int");
+    let _ = writeln!(&mut source, "fn apply(x: A0) = x");
+
+    let report = typecheck_source(&source);
+    assert!(
+        report.violations.iter().any(|violation| {
+            matches!(violation.kind, TypecheckViolationKind::TypeAliasExpansionLimit)
+        }),
+        "展開上限超過は TypeAliasExpansionLimit を報告する"
+    );
+}
+
+#[test]
+fn type_alias_generics_expands_without_violation() {
+    let report = typecheck_source(
+        "type alias Id<T> = T\n\
+fn apply(x: Id<Int>) = x",
+    );
+    assert!(
+        report.violations.iter().all(|violation| {
+            !matches!(
+                violation.kind,
+                TypecheckViolationKind::TypeAliasCycle
+                    | TypecheckViolationKind::TypeAliasExpansionLimit
+            )
+        }),
+        "ジェネリクス展開は循環/上限診断を発生させない"
+    );
+}
+
+#[test]
+fn sum_type_constructor_resolves_in_expr() {
+    let report = typecheck_source(
+        "type Foo = | Bar(Int) | Baz\n\
+fn make(x: Int) = Bar(x)",
+    );
+    assert_eq!(report.functions.len(), 1);
+    assert_eq!(
+        report.functions[0].unresolved_identifiers, 0,
+        "合成型のコンストラクタは未解決識別子として扱わない"
+    );
+}
+
+#[test]
+fn sum_type_record_payload_constructor_and_match() {
+    let report = typecheck_source(
+        "type Person = | Named { name: Str, age: Int } | Anonymous\n\
+fn label(p: Person) = match p with\n\
+| Named({ name, age }) -> name\n\
+| Anonymous -> \"anon\"",
+    );
+    assert_eq!(report.functions.len(), 1);
+    assert_eq!(
+        report.functions[0].return_type, "Str",
+        "レコード型ペイロードの束縛が戻り値型の収束に寄与する"
+    );
+}
+
+#[test]
+fn sum_type_constructor_arity_mismatch_is_reported() {
+    let report = typecheck_source(
+        "type Foo = | Bar(Int, Int) | Baz\n\
+fn bad() = Bar(1)",
+    );
+    assert!(
+        report.violations.iter().any(|violation| {
+            matches!(
+                violation.kind,
+                TypecheckViolationKind::ConstructorArityMismatch
+            )
+        }),
+        "コンストラクタの引数数不一致は診断される"
+    );
+}
+
+#[test]
+fn sum_type_record_payload_constructor_zero_args_is_reported() {
+    let report = typecheck_source(
+        "type Person = | Named { name: Str, age: Int } | Anonymous\n\
+fn bad() = Named()",
+    );
+    assert!(
+        report.violations.iter().any(|violation| {
+            matches!(
+                violation.kind,
+                TypecheckViolationKind::ConstructorArityMismatch
+            )
+        }),
+        "レコード型ペイロードの引数 0 個は診断される"
+    );
+}
+
+#[test]
+fn sum_type_record_payload_constructor_two_args_is_reported() {
+    let report = typecheck_source(
+        "type Person = | Named { name: Str, age: Int } | Anonymous\n\
+fn bad() = Named({ name = \"Ada\", age = 36 }, 1)",
+    );
+    assert!(
+        report.violations.iter().any(|violation| {
+            matches!(
+                violation.kind,
+                TypecheckViolationKind::ConstructorArityMismatch
+            )
+        }),
+        "レコード型ペイロードの引数 2 個は診断される"
+    );
+}
+
+#[test]
+fn sum_type_pattern_arity_mismatch_is_reported() {
+    let report = typecheck_source(
+        "type Foo = | Bar(Int, Int) | Baz\n\
+fn bad(x: Foo) = match x with\n\
+| Bar(_) -> 0\n\
+| Baz -> 1",
+    );
+    assert!(
+        report.violations.iter().any(|violation| {
+            matches!(
+                violation.kind,
+                TypecheckViolationKind::ConstructorArityMismatch
+            )
+        }),
+        "パターンの引数数不一致も診断される"
     );
 }

@@ -7,7 +7,10 @@ use super::capability::{CapabilityDescriptor, EffectUsage};
 use super::constraint::{
     iterator, Constraint, ConstraintSolver, ConstraintSolverError, Substitution,
 };
-use super::env::{StageRequirement, TypeEnv, TypecheckConfig};
+use super::env::{
+    StageRequirement, TypeConstructorBinding, TypeDeclBinding, TypeDeclKind, TypeEnv,
+    TypecheckConfig,
+};
 use super::metrics::TypecheckMetrics;
 use super::scheme::Scheme;
 use super::types::{BuiltinType, Type, TypeVarGen, TypeVariable};
@@ -18,7 +21,8 @@ use crate::parser::ast::{
     EffectDecl, EnumDecl, Expr, ExprKind, FixityKind, Function, HandlerDecl, HandlerEntry, Ident,
     ImplItem, Literal, LiteralKind, MatchArm, Module, ModulePath, Param, Pattern, PatternKind,
     RelativeHead, SlicePatternItem, Stmt, StmtKind, StructDecl, TraitDecl, TypeAnnot, TypeDecl,
-    TypeKind, TypeLiteral, TypeUnionVariant, UnaryOp, VariantPayload,
+    TypeDeclBody, TypeDeclVariantPayload, TypeKind, TypeLiteral, TypeUnionVariant, UnaryOp,
+    VariantPayload,
 };
 use crate::semantics::{mir, typed};
 use crate::span::Span;
@@ -141,6 +145,7 @@ impl TypecheckDriver {
         let mut module_env = TypeEnv::new();
         let mut unicode_shadow_tracker = UnicodeShadowTracker::default();
 
+        register_type_decls(&module.decls, &mut module_env);
         collect_opbuilder_violations(module, &mut violations);
         violations.extend(detect_active_pattern_conflicts(module));
 
@@ -179,7 +184,9 @@ impl TypecheckDriver {
                 let ty = param
                     .type_annotation
                     .as_ref()
-                    .and_then(|annot| type_from_annotation_kind_with_generics(&annot.kind, None))
+                    .and_then(|annot| {
+                        type_from_annotation(annot, None, &module_env, &mut violations)
+                    })
                     .unwrap_or_else(|| var_gen.fresh_type());
                 let scheme = Scheme::simple(ty.clone());
                 bind_pattern_to_env(&param.pattern, &scheme, &mut env, &mut var_gen);
@@ -260,7 +267,7 @@ impl TypecheckDriver {
             let mut constraints = Vec::new();
             let mut env = module_env.clone();
             let mut param_bindings = Vec::new();
-            let mut generic_map = build_generic_map(&function.generics, &mut var_gen);
+            let generic_map = build_generic_map(&function.generics, &mut var_gen);
             let generic_map_ref = if generic_map.is_empty() {
                 None
             } else {
@@ -274,7 +281,7 @@ impl TypecheckDriver {
                     .type_annotation
                     .as_ref()
                     .and_then(|annot| {
-                        type_from_annotation_kind_with_generics(&annot.kind, generic_map_ref)
+                        type_from_annotation(annot, generic_map_ref, &env, &mut violations)
                     })
                     .unwrap_or_else(|| var_gen.fresh_type());
                 let scheme = Scheme::simple(ty.clone());
@@ -406,7 +413,7 @@ impl TypecheckDriver {
                         .type_annotation
                         .as_ref()
                         .and_then(|annot| {
-                            type_from_annotation_kind_with_generics(&annot.kind, generic_map_ref)
+                            type_from_annotation(annot, generic_map_ref, &env, &mut violations)
                         })
                         .unwrap_or_else(|| var_gen.fresh_type());
                     let scheme = Scheme::simple(ty.clone());
@@ -720,6 +727,9 @@ pub enum TypecheckViolationKind {
     LambdaCaptureUnsupported,
     LambdaCaptureMutUnsupported,
     RecUnresolvedIdent,
+    TypeAliasCycle,
+    TypeAliasExpansionLimit,
+    ConstructorArityMismatch,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -1253,6 +1263,66 @@ impl TypecheckViolation {
         }
     }
 
+    fn type_alias_cycle(span: Span, chain: Vec<String>) -> Self {
+        let chain_label = chain.join(" -> ");
+        Self {
+            kind: TypecheckViolationKind::TypeAliasCycle,
+            code: "type.alias.cycle",
+            message: "型エイリアスが循環参照しています".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "循環経路: {chain_label}"
+            ))],
+            capability: None,
+            function: None,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn type_alias_expansion_limit(span: Span, name: &str, limit: usize) -> Self {
+        Self {
+            kind: TypecheckViolationKind::TypeAliasExpansionLimit,
+            code: "type.alias.expansion_limit",
+            message: "型エイリアスの展開が上限に達しました".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "`{name}` の展開が {limit} 回を超えています"
+            ))],
+            capability: None,
+            function: None,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn constructor_arity_mismatch(
+        span: Span,
+        name: &str,
+        expected: usize,
+        actual: usize,
+    ) -> Self {
+        Self {
+            kind: TypecheckViolationKind::ConstructorArityMismatch,
+            code: "type.sum.constructor_arity_mismatch",
+            message: "合成型コンストラクタの引数数が一致しません".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "`{name}` は {expected} 個の引数を受け取りますが、{actual} 個が渡されました"
+            ))],
+            capability: None,
+            function: None,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
     fn active_pattern_return_contract(
         span: Span,
         name: &str,
@@ -1643,7 +1713,10 @@ impl TypecheckViolation {
             | TypecheckViolationKind::RecursionInfinite
             | TypecheckViolationKind::LambdaCaptureUnsupported
             | TypecheckViolationKind::LambdaCaptureMutUnsupported
-            | TypecheckViolationKind::RecUnresolvedIdent => "type",
+            | TypecheckViolationKind::RecUnresolvedIdent
+            | TypecheckViolationKind::TypeAliasCycle
+            | TypecheckViolationKind::TypeAliasExpansionLimit
+            | TypecheckViolationKind::ConstructorArityMismatch => "type",
             TypecheckViolationKind::ResidualLeak
             | TypecheckViolationKind::StageMismatch
             | TypecheckViolationKind::IteratorStageMismatch
@@ -1678,6 +1751,51 @@ struct FunctionStats {
     constraints: usize,
     unresolved_identifiers: usize,
     local_bindings: HashSet<String>,
+}
+
+fn register_type_decls(decls: &[Decl], env: &mut TypeEnv) {
+    for decl in decls {
+        let DeclKind::Type { decl } = &decl.kind else {
+            continue;
+        };
+        let kind = match decl.body {
+            Some(TypeDeclBody::Alias { .. }) => TypeDeclKind::Alias,
+            Some(TypeDeclBody::Newtype { .. }) => TypeDeclKind::Newtype,
+            Some(TypeDeclBody::Sum { .. }) => TypeDeclKind::Sum,
+            None => TypeDeclKind::Opaque,
+        };
+        let generics = decl
+            .generics
+            .iter()
+            .map(|ident| ident.name.clone())
+            .collect();
+        let binding = TypeDeclBinding::new(
+            decl.name.name.clone(),
+            generics,
+            kind,
+            decl.body.clone(),
+            decl.span,
+            decl.body_span,
+        );
+        env.insert_type_decl(binding);
+        if let Some(TypeDeclBody::Sum { variants }) = &decl.body {
+            let generics = decl
+                .generics
+                .iter()
+                .map(|ident| ident.name.clone())
+                .collect::<Vec<_>>();
+            for variant in variants {
+                let ctor_binding = TypeConstructorBinding::new(
+                    variant.name.name.clone(),
+                    decl.name.name.clone(),
+                    generics.clone(),
+                    variant.payload.clone(),
+                    variant.span,
+                );
+                env.insert_type_constructor(ctor_binding);
+            }
+        }
+    }
 }
 
 fn collect_opbuilder_violations(module: &Module, violations: &mut Vec<TypecheckViolation>) {
@@ -2288,10 +2406,14 @@ fn infer_expr(
                         )
                     }
                     other => {
-                        let _ = other; // 未解決識別子として扱う
-                        stats.unresolved_identifiers += 1;
-                        metrics.record_unresolved_identifier();
-                        Type::builtin(BuiltinType::Unknown)
+                        if let Some(binding) = env.lookup_type_constructor(other) {
+                            constructor_type_from_binding(binding, var_gen, env, violations)
+                        } else {
+                            let _ = other; // 未解決識別子として扱う
+                            stats.unresolved_identifiers += 1;
+                            metrics.record_unresolved_identifier();
+                            Type::builtin(BuiltinType::Unknown)
+                        }
                     }
                 },
             };
@@ -2602,6 +2724,19 @@ fn infer_expr(
                 }
             }
             let callee_expr = desugared_callee.as_ref().unwrap_or(callee);
+            if let ExprKind::Identifier(ident) = &callee_expr.kind {
+                if let Some(binding) = env.lookup_type_constructor(ident.name.as_str()) {
+                    let expected = constructor_expected_arity(binding.payload.as_ref());
+                    if args.len() != expected {
+                        violations.push(TypecheckViolation::constructor_arity_mismatch(
+                            expr.span(),
+                            ident.name.as_str(),
+                            expected,
+                            args.len(),
+                        ));
+                    }
+                }
+            }
             let callee_result = infer_expr(
                 callee_expr,
                 env,
@@ -3006,7 +3141,7 @@ fn infer_expr(
             );
             let mut dicts = target_result.dict_ref_ids.clone();
             let target_ty = solver.substitution().apply(&target_result.ty);
-            let coverage = analyze_match_exhaustiveness(arms, &target_ty);
+    let coverage = analyze_match_exhaustiveness(arms, &target_ty, env);
             let mut arm_type: Option<Type> = None;
             let unreachable_indices: HashSet<usize> =
                 coverage.unreachable_arm_indices.iter().copied().collect();
@@ -3017,7 +3152,7 @@ fn infer_expr(
                 }
                 let mut arm_env = env.enter_scope();
                 detect_duplicate_bindings(&arm.pattern, violations);
-                validate_pattern_against_type(&arm.pattern, &target_ty, violations);
+                validate_pattern_against_type(&arm.pattern, &target_ty, env, violations);
                 detect_regex_target_mismatch(&arm.pattern, &target_ty, violations);
                 let pattern_scheme = Scheme::simple(var_gen.fresh_type());
                 bind_pattern_to_env(&arm.pattern, &pattern_scheme, &mut arm_env, var_gen);
@@ -3277,7 +3412,7 @@ fn infer_expr(
                 let ty = param
                     .type_annotation
                     .as_ref()
-                    .and_then(|annot| type_from_annotation_kind_with_generics(&annot.kind, None))
+                    .and_then(|annot| type_from_annotation(annot, None, env, violations))
                     .unwrap_or_else(|| var_gen.fresh_type());
                 let scheme = Scheme::simple(ty.clone());
                 bind_pattern_to_env(&param.pattern, &scheme, &mut lambda_env, var_gen);
@@ -3703,7 +3838,7 @@ fn infer_binding(
     let substitution = solver.substitution().clone();
     let resolved_ty = substitution.apply(&value_result.ty);
     detect_duplicate_bindings(pattern, violations);
-    validate_pattern_against_type(pattern, &resolved_ty, violations);
+    validate_pattern_against_type(pattern, &resolved_ty, env, violations);
     detect_regex_target_mismatch(pattern, &resolved_ty, violations);
     let scheme = generalize_type(env, resolved_ty.clone());
     bind_pattern_to_env(pattern, &scheme, env, var_gen);
@@ -3754,7 +3889,7 @@ fn infer_binding_with_value(
     let substitution = solver.substitution().clone();
     let resolved_ty = substitution.apply(&value_result.ty);
     detect_duplicate_bindings(pattern, violations);
-    validate_pattern_against_type(pattern, &resolved_ty, violations);
+    validate_pattern_against_type(pattern, &resolved_ty, env, violations);
     detect_regex_target_mismatch(pattern, &resolved_ty, violations);
     let scheme = generalize_type(env, resolved_ty.clone());
     bind_pattern_to_env(pattern, &scheme, env, var_gen);
@@ -3850,7 +3985,7 @@ fn infer_conductor(
         .channels
         .iter()
         .map(|route| {
-            let payload = type_from_annotation_kind(&route.payload.kind)
+            let payload = type_from_annotation(&route.payload, None, env, violations)
                 .map(|ty| solver.substitution().apply(&ty).label())
                 .unwrap_or_else(|| route.payload.render());
             typed::TypedConductorChannel {
@@ -4758,6 +4893,116 @@ fn detect_regex_target_mismatch(
     walk(pattern, target_ty, violations);
 }
 
+fn build_generic_map_from_names(
+    names: &[String],
+    var_gen: &mut TypeVarGen,
+) -> HashMap<String, TypeVariable> {
+    let mut map = HashMap::new();
+    for name in names {
+        insert_generic(&mut map, name.as_str(), var_gen);
+    }
+    map
+}
+
+fn resolve_type_annot_with_args(
+    annot: &TypeAnnot,
+    alias_args: Option<&HashMap<String, Type>>,
+    env: &TypeEnv,
+    violations: &mut Vec<TypecheckViolation>,
+) -> Type {
+    let mut resolver = TypeAliasResolver::new(env, violations);
+    type_from_annotation_kind_with_generics(&annot.kind, annot.span, None, alias_args, &mut resolver)
+        .unwrap_or_else(|| Type::builtin(BuiltinType::Unknown))
+}
+
+fn resolve_payload_types(
+    payload: &TypeDeclVariantPayload,
+    alias_args: Option<&HashMap<String, Type>>,
+    env: &TypeEnv,
+    violations: &mut Vec<TypecheckViolation>,
+) -> Vec<Type> {
+    match payload {
+        TypeDeclVariantPayload::Tuple { elements } => elements
+            .iter()
+            .map(|element| resolve_type_annot_with_args(&element.ty, alias_args, env, violations))
+            .collect(),
+        TypeDeclVariantPayload::Record { fields, .. } => {
+            let field_types = fields
+                .iter()
+                .map(|field| resolve_type_annot_with_args(&field.ty, alias_args, env, violations))
+                .collect::<Vec<_>>();
+            vec![Type::app("Record", field_types)]
+        }
+    }
+}
+
+fn constructor_expected_arity(payload: Option<&TypeDeclVariantPayload>) -> usize {
+    match payload {
+        None => 0,
+        Some(TypeDeclVariantPayload::Tuple { elements }) => elements.len(),
+        Some(TypeDeclVariantPayload::Record { .. }) => 1,
+    }
+}
+
+fn constructor_type_from_binding(
+    binding: &TypeConstructorBinding,
+    var_gen: &mut TypeVarGen,
+    env: &TypeEnv,
+    violations: &mut Vec<TypecheckViolation>,
+) -> Type {
+    let generic_map = build_generic_map_from_names(&binding.generics, var_gen);
+    let generic_map_ref = if generic_map.is_empty() {
+        None
+    } else {
+        Some(&generic_map)
+    };
+    let mut resolver = TypeAliasResolver::new(env, violations);
+    let payload_types = match &binding.payload {
+        Some(TypeDeclVariantPayload::Tuple { elements }) => elements
+            .iter()
+            .map(|element| {
+                type_from_annotation_kind_with_generics(
+                    &element.ty.kind,
+                    element.ty.span,
+                    generic_map_ref,
+                    None,
+                    &mut resolver,
+                )
+                .unwrap_or_else(|| Type::builtin(BuiltinType::Unknown))
+            })
+            .collect::<Vec<_>>(),
+        Some(TypeDeclVariantPayload::Record { fields, .. }) => {
+            let field_types = fields
+                .iter()
+                .map(|field| {
+                    type_from_annotation_kind_with_generics(
+                        &field.ty.kind,
+                        field.ty.span,
+                        generic_map_ref,
+                        None,
+                        &mut resolver,
+                    )
+                    .unwrap_or_else(|| Type::builtin(BuiltinType::Unknown))
+                })
+                .collect::<Vec<_>>();
+            vec![Type::app("Record", field_types)]
+        }
+        None => Vec::new(),
+    };
+    let parent_args = binding
+        .generics
+        .iter()
+        .filter_map(|name| generic_map.get(name))
+        .map(|var| Type::var(*var))
+        .collect::<Vec<_>>();
+    let parent_ty = Type::app(binding.parent.clone(), parent_args);
+    if payload_types.is_empty() {
+        parent_ty
+    } else {
+        Type::arrow(payload_types, parent_ty)
+    }
+}
+
 fn is_unknown_type(ty: &Type) -> bool {
     matches!(ty, Type::Builtin(BuiltinType::Unknown) | Type::Var(_))
 }
@@ -4888,6 +5133,7 @@ fn validate_slice_pattern(
     pattern: &Pattern,
     elements: &[SlicePatternItem],
     target_ty: &Type,
+    env: &TypeEnv,
     violations: &mut Vec<TypecheckViolation>,
 ) {
     let rest_count = elements
@@ -4910,7 +5156,7 @@ fn validate_slice_pattern(
     };
     for element in elements {
         if let SlicePatternItem::Element(inner) = element {
-            validate_pattern_against_type(inner, &element_ty, violations);
+            validate_pattern_against_type(inner, &element_ty, env, violations);
         }
     }
 }
@@ -4918,32 +5164,83 @@ fn validate_slice_pattern(
 fn validate_pattern_against_type(
     pattern: &Pattern,
     target_ty: &Type,
+    env: &TypeEnv,
     violations: &mut Vec<TypecheckViolation>,
 ) {
     match &pattern.kind {
         PatternKind::Or { variants } => {
             for variant in variants {
-                validate_pattern_against_type(variant, target_ty, violations);
+                validate_pattern_against_type(variant, target_ty, env, violations);
             }
         }
         PatternKind::Binding { pattern: inner, .. } => {
-            validate_pattern_against_type(inner, target_ty, violations);
+            validate_pattern_against_type(inner, target_ty, env, violations);
         }
         PatternKind::Guard { pattern: inner, .. } => {
-            validate_pattern_against_type(inner, target_ty, violations);
+            validate_pattern_against_type(inner, target_ty, env, violations);
         }
         PatternKind::Slice { elements } => {
-            validate_slice_pattern(pattern, elements, target_ty, violations);
+            validate_slice_pattern(pattern, elements, target_ty, env, violations);
         }
         PatternKind::Range { .. } => {
             validate_range_pattern(pattern, target_ty, violations);
         }
         PatternKind::Constructor { name, args, .. } => {
+            if let Type::App {
+                constructor,
+                arguments,
+            } = target_ty
+            {
+                if let Some(binding) = env.lookup_type_constructor(name.name.as_str()) {
+                    if binding.parent == *constructor {
+                        let mut alias_args = HashMap::new();
+                        for (param, arg) in binding.generics.iter().zip(arguments.iter()) {
+                            alias_args.insert(param.clone(), arg.clone());
+                        }
+                        let payload_types = binding
+                            .payload
+                            .as_ref()
+                            .map(|payload| {
+                                resolve_payload_types(
+                                    payload,
+                                    Some(&alias_args),
+                                    env,
+                                    violations,
+                                )
+                            })
+                            .unwrap_or_default();
+                        let expected = payload_types.len();
+                        if expected != args.len() {
+                            violations.push(TypecheckViolation::constructor_arity_mismatch(
+                                pattern.span,
+                                name.name.as_str(),
+                                expected,
+                                args.len(),
+                            ));
+                        }
+                        if expected == args.len() {
+                            for (arg, arg_ty) in args.iter().zip(payload_types.iter()) {
+                                validate_pattern_against_type(arg, arg_ty, env, violations);
+                            }
+                        } else {
+                            for arg in args {
+                                validate_pattern_against_type(
+                                    arg,
+                                    &Type::builtin(BuiltinType::Unknown),
+                                    env,
+                                    violations,
+                                );
+                            }
+                        }
+                        return;
+                    }
+                }
+            }
             if let Some(inner_ty) = option_inner_type(target_ty) {
                 match name.name.as_str() {
                     "Some" => {
                         if let Some(arg) = args.get(0) {
-                            validate_pattern_against_type(arg, &inner_ty, violations);
+                            validate_pattern_against_type(arg, &inner_ty, env, violations);
                         }
                         return;
                     }
@@ -4955,13 +5252,13 @@ fn validate_pattern_against_type(
                 match name.name.as_str() {
                     "Ok" => {
                         if let Some(arg) = args.get(0) {
-                            validate_pattern_against_type(arg, &ok_ty, violations);
+                            validate_pattern_against_type(arg, &ok_ty, env, violations);
                         }
                         return;
                     }
                     "Err" => {
                         if let Some(arg) = args.get(0) {
-                            validate_pattern_against_type(arg, &err_ty, violations);
+                            validate_pattern_against_type(arg, &err_ty, env, violations);
                         }
                         return;
                     }
@@ -4972,6 +5269,7 @@ fn validate_pattern_against_type(
                 validate_pattern_against_type(
                     arg,
                     &Type::builtin(BuiltinType::Unknown),
+                    env,
                     violations,
                 );
             }
@@ -4981,6 +5279,7 @@ fn validate_pattern_against_type(
                 validate_pattern_against_type(
                     element,
                     &Type::builtin(BuiltinType::Unknown),
+                    env,
                     violations,
                 );
             }
@@ -4991,6 +5290,7 @@ fn validate_pattern_against_type(
                     validate_pattern_against_type(
                         value,
                         &Type::builtin(BuiltinType::Unknown),
+                        env,
                         violations,
                     );
                 }
@@ -5001,6 +5301,7 @@ fn validate_pattern_against_type(
                 validate_pattern_against_type(
                     argument,
                     &Type::builtin(BuiltinType::Unknown),
+                    env,
                     violations,
                 );
             }
@@ -5025,10 +5326,35 @@ enum ExhaustivenessDomain {
     Bool,
     OptionLike,
     Slice,
+    Sum,
 }
 
-fn exhaustiveness_domain_for_type(target_ty: &Type) -> ExhaustivenessDomain {
-    match target_ty {
+fn sum_constructors_for_type(env: &TypeEnv, target_ty: &Type) -> Option<HashSet<String>> {
+    let Type::App { constructor, .. } = target_ty else {
+        return None;
+    };
+    let decl = env.lookup_type_decl(constructor.as_str())?;
+    if decl.kind != TypeDeclKind::Sum {
+        return None;
+    }
+    let TypeDeclBody::Sum { variants } = decl.body.as_ref()? else {
+        return None;
+    };
+    let constructors = variants
+        .iter()
+        .map(|variant| variant.name.name.clone())
+        .collect::<HashSet<_>>();
+    Some(constructors)
+}
+
+fn exhaustiveness_domain_for_type(
+    env: &TypeEnv,
+    target_ty: &Type,
+) -> (ExhaustivenessDomain, Option<HashSet<String>>) {
+    if let Some(constructors) = sum_constructors_for_type(env, target_ty) {
+        return (ExhaustivenessDomain::Sum, Some(constructors));
+    }
+    let domain = match target_ty {
         Type::Builtin(BuiltinType::Bool) => ExhaustivenessDomain::Bool,
         Type::App { constructor, .. } if constructor.as_str() == "Option" => {
             ExhaustivenessDomain::OptionLike
@@ -5044,12 +5370,17 @@ fn exhaustiveness_domain_for_type(target_ty: &Type) -> ExhaustivenessDomain {
         }
         Type::Slice { .. } => ExhaustivenessDomain::Slice,
         _ => ExhaustivenessDomain::Unknown,
-    }
+    };
+    (domain, None)
 }
 
-fn analyze_match_exhaustiveness(arms: &[MatchArm], target_ty: &Type) -> ExhaustivenessResult {
-    let domain = exhaustiveness_domain_for_type(target_ty);
-    let mut tracker = ExhaustivenessTracker::new(domain);
+fn analyze_match_exhaustiveness(
+    arms: &[MatchArm],
+    target_ty: &Type,
+    env: &TypeEnv,
+) -> ExhaustivenessResult {
+    let (domain, sum_constructors) = exhaustiveness_domain_for_type(env, target_ty);
+    let mut tracker = ExhaustivenessTracker::new(domain, sum_constructors);
     let mut unreachable_arm_indices = Vec::new();
     let mut has_partial_active_pattern = false;
     for (idx, arm) in arms.iter().enumerate() {
@@ -5135,10 +5466,12 @@ struct ExhaustivenessTracker {
     option_none_seen: bool,
     slice_empty_seen: bool,
     slice_rest_seen: bool,
+    sum_constructors: Option<HashSet<String>>,
+    sum_seen: HashSet<String>,
 }
 
 impl ExhaustivenessTracker {
-    fn new(domain: ExhaustivenessDomain) -> Self {
+    fn new(domain: ExhaustivenessDomain, sum_constructors: Option<HashSet<String>>) -> Self {
         Self {
             domain,
             wildcard_covered: false,
@@ -5148,6 +5481,8 @@ impl ExhaustivenessTracker {
             option_none_seen: false,
             slice_empty_seen: false,
             slice_rest_seen: false,
+            sum_constructors,
+            sum_seen: HashSet::new(),
         }
     }
 
@@ -5203,19 +5538,28 @@ impl ExhaustivenessTracker {
                     }
                 }
             }
-            PatternKind::Constructor { name, .. } => match name.name.as_str() {
-                "Some" | "Ok" => {
-                    if self.domain == ExhaustivenessDomain::OptionLike {
-                        self.option_some_seen = true;
+            PatternKind::Constructor { name, .. } => {
+                match name.name.as_str() {
+                    "Some" | "Ok" => {
+                        if self.domain == ExhaustivenessDomain::OptionLike {
+                            self.option_some_seen = true;
+                        }
+                    }
+                    "None" | "Err" => {
+                        if self.domain == ExhaustivenessDomain::OptionLike {
+                            self.option_none_seen = true;
+                        }
+                    }
+                    _ => {}
+                }
+                if self.domain == ExhaustivenessDomain::Sum {
+                    if let Some(constructors) = &self.sum_constructors {
+                        if constructors.contains(name.name.as_str()) {
+                            self.sum_seen.insert(name.name.clone());
+                        }
                     }
                 }
-                "None" | "Err" => {
-                    if self.domain == ExhaustivenessDomain::OptionLike {
-                        self.option_none_seen = true;
-                    }
-                }
-                _ => {}
-            },
+            }
             PatternKind::ActivePattern { is_partial, .. } => {
                 if !*is_partial {
                     self.wildcard_covered = true;
@@ -5259,18 +5603,82 @@ impl ExhaustivenessTracker {
             ExhaustivenessDomain::Bool => self.bool_true_seen && self.bool_false_seen,
             ExhaustivenessDomain::OptionLike => self.option_some_seen && self.option_none_seen,
             ExhaustivenessDomain::Slice => self.slice_empty_seen && self.slice_rest_seen,
+            ExhaustivenessDomain::Sum => self
+                .sum_constructors
+                .as_ref()
+                .map(|constructors| !constructors.is_empty() && self.sum_seen == *constructors)
+                .unwrap_or(false),
             ExhaustivenessDomain::Unknown => false,
         }
     }
 }
 
-fn type_from_annotation_kind(kind: &TypeKind) -> Option<Type> {
-    type_from_annotation_kind_with_generics(kind, None)
+const TYPE_ALIAS_EXPANSION_LIMIT: usize = 32;
+
+struct TypeAliasResolver<'a> {
+    env: &'a TypeEnv,
+    stack: Vec<String>,
+    max_depth: usize,
+    violations: &'a mut Vec<TypecheckViolation>,
+}
+
+impl<'a> TypeAliasResolver<'a> {
+    fn new(env: &'a TypeEnv, violations: &'a mut Vec<TypecheckViolation>) -> Self {
+        Self {
+            env,
+            stack: Vec::new(),
+            max_depth: TYPE_ALIAS_EXPANSION_LIMIT,
+            violations,
+        }
+    }
+
+    fn enter_alias(&mut self, name: &Ident, span: Span) -> bool {
+        if self.stack.iter().any(|entry| entry == name.name.as_str()) {
+            let mut chain = self.stack.clone();
+            chain.push(name.name.clone());
+            self.violations
+                .push(TypecheckViolation::type_alias_cycle(span, chain));
+            return false;
+        }
+        if self.stack.len() >= self.max_depth {
+            self.violations.push(TypecheckViolation::type_alias_expansion_limit(
+                span,
+                name.name.as_str(),
+                self.max_depth,
+            ));
+            return false;
+        }
+        self.stack.push(name.name.clone());
+        true
+    }
+
+    fn exit_alias(&mut self) {
+        self.stack.pop();
+    }
+}
+
+fn type_from_annotation(
+    annot: &TypeAnnot,
+    generics: Option<&HashMap<String, TypeVariable>>,
+    env: &TypeEnv,
+    violations: &mut Vec<TypecheckViolation>,
+) -> Option<Type> {
+    let mut resolver = TypeAliasResolver::new(env, violations);
+    type_from_annotation_kind_with_generics(
+        &annot.kind,
+        annot.span,
+        generics,
+        None,
+        &mut resolver,
+    )
 }
 
 fn type_from_annotation_kind_with_generics(
     kind: &TypeKind,
+    span: Span,
     generics: Option<&HashMap<String, TypeVariable>>,
+    alias_args: Option<&HashMap<String, Type>>,
+    resolver: &mut TypeAliasResolver<'_>,
 ) -> Option<Type> {
     match kind {
         TypeKind::Ident { name } => {
@@ -5284,9 +5692,18 @@ fn type_from_annotation_kind_with_generics(
             if literal.is_some() {
                 return literal;
             }
-            generics
-                .and_then(|map| map.get(name.name.as_str()))
-                .map(|var| Type::var(*var))
+            if let Some(map) = alias_args {
+                if let Some(ty) = map.get(name.name.as_str()) {
+                    return Some(ty.clone());
+                }
+            }
+            if let Some(var) = generics.and_then(|map| map.get(name.name.as_str())) {
+                return Some(Type::var(*var));
+            }
+            if let Some(binding) = resolver.env.lookup_type_decl(name.name.as_str()) {
+                return expand_type_alias(name, span, Vec::new(), generics, binding, resolver);
+            }
+            Some(Type::app(name.name.clone(), Vec::new()))
         }
         TypeKind::Literal { value } => match value {
             TypeLiteral::String { .. } => Some(Type::builtin(BuiltinType::Str)),
@@ -5295,11 +5712,20 @@ fn type_from_annotation_kind_with_generics(
         TypeKind::App { callee, args } => {
             let mut resolved_args = Vec::new();
             for arg in args {
-                if let Some(arg_ty) = type_from_annotation_kind_with_generics(&arg.kind, generics) {
+                if let Some(arg_ty) = type_from_annotation_kind_with_generics(
+                    &arg.kind,
+                    arg.span,
+                    generics,
+                    alias_args,
+                    resolver,
+                ) {
                     resolved_args.push(arg_ty);
                 } else {
                     return None;
                 }
+            }
+            if let Some(binding) = resolver.env.lookup_type_decl(callee.name.as_str()) {
+                return expand_type_alias(callee, span, resolved_args, generics, binding, resolver);
             }
             Some(Type::app(callee.name.clone(), resolved_args))
         }
@@ -5307,9 +5733,13 @@ fn type_from_annotation_kind_with_generics(
             let mut resolved = Vec::new();
             for variant in variants {
                 let ty = match variant {
-                    TypeUnionVariant::Type { ty } => {
-                        type_from_annotation_kind_with_generics(&ty.kind, generics)
-                    }
+                    TypeUnionVariant::Type { ty } => type_from_annotation_kind_with_generics(
+                        &ty.kind,
+                        ty.span,
+                        generics,
+                        alias_args,
+                        resolver,
+                    ),
                     TypeUnionVariant::Variant { .. } => None,
                 };
                 if let Some(ty) = ty {
@@ -5338,33 +5768,56 @@ fn type_from_annotation_kind_with_generics(
                 None
             }
         }
-        TypeKind::Slice { element } => {
-            type_from_annotation_kind_with_generics(&element.kind, generics).map(Type::slice)
-        }
-        TypeKind::Ref { target, mutable } => {
-            type_from_annotation_kind_with_generics(&target.kind, generics)
-                .map(|inner| Type::reference(inner, *mutable))
-        }
+        TypeKind::Slice { element } => type_from_annotation_kind_with_generics(
+            &element.kind,
+            element.span,
+            generics,
+            alias_args,
+            resolver,
+        )
+        .map(Type::slice),
+        TypeKind::Ref { target, mutable } => type_from_annotation_kind_with_generics(
+            &target.kind,
+            target.span,
+            generics,
+            alias_args,
+            resolver,
+        )
+        .map(|inner| Type::reference(inner, *mutable)),
         TypeKind::Fn { params, ret } => {
             let mut resolved_params = Vec::new();
             for param in params {
-                if let Some(param_ty) =
-                    type_from_annotation_kind_with_generics(&param.kind, generics)
-                {
+                if let Some(param_ty) = type_from_annotation_kind_with_generics(
+                    &param.kind,
+                    param.span,
+                    generics,
+                    alias_args,
+                    resolver,
+                ) {
                     resolved_params.push(param_ty);
                 } else {
                     return None;
                 }
             }
-            let resolved_ret = type_from_annotation_kind_with_generics(&ret.kind, generics)?;
+            let resolved_ret = type_from_annotation_kind_with_generics(
+                &ret.kind,
+                ret.span,
+                generics,
+                alias_args,
+                resolver,
+            )?;
             Some(Type::arrow(resolved_params, resolved_ret))
         }
         TypeKind::Tuple { elements } => {
             let mut resolved = Vec::new();
             for element in elements {
-                if let Some(ty) =
-                    type_from_annotation_kind_with_generics(&element.ty.kind, generics)
-                {
+                if let Some(ty) = type_from_annotation_kind_with_generics(
+                    &element.ty.kind,
+                    element.ty.span,
+                    generics,
+                    alias_args,
+                    resolver,
+                ) {
                     resolved.push(ty);
                 } else {
                     return None;
@@ -5375,8 +5828,13 @@ fn type_from_annotation_kind_with_generics(
         TypeKind::Record { fields } => {
             let mut resolved = Vec::new();
             for field in fields {
-                if let Some(ty) = type_from_annotation_kind_with_generics(&field.ty.kind, generics)
-                {
+                if let Some(ty) = type_from_annotation_kind_with_generics(
+                    &field.ty.kind,
+                    field.ty.span,
+                    generics,
+                    alias_args,
+                    resolver,
+                ) {
                     resolved.push(ty);
                 } else {
                     return None;
@@ -5384,8 +5842,42 @@ fn type_from_annotation_kind_with_generics(
             }
             Some(Type::app("Record", resolved))
         }
-        _ => None,
     }
+}
+
+fn expand_type_alias(
+    name: &Ident,
+    span: Span,
+    args: Vec<Type>,
+    generics: Option<&HashMap<String, TypeVariable>>,
+    binding: &TypeDeclBinding,
+    resolver: &mut TypeAliasResolver<'_>,
+) -> Option<Type> {
+    if binding.kind != TypeDeclKind::Alias {
+        return Some(Type::app(name.name.clone(), args));
+    }
+    let Some(TypeDeclBody::Alias { ty }) = binding.body.as_ref() else {
+        return Some(Type::app(name.name.clone(), args));
+    };
+    if binding.generics.len() != args.len() {
+        return Some(Type::app(name.name.clone(), args));
+    }
+    if !resolver.enter_alias(name, span) {
+        return Some(Type::app(name.name.clone(), args));
+    }
+    let mut alias_map = HashMap::new();
+    for (param, arg) in binding.generics.iter().zip(args.iter()) {
+        alias_map.insert(param.clone(), arg.clone());
+    }
+    let resolved = type_from_annotation_kind_with_generics(
+        &ty.kind,
+        ty.span,
+        generics,
+        Some(&alias_map),
+        resolver,
+    );
+    resolver.exit_alias();
+    resolved
 }
 
 fn insert_generic(map: &mut HashMap<String, TypeVariable>, name: &str, var_gen: &mut TypeVarGen) {
