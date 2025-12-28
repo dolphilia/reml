@@ -1,4 +1,4 @@
-fn Err.pretty(src: Str, e: ParseError, opts: PrettyOptions) -> String
+fn pretty(src: Str, e: ParseError, opts: PrettyOptions) -> String = todo
 
 type PrettyOptions = {
   max_expected: usize = 6,           // 一覧上限

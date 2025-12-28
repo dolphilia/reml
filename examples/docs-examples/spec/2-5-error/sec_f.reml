@@ -6,13 +6,13 @@ fn expectedRule(at: Span, name: Str) -> ParseError =
   Err.expected(at, {Rule(name)})
 
 // 混ぜる（farthest-first）
-fn merge(a: ParseError, b: ParseError) -> ParseError
+fn merge(a: ParseError, b: ParseError) -> ParseError = todo
 
 // 文脈を積む
-fn withContext(e: ParseError, label: Str) -> ParseError
+fn withContext(e: ParseError, label: Str) -> ParseError = todo
 
 // 表示
-fn pretty(src: Str, e: ParseError, o: PrettyOptions = {}) -> String
+fn pretty(src: Str, e: ParseError, o: PrettyOptions = {}) -> String = todo
 
 // IDE 連携
-fn toDiagnostics(src: Str, e: ParseError, o: PrettyOptions = {}) -> List<Diagnostic>
+fn toDiagnostics(src: Str, e: ParseError, o: PrettyOptions = {}) -> List<Diagnostic> = todo

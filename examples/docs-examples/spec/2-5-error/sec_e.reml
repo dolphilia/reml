@@ -1,1 +1,1 @@
-fn recover<T>(p: Parser<T>, until: Parser<()>, with: T) -> Parser<T>
+fn recover<T>(p: Parser<T>, until: Parser<()>, fallback: T) -> Parser<T> = todo

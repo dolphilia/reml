@@ -143,15 +143,15 @@
 ### docs/spec/2-5-error.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| A. 型（データモデル） | sec_a | examples/docs-examples/spec/2-5-error/sec_a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B-1. 単一パーサの失敗を作る | sec_b_1 | examples/docs-examples/spec/2-5-error/sec_b_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B-12. `Async.timeout` 由来の診断を統一する | sec_b_12 | examples/docs-examples/spec/2-5-error/sec_b_12.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C. 表示（pretty）と多言語 | sec_c | examples/docs-examples/spec/2-5-error/sec_c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| C-0. ParseError 診断プリセットの利用 | sec_c_0 | examples/docs-examples/spec/2-5-error/sec_c_0.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| E. `recover`（回復）の仕様 | sec_e | examples/docs-examples/spec/2-5-error/sec_e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| F. API（作る・混ぜる・見せる） | sec_f | examples/docs-examples/spec/2-5-error/sec_f.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| F-3. サンプル | sec_f_3-a | examples/docs-examples/spec/2-5-error/sec_f_3-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| F-3. サンプル | sec_f_3-b | examples/docs-examples/spec/2-5-error/sec_f_3-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| A. 型（データモデル） | sec_a | examples/docs-examples/spec/2-5-error/sec_a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B-1. 単一パーサの失敗を作る | sec_b_1 | examples/docs-examples/spec/2-5-error/sec_b_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B-12. `Async.timeout` 由来の診断を統一する | sec_b_12 | examples/docs-examples/spec/2-5-error/sec_b_12.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C. 表示（pretty）と多言語 | sec_c | examples/docs-examples/spec/2-5-error/sec_c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| C-0. ParseError 診断プリセットの利用 | sec_c_0 | examples/docs-examples/spec/2-5-error/sec_c_0.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| E. `recover`（回復）の仕様 | sec_e | examples/docs-examples/spec/2-5-error/sec_e.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| F. API（作る・混ぜる・見せる） | sec_f | examples/docs-examples/spec/2-5-error/sec_f.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| F-3. サンプル | sec_f_3-a | examples/docs-examples/spec/2-5-error/sec_f_3-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| F-3. サンプル | sec_f_3-b | examples/docs-examples/spec/2-5-error/sec_f_3-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/2-6-execution-strategy.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

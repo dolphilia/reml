@@ -1,3 +1,6 @@
-let mut diag = Err.pretty(src, parse_error, {});
-diag.extensions.insert("config.diff", diff.toJson());
-diag.extensions.insert("run_id", currentRunId());
+fn attach_diag_meta(src: Str, parse_error: ParseError, diff: Json) -> Diagnostic {
+  let diag = pretty(src, parse_error, PrettyOptions { locale = "ja" })
+  diag.extensions.insert("config.diff", diff.toJson())
+  diag.extensions.insert("run_id", currentRunId())
+  diag
+}

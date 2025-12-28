@@ -22,9 +22,9 @@ type Expectation =
   | Custom(Str)         // 任意メッセージ（ライブラリ拡張用）
 
 type FixIt =            // IDE 用 “その場で直せる” 提案
-  | Insert{ at: Span, text: Str }
-  | Replace{ at: Span, text: Str }
-  | Delete{ at: Span }
+  | Insert(Span, Str)
+  | Replace(Span, Str)
+  | Delete(Span)
 
 type Diagnostic = {
   severity: Severity,

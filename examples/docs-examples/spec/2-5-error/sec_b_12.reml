@@ -1,11 +1,15 @@
-let result = await Async.timeout(parse_stream(stream), 1.s);
-match result {
-  Ok(value) -> continue(value),
-  Err(e) -> {
-    if let Some(info) = e.timeout_info() {
-      let diag = Diagnostic::runtime_timeout(span, info);
-      return Err(Err.attach(parse_error, diag));
-    }
-    return Err(Err.attach(parse_error, e.into_diagnostic(span)));
-  }
+fn normalize_timeout<T>(stream: Stream<T>, parse_error: ParseError, span: Span) -> Result<T, ParseError> {
+  let result = await Async.timeout(parse_stream(stream), 1.s)
+  let outcome =
+    match result with
+    | Ok(value) -> Ok(value)
+    | Err(e) ->
+        match e.timeout_info() with
+        | Some(info) -> {
+            let diag = Diagnostic::runtime_timeout(span, info)
+            Err(Err.attach(parse_error, diag))
+          }
+        | None ->
+            Err(Err.attach(parse_error, e.into_diagnostic(span)))
+  outcome
 }

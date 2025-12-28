@@ -33,9 +33,9 @@ type Expectation =
   | Custom(Str)         // 任意メッセージ（ライブラリ拡張用）
 
 type FixIt =            // IDE 用 “その場で直せる” 提案
-  | Insert{ at: Span, text: Str }
-  | Replace{ at: Span, text: Str }
-  | Delete{ at: Span }
+  | Insert(Span, Str)
+  | Replace(Span, Str)
+  | Delete(Span)
 
 type Diagnostic = {
   severity: Severity,
@@ -93,8 +93,8 @@ type ParseError = {
 ### B-1. 単一パーサの失敗を作る
 
 ```reml
-fn Err.expected(at: Span, xs: Set<Expectation>) -> ParseError
-fn Err.custom(at: Span, msg: Str) -> ParseError
+fn expected(at: Span, xs: Set<Expectation>) -> ParseError = todo
+fn custom(at: Span, msg: Str) -> ParseError = todo
 ```
 
 ### B-2. 位置の順序（farthest-first）
@@ -224,16 +224,20 @@ let array =
 5. **後方互換ヘルパ**：旧 `TimeoutError` 型を受け取る API へ渡す必要がある場合は、`AsyncError::into_timeout_info()` を使用して `TimeoutInfo` を取り出し、`TimeoutError`（`#[deprecated]` エイリアス）へ変換する。新規コードでは直接 `AsyncError` を扱い、二重エラー構造を避ける。
 
 ```reml
-let result = await Async.timeout(parse_stream(stream), 1.s);
-match result {
-  Ok(value) -> continue(value),
-  Err(e) -> {
-    if let Some(info) = e.timeout_info() {
-      let diag = Diagnostic::runtime_timeout(span, info);
-      return Err(Err.attach(parse_error, diag));
-    }
-    return Err(Err.attach(parse_error, e.into_diagnostic(span)));
-  }
+fn normalize_timeout<T>(stream: Stream<T>, parse_error: ParseError, span: Span) -> Result<T, ParseError> {
+  let result = await Async.timeout(parse_stream(stream), 1.s)
+  let outcome =
+    match result with
+    | Ok(value) -> Ok(value)
+    | Err(e) ->
+        match e.timeout_info() with
+        | Some(info) -> {
+            let diag = Diagnostic::runtime_timeout(span, info)
+            Err(Err.attach(parse_error, diag))
+          }
+        | None ->
+            Err(Err.attach(parse_error, e.into_diagnostic(span)))
+  outcome
 }
 ```
 
@@ -277,7 +281,7 @@ CLI/LSP への出力では、上記キーに対応するメッセージ本文を
 ## C. 表示（pretty）と多言語
 
 ```reml
-fn Err.pretty(src: Str, e: ParseError, opts: PrettyOptions) -> String
+fn pretty(src: Str, e: ParseError, opts: PrettyOptions) -> String = todo
 
 type PrettyOptions = {
   max_expected: usize = 6,           // 一覧上限
@@ -305,11 +309,7 @@ type PrettyOptions = {
 - CLI/LSP 実装は `Diagnostic.extensions["parse"]` を描画し、`parse.expected_overview` や `parse.context_path` を UI 上のヒントやフィルタ条件として利用する。拡張が欠落していた場合はプリセットの適用漏れとして監査ログに記録し、テストで検出する。
 
 ```reml
-let diagnostics = Err.toDiagnostics(
-  source,
-  error,
-  Diag.parse_error_defaults("GraphQL schema"),
-);
+let diagnostics = toDiagnostics(source, error, parse_error_defaults("GraphQL schema"))
 ```
 
 この流れを統一すると、外部 DSL ブリッジや設定インポーターでも 0-1 §1.2（安全性）と §2.2（分かりやすいエラーメッセージ）が維持され、ロケール差分や監査トレーサビリティの漏れを防げる。
@@ -457,7 +457,7 @@ note: while parsing expression → term → factor
 ## E. `recover`（回復）の仕様
 
 ```reml
-fn recover<T>(p: Parser<T>, until: Parser<()>, with: T) -> Parser<T>
+fn recover<T>(p: Parser<T>, until: Parser<()>, fallback: T) -> Parser<T> = todo
 ```
 
 * `p` が失敗したら、**診断を残しつつ** `until` の位置（例：`";"` または行末）まで**読み捨て**、`with` を返す。
@@ -539,16 +539,16 @@ fn expectedRule(at: Span, name: Str) -> ParseError =
   Err.expected(at, {Rule(name)})
 
 // 混ぜる（farthest-first）
-fn merge(a: ParseError, b: ParseError) -> ParseError
+fn merge(a: ParseError, b: ParseError) -> ParseError = todo
 
 // 文脈を積む
-fn withContext(e: ParseError, label: Str) -> ParseError
+fn withContext(e: ParseError, label: Str) -> ParseError = todo
 
 // 表示
-fn pretty(src: Str, e: ParseError, o: PrettyOptions = {}) -> String
+fn pretty(src: Str, e: ParseError, o: PrettyOptions = {}) -> String = todo
 
 // IDE 連携
-fn toDiagnostics(src: Str, e: ParseError, o: PrettyOptions = {}) -> List<Diagnostic>
+fn toDiagnostics(src: Str, e: ParseError, o: PrettyOptions = {}) -> List<Diagnostic> = todo
 ```
 
 ### F-1. 拡張診断メタデータ
@@ -578,23 +578,27 @@ fn toDiagnostics(src: Str, e: ParseError, o: PrettyOptions = {}) -> List<Diagnos
 ### F-3. サンプル
 
 ```reml
-let mut diag = Err.pretty(src, parse_error, {});
-diag.extensions.insert("config.diff", diff.toJson());
-diag.extensions.insert("run_id", currentRunId());
+fn attach_diag_meta(src: Str, parse_error: ParseError, diff: Json) -> Diagnostic {
+  let diag = pretty(src, parse_error, PrettyOptions { locale = "ja" })
+  diag.extensions.insert("config.diff", diff.toJson())
+  diag.extensions.insert("run_id", currentRunId())
+  diag
+}
 ```
 
 ```reml
-fn toStructuredLog(diag: Diagnostic) -> Json = json!({
-  "event": "reml.error",
-  "domain": diag.domain,
-  "code": diag.code,
-  "severity": diag.severity,
-  "severity_hint": diag.severity_hint,
-  "message": diag.message,
-  "extensions": diag.extensions,
-  "notes": diag.notes,
-  "fixits": diag.fixits
-})
+fn toStructuredLog(diag: Diagnostic) -> Json =
+  toJson([
+    ("event", "reml.error"),
+    ("domain", diag.domain),
+    ("code", diag.code),
+    ("severity", diag.severity),
+    ("severity_hint", diag.severity_hint),
+    ("message", diag.message),
+    ("extensions", diag.extensions),
+    ("notes", diag.notes),
+    ("fixits", diag.fixits)
+  ])
 ```
 
 ---
