@@ -116,6 +116,8 @@ enum RawToken {
     KeywordType,
     #[token("struct")]
     KeywordStruct,
+    #[token("enum")]
+    KeywordEnum,
     #[token("alias")]
     KeywordAlias,
     #[token("new")]
@@ -515,6 +517,9 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             }
             Ok(RawToken::KeywordStruct) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordStruct, "struct")
+            }
+            Ok(RawToken::KeywordEnum) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordEnum, "enum")
             }
             Ok(RawToken::KeywordAlias) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordAlias, "alias")

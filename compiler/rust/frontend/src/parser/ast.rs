@@ -244,6 +244,7 @@ impl Decl {
             DeclKind::Effect(effect) => format!("effect {}", effect.name.name),
             DeclKind::Type { name, .. } => format!("type {}", name.name),
             DeclKind::Struct(decl) => format!("struct {}", decl.name.name),
+            DeclKind::Enum(decl) => format!("enum {}", decl.name.name),
             DeclKind::Trait(trait_decl) => format!("trait {}", trait_decl.name.name),
             DeclKind::Impl(impl_decl) => {
                 let mut label = String::from("impl");
@@ -293,6 +294,7 @@ pub enum DeclKind {
         span: Span,
     },
     Struct(StructDecl),
+    Enum(EnumDecl),
     Trait(TraitDecl),
     Impl(ImplDecl),
     Extern {
@@ -369,6 +371,20 @@ pub struct StructDecl {
     pub name: Ident,
     pub generics: Vec<Ident>,
     pub fields: Vec<TypeRecordField>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EnumDecl {
+    pub name: Ident,
+    pub generics: Vec<Ident>,
+    pub variants: Vec<EnumVariant>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EnumVariant {
+    pub name: Ident,
     pub span: Span,
 }
 

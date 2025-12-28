@@ -49,13 +49,13 @@ use ast::{
     ActivePatternDecl, Attribute, BinaryOp, ConductorArg, ConductorChannelRoute, ConductorDecl,
     ConductorDslDef, ConductorDslTail, ConductorEndpoint, ConductorExecutionBlock,
     ConductorMonitorTarget, ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind,
-    EffectAnnotation, EffectCall, EffectDecl, Expr, ExprKind, ExternItem, FixityKind, Function,
-    FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry, Ident, ImplDecl, ImplItem, IntBase,
-    Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath, OperationDecl, Param,
-    Pattern, PatternKind, PatternRecordField, RecordField, RelativeHead, SlicePatternItem, Stmt,
-    StmtKind, StringKind, StructDecl, TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeKind,
-    TypeLiteral, TypeRecordField, TypeTupleElement, UnaryOp, UseDecl, UseItem, UseTree, Visibility,
-    WherePredicate,
+    EffectAnnotation, EffectCall, EffectDecl, EnumDecl, EnumVariant, Expr, ExprKind, ExternItem,
+    FixityKind, Function, FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry, Ident,
+    ImplDecl, ImplItem, IntBase, Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath,
+    OperationDecl, Param, Pattern, PatternKind, PatternRecordField, RecordField, RelativeHead,
+    SlicePatternItem, Stmt, StmtKind, StringKind, StructDecl, TraitDecl, TraitItem, TraitRef,
+    TypeAnnot, TypeKind, TypeLiteral, TypeRecordField, TypeTupleElement, UnaryOp, UseDecl,
+    UseItem, UseTree, Visibility, WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -3911,6 +3911,51 @@ fn module_parser<'src>(
             decl
         });
 
+    let enum_variant = ident
+        .clone()
+        .map_with_span(|name, span: Range<usize>| EnumVariant {
+            name,
+            span: range_to_span(span),
+        });
+
+    let enum_variant_sep = just(TokenKind::Bar).or(just(TokenKind::Comma));
+
+    let enum_variant_list = enum_variant
+        .clone()
+        .separated_by(enum_variant_sep)
+        .allow_trailing()
+        .at_least(1);
+
+    let enum_variants = just(TokenKind::Bar)
+        .ignore_then(enum_variant_list.clone())
+        .or(enum_variant_list);
+
+    let enum_decl_raw = just(TokenKind::KeywordEnum)
+        .ignore_then(type_decl_name.clone())
+        .then_ignore(just(TokenKind::Assign))
+        .then(enum_variants)
+        .map_with_span(|((name, generics), variants), span: Range<usize>| Decl {
+            attrs: Vec::new(),
+            visibility: Visibility::Private,
+            span: range_to_span(span.clone()),
+            kind: DeclKind::Enum(EnumDecl {
+                name,
+                generics,
+                variants,
+                span: range_to_span(span),
+            }),
+        });
+
+    let enum_decl = attr_list
+        .clone()
+        .then(enum_decl_raw.clone())
+        .map(|(attrs, mut decl)| {
+            if !attrs.is_empty() {
+                decl.attrs = attrs;
+            }
+            decl
+        });
+
     let block_body_parser = {
         let stmt = build_stmt_parser(
             expr.clone(),
@@ -4489,6 +4534,7 @@ fn module_parser<'src>(
             impl_decl.clone().map(ModuleItem::Decl),
             type_decl.clone().map(ModuleItem::Decl),
             struct_decl.clone().map(ModuleItem::Decl),
+            enum_decl.clone().map(ModuleItem::Decl),
             extern_decl.clone().map(ModuleItem::Decl),
             const_decl.clone().map(ModuleItem::Decl),
             let_decl.clone().map(ModuleItem::Decl),
@@ -4633,6 +4679,7 @@ fn record_decl_trace_events(decl: &Decl, events: &mut Vec<ParserTraceEvent>) {
         | DeclKind::Fn { .. }
         | DeclKind::Type { .. }
         | DeclKind::Struct(_)
+        | DeclKind::Enum(_)
         | DeclKind::Trait(_)
         | DeclKind::Impl(_)
         | DeclKind::Extern { .. } => {}

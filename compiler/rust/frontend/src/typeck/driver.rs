@@ -15,10 +15,10 @@ use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSum
 use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
     Attribute, BinaryOp, ConductorDecl, ConductorMonitorTarget, Decl, DeclKind, EffectAnnotation,
-    EffectDecl, Expr, ExprKind, FixityKind, Function, HandlerDecl, HandlerEntry, Ident, ImplItem,
-    Literal, LiteralKind, MatchArm, Module, ModulePath, Param, Pattern, PatternKind, RelativeHead,
-    SlicePatternItem, Stmt, StmtKind, StructDecl, TraitDecl, TypeAnnot, TypeKind, TypeLiteral,
-    UnaryOp,
+    EffectDecl, EnumDecl, Expr, ExprKind, FixityKind, Function, HandlerDecl, HandlerEntry, Ident,
+    ImplItem, Literal, LiteralKind, MatchArm, Module, ModulePath, Param, Pattern, PatternKind,
+    RelativeHead, SlicePatternItem, Stmt, StmtKind, StructDecl, TraitDecl, TypeAnnot, TypeKind,
+    TypeLiteral, UnaryOp,
 };
 use crate::semantics::{mir, typed};
 use crate::span::Span;
@@ -4422,6 +4422,7 @@ fn collect_function_bindings(params: &[Param], body: &Expr) -> HashSet<String> {
                 DeclKind::Fn { name, .. }
                 | DeclKind::Type { name, .. }
                 | DeclKind::Struct(StructDecl { name, .. })
+                | DeclKind::Enum(EnumDecl { name, .. })
                 | DeclKind::Trait(TraitDecl { name, .. })
                 | DeclKind::Effect(EffectDecl { name, .. })
                 | DeclKind::Handler(HandlerDecl { name, .. })
@@ -4634,6 +4635,7 @@ fn detect_lambda_captures(
                 DeclKind::Fn { name, .. }
                 | DeclKind::Type { name, .. }
                 | DeclKind::Struct(StructDecl { name, .. })
+                | DeclKind::Enum(EnumDecl { name, .. })
                 | DeclKind::Trait(TraitDecl { name, .. })
                 | DeclKind::Effect(EffectDecl { name, .. })
                 | DeclKind::Handler(HandlerDecl { name, .. })
