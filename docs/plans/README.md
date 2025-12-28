@@ -70,5 +70,9 @@ Reml 実装ロードマップや運用計画を集約しています。
 - [1-2-build-integration-plan.md](ffi-improvement/1-2-build-integration-plan.md) — `reml build` 連携の設計・仕様化
 - [1-3-wasm-component-model-plan.md](ffi-improvement/1-3-wasm-component-model-plan.md) — WASM Component Model 調査・方針
 
+## Typeck 改善計画 (`docs/plans/typeck-improvement/`)
+- [README.md](typeck-improvement/README.md) — 型検査改善計画の目次
+- [1-0-type-decl-realization-plan.md](typeck-improvement/1-0-type-decl-realization-plan.md) — 型宣言実体化計画
+
 ---
 計画書を更新する際は、関連する仕様書やガイドのリンクが最新構成になっているか確認し、`docs-migrations.log` に必要な記録を追加してください。
