@@ -38,6 +38,16 @@
   - [ ] `examples/docs-examples/spec/` の `type` 宣言を列挙し、alias/newtype/sum の件数と代表例を記録する
   - [ ] 仕様書（`docs/spec/1-1-syntax.md` など）のサンプルと対応付ける
 
+#### フェーズ 0 調査メモ
+- Frontend AST: `compiler/rust/frontend/src/parser/ast.rs` の `TypeDecl` / `TypeDeclBody` が alias/newtype/sum を保持し、`TypeDeclVariantPayload` で record/tuple を表現する。`DeclKind::Type` で `type` 宣言を扱う。
+- Parser: `compiler/rust/frontend/src/parser/mod.rs` で `type alias` と `type <name> = new`、`type <name> = ... | ...` を構文解析する。
+- 型環境: `compiler/rust/frontend/src/typeck/env.rs` の `TypeDeclBinding` が `name/generics/kind/body/span` を保持し、`TypeEnv` は `IndexMap<String, TypeDeclBinding>` を名前キーで管理する（スコープは `enter_scope` による親チェーン）。
+- typeck 登録: `compiler/rust/frontend/src/typeck/driver.rs` の `register_type_decls` が `TypeDeclBody` から `TypeDeclKind` を決定し、sum 型は `TypeConstructorBinding` として variant 名を別管理する。
+- MIR/JSON: `compiler/rust/frontend/src/semantics/typed.rs` / `compiler/rust/frontend/src/semantics/mir.rs` に型宣言の保持はなく、`typeck/typed-ast.rust.json` と `typeck/mir.rust.json` には型宣言が出力されない。一方で `parse/ast.rust.json` は AST 由来で `TypeDecl` を含む。
+- Backend: `compiler/rust/backend/llvm/src/type_mapping.rs` の `RemlType` は alias/newtype を持たず、`compiler/rust/backend/llvm/src/integration.rs` の `parse_reml_type` はプリミティブ/参照/スライス/Set/文字列のみ対応（未知は `Pointer` にフォールバック）。`RemlType::Adt` はあるがパース経路がない。
+- Runtime: `runtime/native/include/reml_runtime.h` に `REML_TAG_ADT` はあるが newtype 固有タグはなく、現状は型タグ側の前提が最小限。
+- examples 内訳（簡易集計, `examples/docs-examples/spec/` 全 130 ブロック）: alias/opaque 99、sum 29、`type alias` 1、newtype 1。newtype は `examples/docs-examples/spec/1-1-syntax/sec_b_4-c.reml` の `type UserId = new { value: i64 }`、sum は `examples/docs-examples/spec/1-2-types-Inference/sec_a_2.reml` / `examples/docs-examples/spec/2-2-core-combinator/sec_c_1-a.reml` などに分布。
+
 ### フェーズ 1: IR 方針の決定（alias/newtype/sum）
 - alias は **展開後の型を IR に渡す** 方針を既定とする（レイアウト影響なし）。
 - newtype は **IR では内側の型へマップ**し、**名義情報はデバッグ/診断メタデータ**として保持する方針を検討する。
