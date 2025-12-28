@@ -1,7 +1,6 @@
 fn wasm_run<T>(p: Parser<T>, bytes: Bytes, cfg: RunConfig) -> Result<T, Diagnostic> = {
-  let mut wasm_cfg = cfg;
-  wasm_cfg.left_recursion = "off";
-  wasm_cfg.packrat = false; // メモリ制約に合わせる
-  wasm_cfg.extensions["target"].extra.insert("wasi", "preview2");
-  run(p, bytes, wasm_cfg)
+  let cfg = config_with_left_recursion(cfg, "off");
+  let cfg = config_with_packrat(cfg, false); // メモリ制約に合わせる
+  let cfg = config_with_target_extra(cfg, "wasi", "preview2");
+  run(p, bytes, cfg)
 }

@@ -156,15 +156,15 @@
 ### docs/spec/2-6-execution-strategy.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| A-1. ランナー API（外部インターフェイス） | sec_a_1 | examples/docs-examples/spec/2-6-execution-strategy/sec_a_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B-2. RunConfig のコアスイッチ | sec_b_2 | examples/docs-examples/spec/2-6-execution-strategy/sec_b_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B-2-1. ターゲット情報拡張 `extensions["target"]` | sec_b_2_1 | examples/docs-examples/spec/2-6-execution-strategy/sec_b_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| B-2-2. プラットフォーム適応設定サンプル | sec_b_2_2 | examples/docs-examples/spec/2-6-execution-strategy/sec_b_2_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| E-2. トレース・プロファイル（オプション） | sec_e_2 | examples/docs-examples/spec/2-6-execution-strategy/sec_e_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| F. Regex 実行連携 | sec_f | examples/docs-examples/spec/2-6-execution-strategy/sec_f.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| H.1 WASM / WASI | sec_h_1 | examples/docs-examples/spec/2-6-execution-strategy/sec_h_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| H.2 ARM64 / 組み込み | sec_h_2 | examples/docs-examples/spec/2-6-execution-strategy/sec_h_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| H.3 クラウドネイティブ / コンテナ | sec_h_3 | examples/docs-examples/spec/2-6-execution-strategy/sec_h_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| A-1. ランナー API（外部インターフェイス） | sec_a_1 | examples/docs-examples/spec/2-6-execution-strategy/sec_a_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B-2. RunConfig のコアスイッチ | sec_b_2 | examples/docs-examples/spec/2-6-execution-strategy/sec_b_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B-2-1. ターゲット情報拡張 `extensions["target"]` | sec_b_2_1 | examples/docs-examples/spec/2-6-execution-strategy/sec_b_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| B-2-2. プラットフォーム適応設定サンプル | sec_b_2_2 | examples/docs-examples/spec/2-6-execution-strategy/sec_b_2_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| E-2. トレース・プロファイル（オプション） | sec_e_2 | examples/docs-examples/spec/2-6-execution-strategy/sec_e_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| F. Regex 実行連携 | sec_f | examples/docs-examples/spec/2-6-execution-strategy/sec_f.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| H.1 WASM / WASI | sec_h_1 | examples/docs-examples/spec/2-6-execution-strategy/sec_h_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| H.2 ARM64 / 組み込み | sec_h_2 | examples/docs-examples/spec/2-6-execution-strategy/sec_h_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| H.3 クラウドネイティブ / コンテナ | sec_h_3 | examples/docs-examples/spec/2-6-execution-strategy/sec_h_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/2-7-core-parse-streaming.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

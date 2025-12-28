@@ -3,4 +3,4 @@ type TraceEvent =
   | ExitOk(ParserId, Span)
   | ExitErr(ParserId, ParseError)
 
-fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T>
+fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T> = todo

@@ -1,5 +1,13 @@
-fn container_profile(profile: &str) -> RunConfig = match profile {
-  | "serverless" -> RunConfig { packrat = false, merge_warnings = true, ..default }
-  | "latency"   -> RunConfig { packrat = true, left_recursion = "auto", ..default }
-  | _            -> default,
+fn container_profile(profile: &str) -> RunConfig = {
+  let base = default_run_config();
+  match profile with
+    | "serverless" ->
+        base
+          |> config_with_packrat(false)
+          |> config_with_merge_warnings(true)
+    | "latency" ->
+        base
+          |> config_with_packrat(true)
+          |> config_with_left_recursion("auto")
+    | _ -> base
 }

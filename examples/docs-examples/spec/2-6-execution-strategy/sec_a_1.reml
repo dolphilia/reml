@@ -1,2 +1,2 @@
-fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T>
-fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResultWithRest<T>
+fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T> = todo
+fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResultWithRest<T> = todo

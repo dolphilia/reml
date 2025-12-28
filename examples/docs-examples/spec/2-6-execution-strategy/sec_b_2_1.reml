@@ -15,4 +15,4 @@ type RunConfigTarget = {
   extra: Map<Str, Str>
 }
 
-RunConfig.extensions["target"] = RunConfigTarget
+// RunConfig.extensions["target"] = RunConfigTarget

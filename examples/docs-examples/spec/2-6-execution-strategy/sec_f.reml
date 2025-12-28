@@ -1,10 +1,10 @@
 type RegexRunConfig = {
-  engine: RegexEngineMode = "auto",
-  memo: RegexMemoPolicy = "auto",
+  engine: RegexEngineMode = RegexEngineMode::Auto,
+  memo: RegexMemoPolicy = RegexMemoPolicy::Auto,
   unicode_profile: Option<UnicodeClassProfile> = None,
   max_backtrack_depth: usize = 256,
   timeout: Option<Duration> = None,
 }
 
-enum RegexEngineMode = "nfa" | "dfa" | "jit" | "auto"
-enum RegexMemoPolicy = "auto" | "force" | "off"
+type RegexEngineMode = Nfa | Dfa | Jit | Auto
+type RegexMemoPolicy = Auto | Force | Off

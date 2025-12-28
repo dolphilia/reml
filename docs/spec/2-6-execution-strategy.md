@@ -10,8 +10,8 @@
 ### A-1. ランナー API（外部インターフェイス）
 
 ```reml
-fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T>
-fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResultWithRest<T>
+fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T> = todo
+fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResultWithRest<T> = todo
 ```
 
 * `ParseResult` は 2.1 節と同様、成功時の値と診断をまとめて返す。
@@ -108,7 +108,7 @@ type RunConfigTarget = {
   extra: Map<Str, Str>
 }
 
-RunConfig.extensions["target"] = RunConfigTarget
+// RunConfig.extensions["target"] = RunConfigTarget
 ```
 
 この定義は 1-2 §C.7 の型検査仕様と同一であり、フィールドの増減は両章で同時に更新する。
@@ -143,18 +143,23 @@ type RunArtifactMetadata = {
 ```reml
 fn specialise_config(profile: BuildProfile) -> RunConfig = {
   let info = platform_info();
-  let mut cfg = RunConfig { extensions = { "target": default_target(profile) } };
-  if has_capability(RuntimeCapability::SIMD) {
-    cfg.packrat = true;
+  let packrat = has_capability(RuntimeCapability::SIMD);
+  let merge_warnings =
+    if platform_features().contains("io.blocking.strict") then false else true;
+  let left_recursion =
+    if info.family == TargetFamily::Wasm then "off" else "auto";
+  let base_target = default_target(profile);
+  let target =
+    if platform_features().contains("io.blocking.strict") then
+      target_with_extra(base_target, "io.blocking", "strict")
+    else
+      base_target;
+  RunConfig {
+    packrat = packrat,
+    merge_warnings = merge_warnings,
+    left_recursion = left_recursion,
+    extensions = Map::empty().insert("target", target)
   }
-  if platform_features().contains("io.blocking.strict") {
-    cfg.extensions["target"].extra.insert("io.blocking", "strict");
-    cfg.merge_warnings = false; // ブロッキング時の警告を逐次報告
-  }
-  if info.family == TargetFamily::Wasm {
-    cfg.left_recursion = "off";
-  }
-  cfg
 }
 ```
 
@@ -235,7 +240,7 @@ type TraceEvent =
   | ExitOk(ParserId, Span)
   | ExitErr(ParserId, ParseError)
 
-fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T>
+fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T> = todo
 ```
 
 * `cfg.trace=true` で **SpanTrace** と **イベントフック**を活性化。
@@ -253,15 +258,15 @@ fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T>
 
 ```reml
 type RegexRunConfig = {
-  engine: RegexEngineMode = "auto",
-  memo: RegexMemoPolicy = "auto",
+  engine: RegexEngineMode = RegexEngineMode::Auto,
+  memo: RegexMemoPolicy = RegexMemoPolicy::Auto,
   unicode_profile: Option<UnicodeClassProfile> = None,
   max_backtrack_depth: usize = 256,
   timeout: Option<Duration> = None,
 }
 
-enum RegexEngineMode = "nfa" | "dfa" | "jit" | "auto"
-enum RegexMemoPolicy = "auto" | "force" | "off"
+type RegexEngineMode = Nfa | Dfa | Jit | Auto
+type RegexMemoPolicy = Auto | Force | Off
 ```
 
 * **エンジン選択**: `engine = "auto"` は [3.8 §1.4](3-8-core-runtime-capability.md#regex-capability) の Capability を参照し、`RegexJit` が利用可能で `PatternFlags::Jit` が指定されたときのみ JIT を起動する。Capability が無い場合は `nfa` を選ぶ。
@@ -290,11 +295,10 @@ enum RegexMemoPolicy = "auto" | "force" | "off"
 
 ```reml
 fn wasm_run<T>(p: Parser<T>, bytes: Bytes, cfg: RunConfig) -> Result<T, Diagnostic> = {
-  let mut wasm_cfg = cfg;
-  wasm_cfg.left_recursion = "off";
-  wasm_cfg.packrat = false; // メモリ制約に合わせる
-  wasm_cfg.extensions["target"].extra.insert("wasi", "preview2");
-  run(p, bytes, wasm_cfg)
+  let cfg = config_with_left_recursion(cfg, "off");
+  let cfg = config_with_packrat(cfg, false); // メモリ制約に合わせる
+  let cfg = config_with_target_extra(cfg, "wasi", "preview2");
+  run(p, bytes, cfg)
 }
 ```
 
@@ -305,9 +309,8 @@ fn wasm_run<T>(p: Parser<T>, bytes: Bytes, cfg: RunConfig) -> Result<T, Diagnost
 
 ```reml
 fn specialise_for_arm64(cfg: RunConfig) -> RunConfig = {
-  let mut cfg = cfg;
-  cfg.extensions["target"].extra.insert("cache_policy", "conservative");
-  cfg.merge_warnings = false; // フラッシュ遅延を即時通知
+  let cfg = config_with_target_extra(cfg, "cache_policy", "conservative");
+  let cfg = config_with_merge_warnings(cfg, false); // フラッシュ遅延を即時通知
   cfg
 }
 ```
@@ -317,10 +320,18 @@ fn specialise_for_arm64(cfg: RunConfig) -> RunConfig = {
 ### H.3 クラウドネイティブ / コンテナ
 
 ```reml
-fn container_profile(profile: &str) -> RunConfig = match profile {
-  | "serverless" -> RunConfig { packrat = false, merge_warnings = true, ..default }
-  | "latency"   -> RunConfig { packrat = true, left_recursion = "auto", ..default }
-  | _            -> default,
+fn container_profile(profile: &str) -> RunConfig = {
+  let base = default_run_config();
+  match profile with
+    | "serverless" ->
+        base
+          |> config_with_packrat(false)
+          |> config_with_merge_warnings(true)
+    | "latency" ->
+        base
+          |> config_with_packrat(true)
+          |> config_with_left_recursion("auto")
+    | _ -> base
 }
 ```
 
