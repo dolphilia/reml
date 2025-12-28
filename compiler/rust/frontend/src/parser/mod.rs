@@ -1415,6 +1415,18 @@ fn collect_rec_lambda_diagnostics(module: &Module, diagnostics: &mut Vec<Fronten
             ExprKind::Loop { body }
             | ExprKind::Unsafe { body }
             | ExprKind::Defer { body } => walk_expr(body, diagnostics),
+            ExprKind::Block {
+                statements,
+                defers,
+                ..
+            } => {
+                for stmt in statements {
+                    walk_stmt(stmt, diagnostics);
+                }
+                for defer in defers {
+                    walk_expr(defer, diagnostics);
+                }
+            }
             ExprKind::Break { value: None }
             | ExprKind::Return { value: None }
             | ExprKind::Continue

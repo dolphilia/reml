@@ -47,6 +47,14 @@ pub struct TypedParam {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct TypedLambdaCapture {
+    pub name: String,
+    pub span: Span,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub mutable: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ActivePatternKind {
     Partial,
@@ -177,6 +185,19 @@ pub enum TypedExprKind {
     Call {
         callee: Box<TypedExpr>,
         args: Vec<TypedExpr>,
+    },
+    Lambda {
+        params: Vec<TypedParam>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        return_annotation: Option<String>,
+        body: Box<TypedExpr>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        captures: Vec<TypedLambdaCapture>,
+    },
+    Rec {
+        target: Box<TypedExpr>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        ident: Option<Ident>,
     },
     Block {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]

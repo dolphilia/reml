@@ -3046,14 +3046,17 @@ fn infer_expr(
             )
         }
         ExprKind::Rec { expr: inner } => {
-            if let ExprKind::Identifier(ident) = &inner.kind {
+            let ident = if let ExprKind::Identifier(ident) = &inner.kind {
                 if env.lookup(ident.name.as_str()).is_none() {
                     violations.push(TypecheckViolation::rec_unresolved_ident(
                         ident.span,
                         ident.name.as_str(),
                     ));
                 }
-            }
+                Some(ident.clone())
+            } else {
+                None
+            };
             let result = infer_expr(
                 inner,
                 env,
@@ -3067,31 +3070,53 @@ fn infer_expr(
                 loop_context,
                 context,
             );
+            let dicts = result.dict_ref_ids.clone();
+            let ty = result.ty.clone();
             make_typed(
                 expr,
-                TypedExprKindDraft::Unknown,
-                result.ty.clone(),
-                result.dict_ref_ids.clone(),
+                TypedExprKindDraft::Rec {
+                    target: Box::new(result),
+                    ident,
+                },
+                ty,
+                dicts,
             )
         }
-        ExprKind::Lambda { params, body, .. } => {
+        ExprKind::Lambda {
+            params,
+            ret_type,
+            body,
+            ..
+        } => {
             let capture_report = if stats.local_bindings.is_empty() {
                 None
             } else {
                 Some(detect_lambda_captures(body, params, &stats.local_bindings))
             };
+            let mut captures = Vec::new();
             if let Some(report) = capture_report {
                 for (name, span) in report.captures {
                     violations.push(TypecheckViolation::lambda_capture_unsupported(span, &name));
+                    captures.push(typed::TypedLambdaCapture {
+                        name,
+                        span,
+                        mutable: false,
+                    });
                 }
                 for (name, span) in report.mut_captures {
                     violations.push(TypecheckViolation::lambda_capture_mut_unsupported(
                         span, &name,
                     ));
+                    captures.push(typed::TypedLambdaCapture {
+                        name,
+                        span,
+                        mutable: true,
+                    });
                 }
             }
             let mut lambda_env = env.enter_scope();
             let mut param_types = Vec::new();
+            let mut param_bindings = Vec::new();
             for param in params {
                 let ty = param
                     .type_annotation
@@ -3100,7 +3125,13 @@ fn infer_expr(
                     .unwrap_or_else(|| var_gen.fresh_type());
                 let scheme = Scheme::simple(ty.clone());
                 bind_pattern_to_env(&param.pattern, &scheme, &mut lambda_env, var_gen);
-                param_types.push(ty);
+                param_types.push(ty.clone());
+                param_bindings.push(ParamBinding {
+                    display: param.pattern.render(),
+                    span: param.span,
+                    ty,
+                    annotation: param.type_annotation.as_ref().map(|annot| annot.render()),
+                });
             }
             let body_result = infer_expr(
                 body,
@@ -3116,11 +3147,17 @@ fn infer_expr(
                 context,
             );
             let lambda_ty = Type::arrow(param_types, body_result.ty.clone());
+            let dicts = body_result.dict_ref_ids.clone();
             make_typed(
                 expr,
-                TypedExprKindDraft::Unknown,
+                TypedExprKindDraft::Lambda {
+                    params: param_bindings,
+                    return_annotation: ret_type.as_ref().map(|ty| ty.render()),
+                    body: Box::new(body_result),
+                    captures,
+                },
                 lambda_ty,
-                body_result.dict_ref_ids,
+                dicts,
             )
         }
         _ => make_typed(
@@ -5302,6 +5339,12 @@ enum TypedExprKindDraft {
         callee: Box<TypedExprDraft>,
         args: Vec<TypedExprDraft>,
     },
+    Lambda {
+        params: Vec<ParamBinding>,
+        return_annotation: Option<String>,
+        body: Box<TypedExprDraft>,
+        captures: Vec<typed::TypedLambdaCapture>,
+    },
     Binary {
         operator: String,
         left: Box<TypedExprDraft>,
@@ -5314,6 +5357,10 @@ enum TypedExprKindDraft {
         condition: Box<TypedExprDraft>,
         then_branch: Box<TypedExprDraft>,
         else_branch: Box<TypedExprDraft>,
+    },
+    Rec {
+        target: Box<TypedExprDraft>,
+        ident: Option<Ident>,
     },
     Unknown,
 }
@@ -5339,6 +5386,7 @@ struct DictRefDraft {
     ty: Type,
 }
 
+#[derive(Clone)]
 struct ParamBinding {
     display: String,
     span: Span,
@@ -5512,6 +5560,25 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
                 .map(|arg| finalize_typed_expr(arg, substitution))
                 .collect(),
         },
+        TypedExprKindDraft::Lambda {
+            params,
+            return_annotation,
+            body,
+            captures,
+        } => typed::TypedExprKind::Lambda {
+            params: params
+                .into_iter()
+                .map(|binding| typed::TypedParam {
+                    name: binding.display,
+                    span: binding.span,
+                    ty: substitution.apply(&binding.ty).label(),
+                    annotation: binding.annotation,
+                })
+                .collect(),
+            return_annotation,
+            body: Box::new(finalize_typed_expr(*body, substitution)),
+            captures,
+        },
         TypedExprKindDraft::PerformCall { call } => typed::TypedExprKind::PerformCall {
             call: typed::TypedEffectCall {
                 effect: call.effect,
@@ -5526,6 +5593,10 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
             condition: Box::new(finalize_typed_expr(*condition, substitution)),
             then_branch: Box::new(finalize_typed_expr(*then_branch, substitution)),
             else_branch: Box::new(finalize_typed_expr(*else_branch, substitution)),
+        },
+        TypedExprKindDraft::Rec { target, ident } => typed::TypedExprKind::Rec {
+            target: Box::new(finalize_typed_expr(*target, substitution)),
+            ident,
         },
         TypedExprKindDraft::Unknown => typed::TypedExprKind::Unknown,
     };

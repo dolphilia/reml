@@ -365,6 +365,18 @@ enum MirExprKindJson {
         #[serde(default)]
         argument: Option<usize>,
     },
+    Lambda {
+        #[serde(default)]
+        params: Vec<MirLambdaParamJson>,
+        body: usize,
+        #[serde(default)]
+        captures: Vec<MirLambdaCaptureJson>,
+    },
+    Rec {
+        target: usize,
+        #[serde(default)]
+        ident: Option<Value>,
+    },
     Match {
         target: usize,
         #[serde(default)]
@@ -406,6 +418,22 @@ enum MirExprKindJson {
         value: Value,
     },
     Unknown,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirLambdaParamJson {
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    ty: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirLambdaCaptureJson {
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    mutable: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -621,6 +649,8 @@ fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
         MirExprKindJson::Return { value } => MirExprKind::Return { value },
         MirExprKindJson::Propagate { expr } => MirExprKind::Propagate { expr },
         MirExprKindJson::Panic { argument } => MirExprKind::Panic { argument },
+        MirExprKindJson::Lambda { .. } => MirExprKind::Unknown,
+        MirExprKindJson::Rec { .. } => MirExprKind::Unknown,
         MirExprKindJson::Match {
             target,
             arms,

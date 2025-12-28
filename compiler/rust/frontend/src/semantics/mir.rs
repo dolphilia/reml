@@ -4,7 +4,7 @@ use crate::parser::ast::{Ident, Literal};
 use crate::semantics::typed;
 use crate::span::Span;
 
-pub const MIR_SCHEMA_VERSION: &str = "frontend-mir/0.1";
+pub const MIR_SCHEMA_VERSION: &str = "frontend-mir/0.2";
 
 pub type MirExprId = usize;
 
@@ -139,6 +139,14 @@ pub struct MirParam {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct MirLambdaCapture {
+    pub name: String,
+    pub span: Span,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub mutable: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct MirExpr {
     pub id: MirExprId,
     pub span: Span,
@@ -183,6 +191,17 @@ pub enum MirExprKind {
     Call {
         callee: MirExprId,
         args: Vec<MirExprId>,
+    },
+    Lambda {
+        params: Vec<MirParam>,
+        body: MirExprId,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        captures: Vec<MirLambdaCapture>,
+    },
+    Rec {
+        target: MirExprId,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        ident: Option<Ident>,
     },
     Block {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -532,6 +551,34 @@ impl MirExprBuilder {
                     }
                 }
             }
+            typed::TypedExprKind::Lambda {
+                params,
+                body,
+                captures,
+                ..
+            } => MirExprKind::Lambda {
+                params: params
+                    .iter()
+                    .map(|param| MirParam {
+                        name: param.name.clone(),
+                        span: param.span,
+                        ty: normalize_mir_type_label(&param.ty),
+                    })
+                    .collect(),
+                body: self.lower_expr(body),
+                captures: captures
+                    .iter()
+                    .map(|capture| MirLambdaCapture {
+                        name: capture.name.clone(),
+                        span: capture.span,
+                        mutable: capture.mutable,
+                    })
+                    .collect(),
+            },
+            typed::TypedExprKind::Rec { target, ident } => MirExprKind::Rec {
+                target: self.lower_expr(target),
+                ident: ident.clone(),
+            },
             typed::TypedExprKind::Block {
                 statements,
                 tail,
@@ -1006,6 +1053,12 @@ fn collect_match_lowerings_from_expr(
             collect_match_lowerings_from_expr(condition, owner, plans);
             collect_match_lowerings_from_expr(then_branch, owner, plans);
             collect_match_lowerings_from_expr(else_branch, owner, plans);
+        }
+        typed::TypedExprKind::Lambda { body, .. } => {
+            collect_match_lowerings_from_expr(body, owner, plans);
+        }
+        typed::TypedExprKind::Rec { target, .. } => {
+            collect_match_lowerings_from_expr(target, owner, plans);
         }
         typed::TypedExprKind::Block {
             statements,

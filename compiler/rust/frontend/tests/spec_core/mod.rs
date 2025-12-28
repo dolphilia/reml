@@ -1075,6 +1075,7 @@ fn expr_contains_array(expr: &Expr) -> bool {
             expr_contains_array(left) || expr_contains_array(right)
         }
         ExprKind::Unary { expr: inner, .. } => expr_contains_array(inner),
+        ExprKind::Rec { expr: inner } => expr_contains_array(inner),
         ExprKind::FieldAccess { target, .. } | ExprKind::TupleAccess { target, .. } => {
             expr_contains_array(target)
         }
@@ -1115,7 +1116,6 @@ fn expr_contains_array(expr: &Expr) -> bool {
         ExprKind::Break { value } => value
             .as_ref()
             .map_or(false, |expr| expr_contains_array(expr)),
-        ExprKind::Identifier(_) | ExprKind::ModulePath(_) | ExprKind::Continue => false,
     }
 }
 
