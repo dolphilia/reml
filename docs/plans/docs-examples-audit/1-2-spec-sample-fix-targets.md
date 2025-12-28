@@ -180,6 +180,7 @@
 | G-1. StreamMeta | sec_g_1 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_g_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-1-core-prelude-iteration.md
+フェーズ 3 の正準例復元まで対応済み（2025-12-27）。
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2.1 型定義 | sec_2_1 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |

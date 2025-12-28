@@ -1,13 +1,11 @@
-fn __rustcap_guard__(unit: Int) = unit
-
 @must_use
-type Option<T> =
+pub type Option<T> =
   | Some(value: T)
   | None
 
 @must_use
-type Result<T, E> =
+pub type Result<T, E> =
   | Ok(value: T)
   | Err(error: E)
 
-type Never = () // 空集合を示す記号的型。実体化不可。
+pub type Never = Result<Never, Never> // 空集合を示す記号的型。実体化不可。
