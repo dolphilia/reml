@@ -47,6 +47,11 @@
 | 07:26 | `for file in examples/docs-examples/spec/2-1-parser-type/sec_*.reml; do compiler/rust/frontend/target/debug/reml_frontend "$file"; done` | ✅ 対象 7 件 diagnostics 0 件 | `sec_a` / `sec_c` / `sec_d` / `sec_clilsp` を復元済みのまま通過。`reports/spec-audit/ch2/docs-examples-fix-notes-20251224.md` に追記。 |
 | 07:27 | `cargo test --manifest-path compiler/rust/frontend/Cargo.toml` | ❌ `lexer_unicode_identifier` 2 件失敗 | `unicode_identifier_error_matrix` が `UnknownToken`、`unicode_identifier_success_matrix` が未定義トークンで失敗。 |
 
+## 2025-12-27 docs-examples-audit 型宣言レイアウト整合チェック
+| JST 時刻 | コマンド | 結果 | 備考 |
+|----------|----------|------|------|
+| 16:10 | 手動整理（type 宣言の影響範囲棚卸し） | ✅ 起票 | 追跡 ID: `TYPEDECL-20251227-01`。`docs/plans/docs-examples-audit/1-7-backend-runtime-type-decl-layout-plan-20251227.md` に alias/newtype/sum 対象一覧と優先度を反映。 |
+
 ## Rust ツールチェーン更新（stable 版の確定）
 - `rust-toolchain.toml` を追加し、`channel = "stable"` と `components = ["rustfmt", "clippy"]` を設定。
 - `rustup` を導入して `rustup update stable` を実行し、`rustc 1.92.0 (ded5c06cf 2025-12-08)` を stable として確定。

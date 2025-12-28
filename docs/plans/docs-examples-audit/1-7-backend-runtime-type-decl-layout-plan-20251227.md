@@ -84,15 +84,93 @@
 ### フェーズ 3: docs-examples-audit の整合チェック
 - 影響が出る `.reml` を `docs-examples-audit` の検証対象としてマークする。
 - IR 形状やレイアウトが変わる場合は、検証手順・期待値を追記する。
-  - [ ] alias/newtype/sum の `.reml` を一覧化し、検証優先度（高/中/低）と理由を付与する
-  - [ ] 変更が必要な場合は `reports/spec-audit/summary.md` に起票メモを残し、追跡 ID を付ける
-  - [ ] 代表ケースの `.reml` を追加または更新する（必要時）うえで、検証観点（型名/展開/タグ）を明記する
+  - [x] alias/newtype/sum の `.reml` を一覧化し、検証優先度（高/中/低）と理由を付与する
+  - [x] 変更が必要な場合は `reports/spec-audit/summary.md` に起票メモを残し、追跡 ID を付ける
+  - [x] 代表ケースの `.reml` を追加または更新する（必要時）うえで、検証観点（型名/展開/タグ）を明記する
+
+#### フェーズ 3 整合チェック対象一覧
+| 優先度 | .reml パス | 種別 | 型宣言（種別） | 理由 |
+| --- | --- | --- | --- | --- |
+| 高 | examples/docs-examples/spec/1-1-syntax/sec_b_4-c.reml | alias, newtype, sum | Expr(sum), Bytes(alias), UserId(newtype) | コア仕様の newtype/ADT で IR レイアウト影響が出るため |
+| 高 | examples/docs-examples/spec/1-1-syntax/sec_b_8_5.reml | alias, sum | ConductorCapabilityRequirement(alias), StageRequirement(sum) | コア仕様の newtype/ADT で IR レイアウト影響が出るため |
+| 高 | examples/docs-examples/spec/1-1-syntax/sec_e_2.reml | sum | Option(sum) | コア仕様の newtype/ADT で IR レイアウト影響が出るため |
+| 高 | examples/docs-examples/spec/1-1-syntax/sec_g.reml | sum | Expr(sum) | コア仕様の newtype/ADT で IR レイアウト影響が出るため |
+| 高 | examples/docs-examples/spec/1-2-types-Inference/sec_a_2.reml | sum | Option(sum), Result(sum) | コア仕様の newtype/ADT で IR レイアウト影響が出るため |
+| 低 | examples/docs-examples/spec/1-2-types-Inference/sec_c_8.reml | alias | RunConfigTarget(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/1-2-types-Inference/sec_f.reml | alias | Parser(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/1-2-types-Inference/sec_g.reml | alias | DslCapabilityRequirement(alias), DslStageBounds(alias), DslExportSignature(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/1-4-test-unicode-model/sec_i.reml | alias | UnicodeApi(alias), Collator(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 中 | examples/docs-examples/spec/2-1-parser-type/sec_a.reml | alias, sum | Parser(alias), Reply(sum), ParseResult(alias), State(alias) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 低 | examples/docs-examples/spec/2-1-parser-type/sec_b.reml | alias | Input(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/2-1-parser-type/sec_c.reml | alias | Span(alias), SpanTrace(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/2-1-parser-type/sec_d.reml | alias | RunConfig(alias), RunConfigExtensions(alias), ParserId(alias), MemoKey(alias), MemoVal(alias), MemoTable(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/2-1-parser-type/sec_f.reml | alias | ParseError(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/2-1-parser-type/sec_g.reml | alias | ParseResultWithRest(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 中 | examples/docs-examples/spec/2-2-core-combinator/sec_b_2.reml | alias, sum | AutoWhitespaceConfig(alias), AutoWhitespaceStrategy(sum) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 低 | examples/docs-examples/spec/2-2-core-combinator/sec_b_3.reml | alias | ParserProfile(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 中 | examples/docs-examples/spec/2-2-core-combinator/sec_c_1-a.reml | alias, sum | CstNode(alias), CstChild(sum), Trivia(alias), TriviaKind(sum) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 中 | examples/docs-examples/spec/2-2-core-combinator/sec_c_1-b.reml | alias, sum | ExprOpLevel(alias), ExprBuilderConfig(alias), ExprCommit(sum) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 低 | examples/docs-examples/spec/2-2-core-combinator/sec_c_2.reml | alias | CstOutput(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 中 | examples/docs-examples/spec/2-2-core-combinator/sec_c_5.reml | alias, sum | EmbeddedDslSpec(alias), EmbeddedMode(sum), ContextBridge(sum), ContextBridgePayload(alias), ContextBridgeHandler(alias), EmbeddedNode(alias) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 中 | examples/docs-examples/spec/2-2-core-combinator/sec_g_1.reml | alias, sum | ParserMetaKind(sum), ParserMeta(alias) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 低 | examples/docs-examples/spec/2-3-lexer/sec_d_1.reml | alias | IdentifierProfile(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/2-3-lexer/sec_e_1.reml | alias | NumericOverflow(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/2-3-lexer/sec_g_1.reml | alias | ConfigTriviaProfile(alias), CommentPair(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/2-3-lexer/sec_h_2.reml | alias | LayoutProfile(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/2-4-op-builder/sec_a_2.reml | alias | Ternary(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 中 | examples/docs-examples/spec/2-5-error/sec_a.reml | alias, sum | Severity(sum), SeverityHint(sum), ErrorDomain(sum), Expectation(sum), FixIt(sum), Diagnostic(alias), ExpectationSummary(alias), ParseError(alias) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 低 | examples/docs-examples/spec/2-5-error/sec_c.reml | alias | PrettyOptions(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/2-6-execution-strategy/sec_b_2.reml | alias | RunConfig(alias), RunConfigExtensions(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/2-6-execution-strategy/sec_b_2_1.reml | alias | RunConfigTarget(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/2-6-execution-strategy/sec_b_2_1_a.reml | alias | RunArtifactMetadata(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/2-6-execution-strategy/sec_c_1.reml | alias | ParserId(alias), MemoKey(alias), MemoVal(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 中 | examples/docs-examples/spec/2-6-execution-strategy/sec_e_2.reml | sum | TraceEvent(sum) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 中 | examples/docs-examples/spec/2-6-execution-strategy/sec_f.reml | alias, sum | RegexRunConfig(alias), RegexEngineMode(sum), RegexMemoPolicy(sum) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 中 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_a_1-b.reml | sum | StreamOutcome(sum) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 低 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_a_2.reml | alias | StreamingConfig(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 中 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_b_1.reml | alias, sum | DemandHint(alias), FeederYield(sum), Chunk(alias), Await(alias), Closed(alias), FeederError(alias) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 低 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_b_2.reml | alias | StreamError(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_c_1.reml | alias | Continuation(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 中 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_d.reml | alias, sum | FlowController(alias), FlowPolicy(sum), Demand(alias) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 中 | examples/docs-examples/spec/2-7-core-parse-streaming/sec_e.reml | alias, sum | StreamDiagnosticHook(alias), StreamEvent(sum) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 低 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_3_4.reml | alias | Error(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/3-1-core-prelude-iteration/sec_4_2.reml | alias | Error(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/3-13-core-text-pretty/sec_2.reml | alias | CstPrinter(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 中 | examples/docs-examples/spec/3-3-core-text-unicode/sec_10_1.reml | alias, sum | RegexOptions(sum), RegexRunMode(alias), RegexMatch(alias), RegexError(sum), UnicodeClassProfile(alias), UnicodeSet(alias) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 中 | examples/docs-examples/spec/3-3-core-text-unicode/sec_3_1.reml | alias, sum | UnicodeError(alias), UnicodeErrorKind(sum) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 低 | examples/docs-examples/spec/3-3-core-text-unicode/sec_4_1_1.reml | alias | IndexCache(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/3-3-core-text-unicode/sec_4_2.reml | alias | RegexHandle(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/3-3-core-text-unicode/sec_6.reml | alias | TextBuilder(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 中 | examples/docs-examples/spec/3-3-core-text-unicode/sec_9.reml | sum | Token(sum) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 低 | examples/docs-examples/spec/3-5-core-io-path/sec_3_1.reml | alias | BufferedReader(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 中 | examples/docs-examples/spec/3-5-core-io-path/sec_4_4-a.reml | sum | WatchEvent(sum) | ADT のタグ/ペイロード計算の確認が必要なため |
+| 低 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_11.reml | alias | CliDiagnosticEnvelope(alias), CliSummary(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_1_3.reml | alias | EffectsExtension(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_2.reml | alias | ParseDiagnosticOptions(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_3.reml | alias | DiagnosticCatalog(alias), DiagnosticTemplate(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_5.reml | alias | AsyncDiagnosticExtension(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_6.reml | alias | PreludeGuardExtension(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/3-7-core-config-data/sec_1_1.reml | alias | Manifest(alias), ProjectSection(alias), DslEntry(alias), DslExportRef(alias), BuildSection(alias), RegistrySection(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/3-7-core-config-data/sec_1_5.reml | alias | ConfigCompatibility(alias) | alias 展開のみでレイアウト影響が限定的なため |
+| 低 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_1.reml | alias | Ptr(alias), MutPtr(alias), NonNullPtr(alias), VoidPtr(alias), FnPtr(alias), Span(alias), TaggedPtr(alias) | alias 展開のみでレイアウト影響が限定的なため |
+
+#### フェーズ 3 代表ケース（追加不要・既存サンプルを流用）
+- newtype/alias/sum 混在: `examples/docs-examples/spec/1-1-syntax/sec_b_4-c.reml`（`UserId`/`Bytes`/`Expr`）
+- コア ADT（sum）: `examples/docs-examples/spec/1-1-syntax/sec_e_2.reml`（`Option`）、`examples/docs-examples/spec/1-2-types-Inference/sec_a_2.reml`（`Option`/`Result`）
+- タグ幅/variant 境界: `examples/docs-examples/spec/1-1-syntax/sec_b_8_5.reml`（`StageRequirement`）
 
 ### フェーズ 4: 検証計画
 - Frontend の型宣言実体化後に `.reml` の診断が 0 件であることを確認する。
 - Backend に影響が出る場合は IR スナップショットで形状を確認する。
-  - [ ] `compiler/rust/frontend` のテストで alias/newtype/sum を確認し、期待診断ゼロの条件を記録する
-  - [ ] Backend へ合成型が降りる場合の IR 形状を確認し、スナップショット差分の受け入れ基準を定義する
+  - [x] `compiler/rust/frontend` のテストで alias/newtype/sum を確認し、期待診断ゼロの条件を記録する
+    - 既存テスト（alias/sum）: `compiler/rust/frontend/tests/typeck_hindley_milner.rs` の `type_alias_generics_expands_without_violation` / `sum_type_constructor_resolves_in_expr` / `sum_type_record_payload_constructor_and_match` は `parse_module` で parser diagnostics 0 を前提とする。
+    - newtype の専用テストは未整備のため、`examples/docs-examples/spec/1-1-syntax/sec_b_4-c.reml` の `reml_frontend --emit-diagnostics` を 0 件確認の基準とする。
+    - 期待診断ゼロの条件: parser diagnostics 0 かつ typecheck violations 0（type alias 展開/ADT コンストラクタ/パターン解決が正常）。
+  - [x] Backend へ合成型が降りる場合の IR 形状を確認し、スナップショット差分の受け入れ基準を定義する
+    - 受け入れ対象: `MirFunctionJson.params/return/ffi_calls` の型トークンが `String` から構造化 `adt` へ置換される差分。
+    - 受け入れ条件: `kind/tag_bits/variants` が `docs/plans/docs-examples-audit/1-7-backend-runtime-sum-mir-json-draft-20251227.md` の定義と一致し、非 ADT フィールド（関数名/式構造/本体 JSON）が不変であること。
+    - 差分拒否条件: `tag_bits` の丸め規則が逸脱する、`payload_layout` が `inline`/`boxed` 以外になる、非 ADT の型トークンが構造化へ移行する。
+    - スナップショットの採用単位は `docs-examples-audit` の高優先度 `.reml`（`sec_b_4-c.reml` / `sec_e_2.reml` / `sec_a_2.reml`）に限定する。
 
 ## 受け入れ基準
 - alias/newtype/sum の IR 方針が文書化されている。
@@ -105,8 +183,8 @@
   - [ ] フェーズ 0 完了
   - [x] フェーズ 1 完了
   - [x] フェーズ 2 完了
-  - [ ] フェーズ 3 完了
-  - [ ] フェーズ 4 完了
+  - [x] フェーズ 3 完了
+  - [x] フェーズ 4 完了
 
 ## 関連リンク
 - `docs/plans/typeck-improvement/1-0-type-decl-realization-plan.md`
