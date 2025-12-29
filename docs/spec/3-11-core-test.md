@@ -129,32 +129,19 @@ use Core.Test.Dsl
 
 fn main() -> Result<(), TestError> {
   let my_parser: Parser<Any> = todo
-  let cases = [
-    {
-      name: None,
-      source: "1 + 2",
-      expect: Ast(Pattern("Add(Int(1), Int(2))")),
-    },
-    {
-      name: None,
-      source: "1 + ",
-      expect: Error({
-        code: "parser.unexpected_eof",
-        at: Some(Offset(4)),
-        message: None,
-      }),
-    },
-    {
-      name: None,
-      source: "fn main() {}",
-      expect: Ast(Pattern("Func(name=\"main\", ...)")),
-    },
-  ]
-  test_parser(my_parser, cases)
+  test_parser(my_parser) {
+    case "1 + 2" => Ast(Pattern("Add(Int(1), Int(2))"))
+    case "1 + " => Error({
+      code: "parser.unexpected_eof",
+      at: Some(Offset(4)),
+      message: None,
+    })
+    case "fn main() {}" => Ast(Pattern("Func(name=\"main\", ...)"))
+  }
 }
 ```
 
-Rust Frontend では `test_parser { ... }` のブロック構文を受理する。`case` は `case "source" => <expect>` または `case "name": "source" => <expect>` を許可する。
+Rust Frontend では `test_parser(parser) { ... }` のブロック構文を受理する。`case` は `case "source" => <expect>` または `case "name": "source" => <expect>` を許可する。
 
 ### 7.2 型とシグネチャ（Core.Parse / Core.Test との整合）
 
@@ -207,22 +194,13 @@ use Core.Test.Dsl
 
 fn main() -> Result<(), TestError> {
   let my_parser: Parser<Any> = todo
-  let cases = [
-    {
-      name: None,
-      source: "1 + 2",
-      expect: Ast(Pattern("...Add(Int(1), Int(2))...")),
-    },
-    {
-      name: None,
-      source: "1 + 3",
-      expect: Ast(Record([
-        ("tag", Pattern("\"expr\"")),
-        ("items", List([Pattern("Add(Int(1), Int(3))")])),
-      ])),
-    },
-  ]
-  test_parser(my_parser, cases)
+  test_parser(my_parser) {
+    case "1 + 2" => Ast(Pattern("...Add(Int(1), Int(2))..."))
+    case "1 + 3" => Ast(Record([
+      ("tag", Pattern("\"expr\"")),
+      ("items", List([Pattern("Add(Int(1), Int(3))")])),
+    ]))
+  }
 }
 ```
 
