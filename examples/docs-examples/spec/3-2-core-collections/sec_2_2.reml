@@ -1,3 +1,6 @@
+pub type PersistentMap<K, V>
+pub type PersistentSet<T>
+
 pub type Map<K, V> = PersistentMap<K, V>
 pub type Set<T> = PersistentSet<T>
 

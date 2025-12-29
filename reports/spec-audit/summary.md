@@ -62,6 +62,11 @@
 |----------|----------|------|------|
 | 16:21 | `for f in examples/docs-examples/spec/3-14-core-lsp/*.reml; do cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json "$f"; done` | ✅ 対象 5 件 diagnostics 0 件 | `sec_1`/`sec_2`/`sec_4`/`sec_5` は仕様サンプルと一致、修正不要を確認。 |
 
+## 2025-12-29 docs-examples-audit Core.Collections サンプル修正
+| JST 時刻 | コマンド | 結果 | 備考 |
+|----------|----------|------|------|
+| 20:24 | `for f in examples/docs-examples/spec/3-2-core-collections/*.reml; do cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json "$f"; done` | ✅ 対象 7 件 diagnostics 0 件 | `docs/spec/3-2-core-collections.md` とサンプルを更新。`reports/spec-audit/ch3/docs-examples-fix-notes-20251229.md` に追記。 |
+
 ## 2025-12-30 docs-examples-audit Core.Cli サンプル修正
 | JST 時刻 | コマンド | 結果 | 備考 |
 |----------|----------|------|------|

@@ -1,3 +1,5 @@
+pub type Table<K, V>
+
 // 永続コレクション間の変換
 fn list_to_set<T: Ord>(list: List<T>) -> Set<T>                 // `@pure`
 fn map_keys<K: Ord, V>(map: Map<K, V>) -> Set<K>               // `@pure`

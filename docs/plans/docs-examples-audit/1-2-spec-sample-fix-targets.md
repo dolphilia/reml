@@ -269,13 +269,13 @@
 ### docs/spec/3-2-core-collections.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2.1 `List<T>` | sec_2_1 | examples/docs-examples/spec/3-2-core-collections/sec_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.2 `Map<K, V>` と `Set<T>` | sec_2_2 | examples/docs-examples/spec/3-2-core-collections/sec_2_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.1 `Vec<T>` | sec_3_1 | examples/docs-examples/spec/3-2-core-collections/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.2 `Cell<T>` / `Ref<T>` | sec_3_2 | examples/docs-examples/spec/3-2-core-collections/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.3 `Table<K, V>` | sec_3_3 | examples/docs-examples/spec/3-2-core-collections/sec_3_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7. 使用例（Iter パイプライン） | sec_7 | examples/docs-examples/spec/3-2-core-collections/sec_7.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 8. コレクション間変換ヘルパ | sec_8 | examples/docs-examples/spec/3-2-core-collections/sec_8.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 2.1 `List<T>` | sec_2_1 | examples/docs-examples/spec/3-2-core-collections/sec_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.2 `Map<K, V>` と `Set<T>` | sec_2_2 | examples/docs-examples/spec/3-2-core-collections/sec_2_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.1 `Vec<T>` | sec_3_1 | examples/docs-examples/spec/3-2-core-collections/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.2 `Cell<T>` / `Ref<T>` | sec_3_2 | examples/docs-examples/spec/3-2-core-collections/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.3 `Table<K, V>` | sec_3_3 | examples/docs-examples/spec/3-2-core-collections/sec_3_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7. 使用例（Iter パイプライン） | sec_7 | examples/docs-examples/spec/3-2-core-collections/sec_7.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 8. コレクション間変換ヘルパ | sec_8 | examples/docs-examples/spec/3-2-core-collections/sec_8.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-3-core-text-unicode.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

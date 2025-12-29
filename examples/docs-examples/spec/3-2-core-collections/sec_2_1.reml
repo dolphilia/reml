@@ -1,3 +1,5 @@
+pub type Box<T>
+
 @must_use
 pub type List<T> =
   | Cons(head: T, tail: Box<List<T>>)

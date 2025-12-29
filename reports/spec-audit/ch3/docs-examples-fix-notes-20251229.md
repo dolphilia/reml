@@ -27,3 +27,14 @@
 
 ## 追加検証（Core.Dsl.Object / 3.2）
 - `compiler/rust/frontend/target/debug/reml_frontend --output json examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_3_2.reml` を実行し、診断 0 件を確認。
+
+## 追加対象（Core.Collections / 3.2）
+- `docs/spec/3-2-core-collections.md`
+- `examples/docs-examples/spec/3-2-core-collections/*.reml`（sec_2_1 / sec_2_2 / sec_3_1 / sec_3_2 / sec_3_3 / sec_7 / sec_8）
+
+## 追加修正内容（Core.Collections / 3.2）
+- `Box` / `PersistentMap` / `PersistentSet` / `Borrow` / `BorrowMut` / `Path` / `Record` / `Table` の不足型宣言を補完。
+- 仕様書のコードブロックをサンプル差分と同期。
+
+## 追加検証（Core.Collections / 3.2）
+- `for f in examples/docs-examples/spec/3-2-core-collections/*.reml; do cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json "$f"; done` を実行し、診断 0 件を確認。

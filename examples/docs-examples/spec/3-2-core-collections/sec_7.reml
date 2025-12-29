@@ -1,5 +1,7 @@
 use Core;
 
+pub type Record
+
 fn group_valid_users(rows: Iter<Record>) -> Result<Map<UserId, List<Record>>, Diagnostic> =
   rows
     |> Iter.filter_map(|row|

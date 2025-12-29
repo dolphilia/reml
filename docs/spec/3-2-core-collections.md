@@ -23,6 +23,8 @@
 ### 2.1 `List<T>`
 
 ```reml
+pub type Box<T>
+
 @must_use
 pub type List<T> =
   | Cons(head: T, tail: Box<List<T>>)
@@ -46,6 +48,9 @@ fn as_vec<T>(list: &List<T>) -> Vec<T> // `effect {mem}`
 ### 2.2 `Map<K, V>` と `Set<T>`
 
 ```reml
+pub type PersistentMap<K, V>
+pub type PersistentSet<T>
+
 pub type Map<K, V> = PersistentMap<K, V>
 pub type Set<T> = PersistentSet<T>
 
@@ -129,6 +134,9 @@ fn to_list<T>(vec: Vec<T>) -> List<T>                   // `effect {mem}`
 ### 3.2 `Cell<T>` / `Ref<T>`
 
 ```reml
+pub type Borrow<T>
+pub type BorrowMut<T>
+
 pub type Cell<T: Copy>
 
 fn new_cell<T: Copy>(value: T) -> Cell<T>       // `effect {cell}`
@@ -149,6 +157,8 @@ fn borrow_mut<T>(value: &Ref<T>) -> BorrowMut<T>// `effect {mut, rc}`
 ### 3.3 `Table<K, V>`
 
 ```reml
+pub type Path
+
 pub type Table<K, V>
 
 fn new_table<K, V>() -> Table<K, V>                                // `effect {mut}`
@@ -217,6 +227,8 @@ fn load_csv<K, V>(path: Path) -> Result<Table<K, V>, Diagnostic>    // `effect {
 ```reml
 use Core;
 
+pub type Record
+
 fn group_valid_users(rows: Iter<Record>) -> Result<Map<UserId, List<Record>>, Diagnostic> =
   rows
     |> Iter.filter_map(|row|
@@ -238,6 +250,8 @@ fn group_valid_users(rows: Iter<Record>) -> Result<Map<UserId, List<Record>>, Di
 ## 8. コレクション間変換ヘルパ
 
 ```reml
+pub type Table<K, V>
+
 // 永続コレクション間の変換
 fn list_to_set<T: Ord>(list: List<T>) -> Set<T>                 // `@pure`
 fn map_keys<K: Ord, V>(map: Map<K, V>) -> Set<K>               // `@pure`

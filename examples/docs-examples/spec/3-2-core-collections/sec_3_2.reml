@@ -1,3 +1,6 @@
+pub type Borrow<T>
+pub type BorrowMut<T>
+
 pub type Cell<T: Copy>
 
 fn new_cell<T: Copy>(value: T) -> Cell<T>       // `effect {cell}`
