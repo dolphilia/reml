@@ -41,6 +41,91 @@
     - 既存 JSON を入力にした場合のデシリアライズ挙動を手順として記録する。
     - スナップショット更新が不要なことを確認できる検証観点を列挙する。
 
+#### フェーズ 0 決定メモ（MIR JSON スキーマ拡張）
+- **追加フィールドの配置**: MIR JSON トップレベルに `dict_refs` / `impls` / `qualified_calls` を追加する（sidecar 方式は採用しない）。
+- **スキーマの互換性**: 既存の JSON（例: `reports/spec-audit/ch1/mir-output-type-sample-20251224.json` / `reports/spec-audit/ch1/mir-json-type-sample-20251224.json`）は追加フィールド欠落でも読み込み可能とする。`schema_version` は当面 `frontend-mir/0.2` を維持し、追加フィールドは optional + default で扱う。
+
+##### 1) `dict_refs`（配列）
+- **目的**: `dict_ref_ids` 参照の実体テーブルを MIR JSON で共有する。
+- **型**: `dict_refs: [DictRefJson, ...]`
+- **要素構造（暫定）**:
+  - `id: u32`
+  - `impl_id: string`
+  - `requirements: [string, ...]`
+  - `ty: string`
+  - `span: { start: u32, end: u32 } | null`
+- **空時の扱い**: 常に `[]` を出力する（欠落は許容するが推奨しない）。
+
+##### 2) `impls`（`impl_id` をキーとする map）
+- **目的**: `impl_id` から trait/impl の最小情報を引けるようにする。
+- **型**: `impls: { "<impl_id>": ImplSpecJson, ... }`
+- **値構造（暫定）**:
+  - `trait: string | null`（inherent impl の場合は `null`）
+  - `target: string`
+  - `associated_types: [{ name: string, ty: string }, ...]`
+  - `methods: [string, ...]`
+  - `span: { start: u32, end: u32 } | null`
+- **空時の扱い**: 常に `{}` を出力する（欠落は許容するが推奨しない）。
+
+##### 3) `qualified_calls`（function+expr_id をキーとする map）
+- **目的**: `Type.method` / `Type::method` / `Trait::method` の解決結果を保持し、Backend 側でシンボル解決に利用する。
+- **型**: `qualified_calls: { "<fn_name>#<expr_id>": QualifiedCallJson, ... }`
+- **値構造（暫定）**:
+  - `kind: "type_method" | "type_assoc" | "trait_method" | "unknown"`
+  - `owner: string | null`
+  - `name: string | null`
+  - `impl_id: string | null`
+  - `span: { start: u32, end: u32 } | null`
+- **キー規則**:
+  - `expr_id` は `MirExpr.id` と同一（関数内で一意）。モジュール全体で衝突を避けるため `"<fn_name>#<expr_id>"` 形式にする。
+  - `fn_name` は MIR JSON の関数名と一致させる（`@` 付きもそのまま使用）。
+- **未解決時の表現**: `kind = "unknown"` を設定し、`owner` / `name` / `impl_id` は `null` を許容する。
+- **空時の扱い**: 常に `{}` を出力する（欠落は許容するが推奨しない）。
+
+##### `impl_id` / `expr_id` 命名規則（採番ルール）
+- `impl_id`: `trait` 実装は `{TraitName}::{TargetType}`、inherent impl は `{TargetType}`。型引数（`T` 等）は文字列として含める。
+- `expr_id`: 既存 MIR の `exprs` が持つ `id` をそのまま使用し、関数名と組でユニーク性を担保する。
+
+##### 例（追加フィールドの JSON 断片）
+```json
+{
+  "dict_refs": [
+    {
+      "id": 0,
+      "impl_id": "Iterator::Iter<T>",
+      "requirements": ["effect {io.async}"],
+      "ty": "Iter<T>",
+      "span": { "start": 120, "end": 160 }
+    }
+  ],
+  "impls": {
+    "Iterator::Iter<T>": {
+      "trait": "Iterator",
+      "target": "Iter<T>",
+      "associated_types": [{ "name": "Item", "ty": "T" }],
+      "methods": ["map", "filter"],
+      "span": { "start": 80, "end": 118 }
+    }
+  },
+  "qualified_calls": {
+    "map_over#12": {
+      "kind": "type_method",
+      "owner": "Iter<T>",
+      "name": "map",
+      "impl_id": "Iterator::Iter<T>",
+      "span": { "start": 200, "end": 220 }
+    },
+    "map_over#19": {
+      "kind": "unknown",
+      "owner": null,
+      "name": null,
+      "impl_id": null,
+      "span": { "start": 240, "end": 252 }
+    }
+  }
+}
+```
+
 ### フェーズ 1: Frontend の MIR JSON 拡張
 - [ ] `MirModule` 生成時に `dict_refs` / `impls` / `qualified_calls` を追加出力できるように拡張する。
   - 作業ステップ:
@@ -56,6 +141,57 @@
   - 作業ステップ:
     - 空配列/空 map のどちらを採用するかを決め、出力時に常に含める方針を確定する。
     - `serde(default)` などの利用方針を整理し、空値でも互換性が保てるようにする。
+
+#### フェーズ 1 決定メモ（Frontend MIR JSON 拡張）
+- **設計チェック（完了）**:
+  - [x] `MirModule` の拡張位置と `schema_version` 維持方針を確定。
+  - [x] `dict_refs` の出力元と空配列の扱いを確定。
+  - [x] `impls` / `qualified_calls` の空出力方針を確定。
+  - [x] `reml_frontend` の JSON 出力経路で追加フィールドが出力対象になることを確認。
+
+- **MirModule の拡張位置**: `compiler/rust/frontend/src/semantics/mir.rs` の `MirModule` に `dict_refs` / `impls` / `qualified_calls` を追加する。
+- **schema_version**: 現状の `MIR_SCHEMA_VERSION = "frontend-mir/0.2"` を維持し、追加フィールドは optional + default で段階導入する。
+
+##### 1) `dict_refs` の出力元
+- **取得元**: `typed::TypedModule.dict_refs`（`TypecheckDriver` が `DictRefDraft` から生成済み）。
+- **変換**: `MirModule::from_typed_module` で `TypedModule.dict_refs` をそのままコピー（`MirModule.dict_refs` と同形）。
+- **空時の扱い**: `[]` を常に出力（`serde(default)` + `skip_serializing_if` は使わない）。
+
+##### 2) `impls` の出力元
+- **現状**: Frontend 側で trait/impl 宣言の一覧（`impl_id` → trait/target/associated_types/methods）を保持していない。
+- **方針**: フェーズ1では `impls = {}` を出力し、フェーズ2以降の Typeck/Resolver 拡張で埋める前提とする。
+- **TODO（実装分解）**:
+  - [ ] `parser::ast::ImplDecl` から `impl_id` と trait/target を抽出するテーブルを typeck 内に追加。
+  - [ ] `TypedModule` か `TypecheckReport` に `impl_registry` を追加し JSON 直列化する。
+  - [ ] `impl_registry` から `associated_types` / `methods` を埋める基準を定義する。
+  - [ ] 既存 `used_impls` との突合ルール（未登録 impl の扱い）を決める。
+
+##### 3) `qualified_calls` の出力元
+- **現状**: `TypedExprKind::Call` は修飾子（`Type.method` / `Type::method` / `Trait::method`）の判定情報を保持していない。
+- **方針**: フェーズ1では `qualified_calls = {}` を出力し、識別が可能になった時点で `kind` / `owner` / `impl_id` を埋める。
+- **キー規則**: `"<fn_name>#<expr_id>"` を前提とし、`expr_id` は `MirExpr.id` をそのまま使用する。
+- **TODO（実装分解）**:
+  - [ ] name resolution に `QualifiedName` テーブルを追加し、`Call` ノードの解決結果を保持する。
+  - [ ] `MirExprBuilder` が `QualifiedName` を参照できるよう、式 ID の対応表を用意する。
+  - [ ] `TypecheckReport` に `qualified_call_table` を追加し、MIR JSON 生成時に転写する。
+  - [ ] 未解決時に `kind = "unknown"` を設定する経路を定義する。
+
+##### 4) `reml_frontend` の JSON 出力経路
+- **対象**: `compiler/rust/frontend/src/bin/reml_frontend.rs` の `TypeckArtifacts` / `TypeckDebugFile` で `mir` を JSON 出力している。
+- **方針**: `mir::MirModule` に新フィールドを追加すれば CLI 側は自動的に出力対象になる（追加の serialize 経路は不要）。
+
+##### 出力例（空の場合）
+```json
+{
+  "schema_version": "frontend-mir/0.2",
+  "functions": [],
+  "active_patterns": [],
+  "conductors": [],
+  "dict_refs": [],
+  "impls": {},
+  "qualified_calls": {}
+}
+```
 
 ### フェーズ 2: Backend の MIR JSON 取り込み
 - [ ] `integration.rs` に `dict_refs` / `impls` / `qualified_calls` を取り込む型定義を追加する。
