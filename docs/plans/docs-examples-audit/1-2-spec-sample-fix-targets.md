@@ -214,8 +214,8 @@
 ### docs/spec/3-12-core-cli.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2. 型と API | sec_2 | examples/docs-examples/spec/3-12-core-cli/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 5. 例 | sec_5 | examples/docs-examples/spec/3-12-core-cli/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 2. 型と API | sec_2 | examples/docs-examples/spec/3-12-core-cli/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 5. 例 | sec_5 | examples/docs-examples/spec/3-12-core-cli/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-13-core-text-pretty.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

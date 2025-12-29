@@ -57,6 +57,11 @@
 |----------|----------|------|------|
 | 15:40 | `for file in sec_2 sec_2_1 sec_4 sec_5 sec_7_1 sec_7_2 sec_7_3; do compiler/rust/frontend/target/debug/reml_frontend --output json examples/docs-examples/spec/3-11-core-test/${file}.reml; done` | ✅ 対象 7 件 diagnostics 0 件 | `docs/spec/3-11-core-test.md` とサンプルを更新。`reports/spec-audit/ch3/docs-examples-fix-notes-20251229.md` に記録。 |
 
+## 2025-12-30 docs-examples-audit Core.Cli サンプル修正
+| JST 時刻 | コマンド | 結果 | 備考 |
+|----------|----------|------|------|
+| 17:20 | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/docs-examples/spec/3-12-core-cli/sec_2.reml` / `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/docs-examples/spec/3-12-core-cli/sec_5.reml` | ✅ diagnostics 0 件 | `docs/spec/3-12-core-cli.md` とサンプルを更新。`reports/spec-audit/ch3/docs-examples-fix-notes-20251230.md` に記録。 |
+
 ## Rust ツールチェーン更新（stable 版の確定）
 - `rust-toolchain.toml` を追加し、`channel = "stable"` と `components = ["rustfmt", "clippy"]` を設定。
 - `rustup` を導入して `rustup update stable` を実行し、`rustc 1.92.0 (ded5c06cf 2025-12-08)` を stable として確定。

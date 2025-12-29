@@ -122,15 +122,14 @@ fn main() -> Str {
     .arg("input", help = "input file")
     .build()
 
-  match Cli.parse(spec, ["--verbose", "input.reml"]) {
-    Ok(values) => {
+  match Cli.parse(spec, ["--verbose", "input.reml"]) with
+  | Ok(values) -> {
       let input = Cli.get_arg(values, "input")
-      match input {
-        Some(path) => if Cli.get_flag(values, "verbose") { "verbose:" + path } else { "quiet:" + path }
-        None => "missing"
-      }
+      match input with
+      | Some(path) ->
+          if Cli.get_flag(values, "verbose") then "verbose:" + path else "quiet:" + path
+      | None -> "missing"
     }
-    Err(_) => "cli:error"
-  }
+  | Err(_) -> "cli:error"
 }
 ```
