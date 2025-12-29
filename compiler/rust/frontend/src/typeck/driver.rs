@@ -3079,6 +3079,30 @@ fn infer_expr(
                 Vec::new(),
             )
         }
+        ExprKind::Pipe { left, right } => {
+            let desugared = match &right.kind {
+                ExprKind::Call { callee, args } => {
+                    let mut new_args = Vec::with_capacity(args.len() + 1);
+                    new_args.push((**left).clone());
+                    new_args.extend(args.iter().cloned());
+                    Expr::call((**callee).clone(), new_args, expr.span)
+                }
+                _ => Expr::call((**right).clone(), vec![(**left).clone()], expr.span),
+            };
+            infer_expr(
+                &desugared,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            )
+        }
         ExprKind::Call { callee, args } => {
             metrics.record_call_site();
             let qualified_call = resolve_qualified_call(callee, context.trait_names);

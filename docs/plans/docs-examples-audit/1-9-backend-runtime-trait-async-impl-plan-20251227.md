@@ -189,6 +189,28 @@
     - `Trait::method`: `ModulePath` の `owner` の末尾セグメントが `DeclKind::Trait` で定義された trait 名に一致する場合は `trait_method`。`foo::Bar::baz` のようなモジュールパスでも `Bar` を trait 名として判定する。
     - その他: `unknown` とし、`owner`/`name` は可能なら埋めるが `impl_id` は未解決として `null` を許容。
 
+##### `impl_id` 命名規則と `qualified_calls` 対応表（暫定）
+- `impl_id` の基本規則は既定どおり `trait` 実装は `{TraitName}::{TargetType}`、inherent impl は `{TargetType}`。
+- `qualified_calls.impl_id` は暫定で以下の対応とする（解決情報が揃った時点で更新）:
+  - `type_method` / `type_assoc`: `owner` をそのまま `impl_id` に採用（`{TargetType}` 想定）。
+  - `trait_method`: `impls` テーブルとレシーバ型推論結果で照合できる場合のみ `impl_id` を付与し、未解決は `null`。
+  - `unknown`: `impl_id` は `null` を維持。
+
+##### `trait_method` の `impl_id` 解決ルール（設計案）
+- 解決対象: `qualified_calls.kind = "trait_method"` かつ `owner` が trait 名に一致する呼び出し。
+- 解決キー:
+  - `impls` テーブルの `trait` と `target` を参照し、`owner`（trait 名）とレシーバ型（typeck 推論結果）を突き合わせる。
+  - レシーバ型が `Self` を含む場合は `dict_refs` / `used_impls` の情報で候補を絞り、単一候補のみ `impl_id` を確定する。
+- フォールバック:
+  - 候補が 0 件または複数の場合は `impl_id = null` とし、Backend 側で TODO 診断に回す。
+  - `impls` 未出力のフェーズでは常に `null` を維持。
+
+##### 実出力検証メモ（MIR JSON）
+- 検証サンプル: `examples/docs-examples/spec/3-1-core-prelude-iteration/sec_4_2.reml`
+  - `qualified_calls` に `Histogram::new` / `HistogramError::OutOfRange` が入り、`impl_id` は `Histogram` / `HistogramError` になっていることを確認。
+- 検証サンプル: `examples/docs-examples/spec/3-1-core-prelude-iteration/sec_3_5.reml`
+  - pipe 展開後に `Iter.from_list` / `Iter.map` / `Iter.try_fold` / `Diagnostic::invalid_value` が `qualified_calls` に記録され、`impl_id` は `Iter` / `Diagnostic` を確認。
+
 ##### 4) `reml_frontend` の JSON 出力経路
 - **対象**: `compiler/rust/frontend/src/bin/reml_frontend.rs` の `TypeckArtifacts` / `TypeckDebugFile` で `mir` を JSON 出力している。
 - **方針**: `mir::MirModule` に新フィールドを追加すれば CLI 側は自動的に出力対象になる（追加の serialize 経路は不要）。
