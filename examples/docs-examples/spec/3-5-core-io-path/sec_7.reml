@@ -4,7 +4,11 @@ use Core.Path;
 use Core.Config;
 use Core.Numeric;
 
-fn load_config(path: Str, audit: AuditSink) -> Result<AppConfig, Diagnostic> =
+pub type AppConfig
+pub type AuditSink
+pub type Diagnostic
+
+fn load_config(path: Str, audit: AuditSink) -> Result<AppConfig, Diagnostic> {
   let file_path = path(path)?;
   let start = Core.Numeric.now()?;
 
@@ -21,3 +25,4 @@ fn load_config(path: Str, audit: AuditSink) -> Result<AppConfig, Diagnostic> =
   let elapsed = duration_between(start?, Core.Numeric.now()?);
   log_io("config.load", Some(file_path.clone()), elapsed, audit)?;
   Ok(config)
+}

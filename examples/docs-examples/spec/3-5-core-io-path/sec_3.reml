@@ -1,4 +1,11 @@
-struct File {
+pub type Fd
+pub type FileMetadata
+pub type FileOptions
+pub type IoError
+pub type Path
+pub type PathBuf
+
+pub type File = {
   fd: Fd,
   path: PathBuf,
 }

@@ -1,3 +1,12 @@
+pub type BufferStats
+pub type CapabilityId
+pub type EffectLabels
+pub type GlobStats
+pub type Path
+pub type Timestamp
+pub type WatchStats
+pub type u64
+
 pub type IoError = {
   kind: IoErrorKind,
   message: Str,
@@ -5,22 +14,21 @@ pub type IoError = {
   context: Option<IoContext>,
 }
 
-pub enum IoErrorKind = {
-  NotFound,
-  PermissionDenied,
-  ConnectionRefused,
-  InvalidInput,
-  TimedOut,
-  WriteZero,
-  Interrupted,
-  UnexpectedEof,
-  OutOfMemory,
-  SecurityViolation,
-  UnsupportedPlatform,
-}
+pub enum IoErrorKind =
+  | NotFound
+  | PermissionDenied
+  | ConnectionRefused
+  | InvalidInput
+  | TimedOut
+  | WriteZero
+  | Interrupted
+  | UnexpectedEof
+  | OutOfMemory
+  | SecurityViolation
+  | UnsupportedPlatform
 
 pub type IoContext = {
-  operation: Str,
+  operation_name: Str,
   path: Option<Path>,
   capability: Option<CapabilityId>,
   bytes_processed: Option<u64>,

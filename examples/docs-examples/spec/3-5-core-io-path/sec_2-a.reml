@@ -1,3 +1,9 @@
+pub type Bytes
+pub type FileReader
+pub type IoError
+pub type Path
+pub type u64
+
 trait Reader {
   fn read(&mut self, buf: &mut Bytes) -> Result<usize, IoError>;            // `effect {io, io.blocking}`
   fn read_exact(&mut self, size: usize) -> Result<Bytes, IoError>;          // `effect {io, io.blocking}`
