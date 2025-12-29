@@ -28,15 +28,17 @@
 
 ```reml
 pub type MethodId = Str
+pub type DispatchTableId = Int
 
 pub enum DispatchKind =
   | ClassBased
   | PrototypeBased
 
 pub type DispatchTable<Value> = {
+  id: DispatchTableId,
   kind: DispatchKind,
   name: Str,
-  parent: Option<DispatchTable<Value>>,
+  parent: Option<DispatchTableId>,
   methods: Map<MethodId, MethodEntry<Value>>,
 }
 
@@ -44,17 +46,16 @@ pub type MethodEntry<Value> =
   fn(ObjectHandle<Value>, List<Value>) -> Result<Value, DispatchError> // `effect {runtime}`
 
 pub type ObjectHandle<Value> = {
-  table: DispatchTable<Value>,
   payload: Value,
   shape_id: Int,
 }
 
 pub type MethodCacheKey = { shape_id: Int, name: MethodId }
 
-pub type MethodCache<Value> = {
+pub struct MethodCache<Value> {
   lookup: fn(&MethodCache<Value>, MethodCacheKey) -> Option<MethodEntry<Value>>,
   record: fn(&mut MethodCache<Value>, MethodCacheKey, MethodEntry<Value>) -> (),
-  invalidate: fn(&mut MethodCache<Value>, DispatchTable<Value>) -> (),
+  invalidate: fn(&mut MethodCache<Value>, DispatchTableId) -> (),
 }
 
 pub type DispatchError = { kind: DispatchErrorKind, message: Str }
@@ -68,20 +69,21 @@ pub enum DispatchErrorKind =
 ### 3.2 最小 API
 
 ```reml
-fn Object.call<Value>(
+fn call<Value>(
+  table: DispatchTable<Value>,
   obj: ObjectHandle<Value>,
   name: MethodId,
   args: List<Value>,
   cache: Option<&mut MethodCache<Value>>
 ) -> Result<Value, DispatchError> // `effect {runtime}`
 
-fn Object.lookup<Value>(
+fn lookup<Value>(
   table: DispatchTable<Value>,
   name: MethodId
 ) -> Option<MethodEntry<Value>>
 
-fn Object.class_builder<Value>(name: Str) -> ClassBuilder<Value>
-fn Object.prototype_builder<Value>(name: Str) -> PrototypeBuilder<Value>
+fn class_builder<Value>(name: Str) -> ClassBuilder<Value>
+fn prototype_builder<Value>(name: Str) -> PrototypeBuilder<Value>
 
 pub type ClassBuilder<Value> = {
   method: fn(ClassBuilder<Value>, MethodId, MethodEntry<Value>) -> ClassBuilder<Value>,
@@ -102,11 +104,11 @@ pub type PrototypeBuilder<Value> = {
 use Core.Dsl.Object
 
 let animal = Object.class_builder("Animal")
-  .method("speak", |this, _| { "..." })
+  .method("speak", |_this, _| { Ok("...") })
   .build()
 
-let dog = { table: animal, payload: "Dog", shape_id: 1 }
-let result = Object.call(dog, "speak", [], None)
+let dog = { payload: "Dog", shape_id: 1 }
+let result = Object.call(animal, dog, "speak", [], None)
 ```
 
 ## 4. Core.Dsl.Gc
@@ -135,15 +137,15 @@ pub enum GcErrorKind =
 ### 4.2 最小 API
 
 ```reml
-fn Gc.new(strategy: GcStrategy) -> GcHeap
+fn create(strategy: GcStrategy) -> GcHeap
 
-fn Gc.with_scope<T>(heap: GcHeap, f: fn(RootScope) -> T) -> T
+fn with_scope<T>(heap: GcHeap, f: fn(RootScope) -> T) -> T
 
-fn Gc.alloc<T>(scope: RootScope, value: T) -> Result<GcRef<T>, GcError> // `effect {memory}`
-fn Gc.pin<T>(scope: RootScope, value: GcRef<T>) -> RootScope            // `effect {memory}`
+fn alloc<T>(scope: RootScope, value: T) -> Result<GcRef<T>, GcError> // `effect {memory}`
+fn pin<T>(scope: RootScope, value: GcRef<T>) -> RootScope            // `effect {memory}`
 
-fn Gc.collect(heap: GcHeap) -> Result<(), GcError>                       // `effect {memory}`
-fn Gc.collect_if_needed(heap: GcHeap) -> Result<(), GcError>             // `effect {memory}`
+fn collect(heap: GcHeap) -> Result<(), GcError>                       // `effect {memory}`
+fn collect_if_needed(heap: GcHeap) -> Result<(), GcError>             // `effect {memory}`
 ```
 
 ### 4.3 例
@@ -151,11 +153,13 @@ fn Gc.collect_if_needed(heap: GcHeap) -> Result<(), GcError>             // `eff
 ```reml
 use Core.Dsl.Gc
 
-let heap = Gc.new(GcStrategy::Arena)
-Gc.with_scope(heap, |scope| {
-  let value = Gc.alloc(scope, "dsl:node")
-  value
-})
+fn example() -> () = {
+  let heap = Gc.create(GcStrategy::Arena)
+  Gc.with_scope(heap, |scope| {
+    let value = Gc.alloc(scope, "dsl:node")
+    value
+  })
+}
 ```
 
 ## 5. Core.Dsl.Actor
@@ -167,6 +171,8 @@ pub type ActorDefinition<Message> = {
   name: Str,
   on_message: fn(Message) -> Result<(), ActorError>,
 }
+
+pub type SupervisorSpec = {}
 
 pub type MailboxBridge<Message> = {
   send: fn(Message) -> Result<(), ActorError>, // `effect {io.async}`
@@ -188,7 +194,7 @@ pub enum ActorErrorKind =
 ### 5.2 最小 API
 
 ```reml
-fn Actor.spawn<Message>(
+fn spawn<Message>(
   system: ActorSystem,
   def: ActorDefinition<Message>,
   supervision: Option<SupervisionBridge>
@@ -200,8 +206,11 @@ fn Actor.spawn<Message>(
 ```reml
 use Core.Dsl.Actor
 
-let def = { name: "Echo", on_message: |msg| { log(msg); Ok(()) } }
-let mailbox = Actor.spawn(system, def, None)
+fn example() -> () = {
+  let system = todo
+  let def = { name: "Echo", on_message: |_msg| { Ok(()) } }
+  let _ = Actor.spawn(system, def, None)
+}
 ```
 
 ## 6. Core.Dsl.Vm
@@ -232,14 +241,11 @@ pub enum VmErrorKind =
 ### 6.2 最小 API
 
 ```reml
-fn Vm.bytecode_builder<Op>() -> BytecodeBuilder<Op>
+fn bytecode_builder<Op>() -> BytecodeBuilder<Op>
 
-pub type BytecodeBuilder<Op> = {
-  emit: fn(BytecodeBuilder<Op>, Op) -> BytecodeBuilder<Op>,
-  build: fn(BytecodeBuilder<Op>) -> Bytecode<Op>,
-}
+pub type BytecodeBuilder<Op> = {}
 
-fn Vm.run<Op, Value>(
+fn run<Op, Value>(
   code: Bytecode<Op>,
   state: VmState<Value>,
   exec: fn(VmState<Value>, Op) -> Result<VmState<Value>, VmError>
@@ -251,17 +257,36 @@ fn Vm.run<Op, Value>(
 ```reml
 use Core.Dsl.Vm
 
+pub type VmState<Value> = {
+  stack: List<Value>,
+  frames: List<CallFrame>,
+}
+
+pub type CallFrame = { ip: Int }
+
+pub type VmError = { kind: VmErrorKind, message: Str }
+
+pub enum VmErrorKind =
+  | Halted
+  | InvalidOpcode
+  | StackUnderflow
+  | RuntimeFailure
+
 enum Op = | Push(Int) | Add | Halt
 
-let code = Vm.bytecode_builder()
-  .emit(Op.Push(1))
-  .emit(Op.Push(2))
-  .emit(Op.Add)
-  .emit(Op.Halt)
-  .build()
+fn exec_op<Value>(state: VmState<Value>, op: Op) -> Result<VmState<Value>, VmError> = todo
 
-let state = { stack: [], frames: [{ ip: 0 }] }
-let result = Vm.run(code, state, |state, op| { exec_op(state, op) })
+fn example() -> () = {
+  let code = Vm.bytecode_builder()
+    .emit(Op.Push(1))
+    .emit(Op.Push(2))
+    .emit(Op.Add)
+    .emit(Op.Halt)
+    .build()
+
+  let state = { stack: [], frames: [{ ip: 0 }] }
+  let _ = Vm.run(code, state, |state, op| { exec_op(state, op) })
+}
 ```
 
 ## 7. 監査と診断の扱い

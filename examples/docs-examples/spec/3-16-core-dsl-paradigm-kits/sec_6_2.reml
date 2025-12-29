@@ -1,11 +1,27 @@
-fn Vm.bytecode_builder<Op>() -> BytecodeBuilder<Op>
-
-pub type BytecodeBuilder<Op> = {
-  emit: fn(BytecodeBuilder<Op>, Op) -> BytecodeBuilder<Op>,
-  build: fn(BytecodeBuilder<Op>) -> Bytecode<Op>,
+pub type Bytecode<Op> = {
+  ops: List<Op>,
 }
 
-fn Vm.run<Op, Value>(
+pub type VmState<Value> = {
+  stack: List<Value>,
+  frames: List<CallFrame>,
+}
+
+pub type CallFrame = { ip: Int }
+
+pub type VmError = { kind: VmErrorKind, message: Str }
+
+pub enum VmErrorKind =
+  | Halted
+  | InvalidOpcode
+  | StackUnderflow
+  | RuntimeFailure
+
+pub type BytecodeBuilder<Op> = {}
+
+fn bytecode_builder<Op>() -> BytecodeBuilder<Op>
+
+fn run<Op, Value>(
   code: Bytecode<Op>,
   state: VmState<Value>,
   exec: fn(VmState<Value>, Op) -> Result<VmState<Value>, VmError>

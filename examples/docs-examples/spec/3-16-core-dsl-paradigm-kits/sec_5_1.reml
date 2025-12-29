@@ -3,6 +3,8 @@ pub type ActorDefinition<Message> = {
   on_message: fn(Message) -> Result<(), ActorError>,
 }
 
+pub type SupervisorSpec = {}
+
 pub type MailboxBridge<Message> = {
   send: fn(Message) -> Result<(), ActorError>, // `effect {io.async}`
   receive: fn() -> Result<Message, ActorError>, // `effect {io.async}`

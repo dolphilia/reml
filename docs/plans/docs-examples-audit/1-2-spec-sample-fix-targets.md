@@ -240,16 +240,16 @@
 ### docs/spec/3-16-core-dsl-paradigm-kits.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 3.1 主要型 | sec_3_1 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.2 最小 API | sec_3_2 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.1 主要型 | sec_4_1 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.2 最小 API | sec_4_2 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.3 例 | sec_4_3 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_4_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 5.1 主要型 | sec_5_1 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_5_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 5.2 最小 API | sec_5_2 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_5_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6.1 主要型 | sec_6_1 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_6_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6.2 最小 API | sec_6_2 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_6_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6.3 例 | sec_6_3 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_6_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 3.1 主要型 | sec_3_1 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.2 最小 API | sec_3_2 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.1 主要型 | sec_4_1 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.2 最小 API | sec_4_2 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.3 例 | sec_4_3 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_4_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 5.1 主要型 | sec_5_1 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_5_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 5.2 最小 API | sec_5_2 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_5_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6.1 主要型 | sec_6_1 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_6_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6.2 最小 API | sec_6_2 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_6_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6.3 例 | sec_6_3 | examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_6_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-17-core-net.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
