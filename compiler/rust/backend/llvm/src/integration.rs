@@ -390,6 +390,10 @@ struct MirQualifiedCallJson {
     #[serde(default)]
     impl_id: Option<String>,
     #[serde(default)]
+    receiver_ty: Option<String>,
+    #[serde(default)]
+    impl_candidates: Vec<String>,
+    #[serde(default)]
     span: Option<MirSpanJson>,
 }
 

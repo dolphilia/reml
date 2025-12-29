@@ -197,13 +197,26 @@
   - `unknown`: `impl_id` は `null` を維持。
 
 ##### `trait_method` の `impl_id` 解決ルール（設計案）
-- 解決対象: `qualified_calls.kind = "trait_method"` かつ `owner` が trait 名に一致する呼び出し。
-- 解決キー:
-  - `impls` テーブルの `trait` と `target` を参照し、`owner`（trait 名）とレシーバ型（typeck 推論結果）を突き合わせる。
-  - レシーバ型が `Self` を含む場合は `dict_refs` / `used_impls` の情報で候補を絞り、単一候補のみ `impl_id` を確定する。
-- フォールバック:
-  - 候補が 0 件または複数の場合は `impl_id = null` とし、Backend 側で TODO 診断に回す。
-  - `impls` 未出力のフェーズでは常に `null` を維持。
+**解決場所の方針**: `typeck` 側で解決候補を生成し、`qualified_calls` に追加情報を載せて Backend が確定/診断する二段構えを採用する。
+
+**理由**:
+- レシーバ型や `Self` 展開は typeck が最も正確に把握できる。
+- Backend は MIR JSON のみを入力にする前提のため、判定に必要な情報を JSON に載せる必要がある。
+
+**追加する情報（MIR JSON 拡張案）**:
+- `qualified_calls[].receiver_ty: string | null`
+  - `Type.method` / `Trait::method` の呼び出しで、レシーバ型が推論できた場合に記録する。
+- `qualified_calls[].impl_candidates: [string, ...]`
+  - `impls` テーブルから `trait` + `receiver_ty` で絞り込んだ `impl_id` 候補を列挙する。
+
+**解決フロー**:
+1) typeck で `qualified_calls` を作成する際、`receiver_ty` を記録。
+2) typeck で `impls` テーブルを参照し、`impl_candidates` を作成。
+3) Backend は `impl_candidates` が単一なら `impl_id` を確定し、0 件/複数なら TODO 診断へ回す。
+
+**フォールバック**:
+- `receiver_ty` 不明 or `impl_candidates` 未記録の場合は `impl_id = null` として扱う。
+- `impls` 未出力のフェーズでは `impl_candidates` を空配列にして TODO を維持。
 
 ##### 実出力検証メモ（MIR JSON）
 - 検証サンプル: `examples/docs-examples/spec/3-1-core-prelude-iteration/sec_4_2.reml`

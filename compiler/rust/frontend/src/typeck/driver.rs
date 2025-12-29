@@ -618,6 +618,7 @@ impl TypecheckDriver {
         mir_module.impls = impls;
         mir_module.impl_registry_duplicates = impl_registry_duplicates;
         mir_module.impl_registry_unresolved = impl_registry_unresolved;
+        populate_qualified_call_candidates(&mut mir_module);
         let qualified_call_table = mir_module.qualified_calls.clone();
 
         TypecheckReport {
@@ -1968,6 +1969,42 @@ fn collect_impl_specs(
         }
     }
     (impls, duplicates, unresolved)
+}
+
+fn populate_qualified_call_candidates(mir_module: &mut mir::MirModule) {
+    for call in mir_module.qualified_calls.values_mut() {
+        if call.kind != mir::MirQualifiedCallKind::TraitMethod {
+            continue;
+        }
+        let receiver_ty = match call.receiver_ty.as_ref() {
+            Some(ty) => ty,
+            None => continue,
+        };
+        let trait_name = match call.owner.as_ref().and_then(|owner| owner.split("::").last()) {
+            Some(name) => name,
+            None => continue,
+        };
+        let mut candidates = Vec::new();
+        for (impl_id, spec) in &mir_module.impls {
+            if spec
+                .trait_name
+                .as_ref()
+                .map(|name| name == trait_name)
+                .unwrap_or(false)
+                && spec.target == *receiver_ty
+            {
+                candidates.push(impl_id.clone());
+            }
+        }
+        if !candidates.is_empty() {
+            call.impl_candidates = candidates.clone();
+        }
+        if candidates.len() == 1 {
+            call.impl_id = Some(candidates[0].clone());
+        } else if call.impl_candidates.is_empty() {
+            call.impl_id = None;
+        }
+    }
 }
 
 fn collect_trait_names(module: &Module) -> HashSet<String> {

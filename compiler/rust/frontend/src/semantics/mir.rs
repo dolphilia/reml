@@ -107,10 +107,14 @@ pub struct MirQualifiedCall {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub impl_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub receiver_ty: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub impl_candidates: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub span: Option<Span>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum MirQualifiedCallKind {
     TypeMethod,
@@ -747,15 +751,24 @@ impl MirExprBuilder {
             typed::TypedExprKind::Unknown => MirExprKind::Unknown,
         };
         let qualified_call = match &expr.kind {
-            typed::TypedExprKind::Call { qualified, .. } => qualified
-                .as_ref()
-                .map(|call| MirQualifiedCall {
+            typed::TypedExprKind::Call { qualified, args, .. } => qualified.as_ref().map(|call| {
+                let receiver_ty = match call.kind {
+                    typed::QualifiedCallKind::TypeMethod | typed::QualifiedCallKind::TraitMethod => {
+                        args.first()
+                            .map(|arg| normalize_mir_type_label(&arg.ty))
+                    }
+                    _ => None,
+                };
+                MirQualifiedCall {
                     kind: map_qualified_call_kind(&call.kind),
                     owner: call.owner.clone(),
                     name: call.name.clone(),
                     impl_id: call.impl_id.clone(),
+                    receiver_ty,
+                    impl_candidates: Vec::new(),
                     span: Some(expr.span),
-                }),
+                }
+            }),
             _ => None,
         };
         self.push_expr(
