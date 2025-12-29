@@ -35,7 +35,7 @@ pub enum DispatchErrorKind =
 pub type ClassBuilder<Value> = {}
 pub type PrototypeBuilder<Value> = {}
 
-fn call<Value>(
+fn Object.call<Value>(
   table: DispatchTable<Value>,
   obj: ObjectHandle<Value>,
   name: MethodId,
@@ -43,10 +43,10 @@ fn call<Value>(
   cache: Option<&mut MethodCache<Value>>
 ) -> Result<Value, DispatchError> // `effect {runtime}`
 
-fn lookup<Value>(
+fn Object.lookup<Value>(
   table: DispatchTable<Value>,
   name: MethodId
 ) -> Option<MethodEntry<Value>>
 
-fn class_builder<Value>(name: Str) -> ClassBuilder<Value>
-fn prototype_builder<Value>(name: Str) -> PrototypeBuilder<Value>
+fn Object.class_builder<Value>(name: Str) -> ClassBuilder<Value>
+fn Object.prototype_builder<Value>(name: Str) -> PrototypeBuilder<Value>

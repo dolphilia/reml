@@ -17,3 +17,13 @@
 ## 関連リンク
 - `docs/plans/docs-examples-audit/1-2-spec-sample-fix-targets.md`
 - `docs/plans/docs-examples-audit/1-2-impl-gap-plan-20251229-1.md`
+
+## 追加対象（Core.Dsl.Object / 3.2）
+- `docs/spec/3-16-core-dsl-paradigm-kits.md`
+- `examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_3_2.reml`
+
+## 追加修正内容（Core.Dsl.Object / 3.2）
+- 最小 API の関数宣言を `Object.call` / `Object.lookup` / `Object.class_builder` / `Object.prototype_builder` 形式へ復元。
+
+## 追加検証（Core.Dsl.Object / 3.2）
+- `compiler/rust/frontend/target/debug/reml_frontend --output json examples/docs-examples/spec/3-16-core-dsl-paradigm-kits/sec_3_2.reml` を実行し、診断 0 件を確認。

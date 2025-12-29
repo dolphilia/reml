@@ -69,7 +69,7 @@ pub enum DispatchErrorKind =
 ### 3.2 最小 API
 
 ```reml
-fn call<Value>(
+fn Object.call<Value>(
   table: DispatchTable<Value>,
   obj: ObjectHandle<Value>,
   name: MethodId,
@@ -77,13 +77,13 @@ fn call<Value>(
   cache: Option<&mut MethodCache<Value>>
 ) -> Result<Value, DispatchError> // `effect {runtime}`
 
-fn lookup<Value>(
+fn Object.lookup<Value>(
   table: DispatchTable<Value>,
   name: MethodId
 ) -> Option<MethodEntry<Value>>
 
-fn class_builder<Value>(name: Str) -> ClassBuilder<Value>
-fn prototype_builder<Value>(name: Str) -> PrototypeBuilder<Value>
+fn Object.class_builder<Value>(name: Str) -> ClassBuilder<Value>
+fn Object.prototype_builder<Value>(name: Str) -> PrototypeBuilder<Value>
 
 pub type ClassBuilder<Value> = {
   method: fn(ClassBuilder<Value>, MethodId, MethodEntry<Value>) -> ClassBuilder<Value>,
