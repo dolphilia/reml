@@ -52,9 +52,9 @@ use ast::{
     EffectAnnotation, EffectCall, EffectDecl, EnumDecl, EnumVariant, Expr, ExprKind, ExternItem,
     FixityKind, Function, FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry, Ident,
     ImplDecl, ImplItem, IntBase, Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath,
-    OperationDecl, Param, Pattern, PatternKind, PatternRecordField, RecordField, RelativeHead,
-    SlicePatternItem, Stmt, StmtKind, StringKind, StructDecl, TraitDecl, TraitItem, TraitRef,
-    TypeAnnot, TypeDecl, TypeDeclBody, TypeDeclVariant, TypeDeclVariantPayload, TypeKind,
+    OperationDecl, Param, Pattern, PatternKind, PatternRecordField, QualifiedName, RecordField,
+    RelativeHead, SlicePatternItem, Stmt, StmtKind, StringKind, StructDecl, TraitDecl, TraitItem,
+    TraitRef, TypeAnnot, TypeDecl, TypeDeclBody, TypeDeclVariant, TypeDeclVariantPayload, TypeKind,
     TypeLiteral, TypeRecordField, TypeTupleElement, TypeUnionVariant, UnaryOp, UseDecl, UseItem,
     UseTree, VariantPayload, Visibility, WherePredicate,
 };
@@ -1962,6 +1962,19 @@ fn module_parser<'src>(
         .then(separator.clone().ignore_then(ident.clone()).repeated())
         .map(|(first, rest)| merge_qualified_ident(first, rest));
 
+    let qualified_name = ident
+        .clone()
+        .then(separator.clone().ignore_then(ident.clone()).repeated())
+        .map_with_span(|(first, rest), span: Range<usize>| {
+            let mut segments = Vec::with_capacity(1 + rest.len());
+            segments.push(first);
+            segments.extend(rest);
+            QualifiedName {
+                segments,
+                span: range_to_span(span),
+            }
+        });
+
     let dotted_ident = ident
         .clone()
         .then(just(TokenKind::Dot).ignore_then(ident.clone()).repeated())
@@ -3700,7 +3713,7 @@ fn module_parser<'src>(
 
     let fn_signature = just(TokenKind::KeywordFn)
         .map_with_span(move |_, span: Range<usize>| range_to_span(span))
-        .then(qualified_ident.clone())
+        .then(qualified_name.clone())
         .then(parse_generics.clone())
         .then(params_with_varargs.clone())
         .then(
@@ -3715,7 +3728,7 @@ fn module_parser<'src>(
             |(
                 (
                     (
-                        ((((fn_span, name), generics), (params, varargs)), ret_type),
+                        ((((fn_span, qualified_name), generics), (params, varargs)), ret_type),
                         effect_before_where,
                     ),
                     where_clause,
@@ -3725,8 +3738,16 @@ fn module_parser<'src>(
              span: Range<usize>| {
                 let effect = effect_after_where.or(effect_before_where);
                 let signature_span = range_to_span(span);
+                let is_qualified = qualified_name.segments.len() > 1;
+                let name = qualified_name.to_ident();
+                let qualified_name = if is_qualified {
+                    Some(qualified_name)
+                } else {
+                    None
+                };
                 FunctionSignature {
                     name,
+                    qualified_name,
                     generics,
                     params,
                     varargs,
@@ -3791,6 +3812,7 @@ fn module_parser<'src>(
                     receiver,
                     FunctionSignature {
                         name,
+                        qualified_name: None,
                         generics,
                         params,
                         varargs,
@@ -3808,7 +3830,7 @@ fn module_parser<'src>(
 
     let extern_fn_signature = just(TokenKind::KeywordFn)
         .map_with_span(move |_, span: Range<usize>| range_to_span(span))
-        .then(qualified_ident.clone())
+        .then(qualified_name.clone())
         .then(parse_generics.clone())
         .then(extern_params.clone())
         .then(
@@ -3823,7 +3845,7 @@ fn module_parser<'src>(
             |(
                 (
                     (
-                        ((((fn_span, name), generics), (params, varargs)), ret_type),
+                        ((((fn_span, qualified_name), generics), (params, varargs)), ret_type),
                         effect_before_where,
                     ),
                     where_clause,
@@ -3833,8 +3855,16 @@ fn module_parser<'src>(
              span: Range<usize>| {
                 let effect = effect_after_where.or(effect_before_where);
                 let signature_span = range_to_span(span);
+                let is_qualified = qualified_name.segments.len() > 1;
+                let name = qualified_name.to_ident();
+                let qualified_name = if is_qualified {
+                    Some(qualified_name)
+                } else {
+                    None
+                };
                 FunctionSignature {
                     name,
+                    qualified_name,
                     generics,
                     params,
                     varargs,
@@ -4311,6 +4341,7 @@ fn module_parser<'src>(
             record_streaming_success(&streaming_state_success_fn, function_span);
             Function {
                 name: signature.name.clone(),
+                qualified_name: signature.qualified_name.clone(),
                 visibility,
                 generics: signature.generics.clone(),
                 params: signature.params.clone(),
@@ -4364,6 +4395,7 @@ fn module_parser<'src>(
                 record_streaming_success(&streaming_state_success_method, function_span);
                 let function = Function {
                     name: signature.name.clone(),
+                    qualified_name: signature.qualified_name.clone(),
                     visibility,
                     generics: signature.generics.clone(),
                     params: signature.params.clone(),

@@ -2,6 +2,7 @@ use std::fmt::Write;
 
 use reml_frontend::parser::ast::Module;
 use reml_frontend::parser::ParserDriver;
+use reml_frontend::semantics::typed::TypedExprKind;
 use reml_frontend::typeck::{
     Constraint, Type, TypecheckConfig, TypecheckDriver, TypecheckReport, TypecheckViolationKind,
 };
@@ -143,6 +144,27 @@ fn make(x: Int) = Bar(x)",
         report.functions[0].unresolved_identifiers, 0,
         "合成型のコンストラクタは未解決識別子として扱わない"
     );
+}
+
+#[test]
+fn qualified_function_call_keeps_path() {
+    let report = typecheck_source(
+        "fn Core.Dsl.Object.call(x: Int) = x\n\
+fn run() = Core.Dsl.Object.call(1)",
+    );
+    let run = report
+        .typed_module
+        .functions
+        .iter()
+        .find(|function| function.name == "run")
+        .expect("run");
+    let TypedExprKind::Call { callee, .. } = &run.body.kind else {
+        panic!("run body should be call");
+    };
+    let TypedExprKind::Identifier { ident } = &callee.kind else {
+        panic!("callee should be identifier");
+    };
+    assert_eq!(ident.name, "Core.Dsl.Object.call");
 }
 
 #[test]

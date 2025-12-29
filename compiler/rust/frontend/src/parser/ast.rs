@@ -479,6 +479,8 @@ impl EffectAnnotation {
 #[derive(Debug, Clone, Serialize)]
 pub struct FunctionSignature {
     pub name: Ident,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub qualified_name: Option<QualifiedName>,
     pub generics: Vec<Ident>,
     pub params: Vec<Param>,
     #[serde(default, skip_serializing_if = "is_false")]
@@ -491,6 +493,13 @@ pub struct FunctionSignature {
 }
 
 impl FunctionSignature {
+    pub fn binding_key(&self) -> String {
+        self.qualified_name
+            .as_ref()
+            .map(QualifiedName::render)
+            .unwrap_or_else(|| self.name.name.clone())
+    }
+
     pub fn render(&self) -> String {
         let params = self
             .params
@@ -1339,6 +1348,38 @@ impl Ident {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct QualifiedName {
+    pub segments: Vec<Ident>,
+    pub span: Span,
+}
+
+impl QualifiedName {
+    pub fn render(&self) -> String {
+        self.segments
+            .iter()
+            .map(|segment| segment.name.clone())
+            .collect::<Vec<_>>()
+            .join(".")
+    }
+
+    pub fn to_ident(&self) -> Ident {
+        let mut iter = self.segments.iter();
+        let mut name = match iter.next() {
+            Some(segment) => segment.name.clone(),
+            None => String::new(),
+        };
+        for segment in iter {
+            name.push_str("::");
+            name.push_str(&segment.name);
+        }
+        Ident {
+            name,
+            span: self.span,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ModulePath {
     Root {
@@ -1406,6 +1447,8 @@ impl RelativeHead {
 #[derive(Debug, Clone, Serialize)]
 pub struct Function {
     pub name: Ident,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub qualified_name: Option<QualifiedName>,
     pub visibility: Visibility,
     pub generics: Vec<Ident>,
     pub params: Vec<Param>,
@@ -1419,6 +1462,13 @@ pub struct Function {
 }
 
 impl Function {
+    pub fn binding_key(&self) -> String {
+        self.qualified_name
+            .as_ref()
+            .map(QualifiedName::render)
+            .unwrap_or_else(|| self.name.name.clone())
+    }
+
     pub fn render(&self) -> String {
         let params = self
             .params

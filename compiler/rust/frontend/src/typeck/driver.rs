@@ -352,7 +352,7 @@ impl TypecheckDriver {
             typed_module
                 .schemes
                 .push(build_scheme_info(scheme_id, &scheme, &substitution));
-            module_env.insert(function.name.name.clone(), scheme.clone());
+            module_env.insert(function.binding_key(), scheme.clone());
 
             let typed_params = param_bindings
                 .into_iter()
@@ -1961,7 +1961,7 @@ fn register_function_decls(
             .unwrap_or_else(|| var_gen.fresh_type());
         let function_type = Type::arrow(param_types, ret_type);
         let scheme = generalize_type(env, function_type);
-        env.insert(signature.name.name.clone(), scheme);
+        env.insert(signature.binding_key(), scheme);
     }
 }
 
@@ -2462,10 +2462,14 @@ fn extract_opbuilder_call(expr: &Expr) -> Option<OpBuilderCall<'_>> {
 }
 
 fn render_opbuilder_target(expr: &Expr) -> Option<String> {
+    render_qualified_access(expr)
+}
+
+fn render_qualified_access(expr: &Expr) -> Option<String> {
     match &expr.kind {
         ExprKind::Identifier(ident) => Some(ident.name.clone()),
         ExprKind::FieldAccess { target, field } => {
-            render_opbuilder_target(target).map(|base| format!("{base}.{}", field.name))
+            render_qualified_access(target).map(|base| format!("{base}.{}", field.name))
         }
         ExprKind::ModulePath(path) => Some(path.render()),
         _ => None,
@@ -3244,11 +3248,21 @@ fn infer_expr(
             let qualified_call = resolve_qualified_call(callee, context.trait_names);
             let mut desugared_callee = None;
             if let ExprKind::FieldAccess { target, field } = &callee.kind {
+                if let Some(qualified_name) = render_qualified_access(callee) {
+                    if env.lookup(qualified_name.as_str()).is_some() {
+                        desugared_callee = Some(Expr::identifier(Ident {
+                            name: qualified_name,
+                            span: callee.span(),
+                        }));
+                    }
+                }
                 if let Some(target_name) = type_method_target_name(target) {
-                    desugared_callee = Some(Expr::identifier(Ident {
-                        name: format!("{target_name}__{}", field.name),
-                        span: field.span,
-                    }));
+                    if desugared_callee.is_none() {
+                        desugared_callee = Some(Expr::identifier(Ident {
+                            name: format!("{target_name}__{}", field.name),
+                            span: field.span,
+                        }));
+                    }
                 }
             }
             let callee_expr = desugared_callee.as_ref().unwrap_or(callee);
