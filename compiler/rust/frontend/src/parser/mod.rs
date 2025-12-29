@@ -1887,6 +1887,21 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
     }
 }
 
+fn cases_to_list_expr(cases: Vec<Expr>, span: Span) -> Expr {
+    let mut list_expr = Expr::identifier(Ident {
+        name: "Nil".to_string(),
+        span,
+    });
+    for case_expr in cases.into_iter().rev() {
+        let cons_ident = Ident {
+            name: "Cons".to_string(),
+            span,
+        };
+        list_expr = Expr::call(Expr::identifier(cons_ident), vec![case_expr, list_expr], span);
+    }
+    list_expr
+}
+
 fn module_parser<'src>(
     source: &'src str,
     streaming_state: &StreamingState,
@@ -2963,12 +2978,7 @@ fn module_parser<'src>(
                 |((callee_ident, (parser_expr, _parser_span)), (cases, cases_span)),
                  span: Range<usize>| {
                     let callee = Expr::identifier(callee_ident);
-                    let cases_expr = Expr::literal(
-                        Literal {
-                            value: LiteralKind::Array { elements: cases },
-                        },
-                        cases_span,
-                    );
+                    let cases_expr = cases_to_list_expr(cases, cases_span);
                     Expr::call(callee, vec![parser_expr, cases_expr], range_to_span(span))
                 },
             );
