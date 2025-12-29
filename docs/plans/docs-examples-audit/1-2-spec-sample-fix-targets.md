@@ -299,16 +299,16 @@
 ### docs/spec/3-4-core-numeric-time.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1. 数値プリミティブとユーティリティ | sec_1 | examples/docs-examples/spec/3-4-core-numeric-time/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2. 統計・データ品質サポート | sec_2 | examples/docs-examples/spec/3-4-core-numeric-time/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3. 時間・期間型 | sec_3-a | examples/docs-examples/spec/3-4-core-numeric-time/sec_3-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3. 時間・期間型 | sec_3-b | examples/docs-examples/spec/3-4-core-numeric-time/sec_3-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.1 時刻フォーマット | sec_3_1 | examples/docs-examples/spec/3-4-core-numeric-time/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.2 タイムゾーンサポート | sec_3_2 | examples/docs-examples/spec/3-4-core-numeric-time/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4. メトリクスと監査連携 | sec_4 | examples/docs-examples/spec/3-4-core-numeric-time/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 5. 使用例（統計 + メトリクス） | sec_5 | examples/docs-examples/spec/3-4-core-numeric-time/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6.1 数値精度の制御 | sec_6_1 | examples/docs-examples/spec/3-4-core-numeric-time/sec_6_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6.2 金融計算向け最適化 | sec_6_2 | examples/docs-examples/spec/3-4-core-numeric-time/sec_6_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 1. 数値プリミティブとユーティリティ | sec_1 | examples/docs-examples/spec/3-4-core-numeric-time/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2. 統計・データ品質サポート | sec_2 | examples/docs-examples/spec/3-4-core-numeric-time/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3. 時間・期間型 | sec_3-a | examples/docs-examples/spec/3-4-core-numeric-time/sec_3-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3. 時間・期間型 | sec_3-b | examples/docs-examples/spec/3-4-core-numeric-time/sec_3-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.1 時刻フォーマット | sec_3_1 | examples/docs-examples/spec/3-4-core-numeric-time/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.2 タイムゾーンサポート | sec_3_2 | examples/docs-examples/spec/3-4-core-numeric-time/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4. メトリクスと監査連携 | sec_4 | examples/docs-examples/spec/3-4-core-numeric-time/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 5. 使用例（統計 + メトリクス） | sec_5 | examples/docs-examples/spec/3-4-core-numeric-time/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6.1 数値精度の制御 | sec_6_1 | examples/docs-examples/spec/3-4-core-numeric-time/sec_6_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6.2 金融計算向け最適化 | sec_6_2 | examples/docs-examples/spec/3-4-core-numeric-time/sec_6_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-5-core-io-path.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

@@ -1,3 +1,7 @@
+pub type u64
+pub type HistogramBucket
+pub type LinearModel
+
 pub type HistogramBucketState = {
   bucket: HistogramBucket,
   count: u64,

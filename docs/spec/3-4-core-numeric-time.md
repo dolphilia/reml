@@ -47,6 +47,10 @@ fn range<T: Numeric + Ord>(iter: Iter<T>) -> Option<(T, T)> // `@pure`
 Core.Data の `ColumnStats` と整合する統計ヘルパを提供する。
 
 ```reml
+pub type u64
+pub type HistogramBucket
+pub type LinearModel
+
 pub type HistogramBucketState = {
   bucket: HistogramBucket,
   count: u64,
@@ -76,6 +80,10 @@ pub enum StatisticsErrorKind = InsufficientData | InvalidParameter | NumericalIn
 ## 3. 時間・期間型
 
 ```reml
+pub type i64
+pub type i32
+pub type TimeError
+
 pub type Timestamp = {
   seconds: i64,
   nanos: i32,
@@ -97,6 +105,8 @@ fn sleep(duration: Duration) -> Result<(), TimeError>         // `effect {time}`
 - `TimeError` は OS からのエラーをラップし、`IntoDiagnostic` トレイト経由で診断システムと連携する。
 
 ```reml
+pub type Timestamp
+
 pub type TimeError = {
   kind: TimeErrorKind,
   message: Str,
@@ -108,22 +118,31 @@ pub type TimeError = {
 
 pub enum TimeErrorKind = SystemClockUnavailable | InvalidTimezone | TimeOverflow | InvalidFormat
 
+fn time_error_code(kind: TimeErrorKind) -> Str =
+  match kind with
+  | SystemClockUnavailable -> "TIME_SYSTEM_CLOCK_UNAVAILABLE"
+  | InvalidTimezone -> "TIME_INVALID_TIMEZONE"
+  | TimeOverflow -> "TIME_OVERFLOW"
+  | InvalidFormat -> "TIME_INVALID_FORMAT"
+
 impl IntoDiagnostic for TimeError {
   fn into_diagnostic(self) -> Diagnostic {
     Diagnostic::system_error(self.message)
-      .with_code(format!("TIME_{:?}", self.kind))
+      .with_code(time_error_code(self.kind))
       .with_metadata("timestamp", self.timestamp)
       .with_metadata("format_pattern", self.format_pattern)
       .with_metadata("locale", self.locale)
   }
 }
+```
 
 - フォーマット/パースの失敗は `TimeErrorKind::InvalidFormat` として扱い、`format_pattern`・`locale` メタデータを診断および監査ログに必ず付与する。
-```
 
 ### 3.1 時刻フォーマット
 
 ```reml
+pub type Timestamp
+
 enum TimeFormat = Rfc3339 | Unix | Custom(Str)
 
 fn format(ts: Timestamp, fmt: TimeFormat) -> Result<String, Diagnostic> // `effect {unicode}`
@@ -135,6 +154,10 @@ fn parse(str: Str, fmt: TimeFormat) -> Result<Timestamp, Diagnostic>    // `effe
 ### 3.2 タイムゾーンサポート
 
 ```reml
+pub type Duration
+pub type TimeError
+pub type Timestamp
+
 pub type Timezone = {
   name: Str,
   offset: Duration,
@@ -151,6 +174,13 @@ fn convert_timezone(ts: Timestamp, from: Timezone, to: Timezone) -> Result<Times
 `Core.Diagnostics` で利用する `MetricPoint` 構造体を定義し、数値・期間を統一フォーマットで監査ログへ送出する。
 
 ```reml
+pub type Timestamp
+pub type Uuid
+pub type AuditSink
+
+trait IntoMetricValue {
+}
+
 pub type MetricPoint<T> = {
   name: Str,
   value: T,
@@ -159,7 +189,7 @@ pub type MetricPoint<T> = {
 }
 
 fn metric_point<T: IntoMetricValue>(name: Str, value: T) -> MetricPoint<T> // `@pure`
-fn attach_audit(mp: MetricPoint<T>, audit_id: Option<Uuid>) -> MetricPoint<T> // `@pure`
+fn attach_audit<T>(mp: MetricPoint<T>, audit_id: Option<Uuid>) -> MetricPoint<T> // `@pure`
 fn emit_metric(mp: MetricPoint<Float>, sink: AuditSink) -> Result<(), Diagnostic> // `effect {audit}`
 ```
 
@@ -173,12 +203,18 @@ use Core;
 use Core.Numeric;
 use Core.Data;
 
-fn summarize_latency(samples: Iter<Duration>, audit: AuditSink) -> Result<MetricPoint<Float>, Diagnostic> =
+pub type Duration
+pub type AuditSink
+
+fn duration_to_ms(d: Duration) -> Float // `@pure`
+
+fn summarize_latency(samples: Iter<Duration>, audit: AuditSink) -> Result<MetricPoint<Float>, Diagnostic> {
   let ms = samples
-    |> Iter.map(|d| d.seconds as Float * 1000.0 + (d.nanos as Float / 1_000_000.0))
+    |> Iter.map(duration_to_ms)
     |> Iter.collect_vec();
 
-  let p95 = quantiles(ms.iter(), List::from([0.95]))?.get(&0.95).unwrap_or(0.0);
+  let stats = quantiles(ms.iter(), List::from([0.95]))?;
+  let p95 = stats.get(0.95).unwrap_or(0.0);
   let mean = mean(ms.iter()).unwrap_or(0.0);
 
   let mp = metric_point("latency.mean", mean)
@@ -186,6 +222,7 @@ fn summarize_latency(samples: Iter<Duration>, audit: AuditSink) -> Result<Metric
 
   emit_metric(metric_point("latency.p95", p95), audit)?;
   Ok(mp)
+}
 ```
 
 - `Duration` からミリ秒へ変換し、`quantiles` と `mean` を利用してメトリクスを生成。
@@ -196,12 +233,17 @@ fn summarize_latency(samples: Iter<Duration>, audit: AuditSink) -> Result<Metric
 ### 6.1 数値精度の制御
 
 ```reml
-pub enum Precision = {
-  Float32,
-  Float64,
-  Decimal { scale: u8, precision: u8 },
-  Arbitrary,
+pub type u8
+pub type NumericError
+
+trait Numeric<T> {
 }
+
+pub enum Precision =
+  | Float32
+  | Float64
+  | Decimal { scale: u8, precision: u8 }
+  | Arbitrary
 
 fn with_precision<T>(value: T, precision: Precision) -> Result<T, NumericError>    // `@pure`
 fn round_to<T: Numeric>(value: T, places: u8) -> T                                // `@pure`
@@ -211,6 +253,10 @@ fn truncate_to<T: Numeric>(value: T, places: u8) -> T                           
 ### 6.2 金融計算向け最適化
 
 ```reml
+pub type Decimal
+pub type CurrencyCode
+pub type NumericError
+
 // 金融計算用の高精度 Decimal 型
 fn currency_add(a: Decimal, b: Decimal, currency: CurrencyCode) -> Result<Decimal, NumericError> // `@pure`
 fn compound_interest(principal: Decimal, rate: Float, periods: u32) -> Result<Decimal, NumericError> // `@pure`

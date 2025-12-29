@@ -1,3 +1,7 @@
+pub type Duration
+pub type TimeError
+pub type Timestamp
+
 pub type Timezone = {
   name: Str,
   offset: Duration,
