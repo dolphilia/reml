@@ -1986,12 +1986,13 @@ fn populate_qualified_call_candidates(mir_module: &mut mir::MirModule) {
         };
         let mut candidates = Vec::new();
         for (impl_id, spec) in &mir_module.impls {
+            let normalized_target = normalize_impl_target_for_match(&spec.target);
             if spec
                 .trait_name
                 .as_ref()
                 .map(|name| name == trait_name)
                 .unwrap_or(false)
-                && spec.target == *receiver_ty
+                && normalized_target == *receiver_ty
             {
                 candidates.push(impl_id.clone());
             }
@@ -2004,6 +2005,14 @@ fn populate_qualified_call_candidates(mir_module: &mut mir::MirModule) {
         } else if call.impl_candidates.is_empty() {
             call.impl_id = None;
         }
+    }
+}
+
+fn normalize_impl_target_for_match(target: &str) -> String {
+    match target {
+        "Int" => "i64".to_string(),
+        "Unit" => "()".to_string(),
+        _ => target.to_string(),
     }
 }
 
@@ -2486,11 +2495,22 @@ fn resolve_qualified_call(
         ExprKind::FieldAccess { target, field } => {
             if type_method_target_name(target).is_some() {
                 let owner = render_type_owner(target)?;
+                let owner_last = owner.split("::").last().unwrap_or(owner.as_str());
+                let kind = if trait_names.contains(owner_last) {
+                    typed::QualifiedCallKind::TraitMethod
+                } else {
+                    typed::QualifiedCallKind::TypeMethod
+                };
+                let impl_id = if matches!(kind, typed::QualifiedCallKind::TypeMethod) {
+                    Some(owner.clone())
+                } else {
+                    None
+                };
                 Some(typed::QualifiedCall {
-                    kind: typed::QualifiedCallKind::TypeMethod,
+                    kind,
                     owner: Some(owner.clone()),
                     name: Some(field.name.clone()),
-                    impl_id: Some(owner),
+                    impl_id,
                 })
             } else {
                 None
