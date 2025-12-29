@@ -24,6 +24,13 @@ fn remove_env(key: Str) -> Result<(), EnvError>                    // `effect {i
 * 変更系 API は監査トレース向けに `Core.Diagnostics` の `AuditEvent::EnvMutation`（3-6 §1.1.1）を発行し、`AuditEnvelope.metadata` に `env.operation`, `env.key`, `env.scope`, `requested_by` を必ず格納する。`RunConfig.extensions["audit"].capture_env=true`（任意）で詳細ログを有効化。
 
 ```reml
+pub type EnvErrorKind =
+  | NotFound
+  | PermissionDenied
+  | InvalidEncoding
+  | UnsupportedPlatform
+  | IoFailure
+
 pub type EnvError = {
   kind: EnvErrorKind,
   message: Str,
@@ -31,10 +38,10 @@ pub type EnvError = {
   context: Option<EnvContext>,
 }
 
-pub enum EnvErrorKind = NotFound | PermissionDenied | InvalidEncoding | UnsupportedPlatform | IoFailure
+pub type PlatformInfo
 
 pub type EnvContext = {
-  operation: Str,        // "get", "set", "remove"
+  operation_name: Str,        // "get", "set", "remove"
   platform: PlatformInfo,
 }
 ```

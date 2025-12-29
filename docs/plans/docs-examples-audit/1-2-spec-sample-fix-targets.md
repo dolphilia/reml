@@ -194,10 +194,10 @@
 ### docs/spec/3-10-core-env.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1. 環境変数アクセス | sec_1-a | examples/docs-examples/spec/3-10-core-env/sec_1-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1. 環境変数アクセス | sec_1-b | examples/docs-examples/spec/3-10-core-env/sec_1-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2. 一時ディレクトリとパス補助 | sec_2 | examples/docs-examples/spec/3-10-core-env/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3. プラットフォーム情報の取得 | sec_3 | examples/docs-examples/spec/3-10-core-env/sec_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 1. 環境変数アクセス | sec_1-a | examples/docs-examples/spec/3-10-core-env/sec_1-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1. 環境変数アクセス | sec_1-b | examples/docs-examples/spec/3-10-core-env/sec_1-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2. 一時ディレクトリとパス補助 | sec_2 | examples/docs-examples/spec/3-10-core-env/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3. プラットフォーム情報の取得 | sec_3 | examples/docs-examples/spec/3-10-core-env/sec_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 | 4. `@cfg` 連携ガイドライン | sec_4 | examples/docs-examples/spec/3-10-core-env/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
 
 ### docs/spec/3-11-core-test.md
