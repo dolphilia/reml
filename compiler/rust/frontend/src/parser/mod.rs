@@ -3700,7 +3700,7 @@ fn module_parser<'src>(
 
     let fn_signature = just(TokenKind::KeywordFn)
         .map_with_span(move |_, span: Range<usize>| range_to_span(span))
-        .then(ident.clone())
+        .then(qualified_ident.clone())
         .then(parse_generics.clone())
         .then(params_with_varargs.clone())
         .then(
@@ -3808,7 +3808,7 @@ fn module_parser<'src>(
 
     let extern_fn_signature = just(TokenKind::KeywordFn)
         .map_with_span(move |_, span: Range<usize>| range_to_span(span))
-        .then(ident.clone())
+        .then(qualified_ident.clone())
         .then(parse_generics.clone())
         .then(extern_params.clone())
         .then(

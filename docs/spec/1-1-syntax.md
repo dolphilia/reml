@@ -149,7 +149,7 @@ conductor config_orchestrator {
 
   束縛パターンは `match` と同じ構文を受け付け、タプル・レコード・列挙・リストの分解や `..` による残余束縛、`_` による無視束縛を利用できる。網羅性が満たされない場合はコンパイル時に拒否されるため、初期化コードで `panic` を誘発する心配がない。【F:../examples/language-impl-comparison/reml/pl0_combinator.reml†L150-L173】
 
-* **関数宣言**  \n  本体は式かブロックで記述でき、名前付き引数・デフォルト引数・戻り値型をサポートします。`pub` を付けると公開関数になります。
+* **関数宣言**  \n  本体は式かブロックで記述でき、名前付き引数・デフォルト引数・戻り値型をサポートします。`pub` を付けると公開関数になります。宣言名は `QualifiedName` を受理し、`Core.Dsl.Object.call` / `Core::Dsl::Object::call` のいずれの区切りも許容します。構文解析後は `::` 区切りに正規化して保持します。
 
   ```reml
   fn add(a: i64, b: i64) -> i64 = a + b
@@ -885,6 +885,7 @@ CompilationUnit ::= ModuleHeader? { Attrs? (UseDecl | PubDecl) }+
 
 ModuleHeader   ::= "module" ModulePath NL
 ModulePath     ::= Ident { "." Ident }
+QualifiedName  ::= Ident { ("." | "::") Ident }
 
 UseDecl        ::= "use" UseTree NL
 UseTree        ::= UsePath ["as" Ident]
@@ -926,7 +927,7 @@ AssignStmt     ::= LValue ":=" Expr NL
 DeferStmt      ::= "defer" Expr NL
 
 FnDecl         ::= FnSignature ("=" Expr | Block)
-FnSignature    ::= "fn" Ident [GenericParams] "(" Params? ")" [RetType] [WhereClause] [EffectAnnot]
+FnSignature    ::= "fn" QualifiedName [GenericParams] "(" Params? ")" [RetType] [WhereClause] [EffectAnnot]
 Params         ::= Param { "," Param }
 Param          ::= Pattern [":" Type] ["=" Expr]
 RetType        ::= "->" Type

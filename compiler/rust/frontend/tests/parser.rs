@@ -8,3 +8,6 @@ mod packrat;
 
 #[path = "parser/defer.rs"]
 mod defer;
+
+#[path = "parser/qualified_fn_decl.rs"]
+mod qualified_fn_decl;
