@@ -30,6 +30,7 @@ fn concat(left: Doc, right: Doc) -> Doc
 fn render(doc: Doc, width: Int) -> Str
 
 type CstPrinter
+type CstNode
 fn cst_printer() -> CstPrinter
 fn cst_doc(printer: CstPrinter, node: CstNode) -> Doc
 ```
@@ -68,15 +69,17 @@ fn main() -> Str {
 use Core.Parse
 use Core.Text.Pretty
 
+type Parser<T>
+type Ast
+
 fn format_with_cst(parser: Parser<Ast>, input: Str) -> Str {
-  let result = Parse.run_with_cst(parser, input, RunConfig.default())
-  match result.value {
-    Some(output) => {
+  let result = Parse.run_with_cst(parser, input, RunConfig{})
+  match result.value with
+  | Some(output) -> {
       let printer = Pretty.cst_printer()
       let doc = Pretty.cst_doc(printer, output.cst)
       Pretty.render(doc, 80)
     }
-    None => ""
-  }
+  | None -> ""
 }
 ```
