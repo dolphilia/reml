@@ -145,6 +145,7 @@ impl TypecheckDriver {
         let mut module_env = TypeEnv::new();
         let mut unicode_shadow_tracker = UnicodeShadowTracker::default();
 
+        register_prelude_type_decls(&mut module_env);
         register_type_decls(&module.decls, &mut module_env);
         validate_type_decl_bodies(&module.decls, &module_env, &mut violations);
         register_function_decls(&module.decls, &mut module_env, &mut var_gen, &mut violations);
@@ -1773,6 +1774,40 @@ struct FunctionStats {
     constraints: usize,
     unresolved_identifiers: usize,
     local_bindings: HashSet<String>,
+}
+
+fn register_prelude_type_decls(env: &mut TypeEnv) {
+    let span = Span::default();
+    let entries: &[(&str, &[&str])] = &[
+        ("Option", &["T"]),
+        ("Result", &["T", "E"]),
+        ("List", &["T"]),
+        ("Iter", &["T"]),
+        ("Vec", &["T"]),
+        ("Map", &["K", "V"]),
+        ("Set", &["T"]),
+        ("String", &[]),
+        ("Diagnostic", &[]),
+        ("MemoryError", &[]),
+        ("CollectError", &[]),
+        ("StringError", &[]),
+        ("AsyncStream", &["T"]),
+        ("Future", &["T"]),
+        ("Range", &["T"]),
+        ("Histogram", &[]),
+        ("Collector", &["T", "C"]),
+    ];
+    for (name, generics) in entries {
+        let generics = generics.iter().map(|value| (*value).to_string()).collect();
+        env.insert_type_decl(TypeDeclBinding::new(
+            *name,
+            generics,
+            TypeDeclKind::Opaque,
+            None,
+            span,
+            None,
+        ));
+    }
 }
 
 fn register_type_decls(decls: &[Decl], env: &mut TypeEnv) {
@@ -5842,13 +5877,16 @@ fn type_from_annotation_kind_with_generics(
                 "UInt" | "u32" | "usize" => Some(Type::builtin(BuiltinType::UInt)),
                 "Float" | "f64" => Some(Type::builtin(BuiltinType::Float)),
                 "Bool" => Some(Type::builtin(BuiltinType::Bool)),
-                "Char" => Some(Type::builtin(BuiltinType::Char)),
+                "Char" | "char" => Some(Type::builtin(BuiltinType::Char)),
                 "Str" => Some(Type::builtin(BuiltinType::Str)),
                 "Bytes" => Some(Type::builtin(BuiltinType::Bytes)),
                 _ => None,
             };
             if literal.is_some() {
                 return literal;
+            }
+            if name.name == "Self" || name.name.starts_with("Self::") {
+                return Some(Type::app(name.name.clone(), Vec::new()));
             }
             if let Some(map) = alias_args {
                 if let Some(ty) = map.get(name.name.as_str()) {

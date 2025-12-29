@@ -1337,21 +1337,9 @@ fn collect_rec_lambda_diagnostics(module: &Module, diagnostics: &mut Vec<Fronten
             .with_span(span)
     }
 
-    fn lambda_param_missing(span: Span) -> FrontendDiagnostic {
-        FrontendDiagnostic::new("ラムダ式には 1 つ以上の引数が必要です。")
-            .with_severity(DiagnosticSeverity::Error)
-            .with_domain(DiagnosticDomain::Parser)
-            .with_code("parser.lambda.param_missing")
-            .with_recoverability(Recoverability::Recoverable)
-            .with_span(span)
-    }
-
     fn walk_expr(expr: &Expr, diagnostics: &mut Vec<FrontendDiagnostic>) {
         match &expr.kind {
-            ExprKind::Lambda { params, body, .. } => {
-                if params.is_empty() {
-                    diagnostics.push(lambda_param_missing(expr.span));
-                }
+            ExprKind::Lambda { params: _, body, .. } => {
                 walk_expr(body, diagnostics);
             }
             ExprKind::Rec { expr: inner } => {
@@ -1910,6 +1898,7 @@ fn module_parser<'src>(
         just(TokenKind::UpperIdentifier),
         just(TokenKind::KeywordSelf),
         just(TokenKind::KeywordMut),
+        just(TokenKind::KeywordNew),
     ))
     .map_with_span(move |_, span: Range<usize>| {
         let slice = &source[span.start..span.end];
@@ -1918,7 +1907,11 @@ fn module_parser<'src>(
 
     let ident = identifier.clone().map(|(name, span)| Ident { name, span });
 
-    let lower_ident = choice((just(TokenKind::Identifier), just(TokenKind::KeywordMut)))
+    let lower_ident = choice((
+        just(TokenKind::Identifier),
+        just(TokenKind::KeywordMut),
+        just(TokenKind::KeywordSelf),
+    ))
         .map_with_span(move |_, span: Range<usize>| {
             let slice = &source[span.start..span.end];
             Ident {
@@ -2536,13 +2529,35 @@ fn module_parser<'src>(
             TokenKind::RParen,
         );
 
+        let assign_field = choice((
+            ident_for_expr.clone(),
+            just(TokenKind::KeywordNew).map_with_span(|_, span: Range<usize>| Ident {
+                name: "new".to_string(),
+                span: range_to_span(span),
+            }),
+            just(TokenKind::KeywordThen).map_with_span(|_, span: Range<usize>| Ident {
+                name: "then".to_string(),
+                span: range_to_span(span),
+            }),
+        ));
+
+        let assign_target = ident_expr
+            .clone()
+            .then(separator.clone().ignore_then(assign_field).repeated())
+            .map(|(base, fields)| {
+                fields.into_iter().fold(base, |acc, field| {
+                    let span = span_union(acc.span(), field.span);
+                    Expr::field_access(acc, field, span)
+                })
+            });
+
         let stmt = build_stmt_parser(
             expr.clone(),
             pattern_for_expr.clone(),
             lower_ident.clone(),
             lambda_params.clone(),
             type_parser_for_expr.clone(),
-            ident_expr.clone(),
+            assign_target.clone(),
         );
 
         let stmt_with_sep = stmt
@@ -2797,6 +2812,22 @@ fn module_parser<'src>(
             .or_not()
             .map(|params| params.unwrap_or_default());
 
+        let bar_lambda_empty = just(TokenKind::LogicalOr)
+            .ignore_then(
+                just(TokenKind::Arrow)
+                    .ignore_then(type_parser_for_expr.clone().cut())
+                    .or_not(),
+            )
+            .then(lambda_body_expr.clone())
+            .map_with_span(|(ret_type, body), span: Range<usize>| Expr {
+                span: range_to_span(span),
+                kind: ExprKind::Lambda {
+                    params: Vec::new(),
+                    ret_type,
+                    body: Box::new(body),
+                },
+            });
+
         let bar_lambda_expr = just(TokenKind::Bar)
             .ignore_then(bar_lambda_params)
             .then_ignore(just(TokenKind::Bar))
@@ -2814,6 +2845,7 @@ fn module_parser<'src>(
                     body: Box::new(body),
                 },
             });
+        let bar_lambda_expr = choice((bar_lambda_empty, bar_lambda_expr));
 
         let test_parser_ident = lower_ident.clone().try_map(|ident, span| {
             if ident.name == "test_parser" {
@@ -3182,7 +3214,7 @@ fn module_parser<'src>(
                 Expr::perform(effect, argument, span)
             });
 
-        let assignment_expr = ident_expr
+        let assignment_expr = assign_target
             .clone()
             .then_ignore(just(TokenKind::Assign))
             .then(expr.clone().cut())
@@ -3551,8 +3583,21 @@ fn module_parser<'src>(
         TokenKind::RParen,
     );
 
-    let generic_params = ident
+    let generic_param = ident
         .clone()
+        .then(
+            just(TokenKind::Colon)
+                .ignore_then(
+                    type_parser
+                        .clone()
+                        .separated_by(just(TokenKind::Plus))
+                        .at_least(1),
+                )
+                .or_not(),
+        )
+        .map(|(ident, _bounds)| ident);
+
+    let generic_params = generic_param
         .separated_by(just(TokenKind::Comma))
         .allow_trailing()
         .delimited_by(just(TokenKind::Lt), just(TokenKind::Gt));
@@ -3968,7 +4013,7 @@ fn module_parser<'src>(
         .clone()
         .then(
             just(TokenKind::KeywordType)
-                .ignore_then(type_decl_name)
+                .ignore_then(type_decl_name.clone())
                 .then(type_decl_body_default.or_not()),
         )
         .map_with_span(|(visibility, ((name, generics), body)), span: Range<usize>| {
@@ -3991,7 +4036,8 @@ fn module_parser<'src>(
             }
         });
 
-    let type_decl_raw = choice((type_alias_decl_raw, type_decl_raw));
+    let type_decl_raw = choice((type_alias_decl_raw, type_decl_raw))
+        .then_ignore(just(TokenKind::Semicolon).or_not());
 
     let type_decl = attr_list
         .clone()
@@ -4029,24 +4075,32 @@ fn module_parser<'src>(
         TokenKind::RBrace,
     );
 
+    let struct_decl_body = choice((
+        struct_body.clone().map(|fields| (fields, false)),
+        just(TokenKind::Semicolon).to((Vec::new(), true)),
+    ));
+
     let struct_decl_raw = visibility
         .clone()
         .then(
             just(TokenKind::KeywordStruct)
                 .ignore_then(type_decl_name.clone())
-                .then(struct_body),
+                .then(struct_decl_body),
         )
-        .map_with_span(|(visibility, ((name, generics), fields)), span: Range<usize>| Decl {
-            attrs: Vec::new(),
-            visibility,
-            span: range_to_span(span.clone()),
-            kind: DeclKind::Struct(StructDecl {
-                name,
-                generics,
-                fields,
-                span: range_to_span(span),
-            }),
-        });
+        .then_ignore(just(TokenKind::Semicolon).or_not())
+        .map_with_span(
+            |(visibility, ((name, generics), (fields, _has_semicolon))), span: Range<usize>| Decl {
+                attrs: Vec::new(),
+                visibility,
+                span: range_to_span(span.clone()),
+                kind: DeclKind::Struct(StructDecl {
+                    name,
+                    generics,
+                    fields,
+                    span: range_to_span(span),
+                }),
+            },
+        );
 
     let struct_decl = attr_list
         .clone()
@@ -4165,13 +4219,34 @@ fn module_parser<'src>(
         });
 
     let block_body_parser = {
+        let assign_field = choice((
+            ident.clone(),
+            just(TokenKind::KeywordNew).map_with_span(|_, span: Range<usize>| Ident {
+                name: "new".to_string(),
+                span: range_to_span(span),
+            }),
+            just(TokenKind::KeywordThen).map_with_span(|_, span: Range<usize>| Ident {
+                name: "then".to_string(),
+                span: range_to_span(span),
+            }),
+        ));
+        let assign_target = ident
+            .clone()
+            .map(Expr::identifier)
+            .then(separator.clone().ignore_then(assign_field).repeated())
+            .map(|(base, fields)| {
+                fields.into_iter().fold(base, |acc, field| {
+                    let span = span_union(acc.span(), field.span);
+                    Expr::field_access(acc, field, span)
+                })
+            });
         let stmt = build_stmt_parser(
             expr.clone(),
             pattern_for_block.clone(),
             lower_ident.clone(),
             params.clone(),
             type_parser.clone(),
-            ident.clone().map(Expr::identifier),
+            assign_target,
         );
         just(TokenKind::LBrace)
             .ignore_then(
@@ -4479,6 +4554,7 @@ fn module_parser<'src>(
 
     let impl_item = choice((
         function.clone().map(ImplItem::Function),
+        type_decl.clone().map(ImplItem::Decl),
         let_decl.clone().map(ImplItem::Decl),
         var_decl.clone().map(ImplItem::Decl),
     ));
@@ -5659,7 +5735,7 @@ fn build_stmt_parser<P, Q, R, S, T, U>(
     lower_ident: T,
     params: U,
     type_parser: R,
-    ident_expr: S,
+    assign_target: S,
 ) -> impl ChumskyParser<TokenKind, Stmt, Error = Simple<TokenKind>> + Clone
 where
     P: ChumskyParser<TokenKind, Expr, Error = Simple<TokenKind>> + Clone,
@@ -5697,9 +5773,9 @@ where
         }),
     ));
 
-    let assign_stmt = ident_expr
+    let assign_stmt = assign_target
         .clone()
-        .then_ignore(just(TokenKind::ColonAssign))
+        .then_ignore(just(TokenKind::ColonAssign).or(just(TokenKind::Assign)))
         .then(expr.clone().cut())
         .map_with_span(|(target, value), span: Range<usize>| Stmt {
             kind: StmtKind::Assign {
