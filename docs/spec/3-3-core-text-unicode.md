@@ -137,9 +137,9 @@ enum TextPattern = Literal(Str) | GraphemeSeq(List<Grapheme>) | Regex(RegexHandl
 
 type RegexHandle
 
-fn find(str: Str, pattern: TextPattern) -> Option<ByteIndex>         // `effect {regex}`
-fn find_grapheme(str: Str, pattern: TextPattern) -> Option<GraphemeIndex> // `effect {regex}`
-fn replace(str: Str, pattern: TextPattern, with: Str) -> Result<String, UnicodeError> // `effect {unicode, mem}`
+fn find(str: Str, pat: TextPattern) -> Option<ByteIndex>         // `effect {regex}`
+fn find_grapheme(str: Str, pat: TextPattern) -> Option<GraphemeIndex> // `effect {regex}`
+fn replace(str: Str, pat: TextPattern, replacement: Str) -> Result<String, UnicodeError> // `effect {unicode, mem}`
 ```
 
 - `RegexHandle` の実装はオプション機能（`feature {regex}`）として提供し、`effect {regex}` を追加で要求する。
@@ -243,9 +243,9 @@ pub type TemplateLiteral = Str | Bool | Int | Float | Json
 ### 8.2 フィルター登録と Capability 連携
 
 ```reml
-pub type TemplateFilter = fn(Value, args: List<Value>, ctx: &TemplateRenderCtx) -> Result<Value, TemplateError>
+pub type TemplateFilter = fn(Value, List<Value>, &TemplateRenderCtx) -> Result<Value, TemplateError>
 
-pub struct TemplateFilterRegistry
+pub struct TemplateFilterRegistry;
 
 pub type TemplateFilterId = u32
 
@@ -314,10 +314,10 @@ type Token =
 
 fn tokenize_identifier() -> Parser<Token> =
   Unicode.segment_words(lexeme(spaces0(), identifier_raw()))
-    |> Iter.try_fold(String::empty(), |acc, word|
-         let normalized = Unicode.prepare_identifier(word)?;
+    |> Iter.try_fold(String::empty(), |acc, word| {
+         let normalized = Unicode.prepare_identifier(word)?
          Ok(acc + normalized)
-       )
+       })
     |> Result.map(|name| Token::Identifier(name))
 
 fn tokenize_emoji() -> Parser<Token> =
@@ -374,9 +374,9 @@ fn from_base64(text: Str) -> Result<Vec<u8>, DecodeError>       // `effect {mem}
 ```reml
 module Core.Regex
 
-fn compile(pattern: Str, options: RegexOptions) -> Result<RegexHandle, RegexError> // `effect {regex}`
-fn run(handle: RegexHandle, text: Str, mode: RegexRunMode = default) -> RegexMatch // `effect {regex}`
-fn is_match(handle: RegexHandle, text: Str) -> Bool                                // `effect {regex}`
+fn compile(pat: Str, options: RegexOptions) -> Result<RegexHandle, RegexError> // `effect {regex}`
+fn run(rx: RegexHandle, text: Str, mode: RegexRunMode = RegexRunMode::default()) -> RegexMatch // `effect {regex}`
+fn is_match(rx: RegexHandle, text: Str) -> Bool                                // `effect {regex}`
 fn to_diagnostic(error: RegexError) -> Diagnostic                                 // `@pure`
 
 type RegexOptions = {

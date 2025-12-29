@@ -11,10 +11,10 @@ type Token =
 
 fn tokenize_identifier() -> Parser<Token> =
   Unicode.segment_words(lexeme(spaces0(), identifier_raw()))
-    |> Iter.try_fold(String::empty(), |acc, word|
-         let normalized = Unicode.prepare_identifier(word)?;
+    |> Iter.try_fold(String::empty(), |acc, word| {
+         let normalized = Unicode.prepare_identifier(word)?
          Ok(acc + normalized)
-       )
+       })
     |> Result.map(|name| Token::Identifier(name))
 
 fn tokenize_emoji() -> Parser<Token> =

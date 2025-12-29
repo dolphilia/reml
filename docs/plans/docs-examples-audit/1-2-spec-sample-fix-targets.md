@@ -280,21 +280,21 @@
 ### docs/spec/3-3-core-text-unicode.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2. 文字列型の層構造 | sec_2 | examples/docs-examples/spec/3-3-core-text-unicode/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.1 正規化 API | sec_3_1 | examples/docs-examples/spec/3-3-core-text-unicode/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.2 ケース・幅調整 | sec_3_2 | examples/docs-examples/spec/3-3-core-text-unicode/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.3 診断連携と ParseError | sec_3_3 | examples/docs-examples/spec/3-3-core-text-unicode/sec_3_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.1 Grapheme / Word / Sentence 境界 | sec_4_1 | examples/docs-examples/spec/3-3-core-text-unicode/sec_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.2 部分一致と検索 | sec_4_2 | examples/docs-examples/spec/3-3-core-text-unicode/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6. テキスト構築とビルダー | sec_6 | examples/docs-examples/spec/3-3-core-text-unicode/sec_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7.3 セキュリティ考慮事項 | sec_7_3 | examples/docs-examples/spec/3-3-core-text-unicode/sec_7_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 8.1 セグメント構造と抽象構文 | sec_8_1 | examples/docs-examples/spec/3-3-core-text-unicode/sec_8_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 8.2 フィルター登録と Capability 連携 | sec_8_2 | examples/docs-examples/spec/3-3-core-text-unicode/sec_8_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 8.3 コンパイルとレンダリング API | sec_8_3 | examples/docs-examples/spec/3-3-core-text-unicode/sec_8_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 8.4 エラーモデル | sec_8_4 | examples/docs-examples/spec/3-3-core-text-unicode/sec_8_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 9. 使用例（Lex 連携と Grapheme 操作） | sec_9 | examples/docs-examples/spec/3-3-core-text-unicode/sec_9.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 9.1 エンコーディング変換ヘルパ | sec_9_1 | examples/docs-examples/spec/3-3-core-text-unicode/sec_9_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 10.1 API と型 | sec_10_1 | examples/docs-examples/spec/3-3-core-text-unicode/sec_10_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 2. 文字列型の層構造 | sec_2 | examples/docs-examples/spec/3-3-core-text-unicode/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.1 正規化 API | sec_3_1 | examples/docs-examples/spec/3-3-core-text-unicode/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.2 ケース・幅調整 | sec_3_2 | examples/docs-examples/spec/3-3-core-text-unicode/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.3 診断連携と ParseError | sec_3_3 | examples/docs-examples/spec/3-3-core-text-unicode/sec_3_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.1 Grapheme / Word / Sentence 境界 | sec_4_1 | examples/docs-examples/spec/3-3-core-text-unicode/sec_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.2 部分一致と検索 | sec_4_2 | examples/docs-examples/spec/3-3-core-text-unicode/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6. テキスト構築とビルダー | sec_6 | examples/docs-examples/spec/3-3-core-text-unicode/sec_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7.3 セキュリティ考慮事項 | sec_7_3 | examples/docs-examples/spec/3-3-core-text-unicode/sec_7_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 8.1 セグメント構造と抽象構文 | sec_8_1 | examples/docs-examples/spec/3-3-core-text-unicode/sec_8_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 8.2 フィルター登録と Capability 連携 | sec_8_2 | examples/docs-examples/spec/3-3-core-text-unicode/sec_8_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 8.3 コンパイルとレンダリング API | sec_8_3 | examples/docs-examples/spec/3-3-core-text-unicode/sec_8_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 8.4 エラーモデル | sec_8_4 | examples/docs-examples/spec/3-3-core-text-unicode/sec_8_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 9. 使用例（Lex 連携と Grapheme 操作） | sec_9 | examples/docs-examples/spec/3-3-core-text-unicode/sec_9.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 9.1 エンコーディング変換ヘルパ | sec_9_1 | examples/docs-examples/spec/3-3-core-text-unicode/sec_9_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 10.1 API と型 | sec_10_1 | examples/docs-examples/spec/3-3-core-text-unicode/sec_10_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-4-core-numeric-time.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

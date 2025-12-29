@@ -1,6 +1,6 @@
-pub type TemplateFilter = fn(Value, args: List<Value>, ctx: &TemplateRenderCtx) -> Result<Value, TemplateError>
+pub type TemplateFilter = fn(Value, List<Value>, &TemplateRenderCtx) -> Result<Value, TemplateError>
 
-pub struct TemplateFilterRegistry
+pub struct TemplateFilterRegistry;
 
 pub type TemplateFilterId = u32
 

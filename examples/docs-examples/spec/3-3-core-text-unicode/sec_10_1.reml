@@ -1,8 +1,8 @@
 module Core.Regex
 
-fn compile(pattern: Str, options: RegexOptions) -> Result<RegexHandle, RegexError> // `effect {regex}`
-fn run(handle: RegexHandle, text: Str, mode: RegexRunMode = default) -> RegexMatch // `effect {regex}`
-fn is_match(handle: RegexHandle, text: Str) -> Bool                                // `effect {regex}`
+fn compile(pat: Str, options: RegexOptions) -> Result<RegexHandle, RegexError> // `effect {regex}`
+fn run(rx: RegexHandle, text: Str, mode: RegexRunMode = RegexRunMode::default()) -> RegexMatch // `effect {regex}`
+fn is_match(rx: RegexHandle, text: Str) -> Bool                                // `effect {regex}`
 fn to_diagnostic(error: RegexError) -> Diagnostic                                 // `@pure`
 
 type RegexOptions = {
