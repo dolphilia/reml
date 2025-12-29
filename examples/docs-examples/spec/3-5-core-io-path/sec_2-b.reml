@@ -28,7 +28,7 @@ pub enum IoErrorKind =
   | UnsupportedPlatform
 
 pub type IoContext = {
-  operation_name: Str,
+  operation: Str,
   path: Option<Path>,
   capability: Option<CapabilityId>,
   bytes_processed: Option<u64>,

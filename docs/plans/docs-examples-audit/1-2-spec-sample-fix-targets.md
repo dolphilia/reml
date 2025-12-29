@@ -311,24 +311,24 @@
 | 6.2 金融計算向け最適化 | sec_6_2 | examples/docs-examples/spec/3-4-core-numeric-time/sec_6_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-5-core-io-path.md
-| 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 2. Reader / Writer 抽象 | sec_2-a | examples/docs-examples/spec/3-5-core-io-path/sec_2-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 2. Reader / Writer 抽象 | sec_2-b | examples/docs-examples/spec/3-5-core-io-path/sec_2-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 3. ファイルとストリーム | sec_3 | examples/docs-examples/spec/3-5-core-io-path/sec_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 3.1 ストリーミングとバッファ | sec_3_1 | examples/docs-examples/spec/3-5-core-io-path/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 4. Path 抽象 | sec_4 | examples/docs-examples/spec/3-5-core-io-path/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 4.2 セキュリティヘルパ | sec_4_2 | examples/docs-examples/spec/3-5-core-io-path/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 4.3 文字列ユーティリティ（クロスプラットフォーム） | sec_4_3 | examples/docs-examples/spec/3-5-core-io-path/sec_4_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 4.4 ファイル監視（オプション） | sec_4_4-a | examples/docs-examples/spec/3-5-core-io-path/sec_4_4-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 4.4 ファイル監視（オプション） | sec_4_4-b | examples/docs-examples/spec/3-5-core-io-path/sec_4_4-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 5. リソース解放と `defer` | sec_5-a | examples/docs-examples/spec/3-5-core-io-path/sec_5-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 5. リソース解放と `defer` | sec_5-b | examples/docs-examples/spec/3-5-core-io-path/sec_5-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 6. 監査ログ連携 | sec_6 | examples/docs-examples/spec/3-5-core-io-path/sec_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 7. 使用例（設定ファイル読み込み） | sec_7 | examples/docs-examples/spec/3-5-core-io-path/sec_7.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 8.1 同期・非同期ブリッジ | sec_8_1 | examples/docs-examples/spec/3-5-core-io-path/sec_8_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 8.2 リソースプールと最適化 | sec_8_2 | examples/docs-examples/spec/3-5-core-io-path/sec_8_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
-| 9. Resource Limit ユーティリティ (`Core.Resource`) | sec_9 | examples/docs-examples/spec/3-5-core-io-path/sec_9.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 | 備考 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2. Reader / Writer 抽象 | sec_2-a | examples/docs-examples/spec/3-5-core-io-path/sec_2-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | - |
+| 2. Reader / Writer 抽象 | sec_2-b | examples/docs-examples/spec/3-5-core-io-path/sec_2-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | Rust Frontend で `operation` 識別子を再許可（実装対応完了）。 |
+| 3. ファイルとストリーム | sec_3 | examples/docs-examples/spec/3-5-core-io-path/sec_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | - |
+| 3.1 ストリーミングとバッファ | sec_3_1 | examples/docs-examples/spec/3-5-core-io-path/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | - |
+| 4. Path 抽象 | sec_4 | examples/docs-examples/spec/3-5-core-io-path/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | Rust Frontend で `pattern` 識別子を再許可（実装対応完了）。 |
+| 4.2 セキュリティヘルパ | sec_4_2 | examples/docs-examples/spec/3-5-core-io-path/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | - |
+| 4.3 文字列ユーティリティ（クロスプラットフォーム） | sec_4_3 | examples/docs-examples/spec/3-5-core-io-path/sec_4_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | - |
+| 4.4 ファイル監視（オプション） | sec_4_4-a | examples/docs-examples/spec/3-5-core-io-path/sec_4_4-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | - |
+| 4.4 ファイル監視（オプション） | sec_4_4-b | examples/docs-examples/spec/3-5-core-io-path/sec_4_4-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | - |
+| 5. リソース解放と `defer` | sec_5-a | examples/docs-examples/spec/3-5-core-io-path/sec_5-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | - |
+| 5. リソース解放と `defer` | sec_5-b | examples/docs-examples/spec/3-5-core-io-path/sec_5-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | - |
+| 6. 監査ログ連携 | sec_6 | examples/docs-examples/spec/3-5-core-io-path/sec_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | - |
+| 7. 使用例（設定ファイル読み込み） | sec_7 | examples/docs-examples/spec/3-5-core-io-path/sec_7.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | - |
+| 8.1 同期・非同期ブリッジ | sec_8_1 | examples/docs-examples/spec/3-5-core-io-path/sec_8_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | - |
+| 8.2 リソースプールと最適化 | sec_8_2 | examples/docs-examples/spec/3-5-core-io-path/sec_8_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | Rust Frontend で `operation` 識別子を再許可（実装対応完了）。 |
+| 9. Resource Limit ユーティリティ (`Core.Resource`) | sec_9 | examples/docs-examples/spec/3-5-core-io-path/sec_9.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done | - |
 
 ### docs/spec/3-6-core-diagnostics-audit.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

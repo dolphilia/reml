@@ -10,4 +10,4 @@ fn join(base: Path, segment: Str) -> Path                        // `@pure`
 fn parent(path: Path) -> Option<Path>                            // `@pure`
 fn normalize(path: Path) -> Path                                 // `@pure`
 fn is_absolute(path: Path) -> Bool                               // `@pure`
-fn glob(pat: Str) -> Result<List<Path>, PathError>               // `effect {io, io.blocking}`
+fn glob(pattern: Str) -> Result<List<Path>, PathError>           // `effect {io, io.blocking}`

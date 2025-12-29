@@ -10,5 +10,5 @@ pub type IoPool = {
   retry_policy: RetryPolicy,
 }
 
-fn with_io_pool<T>(pool: IoPool, op: IoOperation<T>) -> Result<T, IoError>
-fn parallel_file_ops<T>(ops: List<IoOperation<T>>, pool: IoPool) -> Result<List<T>, IoError>
+fn with_io_pool<T>(pool: IoPool, operation: IoOperation<T>) -> Result<T, IoError>
+fn parallel_file_ops<T>(operations: List<IoOperation<T>>, pool: IoPool) -> Result<List<T>, IoError>
