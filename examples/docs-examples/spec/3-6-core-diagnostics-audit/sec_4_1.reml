@@ -1,3 +1,5 @@
+pub type Span
+
 pub enum PiiType = Email | PhoneNumber | CreditCard | SocialSecurityNumber | Custom(Str)
 
 pub type RedactPolicy = {

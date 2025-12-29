@@ -1,3 +1,12 @@
+pub type Uuid
+pub type ActorId
+pub type SupervisorOutcome
+pub type u16
+pub type NonZeroU16
+pub type Duration
+pub type Timestamp
+pub type Stage
+
 pub type SupervisorDiagnosticExtension = {
   supervisor_id: Uuid,
   supervisor_name: Str,

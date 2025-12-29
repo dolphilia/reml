@@ -1,3 +1,7 @@
+pub type Diagnostic
+pub type AuditSink
+pub type AuditError
+
 pub type AuditPolicy = {
   level: AuditLevel,
   include_patterns: List<Str>,

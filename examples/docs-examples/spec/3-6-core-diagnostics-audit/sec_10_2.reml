@@ -1,3 +1,6 @@
+pub type AuditError
+pub type LspClient
+
 // LSP プロトコル対応
 fn diagnostic_to_lsp(diag: Diagnostic) -> LspDiagnostic {
   LspDiagnostic {

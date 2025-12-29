@@ -221,7 +221,7 @@ type EffectsExtension = {
   before: Set<EffectTag>,          // ハンドラ適用前の潜在効果集合
   handled: Set<EffectTag>,         // 捕捉に成功した効果集合
   residual: Set<EffectTag>,        // ハンドラ適用後に残った効果集合
-  handler: Option<Str>,            // ハンドラ名（存在する場合）
+  handler_name: Option<Str>,       // ハンドラ名（存在する場合）
   unhandled_operations: List<Str>, // 未実装 operation の一覧
   capability: Option<CapabilityId>,                    // 必要とされる Capability（任意）
   required_stage: Option<Runtime.StageRequirement>,    // Stage 要件（3-8 §1.2）
@@ -1052,10 +1052,10 @@ pub type ConductorDiagnosticExtension = {
   dsl_id: Option<DslId>,
   depends_on: List<Str>,
   capabilities: List<CapabilityId>,
-  execution: Option<ExecutionPlanDigest>,
+  execution_plan: Option<ExecutionPlanDigest>,
   resource_limits: List<ResourceLimitDigest>,
-  monitoring: MonitoringDigest,
-  channels: List<ChannelLinkDigest>,
+  monitoring_digest: MonitoringDigest,
+  channel_links: List<ChannelLinkDigest>,
   issue: ConductorIssueKind,
   audit_reference: Option<AuditReference>,
   snapshot: Option<Json>,
@@ -1125,7 +1125,7 @@ pub type AuditReference = {
 pub enum ConductorIssueKind = CapabilityMismatch | ResourceLimit | ExecutionPlan | Channel | Monitoring | Custom(Str)
 ```
 
-- `conductor_id` と `node_id` は診断対象の DSL ノードを一意に示し、LSP/CLI は `depends_on` と `channels` を利用して依存グラフをハイライトする。
+- `conductor_id` と `node_id` は診断対象の DSL ノードを一意に示し、LSP/CLI は `depends_on` と `channel_links` を利用して依存グラフをハイライトする。
 - `ExecutionPlanDigest` は 3-9 §1.4 の構成要素を縮約し、`BackpressureWindow` が `None` の場合でも `ExecutionPlan.strategy` を表示する。値は `ExecutionMetricsScope.execution_plan` から自動取得され、閾値不正（例: `high_watermark <= low_watermark`）は `ConductorIssueKind::ExecutionPlan` を設定する。
 - `ResourceLimitDigest.memory` と `ResourceLimitDigest.cpu` は 3.5 §9 の `MemoryLimitResolved` / `CpuQuotaNormalized` を縮約して格納し、値は `ExecutionMetricsScope.resolved_limits()` から自動転写される。CLI/LSP は `hard_bytes` と `scheduler_slots` を用いて 0-1 §1.1 の性能要件を再検証し、設定値が Stage や Capability の制約を満たしているか確認する。
 - `MonitoringDigest.metrics` には §6.1 の既定メトリクスを含め、利用者が任意に追加したキーも保持する。`TracingDigest.mode = Conditional` は `trigger` に `@cfg` 条件や `RunConfig.trace_enabled` を記録する。
@@ -1136,10 +1136,10 @@ pub enum ConductorIssueKind = CapabilityMismatch | ResourceLimit | ExecutionPlan
 | `conductor.id` | `conductor_id` | 監査レポートで同一 Conductor の診断を集約する |
 | `conductor.node` | `node_id` | ノード単位でのレビュー（例: `transform`） |
 | `conductor.capabilities` | `capabilities` | Stage/Capability レビュー (0-1 §1.2 準拠) |
-| `conductor.execution` | `execution` | Backpressure/スケジューリング比較 |
+| `conductor.execution` | `execution_plan` | Backpressure/スケジューリング比較 |
 | `conductor.resource_limits` | `resource_limits` | リソース制限の追跡と逸脱検出 |
-| `conductor.monitoring.metrics` | `monitoring.metrics` | CLI/LSP のメトリクス表示 |
-| `conductor.channels` | `channels` | チャネル ID とバッファ設定の参照 |
+| `conductor.monitoring.metrics` | `monitoring_digest.metrics` | CLI/LSP のメトリクス表示 |
+| `conductor.channels` | `channel_links` | チャネル ID とバッファ設定の参照 |
 
 - CLI/監査ログは `ConductorIssueKind` を Severity 判定の補助として使用し、`CapabilityMismatch` は `Severity::Error`、`Monitoring` は `Severity::Warning` を既定値とする。`Custom` を利用する場合は `issue` と同じ値を `AuditEnvelope.metadata["conductor.issue"]` に保存し、根拠となる仕様ノート（`../notes/` 配下）へのリンクを付与する。
 - `snapshot` は DSL ノードの部分構造や `ExecutionPlan` の JSON を格納し、0-1 §2.2 の「分かりやすい診断」を満たすために UI が差分表示できるようにする。個人情報や秘匿データを含む場合は §4 の手順でマスクする。

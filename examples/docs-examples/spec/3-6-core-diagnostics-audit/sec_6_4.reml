@@ -1,4 +1,13 @@
-pub enum DiagnosticDomain = ... | Template
+pub type Span
+pub type TemplateSegmentId
+pub type CapabilityId
+pub type EscapePolicy
+pub type Json
+pub type Diagnostic
+
+pub enum DiagnosticDomain =
+  | Template
+  | Other(Str)
 
 pub enum TemplateMessageKey =
   | RenderFailure                   // `template.render.failure`

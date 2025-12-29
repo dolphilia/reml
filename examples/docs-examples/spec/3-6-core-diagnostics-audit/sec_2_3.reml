@@ -1,3 +1,6 @@
+pub type Severity
+pub type DiagnosticDomain
+
 type DiagnosticCatalog = Map<Str, DiagnosticTemplate>
 
 type DiagnosticTemplate = {

@@ -1,3 +1,8 @@
+pub type Path
+pub type Timestamp
+pub type Json
+pub type ExitCode
+
 type CliDiagnosticEnvelope = {
   command: CliCommand,
   phase: CliPhase,

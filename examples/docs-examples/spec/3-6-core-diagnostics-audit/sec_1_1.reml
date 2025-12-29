@@ -1,3 +1,7 @@
+pub type Uuid
+pub type Json
+pub type CapabilityId
+
 pub type AuditEnvelope = {
   audit_id: Option<Uuid>,
   change_set: Option<Json>,

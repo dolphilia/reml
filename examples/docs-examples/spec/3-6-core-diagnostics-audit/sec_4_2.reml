@@ -1,3 +1,7 @@
+pub type AuditSink
+pub type AuditError
+pub type Timestamp
+
 fn security_audit(event: SecurityEvent, sink: AuditSink) -> Result<(), AuditError> // `effect {audit, security}`
 
 pub type SecurityEvent = {

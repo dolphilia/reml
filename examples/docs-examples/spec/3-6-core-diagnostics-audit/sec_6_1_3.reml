@@ -1,3 +1,7 @@
+pub type Path
+pub type Stage
+pub type Json
+
 pub type ConfigDiagnosticExtension = {
   source: ConfigSource,
   manifest_path: Option<Path>,

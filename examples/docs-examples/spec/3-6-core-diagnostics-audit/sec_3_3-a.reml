@@ -1,3 +1,9 @@
+pub type AuditSink
+pub type Json
+pub type AuditError
+pub type Span
+pub type SyscallError
+
 pub struct AuditContext {
   domain: Str,
   subject: Str,
@@ -6,14 +12,14 @@ pub struct AuditContext {
 }
 
 impl AuditContext {
-  fn new(domain: Str, subject: Str) -> Result<AuditContext, AuditError>     // `effect {audit}`
-  fn with_metadata(self, metadata: Map<Str, Json>) -> Self;                // `@pure`
-  fn log(self, event: Str, payload: Json) -> Result<(), AuditError>;       // `effect {audit}`
-  fn log_with_span(self, event: Str, span: Span, payload: Json) -> Result<(), AuditError>; // `effect {audit}`
+  fn new(domain: Str, subject: Str) -> Result<AuditContext, AuditError> = todo     // `effect {audit}`
+  fn with_metadata(self, metadata: Map<Str, Json>) -> Self = todo                 // `@pure`
+  fn log(self, event: Str, payload: Json) -> Result<(), AuditError> = todo        // `effect {audit}`
+  fn log_with_span(self, event: Str, span: Span, payload: Json) -> Result<(), AuditError> = todo // `effect {audit}`
 }
 
 fn audited_syscall<T>(
   syscall_name: Str,
   operation: () -> Result<T, SyscallError>,
   sink: AuditSink,
-) -> Result<T, SyscallError> // `effect {audit, syscall}`
+) -> Result<T, SyscallError> = todo // `effect {audit, syscall}`

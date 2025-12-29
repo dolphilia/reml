@@ -5,7 +5,9 @@ fn choose(flag: Bool) -> Int =
   if flag then 1 else -1
 
 fn pipeline_branch(flag: Bool) -> Int =
-  let base = 10;
-  base + choose(flag)
+  {
+    let base = 10;
+    base + choose(flag)
+  }
 
 fn main() -> Int = pipeline_branch(true)

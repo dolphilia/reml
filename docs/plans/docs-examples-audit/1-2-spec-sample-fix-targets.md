@@ -333,39 +333,39 @@
 ### docs/spec/3-6-core-diagnostics-audit.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1. `Diagnostic` 構造体 | sec_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.1 `AuditEnvelope` | sec_1_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_1_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.1.1 監査イベント `AuditEvent` | sec_1_1_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_1_1_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.3 効果診断拡張 `effects` | sec_1_3 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_1_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.4 型クラス診断拡張 `typeclass` | sec_1_4 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_1_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2. 診断生成ヘルパ | sec_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.1 `Result`/`Option` との連携 | sec_2_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.2 Core.Parse 連携（`Parse.fail` / `Parse.recover`） | sec_2_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.3 エラーコードカタログ | sec_2_3 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.4.1 Core.Parse プリセット `parse_error_defaults` | sec_2_4_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.4.6 Stage 差分プリセット `EffectDiagnostic` | sec_2_4_6 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_4_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.5.1 Supervisor 診断拡張 | sec_2_5_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_5_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.6 Core Prelude ガード診断 | sec_2_6 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3. 監査ログ出力 | sec_3-a | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_3-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3. 監査ログ出力 | sec_3-b | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_3-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.1 `AuditError` | sec_3_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.2 監査ポリシー管理 | sec_3_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.3 監査コンテキストとシステム呼び出し連携 | sec_3_3-a | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_3_3-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.3 監査コンテキストとシステム呼び出し連携 | sec_3_3-b | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_3_3-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.1 個人情報の除去 | sec_4_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.2 セキュリティ監査 | sec_4_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 5. 差分・監査テンプレート | sec_5 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6.1 メトリクスプリセット | sec_6_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_6_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6.1.2 Conductor 診断拡張 `conductor` | sec_6_1_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_6_1_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6.1.3 Config 診断拡張 `config` | sec_6_1_3 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_6_1_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6.2 トレース統合 | sec_6_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_6_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6.3 ターゲット診断メトリクス | sec_6_3 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_6_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6.4 テンプレート診断ドメイン | sec_6_4 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_6_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 8.1 拡張データ `bridge` | sec_8_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_8_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 9.1 `pipeline_*` サンプルと CLI/監査ログ | sec_9_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_9_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 10.1 CLI ツール統合 | sec_10_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_10_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 10.2 LSP サーバー統合 | sec_10_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_10_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 11. CLI コマンドプロトコル | sec_11 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_11.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 1. `Diagnostic` 構造体 | sec_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.1 `AuditEnvelope` | sec_1_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_1_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.1.1 監査イベント `AuditEvent` | sec_1_1_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_1_1_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.3 効果診断拡張 `effects` | sec_1_3 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_1_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.4 型クラス診断拡張 `typeclass` | sec_1_4 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_1_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2. 診断生成ヘルパ | sec_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.1 `Result`/`Option` との連携 | sec_2_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.2 Core.Parse 連携（`Parse.fail` / `Parse.recover`） | sec_2_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.3 エラーコードカタログ | sec_2_3 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.4.1 Core.Parse プリセット `parse_error_defaults` | sec_2_4_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.4.6 Stage 差分プリセット `EffectDiagnostic` | sec_2_4_6 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_4_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.5.1 Supervisor 診断拡張 | sec_2_5_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_5_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.6 Core Prelude ガード診断 | sec_2_6 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_2_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3. 監査ログ出力 | sec_3-a | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_3-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3. 監査ログ出力 | sec_3-b | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_3-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.1 `AuditError` | sec_3_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.2 監査ポリシー管理 | sec_3_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.3 監査コンテキストとシステム呼び出し連携 | sec_3_3-a | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_3_3-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.3 監査コンテキストとシステム呼び出し連携 | sec_3_3-b | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_3_3-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.1 個人情報の除去 | sec_4_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.2 セキュリティ監査 | sec_4_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 5. 差分・監査テンプレート | sec_5 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6.1 メトリクスプリセット | sec_6_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_6_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6.1.2 Conductor 診断拡張 `conductor` | sec_6_1_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_6_1_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6.1.3 Config 診断拡張 `config` | sec_6_1_3 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_6_1_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6.2 トレース統合 | sec_6_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_6_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6.3 ターゲット診断メトリクス | sec_6_3 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_6_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6.4 テンプレート診断ドメイン | sec_6_4 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_6_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 8.1 拡張データ `bridge` | sec_8_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_8_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 9.1 `pipeline_*` サンプルと CLI/監査ログ | sec_9_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_9_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 10.1 CLI ツール統合 | sec_10_1 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_10_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 10.2 LSP サーバー統合 | sec_10_2 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_10_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 11. CLI コマンドプロトコル | sec_11 | examples/docs-examples/spec/3-6-core-diagnostics-audit/sec_11.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-7-core-config-data.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

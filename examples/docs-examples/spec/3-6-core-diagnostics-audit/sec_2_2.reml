@@ -1,11 +1,17 @@
+pub type Severity
+pub type DiagnosticDomain
+pub type Locale
+pub type AuditEnvelope
+pub type ParseError
+
 type ParseDiagnosticOptions = {
-  severity: Severity = Severity::Error,
-  domain: DiagnosticDomain = DiagnosticDomain::Parser,
-  code: Option<Str> = None,
-  locale: Option<Locale> = None,
-  audit: Option<AuditEnvelope> = None,
-  input_name: Option<Str> = None,
-  attach_span_trace: Bool = true,
+  severity: Severity,
+  domain: DiagnosticDomain,
+  code: Option<Str>,
+  locale: Option<Locale>,
+  audit: Option<AuditEnvelope>,
+  input_name: Option<Str>,
+  attach_span_trace: Bool,
 }
 
 fn parse_error_defaults(input_name: Str) -> ParseDiagnosticOptions // `@pure`

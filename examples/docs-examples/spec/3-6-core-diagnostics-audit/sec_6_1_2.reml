@@ -1,13 +1,28 @@
+pub type DslId
+pub type CapabilityId
+pub type ExecutionStrategy
+pub type SchedulingPolicy
+pub type ErrorPropagationPolicy
+pub type MemoryLimitSnapshot
+pub type CpuQuotaSnapshot
+pub type NonZeroU64
+pub type NonZeroU16
+pub type CpuQuota
+pub type MemoryLimit
+pub type Duration
+pub type Json
+pub type Uuid
+
 pub type ConductorDiagnosticExtension = {
   conductor_id: Str,
   node_id: Str,
   dsl_id: Option<DslId>,
   depends_on: List<Str>,
   capabilities: List<CapabilityId>,
-  execution: Option<ExecutionPlanDigest>,
+  execution_plan: Option<ExecutionPlanDigest>,
   resource_limits: List<ResourceLimitDigest>,
-  monitoring: MonitoringDigest,
-  channels: List<ChannelLinkDigest>,
+  monitoring_digest: MonitoringDigest,
+  channel_links: List<ChannelLinkDigest>,
   issue: ConductorIssueKind,
   audit_reference: Option<AuditReference>,
   snapshot: Option<Json>,
@@ -29,18 +44,6 @@ pub type ResourceLimitDigest = {
   memory: Option<MemoryLimitSnapshot>,
   cpu: Option<CpuQuotaSnapshot>,
   custom: Map<Str, Json>,
-}
-
-pub type MemoryLimitSnapshot = {
-  declaration: MemoryLimit,
-  hard_bytes: NonZeroU64,
-  soft_bytes: Option<NonZeroU64>,
-}
-
-pub type CpuQuotaSnapshot = {
-  declaration: CpuQuota,
-  scheduler_slots: NonZeroU16,
-  share: Float,
 }
 
 pub type MonitoringDigest = {
