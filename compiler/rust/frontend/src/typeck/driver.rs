@@ -21,8 +21,8 @@ use crate::parser::ast::{
     EffectDecl, EnumDecl, Expr, ExprKind, FixityKind, Function, HandlerDecl, HandlerEntry, Ident,
     FunctionSignature, ImplItem, Literal, LiteralKind, MatchArm, Module, ModulePath, Param,
     Pattern, PatternKind, RelativeHead, SlicePatternItem, Stmt, StmtKind, StructDecl, TraitDecl,
-    TypeAnnot, TypeDecl, TypeDeclBody, TypeDeclVariantPayload, TypeKind, TypeLiteral,
-    TypeUnionVariant, UnaryOp, VariantPayload,
+    TypeAnnot, TypeDecl, TypeDeclBody, TypeDeclVariant, TypeDeclVariantPayload, TypeKind,
+    TypeLiteral, TypeUnionVariant, UnaryOp, VariantPayload,
 };
 use crate::semantics::{mir, typed};
 use crate::span::Span;
@@ -1828,46 +1828,104 @@ fn register_prelude_type_decls(env: &mut TypeEnv) {
 
 fn register_type_decls(decls: &[Decl], env: &mut TypeEnv) {
     for decl in decls {
-        let DeclKind::Type { decl } = &decl.kind else {
-            continue;
-        };
-        let kind = match decl.body {
-            Some(TypeDeclBody::Alias { .. }) => TypeDeclKind::Alias,
-            Some(TypeDeclBody::Newtype { .. }) => TypeDeclKind::Newtype,
-            Some(TypeDeclBody::Sum { .. }) => TypeDeclKind::Sum,
-            None => TypeDeclKind::Opaque,
-        };
-        let generics = decl
-            .generics
-            .iter()
-            .map(|ident| ident.name.clone())
-            .collect();
-        let binding = TypeDeclBinding::new(
-            decl.name.name.clone(),
-            generics,
-            kind,
-            decl.body.clone(),
-            decl.span,
-            decl.body_span,
-        );
-        env.insert_type_decl(binding);
-        if let Some(TypeDeclBody::Sum { variants }) = &decl.body {
-            let generics = decl
-                .generics
-                .iter()
-                .map(|ident| ident.name.clone())
-                .collect::<Vec<_>>();
-            for variant in variants {
-                let ctor_binding = TypeConstructorBinding::new(
-                    variant.name.name.clone(),
+        match &decl.kind {
+            DeclKind::Type { decl } => {
+                let kind = match decl.body {
+                    Some(TypeDeclBody::Alias { .. }) => TypeDeclKind::Alias,
+                    Some(TypeDeclBody::Newtype { .. }) => TypeDeclKind::Newtype,
+                    Some(TypeDeclBody::Sum { .. }) => TypeDeclKind::Sum,
+                    None => TypeDeclKind::Opaque,
+                };
+                let generics = decl
+                    .generics
+                    .iter()
+                    .map(|ident| ident.name.clone())
+                    .collect();
+                let binding = TypeDeclBinding::new(
                     decl.name.name.clone(),
-                    generics.clone(),
-                    variant.payload.clone(),
-                    variant.span,
+                    generics,
+                    kind,
+                    decl.body.clone(),
+                    decl.span,
+                    decl.body_span,
                 );
-                env.insert_type_constructor(ctor_binding);
+                env.insert_type_decl(binding);
+                if let Some(TypeDeclBody::Sum { variants }) = &decl.body {
+                    let generics = decl
+                        .generics
+                        .iter()
+                        .map(|ident| ident.name.clone())
+                        .collect::<Vec<_>>();
+                    for variant in variants {
+                        let ctor_binding = TypeConstructorBinding::new(
+                            variant.name.name.clone(),
+                            decl.name.name.clone(),
+                            generics.clone(),
+                            variant.payload.clone(),
+                            variant.span,
+                        );
+                        env.insert_type_constructor(ctor_binding);
+                    }
+                }
             }
+            DeclKind::Enum(enum_decl) => register_enum_decl(enum_decl, env),
+            _ => continue,
         }
+    }
+}
+
+fn register_enum_decl(enum_decl: &EnumDecl, env: &mut TypeEnv) {
+    let generics = enum_decl
+        .generics
+        .iter()
+        .map(|ident| ident.name.clone())
+        .collect::<Vec<_>>();
+    let variants = enum_decl_to_sum_variants(enum_decl);
+    let binding = TypeDeclBinding::new(
+        enum_decl.name.name.clone(),
+        generics.clone(),
+        TypeDeclKind::Sum,
+        Some(TypeDeclBody::Sum { variants: variants.clone() }),
+        enum_decl.span,
+        None,
+    );
+    env.insert_type_decl(binding);
+    for variant in &variants {
+        let ctor_binding = TypeConstructorBinding::new(
+            variant.name.name.clone(),
+            enum_decl.name.name.clone(),
+            generics.clone(),
+            variant.payload.clone(),
+            variant.span,
+        );
+        env.insert_type_constructor(ctor_binding);
+    }
+}
+
+fn enum_decl_to_sum_variants(enum_decl: &EnumDecl) -> Vec<TypeDeclVariant> {
+    enum_decl
+        .variants
+        .iter()
+        .map(|variant| TypeDeclVariant {
+            name: variant.name.clone(),
+            payload: variant
+                .payload
+                .as_ref()
+                .map(enum_variant_payload_to_type_decl_payload),
+            span: variant.span,
+        })
+        .collect()
+}
+
+fn enum_variant_payload_to_type_decl_payload(payload: &VariantPayload) -> TypeDeclVariantPayload {
+    match payload {
+        VariantPayload::Record { fields } => TypeDeclVariantPayload::Record {
+            fields: fields.clone(),
+            has_rest: false,
+        },
+        VariantPayload::Tuple { elements } => TypeDeclVariantPayload::Tuple {
+            elements: elements.clone(),
+        },
     }
 }
 
@@ -2046,31 +2104,52 @@ fn validate_type_decl_bodies(
 ) {
     let mut var_gen = TypeVarGen::default();
     for decl in decls {
-        let DeclKind::Type { decl } = &decl.kind else {
-            continue;
-        };
-        let generic_map = build_generic_map(&decl.generics, &mut var_gen);
-        let generic_map_ref = if generic_map.is_empty() {
-            None
-        } else {
-            Some(&generic_map)
-        };
-        match decl.body.as_ref() {
-            Some(TypeDeclBody::Alias { ty }) | Some(TypeDeclBody::Newtype { ty }) => {
-                let mut resolver = TypeAliasResolver::new(env, violations);
-                let _ = type_from_annotation_kind_with_generics(
-                    &ty.kind,
-                    ty.span,
-                    generic_map_ref,
-                    None,
-                    &mut resolver,
-                );
+        match &decl.kind {
+            DeclKind::Type { decl } => {
+                let generic_map = build_generic_map(&decl.generics, &mut var_gen);
+                let generic_map_ref = if generic_map.is_empty() {
+                    None
+                } else {
+                    Some(&generic_map)
+                };
+                match decl.body.as_ref() {
+                    Some(TypeDeclBody::Alias { ty }) | Some(TypeDeclBody::Newtype { ty }) => {
+                        let mut resolver = TypeAliasResolver::new(env, violations);
+                        let _ = type_from_annotation_kind_with_generics(
+                            &ty.kind,
+                            ty.span,
+                            generic_map_ref,
+                            None,
+                            &mut resolver,
+                        );
+                    }
+                    Some(TypeDeclBody::Sum { variants }) => {
+                        for variant in variants {
+                            if let Some(payload) = &variant.payload {
+                                validate_type_decl_payload(
+                                    payload,
+                                    generic_map_ref,
+                                    env,
+                                    violations,
+                                );
+                            }
+                        }
+                    }
+                    None => {}
+                }
             }
-            Some(TypeDeclBody::Sum { variants }) => {
-                for variant in variants {
+            DeclKind::Enum(enum_decl) => {
+                let generic_map = build_generic_map(&enum_decl.generics, &mut var_gen);
+                let generic_map_ref = if generic_map.is_empty() {
+                    None
+                } else {
+                    Some(&generic_map)
+                };
+                for variant in &enum_decl.variants {
                     if let Some(payload) = &variant.payload {
+                        let converted = enum_variant_payload_to_type_decl_payload(payload);
                         validate_type_decl_payload(
-                            payload,
+                            &converted,
                             generic_map_ref,
                             env,
                             violations,
@@ -2078,7 +2157,7 @@ fn validate_type_decl_bodies(
                     }
                 }
             }
-            None => {}
+            _ => continue,
         }
     }
 }

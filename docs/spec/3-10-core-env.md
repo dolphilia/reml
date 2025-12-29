@@ -24,7 +24,7 @@ fn remove_env(key: Str) -> Result<(), EnvError>                    // `effect {i
 * 変更系 API は監査トレース向けに `Core.Diagnostics` の `AuditEvent::EnvMutation`（3-6 §1.1.1）を発行し、`AuditEnvelope.metadata` に `env.operation`, `env.key`, `env.scope`, `requested_by` を必ず格納する。`RunConfig.extensions["audit"].capture_env=true`（任意）で詳細ログを有効化。
 
 ```reml
-pub type EnvErrorKind =
+pub enum EnvErrorKind =
   | NotFound
   | PermissionDenied
   | InvalidEncoding

@@ -558,6 +558,7 @@ pub struct StructDecl {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct EnumDecl {
+    /// enum 宣言は型宣言（合成型）として扱う想定。
     pub name: Ident,
     pub generics: Vec<Ident>,
     pub variants: Vec<EnumVariant>,

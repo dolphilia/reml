@@ -1,4 +1,4 @@
-pub type EnvErrorKind =
+pub enum EnvErrorKind =
   | NotFound
   | PermissionDenied
   | InvalidEncoding
