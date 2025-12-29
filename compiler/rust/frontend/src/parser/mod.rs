@@ -1944,6 +1944,21 @@ fn module_parser<'src>(
             }
         });
 
+    let context_keyword = |keyword: &'static str, token: TokenKind| {
+        choice((
+            just(token).to(()),
+            lower_ident.clone().try_map(move |ident, span| {
+                if ident.name == keyword {
+                    Ok(())
+                } else {
+                    Err(Simple::expected_input_found(span, Vec::new(), None))
+                }
+            }),
+        ))
+    };
+    let operation_keyword = context_keyword("operation", TokenKind::KeywordOperation);
+    let pattern_keyword = context_keyword("pattern", TokenKind::KeywordPattern);
+
     let int_literal = just(TokenKind::IntLiteral).map_with_span(move |_, span: Range<usize>| {
         let slice = &source[span.start..span.end];
         let value = slice.parse::<i64>().unwrap_or_default();
@@ -2755,7 +2770,7 @@ fn module_parser<'src>(
 
         let handler_operation_entry = attr_list
             .clone()
-            .then_ignore(just(TokenKind::KeywordOperation))
+            .then_ignore(operation_keyword.clone())
             .then(ident_for_expr.clone())
             .then(handler_param_list.clone())
             .then(block_expr.clone())
@@ -4436,7 +4451,7 @@ fn module_parser<'src>(
             decl
         });
 
-    let active_pattern_head = just(TokenKind::KeywordPattern).ignore_then(
+    let active_pattern_head = pattern_keyword.clone().ignore_then(
         just(TokenKind::LParen)
             .ignore_then(just(TokenKind::Bar))
             .ignore_then(ident.clone())
@@ -4879,7 +4894,7 @@ fn module_parser<'src>(
 
     let effect_operation = attr_list
         .clone()
-        .then_ignore(just(TokenKind::KeywordOperation))
+        .then_ignore(operation_keyword.clone())
         .then(ident.clone())
         .then(
             just(TokenKind::Colon)

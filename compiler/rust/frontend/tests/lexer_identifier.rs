@@ -174,3 +174,32 @@ fn ascii_profile_reports_unicode_rejection() {
         "Unknown トークンに拒否された識別子が含まれていません"
     );
 }
+
+#[test]
+fn context_keywords_are_tokenized_as_identifiers() {
+    let output = collect_tokens("let operation = 1\nlet pattern = 2", IdentifierProfile::Unicode);
+    assert!(
+        output.errors.is_empty(),
+        "字句解析エラーが発生しました: {:?}",
+        output
+            .errors
+            .iter()
+            .map(|err| err.message())
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        find_token(&output, TokenKind::Identifier, "operation").is_some(),
+        "operation が Identifier として認識されませんでした"
+    );
+    assert!(
+        find_token(&output, TokenKind::Identifier, "pattern").is_some(),
+        "pattern が Identifier として認識されませんでした"
+    );
+    assert!(
+        !output
+            .tokens
+            .iter()
+            .any(|token| matches!(token.kind, TokenKind::KeywordOperation | TokenKind::KeywordPattern)),
+        "context keyword がキーワードトークンとして残っています"
+    );
+}

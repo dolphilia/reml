@@ -1250,6 +1250,7 @@ fn block_expr(statements: Vec<Stmt>) -> Expr {
 fn build_function(body: Expr, attrs: Vec<Attribute>) -> Function {
     Function {
         name: make_ident("sample"),
+        qualified_name: None,
         visibility: Visibility::Private,
         generics: Vec::new(),
         params: Vec::new(),
