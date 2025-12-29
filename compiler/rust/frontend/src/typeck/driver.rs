@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use once_cell::sync::Lazy;
 use serde::Serialize;
@@ -68,30 +68,34 @@ struct FunctionContext<'a> {
     name: Option<&'a str>,
     is_pure: bool,
     kind: ContextKind,
+    trait_names: &'a HashSet<String>,
 }
 
 impl<'a> FunctionContext<'a> {
-    fn function(name: &'a str, is_pure: bool) -> Self {
+    fn function(name: &'a str, is_pure: bool, trait_names: &'a HashSet<String>) -> Self {
         Self {
             name: Some(name),
             is_pure,
             kind: ContextKind::Function,
+            trait_names,
         }
     }
 
-    fn active_pattern(name: &'a str, is_pure: bool) -> Self {
+    fn active_pattern(name: &'a str, is_pure: bool, trait_names: &'a HashSet<String>) -> Self {
         Self {
             name: Some(name),
             is_pure,
             kind: ContextKind::ActivePattern,
+            trait_names,
         }
     }
 
-    fn module() -> Self {
+    fn module(trait_names: &'a HashSet<String>) -> Self {
         Self {
             name: None,
             is_pure: false,
             kind: ContextKind::Module,
+            trait_names,
         }
     }
 
@@ -144,18 +148,20 @@ impl TypecheckDriver {
         let mut var_gen = TypeVarGen::default();
         let mut module_env = TypeEnv::new();
         let mut unicode_shadow_tracker = UnicodeShadowTracker::default();
+        let trait_names = collect_trait_names(module);
 
         register_prelude_type_decls(&mut module_env);
         register_type_decls(&module.decls, &mut module_env);
         validate_type_decl_bodies(&module.decls, &module_env, &mut violations);
         register_function_decls(&module.decls, &mut module_env, &mut var_gen, &mut violations);
+        let impls = collect_impl_specs(module);
         collect_opbuilder_violations(module, &mut violations);
         violations.extend(detect_active_pattern_conflicts(module));
 
         if !module.decls.is_empty() {
             let mut module_decl_stats = FunctionStats::default();
             let mut module_decl_constraints = Vec::new();
-            let module_context = FunctionContext::module();
+            let module_context = FunctionContext::module(&trait_names);
             let mut module_loop_context = LoopContextStack::default();
             for decl in &module.decls {
                 infer_decl(
@@ -182,7 +188,8 @@ impl TypecheckDriver {
             let mut env = module_env.clone();
             let mut param_bindings = Vec::new();
             let is_pure = active.attrs.iter().any(|attr| attr.name.name == "pure");
-            let context = FunctionContext::active_pattern(active.name.name.as_str(), is_pure);
+            let context =
+                FunctionContext::active_pattern(active.name.name.as_str(), is_pure, &trait_names);
             for param in &active.params {
                 let ty = param
                     .type_annotation
@@ -277,7 +284,8 @@ impl TypecheckDriver {
                 Some(&generic_map)
             };
             let is_pure = function.attrs.iter().any(|attr| attr.name.name == "pure");
-            let function_context = FunctionContext::function(function.name.name.as_str(), is_pure);
+            let function_context =
+                FunctionContext::function(function.name.name.as_str(), is_pure, &trait_names);
 
             for param in &function.params {
                 let ty = param
@@ -431,7 +439,8 @@ impl TypecheckDriver {
                 let method_label = format!("{}.{}", impl_decl.target.render(), function.name.name);
                 let function_name =
                     format!("{}__{}", impl_decl.target.render(), function.name.name);
-                let function_context = FunctionContext::function(method_label.as_str(), is_pure);
+                let function_context =
+                    FunctionContext::function(method_label.as_str(), is_pure, &trait_names);
                 let typed_body = infer_function(
                     function,
                     &mut env,
@@ -531,7 +540,7 @@ impl TypecheckDriver {
                 let mut constraints = Vec::new();
                 let mut env = module_env.clone();
                 let mut loop_context = LoopContextStack::default();
-                let context = FunctionContext::module();
+                let context = FunctionContext::module(&trait_names);
                 let typed_conductor = infer_conductor(
                     conductor,
                     &mut env,
@@ -555,7 +564,7 @@ impl TypecheckDriver {
             let mut constraints = Vec::new();
             let mut env = module_env.clone();
             let mut loop_context = LoopContextStack::default();
-            let context = FunctionContext::module();
+            let context = FunctionContext::module(&trait_names);
             let _ = infer_expr(
                 expr,
                 &mut env,
@@ -605,7 +614,9 @@ impl TypecheckDriver {
             })
             .collect::<Vec<_>>();
         typed_module.dict_refs = dict_refs;
-        let mir_module = mir::MirModule::from_typed_module(&typed_module);
+        let mut mir_module = mir::MirModule::from_typed_module(&typed_module);
+        mir_module.impls = impls;
+        let qualified_call_table = mir_module.qualified_calls.clone();
 
         TypecheckReport {
             metrics,
@@ -615,6 +626,7 @@ impl TypecheckDriver {
             mir: mir_module,
             constraints: all_constraints,
             used_impls,
+            qualified_call_table,
         }
     }
 }
@@ -628,6 +640,7 @@ pub struct TypecheckReport {
     pub mir: mir::MirModule,
     pub constraints: Vec<Constraint>,
     pub used_impls: Vec<String>,
+    pub qualified_call_table: BTreeMap<String, mir::MirQualifiedCall>,
 }
 
 static TOP_LEVEL_DECLARATION_SUMMARY: Lazy<ExpectedTokensSummary> = Lazy::new(|| {
@@ -1891,6 +1904,77 @@ fn register_function_decls(
     }
 }
 
+fn collect_impl_specs(module: &Module) -> BTreeMap<String, mir::MirImplSpec> {
+    let mut impls = BTreeMap::new();
+    for decl in &module.decls {
+        let DeclKind::Impl(impl_decl) = &decl.kind else {
+            continue;
+        };
+        let trait_name = impl_decl
+            .trait_ref
+            .as_ref()
+            .map(|trait_ref| trait_ref.name.name.clone());
+        let target = impl_decl.target.render();
+        let impl_id = if let Some(name) = &trait_name {
+            format!("{name}::{target}")
+        } else {
+            target.clone()
+        };
+        let mut associated_types = Vec::new();
+        let mut methods = Vec::new();
+        for item in &impl_decl.items {
+            match item {
+                ImplItem::Function(function) => {
+                    methods.push(function.name.name.clone());
+                }
+                ImplItem::Decl(decl) => match &decl.kind {
+                    DeclKind::Type { decl } => {
+                        if let Some(assoc) = associated_type_from_decl(decl) {
+                            associated_types.push(assoc);
+                        }
+                    }
+                    DeclKind::Fn { signature } => {
+                        methods.push(signature.name.name.clone());
+                    }
+                    _ => {}
+                },
+            }
+        }
+        let entry = mir::MirImplSpec {
+            trait_name: trait_name.clone(),
+            target,
+            associated_types,
+            methods,
+            span: Some(impl_decl.span),
+        };
+        impls.insert(impl_id, entry);
+    }
+    impls
+}
+
+fn collect_trait_names(module: &Module) -> HashSet<String> {
+    let mut names = HashSet::new();
+    for decl in &module.decls {
+        let DeclKind::Trait(trait_decl) = &decl.kind else {
+            continue;
+        };
+        names.insert(trait_decl.name.name.clone());
+    }
+    names
+}
+
+fn associated_type_from_decl(decl: &TypeDecl) -> Option<mir::MirAssociatedType> {
+    match decl.body.as_ref() {
+        Some(TypeDeclBody::Alias { ty }) | Some(TypeDeclBody::Newtype { ty }) => {
+            Some(mir::MirAssociatedType {
+                name: decl.name.name.clone(),
+                ty: ty.render(),
+            })
+        }
+        _ => None,
+    }
+}
+
 fn validate_type_decl_bodies(
     decls: &[Decl],
     env: &TypeEnv,
@@ -2300,6 +2384,94 @@ fn type_method_target_name(expr: &Expr) -> Option<String> {
         return None;
     }
     Some(parts.join("__"))
+}
+
+fn render_type_owner(expr: &Expr) -> Option<String> {
+    let mut parts = Vec::new();
+    if !collect_type_path_parts(expr, &mut parts) {
+        return None;
+    }
+    if parts.is_empty() || !parts.iter().all(|part| is_type_like_ident(part)) {
+        return None;
+    }
+    Some(parts.join("::"))
+}
+
+fn module_path_parts(path: &ModulePath) -> Option<Vec<String>> {
+    match path {
+        ModulePath::Root { segments } => {
+            if segments.is_empty() {
+                None
+            } else {
+                Some(
+                    segments
+                        .iter()
+                        .map(|segment| segment.name.clone())
+                        .collect(),
+                )
+            }
+        }
+        ModulePath::Relative { head, segments } => match head {
+            RelativeHead::PlainIdent(ident) => {
+                let mut parts = Vec::with_capacity(1 + segments.len());
+                parts.push(ident.name.clone());
+                parts.extend(segments.iter().map(|segment| segment.name.clone()));
+                Some(parts)
+            }
+            RelativeHead::Self_ | RelativeHead::Super(_) => None,
+        },
+    }
+}
+
+fn resolve_qualified_call(
+    callee: &Expr,
+    trait_names: &HashSet<String>,
+) -> Option<typed::QualifiedCall> {
+    match &callee.kind {
+        ExprKind::FieldAccess { target, field } => {
+            if type_method_target_name(target).is_some() {
+                let owner = render_type_owner(target)?;
+                Some(typed::QualifiedCall {
+                    kind: typed::QualifiedCallKind::TypeMethod,
+                    owner: Some(owner),
+                    name: Some(field.name.clone()),
+                    impl_id: None,
+                })
+            } else {
+                None
+            }
+        }
+        ExprKind::ModulePath(path) => {
+            let parts = module_path_parts(path)?;
+            if parts.len() < 2 {
+                return None;
+            }
+            let mut owner_parts = parts.clone();
+            let name = owner_parts.pop().unwrap();
+            let owner = owner_parts.join("::");
+            let trait_match = owner_parts
+                .last()
+                .map(|part| trait_names.contains(part))
+                .unwrap_or(false);
+            let kind = if trait_match {
+                typed::QualifiedCallKind::TraitMethod
+            } else if owner_parts
+                .iter()
+                .all(|part| is_type_like_ident(part))
+            {
+                typed::QualifiedCallKind::TypeAssoc
+            } else {
+                typed::QualifiedCallKind::Unknown
+            };
+            Some(typed::QualifiedCall {
+                kind,
+                owner: Some(owner),
+                name: Some(name),
+                impl_id: None,
+            })
+        }
+        _ => None,
+    }
 }
 
 fn extract_priority(expr: &Expr) -> Option<i64> {
@@ -2885,6 +3057,7 @@ fn infer_expr(
         }
         ExprKind::Call { callee, args } => {
             metrics.record_call_site();
+            let qualified_call = resolve_qualified_call(callee, context.trait_names);
             let mut desugared_callee = None;
             if let ExprKind::FieldAccess { target, field } = &callee.kind {
                 if let Some(target_name) = type_method_target_name(target) {
@@ -2973,6 +3146,7 @@ fn infer_expr(
                 TypedExprKindDraft::Call {
                     callee: Box::new(callee_result),
                     args: typed_args,
+                    qualified: qualified_call,
                 },
                 solver.substitution().apply(&result_type),
                 dict_ids,
@@ -3989,7 +4163,7 @@ fn infer_binding(
     }
     let value_context = match (&pattern.kind, &value.kind) {
         (PatternKind::Var(ident), ExprKind::Lambda { .. }) => {
-            FunctionContext::function(ident.name.as_str(), context.is_pure)
+            FunctionContext::function(ident.name.as_str(), context.is_pure, context.trait_names)
         }
         _ => context,
     };
@@ -4040,7 +4214,7 @@ fn infer_binding_with_value(
     }
     let value_context = match (&pattern.kind, &value.kind) {
         (PatternKind::Var(ident), ExprKind::Lambda { .. }) => {
-            FunctionContext::function(ident.name.as_str(), context.is_pure)
+            FunctionContext::function(ident.name.as_str(), context.is_pure, context.trait_names)
         }
         _ => context,
     };
@@ -6278,6 +6452,7 @@ enum TypedExprKindDraft {
     Call {
         callee: Box<TypedExprDraft>,
         args: Vec<TypedExprDraft>,
+        qualified: Option<typed::QualifiedCall>,
     },
     Lambda {
         params: Vec<ParamBinding>,
@@ -6493,12 +6668,17 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
                 })
                 .collect(),
         },
-        TypedExprKindDraft::Call { callee, args } => typed::TypedExprKind::Call {
+        TypedExprKindDraft::Call {
+            callee,
+            args,
+            qualified,
+        } => typed::TypedExprKind::Call {
             callee: Box::new(finalize_typed_expr(*callee, substitution)),
             args: args
                 .into_iter()
                 .map(|arg| finalize_typed_expr(arg, substitution))
                 .collect(),
+            qualified,
         },
         TypedExprKindDraft::Lambda {
             params,

@@ -165,6 +165,13 @@
   - [ ] `TypedModule` か `TypecheckReport` に `impl_registry` を追加し JSON 直列化する。
   - [ ] `impl_registry` から `associated_types` / `methods` を埋める基準を定義する。
   - [ ] 既存 `used_impls` との突合ルール（未登録 impl の扱い）を決める。
+  - **埋め込みルール案**:
+    - `impl_id`: trait impl は `{TraitName}::{TargetType}`、inherent impl は `{TargetType}`（`TypeAnnot.render()` を使用）。
+    - `trait`: `impl <TraitRef> for <Target>` の場合は `TraitRef.name.name` を採用し、引数は `impl_id` の `TargetType` 側に残す。
+    - `target`: `impl` の `target.render()` をそのまま利用。
+    - `associated_types`: `ImplItem::Decl` の `DeclKind::Type` を対象にし、`type alias`/`newtype` のみ採用（`sum`/`opaque`/未定義は未解決扱い）。
+    - `methods`: `ImplItem::Function` と `ImplItem::Decl` の `DeclKind::Fn` を収集（`signature.name.name` を採用）。
+    - 重複 `impl_id`: 先勝ち（最初に出現したものを採用）とし、重複は `impl_registry.duplicate` TODO を残す。
 
 ##### 3) `qualified_calls` の出力元
 - **現状**: `TypedExprKind::Call` は修飾子（`Type.method` / `Type::method` / `Trait::method`）の判定情報を保持していない。
@@ -175,6 +182,11 @@
   - [ ] `MirExprBuilder` が `QualifiedName` を参照できるよう、式 ID の対応表を用意する。
   - [ ] `TypecheckReport` に `qualified_call_table` を追加し、MIR JSON 生成時に転写する。
   - [ ] 未解決時に `kind = "unknown"` を設定する経路を定義する。
+  - **埋め込みルール案**:
+    - `Type.method`（フィールドアクセス経由の呼び出し）: `Type.method(x)` 形式と判定できる場合は `type_method`。`owner` は `TypePath` を `::` で連結、`name` はメソッド名。
+    - `Type::method`: `ModulePath` の最終セグメントを `name`、それ以外を `owner` にして `type_assoc` とする（`owner` が型っぽい識別子のみで構成される場合）。
+    - `Trait::method`: `owner` が `DeclKind::Trait` で定義された trait 名と一致する場合は `trait_method`。
+    - その他: `unknown` とし、`owner`/`name` は可能なら埋めるが `impl_id` は未解決として `null` を許容。
 
 ##### 4) `reml_frontend` の JSON 出力経路
 - **対象**: `compiler/rust/frontend/src/bin/reml_frontend.rs` の `TypeckArtifacts` / `TypeckDebugFile` で `mir` を JSON 出力している。

@@ -147,6 +147,26 @@ pub struct TypedExpr {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QualifiedCallKind {
+    TypeMethod,
+    TypeAssoc,
+    TraitMethod,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct QualifiedCall {
+    pub kind: QualifiedCallKind,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub impl_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct TypedStmt {
     pub span: Span,
     pub kind: TypedStmtKind,
@@ -185,6 +205,8 @@ pub enum TypedExprKind {
     Call {
         callee: Box<TypedExpr>,
         args: Vec<TypedExpr>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        qualified: Option<QualifiedCall>,
     },
     Lambda {
         params: Vec<TypedParam>,

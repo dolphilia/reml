@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 use crate::parser::ast::{Ident, Literal};
 use crate::semantics::typed;
@@ -18,15 +19,31 @@ pub struct MirModule {
     pub functions: Vec<MirFunction>,
     pub active_patterns: Vec<MirActivePattern>,
     pub conductors: Vec<MirConductor>,
+    pub dict_refs: Vec<typed::DictRef>,
+    pub impls: BTreeMap<String, MirImplSpec>,
+    pub qualified_calls: BTreeMap<String, MirQualifiedCall>,
 }
 
 impl MirModule {
     pub fn from_typed_module(module: &typed::TypedModule) -> Self {
-        let functions = module.functions.iter().map(lower_function).collect();
+        let mut qualified_calls = BTreeMap::new();
+        let functions = module
+            .functions
+            .iter()
+            .map(|function| {
+                let (mir_function, calls) = lower_function(function);
+                qualified_calls.extend(calls);
+                mir_function
+            })
+            .collect();
         let active_patterns = module
             .active_patterns
             .iter()
-            .map(lower_active_pattern)
+            .map(|pattern| {
+                let (mir_pattern, calls) = lower_active_pattern(pattern);
+                qualified_calls.extend(calls);
+                mir_pattern
+            })
             .collect();
         let conductors = module.conductors.iter().map(lower_conductor).collect();
         Self {
@@ -34,6 +51,9 @@ impl MirModule {
             functions,
             active_patterns,
             conductors,
+            dict_refs: module.dict_refs.clone(),
+            impls: BTreeMap::new(),
+            qualified_calls,
         }
     }
 }
@@ -45,8 +65,52 @@ impl Default for MirModule {
             functions: Vec::new(),
             active_patterns: Vec::new(),
             conductors: Vec::new(),
+            dict_refs: Vec::new(),
+            impls: BTreeMap::new(),
+            qualified_calls: BTreeMap::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MirImplSpec {
+    #[serde(rename = "trait", skip_serializing_if = "Option::is_none")]
+    pub trait_name: Option<String>,
+    pub target: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub associated_types: Vec<MirAssociatedType>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub methods: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub span: Option<Span>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MirAssociatedType {
+    pub name: String,
+    pub ty: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MirQualifiedCall {
+    pub kind: MirQualifiedCallKind,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub impl_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub span: Option<Span>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MirQualifiedCallKind {
+    TypeMethod,
+    TypeAssoc,
+    TraitMethod,
+    Unknown,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -414,10 +478,11 @@ fn normalize_mir_type_ident<'a>(token: &'a str) -> &'a str {
     }
 }
 
-fn lower_function(function: &typed::TypedFunction) -> MirFunction {
-    let mut builder = MirExprBuilder::default();
+fn lower_function(function: &typed::TypedFunction) -> (MirFunction, BTreeMap<String, MirQualifiedCall>) {
+    let mut builder = MirExprBuilder::new(function.name.clone());
     let body = builder.lower_expr(&function.body);
-    MirFunction {
+    let (exprs, qualified_calls) = builder.finish();
+    let mir_function = MirFunction {
         name: function.name.clone(),
         span: function.span,
         attributes: function.attributes.clone(),
@@ -433,15 +498,19 @@ fn lower_function(function: &typed::TypedFunction) -> MirFunction {
         varargs: function.varargs,
         return_type: normalize_mir_type_label(&function.return_type),
         body,
-        exprs: builder.finish(),
+        exprs,
         dict_ref_ids: function.dict_ref_ids.clone(),
-    }
+    };
+    (mir_function, qualified_calls)
 }
 
-fn lower_active_pattern(pattern: &typed::TypedActivePattern) -> MirActivePattern {
-    let mut builder = MirExprBuilder::default();
+fn lower_active_pattern(
+    pattern: &typed::TypedActivePattern,
+) -> (MirActivePattern, BTreeMap<String, MirQualifiedCall>) {
+    let mut builder = MirExprBuilder::new(pattern.name.clone());
     let body = builder.lower_expr(&pattern.body);
-    MirActivePattern {
+    let (exprs, qualified_calls) = builder.finish();
+    let mir_pattern = MirActivePattern {
         name: pattern.name.clone(),
         span: pattern.span,
         kind: pattern.kind.clone(),
@@ -457,9 +526,10 @@ fn lower_active_pattern(pattern: &typed::TypedActivePattern) -> MirActivePattern
             })
             .collect(),
         body,
-        exprs: builder.finish(),
+        exprs,
         dict_ref_ids: pattern.dict_ref_ids.clone(),
-    }
+    };
+    (mir_pattern, qualified_calls)
 }
 
 fn lower_conductor(conductor: &typed::TypedConductor) -> MirConductor {
@@ -521,19 +591,32 @@ fn lower_conductor(conductor: &typed::TypedConductor) -> MirConductor {
     }
 }
 
-#[derive(Default)]
 struct MirExprBuilder {
+    owner: String,
     exprs: Vec<MirExpr>,
+    qualified_calls: BTreeMap<String, MirQualifiedCall>,
 }
 
 impl MirExprBuilder {
+    fn new(owner: String) -> Self {
+        Self {
+            owner,
+            exprs: Vec::new(),
+            qualified_calls: BTreeMap::new(),
+        }
+    }
+
     fn lower_expr(&mut self, expr: &typed::TypedExpr) -> MirExprId {
         let kind = match &expr.kind {
             typed::TypedExprKind::Literal(literal) => MirExprKind::Literal(literal.clone()),
             typed::TypedExprKind::Identifier { ident } => MirExprKind::Identifier {
                 ident: ident.clone(),
             },
-            typed::TypedExprKind::Call { callee, args } => {
+            typed::TypedExprKind::Call {
+                callee,
+                args,
+                qualified: _,
+            } => {
                 if let typed::TypedExprKind::Identifier { ident } = &callee.kind {
                     if ident.name == "panic" {
                         let argument = args.get(0).map(|arg| self.lower_expr(arg));
@@ -657,7 +740,25 @@ impl MirExprBuilder {
             },
             typed::TypedExprKind::Unknown => MirExprKind::Unknown,
         };
-        self.push_expr(expr.span, expr.ty.clone(), expr.dict_ref_ids.clone(), kind)
+        let qualified_call = match &expr.kind {
+            typed::TypedExprKind::Call { qualified, .. } => qualified
+                .as_ref()
+                .map(|call| MirQualifiedCall {
+                    kind: map_qualified_call_kind(&call.kind),
+                    owner: call.owner.clone(),
+                    name: call.name.clone(),
+                    impl_id: call.impl_id.clone(),
+                    span: Some(expr.span),
+                }),
+            _ => None,
+        };
+        self.push_expr(
+            expr.span,
+            expr.ty.clone(),
+            expr.dict_ref_ids.clone(),
+            kind,
+            qualified_call,
+        )
     }
 
     fn lower_stmt(&mut self, stmt: &typed::TypedStmt) -> MirStmt {
@@ -695,9 +796,14 @@ impl MirExprBuilder {
         ty: String,
         dict_ref_ids: Vec<typed::DictRefId>,
         kind: MirExprKind,
+        qualified_call: Option<MirQualifiedCall>,
     ) -> MirExprId {
         let id = self.exprs.len();
         let ty = normalize_mir_type_label(&ty);
+        if let Some(call) = qualified_call {
+            let key = format!("{}#{}", self.owner, id);
+            self.qualified_calls.insert(key, call);
+        }
         self.exprs.push(MirExpr {
             id,
             span,
@@ -708,8 +814,17 @@ impl MirExprBuilder {
         id
     }
 
-    fn finish(self) -> Vec<MirExpr> {
-        self.exprs
+    fn finish(self) -> (Vec<MirExpr>, BTreeMap<String, MirQualifiedCall>) {
+        (self.exprs, self.qualified_calls)
+    }
+}
+
+fn map_qualified_call_kind(kind: &typed::QualifiedCallKind) -> MirQualifiedCallKind {
+    match kind {
+        typed::QualifiedCallKind::TypeMethod => MirQualifiedCallKind::TypeMethod,
+        typed::QualifiedCallKind::TypeAssoc => MirQualifiedCallKind::TypeAssoc,
+        typed::QualifiedCallKind::TraitMethod => MirQualifiedCallKind::TraitMethod,
+        typed::QualifiedCallKind::Unknown => MirQualifiedCallKind::Unknown,
     }
 }
 
@@ -1027,7 +1142,11 @@ fn collect_match_lowerings_from_expr(
                 collect_match_lowerings_from_expr(&arm.body, owner, plans);
             }
         }
-        typed::TypedExprKind::Call { callee, args } => {
+        typed::TypedExprKind::Call {
+            callee,
+            args,
+            qualified: _,
+        } => {
             collect_match_lowerings_from_expr(callee, owner, plans);
             for arg in args {
                 collect_match_lowerings_from_expr(arg, owner, plans);
