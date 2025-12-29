@@ -23,6 +23,8 @@ core_io = []
 "core-io" = ["core_io"]
 core_path = []
 "core-path" = ["core_path"]
+core_async = []
+"core-async" = ["core_async"]
 experimental_migration = []
 "experimental-migration" = ["experimental_migration"]
 

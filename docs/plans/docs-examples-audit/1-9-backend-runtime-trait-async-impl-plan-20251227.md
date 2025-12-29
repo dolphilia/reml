@@ -236,15 +236,15 @@
     - `Option`/default が機能しない場合の修正方針（serde 属性追加）を整理する。
 
 ### フェーズ 3: Runtime async 型の土台追加
-- [ ] `compiler/rust/runtime/Cargo.toml` に `core_async` / `core-async` feature を追加する。
+- [x] `compiler/rust/runtime/Cargo.toml` に `core_async` / `core-async` feature を追加する。
   - 作業ステップ:
     - 既存 feature 名との衝突有無を確認し、命名規約に合わせた定義を追加する。
     - `core_async` と `core-async` の alias 方針（features 別名）を決める。
-- [ ] `compiler/rust/runtime/src/prelude/async.rs` を追加し、`Future<T>` / `AsyncStream<T>` を opaque 型で定義する。
+- [x] `compiler/rust/runtime/src/prelude/async.rs` を追加し、`Future<T>` / `AsyncStream<T>` を opaque 型で定義する。
   - 作業ステップ:
     - `PhantomData` を用いた opaque 型の最小定義を作成し、公開 API を最小限に留める。
     - 仕様書の型名と一致することを確認し、将来の拡張余地を注記する。
-- [ ] `compiler/rust/runtime/src/prelude/mod.rs` に `#[cfg(feature = "core_async")] pub mod async;` を追加する。
+- [x] `compiler/rust/runtime/src/prelude/mod.rs` に `#[cfg(feature = "core_async")] pub mod r#async;` を追加する。
   - 作業ステップ:
     - 既存の prelude モジュール構成を確認し、露出順と命名衝突がないことを確認する。
 - [ ] `core_async` 無効時に既存ビルドが壊れないことを確認する。
