@@ -154,7 +154,7 @@ fn main() -> Result<(), TestError> {
 }
 ```
 
-Rust Frontend では `test_parser { ... }` のブロック構文が未実装のため、当面はケース配列を渡す記法を正準例とする。
+Rust Frontend では `test_parser { ... }` のブロック構文を受理する。`case` は `case "source" => <expect>` または `case "name": "source" => <expect>` を許可する。
 
 ### 7.2 型とシグネチャ（Core.Parse / Core.Test との整合）
 

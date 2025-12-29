@@ -2863,58 +2863,84 @@ fn module_parser<'src>(
             }
         });
 
-        let case_source =
+        let case_string =
             just(TokenKind::StringLiteral).map_with_span(move |_, span: Range<usize>| {
                 let unescaped = parse_string_literal_value(source, span.clone());
                 Expr::string(unescaped, range_to_span(span))
             });
 
+        let case_name_and_source = case_string
+            .clone()
+            .then(
+                just(TokenKind::Colon)
+                    .ignore_then(case_string.clone().cut())
+                    .or_not(),
+            )
+            .map(|(first_expr, maybe_second)| match maybe_second {
+                Some(second_expr) => (Some(first_expr), second_expr),
+                None => (None, first_expr),
+            });
+
         let case_entry = case_keyword
-            .ignore_then(case_source)
+            .ignore_then(case_name_and_source)
             .then_ignore(just(TokenKind::DoubleArrow).cut())
             .then(expr.clone())
-            .map_with_span(|(source_expr, expect_expr), span: Range<usize>| {
-                let span = range_to_span(span);
-                let none_ident = Ident {
-                    name: "None".to_string(),
-                    span,
-                };
-                let key_name = Ident {
-                    name: "name".to_string(),
-                    span,
-                };
-                let key_source = Ident {
-                    name: "source".to_string(),
-                    span,
-                };
-                let key_expect = Ident {
-                    name: "expect".to_string(),
-                    span,
-                };
-                let fields = vec![
-                    RecordField {
-                        key: key_name,
-                        value: Expr::identifier(none_ident),
-                    },
-                    RecordField {
-                        key: key_source,
-                        value: source_expr,
-                    },
-                    RecordField {
-                        key: key_expect,
-                        value: expect_expr,
-                    },
-                ];
-                Expr::literal(
-                    Literal {
-                        value: LiteralKind::Record {
-                            type_name: None,
-                            fields,
+            .map_with_span(
+                |((name_expr, source_expr), expect_expr), span: Range<usize>| {
+                    let span = range_to_span(span);
+                    let key_name = Ident {
+                        name: "name".to_string(),
+                        span,
+                    };
+                    let key_source = Ident {
+                        name: "source".to_string(),
+                        span,
+                    };
+                    let key_expect = Ident {
+                        name: "expect".to_string(),
+                        span,
+                    };
+                    let name_value = match name_expr {
+                        Some(expr) => {
+                            let some_ident = Ident {
+                                name: "Some".to_string(),
+                                span,
+                            };
+                            Expr::call(Expr::identifier(some_ident), vec![expr], span)
+                        }
+                        None => {
+                            let none_ident = Ident {
+                                name: "None".to_string(),
+                                span,
+                            };
+                            Expr::identifier(none_ident)
+                        }
+                    };
+                    let fields = vec![
+                        RecordField {
+                            key: key_name,
+                            value: name_value,
                         },
-                    },
-                    span,
-                )
-            });
+                        RecordField {
+                            key: key_source,
+                            value: source_expr,
+                        },
+                        RecordField {
+                            key: key_expect,
+                            value: expect_expr,
+                        },
+                    ];
+                    Expr::literal(
+                        Literal {
+                            value: LiteralKind::Record {
+                                type_name: None,
+                                fields,
+                            },
+                        },
+                        span,
+                    )
+                },
+            );
 
         let case_block = just(TokenKind::LBrace)
             .ignore_then(
