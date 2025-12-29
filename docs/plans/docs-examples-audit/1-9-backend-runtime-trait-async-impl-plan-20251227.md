@@ -207,30 +207,30 @@
 ```
 
 ### フェーズ 2: Backend の MIR JSON 取り込み
-- [ ] `integration.rs` に `dict_refs` / `impls` / `qualified_calls` を取り込む型定義を追加する。
+- [x] `integration.rs` に `dict_refs` / `impls` / `qualified_calls` を取り込む型定義を追加する。
   - 作業ステップ:
     - Frontend 側 JSON 形状に合わせた struct を定義し、serde の型一致を確認する。
     - `impls` の内部構造（trait 名、target、associated_types、methods）の必須/任意項目を決める。
     - `qualified_calls` の `kind` を enum 化し、未知値の fallback 方針を決める。
-- [ ] `qualified_calls` が未解決の場合は TODO 診断を出す（IR 生成は継続）。
+- [x] `qualified_calls` が未解決の場合は TODO 診断を出す（IR 生成は継続）。
   - 作業ステップ:
     - 未解決判定の条件（`kind` 欠落/unknown、owner 不明など）を定義する。
     - TODO 診断のメッセージと識別子（既存の診断規約に合わせる）を決める。
     - 生成継続のための fallback（既存のシンボル解決ルールへの委譲）を明示する。
-- [ ] `qualified_call_table` を参照した TODO 診断の規約を確定する。
+- [x] `qualified_call_table` を参照した TODO 診断の規約を確定する。
   - 作業ステップ:
     - 診断キー案を `backend.todo.qualified_call_unresolved` とし、`expr_id` / `owner` / `name` / `kind` を `metadata` に記録する。
     - `kind = "unknown"` の場合は診断レベル `TODO` で通過し、`owner` が trait 名と一致するが `impl_id` が欠落している場合は `TODO: trait impl unresolved` に細分化する。
     - `qualified_calls` に該当キーが存在しない場合は「未解決・未記録」として `backend.todo.qualified_call_missing` を出す方針にする。
-- [ ] `impls` に associated type が欠落している場合も TODO 診断を出す。
+- [x] `impls` に associated type が欠落している場合も TODO 診断を出す。
   - 作業ステップ:
     - `associated_types` が空/欠落のときの取り扱い条件を定義する。
     - `Self::X` 展開が未完了である旨を診断に含めるか検討する。
-- [ ] Backend 診断フォーマットの整合方針を確定する。
+- [x] Backend 診断フォーマットの整合方針を確定する。
   - 作業ステップ:
     - 既存 `BackendDiffSnapshot.diagnostics` が文字列配列である点を前提とし、`domain.code: message` 形式を維持する。
     - `Diagnostic` 構造体への移行は `verify`/`integration` の両方に波及するため別タスクとして扱う。
-- [ ] 既存の JSON 入力が追加フィールドなしでも動作することを確認する。
+- [x] 既存の JSON 入力が追加フィールドなしでも動作することを確認する。
   - 作業ステップ:
     - 追加フィールドが空/欠落の入力を流すテストケースを想定し、確認手順を記録する。
     - `Option`/default が機能しない場合の修正方針（serde 属性追加）を整理する。
@@ -273,7 +273,7 @@
 - 進捗欄（運用用）:
   - [ ] フェーズ 0 完了
   - [ ] フェーズ 1 完了
-  - [ ] フェーズ 2 完了
+  - [x] フェーズ 2 完了
   - [ ] フェーズ 3 完了
   - [ ] フェーズ 4 完了
 

@@ -13,7 +13,7 @@ use crate::type_mapping::RemlType;
 use crate::verify::Verifier;
 use serde::Deserialize;
 use serde_json::Value;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::{fmt, fs::File, io, path::Path};
 
@@ -242,12 +242,37 @@ impl MirModuleSpec {
 
     fn collect_todo_diagnostics(&self) -> Vec<String> {
         let mut diagnostics = Vec::new();
+        let mut call_keys = BTreeSet::new();
+        for function in &self.functions {
+            for expr in &function.exprs {
+                if matches!(expr.kind, MirExprKindJson::Call { .. }) {
+                    call_keys.insert(format!("{}#{}", function.name, expr.id));
+                }
+            }
+        }
+        for key in &call_keys {
+            if !self.qualified_calls.contains_key(key) {
+                diagnostics.push(format!(
+                    "Backend.backend.todo.qualified_call_missing: key={key}"
+                ));
+            }
+        }
         for (key, call) in &self.qualified_calls {
-            let owner = call.owner.as_deref().unwrap_or("<none>");
-            let name = call.name.as_deref().unwrap_or("<none>");
+            let owner_value = call.owner.as_deref().unwrap_or("");
+            let owner = if owner_value.is_empty() {
+                "<none>"
+            } else {
+                owner_value
+            };
+            let name_value = call.name.as_deref().unwrap_or("");
+            let name = if name_value.is_empty() {
+                "<none>"
+            } else {
+                name_value
+            };
             let kind = call.kind.as_str();
             let impl_id = call.impl_id.as_deref().unwrap_or("<none>");
-            if call.kind == MirQualifiedCallKindJson::Unknown || owner == "<none>" {
+            if call.kind == MirQualifiedCallKindJson::Unknown || owner_value.is_empty() {
                 diagnostics.push(format!(
                     "Backend.backend.todo.qualified_call_unresolved: key={key} owner={owner} name={name} kind={kind} impl_id={impl_id}"
                 ));
@@ -258,12 +283,6 @@ impl MirModuleSpec {
                     "Backend.backend.todo.trait_impl_unresolved: key={key} owner={owner} name={name} kind={kind}"
                 ));
             }
-        }
-        if self.qualified_calls.is_empty() {
-            diagnostics.push(
-                "Backend.backend.todo.qualified_call_missing: qualified_calls table is empty"
-                    .to_string(),
-            );
         }
         for (impl_id, impl_spec) in &self.impls {
             if impl_spec.trait_name.is_some() && impl_spec.associated_types.is_empty() {
@@ -303,6 +322,12 @@ struct DictRefJson {
     id: Option<usize>,
     #[serde(default)]
     impl_id: Option<String>,
+    #[serde(default)]
+    requirements: Vec<String>,
+    #[serde(default)]
+    ty: Option<String>,
+    #[serde(default)]
+    span: Option<MirSpanJson>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -315,6 +340,8 @@ struct MirImplSpecJson {
     associated_types: Vec<MirAssociatedTypeJson>,
     #[serde(default)]
     methods: Vec<String>,
+    #[serde(default)]
+    span: Option<MirSpanJson>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -331,6 +358,7 @@ enum MirQualifiedCallKindJson {
     TypeMethod,
     TypeAssoc,
     TraitMethod,
+    #[serde(other)]
     Unknown,
 }
 
@@ -345,6 +373,12 @@ impl MirQualifiedCallKindJson {
     }
 }
 
+impl Default for MirQualifiedCallKindJson {
+    fn default() -> Self {
+        MirQualifiedCallKindJson::Unknown
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct MirQualifiedCallJson {
     #[serde(default)]
@@ -355,6 +389,14 @@ struct MirQualifiedCallJson {
     name: Option<String>,
     #[serde(default)]
     impl_id: Option<String>,
+    #[serde(default)]
+    span: Option<MirSpanJson>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirSpanJson {
+    start: u32,
+    end: u32,
 }
 
 /// 単体 MIR 関数の JSON 表現。
