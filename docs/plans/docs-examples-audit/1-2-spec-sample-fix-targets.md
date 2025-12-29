@@ -226,10 +226,10 @@
 ### docs/spec/3-14-core-lsp.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1. 基本型 | sec_1 | examples/docs-examples/spec/3-14-core-lsp/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2. JSON-RPC ヘルパ | sec_2 | examples/docs-examples/spec/3-14-core-lsp/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4. Core.Lsp.Derive | sec_4 | examples/docs-examples/spec/3-14-core-lsp/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 5. LspDerive 出力仕様 | sec_5 | examples/docs-examples/spec/3-14-core-lsp/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 1. 基本型 | sec_1 | examples/docs-examples/spec/3-14-core-lsp/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2. JSON-RPC ヘルパ | sec_2 | examples/docs-examples/spec/3-14-core-lsp/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4. Core.Lsp.Derive | sec_4 | examples/docs-examples/spec/3-14-core-lsp/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 5. LspDerive 出力仕様 | sec_5 | examples/docs-examples/spec/3-14-core-lsp/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-15-core-doc.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
