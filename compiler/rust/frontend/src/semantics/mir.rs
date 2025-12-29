@@ -22,6 +22,8 @@ pub struct MirModule {
     pub dict_refs: Vec<typed::DictRef>,
     pub impls: BTreeMap<String, MirImplSpec>,
     pub qualified_calls: BTreeMap<String, MirQualifiedCall>,
+    pub impl_registry_duplicates: Vec<String>,
+    pub impl_registry_unresolved: Vec<String>,
 }
 
 impl MirModule {
@@ -54,6 +56,8 @@ impl MirModule {
             dict_refs: module.dict_refs.clone(),
             impls: BTreeMap::new(),
             qualified_calls,
+            impl_registry_duplicates: Vec::new(),
+            impl_registry_unresolved: Vec::new(),
         }
     }
 }
@@ -68,6 +72,8 @@ impl Default for MirModule {
             dict_refs: Vec::new(),
             impls: BTreeMap::new(),
             qualified_calls: BTreeMap::new(),
+            impl_registry_duplicates: Vec::new(),
+            impl_registry_unresolved: Vec::new(),
         }
     }
 }

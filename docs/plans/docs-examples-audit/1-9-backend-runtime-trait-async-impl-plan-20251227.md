@@ -172,6 +172,7 @@
     - `associated_types`: `ImplItem::Decl` の `DeclKind::Type` を対象にし、`type alias`/`newtype` のみ採用（`sum`/`opaque`/未定義は未解決扱い）。
     - `methods`: `ImplItem::Function` と `ImplItem::Decl` の `DeclKind::Fn` を収集（`signature.name.name` を採用）。
     - 重複 `impl_id`: 先勝ち（最初に出現したものを採用）とし、重複は `impl_registry.duplicate` TODO を残す。
+    - 未解決扱い: `target` が空文字の場合は `impl_registry.unresolved` とし、`impl_id` を `"<unknown>"` にフォールバックする。
 
 ##### 3) `qualified_calls` の出力元
 - **現状**: `TypedExprKind::Call` は修飾子（`Type.method` / `Type::method` / `Trait::method`）の判定情報を保持していない。
@@ -185,7 +186,7 @@
   - **埋め込みルール案**:
     - `Type.method`（フィールドアクセス経由の呼び出し）: `Type.method(x)` 形式と判定できる場合は `type_method`。`owner` は `TypePath` を `::` で連結、`name` はメソッド名。
     - `Type::method`: `ModulePath` の最終セグメントを `name`、それ以外を `owner` にして `type_assoc` とする（`owner` が型っぽい識別子のみで構成される場合）。
-    - `Trait::method`: `owner` が `DeclKind::Trait` で定義された trait 名と一致する場合は `trait_method`。
+    - `Trait::method`: `ModulePath` の `owner` の末尾セグメントが `DeclKind::Trait` で定義された trait 名に一致する場合は `trait_method`。`foo::Bar::baz` のようなモジュールパスでも `Bar` を trait 名として判定する。
     - その他: `unknown` とし、`owner`/`name` は可能なら埋めるが `impl_id` は未解決として `null` を許容。
 
 ##### 4) `reml_frontend` の JSON 出力経路
@@ -216,10 +217,19 @@
     - 未解決判定の条件（`kind` 欠落/unknown、owner 不明など）を定義する。
     - TODO 診断のメッセージと識別子（既存の診断規約に合わせる）を決める。
     - 生成継続のための fallback（既存のシンボル解決ルールへの委譲）を明示する。
+- [ ] `qualified_call_table` を参照した TODO 診断の規約を確定する。
+  - 作業ステップ:
+    - 診断キー案を `backend.todo.qualified_call_unresolved` とし、`expr_id` / `owner` / `name` / `kind` を `metadata` に記録する。
+    - `kind = "unknown"` の場合は診断レベル `TODO` で通過し、`owner` が trait 名と一致するが `impl_id` が欠落している場合は `TODO: trait impl unresolved` に細分化する。
+    - `qualified_calls` に該当キーが存在しない場合は「未解決・未記録」として `backend.todo.qualified_call_missing` を出す方針にする。
 - [ ] `impls` に associated type が欠落している場合も TODO 診断を出す。
   - 作業ステップ:
     - `associated_types` が空/欠落のときの取り扱い条件を定義する。
     - `Self::X` 展開が未完了である旨を診断に含めるか検討する。
+- [ ] Backend 診断フォーマットの整合方針を確定する。
+  - 作業ステップ:
+    - 既存 `BackendDiffSnapshot.diagnostics` が文字列配列である点を前提とし、`domain.code: message` 形式を維持する。
+    - `Diagnostic` 構造体への移行は `verify`/`integration` の両方に波及するため別タスクとして扱う。
 - [ ] 既存の JSON 入力が追加フィールドなしでも動作することを確認する。
   - 作業ステップ:
     - 追加フィールドが空/欠落の入力を流すテストケースを想定し、確認手順を記録する。

@@ -13,6 +13,7 @@ use crate::type_mapping::RemlType;
 use crate::verify::Verifier;
 use serde::Deserialize;
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::{fmt, fs::File, io, path::Path};
 
@@ -220,6 +221,16 @@ struct MirModuleSpec {
     functions: Vec<MirFunctionJson>,
     #[serde(default)]
     active_patterns: Vec<Value>,
+    #[serde(default)]
+    dict_refs: Vec<DictRefJson>,
+    #[serde(default)]
+    impls: BTreeMap<String, MirImplSpecJson>,
+    #[serde(default)]
+    qualified_calls: BTreeMap<String, MirQualifiedCallJson>,
+    #[serde(default)]
+    impl_registry_duplicates: Vec<String>,
+    #[serde(default)]
+    impl_registry_unresolved: Vec<String>,
 }
 
 impl MirModuleSpec {
@@ -227,6 +238,51 @@ impl MirModuleSpec {
         let file = File::open(path)?;
         let spec = serde_json::from_reader(file)?;
         Ok(spec)
+    }
+
+    fn collect_todo_diagnostics(&self) -> Vec<String> {
+        let mut diagnostics = Vec::new();
+        for (key, call) in &self.qualified_calls {
+            let owner = call.owner.as_deref().unwrap_or("<none>");
+            let name = call.name.as_deref().unwrap_or("<none>");
+            let kind = call.kind.as_str();
+            let impl_id = call.impl_id.as_deref().unwrap_or("<none>");
+            if call.kind == MirQualifiedCallKindJson::Unknown || owner == "<none>" {
+                diagnostics.push(format!(
+                    "Backend.backend.todo.qualified_call_unresolved: key={key} owner={owner} name={name} kind={kind} impl_id={impl_id}"
+                ));
+                continue;
+            }
+            if call.kind == MirQualifiedCallKindJson::TraitMethod && call.impl_id.is_none() {
+                diagnostics.push(format!(
+                    "Backend.backend.todo.trait_impl_unresolved: key={key} owner={owner} name={name} kind={kind}"
+                ));
+            }
+        }
+        if self.qualified_calls.is_empty() {
+            diagnostics.push(
+                "Backend.backend.todo.qualified_call_missing: qualified_calls table is empty"
+                    .to_string(),
+            );
+        }
+        for (impl_id, impl_spec) in &self.impls {
+            if impl_spec.trait_name.is_some() && impl_spec.associated_types.is_empty() {
+                diagnostics.push(format!(
+                    "Backend.backend.todo.impl.associated_types_missing: impl_id={impl_id}"
+                ));
+            }
+        }
+        for duplicate in &self.impl_registry_duplicates {
+            diagnostics.push(format!(
+                "Backend.backend.todo.impl_registry.duplicate: impl_id={duplicate}"
+            ));
+        }
+        for unresolved in &self.impl_registry_unresolved {
+            diagnostics.push(format!(
+                "Backend.backend.todo.impl_registry.unresolved: impl_id={unresolved}"
+            ));
+        }
+        diagnostics
     }
 
     fn into_functions(self) -> Vec<MirFunction> {
@@ -239,6 +295,66 @@ impl MirModuleSpec {
 
 fn default_calling_conv() -> String {
     "ccc".into()
+}
+
+#[derive(Debug, Deserialize)]
+struct DictRefJson {
+    #[serde(default)]
+    id: Option<usize>,
+    #[serde(default)]
+    impl_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirImplSpecJson {
+    #[serde(rename = "trait", default)]
+    trait_name: Option<String>,
+    #[serde(default)]
+    target: Option<String>,
+    #[serde(default)]
+    associated_types: Vec<MirAssociatedTypeJson>,
+    #[serde(default)]
+    methods: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirAssociatedTypeJson {
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    ty: Option<String>,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+enum MirQualifiedCallKindJson {
+    TypeMethod,
+    TypeAssoc,
+    TraitMethod,
+    Unknown,
+}
+
+impl MirQualifiedCallKindJson {
+    fn as_str(&self) -> &'static str {
+        match self {
+            MirQualifiedCallKindJson::TypeMethod => "type_method",
+            MirQualifiedCallKindJson::TypeAssoc => "type_assoc",
+            MirQualifiedCallKindJson::TraitMethod => "trait_method",
+            MirQualifiedCallKindJson::Unknown => "unknown",
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct MirQualifiedCallJson {
+    #[serde(default)]
+    kind: MirQualifiedCallKindJson,
+    #[serde(default)]
+    owner: Option<String>,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    impl_id: Option<String>,
 }
 
 /// 単体 MIR 関数の JSON 表現。
@@ -1012,6 +1128,7 @@ pub fn generate_snapshot_from_mir_json<P: AsRef<Path>>(
 ) -> Result<BackendDiffSnapshot, MirSnapshotError> {
     let module_default = default_module_name.into();
     let spec = MirModuleSpec::from_file(path)?;
+    let todo_diagnostics = spec.collect_todo_diagnostics();
     let module_name = spec
         .module
         .clone()
@@ -1021,13 +1138,15 @@ pub fn generate_snapshot_from_mir_json<P: AsRef<Path>>(
     let mut metadata = metadata;
     metadata.extend(spec.metadata.iter().cloned());
     let functions = spec.into_functions();
-    Ok(generate_snapshot(
+    let mut snapshot = generate_snapshot(
         module_name,
         target_machine,
         runtime_symbols,
         metadata,
         functions,
-    ))
+    );
+    snapshot.diagnostics.extend(todo_diagnostics);
+    Ok(snapshot)
 }
 
 /// JSON ファイルから MIR 関数リストをロードする。

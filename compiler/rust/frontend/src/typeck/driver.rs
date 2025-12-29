@@ -154,7 +154,7 @@ impl TypecheckDriver {
         register_type_decls(&module.decls, &mut module_env);
         validate_type_decl_bodies(&module.decls, &module_env, &mut violations);
         register_function_decls(&module.decls, &mut module_env, &mut var_gen, &mut violations);
-        let impls = collect_impl_specs(module);
+        let (impls, impl_registry_duplicates, impl_registry_unresolved) = collect_impl_specs(module);
         collect_opbuilder_violations(module, &mut violations);
         violations.extend(detect_active_pattern_conflicts(module));
 
@@ -616,6 +616,8 @@ impl TypecheckDriver {
         typed_module.dict_refs = dict_refs;
         let mut mir_module = mir::MirModule::from_typed_module(&typed_module);
         mir_module.impls = impls;
+        mir_module.impl_registry_duplicates = impl_registry_duplicates;
+        mir_module.impl_registry_unresolved = impl_registry_unresolved;
         let qualified_call_table = mir_module.qualified_calls.clone();
 
         TypecheckReport {
@@ -1904,8 +1906,16 @@ fn register_function_decls(
     }
 }
 
-fn collect_impl_specs(module: &Module) -> BTreeMap<String, mir::MirImplSpec> {
+fn collect_impl_specs(
+    module: &Module,
+) -> (
+    BTreeMap<String, mir::MirImplSpec>,
+    Vec<String>,
+    Vec<String>,
+) {
     let mut impls = BTreeMap::new();
+    let mut duplicates = Vec::new();
+    let mut unresolved = Vec::new();
     for decl in &module.decls {
         let DeclKind::Impl(impl_decl) = &decl.kind else {
             continue;
@@ -1915,10 +1925,16 @@ fn collect_impl_specs(module: &Module) -> BTreeMap<String, mir::MirImplSpec> {
             .as_ref()
             .map(|trait_ref| trait_ref.name.name.clone());
         let target = impl_decl.target.render();
-        let impl_id = if let Some(name) = &trait_name {
-            format!("{name}::{target}")
+        let resolved_target = if target.trim().is_empty() {
+            unresolved.push("<unknown>".to_string());
+            "<unknown>".to_string()
         } else {
             target.clone()
+        };
+        let impl_id = if let Some(name) = &trait_name {
+            format!("{name}::{resolved_target}")
+        } else {
+            resolved_target.clone()
         };
         let mut associated_types = Vec::new();
         let mut methods = Vec::new();
@@ -1947,9 +1963,11 @@ fn collect_impl_specs(module: &Module) -> BTreeMap<String, mir::MirImplSpec> {
             methods,
             span: Some(impl_decl.span),
         };
-        impls.insert(impl_id, entry);
+        if impls.insert(impl_id.clone(), entry).is_some() {
+            duplicates.push(impl_id);
+        }
     }
-    impls
+    (impls, duplicates, unresolved)
 }
 
 fn collect_trait_names(module: &Module) -> HashSet<String> {
@@ -2446,6 +2464,8 @@ fn resolve_qualified_call(
             if parts.len() < 2 {
                 return None;
             }
+            // `ModulePath` は `foo::Bar::baz` のような構造を想定し、
+            // owner は `foo::Bar`、name は `baz` として解決する。
             let mut owner_parts = parts.clone();
             let name = owner_parts.pop().unwrap();
             let owner = owner_parts.join("::");
