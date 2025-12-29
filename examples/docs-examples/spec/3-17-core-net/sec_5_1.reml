@@ -1,7 +1,7 @@
 module Core.Net.Tcp
 
-pub type TcpStream = opaque
-pub type TcpListener = opaque
+pub type TcpStream
+pub type TcpListener
 
 pub type SocketAddr = {
   host: Str,

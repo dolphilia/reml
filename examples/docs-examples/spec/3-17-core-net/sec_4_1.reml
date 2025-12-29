@@ -1,5 +1,7 @@
 module Core.Net.Http
 
+pub type Url
+
 pub enum HttpMethod =
   | Get
   | Post
@@ -12,20 +14,20 @@ pub enum HttpMethod =
 pub type Request = {
   method: HttpMethod,
   url: Url,
-  headers: Core.Collections.Map<Str, Str>,
+  headers: Map<Str, Str>,
   body: Bytes,
 }
 
 pub type Response = {
   status: Int,
-  headers: Core.Collections.Map<Str, Str>,
+  headers: Map<Str, Str>,
   body: Bytes,
 }
 
 pub type ClientConfig = {
   timeout_ms: Option<Int>,
   max_redirects: Int,
-  default_headers: Core.Collections.Map<Str, Str>,
+  default_headers: Map<Str, Str>,
 }
 
 pub type Client = { config: ClientConfig }

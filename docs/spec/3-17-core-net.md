@@ -74,8 +74,8 @@ pub type UrlParts = {
 ```reml
 module Core.Net.Url
 
-val parse: Str -> Result<Url, UrlError> // `@pure`
-val build: UrlParts -> Result<Url, UrlError> // `@pure`
+fn parse(text: Str) -> Result<Url, UrlError> // `@pure`
+fn build(parts: UrlParts) -> Result<Url, UrlError> // `@pure`
 ```
 
 ### 3.3 UrlError
@@ -118,6 +118,8 @@ pub enum UrlErrorKind =
 ```reml
 module Core.Net.Http
 
+pub type Url
+
 pub enum HttpMethod =
   | Get
   | Post
@@ -130,20 +132,20 @@ pub enum HttpMethod =
 pub type Request = {
   method: HttpMethod,
   url: Url,
-  headers: Core.Collections.Map<Str, Str>,
+  headers: Map<Str, Str>,
   body: Bytes,
 }
 
 pub type Response = {
   status: Int,
-  headers: Core.Collections.Map<Str, Str>,
+  headers: Map<Str, Str>,
   body: Bytes,
 }
 
 pub type ClientConfig = {
   timeout_ms: Option<Int>,
   max_redirects: Int,
-  default_headers: Core.Collections.Map<Str, Str>,
+  default_headers: Map<Str, Str>,
 }
 
 pub type Client = { config: ClientConfig }
@@ -156,13 +158,15 @@ pub type Client = { config: ClientConfig }
 ### 4.2 API
 
 ```reml
-val client: ClientConfig -> Client // `@pure`
-val request: Client -> Request -> effect {net} Result<Response, HttpError>
+fn client(config: ClientConfig) -> Client // `@pure`
+fn request(client: Client, request: Request) -> Result<Response, HttpError> // `effect {net}`
 ```
 
 ### 4.3 HttpError
 
 ```reml
+pub type NetError
+
 pub type HttpError = {
   kind: HttpErrorKind,
   message: Str,
@@ -200,8 +204,8 @@ pub enum HttpErrorKind =
 ```reml
 module Core.Net.Tcp
 
-pub type TcpStream = opaque
-pub type TcpListener = opaque
+pub type TcpStream
+pub type TcpListener
 
 pub type SocketAddr = {
   host: Str,
@@ -214,10 +218,10 @@ pub type SocketAddr = {
 ### 5.2 API
 
 ```reml
-val connect: Url -> effect {net} Result<TcpStream, NetError>
-val listen: Url -> effect {net} Result<TcpListener, NetError>
-val accept: TcpListener -> effect {net} Result<(TcpStream, SocketAddr), NetError>
-val close: TcpStream -> effect {net} Result<(), NetError>
+fn connect(url: Url) -> Result<TcpStream, NetError> // `effect {net}`
+fn listen(url: Url) -> Result<TcpListener, NetError> // `effect {net}`
+fn accept(listener: TcpListener) -> Result<(TcpStream, SocketAddr), NetError> // `effect {net}`
+fn close(stream: TcpStream) -> Result<(), NetError> // `effect {net}`
 ```
 
 ## 6. Core.Net.Udp
@@ -227,21 +231,23 @@ val close: TcpStream -> effect {net} Result<(), NetError>
 ```reml
 module Core.Net.Udp
 
-pub type UdpSocket = opaque
+pub type SocketAddr
+
+pub type UdpSocket
 
 pub type Datagram = {
   bytes: Bytes,
-  peer: Core.Net.Tcp.SocketAddr,
+  peer: SocketAddr,
 }
 ```
 
 ### 6.2 API
 
 ```reml
-val bind: Url -> effect {net} Result<UdpSocket, NetError>
-val send_to: UdpSocket -> Bytes -> Core.Net.Tcp.SocketAddr -> effect {net} Result<Int, NetError>
-val recv_from: UdpSocket -> effect {net} Result<Datagram, NetError>
-val close: UdpSocket -> effect {net} Result<(), NetError>
+fn bind(url: Url) -> Result<UdpSocket, NetError> // `effect {net}`
+fn send_to(socket: UdpSocket, bytes: Bytes, peer: SocketAddr) -> Result<Int, NetError> // `effect {net}`
+fn recv_from(socket: UdpSocket) -> Result<Datagram, NetError> // `effect {net}`
+fn close(socket: UdpSocket) -> Result<(), NetError> // `effect {net}`
 ```
 
 ## 7. NetError
