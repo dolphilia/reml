@@ -127,17 +127,17 @@
 ```
 
 ### フェーズ 1: Frontend の MIR JSON 拡張
-- [ ] `MirModule` 生成時に `dict_refs` / `impls` / `qualified_calls` を追加出力できるように拡張する。
+- [x] `MirModule` 生成時に `dict_refs` / `impls` / `qualified_calls` を追加出力できるように拡張する。
   - 作業ステップ:
     - `compiler/rust/frontend/src/semantics/mir.rs` の `MirModule` 生成経路を棚卸しし、追加フィールドの生成タイミングを決める。
     - `TypedModule` / `TypecheckReport` から必要情報を収集するための参照経路を整理する。
     - `qualified_calls` の `kind` 判定ロジックと未解決時の値（空/unknown）を決める。
-- [ ] `reml_frontend` の JSON 出力に追加フィールドが出ることを確認する。
+- [x] `reml_frontend` の JSON 出力に追加フィールドが出ることを確認する。
   - 作業ステップ:
     - `compiler/rust/frontend/src/bin/reml_frontend.rs` の JSON 出力経路を確認し、追加フィールドの serialize が有効か確認する。
     - 代表的なサンプル（trait/impl/qualified 名を含む）で JSON 出力差分を観察する。
     - 出力例を docs-examples-audit のメモへ記録する。
-- [ ] 追加フィールドが空でも JSON 形状が安定するよう default を設ける。
+- [x] 追加フィールドが空でも JSON 形状が安定するよう default を設ける。
   - 作業ステップ:
     - 空配列/空 map のどちらを採用するかを決め、出力時に常に含める方針を確定する。
     - `serde(default)` などの利用方針を整理し、空値でも互換性が保てるようにする。
@@ -161,9 +161,9 @@
 - **現状**: Frontend 側で trait/impl 宣言の一覧（`impl_id` → trait/target/associated_types/methods）を保持していない。
 - **方針**: フェーズ1では `impls = {}` を出力し、フェーズ2以降の Typeck/Resolver 拡張で埋める前提とする。
 - **TODO（実装分解）**:
-  - [ ] `parser::ast::ImplDecl` から `impl_id` と trait/target を抽出するテーブルを typeck 内に追加。
-  - [ ] `TypedModule` か `TypecheckReport` に `impl_registry` を追加し JSON 直列化する。
-  - [ ] `impl_registry` から `associated_types` / `methods` を埋める基準を定義する。
+  - [x] `parser::ast::ImplDecl` から `impl_id` と trait/target を抽出するテーブルを typeck 内に追加。
+  - [x] `TypecheckReport.mir.impls` へ impl_registry を載せて JSON 直列化する。
+  - [x] `impl_registry` から `associated_types` / `methods` を埋める基準を定義する。
   - [ ] 既存 `used_impls` との突合ルール（未登録 impl の扱い）を決める。
   - **埋め込みルール案**:
     - `impl_id`: trait impl は `{TraitName}::{TargetType}`、inherent impl は `{TargetType}`（`TypeAnnot.render()` を使用）。
@@ -196,6 +196,12 @@
   - `trait_method`: `impls` テーブルとレシーバ型推論結果で照合できる場合のみ `impl_id` を付与し、未解決は `null`。
   - `unknown`: `impl_id` は `null` を維持。
 
+##### `impl_id` / `receiver_ty` の正規化方針（Int/i64）
+- `impl_id` と `impls.target` は `TypeAnnot.render()` の表記を維持する（例: `Int`）。
+- `qualified_calls.receiver_ty` は `normalize_mir_type_label` により `i64` へ正規化する。
+- 照合は `normalize_impl_target_for_match` で `Int`/`Unit` のみ正規化して一致させる。
+- `impl_id` の命名自体は正規化しない（既存ログ・仕様との整合を優先）。
+
 ##### `trait_method` の `impl_id` 解決ルール（設計案）
 **解決場所の方針**: `typeck` 側で解決候補を生成し、`qualified_calls` に追加情報を載せて Backend が確定/診断する二段構えを採用する。
 
@@ -218,11 +224,31 @@
 - `receiver_ty` 不明 or `impl_candidates` 未記録の場合は `impl_id = null` として扱う。
 - `impls` 未出力のフェーズでは `impl_candidates` を空配列にして TODO を維持。
 
+##### フェーズ 1 実施メモ（qualified_calls 拡張）
+- `qualified_calls` に `receiver_ty` / `impl_candidates` を追加し、`MirExprBuilder` で `receiver_ty` を埋める。
+- `Trait::method` を `trait_method` として識別し、trait 名は `DeclKind::Trait` 定義と照合する。
+- `impls` が空のフェーズでは `impl_candidates` を空配列にし、候補が単一なら `impl_id` を確定する。
+- pipe (`|>`) 展開後の `Call` でも `qualified_calls` が付与されるよう、typeck の desugar 経路で解決を実行する。
+- `impl_candidates` 照合時のみ `Int` / `Unit` を `i64` / `unit` に正規化する（`impl_id` 命名は維持）。
+
+##### フェーズ 1 実施メモ（default 安定化）
+- `MirModule` は `dict_refs` / `impls` / `qualified_calls` を必ず保持し、空の場合でも `[]` / `{}` を出力する。
+- `skip_serializing_if` を付与していないため、空値でも JSON に常に含まれることを確認。
+
+##### フェーズ 1 実装メモ（impl_registry 抽出）
+- 実装箇所: `compiler/rust/frontend/src/typeck/driver.rs` の `collect_impl_specs`。
+- `impl_id` は `trait_name + "::" + target.render()` を採用し、未解決 target は `"<unknown>"` を付与。
+- `associated_types` は `DeclKind::Type` の alias/newtype のみ抽出する。
+- `methods` は `ImplItem::Function` と `ImplItem::Decl(DeclKind::Fn)` を収集する。
+- 重複 `impl_id` は `impl_registry_duplicates` に記録する。
+
 ##### 実出力検証メモ（MIR JSON）
 - 検証サンプル: `examples/docs-examples/spec/3-1-core-prelude-iteration/sec_4_2.reml`
   - `qualified_calls` に `Histogram::new` / `HistogramError::OutOfRange` が入り、`impl_id` は `Histogram` / `HistogramError` になっていることを確認。
 - 検証サンプル: `examples/docs-examples/spec/3-1-core-prelude-iteration/sec_3_5.reml`
   - pipe 展開後に `Iter.from_list` / `Iter.map` / `Iter.try_fold` / `Diagnostic::invalid_value` が `qualified_calls` に記録され、`impl_id` は `Iter` / `Diagnostic` を確認。
+- 検証サンプル: `tmp/trait_method_sample.reml`
+  - `Trait::method` が `trait_method` として記録され、`impl_candidates = ["Show::Int"]` になり、候補が単一のため `impl_id = "Show::Int"` になることを確認。
 
 ##### 4) `reml_frontend` の JSON 出力経路
 - **対象**: `compiler/rust/frontend/src/bin/reml_frontend.rs` の `TypeckArtifacts` / `TypeckDebugFile` で `mir` を JSON 出力している。
@@ -282,7 +308,7 @@
 - [x] `compiler/rust/runtime/src/prelude/mod.rs` に `#[cfg(feature = "core_async")] pub mod r#async;` を追加する。
   - 作業ステップ:
     - 既存の prelude モジュール構成を確認し、露出順と命名衝突がないことを確認する。
-- [ ] `core_async` 無効時に既存ビルドが壊れないことを確認する。
+- [x] `core_async` 無効時に既存ビルドが壊れないことを確認する。
   - 作業ステップ:
     - feature 未指定時のコンパイルに影響しないよう `cfg` の適用範囲を確認する。
     - 既存 tests/build コマンドの影響範囲を整理する。
@@ -317,6 +343,8 @@
   - `List::empty` が `qualified_calls` 未解決の対象。
 - `examples/docs-examples/spec/3-1-core-prelude-iteration/sec_5_2.reml`
   - `Iter.buffered` / `Summary::empty` が `qualified_calls` 未解決の対象。
+- docs-examples-audit 検証表の更新:
+  - `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` に `sec_3_4` / `sec_3_5` / `sec_3_7` / `sec_4_2` / `sec_5_2` / `sec_6_2` の TODO/除外区分を追記。
 
 ## 受け入れ基準
 - MIR JSON に `dict_refs` / `impls` / `qualified_calls` が追加され、Backend が読み込み可能。
@@ -328,10 +356,13 @@
 - 本計画書作成日: 2025-12-27
 - 進捗欄（運用用）:
   - [ ] フェーズ 0 完了
-  - [ ] フェーズ 1 完了
+  - [x] フェーズ 1 完了
   - [x] フェーズ 2 完了
-  - [ ] フェーズ 3 完了
+  - [x] フェーズ 3 完了
   - [x] フェーズ 4 完了
+- 進捗メモ:
+  - フェーズ 1 は `qualified_calls`/`receiver_ty`/`impl_candidates` の実装と出力確認、`impls` 出力、default 安定化まで完了。
+  - `used_impls` との突合ルールは未対応。
 
 ## 関連リンク
 - `docs/plans/docs-examples-audit/1-8-backend-runtime-trait-async-plan-20251227.md`
