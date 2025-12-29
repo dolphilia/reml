@@ -1,3 +1,6 @@
+pub type Bytes
+pub type TestError
+
 pub type FuzzConfig = {
   seed: Bytes,
   max_cases: Int,

@@ -1,3 +1,11 @@
+pub type Parser<T>
+pub type TestError
+
+pub enum AstMatcher<T> =
+  | Pattern(Str)
+  | Record(List<(Str, AstMatcher<T>)>)
+  | List(List<AstMatcher<T>>)
+
 pub type DslCase<T> = {
   name: Option<Str>,
   source: Str,

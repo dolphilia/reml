@@ -52,8 +52,12 @@ fn test_with(policy: SnapshotPolicy, name: Str, body: fn() -> Result<(), TestErr
 ### 2.1 テストブロック
 
 ```reml
-test "core_test_basic" {
-  Test.assert_snapshot("core_test_basic", "alpha")?
+use Core.Test
+
+fn main() -> Result<(), TestError> {
+  test "core_test_basic" {
+    Test.assert_snapshot("core_test_basic", "alpha")?
+  }
 }
 ```
 
@@ -79,6 +83,8 @@ test "core_test_basic" {
 ## 4. テーブル駆動テスト
 
 ```reml
+pub type TestError
+
 pub type TableCase<T> = { input: T, expected: Str }
 
 fn table_test<T>(cases: List<TableCase<T>>, render: fn(T) -> Str) -> Result<(), TestError>
@@ -90,6 +96,9 @@ fn table_test<T>(cases: List<TableCase<T>>, render: fn(T) -> Str) -> Result<(), 
 ## 5. ファジングと再現性
 
 ```reml
+pub type Bytes
+pub type TestError
+
 pub type FuzzConfig = {
   seed: Bytes,
   max_cases: Int,
@@ -114,18 +123,50 @@ fn fuzz_bytes(config: FuzzConfig, f: fn(Bytes) -> Result<(), TestError>) -> Resu
 ### 7.1 最小構文
 
 ```reml
+use Core.Parse
+use Core.Test
 use Core.Test.Dsl
 
-test_parser(my_parser) {
-  case "1 + 2" => Add(Int(1), Int(2))
-  case "1 + " => Error(code="parser.unexpected_eof", at=4)
-  case "fn main() {}" => Func(name="main", ...)
+fn main() -> Result<(), TestError> {
+  let my_parser: Parser<Any> = todo
+  let cases = [
+    {
+      name: None,
+      source: "1 + 2",
+      expect: Ast(Pattern("Add(Int(1), Int(2))")),
+    },
+    {
+      name: None,
+      source: "1 + ",
+      expect: Error({
+        code: "parser.unexpected_eof",
+        at: Some(Offset(4)),
+        message: None,
+      }),
+    },
+    {
+      name: None,
+      source: "fn main() {}",
+      expect: Ast(Pattern("Func(name=\"main\", ...)")),
+    },
+  ]
+  test_parser(my_parser, cases)
 }
 ```
+
+Rust Frontend では `test_parser { ... }` のブロック構文が未実装のため、当面はケース配列を渡す記法を正準例とする。
 
 ### 7.2 型とシグネチャ（Core.Parse / Core.Test との整合）
 
 ```reml
+pub type Parser<T>
+pub type TestError
+
+pub enum AstMatcher<T> =
+  | Pattern(Str)
+  | Record(List<(Str, AstMatcher<T>)>)
+  | List(List<AstMatcher<T>>)
+
 pub type DslCase<T> = {
   name: Option<Str>,
   source: Str,
@@ -160,12 +201,28 @@ fn test_parser<T>(parser: Parser<T>, cases: List<DslCase<T>>) -> Result<(), Test
 - `Option`/`Result` は `Some(...)` / `Ok(...)` を簡略記法として許可する。
 
 ```reml
-test_parser(my_parser) {
-  case "1 + 2" => Ast(Pattern("...Add(Int(1), Int(2))..."))
-  case "1 + 3" => Ast(Record([
-    ("tag", Pattern("\"expr\"")),
-    ("items", List([Pattern("Add(Int(1), Int(3))")])),
-  ]))
+use Core.Parse
+use Core.Test
+use Core.Test.Dsl
+
+fn main() -> Result<(), TestError> {
+  let my_parser: Parser<Any> = todo
+  let cases = [
+    {
+      name: None,
+      source: "1 + 2",
+      expect: Ast(Pattern("...Add(Int(1), Int(2))...")),
+    },
+    {
+      name: None,
+      source: "1 + 3",
+      expect: Ast(Record([
+        ("tag", Pattern("\"expr\"")),
+        ("items", List([Pattern("Add(Int(1), Int(3))")])),
+      ])),
+    },
+  ]
+  test_parser(my_parser, cases)
 }
 ```
 

@@ -203,13 +203,13 @@
 ### docs/spec/3-11-core-test.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2. 型と API | sec_2 | examples/docs-examples/spec/3-11-core-test/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.1 テストブロック | sec_2_1 | examples/docs-examples/spec/3-11-core-test/sec_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4. テーブル駆動テスト | sec_4 | examples/docs-examples/spec/3-11-core-test/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 5. ファジングと再現性 | sec_5 | examples/docs-examples/spec/3-11-core-test/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7.1 最小構文 | sec_7_1 | examples/docs-examples/spec/3-11-core-test/sec_7_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7.2 型とシグネチャ（Core.Parse / Core.Test との整合） | sec_7_2 | examples/docs-examples/spec/3-11-core-test/sec_7_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7.3 Matcher 仕様（最小セット） | sec_7_3 | examples/docs-examples/spec/3-11-core-test/sec_7_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 2. 型と API | sec_2 | examples/docs-examples/spec/3-11-core-test/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.1 テストブロック | sec_2_1 | examples/docs-examples/spec/3-11-core-test/sec_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4. テーブル駆動テスト | sec_4 | examples/docs-examples/spec/3-11-core-test/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 5. ファジングと再現性 | sec_5 | examples/docs-examples/spec/3-11-core-test/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7.1 最小構文 | sec_7_1 | examples/docs-examples/spec/3-11-core-test/sec_7_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7.2 型とシグネチャ（Core.Parse / Core.Test との整合） | sec_7_2 | examples/docs-examples/spec/3-11-core-test/sec_7_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7.3 Matcher 仕様（最小セット） | sec_7_3 | examples/docs-examples/spec/3-11-core-test/sec_7_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-12-core-cli.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

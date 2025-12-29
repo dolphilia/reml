@@ -1,7 +1,29 @@
+use Core.Parse
+use Core.Test
 use Core.Test.Dsl
 
-test_parser(my_parser) {
-  case "1 + 2" => Add(Int(1), Int(2))
-  case "1 + " => Error(code="parser.unexpected_eof", at=4)
-  case "fn main() {}" => Func(name="main", ...)
+fn main() -> Result<(), TestError> {
+  let my_parser: Parser<Any> = todo
+  let cases = [
+    {
+      name: None,
+      source: "1 + 2",
+      expect: Ast(Pattern("Add(Int(1), Int(2))")),
+    },
+    {
+      name: None,
+      source: "1 + ",
+      expect: Error({
+        code: "parser.unexpected_eof",
+        at: Some(Offset(4)),
+        message: None,
+      }),
+    },
+    {
+      name: None,
+      source: "fn main() {}",
+      expect: Ast(Pattern("Func(name=\"main\", ...)")),
+    },
+  ]
+  test_parser(my_parser, cases)
 }

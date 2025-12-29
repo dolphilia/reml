@@ -1,3 +1,7 @@
-test "core_test_basic" {
-  Test.assert_snapshot("core_test_basic", "alpha")?
+use Core.Test
+
+fn main() -> Result<(), TestError> {
+  test "core_test_basic" {
+    Test.assert_snapshot("core_test_basic", "alpha")?
+  }
 }
