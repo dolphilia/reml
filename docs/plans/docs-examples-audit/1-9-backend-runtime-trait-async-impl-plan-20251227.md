@@ -253,14 +253,35 @@
     - 既存 tests/build コマンドの影響範囲を整理する。
 
 ### フェーズ 4: docs-examples-audit 連携
-- [ ] async 連携サンプル（`docs/spec/3-1-core-prelude-iteration.md` の `from_async_stream` / `to_async_stream`）に対し、Runtime 未実装の TODO を `1-9` へ記録する。
+- [x] async 連携サンプル（`docs/spec/3-1-core-prelude-iteration.md` の `from_async_stream` / `to_async_stream`）に対し、Runtime 未実装の TODO を `1-9` へ記録する。
   - 作業ステップ:
     - 仕様内の対象サンプルを特定し、未実装事項の粒度（型未定義 / 実装未提供）を整理する。
     - TODO 記載のフォーマット（見出し/チェック項目/リンク）を決める。
-- [ ] trait/impl/qualified 名サンプルを Backend 未対応チェック対象として整理する。
+- [x] trait/impl/qualified 名サンプルを Backend 未対応チェック対象として整理する。
   - 作業ステップ:
     - 仕様の該当サンプルを列挙し、Backend 側で未解決になる理由をメモ化する。
     - 検証対象の一覧に落とし込み、後続タスクへ引き継げる形に整形する。
+
+#### フェーズ 4 実施メモ（docs-examples-audit）
+
+##### Async 連携サンプル TODO
+- 対象サンプル: `examples/docs-examples/spec/3-1-core-prelude-iteration/sec_6_2.reml`
+  - 仕様参照: `docs/spec/3-1-core-prelude-iteration.md`
+  - 未実装事項: Runtime 側の `AsyncStream<T>` / `Future<T>` は opaque 型のみで、`from_async_stream` / `to_async_stream` の API 実装と bridge が未提供。
+  - TODO 方針: `docs-examples-audit` では `core_async` feature 依存の未実装として記録し、Runtime 実装完了まで検証対象から除外する。
+
+##### Backend 未対応チェック対象（trait/impl/qualified 名）
+- `examples/docs-examples/spec/3-1-core-prelude-iteration/sec_3_4.reml`
+  - `trait Collector<T, C>` + `Self::Error` の associated type があり、`impls`/`associated_types` 未出力のため Backend で未解決 TODO になる前提。
+- `examples/docs-examples/spec/3-1-core-prelude-iteration/sec_4_2.reml`
+  - `impl Collector<...> for HistogramCollector` と `Self::Error` が未解決前提。
+  - `Map::empty` / `HistogramError::OutOfRange` / `Histogram::new` は `qualified_calls` が空のため Backend 側で未解決 TODO を想定。
+- `examples/docs-examples/spec/3-1-core-prelude-iteration/sec_3_5.reml`
+  - `Iter.from_list` / `Iter.map` / `Diagnostic::invalid_value` が `qualified_calls` 未解決の対象。
+- `examples/docs-examples/spec/3-1-core-prelude-iteration/sec_3_7.reml`
+  - `List::empty` が `qualified_calls` 未解決の対象。
+- `examples/docs-examples/spec/3-1-core-prelude-iteration/sec_5_2.reml`
+  - `Iter.buffered` / `Summary::empty` が `qualified_calls` 未解決の対象。
 
 ## 受け入れ基準
 - MIR JSON に `dict_refs` / `impls` / `qualified_calls` が追加され、Backend が読み込み可能。
@@ -275,7 +296,7 @@
   - [ ] フェーズ 1 完了
   - [x] フェーズ 2 完了
   - [ ] フェーズ 3 完了
-  - [ ] フェーズ 4 完了
+  - [x] フェーズ 4 完了
 
 ## 関連リンク
 - `docs/plans/docs-examples-audit/1-8-backend-runtime-trait-async-plan-20251227.md`

@@ -2451,9 +2451,9 @@ fn resolve_qualified_call(
                 let owner = render_type_owner(target)?;
                 Some(typed::QualifiedCall {
                     kind: typed::QualifiedCallKind::TypeMethod,
-                    owner: Some(owner),
+                    owner: Some(owner.clone()),
                     name: Some(field.name.clone()),
-                    impl_id: None,
+                    impl_id: Some(owner),
                 })
             } else {
                 None
@@ -2483,11 +2483,15 @@ fn resolve_qualified_call(
             } else {
                 typed::QualifiedCallKind::Unknown
             };
+            let impl_id = match kind {
+                typed::QualifiedCallKind::TypeAssoc => Some(owner.clone()),
+                _ => None,
+            };
             Some(typed::QualifiedCall {
                 kind,
                 owner: Some(owner),
                 name: Some(name),
-                impl_id: None,
+                impl_id,
             })
         }
         _ => None,
