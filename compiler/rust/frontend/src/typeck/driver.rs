@@ -19,10 +19,11 @@ use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
     ActorSpecDecl, Attribute, BinaryOp, ConductorDecl, ConductorMonitorTarget, Decl, DeclKind,
     EffectAnnotation, EffectDecl, EnumDecl, Expr, ExprKind, FixityKind, Function,
-    FunctionSignature, HandlerDecl, HandlerEntry, Ident, ImplItem, Literal, LiteralKind, MacroDecl,
-    MatchArm, Module, ModulePath, Param, Pattern, PatternKind, RelativeHead, SlicePatternItem,
-    Stmt, StmtKind, StructDecl, TraitDecl, TypeAnnot, TypeDecl, TypeDeclBody, TypeDeclVariant,
-    TypeDeclVariantPayload, TypeKind, TypeLiteral, TypeUnionVariant, UnaryOp, VariantPayload,
+    FunctionSignature, HandlerDecl, HandlerEntry, Ident, ImplItem, Literal, LiteralKind,
+    MacroDecl, MatchArm, Module, ModuleBody, ModulePath, Param, Pattern, PatternKind, RelativeHead,
+    SlicePatternItem, Stmt, StmtKind, StructDecl, TraitDecl, TypeAnnot, TypeDecl, TypeDeclBody,
+    TypeDeclVariant, TypeDeclVariantPayload, TypeKind, TypeLiteral, TypeUnionVariant, UnaryOp,
+    VariantPayload,
 };
 use crate::semantics::{mir, typed};
 use crate::span::Span;
@@ -159,6 +160,8 @@ impl TypecheckDriver {
             &mut var_gen,
             &mut violations,
         );
+        let effect_names = collect_effect_names(module);
+        validate_handles_attrs(module, &effect_names, &mut violations);
         let (impls, impl_registry_duplicates, impl_registry_unresolved) =
             collect_impl_specs(module);
         collect_opbuilder_violations(module, &mut violations);
@@ -395,6 +398,8 @@ impl TypecheckDriver {
                 varargs: false,
                 return_type: return_label,
                 return_annotation: function.ret_type.as_ref().map(|ty| ty.render()),
+                is_async: function.is_async,
+                is_unsafe: function.is_unsafe,
                 body: typed_body,
                 dict_ref_ids,
                 scheme_id: Some(scheme_id),
@@ -533,6 +538,8 @@ impl TypecheckDriver {
                     varargs: false,
                     return_type: return_label,
                     return_annotation: function.ret_type.as_ref().map(|ty| ty.render()),
+                    is_async: function.is_async,
+                    is_unsafe: function.is_unsafe,
                     body: typed_body,
                     dict_ref_ids,
                     scheme_id: Some(scheme_id),
@@ -564,6 +571,71 @@ impl TypecheckDriver {
                 typed_module.conductors.push(typed_conductor);
             }
         }
+
+        let mut actor_specs = Vec::new();
+        visit_actor_specs(module, &mut |actor_spec| {
+            metrics.record_function();
+            let mut stats = FunctionStats::default();
+            let mut constraints = Vec::new();
+            let mut env = module_env.clone();
+            let mut param_bindings = Vec::new();
+            let mut loop_context = LoopContextStack::default();
+            let context =
+                FunctionContext::function(actor_spec.name.name.as_str(), false, &trait_names);
+            for param in &actor_spec.params {
+                let ty = param
+                    .type_annotation
+                    .as_ref()
+                    .and_then(|annot| type_from_annotation(annot, None, &env, &mut violations))
+                    .unwrap_or_else(|| var_gen.fresh_type());
+                let scheme = Scheme::simple(ty.clone());
+                bind_pattern_to_env(&param.pattern, &scheme, &mut env, &mut var_gen);
+                param_bindings.push(ParamBinding {
+                    display: param.pattern.render(),
+                    span: param.span,
+                    ty,
+                    annotation: param.type_annotation.as_ref().map(|annot| annot.render()),
+                });
+            }
+            stats.local_bindings = collect_function_bindings(&actor_spec.params, &actor_spec.body);
+            let typed_body = infer_expr(
+                &actor_spec.body,
+                &mut env,
+                &mut var_gen,
+                &mut solver,
+                &mut constraints,
+                &mut stats,
+                &mut metrics,
+                &mut violations,
+                &mut dict_ref_drafts,
+                &mut loop_context,
+                context,
+            );
+            all_constraints.extend(constraints.drain(..));
+            let substitution = solver.substitution().clone();
+            let resolved_return = substitution.apply(&typed_body.ty);
+            let typed_params = param_bindings
+                .into_iter()
+                .map(|binding| typed::TypedParam {
+                    name: binding.display,
+                    span: binding.span,
+                    ty: substitution.apply(&binding.ty).label(),
+                    annotation: binding.annotation,
+                })
+                .collect::<Vec<_>>();
+            let typed_body = finalize_typed_expr(typed_body, &substitution);
+            let dict_ref_ids = typed_body.dict_ref_ids.clone();
+            actor_specs.push(typed::TypedActorSpec {
+                name: actor_spec.name.name.clone(),
+                span: actor_spec.span,
+                params: typed_params,
+                return_type: resolved_return.label(),
+                body: typed_body,
+                dict_ref_ids,
+            });
+        });
+        typed_module.actor_specs = actor_specs;
+        typed_module.externs = collect_externs(module);
 
         for expr in &module.exprs {
             let mut stats = FunctionStats::default();
@@ -655,6 +727,7 @@ pub struct TypecheckReport {
 static TOP_LEVEL_DECLARATION_SUMMARY: Lazy<ExpectedTokensSummary> = Lazy::new(|| {
     let mut collector = ExpectedTokenCollector::new();
     collector.extend([
+        ExpectedToken::keyword("async"),
         ExpectedToken::keyword("conductor"),
         ExpectedToken::keyword("effect"),
         ExpectedToken::keyword("extern"),
@@ -720,6 +793,7 @@ pub enum TypecheckViolationKind {
     ReturnConflict,
     UnicodeShadowing,
     ResidualLeak,
+    HandlesUnknownEffect,
     ActivePatternReturnContract,
     ActivePatternEffectViolation,
     ActivePatternNameConflict,
@@ -868,6 +942,29 @@ impl TypecheckViolation {
             span,
             notes: vec![ViolationNote::plain(note_message)],
             capability,
+            function: None,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn handles_unknown_effect(span: Span, effect: String, owner: Option<String>) -> Self {
+        let mut notes = vec![ViolationNote::plain(format!(
+            "`effect {}` を宣言するか、既存の効果名を指定してください。",
+            effect
+        ))];
+        if let Some(owner) = owner {
+            notes.push(ViolationNote::plain(format!("対象: {owner}")));
+        }
+        Self {
+            kind: TypecheckViolationKind::HandlesUnknownEffect,
+            code: "effects.handles.undefined",
+            message: format!("`@handles` で指定された効果 `{effect}` が見つかりません。"),
+            span: Some(span),
+            notes,
+            capability: None,
             function: None,
             expected: None,
             recover: None,
@@ -1759,6 +1856,7 @@ impl TypecheckViolation {
             | TypecheckViolationKind::StageMismatch
             | TypecheckViolationKind::IteratorStageMismatch
             | TypecheckViolationKind::PurityViolation
+            | TypecheckViolationKind::HandlesUnknownEffect
             | TypecheckViolationKind::ActivePatternEffectViolation
             | TypecheckViolationKind::IntrinsicMissingEffect
             | TypecheckViolationKind::UnsafeInPureContext => "effects",
@@ -1955,11 +2053,14 @@ fn register_function_decls(
                 .unwrap_or_else(|| var_gen.fresh_type());
             param_types.push(ty);
         }
-        let ret_type = signature
+        let mut ret_type = signature
             .ret_type
             .as_ref()
             .and_then(|annot| type_from_annotation(annot, generic_map_ref, env, violations))
             .unwrap_or_else(|| var_gen.fresh_type());
+        if signature.is_async {
+            ret_type = future_type(ret_type);
+        }
         let function_type = Type::arrow(param_types, ret_type);
         let scheme = generalize_type(env, function_type);
         env.insert(signature.binding_key(), scheme);
@@ -2084,6 +2185,222 @@ fn collect_trait_names(module: &Module) -> HashSet<String> {
         names.insert(trait_decl.name.name.clone());
     }
     names
+}
+
+fn collect_effect_names(module: &Module) -> HashSet<String> {
+    let mut names = HashSet::new();
+    for effect in &module.effects {
+        names.insert(effect.name.name.clone());
+    }
+    for decl in &module.decls {
+        collect_effect_names_from_decl(decl, &mut names);
+    }
+    names
+}
+
+fn collect_effect_names_from_body(body: &ModuleBody, names: &mut HashSet<String>) {
+    for effect in &body.effects {
+        names.insert(effect.name.name.clone());
+    }
+    for decl in &body.decls {
+        collect_effect_names_from_decl(decl, names);
+    }
+}
+
+fn collect_effect_names_from_decl(decl: &Decl, names: &mut HashSet<String>) {
+    match &decl.kind {
+        DeclKind::Effect(effect) => {
+            names.insert(effect.name.name.clone());
+        }
+        DeclKind::Module(module_decl) => {
+            collect_effect_names_from_body(&module_decl.body, names);
+        }
+        _ => {}
+    }
+}
+
+fn validate_handles_attrs(
+    module: &Module,
+    effect_names: &HashSet<String>,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    for function in &module.functions {
+        check_handles_attrs(
+            &function.attrs,
+            Some(function.name.name.clone()),
+            effect_names,
+            violations,
+        );
+    }
+    for active in &module.active_patterns {
+        check_handles_attrs(
+            &active.attrs,
+            Some(active.name.name.clone()),
+            effect_names,
+            violations,
+        );
+    }
+    for decl in &module.decls {
+        validate_handles_in_decl(decl, effect_names, violations);
+    }
+}
+
+fn validate_handles_in_body(
+    body: &ModuleBody,
+    effect_names: &HashSet<String>,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    for function in &body.functions {
+        check_handles_attrs(
+            &function.attrs,
+            Some(function.name.name.clone()),
+            effect_names,
+            violations,
+        );
+    }
+    for active in &body.active_patterns {
+        check_handles_attrs(
+            &active.attrs,
+            Some(active.name.name.clone()),
+            effect_names,
+            violations,
+        );
+    }
+    for decl in &body.decls {
+        validate_handles_in_decl(decl, effect_names, violations);
+    }
+}
+
+fn validate_handles_in_decl(
+    decl: &Decl,
+    effect_names: &HashSet<String>,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    match &decl.kind {
+        DeclKind::Fn { signature } => {
+            check_handles_attrs(
+                &decl.attrs,
+                Some(signature.name.name.clone()),
+                effect_names,
+                violations,
+            );
+        }
+        DeclKind::Impl(impl_decl) => {
+            let target = impl_decl.target.render();
+            for item in &impl_decl.items {
+                if let ImplItem::Function(function) = item {
+                    let owner = format!("{}::{}", target, function.name.name);
+                    check_handles_attrs(&function.attrs, Some(owner), effect_names, violations);
+                }
+            }
+        }
+        DeclKind::Module(module_decl) => {
+            validate_handles_in_body(&module_decl.body, effect_names, violations);
+        }
+        _ => {}
+    }
+}
+
+fn check_handles_attrs(
+    attrs: &[Attribute],
+    owner: Option<String>,
+    effect_names: &HashSet<String>,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    for attr in attrs {
+        if attr.name.name != "handles" {
+            continue;
+        }
+        for arg in &attr.args {
+            let Some(effect_name) = render_qualified_access(arg) else {
+                continue;
+            };
+            if !effect_names.contains(&effect_name) {
+                violations.push(TypecheckViolation::handles_unknown_effect(
+                    attr.span,
+                    effect_name,
+                    owner.clone(),
+                ));
+            }
+        }
+    }
+}
+
+fn collect_externs(module: &Module) -> Vec<typed::TypedExtern> {
+    let mut externs = Vec::new();
+    for decl in &module.decls {
+        collect_externs_from_decl(decl, &mut externs);
+    }
+    externs
+}
+
+fn collect_externs_from_body(body: &ModuleBody, externs: &mut Vec<typed::TypedExtern>) {
+    for decl in &body.decls {
+        collect_externs_from_decl(decl, externs);
+    }
+}
+
+fn collect_externs_from_decl(decl: &Decl, externs: &mut Vec<typed::TypedExtern>) {
+    match &decl.kind {
+        DeclKind::Extern { abi, functions, .. } => {
+            for item in functions {
+                let name = item.signature.binding_key();
+                let symbol = extract_extern_symbol(&item.attrs, &name);
+                externs.push(typed::TypedExtern {
+                    name,
+                    span: item.span,
+                    abi: abi.clone(),
+                    symbol,
+                });
+            }
+        }
+        DeclKind::Module(module_decl) => {
+            collect_externs_from_body(&module_decl.body, externs);
+        }
+        _ => {}
+    }
+}
+
+fn extract_extern_symbol(attrs: &[Attribute], fallback: &str) -> String {
+    for attr in attrs {
+        if attr.name.name != "link_name" && attr.name.name != "ffi_link_name" {
+            continue;
+        }
+        if let Some(symbol) = attribute_string_arg(attr) {
+            return symbol;
+        }
+    }
+    fallback.to_string()
+}
+
+fn attribute_string_arg(attr: &Attribute) -> Option<String> {
+    let first = attr.args.first()?;
+    match &first.kind {
+        ExprKind::Literal(Literal {
+            value: LiteralKind::String { value, .. },
+        }) => Some(value.clone()),
+        _ => None,
+    }
+}
+
+fn visit_actor_specs(module: &Module, visitor: &mut impl FnMut(&ActorSpecDecl)) {
+    for decl in &module.decls {
+        visit_actor_specs_in_decl(decl, visitor);
+    }
+}
+
+fn visit_actor_specs_in_body(body: &ModuleBody, visitor: &mut impl FnMut(&ActorSpecDecl)) {
+    for decl in &body.decls {
+        visit_actor_specs_in_decl(decl, visitor);
+    }
+}
+
+fn visit_actor_specs_in_decl(decl: &Decl, visitor: &mut impl FnMut(&ActorSpecDecl)) {
+    match &decl.kind {
+        DeclKind::ActorSpec(actor_spec) => visitor(actor_spec),
+        DeclKind::Module(module_decl) => visit_actor_specs_in_body(&module_decl.body, visitor),
+        _ => {}
+    }
 }
 
 fn associated_type_from_decl(decl: &TypeDecl) -> Option<mir::MirAssociatedType> {
@@ -2561,6 +2878,10 @@ fn render_type_owner(expr: &Expr) -> Option<String> {
     Some(parts.join("::"))
 }
 
+fn future_type(inner: Type) -> Type {
+    Type::app("Future", vec![inner])
+}
+
 fn module_path_parts(path: &ModulePath) -> Option<Vec<String>> {
     match path {
         ModulePath::Root { segments } => {
@@ -2729,7 +3050,7 @@ fn infer_function(
 ) -> TypedExprDraft {
     let mut loop_context = LoopContextStack::default();
     stats.local_bindings = collect_function_bindings(&function.params, &function.body);
-    infer_expr(
+    let body_result = infer_expr(
         &function.body,
         env,
         var_gen,
@@ -2741,7 +3062,22 @@ fn infer_function(
         dict_refs,
         &mut loop_context,
         context,
-    )
+    );
+    if function.is_async {
+        let async_ty = future_type(body_result.ty.clone());
+        let dict_ids = body_result.dict_ref_ids.clone();
+        TypedExprDraft {
+            span: body_result.span,
+            kind: TypedExprKindDraft::Async {
+                body: Box::new(body_result),
+                is_move: false,
+            },
+            ty: async_ty,
+            dict_ref_ids: dict_ids,
+        }
+    } else {
+        body_result
+    }
 }
 
 fn infer_expr(
@@ -3457,12 +3793,14 @@ fn infer_expr(
             );
             make_typed(
                 expr,
-                TypedExprKindDraft::Unknown,
+                TypedExprKindDraft::Unsafe {
+                    body: Box::new(body_result.clone()),
+                },
                 body_result.ty.clone(),
                 body_result.dict_ref_ids,
             )
         }
-        ExprKind::EffectBlock { body } | ExprKind::Async { body, .. } => {
+        ExprKind::EffectBlock { body } => {
             let body_result = infer_expr(
                 body,
                 env,
@@ -3478,8 +3816,35 @@ fn infer_expr(
             );
             make_typed(
                 expr,
-                TypedExprKindDraft::Unknown,
+                TypedExprKindDraft::EffectBlock {
+                    body: Box::new(body_result.clone()),
+                },
                 body_result.ty.clone(),
+                body_result.dict_ref_ids,
+            )
+        }
+        ExprKind::Async { body, is_move } => {
+            let body_result = infer_expr(
+                body,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            let async_ty = future_type(body_result.ty.clone());
+            make_typed(
+                expr,
+                TypedExprKindDraft::Async {
+                    body: Box::new(body_result.clone()),
+                    is_move: *is_move,
+                },
+                async_ty,
                 body_result.dict_ref_ids,
             )
         }
@@ -3497,10 +3862,22 @@ fn infer_expr(
                 loop_context,
                 context,
             );
+            let awaited_ty = var_gen.fresh_type();
+            let expected_future = future_type(awaited_ty.clone());
+            stats.constraints += 1;
+            metrics.record_constraint("await.future");
+            constraints.push(Constraint::equal(
+                inner_result.ty.clone(),
+                expected_future.clone(),
+            ));
+            metrics.record_unify_call();
+            let _ = solver.unify(inner_result.ty.clone(), expected_future);
             make_typed(
                 expr,
-                TypedExprKindDraft::Unknown,
-                Type::builtin(BuiltinType::Unknown),
+                TypedExprKindDraft::Await {
+                    expr: Box::new(inner_result.clone()),
+                },
+                solver.substitution().apply(&awaited_ty),
                 inner_result.dict_ref_ids,
             )
         }
@@ -6724,6 +7101,19 @@ enum TypedExprKindDraft {
     PerformCall {
         call: TypedEffectCallDraft,
     },
+    EffectBlock {
+        body: Box<TypedExprDraft>,
+    },
+    Async {
+        body: Box<TypedExprDraft>,
+        is_move: bool,
+    },
+    Await {
+        expr: Box<TypedExprDraft>,
+    },
+    Unsafe {
+        body: Box<TypedExprDraft>,
+    },
     IfElse {
         condition: Box<TypedExprDraft>,
         then_branch: Box<TypedExprDraft>,
@@ -6960,6 +7350,19 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
                 effect: call.effect,
                 argument: Box::new(finalize_typed_expr(*call.argument, substitution)),
             },
+        },
+        TypedExprKindDraft::EffectBlock { body } => typed::TypedExprKind::EffectBlock {
+            body: Box::new(finalize_typed_expr(*body, substitution)),
+        },
+        TypedExprKindDraft::Async { body, is_move } => typed::TypedExprKind::Async {
+            body: Box::new(finalize_typed_expr(*body, substitution)),
+            is_move,
+        },
+        TypedExprKindDraft::Await { expr } => typed::TypedExprKind::Await {
+            expr: Box::new(finalize_typed_expr(*expr, substitution)),
+        },
+        TypedExprKindDraft::Unsafe { body } => typed::TypedExprKind::Unsafe {
+            body: Box::new(finalize_typed_expr(*body, substitution)),
         },
         TypedExprKindDraft::IfElse {
             condition,

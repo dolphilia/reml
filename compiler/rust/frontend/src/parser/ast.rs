@@ -518,6 +518,8 @@ pub struct FunctionSignature {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub effect: Option<EffectAnnotation>,
     #[serde(default, skip_serializing_if = "is_false")]
+    pub is_async: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
     pub is_unsafe: bool,
     pub span: Span,
 }
@@ -571,9 +573,10 @@ impl FunctionSignature {
             .as_ref()
             .map(|annot| format!(" !{{{}}}", annot.render()))
             .unwrap_or_default();
+        let async_prefix = if self.is_async { "async " } else { "" };
         let unsafe_prefix = if self.is_unsafe { "unsafe " } else { "" };
         format!(
-            "{unsafe_prefix}fn {}{}({}){}{}{}",
+            "{async_prefix}{unsafe_prefix}fn {}{}({}){}{}{}",
             self.name.name, generics, params, ret, where_clause, effect
         )
     }
@@ -1500,6 +1503,8 @@ pub struct Function {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub effect: Option<EffectAnnotation>,
     #[serde(default, skip_serializing_if = "is_false")]
+    pub is_async: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
     pub is_unsafe: bool,
     pub span: Span,
     pub attrs: Vec<Attribute>,
@@ -1558,9 +1563,10 @@ impl Function {
             Visibility::Public => "pub ",
             Visibility::Private => "",
         };
+        let async_prefix = if self.is_async { "async " } else { "" };
         let unsafe_prefix = if self.is_unsafe { "unsafe " } else { "" };
         format!(
-            "{visibility}{unsafe_prefix}fn {}{}({}){}{}{} = {}",
+            "{visibility}{async_prefix}{unsafe_prefix}fn {}{}({}){}{}{} = {}",
             self.name.name,
             generics,
             params,

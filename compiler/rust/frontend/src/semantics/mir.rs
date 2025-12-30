@@ -19,6 +19,8 @@ pub struct MirModule {
     pub functions: Vec<MirFunction>,
     pub active_patterns: Vec<MirActivePattern>,
     pub conductors: Vec<MirConductor>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub externs: Vec<MirExtern>,
     pub dict_refs: Vec<typed::DictRef>,
     pub impls: BTreeMap<String, MirImplSpec>,
     pub qualified_calls: BTreeMap<String, MirQualifiedCall>,
@@ -53,6 +55,16 @@ impl MirModule {
             functions,
             active_patterns,
             conductors,
+            externs: module
+                .externs
+                .iter()
+                .map(|extern_item| MirExtern {
+                    name: extern_item.name.clone(),
+                    span: extern_item.span,
+                    abi: extern_item.abi.clone(),
+                    symbol: extern_item.symbol.clone(),
+                })
+                .collect(),
             dict_refs: module.dict_refs.clone(),
             impls: BTreeMap::new(),
             qualified_calls,
@@ -69,6 +81,7 @@ impl Default for MirModule {
             functions: Vec::new(),
             active_patterns: Vec::new(),
             conductors: Vec::new(),
+            externs: Vec::new(),
             dict_refs: Vec::new(),
             impls: BTreeMap::new(),
             qualified_calls: BTreeMap::new(),
@@ -132,9 +145,21 @@ pub struct MirFunction {
     #[serde(default, skip_serializing_if = "is_false")]
     pub varargs: bool,
     pub return_type: String,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub is_async: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub is_unsafe: bool,
     pub body: MirExprId,
     pub exprs: Vec<MirExpr>,
     pub dict_ref_ids: Vec<typed::DictRefId>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MirExtern {
+    pub name: String,
+    pub span: Span,
+    pub abi: String,
+    pub symbol: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -328,6 +353,20 @@ pub enum MirExprKind {
     PerformCall {
         call: MirEffectCall,
     },
+    EffectBlock {
+        body: MirExprId,
+    },
+    Async {
+        body: MirExprId,
+        #[serde(default, skip_serializing_if = "is_false")]
+        is_move: bool,
+    },
+    Await {
+        expr: MirExprId,
+    },
+    Unsafe {
+        body: MirExprId,
+    },
     #[serde(rename = "unknown")]
     Unknown,
 }
@@ -509,6 +548,8 @@ fn lower_function(
             .collect(),
         varargs: function.varargs,
         return_type: normalize_mir_type_label(&function.return_type),
+        is_async: function.is_async,
+        is_unsafe: function.is_unsafe,
         body,
         exprs,
         dict_ref_ids: function.dict_ref_ids.clone(),
@@ -749,6 +790,19 @@ impl MirExprBuilder {
                     effect: call.effect.clone(),
                     argument: self.lower_expr(&call.argument),
                 },
+            },
+            typed::TypedExprKind::EffectBlock { body } => MirExprKind::EffectBlock {
+                body: self.lower_expr(body),
+            },
+            typed::TypedExprKind::Async { body, is_move } => MirExprKind::Async {
+                body: self.lower_expr(body),
+                is_move: *is_move,
+            },
+            typed::TypedExprKind::Await { expr } => MirExprKind::Await {
+                expr: self.lower_expr(expr),
+            },
+            typed::TypedExprKind::Unsafe { body } => MirExprKind::Unsafe {
+                body: self.lower_expr(body),
             },
             typed::TypedExprKind::Unknown => MirExprKind::Unknown,
         };
@@ -1227,6 +1281,14 @@ fn collect_match_lowerings_from_expr(
         }
         typed::TypedExprKind::PerformCall { call } => {
             collect_match_lowerings_from_expr(&call.argument, owner, plans);
+        }
+        typed::TypedExprKind::EffectBlock { body }
+        | typed::TypedExprKind::Async { body, .. }
+        | typed::TypedExprKind::Unsafe { body } => {
+            collect_match_lowerings_from_expr(body, owner, plans);
+        }
+        typed::TypedExprKind::Await { expr } => {
+            collect_match_lowerings_from_expr(expr, owner, plans);
         }
         typed::TypedExprKind::Literal(_)
         | typed::TypedExprKind::Identifier { .. }

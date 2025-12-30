@@ -17,6 +17,10 @@ pub struct TypedModule {
     pub functions: Vec<TypedFunction>,
     pub active_patterns: Vec<TypedActivePattern>,
     pub conductors: Vec<TypedConductor>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub actor_specs: Vec<TypedActorSpec>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub externs: Vec<TypedExtern>,
     pub dict_refs: Vec<DictRef>,
     pub schemes: Vec<SchemeInfo>,
 }
@@ -32,6 +36,10 @@ pub struct TypedFunction {
     pub return_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub return_annotation: Option<String>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub is_async: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub is_unsafe: bool,
     pub body: TypedExpr,
     pub dict_ref_ids: Vec<DictRefId>,
     pub scheme_id: Option<usize>,
@@ -136,6 +144,24 @@ pub struct TypedConductorMonitoringBlock {
     pub target: Option<String>,
     pub ty: String,
     pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedActorSpec {
+    pub name: String,
+    pub span: Span,
+    pub params: Vec<TypedParam>,
+    pub return_type: String,
+    pub body: TypedExpr,
+    pub dict_ref_ids: Vec<DictRefId>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedExtern {
+    pub name: String,
+    pub span: Span,
+    pub abi: String,
+    pub symbol: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -264,6 +290,20 @@ pub enum TypedExprKind {
     },
     PerformCall {
         call: TypedEffectCall,
+    },
+    EffectBlock {
+        body: Box<TypedExpr>,
+    },
+    Async {
+        body: Box<TypedExpr>,
+        #[serde(default, skip_serializing_if = "is_false")]
+        is_move: bool,
+    },
+    Await {
+        expr: Box<TypedExpr>,
+    },
+    Unsafe {
+        body: Box<TypedExpr>,
     },
     #[serde(rename = "unknown")]
     Unknown,

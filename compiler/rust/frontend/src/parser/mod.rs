@@ -3956,13 +3956,19 @@ fn module_parser<'src>(
             span: range_to_span(span),
         });
 
+    let async_flag = just(TokenKind::KeywordAsync)
+        .to(true)
+        .or_not()
+        .map(|flag| flag.unwrap_or(false));
+
     let unsafe_flag = just(TokenKind::KeywordUnsafe)
         .to(true)
         .or_not()
         .map(|flag| flag.unwrap_or(false));
 
-    let fn_signature = unsafe_flag
+    let fn_signature = async_flag
         .clone()
+        .then(unsafe_flag.clone())
         .then(
             just(TokenKind::KeywordFn)
                 .map_with_span(move |_, span: Range<usize>| range_to_span(span)),
@@ -3986,7 +3992,7 @@ fn module_parser<'src>(
             let (value, params_varargs) = value;
             let (value, generics) = value;
             let (value, qualified_name) = value;
-            let (is_unsafe, fn_span) = value;
+            let ((is_async, is_unsafe), fn_span) = value;
             let (params, varargs) = params_varargs;
             let effect = effect_after_where.or(effect_before_where);
             let signature_span = range_to_span(span);
@@ -4006,6 +4012,7 @@ fn module_parser<'src>(
                 ret_type,
                 where_clause,
                 effect,
+                is_async,
                 is_unsafe,
                 span: Span::new(fn_span.start.min(signature_span.start), signature_span.end),
             }
@@ -4031,8 +4038,9 @@ fn module_parser<'src>(
             annotation_kind: None,
         });
 
-    let method_signature = unsafe_flag
+    let method_signature = async_flag
         .clone()
+        .then(unsafe_flag.clone())
         .then(
             just(TokenKind::KeywordFn)
                 .map_with_span(move |_, span: Range<usize>| range_to_span(span)),
@@ -4059,7 +4067,7 @@ fn module_parser<'src>(
             let (value, generics) = value;
             let (value, name) = value;
             let (value, receiver) = value;
-            let (is_unsafe, fn_span) = value;
+            let ((is_async, is_unsafe), fn_span) = value;
             let (params, varargs) = params_varargs;
             let effect = effect_after_where.or(effect_before_where);
             let signature_span = range_to_span(span);
@@ -4072,14 +4080,16 @@ fn module_parser<'src>(
                 ret_type,
                 where_clause,
                 effect,
+                is_async,
                 is_unsafe,
                 span: Span::new(fn_span.start.min(signature_span.start), signature_span.end),
             };
             (receiver, signature)
         });
 
-    let extern_fn_signature = unsafe_flag
+    let extern_fn_signature = async_flag
         .clone()
+        .then(unsafe_flag.clone())
         .then(
             just(TokenKind::KeywordFn)
                 .map_with_span(move |_, span: Range<usize>| range_to_span(span)),
@@ -4103,7 +4113,7 @@ fn module_parser<'src>(
             let (value, params_varargs) = value;
             let (value, generics) = value;
             let (value, qualified_name) = value;
-            let (is_unsafe, fn_span) = value;
+            let ((is_async, is_unsafe), fn_span) = value;
             let (params, varargs) = params_varargs;
             let effect = effect_after_where.or(effect_before_where);
             let signature_span = range_to_span(span);
@@ -4123,6 +4133,7 @@ fn module_parser<'src>(
                 ret_type,
                 where_clause,
                 effect,
+                is_async,
                 is_unsafe,
                 span: Span::new(fn_span.start.min(signature_span.start), signature_span.end),
             }
@@ -4603,6 +4614,7 @@ fn module_parser<'src>(
                 ret_type: signature.ret_type.clone(),
                 where_clause: signature.where_clause.clone(),
                 effect: signature.effect.clone(),
+                is_async: signature.is_async,
                 is_unsafe: signature.is_unsafe,
                 span: function_span,
                 attrs: Vec::new(),
@@ -4658,6 +4670,7 @@ fn module_parser<'src>(
                     ret_type: signature.ret_type.clone(),
                     where_clause: signature.where_clause.clone(),
                     effect: signature.effect.clone(),
+                    is_async: signature.is_async,
                     is_unsafe: signature.is_unsafe,
                     span: function_span,
                     attrs: Vec::new(),
