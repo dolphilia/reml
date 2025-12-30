@@ -110,6 +110,8 @@ enum RawToken {
     KeywordConst,
     #[token("mut")]
     KeywordMut,
+    #[token("move")]
+    KeywordMove,
     #[token("fn")]
     KeywordFn,
     #[token("type")]
@@ -128,12 +130,22 @@ enum RawToken {
     KeywordImpl,
     #[token("extern")]
     KeywordExtern,
+    #[token("async")]
+    KeywordAsync,
+    #[token("await")]
+    KeywordAwait,
     #[token("effect")]
     KeywordEffect,
     #[token("handler")]
     KeywordHandler,
     #[token("conductor")]
     KeywordConductor,
+    #[token("actor")]
+    KeywordActor,
+    #[token("spec")]
+    KeywordSpec,
+    #[token("macro")]
+    KeywordMacro,
     #[token("channels")]
     KeywordChannels,
     #[token("execution")]
@@ -236,6 +248,8 @@ enum RawToken {
     Colon,
     #[token("@")]
     At,
+    #[token("#")]
+    Hash,
     #[token("|")]
     Bar,
     #[token("=")]
@@ -507,6 +521,9 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             Ok(RawToken::KeywordMut) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordMut, "mut")
             }
+            Ok(RawToken::KeywordMove) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordMove, "move")
+            }
             Ok(RawToken::KeywordFn) => push_keyword(&mut tokens, span, TokenKind::KeywordFn, "fn"),
             Ok(RawToken::KeywordType) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordType, "type")
@@ -532,11 +549,26 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             Ok(RawToken::KeywordExtern) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordExtern, "extern")
             }
+            Ok(RawToken::KeywordAsync) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordAsync, "async")
+            }
+            Ok(RawToken::KeywordAwait) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordAwait, "await")
+            }
             Ok(RawToken::KeywordEffect) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordEffect, "effect")
             }
             Ok(RawToken::KeywordHandler) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordHandler, "handler")
+            }
+            Ok(RawToken::KeywordActor) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordActor, "actor")
+            }
+            Ok(RawToken::KeywordSpec) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordSpec, "spec")
+            }
+            Ok(RawToken::KeywordMacro) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordMacro, "macro")
             }
             Ok(RawToken::KeywordConductor) => {
                 push_keyword(&mut tokens, span, TokenKind::KeywordConductor, "conductor")
@@ -721,6 +753,7 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
             Ok(RawToken::Colon) => tokens.push(Token::new(TokenKind::Colon, span)),
             Ok(RawToken::ColonAssign) => tokens.push(Token::new(TokenKind::ColonAssign, span)),
             Ok(RawToken::At) => tokens.push(Token::new(TokenKind::At, span)),
+            Ok(RawToken::Hash) => tokens.push(Token::new(TokenKind::Hash, span)),
             Ok(RawToken::Bar) => tokens.push(Token::new(TokenKind::Bar, span)),
             Ok(RawToken::Assign) => tokens.push(Token::new(TokenKind::Assign, span)),
             Ok(RawToken::Arrow) => tokens.push(Token::new(TokenKind::Arrow, span)),

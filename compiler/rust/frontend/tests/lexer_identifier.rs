@@ -177,7 +177,10 @@ fn ascii_profile_reports_unicode_rejection() {
 
 #[test]
 fn context_keywords_are_tokenized_as_identifiers() {
-    let output = collect_tokens("let operation = 1\nlet pattern = 2", IdentifierProfile::Unicode);
+    let output = collect_tokens(
+        "let operation = 1\nlet pattern = 2",
+        IdentifierProfile::Unicode,
+    );
     assert!(
         output.errors.is_empty(),
         "字句解析エラーが発生しました: {:?}",
@@ -196,10 +199,10 @@ fn context_keywords_are_tokenized_as_identifiers() {
         "pattern が Identifier として認識されませんでした"
     );
     assert!(
-        !output
-            .tokens
-            .iter()
-            .any(|token| matches!(token.kind, TokenKind::KeywordOperation | TokenKind::KeywordPattern)),
+        !output.tokens.iter().any(|token| matches!(
+            token.kind,
+            TokenKind::KeywordOperation | TokenKind::KeywordPattern
+        )),
         "context keyword がキーワードトークンとして残っています"
     );
 }

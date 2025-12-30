@@ -46,17 +46,18 @@ use crate::streaming::{
 use crate::token::{Token, TokenKind};
 use crate::unicode::{unicode_diagnostic_code, UnicodeDetail};
 use ast::{
-    ActivePatternDecl, Attribute, BinaryOp, ConductorArg, ConductorChannelRoute, ConductorDecl,
-    ConductorDslDef, ConductorDslTail, ConductorEndpoint, ConductorExecutionBlock,
+    ActivePatternDecl, ActorSpecDecl, Attribute, BinaryOp, ConductorArg, ConductorChannelRoute,
+    ConductorDecl, ConductorDslDef, ConductorDslTail, ConductorEndpoint, ConductorExecutionBlock,
     ConductorMonitorTarget, ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind,
     EffectAnnotation, EffectCall, EffectDecl, EnumDecl, EnumVariant, Expr, ExprKind, ExternItem,
     FixityKind, Function, FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry, Ident,
-    ImplDecl, ImplItem, IntBase, Literal, LiteralKind, MatchArm, Module, ModuleHeader, ModulePath,
-    OperationDecl, Param, Pattern, PatternKind, PatternRecordField, QualifiedName, RecordField,
-    RelativeHead, SlicePatternItem, Stmt, StmtKind, StringKind, StructDecl, TraitDecl, TraitItem,
-    TraitRef, TypeAnnot, TypeDecl, TypeDeclBody, TypeDeclVariant, TypeDeclVariantPayload, TypeKind,
-    TypeLiteral, TypeRecordField, TypeTupleElement, TypeUnionVariant, UnaryOp, UseDecl, UseItem,
-    UseTree, VariantPayload, Visibility, WherePredicate,
+    ImplDecl, ImplItem, IntBase, Literal, LiteralKind, MacroDecl, MatchArm, Module, ModuleBody,
+    ModuleDecl, ModuleHeader, ModulePath, OperationDecl, Param, Pattern, PatternKind,
+    PatternRecordField, QualifiedName, RecordField, RelativeHead, SlicePatternItem, Stmt, StmtKind,
+    StringKind, StructDecl, TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeDecl, TypeDeclBody,
+    TypeDeclVariant, TypeDeclVariantPayload, TypeKind, TypeLiteral, TypeRecordField,
+    TypeTupleElement, TypeUnionVariant, UnaryOp, UseDecl, UseItem, UseTree, VariantPayload,
+    Visibility, WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -782,7 +783,9 @@ fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<Fro
             ExprKind::Lambda { body, .. }
             | ExprKind::Loop { body }
             | ExprKind::Unsafe { body }
-            | ExprKind::Defer { body } => record(body, diagnostics),
+            | ExprKind::Defer { body }
+            | ExprKind::EffectBlock { body }
+            | ExprKind::Async { body, .. } => record(body, diagnostics),
             ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
                 record(left, diagnostics);
                 record(right, diagnostics);
@@ -791,6 +794,7 @@ fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<Fro
             | ExprKind::Rec { expr: inner }
             | ExprKind::Propagate { expr: inner }
             | ExprKind::Return { value: Some(inner) } => record(inner, diagnostics),
+            ExprKind::Await { expr: inner } => record(inner, diagnostics),
             ExprKind::Break { value } => {
                 if let Some(inner) = value {
                     record(inner, diagnostics);
@@ -855,6 +859,48 @@ fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<Fro
         }
     }
 
+    fn record_module_body(body: &ModuleBody, diagnostics: &mut Vec<FrontendDiagnostic>) {
+        for function in &body.functions {
+            record(&function.body, diagnostics);
+        }
+        for active_pattern in &body.active_patterns {
+            for param in &active_pattern.params {
+                if let Some(default) = &param.default {
+                    record(default, diagnostics);
+                }
+            }
+            record(&active_pattern.body, diagnostics);
+        }
+        for decl in &body.decls {
+            match &decl.kind {
+                DeclKind::Let { value, .. }
+                | DeclKind::Var { value, .. }
+                | DeclKind::Const { value, .. } => record(value, diagnostics),
+                DeclKind::Module(module_decl) => record_module_body(&module_decl.body, diagnostics),
+                DeclKind::Macro(macro_decl) => {
+                    for param in &macro_decl.params {
+                        if let Some(default) = &param.default {
+                            record(default, diagnostics);
+                        }
+                    }
+                    record(&macro_decl.body, diagnostics);
+                }
+                DeclKind::ActorSpec(actor_spec) => {
+                    for param in &actor_spec.params {
+                        if let Some(default) = &param.default {
+                            record(default, diagnostics);
+                        }
+                    }
+                    record(&actor_spec.body, diagnostics);
+                }
+                _ => {}
+            }
+        }
+        for expr in &body.exprs {
+            record(expr, diagnostics);
+        }
+    }
+
     for function in &module.functions {
         record(&function.body, diagnostics);
     }
@@ -871,6 +917,25 @@ fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<Fro
             DeclKind::Let { value, .. }
             | DeclKind::Var { value, .. }
             | DeclKind::Const { value, .. } => record(value, diagnostics),
+            DeclKind::Module(module_decl) => {
+                record_module_body(&module_decl.body, diagnostics);
+            }
+            DeclKind::Macro(macro_decl) => {
+                for param in &macro_decl.params {
+                    if let Some(default) = &param.default {
+                        record(default, diagnostics);
+                    }
+                }
+                record(&macro_decl.body, diagnostics);
+            }
+            DeclKind::ActorSpec(actor_spec) => {
+                for param in &actor_spec.params {
+                    if let Some(default) = &param.default {
+                        record(default, diagnostics);
+                    }
+                }
+                record(&actor_spec.body, diagnostics);
+            }
             _ => {}
         }
     }
@@ -966,7 +1031,9 @@ fn collect_intrinsic_attribute_diagnostics(
             ExprKind::Lambda { body, .. }
             | ExprKind::Loop { body }
             | ExprKind::Unsafe { body }
-            | ExprKind::Defer { body } => inspect_expr(body, diagnostics),
+            | ExprKind::Defer { body }
+            | ExprKind::EffectBlock { body }
+            | ExprKind::Async { body, .. } => inspect_expr(body, diagnostics),
             ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
                 inspect_expr(left, diagnostics);
                 inspect_expr(right, diagnostics);
@@ -975,6 +1042,7 @@ fn collect_intrinsic_attribute_diagnostics(
             | ExprKind::Rec { expr: inner }
             | ExprKind::Propagate { expr: inner }
             | ExprKind::Return { value: Some(inner) } => inspect_expr(inner, diagnostics),
+            ExprKind::Await { expr: inner } => inspect_expr(inner, diagnostics),
             ExprKind::Break { value } => {
                 if let Some(inner) = value {
                     inspect_expr(inner, diagnostics);
@@ -1051,6 +1119,25 @@ fn collect_intrinsic_attribute_diagnostics(
                     }
                 }
             }
+            DeclKind::Module(module_decl) => {
+                inspect_module_body(&module_decl.body, diagnostics);
+            }
+            DeclKind::Macro(macro_decl) => {
+                for param in &macro_decl.params {
+                    if let Some(default) = &param.default {
+                        inspect_expr(default, diagnostics);
+                    }
+                }
+                inspect_expr(&macro_decl.body, diagnostics);
+            }
+            DeclKind::ActorSpec(actor_spec) => {
+                for param in &actor_spec.params {
+                    if let Some(default) = &param.default {
+                        inspect_expr(default, diagnostics);
+                    }
+                }
+                inspect_expr(&actor_spec.body, diagnostics);
+            }
             DeclKind::Conductor(conductor) => {
                 if let Some(exec) = &conductor.execution {
                     inspect_expr(&exec.body, diagnostics);
@@ -1070,6 +1157,23 @@ fn collect_intrinsic_attribute_diagnostics(
                 }
             }
             _ => {}
+        }
+    }
+
+    fn inspect_module_body(body: &ModuleBody, diagnostics: &mut Vec<FrontendDiagnostic>) {
+        for function in &body.functions {
+            validate_attrs(&function.attrs, true, "関数", diagnostics);
+            inspect_expr(&function.body, diagnostics);
+        }
+        for active in &body.active_patterns {
+            validate_attrs(&active.attrs, false, "Active Pattern", diagnostics);
+            inspect_expr(&active.body, diagnostics);
+        }
+        for decl in &body.decls {
+            inspect_decl(decl, diagnostics);
+        }
+        for expr in &body.exprs {
+            inspect_expr(expr, diagnostics);
         }
     }
 
@@ -1227,7 +1331,9 @@ fn collect_match_guard_diagnostics(module: &Module, diagnostics: &mut Vec<Fronte
             ExprKind::Lambda { body, .. }
             | ExprKind::Loop { body }
             | ExprKind::Unsafe { body }
-            | ExprKind::Defer { body } => walk_expr(body, diagnostics),
+            | ExprKind::Defer { body }
+            | ExprKind::EffectBlock { body }
+            | ExprKind::Async { body, .. } => walk_expr(body, diagnostics),
             ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
                 walk_expr(left, diagnostics);
                 walk_expr(right, diagnostics);
@@ -1235,7 +1341,8 @@ fn collect_match_guard_diagnostics(module: &Module, diagnostics: &mut Vec<Fronte
             ExprKind::Unary { expr: inner, .. }
             | ExprKind::Rec { expr: inner }
             | ExprKind::Propagate { expr: inner }
-            | ExprKind::Return { value: Some(inner) } => walk_expr(inner, diagnostics),
+            | ExprKind::Return { value: Some(inner) }
+            | ExprKind::Await { expr: inner } => walk_expr(inner, diagnostics),
             ExprKind::Break { value: Some(inner) } => walk_expr(inner, diagnostics),
             ExprKind::FieldAccess { target, .. }
             | ExprKind::TupleAccess { target, .. }
@@ -1339,7 +1446,9 @@ fn collect_rec_lambda_diagnostics(module: &Module, diagnostics: &mut Vec<Fronten
 
     fn walk_expr(expr: &Expr, diagnostics: &mut Vec<FrontendDiagnostic>) {
         match &expr.kind {
-            ExprKind::Lambda { params: _, body, .. } => {
+            ExprKind::Lambda {
+                params: _, body, ..
+            } => {
                 walk_expr(body, diagnostics);
             }
             ExprKind::Rec { expr: inner } => {
@@ -1368,7 +1477,8 @@ fn collect_rec_lambda_diagnostics(module: &Module, diagnostics: &mut Vec<Fronten
             }
             ExprKind::Unary { expr: inner, .. }
             | ExprKind::Propagate { expr: inner }
-            | ExprKind::Return { value: Some(inner) } => walk_expr(inner, diagnostics),
+            | ExprKind::Return { value: Some(inner) }
+            | ExprKind::Await { expr: inner } => walk_expr(inner, diagnostics),
             ExprKind::Break { value: Some(inner) } => walk_expr(inner, diagnostics),
             ExprKind::FieldAccess { target, .. }
             | ExprKind::TupleAccess { target, .. }
@@ -1401,9 +1511,11 @@ fn collect_rec_lambda_diagnostics(module: &Module, diagnostics: &mut Vec<Fronten
                 walk_expr(start, diagnostics);
                 walk_expr(end, diagnostics);
             }
-            ExprKind::Loop { body } | ExprKind::Unsafe { body } | ExprKind::Defer { body } => {
-                walk_expr(body, diagnostics)
-            }
+            ExprKind::Loop { body }
+            | ExprKind::Unsafe { body }
+            | ExprKind::Defer { body }
+            | ExprKind::EffectBlock { body }
+            | ExprKind::Async { body, .. } => walk_expr(body, diagnostics),
             ExprKind::Block {
                 statements, defers, ..
             } => {
@@ -1515,6 +1627,8 @@ fn inspect_cfg_expr(
         | ExprKind::Loop { body }
         | ExprKind::Unsafe { body }
         | ExprKind::Defer { body }
+        | ExprKind::EffectBlock { body }
+        | ExprKind::Async { body, .. }
         | ExprKind::Return {
             value: Some(body), ..
         } => inspect_cfg_expr(body, diagnostics, registry),
@@ -1530,6 +1644,7 @@ fn inspect_cfg_expr(
         ExprKind::Unary { expr: inner, .. }
         | ExprKind::Rec { expr: inner }
         | ExprKind::Propagate { expr: inner }
+        | ExprKind::Await { expr: inner }
         | ExprKind::PerformCall {
             call: EffectCall {
                 argument: inner, ..
@@ -1796,9 +1911,12 @@ fn is_expression_recover_context(expectations: &[Option<TokenKind>]) -> bool {
 fn expression_expected_tokens() -> Vec<ExpectedToken> {
     use ExpectedToken as ET;
     vec![
+        ET::keyword("async"),
+        ET::keyword("await"),
         ET::keyword("continue"),
         ET::keyword("defer"),
         ET::keyword("do"),
+        ET::keyword("effect"),
         ET::keyword("false"),
         ET::keyword("for"),
         ET::keyword("handle"),
@@ -1858,6 +1976,7 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
         TokenKind::ChannelPipe => vec![ET::token("~>")],
         TokenKind::Bar => vec![ET::token("|")],
         TokenKind::At => vec![ET::token("@")],
+        TokenKind::Hash => vec![ET::token("#")],
         TokenKind::Ampersand => vec![ET::token("&")],
         TokenKind::Plus => vec![ET::token("+")],
         TokenKind::Minus => vec![ET::token("-")],
@@ -1897,7 +2016,11 @@ fn cases_to_list_expr(cases: Vec<Expr>, span: Span) -> Expr {
             name: "Cons".to_string(),
             span,
         };
-        list_expr = Expr::call(Expr::identifier(cons_ident), vec![case_expr, list_expr], span);
+        list_expr = Expr::call(
+            Expr::identifier(cons_ident),
+            vec![case_expr, list_expr],
+            span,
+        );
     }
     list_expr
 }
@@ -1927,13 +2050,13 @@ fn module_parser<'src>(
         just(TokenKind::KeywordMut),
         just(TokenKind::KeywordSelf),
     ))
-        .map_with_span(move |_, span: Range<usize>| {
-            let slice = &source[span.start..span.end];
-            Ident {
-                name: slice.to_string(),
-                span: range_to_span(span),
-            }
-        });
+    .map_with_span(move |_, span: Range<usize>| {
+        let slice = &source[span.start..span.end];
+        Ident {
+            name: slice.to_string(),
+            span: range_to_span(span),
+        }
+    });
 
     let upper_ident =
         just(TokenKind::UpperIdentifier).map_with_span(move |_, span: Range<usize>| {
@@ -1994,6 +2117,79 @@ fn module_parser<'src>(
         .clone()
         .then(just(TokenKind::Dot).ignore_then(ident.clone()).repeated())
         .map(|(first, rest)| merge_dotted_ident(first, rest));
+
+    let module_path_segment = choice((
+        just(TokenKind::Identifier),
+        just(TokenKind::UpperIdentifier),
+        just(TokenKind::KeywordThen),
+    ))
+    .map_with_span(move |_, span: Range<usize>| {
+        let slice = &source[span.start..span.end];
+        Ident {
+            name: slice.to_string(),
+            span: range_to_span(span),
+        }
+    });
+
+    let module_path_root = just(TokenKind::Colon)
+        .ignore_then(just(TokenKind::Colon))
+        .ignore_then(
+            module_path_segment
+                .clone()
+                .separated_by(just(TokenKind::Dot))
+                .at_least(1),
+        )
+        .map_with_span(|segments, span: Range<usize>| {
+            (ModulePath::Root { segments }, range_to_span(span))
+        });
+
+    let module_path_super = just(TokenKind::KeywordSuper)
+        .then(
+            just(TokenKind::Dot)
+                .ignore_then(just(TokenKind::KeywordSuper))
+                .repeated(),
+        )
+        .map_with_span(|(_, supers), span: Range<usize>| {
+            (
+                RelativeHead::Super(1 + supers.len() as u32),
+                range_to_span(span),
+            )
+        });
+
+    let module_path_self = just(TokenKind::KeywordSelf)
+        .map_with_span(|_, span: Range<usize>| (RelativeHead::Self_, range_to_span(span)));
+
+    let module_path_head_ident = choice((
+        just(TokenKind::Identifier),
+        just(TokenKind::UpperIdentifier),
+    ))
+    .map_with_span(move |_, span: Range<usize>| {
+        let slice = &source[span.start..span.end];
+        Ident {
+            name: slice.to_string(),
+            span: range_to_span(span),
+        }
+    });
+
+    let module_path_head = choice((
+        module_path_self,
+        module_path_super,
+        module_path_head_ident
+            .clone()
+            .map(|ident| (RelativeHead::PlainIdent(ident.clone()), ident.span)),
+    ));
+
+    let module_path_relative = module_path_head
+        .then(
+            just(TokenKind::Dot)
+                .ignore_then(module_path_segment.clone())
+                .repeated(),
+        )
+        .map_with_span(|((head, _), segments), span: Range<usize>| {
+            (ModulePath::Relative { head, segments }, range_to_span(span))
+        });
+
+    let module_path = choice((module_path_root, module_path_relative));
 
     let mut type_parser = Recursive::declare();
 
@@ -2632,6 +2828,15 @@ fn module_parser<'src>(
                 },
             });
 
+        let effect_block_expr = just(TokenKind::KeywordEffect)
+            .ignore_then(block_expr.clone())
+            .map_with_span(|body, span: Range<usize>| Expr {
+                span: range_to_span(span),
+                kind: ExprKind::EffectBlock {
+                    body: Box::new(body),
+                },
+            });
+
         let match_guard = choice((
             just(TokenKind::KeywordWhen).to(false),
             just(TokenKind::KeywordIf).to(true),
@@ -3014,6 +3219,7 @@ fn module_parser<'src>(
         let atom = choice((
             test_parser_expr,
             block_expr.clone(),
+            effect_block_expr,
             match_expr,
             handle_expr,
             bar_lambda_expr,
@@ -3119,6 +3325,30 @@ fn module_parser<'src>(
                 ))
                 .map_with_span(|op, span: Range<usize>| (op, range_to_span(span)));
 
+                let move_keyword = just(TokenKind::KeywordMove);
+
+                let async_expr = just(TokenKind::KeywordAsync)
+                    .map_with_span(|_, span: Range<usize>| range_to_span(span))
+                    .then(move_keyword.or_not())
+                    .then(unary.clone())
+                    .map(|((async_span, is_move), inner)| Expr {
+                        span: span_union(async_span, inner.span()),
+                        kind: ExprKind::Async {
+                            body: Box::new(inner),
+                            is_move: is_move.is_some(),
+                        },
+                    });
+
+                let await_expr = just(TokenKind::KeywordAwait)
+                    .map_with_span(|_, span: Range<usize>| range_to_span(span))
+                    .then(unary.clone())
+                    .map(|(await_span, inner)| Expr {
+                        span: span_union(await_span, inner.span()),
+                        kind: ExprKind::Await {
+                            expr: Box::new(inner),
+                        },
+                    });
+
                 let unary_expr = prefix_op.clone().then(unary.clone()).map(|(op, inner)| {
                     let (operator, op_span) = op;
                     let span = span_union(op_span, inner.span());
@@ -3141,7 +3371,7 @@ fn module_parser<'src>(
                         },
                     });
 
-                choice((rec_expr, unary_expr, call.clone()))
+                choice((async_expr, await_expr, rec_expr, unary_expr, call.clone()))
             },
         );
 
@@ -3726,8 +3956,17 @@ fn module_parser<'src>(
             span: range_to_span(span),
         });
 
-    let fn_signature = just(TokenKind::KeywordFn)
-        .map_with_span(move |_, span: Range<usize>| range_to_span(span))
+    let unsafe_flag = just(TokenKind::KeywordUnsafe)
+        .to(true)
+        .or_not()
+        .map(|flag| flag.unwrap_or(false));
+
+    let fn_signature = unsafe_flag
+        .clone()
+        .then(
+            just(TokenKind::KeywordFn)
+                .map_with_span(move |_, span: Range<usize>| range_to_span(span)),
+        )
         .then(qualified_name.clone())
         .then(parse_generics.clone())
         .then(params_with_varargs.clone())
@@ -3739,40 +3978,38 @@ fn module_parser<'src>(
         .then(effect_annotation.clone().or_not())
         .then(where_clause.clone())
         .then(effect_annotation.clone().or_not())
-        .map_with_span(
-            |(
-                (
-                    (
-                        ((((fn_span, qualified_name), generics), (params, varargs)), ret_type),
-                        effect_before_where,
-                    ),
-                    where_clause,
-                ),
-                effect_after_where,
-            ),
-             span: Range<usize>| {
-                let effect = effect_after_where.or(effect_before_where);
-                let signature_span = range_to_span(span);
-                let is_qualified = qualified_name.segments.len() > 1;
-                let name = qualified_name.to_ident();
-                let qualified_name = if is_qualified {
-                    Some(qualified_name)
-                } else {
-                    None
-                };
-                FunctionSignature {
-                    name,
-                    qualified_name,
-                    generics,
-                    params,
-                    varargs,
-                    ret_type,
-                    where_clause,
-                    effect,
-                    span: Span::new(fn_span.start.min(signature_span.start), signature_span.end),
-                }
-            },
-        );
+        .map_with_span(|value, span: Range<usize>| {
+            let (value, effect_after_where) = value;
+            let (value, where_clause) = value;
+            let (value, effect_before_where) = value;
+            let (value, ret_type) = value;
+            let (value, params_varargs) = value;
+            let (value, generics) = value;
+            let (value, qualified_name) = value;
+            let (is_unsafe, fn_span) = value;
+            let (params, varargs) = params_varargs;
+            let effect = effect_after_where.or(effect_before_where);
+            let signature_span = range_to_span(span);
+            let is_qualified = qualified_name.segments.len() > 1;
+            let name = qualified_name.to_ident();
+            let qualified_name = if is_qualified {
+                Some(qualified_name)
+            } else {
+                None
+            };
+            FunctionSignature {
+                name,
+                qualified_name,
+                generics,
+                params,
+                varargs,
+                ret_type,
+                where_clause,
+                effect,
+                is_unsafe,
+                span: Span::new(fn_span.start.min(signature_span.start), signature_span.end),
+            }
+        });
 
     let receiver_type = dotted_ident
         .clone()
@@ -3794,8 +4031,12 @@ fn module_parser<'src>(
             annotation_kind: None,
         });
 
-    let method_signature = just(TokenKind::KeywordFn)
-        .map_with_span(move |_, span: Range<usize>| range_to_span(span))
+    let method_signature = unsafe_flag
+        .clone()
+        .then(
+            just(TokenKind::KeywordFn)
+                .map_with_span(move |_, span: Range<usize>| range_to_span(span)),
+        )
         .then(receiver_type.clone())
         .then_ignore(separator.clone())
         .then(ident.clone())
@@ -3809,42 +4050,40 @@ fn module_parser<'src>(
         .then(effect_annotation.clone().or_not())
         .then(where_clause.clone())
         .then(effect_annotation.clone().or_not())
-        .map_with_span(
-            |(
-                (
-                    (
-                        (((((fn_span, receiver), name), generics), (params, varargs)), ret_type),
-                        effect_before_where,
-                    ),
-                    where_clause,
-                ),
-                effect_after_where,
-            ),
-             span: Range<usize>| {
-                let effect = effect_after_where.or(effect_before_where);
-                let signature_span = range_to_span(span);
-                (
-                    receiver,
-                    FunctionSignature {
-                        name,
-                        qualified_name: None,
-                        generics,
-                        params,
-                        varargs,
-                        ret_type,
-                        where_clause,
-                        effect,
-                        span: Span::new(
-                            fn_span.start.min(signature_span.start),
-                            signature_span.end,
-                        ),
-                    },
-                )
-            },
-        );
+        .map_with_span(|value, span: Range<usize>| {
+            let (value, effect_after_where) = value;
+            let (value, where_clause) = value;
+            let (value, effect_before_where) = value;
+            let (value, ret_type) = value;
+            let (value, params_varargs) = value;
+            let (value, generics) = value;
+            let (value, name) = value;
+            let (value, receiver) = value;
+            let (is_unsafe, fn_span) = value;
+            let (params, varargs) = params_varargs;
+            let effect = effect_after_where.or(effect_before_where);
+            let signature_span = range_to_span(span);
+            let signature = FunctionSignature {
+                name,
+                qualified_name: None,
+                generics,
+                params,
+                varargs,
+                ret_type,
+                where_clause,
+                effect,
+                is_unsafe,
+                span: Span::new(fn_span.start.min(signature_span.start), signature_span.end),
+            };
+            (receiver, signature)
+        });
 
-    let extern_fn_signature = just(TokenKind::KeywordFn)
-        .map_with_span(move |_, span: Range<usize>| range_to_span(span))
+    let extern_fn_signature = unsafe_flag
+        .clone()
+        .then(
+            just(TokenKind::KeywordFn)
+                .map_with_span(move |_, span: Range<usize>| range_to_span(span)),
+        )
         .then(qualified_name.clone())
         .then(parse_generics.clone())
         .then(extern_params.clone())
@@ -3856,40 +4095,38 @@ fn module_parser<'src>(
         .then(effect_annotation.clone().or_not())
         .then(where_clause.clone())
         .then(effect_annotation.clone().or_not())
-        .map_with_span(
-            |(
-                (
-                    (
-                        ((((fn_span, qualified_name), generics), (params, varargs)), ret_type),
-                        effect_before_where,
-                    ),
-                    where_clause,
-                ),
-                effect_after_where,
-            ),
-             span: Range<usize>| {
-                let effect = effect_after_where.or(effect_before_where);
-                let signature_span = range_to_span(span);
-                let is_qualified = qualified_name.segments.len() > 1;
-                let name = qualified_name.to_ident();
-                let qualified_name = if is_qualified {
-                    Some(qualified_name)
-                } else {
-                    None
-                };
-                FunctionSignature {
-                    name,
-                    qualified_name,
-                    generics,
-                    params,
-                    varargs,
-                    ret_type,
-                    where_clause,
-                    effect,
-                    span: Span::new(fn_span.start.min(signature_span.start), signature_span.end),
-                }
-            },
-        );
+        .map_with_span(|value, span: Range<usize>| {
+            let (value, effect_after_where) = value;
+            let (value, where_clause) = value;
+            let (value, effect_before_where) = value;
+            let (value, ret_type) = value;
+            let (value, params_varargs) = value;
+            let (value, generics) = value;
+            let (value, qualified_name) = value;
+            let (is_unsafe, fn_span) = value;
+            let (params, varargs) = params_varargs;
+            let effect = effect_after_where.or(effect_before_where);
+            let signature_span = range_to_span(span);
+            let is_qualified = qualified_name.segments.len() > 1;
+            let name = qualified_name.to_ident();
+            let qualified_name = if is_qualified {
+                Some(qualified_name)
+            } else {
+                None
+            };
+            FunctionSignature {
+                name,
+                qualified_name,
+                generics,
+                params,
+                varargs,
+                ret_type,
+                where_clause,
+                effect,
+                is_unsafe,
+                span: Span::new(fn_span.start.min(signature_span.start), signature_span.end),
+            }
+        });
 
     let abi_literal = just(TokenKind::StringLiteral)
         .map_with_span(move |_, span: Range<usize>| parse_string_literal_value(source, span));
@@ -4097,25 +4334,27 @@ fn module_parser<'src>(
                 .ignore_then(type_decl_name.clone())
                 .then(type_decl_body_default.or_not()),
         )
-        .map_with_span(|(visibility, ((name, generics), body)), span: Range<usize>| {
-            let (body, body_span) = body
-                .map(|(body, body_span)| (Some(body), Some(body_span)))
-                .unwrap_or((None, None));
-            Decl {
-                attrs: Vec::new(),
-                visibility,
-                span: range_to_span(span.clone()),
-                kind: DeclKind::Type {
-                    decl: TypeDecl {
-                        name,
-                        generics,
-                        body,
-                        span: range_to_span(span),
-                        body_span,
+        .map_with_span(
+            |(visibility, ((name, generics), body)), span: Range<usize>| {
+                let (body, body_span) = body
+                    .map(|(body, body_span)| (Some(body), Some(body_span)))
+                    .unwrap_or((None, None));
+                Decl {
+                    attrs: Vec::new(),
+                    visibility,
+                    span: range_to_span(span.clone()),
+                    kind: DeclKind::Type {
+                        decl: TypeDecl {
+                            name,
+                            generics,
+                            body,
+                            span: range_to_span(span),
+                            body_span,
+                        },
                     },
-                },
-            }
-        });
+                }
+            },
+        );
 
     let type_decl_raw = choice((type_alias_decl_raw, type_decl_raw))
         .then_ignore(just(TokenKind::Semicolon).or_not());
@@ -4364,6 +4603,7 @@ fn module_parser<'src>(
                 ret_type: signature.ret_type.clone(),
                 where_clause: signature.where_clause.clone(),
                 effect: signature.effect.clone(),
+                is_unsafe: signature.is_unsafe,
                 span: function_span,
                 attrs: Vec::new(),
             }
@@ -4418,6 +4658,7 @@ fn module_parser<'src>(
                     ret_type: signature.ret_type.clone(),
                     where_clause: signature.where_clause.clone(),
                     effect: signature.effect.clone(),
+                    is_unsafe: signature.is_unsafe,
                     span: function_span,
                     attrs: Vec::new(),
                 };
@@ -4506,15 +4747,19 @@ fn module_parser<'src>(
         TokenKind::RBrace,
     );
 
-    let extern_decl_raw = just(TokenKind::KeywordExtern)
-        .ignore_then(abi_literal.clone())
-        .then(choice((
-            extern_block.clone(),
-            extern_fn_decl.clone().map(|item| vec![item]),
-        )))
-        .map_with_span(|(abi, functions), span: Range<usize>| Decl {
+    let extern_decl_raw = visibility
+        .clone()
+        .then(
+            just(TokenKind::KeywordExtern)
+                .ignore_then(abi_literal.clone())
+                .then(choice((
+                    extern_block.clone(),
+                    extern_fn_decl.clone().map(|item| vec![item]),
+                ))),
+        )
+        .map_with_span(|(visibility, (abi, functions)), span: Range<usize>| Decl {
             attrs: Vec::new(),
-            visibility: Visibility::Private,
+            visibility,
             span: range_to_span(span.clone()),
             kind: DeclKind::Extern {
                 abi,
@@ -4892,6 +5137,77 @@ fn module_parser<'src>(
             }
         });
 
+    let macro_decl_raw = visibility
+        .clone()
+        .then(
+            just(TokenKind::KeywordMacro)
+                .ignore_then(ident.clone())
+                .then(params.clone())
+                .then(block_body_parser.clone()),
+        )
+        .map_with_span(
+            |(visibility, ((name, params), body)), span: Range<usize>| Decl {
+                attrs: Vec::new(),
+                visibility,
+                span: range_to_span(span.clone()),
+                kind: DeclKind::Macro(MacroDecl {
+                    name,
+                    params,
+                    body,
+                    span: range_to_span(span),
+                }),
+            },
+        );
+
+    let macro_decl = attr_list
+        .clone()
+        .then(macro_decl_raw.clone())
+        .map(|(attrs, mut decl)| {
+            if !attrs.is_empty() {
+                decl.attrs = attrs;
+            }
+            decl
+        });
+
+    let actor_spec_decl_raw = visibility
+        .clone()
+        .then(
+            just(TokenKind::KeywordActor)
+                .ignore_then(just(TokenKind::KeywordSpec))
+                .ignore_then(ident.clone())
+                .then(
+                    params
+                        .clone()
+                        .or_not()
+                        .map(|params| params.unwrap_or_default()),
+                )
+                .then(block_body_parser.clone()),
+        )
+        .map_with_span(
+            |(visibility, ((name, params), body)), span: Range<usize>| Decl {
+                attrs: Vec::new(),
+                visibility,
+                span: range_to_span(span.clone()),
+                kind: DeclKind::ActorSpec(ActorSpecDecl {
+                    name,
+                    params,
+                    body,
+                    span: range_to_span(span),
+                }),
+            },
+        );
+
+    let actor_spec_decl =
+        attr_list
+            .clone()
+            .then(actor_spec_decl_raw.clone())
+            .map(|(attrs, mut decl)| {
+                if !attrs.is_empty() {
+                    decl.attrs = attrs;
+                }
+                decl
+            });
+
     let effect_operation = attr_list
         .clone()
         .then_ignore(operation_keyword.clone())
@@ -4946,6 +5262,30 @@ fn module_parser<'src>(
         Expr(Expr),
     }
 
+    let collect_module_body = |items: Vec<ModuleItem>| {
+        let mut effects_vec = Vec::new();
+        let mut functions_vec = Vec::new();
+        let mut active_patterns_vec = Vec::new();
+        let mut decls_vec = Vec::new();
+        let mut exprs_vec = Vec::new();
+        for item in items {
+            match item {
+                ModuleItem::Effect(effect) => effects_vec.push(effect),
+                ModuleItem::Function(function) => functions_vec.push(function),
+                ModuleItem::ActivePattern(active) => active_patterns_vec.push(active),
+                ModuleItem::Decl(decl) => decls_vec.push(decl),
+                ModuleItem::Expr(expr) => exprs_vec.push(expr),
+            }
+        }
+        ModuleBody {
+            effects: effects_vec,
+            functions: functions_vec,
+            active_patterns: active_patterns_vec,
+            decls: decls_vec,
+            exprs: exprs_vec,
+        }
+    };
+
     let top_level_defer = just(TokenKind::KeywordDefer)
         .ignore_then(expr.clone().cut())
         .then_ignore(just(TokenKind::Semicolon).repeated())
@@ -4962,52 +5302,76 @@ fn module_parser<'src>(
         .then_ignore(just(TokenKind::Semicolon).repeated())
         .map(ModuleItem::Expr);
 
-    let module_item = choice((
-        effect_decl.clone().map(ModuleItem::Effect),
-        trait_decl.clone().map(ModuleItem::Decl),
-        impl_decl.clone().map(ModuleItem::Decl),
-        type_decl.clone().map(ModuleItem::Decl),
-        struct_decl.clone().map(ModuleItem::Decl),
-        enum_decl.clone().map(ModuleItem::Decl),
-        extern_decl.clone().map(ModuleItem::Decl),
-        const_decl.clone().map(ModuleItem::Decl),
-        let_decl.clone().map(ModuleItem::Decl),
-        var_decl.clone().map(ModuleItem::Decl),
-        conductor_decl.clone().map(ModuleItem::Decl),
-        active_pattern_decl.clone().map(ModuleItem::ActivePattern),
-        method_decl.clone().map(ModuleItem::Decl),
-        function.clone().map(ModuleItem::Function),
-        fn_decl.clone().map(ModuleItem::Decl),
-        top_level_defer,
-        top_level_expr,
-    ));
+    let module_item = recursive(move |module_item| {
+        let module_block_decl_raw = visibility
+            .clone()
+            .then(just(TokenKind::KeywordModule).ignore_then(module_path.clone()))
+            .then(delimited_with_cut(
+                TokenKind::LBrace,
+                module_item.clone().repeated(),
+                TokenKind::RBrace,
+            ))
+            .map_with_span(
+                move |((visibility, (path, _)), items), span: Range<usize>| Decl {
+                    attrs: Vec::new(),
+                    visibility,
+                    span: range_to_span(span.clone()),
+                    kind: DeclKind::Module(ModuleDecl {
+                        path,
+                        body: collect_module_body(items),
+                        span: range_to_span(span),
+                    }),
+                },
+            );
+
+        let module_block_decl = attr_list
+            .clone()
+            .then(module_block_decl_raw)
+            .map(|(attrs, mut decl)| {
+                if !attrs.is_empty() {
+                    decl.attrs = attrs;
+                }
+                decl
+            })
+            .map(ModuleItem::Decl);
+
+        choice((
+            effect_decl.clone().map(ModuleItem::Effect),
+            module_block_decl,
+            trait_decl.clone().map(ModuleItem::Decl),
+            impl_decl.clone().map(ModuleItem::Decl),
+            type_decl.clone().map(ModuleItem::Decl),
+            struct_decl.clone().map(ModuleItem::Decl),
+            enum_decl.clone().map(ModuleItem::Decl),
+            extern_decl.clone().map(ModuleItem::Decl),
+            const_decl.clone().map(ModuleItem::Decl),
+            let_decl.clone().map(ModuleItem::Decl),
+            var_decl.clone().map(ModuleItem::Decl),
+            macro_decl.clone().map(ModuleItem::Decl),
+            actor_spec_decl.clone().map(ModuleItem::Decl),
+            conductor_decl.clone().map(ModuleItem::Decl),
+            active_pattern_decl.clone().map(ModuleItem::ActivePattern),
+            method_decl.clone().map(ModuleItem::Decl),
+            function.clone().map(ModuleItem::Function),
+            fn_decl.clone().map(ModuleItem::Decl),
+            top_level_defer,
+            top_level_expr,
+        ))
+    });
 
     module_item
         .repeated()
         .then_ignore(just(TokenKind::EndOfFile))
-        .map(|items| {
-            let mut effects_vec = Vec::new();
-            let mut functions_vec = Vec::new();
-            let mut active_patterns_vec = Vec::new();
-            let mut decls_vec = Vec::new();
-            let mut exprs_vec = Vec::new();
-            for item in items {
-                match item {
-                    ModuleItem::Effect(effect) => effects_vec.push(effect),
-                    ModuleItem::Function(function) => functions_vec.push(function),
-                    ModuleItem::ActivePattern(active) => active_patterns_vec.push(active),
-                    ModuleItem::Decl(decl) => decls_vec.push(decl),
-                    ModuleItem::Expr(expr) => exprs_vec.push(expr),
-                }
-            }
+        .map(move |items| {
+            let body = collect_module_body(items);
             Module {
                 header: None,
                 uses: Vec::new(),
-                effects: effects_vec,
-                functions: functions_vec,
-                active_patterns: active_patterns_vec,
-                decls: decls_vec,
-                exprs: exprs_vec,
+                effects: body.effects,
+                functions: body.functions,
+                active_patterns: body.active_patterns,
+                decls: body.decls,
+                exprs: body.exprs,
             }
         })
 }
@@ -5068,6 +5432,24 @@ fn append_module_trace_events(module: &Module, events: &mut Vec<ParserTraceEvent
     }
 }
 
+fn append_module_body_trace_events(body: &ModuleBody, events: &mut Vec<ParserTraceEvent>) {
+    for effect in &body.effects {
+        record_effect_decl_trace_events(effect, events);
+    }
+    for decl in &body.decls {
+        record_decl_trace_events(decl, events);
+    }
+    for active_pattern in &body.active_patterns {
+        record_active_pattern_trace_events(active_pattern, events);
+    }
+    for function in &body.functions {
+        record_function_trace_events(function, events);
+    }
+    for expr in &body.exprs {
+        record_expr_trace_events(expr, events);
+    }
+}
+
 fn record_function_trace_events(function: &Function, events: &mut Vec<ParserTraceEvent>) {
     for param in &function.params {
         if let Some(default) = &param.default {
@@ -5109,6 +5491,25 @@ fn record_decl_trace_events(decl: &Decl, events: &mut Vec<ParserTraceEvent>) {
         DeclKind::Effect(effect) => record_effect_decl_trace_events(effect, events),
         DeclKind::Handler(handler) => {
             events.push(ParserTraceEvent::handler(handler));
+        }
+        DeclKind::Module(module_decl) => {
+            append_module_body_trace_events(&module_decl.body, events);
+        }
+        DeclKind::Macro(macro_decl) => {
+            for param in &macro_decl.params {
+                if let Some(default) = &param.default {
+                    record_expr_trace_events(default, events);
+                }
+            }
+            record_expr_trace_events(&macro_decl.body, events);
+        }
+        DeclKind::ActorSpec(actor_spec) => {
+            for param in &actor_spec.params {
+                if let Some(default) = &param.default {
+                    record_expr_trace_events(default, events);
+                }
+            }
+            record_expr_trace_events(&actor_spec.body, events);
         }
         DeclKind::Conductor(_)
         | DeclKind::Fn { .. }
@@ -5197,15 +5598,17 @@ fn record_expr_trace_events(expr: &Expr, events: &mut Vec<ParserTraceEvent>) {
             record_expr_trace_events(left, events);
             record_expr_trace_events(right, events);
         }
-        ExprKind::Unary { expr: inner, .. } | ExprKind::Rec { expr: inner } => {
-            record_expr_trace_events(inner, events)
-        }
+        ExprKind::Unary { expr: inner, .. }
+        | ExprKind::Rec { expr: inner }
+        | ExprKind::Await { expr: inner } => record_expr_trace_events(inner, events),
         ExprKind::FieldAccess { target, .. }
         | ExprKind::TupleAccess { target, .. }
         | ExprKind::Propagate { expr: target }
         | ExprKind::Loop { body: target }
         | ExprKind::Unsafe { body: target }
-        | ExprKind::Defer { body: target } => {
+        | ExprKind::Defer { body: target }
+        | ExprKind::EffectBlock { body: target }
+        | ExprKind::Async { body: target, .. } => {
             record_expr_trace_events(target, events);
         }
         ExprKind::Index { target, index } => {
@@ -5309,6 +5712,9 @@ fn expr_trace_kind(expr: &Expr) -> &'static str {
         ExprKind::For { .. } => "for",
         ExprKind::Loop { .. } => "loop",
         ExprKind::Handle { .. } => "handle",
+        ExprKind::EffectBlock { .. } => "effect-block",
+        ExprKind::Async { .. } => "async",
+        ExprKind::Await { .. } => "await",
         ExprKind::Break { .. } => "break",
         ExprKind::Continue => "continue",
         ExprKind::Block { .. } => "block",
@@ -5351,6 +5757,9 @@ fn parse_module_header_tokens(tokens: &[Token], start: usize) -> Option<(ModuleH
     };
     idx += 1;
     let (path, path_span, next_idx) = parse_module_path(tokens, idx)?;
+    if matches!(tokens.get(next_idx), Some(token) if token.kind == TokenKind::LBrace) {
+        return None;
+    }
     let header = ModuleHeader {
         path,
         visibility,
@@ -5906,10 +6315,10 @@ where
     .map_with_span(|values, span: Range<usize>| (values, Some(range_to_span(span))))
     .or_not();
 
-    just(TokenKind::At)
+    let at_attribute = just(TokenKind::At)
         .map_with_span(|_, span: Range<usize>| range_to_span(span))
-        .then(ident)
-        .then(args)
+        .then(ident.clone())
+        .then(args.clone())
         .map(|((at_span, name), args)| {
             let (args, args_span) = args.unwrap_or_else(|| (Vec::new(), None));
             let span_start = at_span.start.min(name.span.start);
@@ -5922,7 +6331,23 @@ where
                 args,
                 span: Span::new(span_start, span_end),
             }
-        })
+        });
+
+    let hash_attribute = just(TokenKind::Hash)
+        .ignore_then(just(TokenKind::LBracket))
+        .ignore_then(ident)
+        .then(args)
+        .then_ignore(just(TokenKind::RBracket).cut())
+        .map_with_span(|(name, args), span: Range<usize>| {
+            let (args, _) = args.unwrap_or_else(|| (Vec::new(), None));
+            Attribute {
+                name,
+                args,
+                span: range_to_span(span),
+            }
+        });
+
+    choice((hash_attribute, at_attribute))
 }
 
 fn build_effect_argument_expr(args: Vec<Expr>, span: Span) -> Expr {

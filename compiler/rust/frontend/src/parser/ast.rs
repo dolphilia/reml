@@ -43,6 +43,23 @@ impl Module {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ModuleBody {
+    pub effects: Vec<EffectDecl>,
+    pub functions: Vec<Function>,
+    pub active_patterns: Vec<ActivePatternDecl>,
+    pub decls: Vec<Decl>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub exprs: Vec<Expr>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ModuleDecl {
+    pub path: ModulePath,
+    pub body: ModuleBody,
+    pub span: Span,
+}
+
 fn is_false(value: &bool) -> bool {
     !*value
 }
@@ -281,6 +298,9 @@ impl Decl {
             DeclKind::Extern { abi, .. } => format!("{visibility}extern \"{abi}\" ..."),
             DeclKind::Handler(handler) => format!("{visibility}handler {}", handler.name.name),
             DeclKind::Conductor(decl) => format!("{visibility}conductor {}", decl.name.name),
+            DeclKind::Module(decl) => format!("{visibility}module {}", decl.path.render()),
+            DeclKind::Macro(decl) => format!("{visibility}macro {}", decl.name.name),
+            DeclKind::ActorSpec(decl) => format!("{visibility}actor spec {}", decl.name.name),
         }
     }
 }
@@ -322,6 +342,9 @@ pub enum DeclKind {
     Effect(EffectDecl),
     Handler(HandlerDecl),
     Conductor(ConductorDecl),
+    Module(ModuleDecl),
+    Macro(MacroDecl),
+    ActorSpec(ActorSpecDecl),
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -340,7 +363,12 @@ impl TypeDecl {
         let generics = render_generics(&self.generics);
         match &self.body {
             Some(TypeDeclBody::Alias { ty }) => {
-                format!("type alias {}{} = {}", self.name.name, generics, ty.render())
+                format!(
+                    "type alias {}{} = {}",
+                    self.name.name,
+                    generics,
+                    ty.render()
+                )
             }
             Some(TypeDeclBody::Newtype { ty }) => {
                 format!("type {}{} = new {}", self.name.name, generics, ty.render())
@@ -489,6 +517,8 @@ pub struct FunctionSignature {
     pub where_clause: Vec<WherePredicate>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub effect: Option<EffectAnnotation>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub is_unsafe: bool,
     pub span: Span,
 }
 
@@ -541,8 +571,9 @@ impl FunctionSignature {
             .as_ref()
             .map(|annot| format!(" !{{{}}}", annot.render()))
             .unwrap_or_default();
+        let unsafe_prefix = if self.is_unsafe { "unsafe " } else { "" };
         format!(
-            "fn {}{}({}){}{}{}",
+            "{unsafe_prefix}fn {}{}({}){}{}{}",
             self.name.name, generics, params, ret, where_clause, effect
         )
     }
@@ -884,6 +915,17 @@ pub enum ExprKind {
     },
     Handle {
         handle: HandleExpr,
+    },
+    EffectBlock {
+        body: Box<Expr>,
+    },
+    Async {
+        body: Box<Expr>,
+        #[serde(default, skip_serializing_if = "is_false")]
+        is_move: bool,
+    },
+    Await {
+        expr: Box<Expr>,
     },
     Continue,
     Block {
@@ -1457,6 +1499,8 @@ pub struct Function {
     pub where_clause: Vec<WherePredicate>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub effect: Option<EffectAnnotation>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub is_unsafe: bool,
     pub span: Span,
     pub attrs: Vec<Attribute>,
 }
@@ -1514,8 +1558,9 @@ impl Function {
             Visibility::Public => "pub ",
             Visibility::Private => "",
         };
+        let unsafe_prefix = if self.is_unsafe { "unsafe " } else { "" };
         format!(
-            "{visibility}fn {}{}({}){}{}{} = {}",
+            "{visibility}{unsafe_prefix}fn {}{}({}){}{}{} = {}",
             self.name.name,
             generics,
             params,
@@ -1564,6 +1609,22 @@ impl ActivePatternDecl {
         text.push_str(&self.body.render());
         text
     }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MacroDecl {
+    pub name: Ident,
+    pub params: Vec<Param>,
+    pub body: Expr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ActorSpecDecl {
+    pub name: Ident,
+    pub params: Vec<Param>,
+    pub body: Expr,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -2017,6 +2078,15 @@ impl Expr {
                     .unwrap_or_else(|| "unit".to_string())
             ),
             ExprKind::Continue => "continue".to_string(),
+            ExprKind::EffectBlock { body } => format!("effect {}", body.render()),
+            ExprKind::Async { body, is_move } => {
+                if *is_move {
+                    format!("async move {}", body.render())
+                } else {
+                    format!("async {}", body.render())
+                }
+            }
+            ExprKind::Await { expr } => format!("await {}", expr.render()),
             other => format!("expr({:?})", other),
         }
     }

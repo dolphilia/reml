@@ -959,8 +959,7 @@ impl TypeEnv {
     }
 
     pub fn insert_type_constructor(&mut self, binding: TypeConstructorBinding) {
-        self.type_constructors
-            .insert(binding.name.clone(), binding);
+        self.type_constructors.insert(binding.name.clone(), binding);
     }
 
     pub fn lookup_type_constructor(&self, name: &str) -> Option<&TypeConstructorBinding> {

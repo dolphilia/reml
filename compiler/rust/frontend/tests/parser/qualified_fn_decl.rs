@@ -15,10 +15,7 @@ fn Core.Dsl.Object.call<Value>(input: Value) = input
     let function = module.functions.first().expect("function");
     assert_eq!(function.name.name, "Core::Dsl::Object::call");
     assert_eq!(
-        function
-            .generics
-            .first()
-            .map(|ident| ident.name.as_str()),
+        function.generics.first().map(|ident| ident.name.as_str()),
         Some("Value")
     );
 }

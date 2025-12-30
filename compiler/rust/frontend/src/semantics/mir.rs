@@ -488,7 +488,9 @@ fn normalize_mir_type_ident<'a>(token: &'a str) -> &'a str {
     }
 }
 
-fn lower_function(function: &typed::TypedFunction) -> (MirFunction, BTreeMap<String, MirQualifiedCall>) {
+fn lower_function(
+    function: &typed::TypedFunction,
+) -> (MirFunction, BTreeMap<String, MirQualifiedCall>) {
     let mut builder = MirExprBuilder::new(function.name.clone());
     let body = builder.lower_expr(&function.body);
     let (exprs, qualified_calls) = builder.finish();
@@ -751,11 +753,13 @@ impl MirExprBuilder {
             typed::TypedExprKind::Unknown => MirExprKind::Unknown,
         };
         let qualified_call = match &expr.kind {
-            typed::TypedExprKind::Call { qualified, args, .. } => qualified.as_ref().map(|call| {
+            typed::TypedExprKind::Call {
+                qualified, args, ..
+            } => qualified.as_ref().map(|call| {
                 let receiver_ty = match call.kind {
-                    typed::QualifiedCallKind::TypeMethod | typed::QualifiedCallKind::TraitMethod => {
-                        args.first()
-                            .map(|arg| normalize_mir_type_label(&arg.ty))
+                    typed::QualifiedCallKind::TypeMethod
+                    | typed::QualifiedCallKind::TraitMethod => {
+                        args.first().map(|arg| normalize_mir_type_label(&arg.ty))
                     }
                     _ => None,
                 };

@@ -17,12 +17,12 @@ use super::types::{BuiltinType, Type, TypeVarGen, TypeVariable};
 use crate::diagnostic::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
-    Attribute, BinaryOp, ConductorDecl, ConductorMonitorTarget, Decl, DeclKind, EffectAnnotation,
-    EffectDecl, EnumDecl, Expr, ExprKind, FixityKind, Function, HandlerDecl, HandlerEntry, Ident,
-    FunctionSignature, ImplItem, Literal, LiteralKind, MatchArm, Module, ModulePath, Param,
-    Pattern, PatternKind, RelativeHead, SlicePatternItem, Stmt, StmtKind, StructDecl, TraitDecl,
-    TypeAnnot, TypeDecl, TypeDeclBody, TypeDeclVariant, TypeDeclVariantPayload, TypeKind,
-    TypeLiteral, TypeUnionVariant, UnaryOp, VariantPayload,
+    ActorSpecDecl, Attribute, BinaryOp, ConductorDecl, ConductorMonitorTarget, Decl, DeclKind,
+    EffectAnnotation, EffectDecl, EnumDecl, Expr, ExprKind, FixityKind, Function,
+    FunctionSignature, HandlerDecl, HandlerEntry, Ident, ImplItem, Literal, LiteralKind, MacroDecl,
+    MatchArm, Module, ModulePath, Param, Pattern, PatternKind, RelativeHead, SlicePatternItem,
+    Stmt, StmtKind, StructDecl, TraitDecl, TypeAnnot, TypeDecl, TypeDeclBody, TypeDeclVariant,
+    TypeDeclVariantPayload, TypeKind, TypeLiteral, TypeUnionVariant, UnaryOp, VariantPayload,
 };
 use crate::semantics::{mir, typed};
 use crate::span::Span;
@@ -153,8 +153,14 @@ impl TypecheckDriver {
         register_prelude_type_decls(&mut module_env);
         register_type_decls(&module.decls, &mut module_env);
         validate_type_decl_bodies(&module.decls, &module_env, &mut violations);
-        register_function_decls(&module.decls, &mut module_env, &mut var_gen, &mut violations);
-        let (impls, impl_registry_duplicates, impl_registry_unresolved) = collect_impl_specs(module);
+        register_function_decls(
+            &module.decls,
+            &mut module_env,
+            &mut var_gen,
+            &mut violations,
+        );
+        let (impls, impl_registry_duplicates, impl_registry_unresolved) =
+            collect_impl_specs(module);
         collect_opbuilder_violations(module, &mut violations);
         violations.extend(detect_active_pattern_conflicts(module));
 
@@ -1308,9 +1314,7 @@ impl TypecheckViolation {
             code: "type.alias.cycle",
             message: "型エイリアスが循環参照しています".to_string(),
             span: Some(span),
-            notes: vec![ViolationNote::plain(format!(
-                "循環経路: {chain_label}"
-            ))],
+            notes: vec![ViolationNote::plain(format!("循環経路: {chain_label}"))],
             capability: None,
             function: None,
             expected: None,
@@ -1338,12 +1342,7 @@ impl TypecheckViolation {
         }
     }
 
-    fn constructor_arity_mismatch(
-        span: Span,
-        name: &str,
-        expected: usize,
-        actual: usize,
-    ) -> Self {
+    fn constructor_arity_mismatch(span: Span, name: &str, expected: usize, actual: usize) -> Self {
         Self {
             kind: TypecheckViolationKind::ConstructorArityMismatch,
             code: "type.sum.constructor_arity_mismatch",
@@ -1885,7 +1884,9 @@ fn register_enum_decl(enum_decl: &EnumDecl, env: &mut TypeEnv) {
         enum_decl.name.name.clone(),
         generics.clone(),
         TypeDeclKind::Sum,
-        Some(TypeDeclBody::Sum { variants: variants.clone() }),
+        Some(TypeDeclBody::Sum {
+            variants: variants.clone(),
+        }),
         enum_decl.span,
         None,
     );
@@ -1967,11 +1968,7 @@ fn register_function_decls(
 
 fn collect_impl_specs(
     module: &Module,
-) -> (
-    BTreeMap<String, mir::MirImplSpec>,
-    Vec<String>,
-    Vec<String>,
-) {
+) -> (BTreeMap<String, mir::MirImplSpec>, Vec<String>, Vec<String>) {
     let mut impls = BTreeMap::new();
     let mut duplicates = Vec::new();
     let mut unresolved = Vec::new();
@@ -2038,7 +2035,11 @@ fn populate_qualified_call_candidates(mir_module: &mut mir::MirModule) {
             Some(ty) => ty,
             None => continue,
         };
-        let trait_name = match call.owner.as_ref().and_then(|owner| owner.split("::").last()) {
+        let trait_name = match call
+            .owner
+            .as_ref()
+            .and_then(|owner| owner.split("::").last())
+        {
             Some(name) => name,
             None => continue,
         };
@@ -2148,12 +2149,7 @@ fn validate_type_decl_bodies(
                 for variant in &enum_decl.variants {
                     if let Some(payload) = &variant.payload {
                         let converted = enum_variant_payload_to_type_decl_payload(payload);
-                        validate_type_decl_payload(
-                            &converted,
-                            generic_map_ref,
-                            env,
-                            violations,
-                        );
+                        validate_type_decl_payload(&converted, generic_map_ref, env, violations);
                     }
                 }
             }
@@ -2275,6 +2271,26 @@ fn visit_decl_for_opbuilder(
                 visit_expr_for_opbuilder(&monitor.body, tracker, violations);
             }
         }
+        DeclKind::Module(module_decl) => {
+            for function in &module_decl.body.functions {
+                visit_expr_for_opbuilder(&function.body, tracker, violations);
+            }
+            for active in &module_decl.body.active_patterns {
+                visit_expr_for_opbuilder(&active.body, tracker, violations);
+            }
+            for decl in &module_decl.body.decls {
+                visit_decl_for_opbuilder(decl, tracker, violations);
+            }
+            for expr in &module_decl.body.exprs {
+                visit_expr_for_opbuilder(expr, tracker, violations);
+            }
+        }
+        DeclKind::Macro(macro_decl) => {
+            visit_expr_for_opbuilder(&macro_decl.body, tracker, violations);
+        }
+        DeclKind::ActorSpec(actor_spec) => {
+            visit_expr_for_opbuilder(&actor_spec.body, tracker, violations);
+        }
         _ => {}
     }
 }
@@ -2370,9 +2386,10 @@ fn visit_expr_for_opbuilder(
         | ExprKind::Propagate { expr: body }
         | ExprKind::Loop { body }
         | ExprKind::Defer { body }
-        | ExprKind::Assign { value: body, .. } => {
-            visit_expr_for_opbuilder(body, tracker, violations)
-        }
+        | ExprKind::Assign { value: body, .. }
+        | ExprKind::EffectBlock { body }
+        | ExprKind::Async { body, .. } => visit_expr_for_opbuilder(body, tracker, violations),
+        ExprKind::Await { expr } => visit_expr_for_opbuilder(expr, tracker, violations),
         ExprKind::Return { value } | ExprKind::Break { value } => {
             if let Some(value) = value {
                 visit_expr_for_opbuilder(value, tracker, violations);
@@ -2615,10 +2632,7 @@ fn resolve_qualified_call(
                 .unwrap_or(false);
             let kind = if trait_match {
                 typed::QualifiedCallKind::TraitMethod
-            } else if owner_parts
-                .iter()
-                .all(|part| is_type_like_ident(part))
-            {
+            } else if owner_parts.iter().all(|part| is_type_like_ident(part)) {
                 typed::QualifiedCallKind::TypeAssoc
             } else {
                 typed::QualifiedCallKind::Unknown
@@ -3448,6 +3462,48 @@ fn infer_expr(
                 body_result.dict_ref_ids,
             )
         }
+        ExprKind::EffectBlock { body } | ExprKind::Async { body, .. } => {
+            let body_result = infer_expr(
+                body,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            make_typed(
+                expr,
+                TypedExprKindDraft::Unknown,
+                body_result.ty.clone(),
+                body_result.dict_ref_ids,
+            )
+        }
+        ExprKind::Await { expr: inner } => {
+            let inner_result = infer_expr(
+                inner,
+                env,
+                var_gen,
+                solver,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                dict_refs,
+                loop_context,
+                context,
+            );
+            make_typed(
+                expr,
+                TypedExprKindDraft::Unknown,
+                Type::builtin(BuiltinType::Unknown),
+                inner_result.dict_ref_ids,
+            )
+        }
         ExprKind::Break { value } => {
             let mut dict_ids = Vec::new();
             let mut break_ty = Type::builtin(BuiltinType::Unit);
@@ -3684,7 +3740,7 @@ fn infer_expr(
             );
             let mut dicts = target_result.dict_ref_ids.clone();
             let target_ty = solver.substitution().apply(&target_result.ty);
-    let coverage = analyze_match_exhaustiveness(arms, &target_ty, env);
+            let coverage = analyze_match_exhaustiveness(arms, &target_ty, env);
             let mut arm_type: Option<Type> = None;
             let unreachable_indices: HashSet<usize> =
                 coverage.unreachable_arm_indices.iter().copied().collect();
@@ -5032,6 +5088,7 @@ fn collect_function_bindings(params: &[Param], body: &Expr) -> HashSet<String> {
             | ExprKind::Rec { expr: inner }
             | ExprKind::Propagate { expr: inner }
             | ExprKind::Return { value: Some(inner) } => walk_expr(inner, bindings),
+            ExprKind::Await { expr: inner } => walk_expr(inner, bindings),
             ExprKind::Break { value: Some(inner) } => walk_expr(inner, bindings),
             ExprKind::FieldAccess { target, .. }
             | ExprKind::TupleAccess { target, .. }
@@ -5076,6 +5133,9 @@ fn collect_function_bindings(params: &[Param], body: &Expr) -> HashSet<String> {
             ExprKind::Loop { body } | ExprKind::Unsafe { body } | ExprKind::Defer { body } => {
                 walk_expr(body, bindings)
             }
+            ExprKind::EffectBlock { body } | ExprKind::Async { body, .. } => {
+                walk_expr(body, bindings)
+            }
             ExprKind::Assign { target, value } => {
                 walk_expr(target, bindings);
                 walk_expr(value, bindings);
@@ -5113,7 +5173,9 @@ fn collect_function_bindings(params: &[Param], body: &Expr) -> HashSet<String> {
                 | DeclKind::Trait(TraitDecl { name, .. })
                 | DeclKind::Effect(EffectDecl { name, .. })
                 | DeclKind::Handler(HandlerDecl { name, .. })
-                | DeclKind::Conductor(ConductorDecl { name, .. }) => {
+                | DeclKind::Conductor(ConductorDecl { name, .. })
+                | DeclKind::Macro(MacroDecl { name, .. })
+                | DeclKind::ActorSpec(ActorSpecDecl { name, .. }) => {
                     bindings.insert(name.name.clone());
                 }
                 _ => {}
@@ -5252,6 +5314,7 @@ fn detect_lambda_captures(
             | ExprKind::Rec { expr: inner }
             | ExprKind::Propagate { expr: inner }
             | ExprKind::Return { value: Some(inner) } => walk_expr(inner, state),
+            ExprKind::Await { expr: inner } => walk_expr(inner, state),
             ExprKind::Break { value: Some(inner) } => walk_expr(inner, state),
             ExprKind::FieldAccess { target, .. }
             | ExprKind::TupleAccess { target, .. }
@@ -5298,6 +5361,7 @@ fn detect_lambda_captures(
             ExprKind::Loop { body } | ExprKind::Unsafe { body } | ExprKind::Defer { body } => {
                 walk_expr(body, state)
             }
+            ExprKind::EffectBlock { body } | ExprKind::Async { body, .. } => walk_expr(body, state),
             ExprKind::Break { value: None }
             | ExprKind::Return { value: None }
             | ExprKind::Continue
@@ -5330,7 +5394,9 @@ fn detect_lambda_captures(
                 | DeclKind::Trait(TraitDecl { name, .. })
                 | DeclKind::Effect(EffectDecl { name, .. })
                 | DeclKind::Handler(HandlerDecl { name, .. })
-                | DeclKind::Conductor(ConductorDecl { name, .. }) => {
+                | DeclKind::Conductor(ConductorDecl { name, .. })
+                | DeclKind::Macro(MacroDecl { name, .. })
+                | DeclKind::ActorSpec(ActorSpecDecl { name, .. }) => {
                     state.insert_binding(name.name.clone());
                 }
                 _ => {}
@@ -5458,8 +5524,14 @@ fn resolve_type_annot_with_args(
     violations: &mut Vec<TypecheckViolation>,
 ) -> Type {
     let mut resolver = TypeAliasResolver::new(env, violations);
-    type_from_annotation_kind_with_generics(&annot.kind, annot.span, None, alias_args, &mut resolver)
-        .unwrap_or_else(|| Type::builtin(BuiltinType::Unknown))
+    type_from_annotation_kind_with_generics(
+        &annot.kind,
+        annot.span,
+        None,
+        alias_args,
+        &mut resolver,
+    )
+    .unwrap_or_else(|| Type::builtin(BuiltinType::Unknown))
 }
 
 fn resolve_payload_types(
@@ -5748,12 +5820,7 @@ fn validate_pattern_against_type(
                             .payload
                             .as_ref()
                             .map(|payload| {
-                                resolve_payload_types(
-                                    payload,
-                                    Some(&alias_args),
-                                    env,
-                                    violations,
-                                )
+                                resolve_payload_types(payload, Some(&alias_args), env, violations)
                             })
                             .unwrap_or_default();
                         let expected = payload_types.len();
@@ -6196,11 +6263,12 @@ impl<'a> TypeAliasResolver<'a> {
             return false;
         }
         if self.stack.len() >= self.max_depth {
-            self.violations.push(TypecheckViolation::type_alias_expansion_limit(
-                span,
-                name.name.as_str(),
-                self.max_depth,
-            ));
+            self.violations
+                .push(TypecheckViolation::type_alias_expansion_limit(
+                    span,
+                    name.name.as_str(),
+                    self.max_depth,
+                ));
             return false;
         }
         self.stack.push(name.name.clone());
@@ -6219,13 +6287,7 @@ fn type_from_annotation(
     violations: &mut Vec<TypecheckViolation>,
 ) -> Option<Type> {
     let mut resolver = TypeAliasResolver::new(env, violations);
-    type_from_annotation_kind_with_generics(
-        &annot.kind,
-        annot.span,
-        generics,
-        None,
-        &mut resolver,
-    )
+    type_from_annotation_kind_with_generics(&annot.kind, annot.span, generics, None, &mut resolver)
 }
 
 fn is_builtin_type_constructor(name: &str) -> bool {
@@ -6282,11 +6344,7 @@ fn type_from_annotation_kind_with_generics(
             let mut resolved_args = Vec::new();
             for arg in args {
                 if let Some(arg_ty) = type_from_annotation_kind_with_generics(
-                    &arg.kind,
-                    arg.span,
-                    generics,
-                    alias_args,
-                    resolver,
+                    &arg.kind, arg.span, generics, alias_args, resolver,
                 ) {
                     resolved_args.push(arg_ty);
                 } else {
@@ -6306,11 +6364,7 @@ fn type_from_annotation_kind_with_generics(
             for variant in variants {
                 let ty = match variant {
                     TypeUnionVariant::Type { ty } => type_from_annotation_kind_with_generics(
-                        &ty.kind,
-                        ty.span,
-                        generics,
-                        alias_args,
-                        resolver,
+                        &ty.kind, ty.span, generics, alias_args, resolver,
                     ),
                     TypeUnionVariant::Variant { .. } => None,
                 };
@@ -6372,11 +6426,7 @@ fn type_from_annotation_kind_with_generics(
                 }
             }
             let resolved_ret = type_from_annotation_kind_with_generics(
-                &ret.kind,
-                ret.span,
-                generics,
-                alias_args,
-                resolver,
+                &ret.kind, ret.span, generics, alias_args, resolver,
             )?;
             Some(Type::arrow(resolved_params, resolved_ret))
         }
@@ -6480,8 +6530,16 @@ fn collect_type_param_names_from_annotation(annotation: &TypeAnnot) -> Vec<Strin
                 let name = name.name.as_str();
                 if matches!(
                     name,
-                    "Int" | "UInt" | "u32" | "usize" | "Float" | "f64" | "Bool" | "Char"
-                        | "Str" | "Bytes"
+                    "Int"
+                        | "UInt"
+                        | "u32"
+                        | "usize"
+                        | "Float"
+                        | "f64"
+                        | "Bool"
+                        | "Char"
+                        | "Str"
+                        | "Bytes"
                 ) {
                     return;
                 }
@@ -7445,6 +7503,22 @@ fn visit_decl(decl: &Decl, visitor: &mut impl FnMut(&Expr)) {
         DeclKind::Let { value, .. }
         | DeclKind::Var { value, .. }
         | DeclKind::Const { value, .. } => visit_expr(value, visitor),
+        DeclKind::Module(module_decl) => {
+            for function in &module_decl.body.functions {
+                visit_expr(&function.body, visitor);
+            }
+            for active in &module_decl.body.active_patterns {
+                visit_expr(&active.body, visitor);
+            }
+            for decl in &module_decl.body.decls {
+                visit_decl(decl, visitor);
+            }
+            for expr in &module_decl.body.exprs {
+                visit_expr(expr, visitor);
+            }
+        }
+        DeclKind::Macro(macro_decl) => visit_expr(&macro_decl.body, visitor),
+        DeclKind::ActorSpec(actor_spec) => visit_expr(&actor_spec.body, visitor),
         _ => {}
     }
 }
@@ -7480,7 +7554,9 @@ fn visit_expr(expr: &Expr, visitor: &mut impl FnMut(&Expr)) {
         ExprKind::Lambda { body, .. }
         | ExprKind::Loop { body }
         | ExprKind::Unsafe { body }
-        | ExprKind::Defer { body } => visit_expr(body, visitor),
+        | ExprKind::Defer { body }
+        | ExprKind::EffectBlock { body }
+        | ExprKind::Async { body, .. } => visit_expr(body, visitor),
         ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
             visit_expr(left, visitor);
             visit_expr(right, visitor);
@@ -7489,6 +7565,9 @@ fn visit_expr(expr: &Expr, visitor: &mut impl FnMut(&Expr)) {
         | ExprKind::Rec { expr: inner }
         | ExprKind::Propagate { expr: inner }
         | ExprKind::Return { value: Some(inner) } => {
+            visit_expr(inner, visitor);
+        }
+        ExprKind::Await { expr: inner } => {
             visit_expr(inner, visitor);
         }
         ExprKind::Break { value } => {
@@ -7673,7 +7752,11 @@ fn collect_perform_effects(expr: &Expr, usages: &mut Vec<EffectUsage>) {
         ExprKind::Lambda { body, .. } => {
             collect_perform_effects(body, usages);
         }
-        ExprKind::Loop { body } | ExprKind::Unsafe { body } | ExprKind::Defer { body } => {
+        ExprKind::Loop { body }
+        | ExprKind::Unsafe { body }
+        | ExprKind::Defer { body }
+        | ExprKind::EffectBlock { body }
+        | ExprKind::Async { body, .. } => {
             collect_perform_effects(body, usages);
         }
         ExprKind::While { condition, body } => {
@@ -7704,6 +7787,9 @@ fn collect_perform_effects(expr: &Expr, usages: &mut Vec<EffectUsage>) {
         | ExprKind::Rec { expr: inner }
         | ExprKind::Propagate { expr: inner }
         | ExprKind::Return { value: Some(inner) } => {
+            collect_perform_effects(inner, usages);
+        }
+        ExprKind::Await { expr: inner } => {
             collect_perform_effects(inner, usages);
         }
         ExprKind::Break { value } => {
@@ -7746,6 +7832,26 @@ fn collect_perform_effects_in_decl(decl: &Decl, usages: &mut Vec<EffectUsage>) {
         | DeclKind::Var { value, .. }
         | DeclKind::Const { value, .. } => {
             collect_perform_effects(value, usages);
+        }
+        DeclKind::Module(module_decl) => {
+            for function in &module_decl.body.functions {
+                collect_perform_effects(&function.body, usages);
+            }
+            for active in &module_decl.body.active_patterns {
+                collect_perform_effects(&active.body, usages);
+            }
+            for decl in &module_decl.body.decls {
+                collect_perform_effects_in_decl(decl, usages);
+            }
+            for expr in &module_decl.body.exprs {
+                collect_perform_effects(expr, usages);
+            }
+        }
+        DeclKind::Macro(macro_decl) => {
+            collect_perform_effects(&macro_decl.body, usages);
+        }
+        DeclKind::ActorSpec(actor_spec) => {
+            collect_perform_effects(&actor_spec.body, usages);
         }
         _ => {}
     }

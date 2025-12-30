@@ -90,9 +90,10 @@ type alias B = A\n\
 fn apply(x: A) = x",
     );
     assert!(
-        report.violations.iter().any(|violation| {
-            matches!(violation.kind, TypecheckViolationKind::TypeAliasCycle)
-        }),
+        report
+            .violations
+            .iter()
+            .any(|violation| { matches!(violation.kind, TypecheckViolationKind::TypeAliasCycle) }),
         "循環エイリアスは TypeAliasCycle を報告する"
     );
 }
@@ -109,7 +110,10 @@ fn type_alias_expansion_limit_reports_violation() {
     let report = typecheck_source(&source);
     assert!(
         report.violations.iter().any(|violation| {
-            matches!(violation.kind, TypecheckViolationKind::TypeAliasExpansionLimit)
+            matches!(
+                violation.kind,
+                TypecheckViolationKind::TypeAliasExpansionLimit
+            )
         }),
         "展開上限超過は TypeAliasExpansionLimit を報告する"
     );
