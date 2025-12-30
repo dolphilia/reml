@@ -370,25 +370,25 @@
 ### docs/spec/3-7-core-config-data.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1.2 API | sec_1_2 | examples/docs-examples/spec/3-7-core-config-data/sec_1_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.5 互換モード（`ConfigCompatibility`） | sec_1_5 | examples/docs-examples/spec/3-7-core-config-data/sec_1_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.5.3 診断生成と効果タグ | sec_1_5_3 | examples/docs-examples/spec/3-7-core-config-data/sec_1_5_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.5.4 Config 診断拡張の適用 | sec_1_5_4 | examples/docs-examples/spec/3-7-core-config-data/sec_1_5_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2. Config スキーマ API（再整理） | sec_2 | examples/docs-examples/spec/3-7-core-config-data/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.1 スキーマ差分 | sec_2_1 | examples/docs-examples/spec/3-7-core-config-data/sec_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3. Config 実行 API | sec_3 | examples/docs-examples/spec/3-7-core-config-data/sec_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.1 マイグレーション安全性 | sec_3_1 | examples/docs-examples/spec/3-7-core-config-data/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.1 Nest.Data スキーマ構築 | sec_4_1-a | examples/docs-examples/spec/3-7-core-config-data/sec_4_1-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.1 Nest.Data スキーマ構築 | sec_4_1-b | examples/docs-examples/spec/3-7-core-config-data/sec_4_1-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.2 制約とプロファイル検証 | sec_4_2 | examples/docs-examples/spec/3-7-core-config-data/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.3 プロファイル別評価とメトリクス | sec_4_3 | examples/docs-examples/spec/3-7-core-config-data/sec_4_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.7 データ品質検証 API | sec_4_7 | examples/docs-examples/spec/3-7-core-config-data/sec_4_7.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.8 統計との連携 | sec_4_8 | examples/docs-examples/spec/3-7-core-config-data/sec_4_8.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 5. CLI / ツール連携 | sec_5 | examples/docs-examples/spec/3-7-core-config-data/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6. 使用例（差分レビュー） | sec_6 | examples/docs-examples/spec/3-7-core-config-data/sec_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7.1 スキーマバージョニング | sec_7_1 | examples/docs-examples/spec/3-7-core-config-data/sec_7_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7.2 動的スキーマ生成 | sec_7_2 | examples/docs-examples/spec/3-7-core-config-data/sec_7_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7.3 スキーマ演算 | sec_7_3 | examples/docs-examples/spec/3-7-core-config-data/sec_7_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 1.2 API | sec_1_2 | examples/docs-examples/spec/3-7-core-config-data/sec_1_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.5 互換モード（`ConfigCompatibility`） | sec_1_5 | examples/docs-examples/spec/3-7-core-config-data/sec_1_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.5.3 診断生成と効果タグ | sec_1_5_3 | examples/docs-examples/spec/3-7-core-config-data/sec_1_5_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.5.4 Config 診断拡張の適用 | sec_1_5_4 | examples/docs-examples/spec/3-7-core-config-data/sec_1_5_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2. Config スキーマ API（再整理） | sec_2 | examples/docs-examples/spec/3-7-core-config-data/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.1 スキーマ差分 | sec_2_1 | examples/docs-examples/spec/3-7-core-config-data/sec_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3. Config 実行 API | sec_3 | examples/docs-examples/spec/3-7-core-config-data/sec_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.1 マイグレーション安全性 | sec_3_1 | examples/docs-examples/spec/3-7-core-config-data/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.1 Nest.Data スキーマ構築 | sec_4_1-a | examples/docs-examples/spec/3-7-core-config-data/sec_4_1-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.1 Nest.Data スキーマ構築 | sec_4_1-b | examples/docs-examples/spec/3-7-core-config-data/sec_4_1-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.2 制約とプロファイル検証 | sec_4_2 | examples/docs-examples/spec/3-7-core-config-data/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.3 プロファイル別評価とメトリクス | sec_4_3 | examples/docs-examples/spec/3-7-core-config-data/sec_4_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.7 データ品質検証 API | sec_4_7 | examples/docs-examples/spec/3-7-core-config-data/sec_4_7.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.8 統計との連携 | sec_4_8 | examples/docs-examples/spec/3-7-core-config-data/sec_4_8.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 5. CLI / ツール連携 | sec_5 | examples/docs-examples/spec/3-7-core-config-data/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6. 使用例（差分レビュー） | sec_6 | examples/docs-examples/spec/3-7-core-config-data/sec_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7.1 スキーマバージョニング | sec_7_1 | examples/docs-examples/spec/3-7-core-config-data/sec_7_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7.2 動的スキーマ生成 | sec_7_2 | examples/docs-examples/spec/3-7-core-config-data/sec_7_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7.3 スキーマ演算 | sec_7_3 | examples/docs-examples/spec/3-7-core-config-data/sec_7_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-8-core-runtime-capability.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

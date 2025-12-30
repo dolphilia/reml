@@ -17,12 +17,11 @@ pub type MigrationPlan = {
   data_loss_risk: RiskLevel,
 }
 
-pub enum MigrationStep = {
-  AddField { name: Str, field: Field<T>, default: Option<T> },
-  RemoveField { name: Str, backup_location: Option<Path> },
-  RenameField { old_name: Str, new_name: Str },
-  ChangeType { name: Str, old_type: TypeRef<T>, new_type: TypeRef<U>, converter: Option<(T) -> Result<U, ConversionError>> },
-  ReorganizeData { strategy: ReorganizationStrategy },
-}
+pub enum MigrationStep =
+  | AddField { name: Str, field: Field<T>, default: Option<T> }
+  | RemoveField { name: Str, backup_location: Option<Path> }
+  | RenameField { old_name: Str, new_name: Str }
+  | ChangeType { name: Str, old_type: TypeRef<T>, new_type: TypeRef<U>, converter: Option<(T) -> Result<U, ConversionError>> }
+  | ReorganizeData { strategy: ReorganizationStrategy }
 
 pub enum RiskLevel = None | Low | Medium | High | Critical
