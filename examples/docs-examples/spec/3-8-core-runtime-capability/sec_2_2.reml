@@ -1,3 +1,18 @@
+pub type Command = Str
+pub type Environment = Int
+pub type ProcessHandle = Int
+pub type ProcessError = Int
+pub type Signal = Int
+pub type Duration = Int
+pub type ExitStatus = Int
+pub type ThreadStart = Int
+pub type ThreadOptions = Int
+pub type ThreadHandle = Int
+pub type ThreadError = Int
+pub type ThreadResult = Int
+pub type CpuId = Int
+pub type Set<T> = List<T>
+
 pub type ProcessCapability = {
   spawn_process: fn(Command, Environment) -> Result<ProcessHandle, ProcessError>,    // effect {process}
   kill_process: fn(ProcessHandle, Signal) -> Result<(), ProcessError>,               // effect {process, signal}

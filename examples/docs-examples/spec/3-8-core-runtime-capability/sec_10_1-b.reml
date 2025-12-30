@@ -1,3 +1,12 @@
+pub type RuntimeBridgeId = Str
+pub type StageId = Str
+pub type CapabilityId = Str
+pub type EffectTag = Str
+pub type RuntimeBridgeReloadSpec = Int
+pub type RuntimeBridgeAuditSpec = Int
+pub type RuntimeBridgeReloadHandle = Int
+pub type Path = Str
+
 pub type RuntimeBridgeDescriptor = {
   id: RuntimeBridgeId,
   stage: StageId,

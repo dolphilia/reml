@@ -1,3 +1,11 @@
+pub type RuntimeBridgeId = Int
+pub type DemandHint = Int
+pub type Text = Str
+pub type StageRequirement = Int
+pub type StageId = Int
+pub type RuntimeBridgeHandle = Int
+pub type RuntimeBridgeError = Int
+
 pub type StreamSignal = {
   kind: StreamSignalKind,                  // Pending / Resume / Error / Completed
   bridge_id: RuntimeBridgeId,
@@ -18,5 +26,5 @@ pub type BackpressureSignal = {
 }
 
 impl RuntimeBridgeHandle {
-  fn stream_signal(signal: StreamSignal) -> Result<(), RuntimeBridgeError>; // `effect {runtime}`
+  fn stream_signal(signal: StreamSignal) -> Result<(), RuntimeBridgeError> = () // `effect {runtime}`
 }

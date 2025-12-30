@@ -393,43 +393,43 @@
 ### docs/spec/3-8-core-runtime-capability.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1. Capability Registry の基本構造 | sec_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.1 CapabilityHandle のバリアント | sec_1_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.2 セキュリティモデル | sec_1_2 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 効果ステージとハンドラ契約 | sec_section-a | examples/docs-examples/spec/3-8-core-runtime-capability/sec_section-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 効果ステージとハンドラ契約 | sec_section-b | examples/docs-examples/spec/3-8-core-runtime-capability/sec_section-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 効果ステージとハンドラ契約 | sec_section-c | examples/docs-examples/spec/3-8-core-runtime-capability/sec_section-c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.3 プラットフォーム情報と能力 | sec_1_3 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.3.1 `@dsl_export` との整合 | sec_1_3_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.4 非同期・Actor Capability | sec_1_4 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.6 CapabilityError | sec_1_6 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.1 SyscallCapability | sec_2_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.2 ProcessCapability | sec_2_2 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.3 MemoryCapability | sec_2_3 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.4 SignalCapability | sec_2_4 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.5 HardwareCapability | sec_2_5 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.6 RealTimeCapability | sec_2_6 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.7 SecurityCapability | sec_2_7 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_7.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3. GC Capability インターフェイス | sec_3 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.1 メモリ管理の高度制御 | sec_3_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4. Metrics & Audit Capability | sec_4 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 5.1 IoCapability | sec_5_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_5_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6. プラグイン Capability | sec_6 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6.1 プラグインサンドボックス | sec_6_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_6_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7. DSL Capability Utility | sec_7-a | examples/docs-examples/spec/3-8-core-runtime-capability/sec_7-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7. DSL Capability Utility | sec_7-b | examples/docs-examples/spec/3-8-core-runtime-capability/sec_7-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7.3 テンプレート Capability プリセット | sec_7_3 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_7_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7.4 Capability マニフェスト変換ユーティリティ | sec_7_4 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_7_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 8. 使用例（GC + Metrics 登録） | sec_8 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_8.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 9.1 リアルタイムメトリクス | sec_9_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_9_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 9.2 パフォーマンスプロファイリング | sec_9_2 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_9_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 9.3 ランタイムデバッグ | sec_9_3 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_9_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 10.1 RuntimeBridgeRegistry とメタデータ | sec_10_1-a | examples/docs-examples/spec/3-8-core-runtime-capability/sec_10_1-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 10.1 RuntimeBridgeRegistry とメタデータ | sec_10_1-b | examples/docs-examples/spec/3-8-core-runtime-capability/sec_10_1-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 10.1 RuntimeBridgeRegistry とメタデータ | sec_10_1-c | examples/docs-examples/spec/3-8-core-runtime-capability/sec_10_1-c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 10.3 Reload 契約 | sec_10_3-a | examples/docs-examples/spec/3-8-core-runtime-capability/sec_10_3-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 10.3 Reload 契約 | sec_10_3-b | examples/docs-examples/spec/3-8-core-runtime-capability/sec_10_3-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 10.5 ストリーミング Signal ハンドラ | sec_10_5 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_10_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 1. Capability Registry の基本構造 | sec_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.1 CapabilityHandle のバリアント | sec_1_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.2 セキュリティモデル | sec_1_2 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 効果ステージとハンドラ契約 | sec_section-a | examples/docs-examples/spec/3-8-core-runtime-capability/sec_section-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 効果ステージとハンドラ契約 | sec_section-b | examples/docs-examples/spec/3-8-core-runtime-capability/sec_section-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 効果ステージとハンドラ契約 | sec_section-c | examples/docs-examples/spec/3-8-core-runtime-capability/sec_section-c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.3 プラットフォーム情報と能力 | sec_1_3 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.3.1 `@dsl_export` との整合 | sec_1_3_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.4 非同期・Actor Capability | sec_1_4 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.6 CapabilityError | sec_1_6 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_1_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.1 SyscallCapability | sec_2_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.2 ProcessCapability | sec_2_2 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.3 MemoryCapability | sec_2_3 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.4 SignalCapability | sec_2_4 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.5 HardwareCapability | sec_2_5 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.6 RealTimeCapability | sec_2_6 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.7 SecurityCapability | sec_2_7 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_2_7.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3. GC Capability インターフェイス | sec_3 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.1 メモリ管理の高度制御 | sec_3_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4. Metrics & Audit Capability | sec_4 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 5.1 IoCapability | sec_5_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_5_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6. プラグイン Capability | sec_6 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6.1 プラグインサンドボックス | sec_6_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_6_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7. DSL Capability Utility | sec_7-a | examples/docs-examples/spec/3-8-core-runtime-capability/sec_7-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7. DSL Capability Utility | sec_7-b | examples/docs-examples/spec/3-8-core-runtime-capability/sec_7-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7.3 テンプレート Capability プリセット | sec_7_3 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_7_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7.4 Capability マニフェスト変換ユーティリティ | sec_7_4 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_7_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 8. 使用例（GC + Metrics 登録） | sec_8 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_8.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 9.1 リアルタイムメトリクス | sec_9_1 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_9_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 9.2 パフォーマンスプロファイリング | sec_9_2 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_9_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 9.3 ランタイムデバッグ | sec_9_3 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_9_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 10.1 RuntimeBridgeRegistry とメタデータ | sec_10_1-a | examples/docs-examples/spec/3-8-core-runtime-capability/sec_10_1-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 10.1 RuntimeBridgeRegistry とメタデータ | sec_10_1-b | examples/docs-examples/spec/3-8-core-runtime-capability/sec_10_1-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 10.1 RuntimeBridgeRegistry とメタデータ | sec_10_1-c | examples/docs-examples/spec/3-8-core-runtime-capability/sec_10_1-c.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 10.3 Reload 契約 | sec_10_3-a | examples/docs-examples/spec/3-8-core-runtime-capability/sec_10_3-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 10.3 Reload 契約 | sec_10_3-b | examples/docs-examples/spec/3-8-core-runtime-capability/sec_10_3-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 10.5 ストリーミング Signal ハンドラ | sec_10_5 | examples/docs-examples/spec/3-8-core-runtime-capability/sec_10_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/3-9-core-async-ffi-unsafe.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

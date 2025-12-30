@@ -1,3 +1,8 @@
+pub type CapabilityId = Str
+pub type StageRequirement = Int
+pub type StageId = Int
+pub type CapabilityDescriptor = Int
+
 pub type CapabilityError = {
   kind: CapabilityErrorKind,
   message: Str,
@@ -8,9 +13,9 @@ pub type CapabilityError = {
 }
 
 pub enum CapabilityErrorKind =
-  AlreadyRegistered
+  | AlreadyRegistered
   | NotFound
   | InvalidHandle
   | UnsafeViolation
   | SecurityViolation
-  | StageViolation;
+  | StageViolation
