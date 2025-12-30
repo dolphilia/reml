@@ -214,6 +214,12 @@ pub enum MirExprKind {
         effect: String,
         argument: MirExprId,
     },
+    EffectBlock {
+        body: MirExprId,
+    },
+    Unsafe {
+        body: MirExprId,
+    },
     Unknown,
 }
 
@@ -1292,6 +1298,9 @@ fn detect_arm_early_exit(
         MirExprKind::Panic { .. } => Some(ArmEarlyExit::Panic),
         MirExprKind::Propagate { .. } => Some(ArmEarlyExit::Propagate),
         MirExprKind::Rec { target, .. } => detect_arm_early_exit(*target, expr_map),
+        MirExprKind::EffectBlock { body } | MirExprKind::Unsafe { body } => {
+            detect_arm_early_exit(*body, expr_map)
+        }
         MirExprKind::Block { tail, .. } => {
             let tail_id = tail.as_ref()?;
             let tail_expr = expr_map.get(tail_id)?;
@@ -1325,6 +1334,9 @@ fn lower_entry_expr_to_blocks(
             MirExprKind::Propagate { .. } => {
                 let value = emit_value_expr(body, &expr_map, &mut ssa);
                 return lower_propagate_value_to_blocks(body, value, &body_ty_hint, &mut ssa);
+            }
+            MirExprKind::EffectBlock { body } | MirExprKind::Unsafe { body } => {
+                return lower_entry_expr_to_blocks(exprs, *body, type_mapping);
             }
             MirExprKind::Block {
                 statements,
@@ -1491,6 +1503,9 @@ fn classify_branch_kind(expr_id: MirExprId, expr_map: &HashMap<MirExprId, &MirEx
         MirExprKind::Propagate { .. } => BranchKind::Propagate,
         MirExprKind::Panic { .. } => BranchKind::Panic,
         MirExprKind::Rec { target, .. } => classify_branch_kind(*target, expr_map),
+        MirExprKind::EffectBlock { body } | MirExprKind::Unsafe { body } => {
+            classify_branch_kind(*body, expr_map)
+        }
         MirExprKind::Block { tail, .. } => {
             let Some(tail_id) = tail else {
                 return BranchKind::Normal;
@@ -1515,6 +1530,9 @@ fn expr_contains_early_exit(expr_id: MirExprId, expr_map: &HashMap<MirExprId, &M
     match &expr.kind {
         MirExprKind::Propagate { .. } | MirExprKind::Panic { .. } => true,
         MirExprKind::Rec { target, .. } => expr_contains_early_exit(*target, expr_map),
+        MirExprKind::EffectBlock { body } | MirExprKind::Unsafe { body } => {
+            expr_contains_early_exit(*body, expr_map)
+        }
         MirExprKind::Block {
             statements, tail, ..
         } => {
@@ -3935,6 +3953,9 @@ fn infer_expr_type_hint(
         return expr.ty.clone();
     }
     match &expr.kind {
+        MirExprKind::EffectBlock { body } | MirExprKind::Unsafe { body } => {
+            return infer_expr_type_hint(*body, expr_map, _ssa);
+        }
         MirExprKind::Literal { summary } => {
             match parse_literal_summary(summary) {
                 LiteralSummary::Unit => "Unit".into(),
@@ -3964,6 +3985,8 @@ fn infer_expr_type_hint(
         | MirExprKind::Propagate { .. }
         | MirExprKind::Panic { .. }
         | MirExprKind::Binary { .. }
+        | MirExprKind::EffectBlock { .. }
+        | MirExprKind::Unsafe { .. }
         | MirExprKind::Unknown => "Result".into(),
     }
 }
@@ -4095,6 +4118,9 @@ fn infer_expr_llvm_type(
             _ => ssa.pointer_type(),
         },
         MirExprKind::Rec { target, .. } => infer_expr_llvm_type(*target, expr_map, ssa),
+        MirExprKind::EffectBlock { body } | MirExprKind::Unsafe { body } => {
+            infer_expr_llvm_type(*body, expr_map, ssa)
+        }
         _ => ssa.pointer_type(),
     }
 }
@@ -4762,6 +4788,20 @@ fn emit_value_expr(
             ssa.pop_scope();
             tail_value
         }
+        MirExprKind::EffectBlock { body } => {
+            let mut value = emit_value_expr(*body, expr_map, ssa);
+            value
+                .instrs
+                .push(LlvmInstr::Comment(format!("effect_block expr#{expr_id}")));
+            value
+        }
+        MirExprKind::Unsafe { body } => {
+            let mut value = emit_value_expr(*body, expr_map, ssa);
+            value
+                .instrs
+                .push(LlvmInstr::Comment(format!("unsafe_block expr#{expr_id}")));
+            value
+        }
         MirExprKind::Return { value } => {
             let mut inner = if let Some(value_id) = value {
                 emit_value_expr(*value_id, expr_map, ssa)
@@ -5016,6 +5056,9 @@ fn infer_call_return_type(
             .and_then(|expr| map_type_token_to_llvm(&expr.ty, ssa))
             .unwrap_or_else(|| ssa.pointer_type()),
         MirExprKind::Rec { target, .. } => infer_call_return_type(*target, expr_map, ssa),
+        MirExprKind::EffectBlock { body } | MirExprKind::Unsafe { body } => {
+            infer_call_return_type(*body, expr_map, ssa)
+        }
         _ => ssa.pointer_type(),
     }
 }

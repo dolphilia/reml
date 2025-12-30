@@ -246,11 +246,44 @@ impl MirModuleSpec {
         let mut diagnostics = Vec::new();
         let mut call_keys = BTreeSet::new();
         for function in &self.functions {
+            if function.is_async {
+                diagnostics.push(format!(
+                    "Backend.backend.todo.async_function: function={}",
+                    function.name
+                ));
+            }
             for expr in &function.exprs {
                 if matches!(expr.kind, MirExprKindJson::Call { .. }) {
                     call_keys.insert(format!("{}#{}", function.name, expr.id));
                 }
+                match &expr.kind {
+                    MirExprKindJson::EffectBlock { .. } => diagnostics.push(format!(
+                        "Backend.backend.todo.effect_block: function={} expr_id={}",
+                        function.name, expr.id
+                    )),
+                    MirExprKindJson::Unsafe { .. } => diagnostics.push(format!(
+                        "Backend.backend.todo.unsafe_block: function={} expr_id={}",
+                        function.name, expr.id
+                    )),
+                    MirExprKindJson::Async { .. } => diagnostics.push(format!(
+                        "Backend.backend.todo.async: function={} expr_id={}",
+                        function.name, expr.id
+                    )),
+                    MirExprKindJson::Await { .. } => diagnostics.push(format!(
+                        "Backend.backend.todo.await: function={} expr_id={}",
+                        function.name, expr.id
+                    )),
+                    _ => {}
+                }
             }
+        }
+        for extern_decl in &self.externs {
+            let name = extern_decl.name.as_deref().unwrap_or("<none>");
+            let abi = extern_decl.abi.as_deref().unwrap_or("<none>");
+            let symbol = extern_decl.symbol.as_deref().unwrap_or("<none>");
+            diagnostics.push(format!(
+                "Backend.backend.todo.extern_decl: name={name} abi={abi} symbol={symbol}"
+            ));
         }
         for key in &call_keys {
             if !self.qualified_calls.contains_key(key) {
@@ -902,10 +935,10 @@ fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
             effect: value_summary(call.effect),
             argument: call.argument,
         },
-        MirExprKindJson::EffectBlock { .. } => MirExprKind::Unknown,
+        MirExprKindJson::EffectBlock { body } => MirExprKind::EffectBlock { body },
         MirExprKindJson::Async { .. } => MirExprKind::Unknown,
         MirExprKindJson::Await { .. } => MirExprKind::Unknown,
-        MirExprKindJson::Unsafe { .. } => MirExprKind::Unknown,
+        MirExprKindJson::Unsafe { body } => MirExprKind::Unsafe { body },
         MirExprKindJson::FieldAccess { target, field } => {
             MirExprKind::FieldAccess { target, field }
         }
