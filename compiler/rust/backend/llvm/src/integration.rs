@@ -220,6 +220,8 @@ struct MirModuleSpec {
     runtime_symbols: Vec<String>,
     functions: Vec<MirFunctionJson>,
     #[serde(default)]
+    externs: Vec<MirExternJson>,
+    #[serde(default)]
     active_patterns: Vec<Value>,
     #[serde(default)]
     dict_refs: Vec<DictRefJson>,
@@ -416,6 +418,12 @@ struct MirFunctionJson {
     #[serde(default)]
     attributes: Vec<String>,
     #[serde(default)]
+    is_async: bool,
+    #[serde(default)]
+    is_unsafe: bool,
+    #[serde(default)]
+    varargs: bool,
+    #[serde(default)]
     ffi_calls: Vec<FfiCallJson>,
     #[serde(default)]
     exprs: Vec<MirExprJson>,
@@ -565,6 +573,20 @@ enum MirExprKindJson {
     PerformCall {
         call: MirEffectCallJson,
     },
+    EffectBlock {
+        body: usize,
+    },
+    Async {
+        body: usize,
+        #[serde(default)]
+        is_move: bool,
+    },
+    Await {
+        expr: usize,
+    },
+    Unsafe {
+        body: usize,
+    },
     FieldAccess {
         target: usize,
         field: String,
@@ -580,6 +602,18 @@ enum MirExprKindJson {
         value: Value,
     },
     Unknown,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirExternJson {
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    abi: Option<String>,
+    #[serde(default)]
+    symbol: Option<String>,
+    #[serde(default)]
+    span: Option<MirSpanJson>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -868,6 +902,10 @@ fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
             effect: value_summary(call.effect),
             argument: call.argument,
         },
+        MirExprKindJson::EffectBlock { .. } => MirExprKind::Unknown,
+        MirExprKindJson::Async { .. } => MirExprKind::Unknown,
+        MirExprKindJson::Await { .. } => MirExprKind::Unknown,
+        MirExprKindJson::Unsafe { .. } => MirExprKind::Unknown,
         MirExprKindJson::FieldAccess { target, field } => {
             MirExprKind::FieldAccess { target, field }
         }
@@ -1511,6 +1549,49 @@ mod tests {
         let functions = load_mir_functions_from_json(&tmp)?;
         assert_eq!(functions.len(), 1);
         assert_eq!(functions[0].name, "@json_main");
+        fs::remove_file(tmp)?;
+        Ok(())
+    }
+
+    #[test]
+    fn load_async_effect_block_exprs_from_json() -> Result<(), MirSnapshotError> {
+        let spec = r#"
+    {
+      "module": "json_module",
+      "externs": [
+        {
+          "name": "c_func",
+          "abi": "C",
+          "symbol": "c_func",
+          "span": {"start": 0, "end": 1}
+        }
+      ],
+      "functions": [
+        {
+          "name": "@json_main",
+          "calling_conv": "ccc",
+          "is_async": true,
+          "is_unsafe": true,
+          "varargs": true,
+          "exprs": [
+            {"id": 0, "ty": "unit", "kind": "effect_block", "body": 1},
+            {"id": 1, "ty": "unit", "kind": "async", "body": 2, "is_move": true},
+            {"id": 2, "ty": "unit", "kind": "await", "expr": 3},
+            {"id": 3, "ty": "unit", "kind": "unsafe", "body": 4},
+            {"id": 4, "ty": "unit", "kind": "block"}
+          ],
+          "body": 0
+        }
+      ]
+    }
+    "#;
+        let tmp = env::temp_dir().join("reml_mir_async_kinds.json");
+        fs::write(&tmp, spec)?;
+        let functions = load_mir_functions_from_json(&tmp)?;
+        let func = functions.get(0).expect("関数が読み込まれること");
+        assert_eq!(func.name, "@json_main");
+        assert_eq!(func.body, Some(0));
+        assert_eq!(func.exprs.len(), 5);
         fs::remove_file(tmp)?;
         Ok(())
     }

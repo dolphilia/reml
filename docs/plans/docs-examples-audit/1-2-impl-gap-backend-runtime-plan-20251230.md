@@ -34,6 +34,13 @@
 ## 実装修正計画
 
 ### フェーズ 1: MIR JSON 取り込みの同期
+完了（2025-12-30）
+- `MirExprKindJson` に `effect_block` / `async` / `await` / `unsafe` を追加して受理。
+- `convert_expr_kind` は暫定で `MirExprKind::Unknown` にフォールバック。
+- `MirFunctionJson` に `is_async` / `is_unsafe` / `varargs` を追加。
+- `MirModuleSpec` に `externs` を追加（`MirExternJson` 定義）。
+- 最小 JSON での読み込みテストを追加（Backend 側）。
+
 1) `MirExprKindJson` の追加
 - `effect_block` / `async` / `await` / `unsafe` を追加し、Frontend MIR と同じフィールド構成で読み取る。
 - 未対応のまま破綻しないよう、取り込み時に暫定診断を生成できる構造を追加する。
@@ -116,7 +123,7 @@
 ## 進捗管理
 - 本計画書作成日: 2025-12-30
 - 進捗欄（運用用）:
-  - [ ] フェーズ 1 完了
+  - [x] フェーズ 1 完了
   - [ ] フェーズ 2 完了
   - [ ] フェーズ 3 完了
   - [ ] フェーズ 4 完了
