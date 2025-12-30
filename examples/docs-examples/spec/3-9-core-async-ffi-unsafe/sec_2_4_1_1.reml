@@ -1,6 +1,8 @@
-let cos = effect {ffi, unsafe} {
-  let lib = ffi.bind_library("m")?
-  let raw = lib.bind_fn("cos", ffi.fn_sig([ffi.double], ffi.double, false))?
-  ffi.wrap(raw, { name: "libm.cos", null_check: false, ownership: None, error_map: None })?
-}
-let value = cos(0.5)?
+pub type FfiLibrary
+pub type FfiFnSig
+pub type FfiWrapSpec
+pub type FfiError
+
+fn bind_libm() -> Result<FfiLibrary, FfiError>                         // `effect {ffi}`
+fn bind_cos<Args, Ret>(lib: FfiLibrary, sig: FfiFnSig, spec: FfiWrapSpec)
+  -> Result<fn(Args) -> Result<Ret, FfiError>, FfiError>               // `effect {ffi}`

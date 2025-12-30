@@ -1,3 +1,6 @@
+pub type Future<T>
+pub type Iter<T>
+
 pub type AsyncStream<T> = {
   next: fn() -> Future<Option<T>>,
 }

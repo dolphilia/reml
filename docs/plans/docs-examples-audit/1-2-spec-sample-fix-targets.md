@@ -434,51 +434,51 @@
 ### docs/spec/3-9-core-async-ffi-unsafe.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1. Core.Async の枠組み | sec_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.2 高度な非同期パターン | sec_1_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.3 ストリームとアシンクイテレータ | sec_1_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.4 DSLオーケストレーション支援 API | sec_1_4 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.4.1 Codec 契約 | sec_1_4_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.4.3 ExecutionPlan の整合性 | sec_1_4_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_4_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.4.5 チャネルメトリクス API | sec_1_4_5 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_4_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.5 プラットフォーム適応スケジューラ | sec_1_5 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.8 AsyncError | sec_1_8 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_8.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.9 アクターモデルと分散メッセージング | sec_1_9 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_9.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.9.2 分散トランスポート | sec_1_9_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_9_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.9.3 DSL からの利用例 | sec_1_9_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_9_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 1.9.5 Supervisor パターンと再起動戦略 | sec_1_9_5 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_9_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2. Core.Ffi の枠組み | sec_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.0 バインディング生成と Capability 連携 | sec_2_0-a | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_0-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.0 バインディング生成と Capability 連携 | sec_2_0-b | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_0-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.3 効果ハンドラによる FFI サンドボックス（実験段階） | sec_2_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.4 タイプセーフな FFI ラッパー | sec_2_4 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.4.1 Core.Ffi.Dsl | sec_2_4_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.4.1.1 DSL 利用例 | sec_2_4_1_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_4_1_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.5 呼出規約とプラットフォーム適応 | sec_2_5 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2.6 メモリ管理と所有権境界 | sec_2_6 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.1 型定義 | sec_3_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.2 生成・変換 API | sec_3_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.3 読み書き・コピー API | sec_3_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.4 アドレス計算と Span ユーティリティ | sec_3_4 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.5 診断・監査補助 | sec_3_5 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.6.1 FFI コール境界 | sec_3_6_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_6_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.6.2 バッファ操作 | sec_3_6_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_6_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.6.3 GC ルート登録 | sec_3_6_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_6_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4. Core.Unsafe の指針 | sec_4 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.1 安全性検証メカニズム | sec_4_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4.2 監査された unsafe 操作 | sec_4_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 5.1 非同期 Capability | sec_5_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_5_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 5.2 FFI Capability | sec_5_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_5_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 5.3 Unsafe Capability | sec_5_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_5_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 6. 使用例（調査メモ） | sec_6 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7.1 非同期セキュリティ | sec_7_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_7_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7.2 FFI セキュリティ | sec_7_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_7_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 7.3 Unsafe セキュリティ | sec_7_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_7_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 8.1 非同期最適化 | sec_8_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_8_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 8.2 FFI 最適化 | sec_8_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_8_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 9.1 非同期デバッグ | sec_9_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_9_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 9.2 FFI テスト | sec_9_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_9_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 9.3 Unsafe テスト | sec_9_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_9_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 1. Core.Async の枠組み | sec_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.2 高度な非同期パターン | sec_1_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.3 ストリームとアシンクイテレータ | sec_1_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.4 DSLオーケストレーション支援 API | sec_1_4 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.4.1 Codec 契約 | sec_1_4_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.4.3 ExecutionPlan の整合性 | sec_1_4_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_4_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.4.5 チャネルメトリクス API | sec_1_4_5 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_4_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.5 プラットフォーム適応スケジューラ | sec_1_5 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.8 AsyncError | sec_1_8 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_8.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.9 アクターモデルと分散メッセージング | sec_1_9 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_9.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.9.2 分散トランスポート | sec_1_9_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_9_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.9.3 DSL からの利用例 | sec_1_9_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_9_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 1.9.5 Supervisor パターンと再起動戦略 | sec_1_9_5 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_1_9_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2. Core.Ffi の枠組み | sec_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.0 バインディング生成と Capability 連携 | sec_2_0-a | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_0-a.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.0 バインディング生成と Capability 連携 | sec_2_0-b | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_0-b.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.3 効果ハンドラによる FFI サンドボックス（実験段階） | sec_2_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.4 タイプセーフな FFI ラッパー | sec_2_4 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.4.1 Core.Ffi.Dsl | sec_2_4_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.4.1.1 DSL 利用例 | sec_2_4_1_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_4_1_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.5 呼出規約とプラットフォーム適応 | sec_2_5 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2.6 メモリ管理と所有権境界 | sec_2_6 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_2_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.1 型定義 | sec_3_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.2 生成・変換 API | sec_3_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.3 読み書き・コピー API | sec_3_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.4 アドレス計算と Span ユーティリティ | sec_3_4 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.5 診断・監査補助 | sec_3_5 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.6.1 FFI コール境界 | sec_3_6_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_6_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.6.2 バッファ操作 | sec_3_6_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_6_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.6.3 GC ルート登録 | sec_3_6_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_3_6_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4. Core.Unsafe の指針 | sec_4 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.1 安全性検証メカニズム | sec_4_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4.2 監査された unsafe 操作 | sec_4_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 5.1 非同期 Capability | sec_5_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_5_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 5.2 FFI Capability | sec_5_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_5_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 5.3 Unsafe Capability | sec_5_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_5_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 6. 使用例（調査メモ） | sec_6 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7.1 非同期セキュリティ | sec_7_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_7_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7.2 FFI セキュリティ | sec_7_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_7_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 7.3 Unsafe セキュリティ | sec_7_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_7_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 8.1 非同期最適化 | sec_8_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_8_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 8.2 FFI 最適化 | sec_8_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_8_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 9.1 非同期デバッグ | sec_9_1 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_9_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 9.2 FFI テスト | sec_9_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_9_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 9.3 Unsafe テスト | sec_9_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_9_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/4-1-system-plugin.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |

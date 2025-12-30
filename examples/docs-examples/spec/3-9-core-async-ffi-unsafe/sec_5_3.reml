@@ -1,3 +1,11 @@
+pub type CapabilityError
+pub type MutPtr<T>
+pub type NonNullPtr<T>
+pub type Ptr<T>
+pub type AllocationId
+pub type PointerInfo
+pub type u8
+
 pub type UnsafeCapability = {
   enable_raw_pointers: fn(UnsafePolicy) -> Result<(), CapabilityError>,
   allocate_raw: fn(usize, usize) -> Result<MutPtr<u8>, CapabilityError>,

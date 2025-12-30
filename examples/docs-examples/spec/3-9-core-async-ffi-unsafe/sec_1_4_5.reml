@@ -1,4 +1,15 @@
-pub struct ChannelMetricsHandle = {
+pub type GaugeMetric
+pub type CounterMetric
+pub type LatencyHistogram
+pub type Duration
+pub type Timestamp
+pub type ExecutionMetricsScope
+pub type DslReceiver<T>
+pub type ChannelId
+pub type AsyncError
+pub type u64
+
+pub type ChannelMetricsHandle = {
   queue_depth: GaugeMetric,
   dropped_messages: CounterMetric,
   producer_latency: LatencyHistogram,
@@ -6,7 +17,7 @@ pub struct ChannelMetricsHandle = {
   throughput: CounterMetric,
 }
 
-pub struct ChannelMetricsSample = {
+pub type ChannelMetricsSample = {
   queue_depth: usize,
   dropped_messages: u64,
   producer_latency_p95: Duration,
@@ -15,17 +26,14 @@ pub struct ChannelMetricsSample = {
   observed_at: Timestamp,
 }
 
-fn channel_metrics<T>(scope: &ExecutionMetricsScope,
-  recv: &DslReceiver<T>,
-  channel_id: ChannelId,
-  opts: ChannelMetricOptions = ChannelMetricOptions::default())
+fn channel_metrics<T>(scope: ExecutionMetricsScope, recv: DslReceiver<T>, channel_id: ChannelId, opts: ChannelMetricOptions)
   -> Result<ChannelMetricsHandle, AsyncError>                            // `effect {io.async}`
 
-fn snapshot_channel_metrics(handle: &ChannelMetricsHandle)
+fn snapshot_channel_metrics(metrics_handle: ChannelMetricsHandle)
   -> Result<ChannelMetricsSample, AsyncError>                            // `effect {io.async}`
 
-pub struct ChannelMetricOptions = {
-  collect_dropped_messages: Bool = true,
-  collect_latency: Bool = true,
-  collect_throughput: Bool = true,
+pub type ChannelMetricOptions = {
+  collect_dropped_messages: Bool,
+  collect_latency: Bool,
+  collect_throughput: Bool,
 }

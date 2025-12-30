@@ -1,16 +1,12 @@
-let system = runtime.actor_system()?;
+pub type ActorSystem
+pub type ActorRef<T>
+pub type AsyncError
+pub type Duration
+pub type Future<T>
+pub type Text
 
-actor spec Greeter {
-  state = { greeted: Set<Text> }
+pub enum Message = Greet(Text) | Hello(Text)
 
-  on Message::Greet(name) -> ! { io.async } {
-    if !state.greeted.contains(name) {
-      state.greeted.insert(name);
-      log.info("greet", name);
-    }
-    reply(Message::Hello(name))?;
-  }
-}
-
-let greeter = system.spawn(Greeter::new())?;
-let response = await system.ask(greeter, Message::Greet("Reml"), 2.s)?;
+fn spawn_greeter(system: &ActorSystem) -> Result<ActorRef<Message>, AsyncError> // `effect {io.async}`
+fn greet(system: &ActorSystem, greeter: ActorRef<Message>, name: Text, timeout: Duration)
+  -> Future<Result<Message, AsyncError>>                                       // `effect {io.async}`

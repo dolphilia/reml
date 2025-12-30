@@ -1,3 +1,5 @@
+pub type UnsafeError
+
 // メモリ安全性の動的検証
 fn enable_memory_sanitizer(config: SanitizerConfig) -> Result<(), UnsafeError>  // `effect {unsafe, debug}`
 

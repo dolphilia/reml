@@ -1,3 +1,10 @@
+pub type ForeignFunction
+pub type FfiArgs
+pub type FfiError
+pub type Duration
+pub type SyscallId
+pub type FileAccessPolicy
+
 // サンドボックス内での FFI 呼び出し
 fn call_sandboxed<T>(foreign_fn: ForeignFunction, args: FfiArgs, sandbox: FfiSandbox) -> Result<T, FfiError> // `effect {ffi, unsafe, security, audit}`
 

@@ -1,3 +1,10 @@
+pub type AsyncMetrics
+pub type AsyncRuntimeConfig
+pub type WorkloadProfile
+pub type SchedulingStrategy
+pub type Future<T>
+pub type AsyncStream<T>
+
 // タスクスケジューリングの調整
 fn tune_async_runtime(metrics: AsyncMetrics) -> AsyncRuntimeConfig
 fn adaptive_scheduling(workload: WorkloadProfile) -> SchedulingStrategy

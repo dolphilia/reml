@@ -1,3 +1,12 @@
+pub type Ptr<T>
+pub type Layout
+pub type FnPtr<Args, Ret>
+pub type VoidPtr
+pub type Span<T>
+pub type FfiError
+pub type MutPtr<T>
+pub type u8
+
 pub type ForeignPtr<T> = {
   raw: Ptr<T>,
   layout: Option<Layout>,

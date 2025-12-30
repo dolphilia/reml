@@ -1,14 +1,10 @@
-struct RootGuard {
+pub type NonNullPtr<T>
+pub type Object
+pub type UnsafeError
+
+pub type RootGuard = {
   ptr: NonNullPtr<Object>,
 }
 
-impl RootGuard {
-  fn new(ptr: NonNullPtr<Object>) -> Result<RootGuard, UnsafeError> = {
-    unsafe { runtime::register_root(ptr)? }
-    Ok(RootGuard { ptr })
-  }
-
-  fn release(self) -> Result<(), UnsafeError> = {
-    unsafe { runtime::unregister_root(self.ptr) }
-  }
-}
+fn RootGuard::new(ptr: NonNullPtr<Object>) -> Result<RootGuard, UnsafeError>  // `unsafe`
+fn RootGuard::release(self) -> Result<(), UnsafeError>                       // `unsafe`

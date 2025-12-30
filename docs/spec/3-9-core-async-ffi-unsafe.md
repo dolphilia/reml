@@ -14,13 +14,18 @@
 ## 1. Core.Async の枠組み
 
 ```reml
+pub type Context
+pub type SchedulerHandle
+pub type Duration
+pub type AsyncError
+
 pub type Future<T> = {
   poll: fn(&mut Context) -> Poll<T>,
 }
 
 pub enum Poll<T> = Ready(T) | Pending
 
-pub struct Task<T> {
+pub type Task<T> = {
   future: Future<T>,
   scheduler: SchedulerHandle,
 }
@@ -39,6 +44,10 @@ fn sleep_async(duration: Duration) -> Future<()>                             // 
 ### 1.2 高度な非同期パターン
 
 ```reml
+pub type Future<T>
+pub type Duration
+pub type AsyncError
+
 fn join<T, U>(future1: Future<T>, future2: Future<U>) -> Future<(T, U)>         // `effect {io.async}`
 fn select<T>(futures: List<Future<T>>) -> Future<(usize, T)>                   // `effect {io.async}`
 fn timeout<T>(future: Future<T>, duration: Duration) -> Future<Result<T, AsyncError>> // `effect {io.async}`
@@ -52,7 +61,7 @@ pub type RetryPolicy = {
 
 pub enum BackoffStrategy = Linear(Duration) | Exponential { base: Duration, max: Duration } | Custom((u32) -> Duration)
 
-pub struct TimeoutInfo = {
+pub type TimeoutInfo = {
   waited: Duration,
   limit: Duration,
   origin: TimeoutOrigin,
@@ -63,13 +72,16 @@ pub enum TimeoutOrigin = UserDeadline | RuntimeDefault | Capability(Str) | Exter
 fn AsyncError::timeout_info(&self) -> Option<&TimeoutInfo>
 fn AsyncError::into_timeout_info(self) -> Option<TimeoutInfo>
 
-#[deprecated(since = "1.0.0-beta2", note = "AsyncError::Timeout へ統一されたため")]
+// deprecated: AsyncError::Timeout へ統一されたため
 pub type TimeoutError = TimeoutInfo
 ```
 
 ### 1.3 ストリームとアシンクイテレータ
 
 ```reml
+pub type Future<T>
+pub type Iter<T>
+
 pub type AsyncStream<T> = {
   next: fn() -> Future<Option<T>>,
 }
@@ -84,7 +96,23 @@ fn collect_async<T>(stream: AsyncStream<T>) -> Future<List<T>>                  
 ### 1.4 DSLオーケストレーション支援 API
 
 ```reml
-pub struct Channel<Send, Recv> where Send: Serialize, Recv: Deserialize {
+pub type Serialize
+pub type Deserialize
+pub type DslSender<T>
+pub type DslReceiver<T>
+pub type Codec<S, R>
+pub type OverflowPolicy
+pub type AsyncError
+pub type DslSpec<T>
+pub type AsyncStream<T>
+pub type ExecutionStrategy
+pub type ErrorPropagationPolicy
+pub type SchedulingPolicy
+pub type MemoryLimit
+pub type CpuQuota
+pub type Json
+
+pub type Channel<Send, Recv> = {
   sender: DslSender<Send>,
   receiver: DslReceiver<Recv>,
   codec: Codec<Send, Recv>,
@@ -93,13 +121,13 @@ pub struct Channel<Send, Recv> where Send: Serialize, Recv: Deserialize {
 }
 
 fn create_channel<S, R>(buffer_size: usize, codec: Codec<S, R>) -> Result<(DslSender<S>, DslReceiver<R>), AsyncError> // `effect {io.async}`
-fn merge_channels<T>(channels: List<DslReceiver<T>>) -> DslReceiver<T>                                             // `effect {io.async}`
-fn split_channel<T>(channel: DslReceiver<T>, predicate: (T) -> Bool) -> (DslReceiver<T>, DslReceiver<T>)           // `effect {io.async}`
+fn merge_channels<T>(receivers: List<DslReceiver<T> >) -> DslReceiver<T>                                            // `effect {io.async}`
+fn split_channel<T>(receiver: DslReceiver<T>, predicate: (T) -> Bool) -> (DslReceiver<T>, DslReceiver<T>)           // `effect {io.async}`
 fn with_execution_plan<T>(dsl: DslSpec<T>, plan: ExecutionPlan) -> DslSpec<T>                                     // `effect {io.async}`
 fn with_plan<T>(stream: AsyncStream<T>, plan: ExecutionPlan) -> AsyncStream<T>                                    // `effect {io.async}`
 fn with_resource_limits<T>(dsl: DslSpec<T>, limits: ResourceLimitSet) -> DslSpec<T>                               // `effect {io.async}`
 
-struct ExecutionPlan = {
+pub type ExecutionPlan = {
   strategy: ExecutionStrategy,
   backpressure: BackpressurePolicy,
   error: ErrorPropagationPolicy,
@@ -114,9 +142,9 @@ pub type ResourceLimitSet = {
 
 fn ResourceLimitSet::new(memory: Option<MemoryLimit>, cpu: Option<CpuQuota>) -> ResourceLimitSet
 
-enum BackpressurePolicy = Drop | DropOldest | Buffer(usize) | Block | Adaptive { high_watermark: usize, low_watermark: usize, strategy: AdaptiveStrategy }
+pub enum BackpressurePolicy = Drop | DropOldest | Buffer(usize) | Block | Adaptive { high_watermark: usize, low_watermark: usize, strategy: AdaptiveStrategy }
 
-enum AdaptiveStrategy = DropNewest | SlowProducer | SignalDownstream
+pub enum AdaptiveStrategy = DropNewest | SlowProducer | SignalDownstream
 ```
 
 - `Channel<Send, Recv>` は DSL 間通信を型安全に扱い、コード変換を `Codec<Send, Recv>` へ委譲する。
@@ -130,6 +158,10 @@ enum AdaptiveStrategy = DropNewest | SlowProducer | SignalDownstream
 #### 1.4.1 Codec 契約
 
 ```reml
+pub type SemVer
+pub type Bytes
+pub type Json
+
 pub struct Codec<Send, Recv> {
   name: Str,
   version: Option<SemVer>,
@@ -163,6 +195,10 @@ pub enum CodecErrorKind = EncodeFailed | DecodeFailed | ValidationFailed | Unsup
 #### 1.4.3 ExecutionPlan の整合性
 
 ```reml
+pub type Duration
+pub type RetryPolicy
+pub type SchedulerConfig
+
 pub enum ExecutionStrategy = Serial | Parallel { max_concurrency: Option<usize> } | Streaming
 
 pub enum ErrorPropagationPolicy = FailFast | Isolate { circuit_breaker: Option<Duration> } | Retry { policy: RetryPolicy }
@@ -190,7 +226,18 @@ pub enum SchedulingPolicy = Auto | Explicit(SchedulerConfig)
 #### 1.4.5 チャネルメトリクス API
 
 ```reml
-pub struct ChannelMetricsHandle = {
+pub type GaugeMetric
+pub type CounterMetric
+pub type LatencyHistogram
+pub type Duration
+pub type Timestamp
+pub type ExecutionMetricsScope
+pub type DslReceiver<T>
+pub type ChannelId
+pub type AsyncError
+pub type u64
+
+pub type ChannelMetricsHandle = {
   queue_depth: GaugeMetric,
   dropped_messages: CounterMetric,
   producer_latency: LatencyHistogram,
@@ -198,7 +245,7 @@ pub struct ChannelMetricsHandle = {
   throughput: CounterMetric,
 }
 
-pub struct ChannelMetricsSample = {
+pub type ChannelMetricsSample = {
   queue_depth: usize,
   dropped_messages: u64,
   producer_latency_p95: Duration,
@@ -207,19 +254,16 @@ pub struct ChannelMetricsSample = {
   observed_at: Timestamp,
 }
 
-fn channel_metrics<T>(scope: &ExecutionMetricsScope,
-  recv: &DslReceiver<T>,
-  channel_id: ChannelId,
-  opts: ChannelMetricOptions = ChannelMetricOptions::default())
+fn channel_metrics<T>(scope: ExecutionMetricsScope, recv: DslReceiver<T>, channel_id: ChannelId, opts: ChannelMetricOptions)
   -> Result<ChannelMetricsHandle, AsyncError>                            // `effect {io.async}`
 
-fn snapshot_channel_metrics(handle: &ChannelMetricsHandle)
+fn snapshot_channel_metrics(metrics_handle: ChannelMetricsHandle)
   -> Result<ChannelMetricsSample, AsyncError>                            // `effect {io.async}`
 
-pub struct ChannelMetricOptions = {
-  collect_dropped_messages: Bool = true,
-  collect_latency: Bool = true,
-  collect_throughput: Bool = true,
+pub type ChannelMetricOptions = {
+  collect_dropped_messages: Bool,
+  collect_latency: Bool,
+  collect_throughput: Bool,
 }
 ```
 
@@ -239,24 +283,9 @@ pub struct ChannelMetricOptions = {
 ### 1.5 プラットフォーム適応スケジューラ
 
 ```reml
-fn default_scheduler_config() -> SchedulerConfig = {
-  let info = platform_info();
-  let hints = scheduler_hints(info); // Core.Async が提供する CPU/IO 推奨値
-  SchedulerConfig {
-    worker_threads: Some(if has_capability(RuntimeCapability::Vector512) {
-      hints.prefer_physical_threads
-    } else {
-      hints.prefer_logical_threads
-    }),
-    max_blocking_threads: if platform_features().contains("io.blocking.strict") {
-      Some(hints.blocking_guard_threads)
-    } else {
-      None
-    },
-    io_driver: info.family == TargetFamily::Unix,
-    time_driver: true,
-  }
-}
+pub type SchedulerConfig
+
+fn default_scheduler_config() -> SchedulerConfig                          // `effect {runtime}`
 ```
 
 * `platform_info()` は `Core.Runtime` から取得した実行環境を返し、`RuntimeCapability` に応じてスケジューラ構成を切り替えられる。
@@ -268,21 +297,11 @@ fn default_scheduler_config() -> SchedulerConfig = {
 実験的な代数的効果ハンドラを用いることで、`io.async` を発生させる API をテスト用モックへ差し替えたり、能力別に stage を切り替えることができる。
 
 ```reml
-@handles(Console)
-fn with_console_mock() -> Result<Text, AsyncError> ! {} =
-  handle greet() with
-    handler Console {
-      operation log(msg, resume) {
-        audit.log("console.log", msg)
-        resume(())
-      }
-      operation ask(_, resume) {
-        resume("Reml")
-      }
-      return value {
-        Ok(value)
-      }
-    }
+pub type Console
+pub type Text
+pub type AsyncError
+
+fn with_console_mock() -> Result<Text, AsyncError>                          // `effect {io.async, audit}`
 ```
 
 - `@handles(Console)` で捕捉効果を宣言し、ハンドラ内部では `resume` をワンショットで呼び出す。
@@ -301,6 +320,9 @@ fn with_console_mock() -> Result<Text, AsyncError> ! {} =
 
 
 ```reml
+pub type Span
+pub type Json
+
 pub type AsyncError = {
   kind: AsyncErrorKind,
   message: Str,
@@ -331,48 +353,64 @@ pub enum AsyncErrorKind = Cancelled | Timeout | RuntimeUnavailable | InvalidConf
 ### 1.9 アクターモデルと分散メッセージング {#core-async-actor}
 
 ```reml
+pub type Uuid
+pub type OverflowPolicy
+pub type AsyncError
+pub type MailboxStats
+pub type Counter
+pub type Histogram
+pub type SchedulerHandle
+pub type TransportHandle
+pub type CapabilityRegistry
+pub type Duration
+pub type Any
+pub type EffectTag
+pub type DiagnosticSpan
+pub type Future<T>
+pub type ExitStatus
+
 pub type ActorId = Uuid
 pub type NodeId = Str
 
-pub struct MailboxHandle<Message> {
+pub type MailboxHandle<Message> = {
   capacity: usize,
   overflow: OverflowPolicy,
   enqueue: fn(Message) -> Result<(), AsyncError>,
   metrics: MailboxStats,
 }
 
-pub struct TransportMetrics {
+pub type TransportMetrics = {
   throughput: Counter,
   latency: Histogram,
 }
 
-pub struct ActorSystem {
+pub type ActorSystem = {
   scheduler: SchedulerHandle,
   transport: Option<TransportHandle>,
   registry: CapabilityRegistry,
   config: ActorSystemConfig,
 }
 
-pub struct ActorSystemConfig {
+pub type ActorSystemConfig = {
   mailbox_high_watermark: usize,
   mailbox_low_watermark: usize,
   ask_timeout: Duration,
 }
 
-pub struct ActorRef<Message> {
+pub type ActorRef<Message> = {
   id: ActorId,
   mailbox: MailboxHandle<Message>,
-  system: &'static ActorSystem,
+  system: ActorSystem,
 }
 
-pub struct ActorContext {
+pub type ActorContext = {
   self_ref: ActorRef<Any>,
   tags: Set<EffectTag>,
   span: DiagnosticSpan,
 }
 
-fn spawn_actor<Message, State>(system: &ActorSystem, init: () -> State,
-  handler: fn(Message, &mut State, &mut ActorContext) -> Future<()>)
+fn spawn_actor<Message, State>(system: ActorSystem, init: () -> State,
+  on_message: fn(Message, State, ActorContext) -> Future<()>)
   -> Result<ActorRef<Message>, AsyncError>                             // `effect {io.async}`
 
 fn send<Message>(target: ActorRef<Message>, message: Message)
@@ -401,7 +439,16 @@ fn monitor(actor: ActorRef<Any>) -> Future<ExitStatus>                 // `effec
 #### 1.9.2 分散トランスポート
 
 ```reml
-pub struct TransportHandle {
+pub type Codec<S, R>
+pub type Bytes
+pub type TransportMetrics
+pub type ActorSystem
+pub type AsyncError
+pub type NodeId
+pub type ActorId
+pub type ActorRef<T>
+
+pub type TransportHandle = {
   name: Str,
   codec: Codec<Bytes, Bytes>,
   secure: TransportSecurity,
@@ -424,22 +471,18 @@ pub enum TransportSecurity = None | TLS { alpn: Str, pin: Option<Bytes> }
 #### 1.9.3 DSL からの利用例
 
 ```reml
-let system = runtime.actor_system()?;
+pub type ActorSystem
+pub type ActorRef<T>
+pub type AsyncError
+pub type Duration
+pub type Future<T>
+pub type Text
 
-actor spec Greeter {
-  state = { greeted: Set<Text> }
+pub enum Message = Greet(Text) | Hello(Text)
 
-  on Message::Greet(name) -> ! { io.async } {
-    if !state.greeted.contains(name) {
-      state.greeted.insert(name);
-      log.info("greet", name);
-    }
-    reply(Message::Hello(name))?;
-  }
-}
-
-let greeter = system.spawn(Greeter::new())?;
-let response = await system.ask(greeter, Message::Greet("Reml"), 2.s)?;
+fn spawn_greeter(system: &ActorSystem) -> Result<ActorRef<Message>, AsyncError> // `effect {io.async}`
+fn greet(system: &ActorSystem, greeter: ActorRef<Message>, name: Text, timeout: Duration)
+  -> Future<Result<Message, AsyncError>>                                       // `effect {io.async}`
 ```
 
 - `actor spec` はコード生成フェーズで上記 API を呼ぶテンプレートを展開し、`Core.Async` が提供するバックプレッシャ制御を透過的に利用する。
@@ -457,7 +500,24 @@ let response = await system.ask(greeter, Message::Greet("Reml"), 2.s)?;
 #### 1.9.5 Supervisor パターンと再起動戦略
 
 ```reml
-pub struct SupervisorSpec = {
+pub type ActorSystem
+pub type ActorRef<T>
+pub type Any
+pub type AsyncError
+pub type EffectTag
+pub type BackoffStrategy
+pub type NonZeroU16
+pub type Duration
+pub type Future<T>
+pub type AsyncStream<T>
+pub type ActorId
+pub type Diagnostic
+pub type Timestamp
+pub type AsyncErrorKind
+pub type Uuid
+pub type u16
+
+pub type SupervisorSpec = {
   name: Str,
   strategy: RestartStrategy,
   children: List<ChildSpec>,
@@ -465,7 +525,7 @@ pub struct SupervisorSpec = {
   audit_label: Option<Str>,
 }
 
-pub struct ChildSpec = {
+pub type ChildSpec = {
   build: fn(&ActorSystem) -> Result<ActorRef<Any>, AsyncError>,
   policy: ChildRestartPolicy,
   tags: Set<EffectTag>,
@@ -476,7 +536,7 @@ pub enum RestartStrategy = OneForOne { budget: RestartBudget }
   | OneForAll { budget: RestartBudget }
   | Temporary
 
-pub struct RestartBudget = {
+pub type RestartBudget = {
   max_restarts: NonZeroU16,
   within: Duration,
   cooldown: Duration,
@@ -484,7 +544,7 @@ pub struct RestartBudget = {
 
 pub enum ChildRestartPolicy = Permanent | Transient | Temporary
 
-pub struct SupervisorHandle = {
+pub type SupervisorHandle = {
   id: Uuid,
   descriptor: SupervisorDescriptor,
   observe: fn() -> AsyncStream<SupervisorEvent>,
@@ -492,7 +552,7 @@ pub struct SupervisorHandle = {
   shutdown: fn(Duration) -> Future<Result<(), AsyncError>>,
 }
 
-pub struct SupervisorEvent = {
+pub type SupervisorEvent = {
   actor: ActorId,
   outcome: SupervisorOutcome,
   restart_count: u16,
@@ -502,32 +562,32 @@ pub struct SupervisorEvent = {
 
 pub enum SupervisorOutcome = Restarted | Escalated | Exhausted | Stopped | Failed(AsyncErrorKind)
 
-pub struct SupervisorDescriptor = {
+pub type SupervisorDescriptor = {
   name: Str,
   strategy: RestartStrategy,
   children: List<ChildDigest>,
 }
 
-pub struct ChildDigest = {
+pub type ChildDigest = {
   actor: ActorId,
   policy: ChildRestartPolicy,
   tags: Set<EffectTag>,
 }
 
-fn spawn_supervised(system: &ActorSystem, spec: SupervisorSpec)
+fn spawn_supervised(system: ActorSystem, spec: SupervisorSpec)
   -> Result<SupervisorHandle, AsyncError>                                  // `effect {io.async, audit}`
 
-fn supervisor_stats(handle: &SupervisorHandle) -> SupervisorStats           // `@pure`
+fn supervisor_stats(supervisor: SupervisorHandle) -> SupervisorStats         // `@pure`
 
-pub struct SupervisorStats = {
+pub type SupervisorStats = {
   restarts_in_window: u16,
   window_started_at: Timestamp,
   exhausted: Bool,
 }
 
-pub struct SupervisorHealthCheck = {
+pub type SupervisorHealthCheck = {
   interval: Duration,
-  probe: fn(&SupervisorHandle) -> Future<Result<(), AsyncError>>,
+  probe: fn(SupervisorHandle) -> Future<Result<(), AsyncError>>,
 }
 ```
 
@@ -543,10 +603,18 @@ pub struct SupervisorHealthCheck = {
 ## 2. Core.Ffi の枠組み
 
 ```reml
-pub type ForeignFunction = FnPtr<(VoidPtr,), VoidPtr>
+pub type FnPtr<Args, Ret>
+pub type VoidPtr
+pub type Path
+pub type LibraryHandle
+pub type FfiError
+pub type Span<T>
+pub type u8
+
+pub type ForeignFunction = FnPtr<VoidPtr, VoidPtr>
 
 fn bind_library(path: Path) -> Result<LibraryHandle, FfiError>               // `effect {ffi}`
-fn get_function(handle: LibraryHandle, name: Str) -> Result<ForeignFunction, FfiError> // `effect {ffi}`
+fn get_function(library: LibraryHandle, name: Str) -> Result<ForeignFunction, FfiError> // `effect {ffi}`
 fn call_ffi(fn_ptr: ForeignFunction, args: FfiArgs) -> Result<FfiValue, FfiError> // `effect {ffi, unsafe}`
 
 pub type FfiArgs = Span<u8>
@@ -556,16 +624,29 @@ pub type FfiValue = Span<u8>
 ### 2.0 バインディング生成と Capability 連携
 
 ```reml
-fn auto_bind(handle: LibraryHandle, name: Str, signature: FfiSignature) -> Result<TypedForeignFn, FfiError> // `effect {ffi}`
-fn auto_bind_all(handle: LibraryHandle, spec: [FfiBinding]) -> Result<BoundLibrary, FfiError>               // `effect {ffi}`
+pub type LibraryHandle
+pub type FfiError
+pub type BoundLibrary
+pub type ForeignFunction
+pub type FfiArgs
+pub type FfiValue
+pub type FfiType
+pub type CallingConvention
+pub type FfiSandbox
+pub type AuditHandle
+pub type RuntimeCapability
+pub type Path
+
+fn auto_bind(library: LibraryHandle, name: Str, signature: FfiSignature) -> Result<TypedForeignFn, FfiError> // `effect {ffi}`
+fn auto_bind_all(library: LibraryHandle, spec: [FfiBinding]) -> Result<BoundLibrary, FfiError>               // `effect {ffi}`
 fn call_with_capability(cap: FfiCapability, symbol: ForeignFunction, args: FfiArgs) -> Result<FfiValue, FfiError> // `effect {ffi, security, audit}`
 
-struct FfiSignature = { params: [FfiType], return_type: FfiType }
-struct FfiBinding   = { name: Str, signature: FfiSignature, conventions: CallingConvention }
-struct SymbolHandle = { library: LibraryHandle, function: ForeignFunction }
-struct TypedForeignFn = { call: fn(FfiArgs) -> Result<FfiValue, FfiError>, symbol: ForeignFunction, metadata: FfiBinding }
-struct FfiCapability = { call_function: fn(SymbolHandle, FfiArgs) -> Result<FfiValue, FfiError>, sandbox: Option<FfiSandbox>, audit: AuditHandle }
-struct LibraryMetadata = { path: Path, preferred_convention: Option<CallingConvention>, required_capabilities: Set<RuntimeCapability> }
+pub type FfiSignature = { params: [FfiType], return_type: FfiType }
+pub type FfiBinding   = { name: Str, signature: FfiSignature, conventions: CallingConvention }
+pub type SymbolHandle = { library: LibraryHandle, function: ForeignFunction }
+pub type TypedForeignFn = { call: fn(FfiArgs) -> Result<FfiValue, FfiError>, symbol: ForeignFunction, metadata: FfiBinding }
+pub type FfiCapability = { call_function: fn(SymbolHandle, FfiArgs) -> Result<FfiValue, FfiError>, sandbox: Option<FfiSandbox>, audit: AuditHandle }
+pub type LibraryMetadata = { path: Path, preferred_convention: Option<CallingConvention>, required_capabilities: Set<RuntimeCapability> }
 ```
 
 - `auto_bind` は署名情報からシリアライザ/デシリアライザを自動生成し、返却された `TypedForeignFn` 経由で型安全な `call` を提供する。
@@ -575,6 +656,8 @@ struct LibraryMetadata = { path: Path, preferred_convention: Option<CallingConve
 - `FfiError` は OS 依存エラーやシンボル解決失敗をラップ。
 
 ```reml
+pub type Path
+
 pub type FfiError = {
   kind: FfiErrorKind,
   message: Str,
@@ -582,14 +665,12 @@ pub type FfiError = {
   symbol_name: Option<Str>,
 }
 
-pub enum FfiErrorKind = {
-  LibraryNotFound,
-  SymbolNotFound,
-  InvalidSignature,
-  CallFailed,
-  SecurityViolation,
-  UnsupportedPlatform,
-}
+pub enum FfiErrorKind = LibraryNotFound
+  | SymbolNotFound
+  | InvalidSignature
+  | CallFailed
+  | SecurityViolation
+  | UnsupportedPlatform
 ```
 
 ### 2.1 ABI とデータレイアウト
@@ -627,24 +708,14 @@ pub enum FfiErrorKind = {
 `ffi` 効果を捕捉するハンドラを用意すると、危険なネイティブ呼び出しをテスト用スタブや監査ロガーへ差し替えられる。
 
 ```reml
-effect ForeignCall : ffi {
-  operation call(name: Text, payload: Bytes) -> Result<Bytes, FfiError>
-}
+pub type Text
+pub type Bytes
+pub type FfiError
+pub type Request
+pub type Response
 
-@handles(ForeignCall)
-@requires_capability(stage="experimental")
-fn with_foreign_stub(request: Request) -> Result<Response, FfiError> ! {} =
-  handle do ForeignCall.call("service", encode(request)) with
-    handler ForeignCall {
-      operation call(name, payload, resume) {
-        audit.log("ffi.call", {"name": name, "bytes": payload.len()})
-        // スタブ応答を返し、本物の FFI を呼び出さず終了
-        resume(Ok(stub_response(name, payload)))
-      }
-      return result {
-        result.and_then(decode_response)
-      }
-    }
+fn foreign_call(name: Text, payload: Bytes) -> Result<Bytes, FfiError>        // `effect {ffi}`
+fn with_foreign_stub(request: Request) -> Result<Response, FfiError>          // `effect {ffi, audit}`
 ```
 
 - `@handles(ForeignCall)` で捕捉可能な効果を宣言し、`resume` に `Result<Bytes, FfiError>` を渡して元の計算へ戻す。
@@ -656,14 +727,14 @@ fn with_foreign_stub(request: Request) -> Result<Response, FfiError> ! {} =
 ### 2.4 タイプセーフな FFI ラッパー
 
 ```reml
-// 自動的なラッパー生成
-macro foreign_fn(lib: Str, name: Str, signature: Str) -> ForeignFunction
+pub type ForeignFunction
+pub type FfiArgs
+pub type FfiValue
+pub type FfiError
 
-// 使用例
-let add_numbers = foreign_fn!("math", "add", "fn(i32, i32) -> i32");
-let args = ffi::encode_args(&(42i32, 24i32));
-let raw = add_numbers.call(args)?;            // raw は FfiValue (Span<u8>)
-let sum: i32 = ffi::decode_result(raw)?;
+fn foreign_fn(lib: Str, name: Str, signature: Str) -> ForeignFunction
+fn call_foreign(fn_ptr: ForeignFunction, args: FfiArgs) -> Result<FfiValue, FfiError>
+fn decode_result<T>(raw: FfiValue) -> Result<T, FfiError>
 ```
 
 `ffi::encode_args` / `ffi::decode_result` は `FfiSignature` と互換のシリアライズヘルパで、`Span<u8>` を安全に生成・復元する。低レベル API を直接利用する場合は `span_from_raw_parts` と `CapabilitySecurity.effect_scope` を併用し、境界検査と監査記録を怠らないこと。
@@ -673,10 +744,11 @@ let sum: i32 = ffi::decode_result(raw)?;
 > 目的：`reml-bindgen` 生成物や手書き `extern` を DSL で包み、`unsafe` 境界を局所化した安全な FFI 呼び出しを提供する。
 
 ```reml
-module Core.Ffi.Dsl
+pub type ForeignFunction
+pub type FfiError
+pub type Ownership
 
-pub enum FfiType =
-  | Void | Bool
+pub enum FfiType = Void | Bool
   | I8 | U8 | I16 | U16 | I32 | U32 | I64 | U64
   | F32 | F64
   | Ptr(FfiType)
@@ -685,8 +757,8 @@ pub enum FfiType =
   | Enum(FfiEnum)
   | Fn(FfiFnSig)
 
-pub let int: FfiType = I32
-pub let double: FfiType = F64
+fn int() -> FfiType
+fn double() -> FfiType
 fn ptr(inner: FfiType) -> FfiType
 fn const_ptr(inner: FfiType) -> FfiType
 
@@ -701,7 +773,7 @@ pub type FfiField = { name: Str, ty: FfiType }
 pub enum FfiRepr = C | Transparent | Packed
 
 pub type FfiEnum = { name: Str, repr: FfiIntRepr, variants: List<FfiVariant> }
-pub type FfiVariant = { name: Str, value: Option<I64> }
+pub type FfiVariant = { name: Str, value: Option<Int> }
 pub enum FfiIntRepr = I8 | U8 | I16 | U16 | I32 | U32 | I64 | U64
 
 pub type FfiLibrary = { name: Str }
@@ -714,7 +786,7 @@ pub type FfiWrapSpec = {
   error_map: Option<Str>,
 }
 
-fn fn_sig(params: List<FfiType>, returns: FfiType, variadic: Bool = false) -> FfiFnSig
+fn fn_sig(params: List<FfiType>, returns: FfiType, variadic: Bool) -> FfiFnSig
 fn bind_library(name: Str) -> Result<FfiLibrary, FfiError>              // `effect {ffi}`
 fn FfiLibrary.bind_fn(name: Str, sig: FfiFnSig) -> Result<FfiRawFn, FfiError> // `effect {ffi, unsafe}`
 fn wrap<Args, Ret>(raw: FfiRawFn, spec: FfiWrapSpec) -> Result<fn(Args) -> Result<Ret, FfiError>, FfiError> // `effect {ffi}`
@@ -728,17 +800,26 @@ fn wrap<Args, Ret>(raw: FfiRawFn, spec: FfiWrapSpec) -> Result<fn(Args) -> Resul
 #### 2.4.1.1 DSL 利用例
 
 ```reml
-let cos = effect {ffi, unsafe} {
-  let lib = ffi.bind_library("m")?
-  let raw = lib.bind_fn("cos", ffi.fn_sig([ffi.double], ffi.double, false))?
-  ffi.wrap(raw, { name: "libm.cos", null_check: false, ownership: None, error_map: None })?
-}
-let value = cos(0.5)?
+pub type FfiLibrary
+pub type FfiFnSig
+pub type FfiWrapSpec
+pub type FfiError
+
+fn bind_libm() -> Result<FfiLibrary, FfiError>                         // `effect {ffi}`
+fn bind_cos<Args, Ret>(lib: FfiLibrary, sig: FfiFnSig, spec: FfiWrapSpec)
+  -> Result<fn(Args) -> Result<Ret, FfiError>, FfiError>               // `effect {ffi}`
 ```
 
 ### 2.5 呼出規約とプラットフォーム適応
 
 ```reml
+pub type PlatformInfo
+pub type LibraryMetadata
+pub type FfiError
+pub type Path
+pub type LibraryHandle
+pub type ForeignFunction
+
 pub enum CallingConvention = C | StdCall | FastCall | SysV | WasmSystemV | Custom(Str)
 
 fn resolve_calling_convention(target: PlatformInfo, foreign: LibraryMetadata) -> Result<CallingConvention, FfiError> // `effect {runtime}`
@@ -754,6 +835,15 @@ fn with_abi_adaptation(fn_ptr: ForeignFunction, conv: CallingConvention) -> Resu
 ### 2.6 メモリ管理と所有権境界
 
 ```reml
+pub type Ptr<T>
+pub type Layout
+pub type FnPtr<Args, Ret>
+pub type VoidPtr
+pub type Span<T>
+pub type FfiError
+pub type MutPtr<T>
+pub type u8
+
 pub type ForeignPtr<T> = {
   raw: Ptr<T>,
   layout: Option<Layout>,
@@ -997,15 +1087,16 @@ manifest 読み込み
 ### 3.1 型定義
 
 ```reml
-module Core.Unsafe.Ptr {
-  type Ptr<T>
-  type MutPtr<T>
-  type NonNullPtr<T>
-  type VoidPtr = Ptr<void>
-  type FnPtr<Args, Ret>
-  type Span<T> = { ptr: NonNullPtr<T>, len: usize }
-  type TaggedPtr<T> = { raw: Ptr<T>, label: Option<Str> }
-}
+pub type Ptr<T>
+pub type MutPtr<T>
+pub type NonNullPtr<T>
+pub type Void
+pub type FnPtr<Args, Ret>
+
+pub type VoidPtr = Ptr<Void>
+
+pub type Span<T> = { ptr: NonNullPtr<T>, len: usize }
+pub type TaggedPtr<T> = { raw: Ptr<T>, label: Option<Str> }
 ```
 
 - `Ptr<T>` は NULL 許容で読み取り専用。`MutPtr<T>` は書き込みを許可するがデータ競合は未定義動作（UB）となる。
@@ -1016,14 +1107,19 @@ module Core.Unsafe.Ptr {
 ### 3.2 生成・変換 API
 
 ```reml
+pub type Ptr<T>
+pub type MutPtr<T>
+pub type NonNullPtr<T>
+pub type UnsafeError
+
 fn addr_of<T>(value: &T) -> Ptr<T>
 fn addr_of_mut<T>(value: &mut T) -> MutPtr<T>
 fn from_option<T>(value: Option<NonNullPtr<T>>) -> Ptr<T>
 fn require_non_null<T>(ptr: Ptr<T>) -> Result<NonNullPtr<T>, UnsafeError>
-fn cast<T, U>(ptr: Ptr<T>) -> Ptr<U> unsafe
-fn cast_mut<T, U>(ptr: MutPtr<T>) -> MutPtr<U> unsafe
-fn to_int<T>(ptr: Ptr<T>) -> usize unsafe
-fn from_int<T>(addr: usize) -> Ptr<T> unsafe
+fn cast<T, U>(ptr: Ptr<T>) -> Ptr<U>                                       // `unsafe`
+fn cast_mut<T, U>(ptr: MutPtr<T>) -> MutPtr<U>                             // `unsafe`
+fn to_int<T>(ptr: Ptr<T>) -> usize                                         // `unsafe`
+fn from_int<T>(addr: usize) -> Ptr<T>                                      // `unsafe`
 ```
 
 - `addr_of*` は評価順序を固定してアドレスを取得し、未初期化メモリへの参照生成を避ける。
@@ -1033,13 +1129,17 @@ fn from_int<T>(addr: usize) -> Ptr<T> unsafe
 ### 3.3 読み書き・コピー API
 
 ```reml
-fn read<T>(ptr: Ptr<T>) -> Result<T, UnsafeError> unsafe
-fn read_unaligned<T>(ptr: Ptr<T>) -> Result<T, UnsafeError> unsafe
-fn write<T>(ptr: MutPtr<T>, value: T) -> Result<(), UnsafeError> unsafe
-fn write_unaligned<T>(ptr: MutPtr<T>, value: T) -> Result<(), UnsafeError> unsafe
-fn copy_to<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) -> Result<(), UnsafeError> unsafe
-fn copy_nonoverlapping<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) -> Result<(), UnsafeError> unsafe
-fn fill<T: Copy>(dst: MutPtr<T>, value: T, count: usize) -> Result<(), UnsafeError> unsafe
+pub type Ptr<T>
+pub type MutPtr<T>
+pub type UnsafeError
+
+fn read<T>(ptr: Ptr<T>) -> Result<T, UnsafeError>                           // `unsafe`
+fn read_unaligned<T>(ptr: Ptr<T>) -> Result<T, UnsafeError>                 // `unsafe`
+fn write<T>(ptr: MutPtr<T>, value: T) -> Result<(), UnsafeError>            // `unsafe`
+fn write_unaligned<T>(ptr: MutPtr<T>, value: T) -> Result<(), UnsafeError>  // `unsafe`
+fn copy_to<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) -> Result<(), UnsafeError> // `unsafe`
+fn copy_nonoverlapping<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) -> Result<(), UnsafeError> // `unsafe`
+fn fill<T>(dst: MutPtr<T>, value: T, count: usize) -> Result<(), UnsafeError> // `unsafe`
 ```
 
 - `read`/`write` は自然整列が満たされている必要があり、違反時は `UnsafeErrorKind::InvalidAlignment` を返す。整列保証が無い場合は `*_unaligned` を利用する。
@@ -1049,10 +1149,16 @@ fn fill<T: Copy>(dst: MutPtr<T>, value: T, count: usize) -> Result<(), UnsafeErr
 ### 3.4 アドレス計算と Span ユーティリティ
 
 ```reml
-fn add<T>(ptr: Ptr<T>, count: usize) -> Ptr<T> unsafe
-fn add_mut<T>(ptr: MutPtr<T>, count: usize) -> MutPtr<T> unsafe
-fn offset<T>(ptr: Ptr<T>, delta: isize) -> Ptr<T> unsafe
-fn byte_offset<T>(ptr: Ptr<T>, bytes: isize) -> Ptr<T> unsafe
+pub type Ptr<T>
+pub type MutPtr<T>
+pub type Span<T>
+pub type UnsafeError
+pub type isize
+
+fn add<T>(ptr: Ptr<T>, count: usize) -> Ptr<T>                              // `unsafe`
+fn add_mut<T>(ptr: MutPtr<T>, count: usize) -> MutPtr<T>                    // `unsafe`
+fn offset<T>(ptr: Ptr<T>, delta: isize) -> Ptr<T>                           // `unsafe`
+fn byte_offset<T>(ptr: Ptr<T>, bytes: isize) -> Ptr<T>                      // `unsafe`
 
 fn span_from_raw_parts<T>(ptr: Ptr<T>, len: usize) -> Result<Span<T>, UnsafeError>
 fn span_split_at<T>(span: Span<T>, index: usize) -> Result<(Span<T>, Span<T>), UnsafeError>
@@ -1067,6 +1173,9 @@ fn span_as_mut_ptr<T>(span: Span<T>) -> MutPtr<T>
 ### 3.5 診断・監査補助
 
 ```reml
+pub type Ptr<T>
+pub type TaggedPtr<T>
+
 fn tag<T>(ptr: Ptr<T>, label: Str) -> TaggedPtr<T>
 fn debug_repr<T>(ptr: Ptr<T>) -> Str
 ```
@@ -1079,15 +1188,11 @@ fn debug_repr<T>(ptr: Ptr<T>) -> Str
 #### 3.6.1 FFI コール境界
 
 ```reml
-extern "C" fn strlen(ptr: Ptr<u8>) -> usize
+pub type Ptr<T>
+pub type u8
 
-fn c_strlen(input: Str) -> usize = {
-  unsafe {
-    let bytes = input.asBytes();
-    let ptr = bytes.asPtr();
-    strlen(ptr)
-  }
-}
+fn strlen(ptr: Ptr<u8>) -> usize                                           // `extern "C"`
+fn c_strlen(input: Str) -> usize                                           // `unsafe`
 ```
 
 - FFI 側が NULL を返す場合は `require_non_null` を組み合わせ、`UnsafeErrorKind::NullPointer` を `FfiError` に昇格させる。
@@ -1096,12 +1201,12 @@ fn c_strlen(input: Str) -> usize = {
 #### 3.6.2 バッファ操作
 
 ```reml
-fn parse_header(bytes: Span<u8>) -> Result<Header, ParseError> = {
-  if bytes.len < HEADER_LEN { return Err(ParseError::Truncated) }
-  let version_ptr = unsafe { bytes.ptr.add(OFFSET_VERSION) };
-  let version = unsafe { version_ptr.read()? };
-  Ok(Header { version, ..default })
-}
+pub type Span<T>
+pub type Header
+pub type ParseError
+pub type u8
+
+fn parse_header(bytes: Span<u8>) -> Result<Header, ParseError>              // `unsafe`
 ```
 
 - `Span<T>` による境界チェックを行った後、局所的な `unsafe` ブロックを閉じ込めて利用すること。
@@ -1110,20 +1215,16 @@ fn parse_header(bytes: Span<u8>) -> Result<Header, ParseError> = {
 #### 3.6.3 GC ルート登録
 
 ```reml
-struct RootGuard {
+pub type NonNullPtr<T>
+pub type Object
+pub type UnsafeError
+
+pub type RootGuard = {
   ptr: NonNullPtr<Object>,
 }
 
-impl RootGuard {
-  fn new(ptr: NonNullPtr<Object>) -> Result<RootGuard, UnsafeError> = {
-    unsafe { runtime::register_root(ptr)? }
-    Ok(RootGuard { ptr })
-  }
-
-  fn release(self) -> Result<(), UnsafeError> = {
-    unsafe { runtime::unregister_root(self.ptr) }
-  }
-}
+fn RootGuard::new(ptr: NonNullPtr<Object>) -> Result<RootGuard, UnsafeError>  // `unsafe`
+fn RootGuard::release(self) -> Result<(), UnsafeError>                       // `unsafe`
 ```
 
 - `register_root`/`unregister_root` は `unsafe` 操作であり、`RuntimeCapability::Gc` の監査フックを通じて `audit.log("gc.root", {"ptr": debug_repr(self.ptr)})` を残す。
@@ -1155,6 +1256,11 @@ fn transmute<T, U>(value: T) -> U                        // `effect {unsafe}`
 ### 4.1 安全性検証メカニズム
 
 ```reml
+pub type Ptr<T>
+pub type CodeLocation
+pub type u8
+pub type isize
+
 fn verify_memory_safety(ptr: Ptr<u8>, size: usize) -> Result<(), UnsafeError>  // `effect {unsafe}`
 fn check_alignment<T>(ptr: Ptr<T>) -> Bool                                     // `effect {unsafe}`
 fn bounds_check(ptr: Ptr<u8>, offset: isize, bounds: (usize, usize)) -> Result<(), UnsafeError> // `effect {unsafe}`
@@ -1165,19 +1271,20 @@ pub type UnsafeError = {
   location: Option<CodeLocation>,
 }
 
-pub enum UnsafeErrorKind = {
-  NullPointer,
-  OutOfBounds,
-  InvalidAlignment,
-  UseAfterFree,
-  DoubleFree,
-  MemoryLeak,
-}
+pub enum UnsafeErrorKind = NullPointer
+  | OutOfBounds
+  | InvalidAlignment
+  | UseAfterFree
+  | DoubleFree
+  | MemoryLeak
 ```
 
 ### 4.2 監査された unsafe 操作
 
 ```reml
+pub type UnsafeContext
+pub type CodeLocation
+
 fn audited_unsafe_block<T>(operation: Str, f: () -> T) -> T                    // `effect {unsafe, audit}`
 fn log_unsafe_operation(op: UnsafeOperation, context: UnsafeContext) -> ()     // `effect {audit}`
 
@@ -1188,13 +1295,11 @@ pub type UnsafeOperation = {
   stack_trace: List<CodeLocation>,
 }
 
-pub enum UnsafeOperationType = {
-  PointerDereference,
-  MemoryAllocation,
-  MemoryDeallocation,
-  TypeTransmutation,
-  ForeignCall,
-}
+pub enum UnsafeOperationType = PointerDereference
+  | MemoryAllocation
+  | MemoryDeallocation
+  | TypeTransmutation
+  | ForeignCall
 ```
 
 ## 5. Capability Registry との連携
@@ -1202,7 +1307,16 @@ pub enum UnsafeOperationType = {
 ### 5.1 非同期 Capability
 
 ```reml
-pub type AsyncCapability = {
+pub type AsyncRuntime
+pub type CapabilityError
+pub type TaskHandle<T>
+pub type TimerCallback
+pub type TimerId
+pub type AsyncMetrics
+pub type Future<T>
+pub type Duration
+
+pub type AsyncCapability<T> = {
   create_runtime: fn(AsyncRuntimeConfig) -> Result<AsyncRuntime, CapabilityError>,
   spawn_task: fn(Future<T>) -> Result<TaskHandle<T>, CapabilityError>,
   schedule_timer: fn(Duration, TimerCallback) -> Result<TimerId, CapabilityError>,
@@ -1221,6 +1335,15 @@ pub type AsyncRuntimeConfig = {
 ### 5.2 FFI Capability
 
 ```reml
+pub type Path
+pub type LibraryHandle
+pub type CapabilityError
+pub type SymbolHandle
+pub type FfiSignature
+pub type FfiArgs
+pub type FfiValue
+pub type PathPattern
+
 pub type FfiCapability = {
   load_library: fn(Path, FfiSecurity) -> Result<LibraryHandle, CapabilityError>,
   resolve_symbol: fn(LibraryHandle, Str) -> Result<SymbolHandle, CapabilityError>,
@@ -1267,6 +1390,14 @@ LLVM lowering では `reml.bridge.version = 1` のモジュールフラグと `r
 ### 5.3 Unsafe Capability
 
 ```reml
+pub type CapabilityError
+pub type MutPtr<T>
+pub type NonNullPtr<T>
+pub type Ptr<T>
+pub type AllocationId
+pub type PointerInfo
+pub type u8
+
 pub type UnsafeCapability = {
   enable_raw_pointers: fn(UnsafePolicy) -> Result<(), CapabilityError>,
   allocate_raw: fn(usize, usize) -> Result<MutPtr<u8>, CapabilityError>,
@@ -1287,21 +1418,11 @@ pub type UnsafePolicy = {
 ## 6. 使用例（調査メモ）
 
 ```reml
-use Core;
-use Core.Async;
-use Core.Ffi;
+pub type Path
+pub type AsyncError
+pub type Diagnostic
 
-fn async_file_copy(src: Path, dest: Path) -> Result<(), Diagnostic> =
-  spawn(async move {
-    let mut reader = AsyncFile::open(src).await?;
-    let mut writer = AsyncFile::create(dest).await?;
-    while let Some(chunk) = reader.next_chunk().await? {
-      writer.write_all(chunk).await?;
-    }
-    Ok(())
-  }, scheduler())
-    .await
-    .map_err(|err| Diagnostic::from_async_error(err))
+fn async_file_copy(src: Path, dest: Path) -> Result<(), Diagnostic>          // `effect {io.async}`
 ```
 
 - 将来的な AsyncFile API の利用例（現時点では概念メモ）。`await` 構文は Reml の非同期拡張候補。
@@ -1312,6 +1433,10 @@ fn async_file_copy(src: Path, dest: Path) -> Result<(), Diagnostic> =
 ### 7.1 非同期セキュリティ
 
 ```reml
+pub type Future<T>
+pub type LimitError
+pub type Duration
+
 // タイムアウトとリソース制限
 fn with_async_limits<T>(limits: AsyncLimits, future: Future<T>) -> Future<Result<T, LimitError>>
 
@@ -1325,6 +1450,13 @@ pub type AsyncLimits = {
 ### 7.2 FFI セキュリティ
 
 ```reml
+pub type ForeignFunction
+pub type FfiArgs
+pub type FfiError
+pub type Duration
+pub type SyscallId
+pub type FileAccessPolicy
+
 // サンドボックス内での FFI 呼び出し
 fn call_sandboxed<T>(foreign_fn: ForeignFunction, args: FfiArgs, sandbox: FfiSandbox) -> Result<T, FfiError> // `effect {ffi, unsafe, security, audit}`
 
@@ -1340,6 +1472,8 @@ pub type FfiSandbox = {
 ### 7.3 Unsafe セキュリティ
 
 ```reml
+pub type UnsafeError
+
 // メモリ安全性の動的検証
 fn enable_memory_sanitizer(config: SanitizerConfig) -> Result<(), UnsafeError>  // `effect {unsafe, debug}`
 
@@ -1357,6 +1491,13 @@ pub type SanitizerConfig = {
 ### 8.1 非同期最適化
 
 ```reml
+pub type AsyncMetrics
+pub type AsyncRuntimeConfig
+pub type WorkloadProfile
+pub type SchedulingStrategy
+pub type Future<T>
+pub type AsyncStream<T>
+
 // タスクスケジューリングの調整
 fn tune_async_runtime(metrics: AsyncMetrics) -> AsyncRuntimeConfig
 fn adaptive_scheduling(workload: WorkloadProfile) -> SchedulingStrategy
@@ -1369,6 +1510,14 @@ fn stream_with_backpressure<T>(stream: AsyncStream<T>, buffer_size: usize) -> As
 ### 8.2 FFI 最適化
 
 ```reml
+pub type ForeignFunction
+pub type CachedForeignFunction
+pub type FfiCall
+pub type FfiValue
+pub type FfiError
+pub type FfiSignature
+pub type CompiledWrapper
+
 // 関数呼び出しのキャッシュ
 fn cache_ffi_function(foreign_fn: ForeignFunction, cache_size: usize) -> CachedForeignFunction
 fn batch_ffi_calls(calls: List<FfiCall>) -> Result<List<FfiValue>, FfiError>
@@ -1382,14 +1531,28 @@ fn compile_ffi_wrapper(signature: FfiSignature) -> Result<CompiledWrapper, FfiEr
 ### 9.1 非同期デバッグ
 
 ```reml
-fn trace_async_execution(future: Future<T>) -> Future<(T, ExecutionTrace)>      // `effect {debug}`
-fn debug_deadlock_detection() -> Result<List<DeadlockInfo>, DebugError>        // `effect {debug}`
-fn async_test_harness<T>(test: Future<T>, timeout: Duration) -> TestResult<T>   // `effect {test}`
+pub type Future<T>
+pub type ExecutionTrace
+pub type DeadlockInfo
+pub type DebugError
+pub type Duration
+pub type TestResult<T>
+
+fn trace_async_execution<T>(future: Future<T>) -> Future<(T, ExecutionTrace)>      // `effect {debug}`
+fn debug_deadlock_detection() -> Result<List<DeadlockInfo>, DebugError>           // `effect {debug}`
+fn async_test_harness<T>(test: Future<T>, timeout: Duration) -> TestResult<T>     // `effect {test}`
 ```
 
 ### 9.2 FFI テスト
 
 ```reml
+pub type FfiSignature
+pub type MockBehavior
+pub type MockForeignFunction
+pub type ForeignFunction
+pub type FfiContract
+pub type FfiError
+
 fn mock_foreign_function(signature: FfiSignature, behavior: MockBehavior) -> MockForeignFunction
 fn verify_ffi_contract(foreign_fn: ForeignFunction, contract: FfiContract) -> Result<(), FfiError>
 ```
@@ -1397,6 +1560,10 @@ fn verify_ffi_contract(foreign_fn: ForeignFunction, contract: FfiContract) -> Re
 ### 9.3 Unsafe テスト
 
 ```reml
+pub type CorruptionPattern
+pub type UnsafeInvariant
+pub type TestResult<T>
+
 fn simulate_memory_corruption(pattern: CorruptionPattern) -> ()                 // `effect {unsafe, test}`
 fn test_unsafe_invariants(invariants: List<UnsafeInvariant>) -> TestResult<()> // `effect {unsafe, test}`
 ```

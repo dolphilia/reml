@@ -1,3 +1,7 @@
+pub type SemVer
+pub type Bytes
+pub type Json
+
 pub struct Codec<Send, Recv> {
   name: Str,
   version: Option<SemVer>,

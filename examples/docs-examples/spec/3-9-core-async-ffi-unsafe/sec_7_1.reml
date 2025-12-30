@@ -1,3 +1,7 @@
+pub type Future<T>
+pub type LimitError
+pub type Duration
+
 // タイムアウトとリソース制限
 fn with_async_limits<T>(limits: AsyncLimits, future: Future<T>) -> Future<Result<T, LimitError>>
 

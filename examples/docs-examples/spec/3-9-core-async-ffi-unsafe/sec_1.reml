@@ -1,10 +1,15 @@
+pub type Context
+pub type SchedulerHandle
+pub type Duration
+pub type AsyncError
+
 pub type Future<T> = {
   poll: fn(&mut Context) -> Poll<T>,
 }
 
 pub enum Poll<T> = Ready(T) | Pending
 
-pub struct Task<T> {
+pub type Task<T> = {
   future: Future<T>,
   scheduler: SchedulerHandle,
 }

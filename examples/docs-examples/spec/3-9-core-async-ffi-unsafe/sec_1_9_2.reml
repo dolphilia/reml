@@ -1,4 +1,13 @@
-pub struct TransportHandle {
+pub type Codec<S, R>
+pub type Bytes
+pub type TransportMetrics
+pub type ActorSystem
+pub type AsyncError
+pub type NodeId
+pub type ActorId
+pub type ActorRef<T>
+
+pub type TransportHandle = {
   name: Str,
   codec: Codec<Bytes, Bytes>,
   secure: TransportSecurity,
