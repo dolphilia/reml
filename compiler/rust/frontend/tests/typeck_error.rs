@@ -108,3 +108,89 @@ fn intrinsic_invalid_type_is_reported() {
         "native.intrinsic.invalid_type が報告される"
     );
 }
+
+#[test]
+fn inline_asm_missing_effect_is_reported() {
+    let report = typecheck_source(r#"fn read() = unsafe { inline_asm("rdtsc") }"#);
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|entry| entry.code == "native.inline_asm.missing_effect"),
+        "native.inline_asm.missing_effect が報告される"
+    );
+}
+
+#[test]
+fn inline_asm_missing_cfg_is_reported() {
+    let report = typecheck_source(r#"fn read() !{native} = unsafe { inline_asm("rdtsc") }"#);
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|entry| entry.code == "native.inline_asm.missing_cfg"),
+        "native.inline_asm.missing_cfg が報告される"
+    );
+}
+
+#[test]
+fn inline_asm_invalid_type_is_reported() {
+    let report = typecheck_source(
+        r#"
+@cfg(target_arch = "x86_64")
+fn read(s: Str) !{native} = unsafe { inline_asm("nop", inputs("r": s)) }
+"#,
+    );
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|entry| entry.code == "native.inline_asm.invalid_type"),
+        "native.inline_asm.invalid_type が報告される"
+    );
+}
+
+#[test]
+fn llvm_ir_missing_effect_is_reported() {
+    let report = typecheck_source(
+        r#"fn add(a: Int, b: Int) = unsafe { llvm_ir!(Int) { "%0 = add i32 $0, $1", inputs(a, b) } }"#,
+    );
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|entry| entry.code == "native.llvm_ir.missing_effect"),
+        "native.llvm_ir.missing_effect が報告される"
+    );
+}
+
+#[test]
+fn llvm_ir_missing_cfg_is_reported() {
+    let report = typecheck_source(
+        r#"fn add(a: Int, b: Int) !{native} = unsafe { llvm_ir!(Int) { "%0 = add i32 $0, $1", inputs(a, b) } }"#,
+    );
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|entry| entry.code == "native.llvm_ir.missing_cfg"),
+        "native.llvm_ir.missing_cfg が報告される"
+    );
+}
+
+#[test]
+fn llvm_ir_invalid_type_is_reported() {
+    let report = typecheck_source(
+        r#"
+@cfg(target_arch = "x86_64")
+fn add(s: Str) !{native} = unsafe { llvm_ir!(Str) { "%0 = add i32 $0, $1", inputs(s) } }
+"#,
+    );
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|entry| entry.code == "native.llvm_ir.invalid_type"),
+        "native.llvm_ir.invalid_type が報告される"
+    );
+}

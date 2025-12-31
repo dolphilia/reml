@@ -367,6 +367,18 @@ pub enum MirExprKind {
     Unsafe {
         body: MirExprId,
     },
+    InlineAsm {
+        template: String,
+        outputs: Vec<MirInlineAsmOutput>,
+        inputs: Vec<MirInlineAsmInput>,
+        clobbers: Vec<String>,
+        options: Vec<String>,
+    },
+    LlvmIr {
+        result_type: String,
+        template: String,
+        inputs: Vec<MirExprId>,
+    },
     #[serde(rename = "unknown")]
     Unknown,
 }
@@ -375,6 +387,18 @@ pub enum MirExprKind {
 pub struct MirEffectCall {
     pub effect: Ident,
     pub argument: MirExprId,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MirInlineAsmOutput {
+    pub constraint: String,
+    pub target: MirExprId,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MirInlineAsmInput {
+    pub constraint: String,
+    pub expr: MirExprId,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -803,6 +827,40 @@ impl MirExprBuilder {
             },
             typed::TypedExprKind::Unsafe { body } => MirExprKind::Unsafe {
                 body: self.lower_expr(body),
+            },
+            typed::TypedExprKind::InlineAsm {
+                template,
+                outputs,
+                inputs,
+                clobbers,
+                options,
+            } => MirExprKind::InlineAsm {
+                template: template.clone(),
+                outputs: outputs
+                    .iter()
+                    .map(|output| MirInlineAsmOutput {
+                        constraint: output.constraint.clone(),
+                        target: self.lower_expr(&output.target),
+                    })
+                    .collect(),
+                inputs: inputs
+                    .iter()
+                    .map(|input| MirInlineAsmInput {
+                        constraint: input.constraint.clone(),
+                        expr: self.lower_expr(&input.expr),
+                    })
+                    .collect(),
+                clobbers: clobbers.clone(),
+                options: options.clone(),
+            },
+            typed::TypedExprKind::LlvmIr {
+                result_type,
+                template,
+                inputs,
+            } => MirExprKind::LlvmIr {
+                result_type: result_type.clone(),
+                template: template.clone(),
+                inputs: inputs.iter().map(|input| self.lower_expr(input)).collect(),
             },
             typed::TypedExprKind::Unknown => MirExprKind::Unknown,
         };
@@ -1281,6 +1339,21 @@ fn collect_match_lowerings_from_expr(
         }
         typed::TypedExprKind::PerformCall { call } => {
             collect_match_lowerings_from_expr(&call.argument, owner, plans);
+        }
+        typed::TypedExprKind::InlineAsm {
+            outputs, inputs, ..
+        } => {
+            for output in outputs {
+                collect_match_lowerings_from_expr(&output.target, owner, plans);
+            }
+            for input in inputs {
+                collect_match_lowerings_from_expr(&input.expr, owner, plans);
+            }
+        }
+        typed::TypedExprKind::LlvmIr { inputs, .. } => {
+            for input in inputs {
+                collect_match_lowerings_from_expr(input, owner, plans);
+            }
         }
         typed::TypedExprKind::EffectBlock { body }
         | typed::TypedExprKind::Async { body, .. }

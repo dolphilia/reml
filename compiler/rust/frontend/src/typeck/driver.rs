@@ -19,8 +19,8 @@ use crate::effects::diagnostics::CapabilityMismatch;
 use crate::parser::ast::{
     ActorSpecDecl, Attribute, BinaryOp, ConductorDecl, ConductorMonitorTarget, Decl, DeclKind,
     EffectAnnotation, EffectDecl, EnumDecl, Expr, ExprKind, FixityKind, Function,
-    FunctionSignature, HandlerDecl, HandlerEntry, Ident, ImplItem, Literal, LiteralKind,
-    MacroDecl, MatchArm, Module, ModuleBody, ModulePath, Param, Pattern, PatternKind, RelativeHead,
+    FunctionSignature, HandlerDecl, HandlerEntry, Ident, ImplItem, Literal, LiteralKind, MacroDecl,
+    MatchArm, Module, ModuleBody, ModulePath, Param, Pattern, PatternKind, RelativeHead,
     SlicePatternItem, Stmt, StmtKind, StructDecl, TraitDecl, TypeAnnot, TypeDecl, TypeDeclBody,
     TypeDeclVariant, TypeDeclVariantPayload, TypeKind, TypeLiteral, TypeUnionVariant, UnaryOp,
     VariantPayload,
@@ -393,7 +393,7 @@ impl TypecheckDriver {
             typed_module.functions.push(typed::TypedFunction {
                 name: function.name.name.clone(),
                 span: function.span,
-                attributes: intrinsic_attribute_strings(&function.attrs),
+                attributes: function_attribute_strings(&function.attrs),
                 params: typed_params,
                 varargs: false,
                 return_type: return_label,
@@ -533,7 +533,7 @@ impl TypecheckDriver {
                 typed_module.functions.push(typed::TypedFunction {
                     name: function_name,
                     span: function.span,
-                    attributes: intrinsic_attribute_strings(&function.attrs),
+                    attributes: function_attribute_strings(&function.attrs),
                     params: typed_params,
                     varargs: false,
                     return_type: return_label,
@@ -671,6 +671,7 @@ impl TypecheckDriver {
         violations.extend(detect_duplicate_impls(module));
         violations.extend(detect_varargs_violations(module));
         violations.extend(detect_spec_core_runtime_violations(module));
+        violations.extend(detect_native_escape_hatch_violations(module));
         let violations = compress_typecheck_violations(violations);
 
         let used_impls = all_constraints
@@ -823,6 +824,12 @@ pub enum TypecheckViolationKind {
     VarargsInvalidAbi,
     VarargsMissingFixedParam,
     UnsafeInPureContext,
+    NativeInlineAsmMissingEffect,
+    NativeInlineAsmMissingCfg,
+    NativeInlineAsmInvalidType,
+    NativeLlvmIrMissingEffect,
+    NativeLlvmIrMissingCfg,
+    NativeLlvmIrInvalidType,
     LambdaCaptureUnsupported,
     LambdaCaptureMutUnsupported,
     RecUnresolvedIdent,
@@ -1246,6 +1253,136 @@ impl TypecheckViolation {
             span: Some(span),
             notes: vec![ViolationNote::plain(
                 "Int/Bool/Unit およびそれらのみで構成される Tuple のみ許可されます。",
+            )],
+            capability: None,
+            function,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn inline_asm_missing_effect(span: Span, function: Option<String>) -> Self {
+        let label = function.unwrap_or_else(|| "unknown".to_string());
+        let message = format!(
+            "`inline_asm` を含む関数 `{}` は `!{{native}}` を必ず指定する必要があります。",
+            label
+        );
+        Self {
+            kind: TypecheckViolationKind::NativeInlineAsmMissingEffect,
+            code: "native.inline_asm.missing_effect",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "例: `fn read() !{native} = unsafe { inline_asm(...) }` のように効果注釈を追加してください。",
+            )],
+            capability: None,
+            function: Some(label),
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn llvm_ir_missing_effect(span: Span, function: Option<String>) -> Self {
+        let label = function.unwrap_or_else(|| "unknown".to_string());
+        let message = format!(
+            "`llvm_ir!` を含む関数 `{}` は `!{{native}}` を必ず指定する必要があります。",
+            label
+        );
+        Self {
+            kind: TypecheckViolationKind::NativeLlvmIrMissingEffect,
+            code: "native.llvm_ir.missing_effect",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "例: `fn add() !{native} = unsafe { llvm_ir!(Int) { ... } }` のように効果注釈を追加してください。",
+            )],
+            capability: None,
+            function: Some(label),
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn inline_asm_missing_cfg(span: Span, function: Option<String>) -> Self {
+        let message =
+            "`inline_asm` は `@cfg(target_...)` によるターゲット限定が必須です。".to_string();
+        Self {
+            kind: TypecheckViolationKind::NativeInlineAsmMissingCfg,
+            code: "native.inline_asm.missing_cfg",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "例: `@cfg(target_arch = \"x86_64\")` を併用してください。",
+            )],
+            capability: None,
+            function,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn llvm_ir_missing_cfg(span: Span, function: Option<String>) -> Self {
+        let message =
+            "`llvm_ir!` は `@cfg(target_...)` によるターゲット限定が必須です。".to_string();
+        Self {
+            kind: TypecheckViolationKind::NativeLlvmIrMissingCfg,
+            code: "native.llvm_ir.missing_cfg",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "例: `@cfg(target_arch = \"x86_64\")` を併用してください。",
+            )],
+            capability: None,
+            function,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn inline_asm_invalid_type(span: Span, ty_label: String, function: Option<String>) -> Self {
+        let message = format!(
+            "`inline_asm` の型 `{}` は ABI 安全/Copy 制約に違反しています。",
+            ty_label
+        );
+        Self {
+            kind: TypecheckViolationKind::NativeInlineAsmInvalidType,
+            code: "native.inline_asm.invalid_type",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "Int/UInt/Float/Bool/Char/Unit と Ptr/&T、それらのみで構成される Tuple のみ許可されます。",
+            )],
+            capability: None,
+            function,
+            expected: None,
+            recover: None,
+            iterator_stage: None,
+            capability_mismatch: None,
+        }
+    }
+
+    fn llvm_ir_invalid_type(span: Span, ty_label: String, function: Option<String>) -> Self {
+        let message = format!(
+            "`llvm_ir!` の型 `{}` は ABI 安全/Copy 制約に違反しています。",
+            ty_label
+        );
+        Self {
+            kind: TypecheckViolationKind::NativeLlvmIrInvalidType,
+            code: "native.llvm_ir.invalid_type",
+            message,
+            span: Some(span),
+            notes: vec![ViolationNote::plain(
+                "Int/UInt/Float/Bool/Char/Unit と Ptr/&T、それらのみで構成される Tuple のみ許可されます。",
             )],
             capability: None,
             function,
@@ -1841,6 +1978,8 @@ impl TypecheckViolation {
             | TypecheckViolationKind::IteratorExpected
             | TypecheckViolationKind::ControlFlowUnreachable
             | TypecheckViolationKind::IntrinsicInvalidType
+            | TypecheckViolationKind::NativeInlineAsmInvalidType
+            | TypecheckViolationKind::NativeLlvmIrInvalidType
             | TypecheckViolationKind::ConductorDslIdDuplicate
             | TypecheckViolationKind::VarargsInvalidAbi
             | TypecheckViolationKind::VarargsMissingFixedParam
@@ -1859,6 +1998,10 @@ impl TypecheckViolation {
             | TypecheckViolationKind::HandlesUnknownEffect
             | TypecheckViolationKind::ActivePatternEffectViolation
             | TypecheckViolationKind::IntrinsicMissingEffect
+            | TypecheckViolationKind::NativeInlineAsmMissingEffect
+            | TypecheckViolationKind::NativeInlineAsmMissingCfg
+            | TypecheckViolationKind::NativeLlvmIrMissingEffect
+            | TypecheckViolationKind::NativeLlvmIrMissingCfg
             | TypecheckViolationKind::UnsafeInPureContext => "effects",
             TypecheckViolationKind::CoreParseRecoverBranch
             | TypecheckViolationKind::OpBuilderLevelConflict
@@ -2708,6 +2851,19 @@ fn visit_expr_for_opbuilder(
         }
         ExprKind::PerformCall { call } => {
             visit_expr_for_opbuilder(&call.argument, tracker, violations);
+        }
+        ExprKind::InlineAsm(asm) => {
+            for output in &asm.outputs {
+                visit_expr_for_opbuilder(&output.target, tracker, violations);
+            }
+            for input in &asm.inputs {
+                visit_expr_for_opbuilder(&input.expr, tracker, violations);
+            }
+        }
+        ExprKind::LlvmIr(ir) => {
+            for input in &ir.inputs {
+                visit_expr_for_opbuilder(input, tracker, violations);
+            }
         }
         ExprKind::Lambda { body, .. } => visit_expr_for_opbuilder(body, tracker, violations),
         ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
@@ -3753,6 +3909,128 @@ fn infer_expr(
                 },
                 Type::builtin(BuiltinType::Unknown),
                 vec![dict_ref_id],
+            )
+        }
+        ExprKind::InlineAsm(asm) => {
+            let mut outputs = Vec::new();
+            let mut inputs = Vec::new();
+            let mut dicts = Vec::new();
+            let mut invalid_label = None;
+            for output in &asm.outputs {
+                let result = infer_expr(
+                    &output.target,
+                    env,
+                    var_gen,
+                    solver,
+                    constraints,
+                    stats,
+                    metrics,
+                    violations,
+                    dict_refs,
+                    loop_context,
+                    context,
+                );
+                dicts.extend(result.dict_ref_ids.clone());
+                let resolved = solver.substitution().apply(&result.ty);
+                if invalid_label.is_none() && !native_abi_type_allowed(&resolved) {
+                    invalid_label = Some(resolved.label());
+                }
+                outputs.push(InlineAsmOutputDraft {
+                    constraint: output.constraint.clone(),
+                    target: Box::new(result),
+                });
+            }
+            for input in &asm.inputs {
+                let result = infer_expr(
+                    &input.expr,
+                    env,
+                    var_gen,
+                    solver,
+                    constraints,
+                    stats,
+                    metrics,
+                    violations,
+                    dict_refs,
+                    loop_context,
+                    context,
+                );
+                dicts.extend(result.dict_ref_ids.clone());
+                let resolved = solver.substitution().apply(&result.ty);
+                if invalid_label.is_none() && !native_abi_type_allowed(&resolved) {
+                    invalid_label = Some(resolved.label());
+                }
+                inputs.push(InlineAsmInputDraft {
+                    constraint: input.constraint.clone(),
+                    expr: Box::new(result),
+                });
+            }
+            if let Some(label) = invalid_label {
+                violations.push(TypecheckViolation::inline_asm_invalid_type(
+                    expr.span(),
+                    label,
+                    context.name.map(|name| name.to_string()),
+                ));
+            }
+            make_typed(
+                expr,
+                TypedExprKindDraft::InlineAsm {
+                    template: asm.template.clone(),
+                    outputs,
+                    inputs,
+                    clobbers: asm.clobbers.clone(),
+                    options: asm.options.clone(),
+                },
+                Type::builtin(BuiltinType::Unit),
+                dicts,
+            )
+        }
+        ExprKind::LlvmIr(ir) => {
+            let mut inputs = Vec::new();
+            let mut dicts = Vec::new();
+            let mut invalid_label = None;
+            for input in &ir.inputs {
+                let result = infer_expr(
+                    input,
+                    env,
+                    var_gen,
+                    solver,
+                    constraints,
+                    stats,
+                    metrics,
+                    violations,
+                    dict_refs,
+                    loop_context,
+                    context,
+                );
+                dicts.extend(result.dict_ref_ids.clone());
+                let resolved = solver.substitution().apply(&result.ty);
+                if invalid_label.is_none() && !native_abi_type_allowed(&resolved) {
+                    invalid_label = Some(resolved.label());
+                }
+                inputs.push(result);
+            }
+            let result_ty = type_from_annotation(&ir.result_type, None, env, violations)
+                .unwrap_or_else(|| Type::builtin(BuiltinType::Unknown));
+            let resolved_result_ty = solver.substitution().apply(&result_ty);
+            if invalid_label.is_none() && !native_abi_type_allowed(&resolved_result_ty) {
+                invalid_label = Some(resolved_result_ty.label());
+            }
+            if let Some(label) = invalid_label {
+                violations.push(TypecheckViolation::llvm_ir_invalid_type(
+                    expr.span(),
+                    label,
+                    context.name.map(|name| name.to_string()),
+                ));
+            }
+            make_typed(
+                expr,
+                TypedExprKindDraft::LlvmIr {
+                    result_type: resolved_result_ty.label(),
+                    template: ir.template.clone(),
+                    inputs,
+                },
+                result_ty,
+                dicts,
             )
         }
         ExprKind::Loop { body } => {
@@ -5473,6 +5751,19 @@ fn collect_function_bindings(params: &[Param], body: &Expr) -> HashSet<String> {
                 }
             }
             ExprKind::PerformCall { call } => walk_expr(&call.argument, bindings),
+            ExprKind::InlineAsm(asm) => {
+                for output in &asm.outputs {
+                    walk_expr(&output.target, bindings);
+                }
+                for input in &asm.inputs {
+                    walk_expr(&input.expr, bindings);
+                }
+            }
+            ExprKind::LlvmIr(ir) => {
+                for input in &ir.inputs {
+                    walk_expr(input, bindings);
+                }
+            }
             ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
                 walk_expr(left, bindings);
                 walk_expr(right, bindings);
@@ -5699,6 +5990,19 @@ fn detect_lambda_captures(
                 }
             }
             ExprKind::PerformCall { call } => walk_expr(&call.argument, state),
+            ExprKind::InlineAsm(asm) => {
+                for output in &asm.outputs {
+                    walk_expr(&output.target, state);
+                }
+                for input in &asm.inputs {
+                    walk_expr(&input.expr, state);
+                }
+            }
+            ExprKind::LlvmIr(ir) => {
+                for input in &ir.inputs {
+                    walk_expr(input, state);
+                }
+            }
             ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
                 walk_expr(left, state);
                 walk_expr(right, state);
@@ -7147,6 +7451,18 @@ enum TypedExprKindDraft {
     Unsafe {
         body: Box<TypedExprDraft>,
     },
+    InlineAsm {
+        template: String,
+        outputs: Vec<InlineAsmOutputDraft>,
+        inputs: Vec<InlineAsmInputDraft>,
+        clobbers: Vec<String>,
+        options: Vec<String>,
+    },
+    LlvmIr {
+        result_type: String,
+        template: String,
+        inputs: Vec<TypedExprDraft>,
+    },
     IfElse {
         condition: Box<TypedExprDraft>,
         then_branch: Box<TypedExprDraft>,
@@ -7163,6 +7479,18 @@ enum TypedExprKindDraft {
 struct TypedEffectCallDraft {
     effect: Ident,
     argument: Box<TypedExprDraft>,
+}
+
+#[derive(Clone)]
+struct InlineAsmOutputDraft {
+    constraint: String,
+    target: Box<TypedExprDraft>,
+}
+
+#[derive(Clone)]
+struct InlineAsmInputDraft {
+    constraint: String,
+    expr: Box<TypedExprDraft>,
 }
 
 #[derive(Clone)]
@@ -7233,6 +7561,35 @@ fn intrinsic_attribute_strings(attrs: &[Attribute]) -> Vec<String> {
     values
 }
 
+fn unstable_attribute_strings(attrs: &[Attribute]) -> Vec<String> {
+    let mut values = Vec::new();
+    for attr in attrs {
+        if attr.name.name != "unstable" {
+            continue;
+        }
+        if attr.args.len() != 1 {
+            continue;
+        }
+        if let ExprKind::Literal(Literal {
+            value: LiteralKind::String { value, .. },
+        }) = &attr.args[0].kind
+        {
+            match value.as_str() {
+                "inline_asm" => values.push("unstable:inline_asm".to_string()),
+                "llvm_ir" => values.push("unstable:llvm_ir".to_string()),
+                _ => {}
+            }
+        }
+    }
+    values
+}
+
+fn function_attribute_strings(attrs: &[Attribute]) -> Vec<String> {
+    let mut values = intrinsic_attribute_strings(attrs);
+    values.extend(unstable_attribute_strings(attrs));
+    values
+}
+
 fn effect_has_native(effect: &Option<EffectAnnotation>) -> bool {
     match effect {
         Some(annotation) => annotation.tags.iter().any(|tag| tag.name == "native"),
@@ -7268,6 +7625,31 @@ fn intrinsic_type_allowed(ty: &Type) -> bool {
         } if constructor.as_str() == "Tuple" => {
             arguments.iter().all(|arg| intrinsic_type_allowed(arg))
         }
+        _ => false,
+    }
+}
+
+fn native_abi_type_allowed(ty: &Type) -> bool {
+    match ty {
+        Type::Builtin(
+            BuiltinType::Int
+            | BuiltinType::UInt
+            | BuiltinType::Float
+            | BuiltinType::Bool
+            | BuiltinType::Char
+            | BuiltinType::Unit,
+        ) => true,
+        Type::Ref { .. } => true,
+        Type::App {
+            constructor,
+            arguments,
+        } if constructor.as_str() == "Tuple" => {
+            arguments.iter().all(|arg| native_abi_type_allowed(arg))
+        }
+        Type::App { constructor, .. } => matches!(
+            constructor.as_str(),
+            "Ptr" | "MutPtr" | "ConstPtr" | "NonNullPtr"
+        ),
         _ => false,
     }
 }
@@ -7396,6 +7778,43 @@ fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typ
         },
         TypedExprKindDraft::Unsafe { body } => typed::TypedExprKind::Unsafe {
             body: Box::new(finalize_typed_expr(*body, substitution)),
+        },
+        TypedExprKindDraft::InlineAsm {
+            template,
+            outputs,
+            inputs,
+            clobbers,
+            options,
+        } => typed::TypedExprKind::InlineAsm {
+            template,
+            outputs: outputs
+                .into_iter()
+                .map(|output| typed::TypedInlineAsmOutput {
+                    constraint: output.constraint,
+                    target: Box::new(finalize_typed_expr(*output.target, substitution)),
+                })
+                .collect(),
+            inputs: inputs
+                .into_iter()
+                .map(|input| typed::TypedInlineAsmInput {
+                    constraint: input.constraint,
+                    expr: Box::new(finalize_typed_expr(*input.expr, substitution)),
+                })
+                .collect(),
+            clobbers,
+            options,
+        },
+        TypedExprKindDraft::LlvmIr {
+            result_type,
+            template,
+            inputs,
+        } => typed::TypedExprKind::LlvmIr {
+            result_type,
+            template,
+            inputs: inputs
+                .into_iter()
+                .map(|input| finalize_typed_expr(input, substitution))
+                .collect(),
         },
         TypedExprKindDraft::IfElse {
             condition,
@@ -7724,6 +8143,265 @@ fn detect_spec_core_runtime_violations(module: &Module) -> Vec<TypecheckViolatio
     violations
 }
 
+#[derive(Clone)]
+struct NativeEscapeContext {
+    has_cfg: bool,
+    has_native_effect: bool,
+    function_name: Option<String>,
+}
+
+impl NativeEscapeContext {
+    fn with_cfg(&self, has_cfg: bool) -> Self {
+        Self {
+            has_cfg,
+            has_native_effect: self.has_native_effect,
+            function_name: self.function_name.clone(),
+        }
+    }
+}
+
+fn attrs_has_cfg(attrs: &[Attribute]) -> bool {
+    attrs.iter().any(|attr| attr.name.name == "cfg")
+}
+
+fn detect_native_escape_hatch_violations(module: &Module) -> Vec<TypecheckViolation> {
+    let mut violations = Vec::new();
+
+    for function in &module.functions {
+        let context = NativeEscapeContext {
+            has_cfg: attrs_has_cfg(&function.attrs),
+            has_native_effect: effect_has_native(&function.effect),
+            function_name: Some(function.name.name.clone()),
+        };
+        walk_native_escape_expr(&function.body, &context, &mut violations);
+    }
+
+    for active_pattern in &module.active_patterns {
+        let context = NativeEscapeContext {
+            has_cfg: attrs_has_cfg(&active_pattern.attrs),
+            has_native_effect: false,
+            function_name: Some(active_pattern.name.name.clone()),
+        };
+        walk_native_escape_expr(&active_pattern.body, &context, &mut violations);
+    }
+
+    let module_context = NativeEscapeContext {
+        has_cfg: false,
+        has_native_effect: false,
+        function_name: None,
+    };
+    for decl in &module.decls {
+        walk_native_escape_decl(decl, &module_context, &mut violations);
+    }
+    for expr in &module.exprs {
+        walk_native_escape_expr(expr, &module_context, &mut violations);
+    }
+
+    violations
+}
+
+fn walk_native_escape_decl(
+    decl: &Decl,
+    context: &NativeEscapeContext,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    let next_context = context.with_cfg(context.has_cfg || attrs_has_cfg(&decl.attrs));
+    match &decl.kind {
+        DeclKind::Let { value, .. }
+        | DeclKind::Var { value, .. }
+        | DeclKind::Const { value, .. } => {
+            walk_native_escape_expr(value, &next_context, violations)
+        }
+        DeclKind::Module(module_decl) => {
+            let nested_context = next_context.clone();
+            for function in &module_decl.body.functions {
+                let function_context = NativeEscapeContext {
+                    has_cfg: nested_context.has_cfg || attrs_has_cfg(&function.attrs),
+                    has_native_effect: effect_has_native(&function.effect),
+                    function_name: Some(function.name.name.clone()),
+                };
+                walk_native_escape_expr(&function.body, &function_context, violations);
+            }
+            for active_pattern in &module_decl.body.active_patterns {
+                let active_context = NativeEscapeContext {
+                    has_cfg: nested_context.has_cfg || attrs_has_cfg(&active_pattern.attrs),
+                    has_native_effect: false,
+                    function_name: Some(active_pattern.name.name.clone()),
+                };
+                walk_native_escape_expr(&active_pattern.body, &active_context, violations);
+            }
+            for decl in &module_decl.body.decls {
+                walk_native_escape_decl(decl, &nested_context, violations);
+            }
+            for expr in &module_decl.body.exprs {
+                walk_native_escape_expr(expr, &nested_context, violations);
+            }
+        }
+        DeclKind::Macro(macro_decl) => {
+            walk_native_escape_expr(&macro_decl.body, &next_context, violations);
+        }
+        DeclKind::ActorSpec(actor_spec) => {
+            walk_native_escape_expr(&actor_spec.body, &next_context, violations);
+        }
+        DeclKind::Handler(handler) => {
+            for entry in &handler.entries {
+                if let HandlerEntry::Operation { body, .. } = entry {
+                    walk_native_escape_expr(body, &next_context, violations);
+                }
+            }
+        }
+        DeclKind::Conductor(conductor) => {
+            if let Some(exec) = &conductor.execution {
+                walk_native_escape_expr(&exec.body, &next_context, violations);
+            }
+            if let Some(monitor) = &conductor.monitoring {
+                walk_native_escape_expr(&monitor.body, &next_context, violations);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn walk_native_escape_stmt(
+    stmt: &Stmt,
+    context: &NativeEscapeContext,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    match &stmt.kind {
+        StmtKind::Decl { decl } => walk_native_escape_decl(decl, context, violations),
+        StmtKind::Expr { expr } | StmtKind::Defer { expr } => {
+            walk_native_escape_expr(expr, context, violations)
+        }
+        StmtKind::Assign { target, value } => {
+            walk_native_escape_expr(target, context, violations);
+            walk_native_escape_expr(value, context, violations);
+        }
+    }
+}
+
+fn walk_native_escape_expr(
+    expr: &Expr,
+    context: &NativeEscapeContext,
+    violations: &mut Vec<TypecheckViolation>,
+) {
+    match &expr.kind {
+        ExprKind::InlineAsm(_) => {
+            if !context.has_native_effect {
+                violations.push(TypecheckViolation::inline_asm_missing_effect(
+                    expr.span,
+                    context.function_name.clone(),
+                ));
+            }
+            if !context.has_cfg {
+                violations.push(TypecheckViolation::inline_asm_missing_cfg(
+                    expr.span,
+                    context.function_name.clone(),
+                ));
+            }
+        }
+        ExprKind::LlvmIr(_) => {
+            if !context.has_native_effect {
+                violations.push(TypecheckViolation::llvm_ir_missing_effect(
+                    expr.span,
+                    context.function_name.clone(),
+                ));
+            }
+            if !context.has_cfg {
+                violations.push(TypecheckViolation::llvm_ir_missing_cfg(
+                    expr.span,
+                    context.function_name.clone(),
+                ));
+            }
+        }
+        ExprKind::Block {
+            attrs, statements, ..
+        } => {
+            let next_context = context.with_cfg(context.has_cfg || attrs_has_cfg(attrs));
+            for stmt in statements {
+                walk_native_escape_stmt(stmt, &next_context, violations);
+            }
+        }
+        ExprKind::Call { callee, args } => {
+            walk_native_escape_expr(callee, context, violations);
+            for arg in args {
+                walk_native_escape_expr(arg, context, violations);
+            }
+        }
+        ExprKind::PerformCall { call } => {
+            walk_native_escape_expr(&call.argument, context, violations);
+        }
+        ExprKind::Lambda { body, .. }
+        | ExprKind::Loop { body }
+        | ExprKind::Unsafe { body }
+        | ExprKind::Defer { body }
+        | ExprKind::EffectBlock { body }
+        | ExprKind::Async { body, .. } => {
+            walk_native_escape_expr(body, context, violations);
+        }
+        ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
+            walk_native_escape_expr(left, context, violations);
+            walk_native_escape_expr(right, context, violations);
+        }
+        ExprKind::Unary { expr: inner, .. }
+        | ExprKind::Rec { expr: inner }
+        | ExprKind::Propagate { expr: inner }
+        | ExprKind::Return { value: Some(inner) }
+        | ExprKind::Await { expr: inner } => {
+            walk_native_escape_expr(inner, context, violations);
+        }
+        ExprKind::Break { value: Some(inner) } => {
+            walk_native_escape_expr(inner, context, violations);
+        }
+        ExprKind::FieldAccess { target, .. }
+        | ExprKind::TupleAccess { target, .. }
+        | ExprKind::Index { target, .. } => {
+            walk_native_escape_expr(target, context, violations);
+        }
+        ExprKind::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            walk_native_escape_expr(condition, context, violations);
+            walk_native_escape_expr(then_branch, context, violations);
+            if let Some(branch) = else_branch {
+                walk_native_escape_expr(branch, context, violations);
+            }
+        }
+        ExprKind::Match { target, arms } => {
+            walk_native_escape_expr(target, context, violations);
+            for arm in arms {
+                if let Some(guard) = &arm.guard {
+                    walk_native_escape_expr(guard, context, violations);
+                }
+                walk_native_escape_expr(&arm.body, context, violations);
+            }
+        }
+        ExprKind::While { condition, body } => {
+            walk_native_escape_expr(condition, context, violations);
+            walk_native_escape_expr(body, context, violations);
+        }
+        ExprKind::For { start, end, .. } => {
+            walk_native_escape_expr(start, context, violations);
+            walk_native_escape_expr(end, context, violations);
+        }
+        ExprKind::Handle { handle } => {
+            walk_native_escape_expr(&handle.target, context, violations);
+        }
+        ExprKind::Assign { target, value } => {
+            walk_native_escape_expr(target, context, violations);
+            walk_native_escape_expr(value, context, violations);
+        }
+        ExprKind::Literal(_)
+        | ExprKind::FixityLiteral(_)
+        | ExprKind::Identifier(_)
+        | ExprKind::ModulePath(_)
+        | ExprKind::Break { value: None }
+        | ExprKind::Return { value: None }
+        | ExprKind::Continue => {}
+    }
+}
+
 fn find_parse_run_with_recovery_calls(module: &Module) -> Vec<Span> {
     let mut spans = Vec::new();
     visit_module_exprs(module, &mut |expr| {
@@ -7986,6 +8664,19 @@ fn visit_expr(expr: &Expr, visitor: &mut impl FnMut(&Expr)) {
         }
         ExprKind::PerformCall { call } => {
             visit_expr(&call.argument, visitor);
+        }
+        ExprKind::InlineAsm(asm) => {
+            for output in &asm.outputs {
+                visit_expr(&output.target, visitor);
+            }
+            for input in &asm.inputs {
+                visit_expr(&input.expr, visitor);
+            }
+        }
+        ExprKind::LlvmIr(ir) => {
+            for input in &ir.inputs {
+                visit_expr(input, visitor);
+            }
         }
         ExprKind::Lambda { body, .. }
         | ExprKind::Loop { body }

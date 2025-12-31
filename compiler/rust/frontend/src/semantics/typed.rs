@@ -305,6 +305,18 @@ pub enum TypedExprKind {
     Unsafe {
         body: Box<TypedExpr>,
     },
+    InlineAsm {
+        template: String,
+        outputs: Vec<TypedInlineAsmOutput>,
+        inputs: Vec<TypedInlineAsmInput>,
+        clobbers: Vec<String>,
+        options: Vec<String>,
+    },
+    LlvmIr {
+        result_type: String,
+        template: String,
+        inputs: Vec<TypedExpr>,
+    },
     #[serde(rename = "unknown")]
     Unknown,
 }
@@ -313,6 +325,18 @@ pub enum TypedExprKind {
 pub struct TypedEffectCall {
     pub effect: Ident,
     pub argument: Box<TypedExpr>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedInlineAsmOutput {
+    pub constraint: String,
+    pub target: Box<TypedExpr>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypedInlineAsmInput {
+    pub constraint: String,
+    pub expr: Box<TypedExpr>,
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -51,13 +51,14 @@ use ast::{
     ConductorMonitorTarget, ConductorMonitoringBlock, ConductorPipelineSpec, Decl, DeclKind,
     EffectAnnotation, EffectCall, EffectDecl, EnumDecl, EnumVariant, Expr, ExprKind, ExternItem,
     FixityKind, Function, FunctionSignature, HandleExpr, HandlerDecl, HandlerEntry, Ident,
-    ImplDecl, ImplItem, IntBase, Literal, LiteralKind, MacroDecl, MatchArm, Module, ModuleBody,
-    ModuleDecl, ModuleHeader, ModulePath, OperationDecl, Param, Pattern, PatternKind,
-    PatternRecordField, QualifiedName, RecordField, RelativeHead, SlicePatternItem, Stmt, StmtKind,
-    StringKind, StructDecl, TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeDecl, TypeDeclBody,
-    TypeArrayLength, TypeDeclVariant, TypeDeclVariantPayload, TypeKind, TypeLiteral,
-    TypeRecordField, TypeTupleElement, TypeUnionVariant, UnaryOp, UseDecl, UseItem, UseTree,
-    VariantPayload, Visibility, WherePredicate,
+    ImplDecl, ImplItem, InlineAsmExpr, InlineAsmInput, InlineAsmOutput, IntBase, Literal,
+    LiteralKind, LlvmIrExpr, MacroDecl, MatchArm, Module, ModuleBody, ModuleDecl, ModuleHeader,
+    ModulePath, OperationDecl, Param, Pattern, PatternKind, PatternRecordField, QualifiedName,
+    RecordField, RelativeHead, SlicePatternItem, Stmt, StmtKind, StringKind, StructDecl, TraitDecl,
+    TraitItem, TraitRef, TypeAnnot, TypeArrayLength, TypeDecl, TypeDeclBody, TypeDeclVariant,
+    TypeDeclVariantPayload, TypeKind, TypeLiteral, TypeRecordField, TypeTupleElement,
+    TypeUnionVariant, UnaryOp, UseDecl, UseItem, UseTree, VariantPayload, Visibility,
+    WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -780,6 +781,19 @@ fn collect_effect_handler_diagnostics(module: &Module, diagnostics: &mut Vec<Fro
                 }
             }
             ExprKind::PerformCall { call } => record(&call.argument, diagnostics),
+            ExprKind::InlineAsm(asm) => {
+                for output in &asm.outputs {
+                    record(&output.target, diagnostics);
+                }
+                for input in &asm.inputs {
+                    record(&input.expr, diagnostics);
+                }
+            }
+            ExprKind::LlvmIr(ir) => {
+                for input in &ir.inputs {
+                    record(input, diagnostics);
+                }
+            }
             ExprKind::Lambda { body, .. }
             | ExprKind::Loop { body }
             | ExprKind::Unsafe { body }
@@ -1028,6 +1042,19 @@ fn collect_intrinsic_attribute_diagnostics(
                 }
             }
             ExprKind::PerformCall { call } => inspect_expr(&call.argument, diagnostics),
+            ExprKind::InlineAsm(asm) => {
+                for output in &asm.outputs {
+                    inspect_expr(&output.target, diagnostics);
+                }
+                for input in &asm.inputs {
+                    inspect_expr(&input.expr, diagnostics);
+                }
+            }
+            ExprKind::LlvmIr(ir) => {
+                for input in &ir.inputs {
+                    inspect_expr(input, diagnostics);
+                }
+            }
             ExprKind::Lambda { body, .. }
             | ExprKind::Loop { body }
             | ExprKind::Unsafe { body }
@@ -1328,6 +1355,19 @@ fn collect_match_guard_diagnostics(module: &Module, diagnostics: &mut Vec<Fronte
                 }
             }
             ExprKind::PerformCall { call } => walk_expr(&call.argument, diagnostics),
+            ExprKind::InlineAsm(asm) => {
+                for output in &asm.outputs {
+                    walk_expr(&output.target, diagnostics);
+                }
+                for input in &asm.inputs {
+                    walk_expr(&input.expr, diagnostics);
+                }
+            }
+            ExprKind::LlvmIr(ir) => {
+                for input in &ir.inputs {
+                    walk_expr(input, diagnostics);
+                }
+            }
             ExprKind::Lambda { body, .. }
             | ExprKind::Loop { body }
             | ExprKind::Unsafe { body }
@@ -1471,6 +1511,19 @@ fn collect_rec_lambda_diagnostics(module: &Module, diagnostics: &mut Vec<Fronten
                 }
             }
             ExprKind::PerformCall { call } => walk_expr(&call.argument, diagnostics),
+            ExprKind::InlineAsm(asm) => {
+                for output in &asm.outputs {
+                    walk_expr(&output.target, diagnostics);
+                }
+                for input in &asm.inputs {
+                    walk_expr(&input.expr, diagnostics);
+                }
+            }
+            ExprKind::LlvmIr(ir) => {
+                for input in &ir.inputs {
+                    walk_expr(input, diagnostics);
+                }
+            }
             ExprKind::Pipe { left, right } | ExprKind::Binary { left, right, .. } => {
                 walk_expr(left, diagnostics);
                 walk_expr(right, diagnostics);
@@ -1654,6 +1707,19 @@ fn inspect_cfg_expr(
         | ExprKind::TupleAccess { target: inner, .. }
         | ExprKind::Index { target: inner, .. } => {
             inspect_cfg_expr(inner, diagnostics, registry);
+        }
+        ExprKind::InlineAsm(asm) => {
+            for output in &asm.outputs {
+                inspect_cfg_expr(&output.target, diagnostics, registry);
+            }
+            for input in &asm.inputs {
+                inspect_cfg_expr(&input.expr, diagnostics, registry);
+            }
+        }
+        ExprKind::LlvmIr(ir) => {
+            for input in &ir.inputs {
+                inspect_cfg_expr(input, diagnostics, registry);
+            }
         }
         ExprKind::Call { callee, args } => {
             inspect_cfg_expr(callee, diagnostics, registry);
@@ -2790,6 +2856,214 @@ fn module_parser<'src>(
                 })
             });
 
+        let string_literal_value = just(TokenKind::StringLiteral)
+            .map_with_span(move |_, span: Range<usize>| parse_string_literal_value(source, span));
+
+        let inline_asm_ident = lower_ident.clone().try_map(|ident, span| {
+            if ident.name == "inline_asm" {
+                Ok(ident)
+            } else {
+                Err(Simple::expected_input_found(span, Vec::new(), None))
+            }
+        });
+
+        let inline_asm_output = string_literal_value
+            .clone()
+            .then_ignore(just(TokenKind::Colon))
+            .then(assign_target.clone())
+            .map(|(constraint, target)| InlineAsmOutput { constraint, target });
+
+        let inline_asm_input = string_literal_value
+            .clone()
+            .then_ignore(just(TokenKind::Colon))
+            .then(expr.clone())
+            .map(|(constraint, expr)| InlineAsmInput { constraint, expr });
+
+        #[derive(Clone)]
+        enum InlineAsmArg {
+            Outputs(Vec<InlineAsmOutput>),
+            Inputs(Vec<InlineAsmInput>),
+            Clobbers(Vec<String>),
+            Options(Vec<String>),
+        }
+
+        let inline_asm_outputs = lower_ident
+            .clone()
+            .try_map(|ident, span| {
+                if ident.name == "outputs" {
+                    Ok(())
+                } else {
+                    Err(Simple::expected_input_found(span, Vec::new(), None))
+                }
+            })
+            .ignore_then(delimited_with_cut(
+                TokenKind::LParen,
+                inline_asm_output
+                    .clone()
+                    .separated_by(just(TokenKind::Comma))
+                    .allow_trailing()
+                    .or_not()
+                    .map(|outputs| outputs.unwrap_or_default()),
+                TokenKind::RParen,
+            ))
+            .map(InlineAsmArg::Outputs);
+
+        let inline_asm_inputs = lower_ident
+            .clone()
+            .try_map(|ident, span| {
+                if ident.name == "inputs" {
+                    Ok(())
+                } else {
+                    Err(Simple::expected_input_found(span, Vec::new(), None))
+                }
+            })
+            .ignore_then(delimited_with_cut(
+                TokenKind::LParen,
+                inline_asm_input
+                    .clone()
+                    .separated_by(just(TokenKind::Comma))
+                    .allow_trailing()
+                    .or_not()
+                    .map(|inputs| inputs.unwrap_or_default()),
+                TokenKind::RParen,
+            ))
+            .map(InlineAsmArg::Inputs);
+
+        let inline_asm_clobbers = lower_ident
+            .clone()
+            .try_map(|ident, span| {
+                if ident.name == "clobbers" {
+                    Ok(())
+                } else {
+                    Err(Simple::expected_input_found(span, Vec::new(), None))
+                }
+            })
+            .ignore_then(delimited_with_cut(
+                TokenKind::LParen,
+                string_literal_value
+                    .clone()
+                    .separated_by(just(TokenKind::Comma))
+                    .allow_trailing(),
+                TokenKind::RParen,
+            ))
+            .map(InlineAsmArg::Clobbers);
+
+        let inline_asm_options = lower_ident
+            .clone()
+            .try_map(|ident, span| {
+                if ident.name == "options" {
+                    Ok(())
+                } else {
+                    Err(Simple::expected_input_found(span, Vec::new(), None))
+                }
+            })
+            .ignore_then(delimited_with_cut(
+                TokenKind::LParen,
+                string_literal_value
+                    .clone()
+                    .separated_by(just(TokenKind::Comma))
+                    .allow_trailing(),
+                TokenKind::RParen,
+            ))
+            .map(InlineAsmArg::Options);
+
+        let inline_asm_arg = choice((
+            inline_asm_outputs,
+            inline_asm_inputs,
+            inline_asm_clobbers,
+            inline_asm_options,
+        ));
+
+        let inline_asm_expr = inline_asm_ident
+            .ignore_then(just(TokenKind::LParen))
+            .ignore_then(string_literal_value.clone())
+            .then(
+                just(TokenKind::Comma)
+                    .ignore_then(
+                        inline_asm_arg
+                            .clone()
+                            .separated_by(just(TokenKind::Comma))
+                            .allow_trailing(),
+                    )
+                    .or_not(),
+            )
+            .then_ignore(just(TokenKind::RParen).cut())
+            .map_with_span(|(template, args), span: Range<usize>| {
+                let mut outputs = Vec::new();
+                let mut inputs = Vec::new();
+                let mut clobbers = Vec::new();
+                let mut options = Vec::new();
+                for arg in args.unwrap_or_default() {
+                    match arg {
+                        InlineAsmArg::Outputs(items) => outputs.extend(items),
+                        InlineAsmArg::Inputs(items) => inputs.extend(items),
+                        InlineAsmArg::Clobbers(items) => clobbers.extend(items),
+                        InlineAsmArg::Options(items) => options.extend(items),
+                    }
+                }
+                Expr {
+                    span: range_to_span(span),
+                    kind: ExprKind::InlineAsm(InlineAsmExpr {
+                        template,
+                        outputs,
+                        inputs,
+                        clobbers,
+                        options,
+                    }),
+                }
+            });
+
+        let llvm_ir_ident = lower_ident.clone().try_map(|ident, span| {
+            if ident.name == "llvm_ir" {
+                Ok(ident)
+            } else {
+                Err(Simple::expected_input_found(span, Vec::new(), None))
+            }
+        });
+
+        let llvm_ir_inputs = lower_ident
+            .clone()
+            .try_map(|ident, span| {
+                if ident.name == "inputs" {
+                    Ok(())
+                } else {
+                    Err(Simple::expected_input_found(span, Vec::new(), None))
+                }
+            })
+            .ignore_then(delimited_with_cut(
+                TokenKind::LParen,
+                expr.clone()
+                    .separated_by(just(TokenKind::Comma))
+                    .allow_trailing()
+                    .or_not()
+                    .map(|inputs| inputs.unwrap_or_default()),
+                TokenKind::RParen,
+            ));
+
+        let llvm_ir_expr = llvm_ir_ident
+            .then_ignore(just(TokenKind::Not))
+            .then(delimited_with_cut(
+                TokenKind::LParen,
+                type_parser_for_expr.clone().cut(),
+                TokenKind::RParen,
+            ))
+            .then(
+                just(TokenKind::LBrace)
+                    .ignore_then(string_literal_value.clone())
+                    .then(just(TokenKind::Comma).ignore_then(llvm_ir_inputs).or_not())
+                    .then_ignore(just(TokenKind::RBrace).cut()),
+            )
+            .map_with_span(
+                |((_, result_type), (template, inputs)), span: Range<usize>| Expr {
+                    span: range_to_span(span),
+                    kind: ExprKind::LlvmIr(LlvmIrExpr {
+                        result_type,
+                        template,
+                        inputs: inputs.unwrap_or_default(),
+                    }),
+                },
+            );
+
         let stmt = build_stmt_parser(
             expr.clone(),
             pattern_for_expr.clone(),
@@ -3217,6 +3491,8 @@ fn module_parser<'src>(
             );
 
         let atom = choice((
+            inline_asm_expr,
+            llvm_ir_expr,
             test_parser_expr,
             block_expr.clone(),
             effect_block_expr,
@@ -3726,11 +4002,13 @@ fn module_parser<'src>(
             .then(ty.clone().cut())
             .map_with_span(|(params, ret_ty), span: Range<usize>| {
                 let (param_labels, params) =
-                    params.into_iter().fold((Vec::new(), Vec::new()), |mut acc, entry| {
-                        acc.0.push(entry.0);
-                        acc.1.push(entry.1);
-                        acc
-                    });
+                    params
+                        .into_iter()
+                        .fold((Vec::new(), Vec::new()), |mut acc, entry| {
+                            acc.0.push(entry.0);
+                            acc.1.push(entry.1);
+                            acc
+                        });
                 TypeAnnot {
                     span: range_to_span(span),
                     kind: TypeKind::Fn {
@@ -3781,7 +4059,10 @@ fn module_parser<'src>(
                             span,
                             kind: TypeKind::Fn {
                                 params: elements.iter().map(|elem| elem.ty.clone()).collect(),
-                                param_labels: elements.iter().map(|elem| elem.label.clone()).collect(),
+                                param_labels: elements
+                                    .iter()
+                                    .map(|elem| elem.label.clone())
+                                    .collect(),
                                 ret: Box::new(ret_ty),
                             },
                             annotation_kind: None,
@@ -5649,6 +5930,19 @@ fn record_expr_trace_events(expr: &Expr, events: &mut Vec<ParserTraceEvent>) {
             record_expr_trace_events(&call.argument, events);
             events.push(ParserTraceEvent::effect_exit("perform", expr.span, label));
         }
+        ExprKind::InlineAsm(asm) => {
+            for output in &asm.outputs {
+                record_expr_trace_events(&output.target, events);
+            }
+            for input in &asm.inputs {
+                record_expr_trace_events(&input.expr, events);
+            }
+        }
+        ExprKind::LlvmIr(ir) => {
+            for input in &ir.inputs {
+                record_expr_trace_events(input, events);
+            }
+        }
         ExprKind::Lambda { body, .. } => {
             record_expr_trace_events(body, events);
         }
@@ -5784,6 +6078,8 @@ fn expr_trace_kind(expr: &Expr) -> &'static str {
         ExprKind::Return { .. } => "return",
         ExprKind::Defer { .. } => "defer",
         ExprKind::Assign { .. } => "assign",
+        ExprKind::InlineAsm(_) => "inline-asm",
+        ExprKind::LlvmIr(_) => "llvm-ir",
     }
 }
 

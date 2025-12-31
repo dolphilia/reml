@@ -950,6 +950,8 @@ pub enum ExprKind {
         target: Box<Expr>,
         value: Box<Expr>,
     },
+    InlineAsm(InlineAsmExpr),
+    LlvmIr(LlvmIrExpr),
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1063,6 +1065,34 @@ pub struct HandleExpr {
 pub struct EffectCall {
     pub effect: Ident,
     pub argument: Box<Expr>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct InlineAsmOutput {
+    pub constraint: String,
+    pub target: Expr,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct InlineAsmInput {
+    pub constraint: String,
+    pub expr: Expr,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct InlineAsmExpr {
+    pub template: String,
+    pub outputs: Vec<InlineAsmOutput>,
+    pub inputs: Vec<InlineAsmInput>,
+    pub clobbers: Vec<String>,
+    pub options: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct LlvmIrExpr {
+    pub result_type: TypeAnnot,
+    pub template: String,
+    pub inputs: Vec<Expr>,
 }
 
 #[derive(Debug, Clone, Serialize)]
