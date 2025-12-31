@@ -153,3 +153,23 @@ impl TypeMappingContext {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{RemlType, TypeMappingContext};
+    use crate::target_machine::DataLayoutSpec;
+
+    #[test]
+    fn layout_of_fixed_array_i64() {
+        let context = TypeMappingContext::new(DataLayoutSpec::new(
+            "e-m:e-p:64:64-f64:64:64-a:0:64",
+        ));
+        let layout = context.layout_of(&RemlType::Array {
+            element: Box::new(RemlType::I64),
+            length: 6,
+        });
+        assert_eq!(layout.size, 48);
+        assert_eq!(layout.align, 8);
+        assert_eq!(layout.description, "[6 x i64]");
+    }
+}

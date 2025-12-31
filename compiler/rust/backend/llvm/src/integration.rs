@@ -1460,21 +1460,22 @@ fn parse_reml_type_with_diagnostics(
                 );
                 return RemlType::Pointer;
             }
-            if length.parse::<u64>().is_err() {
-                push_fixed_array_diagnostic(
-                    &mut diagnostics,
-                    trimmed,
-                    "length_overflow",
-                );
-                return RemlType::Pointer;
-            }
-            parse_reml_type_with_diagnostics(element, diagnostics.as_deref_mut());
-            push_fixed_array_diagnostic(
-                &mut diagnostics,
-                trimmed,
-                "fixed_array_unsupported",
-            );
-            return RemlType::Pointer;
+            let length = match length.parse::<u64>() {
+                Ok(value) => value,
+                Err(_) => {
+                    push_fixed_array_diagnostic(
+                        &mut diagnostics,
+                        trimmed,
+                        "length_overflow",
+                    );
+                    return RemlType::Pointer;
+                }
+            };
+            let element = parse_reml_type_with_diagnostics(element, diagnostics.as_deref_mut());
+            return RemlType::Array {
+                element: Box::new(element),
+                length,
+            };
         }
         return RemlType::Slice(Box::new(parse_reml_type_with_diagnostics(
             inner,
@@ -1534,7 +1535,7 @@ fn split_generic_type(token: &str) -> Option<(&str, &str)> {
 mod tests {
     use super::{
         generate_snapshot_from_mir_json, load_mir_functions_from_json, parse_reml_type,
-        MirModuleSpec, MirSnapshotError,
+        parse_reml_type_with_diagnostics, MirModuleSpec, MirSnapshotError,
     };
     use crate::target_machine::{
         CodeModel, DataLayoutSpec, OptimizationLevel, RelocModel, TargetMachineBuilder, Triple,
@@ -1618,6 +1619,52 @@ mod tests {
                 to: Box::new(RemlType::Slice(Box::new(RemlType::I32)))
             }
         );
+    }
+
+    fn assert_fixed_array_diagnostic(diagnostics: &[String], reason: &str) {
+        let reason_token = format!("reason={reason}");
+        assert!(
+            diagnostics.iter().any(|entry| {
+                entry.contains("Backend.backend.todo.fixed_array_type")
+                    && entry.contains(&reason_token)
+            }),
+            "diagnostic に {reason_token} を含むこと (got: {diagnostics:?})"
+        );
+    }
+
+    #[test]
+    fn parse_reml_type_fixed_array() {
+        let mut diagnostics = Vec::new();
+        let ty = parse_reml_type_with_diagnostics("[i64; 6]", Some(&mut diagnostics));
+        assert_eq!(
+            ty,
+            RemlType::Array {
+                element: Box::new(RemlType::I64),
+                length: 6
+            }
+        );
+        assert!(diagnostics.is_empty(), "diagnostic が空であること");
+    }
+
+    #[test]
+    fn parse_reml_type_fixed_array_invalid_length() {
+        let mut diagnostics = Vec::new();
+        let ty = parse_reml_type_with_diagnostics("[i64; X]", Some(&mut diagnostics));
+        assert_eq!(ty, RemlType::Pointer);
+        assert_fixed_array_diagnostic(&diagnostics, "length_not_decimal");
+
+        diagnostics.clear();
+        let ty = parse_reml_type_with_diagnostics("[i64; -1]", Some(&mut diagnostics));
+        assert_eq!(ty, RemlType::Pointer);
+        assert_fixed_array_diagnostic(&diagnostics, "length_negative");
+
+        diagnostics.clear();
+        let ty = parse_reml_type_with_diagnostics(
+            "[i64; 18446744073709551616]",
+            Some(&mut diagnostics),
+        );
+        assert_eq!(ty, RemlType::Pointer);
+        assert_fixed_array_diagnostic(&diagnostics, "length_overflow");
     }
 
     #[test]
