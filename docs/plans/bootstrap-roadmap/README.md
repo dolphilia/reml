@@ -174,6 +174,7 @@ Phase 4 の成果を基に Rust コンパイラが自分自身をビルドでき
 | ファイル | マイルストーン | 内容 | 期限目安 |
 |---------|--------------|------|---------|
 | [5-0-phase5-self-host.md](5-0-phase5-self-host.md) | - | Phase 5 Self-host 計画（Stage パイプライン/測定/リスク） | 10週 |
+| [5-1-jit-backend-plan.md](5-1-jit-backend-plan.md) | - | JIT バックエンド調査・設計（Cranelift/LLVM ORC/WASM） | Phase 5+ |
 
 **依存関係**: Phase 4 シナリオ完了 → Stage 0/1/2 ビルド → Self-host 再現性レビュー → Phase 6 へ連携
 

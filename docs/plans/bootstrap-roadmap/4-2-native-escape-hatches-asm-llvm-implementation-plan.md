@@ -23,6 +23,7 @@
 - **移植性**: Inline ASM は `@cfg(target_arch, target_os)` を必須とし、LLVM IR 直書きも `@cfg(target)` を要求する。
 - **ガード**: Phase 4 では `feature = "native-unstable"` を維持し、Capability Stage を `Experimental` として明示。将来の昇格条件は `docs/spec/3-8-core-runtime-capability.md` に明記する。
 - **監査**: 監査ログは関数単位で「何が」「どのターゲットで」「どの制約で」使われたかを残す。
+- **Cranelift の扱い**: Cranelift は **JIT バックエンド枠**で検討し、Inline ASM / LLVM IR のエスケープハッチ用途は **別計画**で扱う（本計画には含めない）。
 
 ## スコープ
 - **含む**:
