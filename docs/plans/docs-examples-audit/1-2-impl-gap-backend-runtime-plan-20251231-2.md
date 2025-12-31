@@ -74,6 +74,10 @@
   - `runtime/native/include/reml_runtime.h` の公開 API を確認し、固定長配列専用の ABI 型が存在しないことを記録する。
   - 既存 ABI（ポインタ + length 形式）がある場合は、固定長配列がそれと同一に扱われる想定をドキュメント化する。
   - Runtime 側に変更が不要である旨を本計画書の注記として明記する（必要なら関連計画へのリンクを追加）。
+- 確認結果:
+  - `runtime/native/include/reml_runtime.h` には固定長配列専用の ABI 型は定義されていない。
+  - `reml_array_t` はヒープ配列（`len` + `items`）の ABI であり、固定長配列（値型）を直接表現する用途ではない。
+  - 現段階では Runtime 変更は不要とし、固定長配列を `reml_array_t` へ変換する方針は `docs/plans/docs-examples-audit/1-5-backend-runtime-array-semantics-plan-20251226.md` で検討する。
 
 ### フェーズ 5: テストと検証
 - Backend の型パーステストに `[i64; 6]` を追加する。
@@ -95,7 +99,7 @@
   - [ ] フェーズ 1 完了
   - [ ] フェーズ 2 完了
   - [x] フェーズ 3 完了
-  - [ ] フェーズ 4 完了
+  - [x] フェーズ 4 完了
   - [ ] フェーズ 5 完了
 
 ## 関連リンク
