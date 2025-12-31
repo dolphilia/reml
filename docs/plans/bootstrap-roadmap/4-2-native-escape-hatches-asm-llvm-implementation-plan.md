@@ -129,10 +129,10 @@
 - [x] Capability Registry 更新
 
 ### フェーズF: サンプルと回帰接続
-- [ ] `examples/native/asm` / `examples/native/llvm_ir` を追加
-- [ ] `expected/native/` のゴールデン更新
-- [ ] `phase4-scenario-matrix.csv` にシナリオ追加
-- [ ] `4-1-spec-core-regression-plan.md` に実行手順を追記
+- [x] `examples/native/asm` / `examples/native/llvm_ir` を追加
+- [x] `expected/native/` のゴールデン更新
+- [x] `phase4-scenario-matrix.csv` にシナリオ追加
+- [x] `4-1-spec-core-regression-plan.md` に実行手順を追記
 
 ## タイムライン（目安）
 

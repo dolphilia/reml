@@ -1,0 +1,1 @@
+{"scenario":"examples/native/llvm_ir/llvm_ir_add_i32.reml","metadata":{"native.llvm_ir.used":true,"llvm_ir.template_hash":"5ee182882b8d9aa7","llvm_ir.inputs":["i32","i32"]}}

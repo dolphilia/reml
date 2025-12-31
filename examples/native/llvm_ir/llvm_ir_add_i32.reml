@@ -1,0 +1,25 @@
+module Examples.Native.LlvmIr.LlvmIrAddI32
+
+@cfg(target_arch = "x86_64")
+@unstable("llvm_ir")
+fn add_i32(a: i32, b: i32) -> i32 !{native}
+{
+  unsafe {
+    llvm_ir!(i32) {
+      "%0 = add nsw i32 $0, $1",
+      inputs(a, b)
+    }
+  }
+}
+
+@cfg(not(target_arch = "x86_64"))
+fn add_i32(a: i32, b: i32) -> i32
+{
+  a + b
+}
+
+fn main() -> Str !{native}
+{
+  let sum = add_i32(40, 2)
+  "llvm_ir=" + Int.to_string(sum)
+}
