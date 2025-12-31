@@ -1,16 +1,23 @@
 # 4.3 Memory Capability プラグイン — Virtual Memory & Shared Regions
 
 > 位置付け: 公式プラグイン（オプション）。仮想メモリや共有領域の操作は `effect {memory}` `effect {unsafe}` を多用するため、標準APIから分離し、`SecurityCapability` による導入審査を前提とする。
+>
+> ドラフト再整理メモ: 標準ライブラリ移行が確定していないため、本章はプラグイン維持を前提に再評価中（`docs/notes/stdlib-expansion-research.md` 参照）。
 
 ## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | ドラフト（公式プラグイン） |
+| ステータス | ドラフト（再検討中） |
 | プラグインID | `core.memory` |
 | 効果タグ | `effect {memory}`, `effect {syscall}`, `effect {unsafe}`, `effect {process}`, `effect {security}` |
 | 依存モジュール | `Core.Runtime`, [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-2 Process Capability プラグイン](4-2-process-plugin.md), `Core.Diagnostics`, `Core.Unsafe.Ptr`, `Core.IO` |
 | 相互参照 | [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-5 Core IO & Path](3-5-core-io-path.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
+
+## 0.5 改訂案（標準ライブラリとの境界）
+
+- **プラグイン維持**: 低レベルな仮想メモリ操作は Capability 側に残す。
+- **安全ラッパの検討**: 標準ライブラリに導入する場合は、`MappedMemory` の安全操作や共有メモリの限定 API に留める。
 
 ## 1. MemoryCapability API
 

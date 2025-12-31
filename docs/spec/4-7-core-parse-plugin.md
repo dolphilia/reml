@@ -1,16 +1,23 @@
 # 4.7 Core.Parse.Plugin — DSL 拡張プラグイン契約
 
 > 位置付け: 公式プラグイン（オプション）。`Core.Parse` の拡張点を opt-in で公開し、DSL をプロジェクト単位で拡張するための契約を定義する。標準ライブラリ（Chapter 3）と同等の互換性・監査要件を持ちつつ、外部提供物（プラグイン/バンドル）が Capability Registry（[3-8](3-8-core-runtime-capability.md)）へ安全に接続できることを目的とする。
+>
+> ドラフト再整理メモ: `Core.Dsl` 系モジュール（[3.16](3-16-core-dsl-paradigm-kits.md)）との接続方針を再整理中。
 
 ## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | ドラフト（公式プラグイン／Core.Parse 拡張） |
+| ステータス | ドラフト（再検討中／Core.Parse 拡張） |
 | プラグインID | `core.parse.plugin` |
 | 効果タグ | `effect {parser}`, `effect {runtime}`, `effect {audit}`, `effect {security}` |
 | 依存モジュール | `Core.Parse`（[2-1](2-1-parser-type.md)）、`Core.Diagnostics`（[3-6](3-6-core-diagnostics-audit.md)）、`Core.Runtime.Capability`（[3-8](3-8-core-runtime-capability.md)） |
 | 相互参照 | `../guides/DSL-plugin.md`（運用ガイド）、`../notes/dsl-plugin-roadmap.md`（提供計画）、`2-2-core-combinator.md`（Capability 要求パターン） |
+
+## 0.5 改訂案（標準ライブラリとの接続）
+
+- **DSL キットとの接続**: `Core.Dsl` 系（[3.16](3-16-core-dsl-paradigm-kits.md)）から利用する Capability を整理し、プラグイン導入時の互換性チェックを明文化する。
+- **運用ガイドの更新**: `../guides/DSL-plugin.md` に標準ライブラリとの境界（内蔵 DSL と外部 DSL の線引き）を追記する。
 
 ## 1. プラグインメタデータとマニフェスト
 

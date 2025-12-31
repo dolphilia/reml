@@ -46,7 +46,7 @@
 - [3-16-core-dsl-paradigm-kits.md](3-16-core-dsl-paradigm-kits.md)
 - [3-17-core-net.md](3-17-core-net.md)
 
-## 4.x 公式プラグイン仕様（Draft）
+## 4.x 公式プラグイン仕様（Draft / 再検討中）
 - [4-0-official-plugins-overview.md](4-0-official-plugins-overview.md)
 - [4-1-system-plugin.md](4-1-system-plugin.md)
 - [4-2-process-plugin.md](4-2-process-plugin.md)

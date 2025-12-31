@@ -1,16 +1,23 @@
 # 4.4 Signal Capability プラグイン — Inter-Process Signals & Handlers
 
 > 位置付け: 公式プラグイン（オプション）。OS シグナルは `unsafe` 操作とプロセス制御を伴うため、標準APIから切り離し、`Core.Process` / `Core.System` の各プラグインと組み合わせて利用する。
+>
+> ドラフト再整理メモ: シグナルはプロセス制御の基盤であるため、標準ライブラリ移行が検討されている（`docs/notes/stdlib-expansion-research.md` 参照）。
 
 ## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | ドラフト（公式プラグイン） |
+| ステータス | ドラフト（再検討中） |
 | プラグインID | `core.signal` |
 | 効果タグ | `effect {signal}`, `effect {process}`, `effect {unsafe}`, `effect {audit}`, `effect {security}`, `effect {io.blocking}` |
 | 依存モジュール | `Core.Runtime`, [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-2 Process Capability プラグイン](4-2-process-plugin.md), `Core.Diagnostics`, `Core.Unsafe.Ptr` |
 | 相互参照 | [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
+
+## 0.5 改訂案（標準ライブラリ移行）
+
+- **`Core.System.Signal` への移行**: シグナル型・安全な送受信 API を標準ライブラリ側へ昇格する。
+- **Capability の役割**: 低レベルのハンドラ登録や OS 依存機能を Capability 側に留め、標準 API は安全な操作のみを公開する。
 
 ## 1. SignalCapability API
 

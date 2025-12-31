@@ -1,16 +1,23 @@
 # 4.5 Hardware Capability プラグイン — CPU & Platform Introspection
 
 > 位置付け: 公式プラグイン（オプション）。ハードウェア情報の取得はプラットフォーム依存であり、環境によっては特権操作を伴うため、標準APIから分離して運用審査を経る。
+>
+> ドラフト再整理メモ: 現時点では標準ライブラリ移行が確定していないため、本章はプラグイン維持の前提で再検討中。
 
 ## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | ドラフト（公式プラグイン） |
+| ステータス | ドラフト（再検討中） |
 | プラグインID | `core.hardware` |
 | 効果タグ | `effect {hardware}`, `effect {unsafe}`, `effect {security}`, `effect {thread}`, `effect {audit}` |
 | 依存モジュール | `Core.Runtime`, [4-2 Process Capability プラグイン](4-2-process-plugin.md), [4-1 System Capability プラグイン](4-1-system-plugin.md), `Core.Diagnostics`, `Core.Numeric & Time` |
 | 相互参照 | [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
+
+## 0.5 改訂案（標準ライブラリとの境界）
+
+- **プラグイン維持**: 特権・依存度の高い API は Capability 側に残す。
+- **読み取り専用 API の切り出し**: 標準ライブラリへ昇格する場合は、特権不要な情報取得に限定する。
 
 ## 1. HardwareCapability API
 

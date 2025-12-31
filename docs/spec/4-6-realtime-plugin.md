@@ -1,16 +1,23 @@
 # 4.6 RealTime Capability プラグイン — Scheduling & High-Precision Timers
 
 > 位置付け: 公式プラグイン（オプション）。リアルタイムスケジューリングや精密タイマーは OS 権限を要求し `effect {realtime}` を含むため、標準APIから切り離して運用審査を前提とする。
+>
+> ドラフト再整理メモ: 標準ライブラリ移行の対象としては未確定のため、本章はプラグイン維持を前提に再検討中。
 
 ## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | ドラフト（公式プラグイン） |
+| ステータス | ドラフト（再検討中） |
 | プラグインID | `core.realtime` |
 | 効果タグ | `effect {realtime}`, `effect {thread}`, `effect {memory}`, `effect {io.timer}`, `effect {security}`, `effect {audit}` |
 | 依存モジュール | `Core.Runtime`, [4-2 Process Capability プラグイン](4-2-process-plugin.md), [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-3 Memory Capability プラグイン](4-3-memory-plugin.md), `Core.Diagnostics`, `Core.Numeric & Time` |
 | 相互参照 | [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-5 Core IO & Path](3-5-core-io-path.md) |
+
+## 0.5 改訂案（標準ライブラリとの境界）
+
+- **プラグイン維持**: 高権限・リアルタイム制御は Capability として運用する。
+- **標準 API の検討**: 将来必要になった場合は、`Core.Numeric.Time` の上位に安全なタイマー API を追加する。
 
 ## 1. RealTimeCapability API
 
