@@ -126,7 +126,21 @@ fn verify_capability_records_plugin_provider_metadata() {
         )
         .expect("plugin capability should satisfy requirement");
     let events = registry.capability_checks();
-    let metadata = &events.last().unwrap().envelope.metadata;
+    let metadata = events
+        .iter()
+        .rev()
+        .find(|event| {
+            event
+                .envelope
+                .metadata
+                .get("capability.id")
+                .and_then(|value| value.as_str())
+                == Some("plugin.demo.audit")
+        })
+        .expect("plugin capability audit event should exist")
+        .envelope
+        .metadata
+        .clone();
     assert_eq!(
         metadata
             .get("capability.provider.kind")
