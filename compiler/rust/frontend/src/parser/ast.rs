@@ -1716,6 +1716,10 @@ pub enum TypeKind {
     Literal {
         value: TypeLiteral,
     },
+    Array {
+        element: Box<TypeAnnot>,
+        length: TypeArrayLength,
+    },
     App {
         callee: Ident,
         args: Vec<TypeAnnot>,
@@ -1735,6 +1739,8 @@ pub enum TypeKind {
     },
     Fn {
         params: Vec<TypeAnnot>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        param_labels: Vec<Option<Ident>>,
         ret: Box<TypeAnnot>,
     },
     Union {
@@ -1742,11 +1748,21 @@ pub enum TypeKind {
     },
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct TypeArrayLength {
+    pub value: i64,
+    pub raw: String,
+    pub span: Span,
+}
+
 impl TypeKind {
     fn render(&self) -> String {
         match self {
             TypeKind::Ident { name } => name.name.clone(),
             TypeKind::Literal { value } => value.render(),
+            TypeKind::Array { element, length } => {
+                format!("[{}; {}]", element.render(), length.raw)
+            }
             TypeKind::App { callee, args } => format!(
                 "{}<{}>",
                 callee.name,
@@ -1779,15 +1795,25 @@ impl TypeKind {
                     format!("&{}", target.render())
                 }
             }
-            TypeKind::Fn { params, ret } => format!(
-                "fn({}) -> {}",
-                params
-                    .iter()
-                    .map(|ty| ty.render())
-                    .collect::<Vec<_>>()
-                    .join(", "),
-                ret.render(),
-            ),
+            TypeKind::Fn {
+                params,
+                param_labels,
+                ret,
+            } => {
+                let mut rendered_params = Vec::with_capacity(params.len());
+                for (index, param) in params.iter().enumerate() {
+                    let label = param_labels
+                        .get(index)
+                        .and_then(|label| label.as_ref())
+                        .map(|ident| ident.name.as_str());
+                    if let Some(label) = label {
+                        rendered_params.push(format!("{label}: {}", param.render()));
+                    } else {
+                        rendered_params.push(param.render());
+                    }
+                }
+                format!("fn({}) -> {}", rendered_params.join(", "), ret.render())
+            }
             TypeKind::Union { variants } => variants
                 .iter()
                 .map(TypeUnionVariant::render)

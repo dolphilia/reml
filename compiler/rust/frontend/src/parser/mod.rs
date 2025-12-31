@@ -55,9 +55,9 @@ use ast::{
     ModuleDecl, ModuleHeader, ModulePath, OperationDecl, Param, Pattern, PatternKind,
     PatternRecordField, QualifiedName, RecordField, RelativeHead, SlicePatternItem, Stmt, StmtKind,
     StringKind, StructDecl, TraitDecl, TraitItem, TraitRef, TypeAnnot, TypeDecl, TypeDeclBody,
-    TypeDeclVariant, TypeDeclVariantPayload, TypeKind, TypeLiteral, TypeRecordField,
-    TypeTupleElement, TypeUnionVariant, UnaryOp, UseDecl, UseItem, UseTree, VariantPayload,
-    Visibility, WherePredicate,
+    TypeArrayLength, TypeDeclVariant, TypeDeclVariantPayload, TypeKind, TypeLiteral,
+    TypeRecordField, TypeTupleElement, TypeUnionVariant, UnaryOp, UseDecl, UseItem, UseTree,
+    VariantPayload, Visibility, WherePredicate,
 };
 
 /// パース結果の簡易表現。
@@ -3567,6 +3567,18 @@ fn module_parser<'src>(
                 }
             });
 
+        let array_length = just(TokenKind::IntLiteral)
+            .labelled("array length must be integer literal")
+            .map_with_span(move |_, span: Range<usize>| {
+                let slice = &source[span.start..span.end];
+                let value = slice.parse::<i64>().unwrap_or_default();
+                TypeArrayLength {
+                    value,
+                    raw: slice.to_string(),
+                    span: range_to_span(span),
+                }
+            });
+
         let tuple_element_labeled = ident
             .clone()
             .then_ignore(just(TokenKind::Colon))
@@ -3605,6 +3617,20 @@ fn module_parser<'src>(
                     },
                     annotation_kind: None,
                 });
+
+        let array_type = just(TokenKind::LBracket)
+            .ignore_then(ty.clone())
+            .then_ignore(just(TokenKind::Semicolon).cut())
+            .then(array_length.clone().cut())
+            .then_ignore(just(TokenKind::RBracket).cut())
+            .map_with_span(|(element, length), span: Range<usize>| TypeAnnot {
+                span: range_to_span(span),
+                kind: TypeKind::Array {
+                    element: Box::new(element),
+                    length,
+                },
+                annotation_kind: None,
+            });
 
         let simple = qualified_ident.clone().map(|name| TypeAnnot {
             span: name.span,
@@ -3674,10 +3700,21 @@ fn module_parser<'src>(
 
         let variant_payload = choice((variant_record_payload, variant_tuple_payload));
 
+        let fn_param_labeled = ident
+            .clone()
+            .then_ignore(just(TokenKind::Colon))
+            .then(ty.clone())
+            .map(|(label, ty)| (Some(label), ty));
+
+        let fn_param_unlabeled = ty.clone().map(|ty| (None, ty));
+
+        let fn_param = choice((fn_param_labeled, fn_param_unlabeled));
+
         let fn_type = just(TokenKind::KeywordFn)
             .ignore_then(delimited_with_cut(
                 TokenKind::LParen,
-                ty.clone()
+                fn_param
+                    .clone()
                     .cut()
                     .separated_by(just(TokenKind::Comma))
                     .allow_trailing()
@@ -3688,9 +3725,16 @@ fn module_parser<'src>(
             .then_ignore(just(TokenKind::Arrow))
             .then(ty.clone().cut())
             .map_with_span(|(params, ret_ty), span: Range<usize>| TypeAnnot {
+                let (param_labels, params) =
+                    params.into_iter().fold((Vec::new(), Vec::new()), |mut acc, entry| {
+                        acc.0.push(entry.0);
+                        acc.1.push(entry.1);
+                        acc
+                    });
                 span: range_to_span(span),
                 kind: TypeKind::Fn {
                     params,
+                    param_labels,
                     ret: Box::new(ret_ty),
                 },
                 annotation_kind: None,
@@ -3712,6 +3756,7 @@ fn module_parser<'src>(
                 fn_type,
                 tuple_type,
                 record_type,
+                array_type,
                 slice_type,
                 app,
                 simple,
@@ -3733,7 +3778,8 @@ fn module_parser<'src>(
                         TypeKind::Tuple { elements } => TypeAnnot {
                             span,
                             kind: TypeKind::Fn {
-                                params: elements.into_iter().map(|elem| elem.ty).collect(),
+                                params: elements.iter().map(|elem| elem.ty.clone()).collect(),
+                                param_labels: elements.iter().map(|elem| elem.label.clone()).collect(),
                                 ret: Box::new(ret_ty),
                             },
                             annotation_kind: None,
@@ -3748,6 +3794,7 @@ fn module_parser<'src>(
                                 span,
                                 kind: TypeKind::Fn {
                                     params: vec![param],
+                                    param_labels: vec![None],
                                     ret: Box::new(ret_ty),
                                 },
                                 annotation_kind: None,

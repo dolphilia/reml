@@ -1965,6 +1965,22 @@ fn register_type_decls(decls: &[Decl], env: &mut TypeEnv) {
                     }
                 }
             }
+            DeclKind::Struct(struct_decl) => {
+                let generics = struct_decl
+                    .generics
+                    .iter()
+                    .map(|ident| ident.name.clone())
+                    .collect();
+                let binding = TypeDeclBinding::new(
+                    struct_decl.name.name.clone(),
+                    generics,
+                    TypeDeclKind::Opaque,
+                    None,
+                    struct_decl.span,
+                    None,
+                );
+                env.insert_type_decl(binding);
+            }
             DeclKind::Enum(enum_decl) => register_enum_decl(enum_decl, env),
             _ => continue,
         }
@@ -6779,6 +6795,14 @@ fn type_from_annotation_kind_with_generics(
             resolver,
         )
         .map(Type::slice),
+        TypeKind::Array { element, .. } => type_from_annotation_kind_with_generics(
+            &element.kind,
+            element.span,
+            generics,
+            alias_args,
+            resolver,
+        )
+        .map(|inner| Type::app("Array", vec![inner])),
         TypeKind::Ref { target, mutable } => type_from_annotation_kind_with_generics(
             &target.kind,
             target.span,
@@ -6787,7 +6811,11 @@ fn type_from_annotation_kind_with_generics(
             resolver,
         )
         .map(|inner| Type::reference(inner, *mutable)),
-        TypeKind::Fn { params, ret } => {
+        TypeKind::Fn {
+            params,
+            param_labels: _,
+            ret,
+        } => {
             let mut resolved_params = Vec::new();
             for param in params {
                 if let Some(param_ty) = type_from_annotation_kind_with_generics(
@@ -6940,8 +6968,13 @@ fn collect_type_param_names_from_annotation(annotation: &TypeAnnot) -> Vec<Strin
                 }
             }
             TypeKind::Slice { element } => visit(&element.kind, false, seen, names),
+            TypeKind::Array { element, .. } => visit(&element.kind, false, seen, names),
             TypeKind::Ref { target, .. } => visit(&target.kind, false, seen, names),
-            TypeKind::Fn { params, ret } => {
+            TypeKind::Fn {
+                params,
+                param_labels: _,
+                ret,
+            } => {
                 for param in params {
                     visit(&param.kind, false, seen, names);
                 }
