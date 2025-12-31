@@ -1,3 +1,7 @@
+pub type i64
+pub type i32
+pub type SyscallNumber = i64
+
 pub type SyscallError = {
   kind: SyscallErrorKind,
   message: Str,

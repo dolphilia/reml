@@ -1,3 +1,9 @@
+pub type SyscallId = Str
+pub type SyscallRateLimit
+pub type SecurityError
+pub type SyscallDescriptor
+pub type Set<T> = List<T>
+
 pub type SyscallPolicy = {
   allowed: Set<SyscallId>,
   denied: Set<SyscallId>,

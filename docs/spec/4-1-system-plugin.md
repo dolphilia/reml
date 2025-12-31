@@ -15,16 +15,23 @@
 ## 1. SyscallCapability API
 
 ```reml
+pub type SyscallId = Str
+pub type SyscallError
+pub type SyscallDescriptor
+pub type PlatformSyscalls
+
+pub type i64
+pub type SyscallNumber = i64
+pub type SyscallRet = i64
+pub type SyscallArgs = [i64]
+pub type SyscallThunk = fn() -> Result<SyscallRet, SyscallError>
+
 pub type SyscallCapability = {
-  raw_syscall: fn(SyscallNumber, [i64; 6]) -> Result<i64, SyscallError>,                // effect {syscall, unsafe}
-  platform_syscalls: PlatformSyscalls,                                                  // effect {syscall}
+  raw_syscall: fn(SyscallNumber, SyscallArgs) -> Result<SyscallRet, SyscallError>,          // effect {syscall, unsafe}
+  platform_syscalls: PlatformSyscalls,                                                     // effect {syscall}
   audited_syscall: fn(SyscallDescriptor, SyscallThunk) -> Result<SyscallRet, SyscallError>, // effect {syscall, audit}
   supports: fn(SyscallId) -> Bool,
 }
-
-pub type SyscallNumber = i64
-pub type SyscallRet = i64
-pub type SyscallThunk = fn() -> Result<SyscallRet, SyscallError>
 ```
 
 - `raw_syscall` は OS 固有の番号と最大 6 引数を用いる最下層 API。呼び出しは `unsafe` かつ `effect {syscall}` を伴う。
@@ -35,19 +42,30 @@ pub type SyscallThunk = fn() -> Result<SyscallRet, SyscallError>
 ## 2. プラットフォーム別ラッパ構造
 
 ```reml
+pub type Ptr<T>
+pub type MutPtr<T>
+pub type SyscallError
+pub type i32
+pub type u8
+pub type usize
+pub type Option<T>
+pub type WindowsSyscalls
+pub type MacOSSyscalls
+pub type WasiSyscalls
+
+pub type LinuxSyscalls = {
+  sys_read: fn(i32, MutPtr<u8>, usize) -> Result<usize, SyscallError>,
+  sys_write: fn(i32, Ptr<u8>, usize) -> Result<usize, SyscallError>,
+  sys_openat: fn(i32, Ptr<u8>, i32, i32) -> Result<i32, SyscallError>,
+  sys_close: fn(i32) -> Result<(), SyscallError>,
+  // 追加候補: epoll, mmap, clone 等
+}
+
 pub type PlatformSyscalls = {
   linux: Option<LinuxSyscalls>,
   windows: Option<WindowsSyscalls>,
   macos: Option<MacOSSyscalls>,
   wasi: Option<WasiSyscalls>,
-}
-
-pub struct LinuxSyscalls {
-  pub sys_read: fn(fd: i32, buf: MutPtr<u8>, len: usize) -> Result<usize, SyscallError>,
-  pub sys_write: fn(fd: i32, buf: Ptr<u8>, len: usize) -> Result<usize, SyscallError>,
-  pub sys_openat: fn(dirfd: i32, path: Ptr<u8>, flags: i32, mode: i32) -> Result<i32, SyscallError>,
-  pub sys_close: fn(fd: i32) -> Result<(), SyscallError>,
-  // 追加候補: epoll, mmap, clone 等
 }
 ```
 
@@ -58,6 +76,13 @@ pub struct LinuxSyscalls {
 ## 3. SyscallDescriptor と監査連携
 
 ```reml
+pub type EffectTag = Str
+pub type Json
+pub type Set<T> = List<T>
+pub type Map<K, V> = List<(K, V)>
+pub type i64
+pub type SyscallNumber = i64
+
 pub type SyscallDescriptor = {
   name: Str,
   number: SyscallNumber,
@@ -72,13 +97,37 @@ pub type SyscallDescriptor = {
 ### 3.1 `audited_syscall` の実装指針
 
 ```reml
-fn audited_syscall<T>(desc: SyscallDescriptor, thunk: SyscallThunk, sink: AuditSink) -> Result<T, SyscallError> =
-  let ctx = AuditContext::new("syscall", desc.name)?.with_metadata(desc.audit_metadata.clone());
-  let start = now()?;
-  let result = thunk()?;
-  let duration = now()? - start;
-  ctx.log("syscall.completed", json!({ "duration_ns": duration.as_nanos(), "result": result }))?;
-  Ok(result);
+pub type SyscallError
+pub type i64
+pub type SyscallRet = i64
+pub type SyscallThunk = fn() -> Result<SyscallRet, SyscallError>
+pub type AuditSink
+pub type Json
+pub type Map<K, V> = List<(K, V)>
+
+pub type SyscallDescriptor = {
+  name: Str,
+  audit_metadata: Map<Str, Json>,
+}
+
+pub struct AuditContext {
+  domain: Str,
+  subject: Str,
+  sink: AuditSink,
+  metadata: Map<Str, Json>,
+}
+
+impl AuditContext {
+  fn new(domain: Str, subject: Str, sink: AuditSink) -> Result<AuditContext, SyscallError> = todo
+  fn with_metadata(self, metadata: Map<Str, Json>) -> Self = todo
+  fn log(self, event: Str, payload: Json) -> Result<(), SyscallError> = todo
+}
+
+fn audited_syscall(
+  desc: SyscallDescriptor,
+  thunk: SyscallThunk,
+  sink: AuditSink,
+) -> Result<SyscallRet, SyscallError> = todo
 ```
 
 - 監査ログは成功・失敗を問わず出力し、`SyscallError` 発生時もエラー情報を記録する。
@@ -87,6 +136,10 @@ fn audited_syscall<T>(desc: SyscallDescriptor, thunk: SyscallThunk, sink: AuditS
 ## 4. システムエラーと変換
 
 ```reml
+pub type i64
+pub type i32
+pub type SyscallNumber = i64
+
 pub type SyscallError = {
   kind: SyscallErrorKind,
   message: Str,
@@ -103,6 +156,12 @@ pub enum SyscallErrorKind = AccessDenied | InvalidArgument | Interrupted | Would
 ## 5. セキュリティポリシーとの統合
 
 ```reml
+pub type SyscallId = Str
+pub type SyscallRateLimit
+pub type SecurityError
+pub type SyscallDescriptor
+pub type Set<T> = List<T>
+
 pub type SyscallPolicy = {
   allowed: Set<SyscallId>,
   denied: Set<SyscallId>,

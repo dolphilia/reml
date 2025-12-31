@@ -483,12 +483,12 @@
 ### docs/spec/4-1-system-plugin.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1. SyscallCapability API | sec_1 | examples/docs-examples/spec/4-1-system-plugin/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 2. プラットフォーム別ラッパ構造 | sec_2 | examples/docs-examples/spec/4-1-system-plugin/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3. SyscallDescriptor と監査連携 | sec_3 | examples/docs-examples/spec/4-1-system-plugin/sec_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 3.1 `audited_syscall` の実装指針 | sec_3_1 | examples/docs-examples/spec/4-1-system-plugin/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 4. システムエラーと変換 | sec_4 | examples/docs-examples/spec/4-1-system-plugin/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
-| 5. セキュリティポリシーとの統合 | sec_5 | examples/docs-examples/spec/4-1-system-plugin/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
+| 1. SyscallCapability API | sec_1 | examples/docs-examples/spec/4-1-system-plugin/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 2. プラットフォーム別ラッパ構造 | sec_2 | examples/docs-examples/spec/4-1-system-plugin/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3. SyscallDescriptor と監査連携 | sec_3 | examples/docs-examples/spec/4-1-system-plugin/sec_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 3.1 `audited_syscall` の実装指針 | sec_3_1 | examples/docs-examples/spec/4-1-system-plugin/sec_3_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 4. システムエラーと変換 | sec_4 | examples/docs-examples/spec/4-1-system-plugin/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
+| 5. セキュリティポリシーとの統合 | sec_5 | examples/docs-examples/spec/4-1-system-plugin/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
 ### docs/spec/4-2-process-plugin.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
