@@ -275,14 +275,6 @@ impl MirModuleSpec {
                         "Backend.backend.todo.await: function={} expr_id={}",
                         function.name, expr.id
                     )),
-                    MirExprKindJson::InlineAsm { .. } => diagnostics.push(format!(
-                        "Backend.backend.todo.inline_asm: function={} expr_id={}",
-                        function.name, expr.id
-                    )),
-                    MirExprKindJson::LlvmIr { .. } => diagnostics.push(format!(
-                        "Backend.backend.todo.llvm_ir: function={} expr_id={}",
-                        function.name, expr.id
-                    )),
                     _ => {}
                 }
             }

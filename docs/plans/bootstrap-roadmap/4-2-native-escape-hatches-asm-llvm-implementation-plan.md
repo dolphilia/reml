@@ -119,9 +119,9 @@
 - [ ] バックエンドの MirExprKind 追加
 
 ### フェーズD: LLVM IR 生成
-- [ ] Inline ASM の `call asm` 生成
-- [ ] LLVM IR 直書きテンプレート変換
-- [ ] Rust バックエンド検証ステップの診断/監査更新
+- [x] Inline ASM の `call asm` 生成
+- [x] LLVM IR 直書きテンプレート変換
+- [x] Rust バックエンド検証ステップの診断/監査更新
 
 ### フェーズE: 監査ログ / Capability / Runtime 連携
 - [ ] `compiler/rust/runtime/src/native` の監査連携

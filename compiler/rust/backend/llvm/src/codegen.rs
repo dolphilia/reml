@@ -1,5 +1,7 @@
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::fmt::Write;
+use std::hash::{Hash, Hasher};
 
 use crate::bridge_metadata::BridgeMetadataContext;
 use crate::ffi_lowering::{FfiCallSignature, FfiLowering, LoweredFfiCall};
@@ -106,6 +108,205 @@ fn intrinsic_value_for_type<'a>(ty: &str, ssa: &'a LlvmBuilder) -> &'a str {
         return INTRINSIC_VALUE_STR;
     }
     INTRINSIC_VALUE_PTR
+}
+
+fn escape_llvm_string(value: &str) -> String {
+    let mut escaped = String::new();
+    for ch in value.chars() {
+        match ch {
+            '\\' => escaped.push_str("\\\\"),
+            '"' => escaped.push_str("\\\""),
+            '\n' => escaped.push_str("\\0A"),
+            '\r' => escaped.push_str("\\0D"),
+            '\t' => escaped.push_str("\\09"),
+            _ => escaped.push(ch),
+        }
+    }
+    escaped
+}
+
+fn normalize_template(template: &str) -> String {
+    template.replace("\r\n", "\n").replace('\r', "\n")
+}
+
+fn hash_template(template: &str) -> String {
+    let normalized = normalize_template(template);
+    let mut hasher = DefaultHasher::new();
+    normalized.hash(&mut hasher);
+    format!("{:016x}", hasher.finish())
+}
+
+fn build_inline_asm_constraint_list(
+    outputs: &[MirInlineAsmOutput],
+    inputs: &[MirInlineAsmInput],
+    clobbers: &[String],
+) -> Vec<String> {
+    let mut constraints = Vec::new();
+    for output in outputs {
+        constraints.push(output.constraint.clone());
+    }
+    for input in inputs {
+        constraints.push(input.constraint.clone());
+    }
+    for clobber in clobbers {
+        constraints.push(format!("~{{{}}}", clobber));
+    }
+    constraints
+}
+
+fn parse_inline_asm_options(options: &[String]) -> (bool, bool) {
+    let mut sideeffect = false;
+    let mut alignstack = false;
+    for option in options {
+        match option.trim().to_ascii_lowercase().as_str() {
+            "volatile" | "sideeffect" => sideeffect = true,
+            "alignstack" | "align_stack" => alignstack = true,
+            _ => {}
+        }
+    }
+    (sideeffect, alignstack)
+}
+
+fn collect_invalid_llvm_ir_placeholders(template: &str, input_len: usize) -> Vec<usize> {
+    let mut invalid = Vec::new();
+    let mut chars = template.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '$' {
+            let mut digits = String::new();
+            while let Some(&next) = chars.peek() {
+                if next.is_ascii_digit() {
+                    digits.push(next);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            if !digits.is_empty() {
+                if let Ok(index) = digits.parse::<usize>() {
+                    if index >= input_len {
+                        invalid.push(index);
+                    }
+                }
+            }
+        }
+    }
+    invalid
+}
+
+fn find_last_assigned_ssa(template: &str) -> Option<String> {
+    let mut last = None;
+    for line in template.lines() {
+        let Some(eq_pos) = line.find('=') else {
+            continue;
+        };
+        let lhs = line[..eq_pos].trim();
+        if let Some(name) = extract_ssa_name(lhs) {
+            last = Some(name);
+        }
+    }
+    last
+}
+
+fn extract_ssa_name(text: &str) -> Option<String> {
+    let trimmed = text.trim_start();
+    let rest = trimmed.strip_prefix('%')?;
+    let ident: String = rest
+        .chars()
+        .take_while(|ch| is_llvm_ident_char(*ch))
+        .collect();
+    if ident.is_empty() {
+        None
+    } else {
+        Some(format!("%{ident}"))
+    }
+}
+
+fn is_llvm_ident_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric() || matches!(ch, '_' | '.')
+}
+
+fn rename_llvm_ir_ssa(template: &str, prefix: &str) -> String {
+    let mut renamed = String::new();
+    let mut chars = template.chars().peekable();
+    let mut mapping: HashMap<String, String> = HashMap::new();
+    while let Some(ch) = chars.next() {
+        if ch == '%' {
+            let mut ident = String::new();
+            while let Some(&next) = chars.peek() {
+                if is_llvm_ident_char(next) {
+                    ident.push(next);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            if ident.is_empty() {
+                renamed.push('%');
+            } else {
+                let mapped = mapping.entry(ident.clone()).or_insert_with(|| {
+                    format!("%{}{}", prefix, sanitize_llvm_ident(&ident))
+                });
+                renamed.push_str(mapped);
+            }
+        } else {
+            renamed.push(ch);
+        }
+    }
+    renamed
+}
+
+fn replace_llvm_ir_placeholders(
+    template: &str,
+    inputs: &[String],
+) -> (String, Vec<usize>) {
+    let mut invalid = Vec::new();
+    let mut output = String::new();
+    let mut chars = template.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '$' {
+            let mut digits = String::new();
+            while let Some(&next) = chars.peek() {
+                if next.is_ascii_digit() {
+                    digits.push(next);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            if digits.is_empty() {
+                output.push('$');
+                continue;
+            }
+            if let Ok(index) = digits.parse::<usize>() {
+                if let Some(value) = inputs.get(index) {
+                    output.push_str(value);
+                } else {
+                    invalid.push(index);
+                    output.push_str("undef");
+                }
+            } else {
+                output.push('$');
+                output.push_str(&digits);
+            }
+        } else {
+            output.push(ch);
+        }
+    }
+    (output, invalid)
+}
+
+fn infer_output_llvm_type(
+    expr_id: MirExprId,
+    expr_map: &HashMap<MirExprId, &MirExpr>,
+    ssa: &LlvmBuilder,
+) -> String {
+    let Some(expr) = expr_map.get(&expr_id) else {
+        return ssa.pointer_type();
+    };
+    if let Some(mapped) = map_type_token_to_llvm(&expr.ty, ssa) {
+        return mapped;
+    }
+    infer_expr_llvm_type(expr_id, expr_map, ssa)
 }
 
 #[derive(Clone, Debug)]
@@ -698,6 +899,22 @@ pub enum LlvmInstr {
         callee: String,
         args: Vec<(String, String)>,
     },
+    InlineAsm {
+        result: Option<String>,
+        ret_ty: String,
+        template: String,
+        constraints: String,
+        args: Vec<(String, String)>,
+        sideeffect: bool,
+        alignstack: bool,
+    },
+    ExtractValue {
+        result: String,
+        aggregate_ty: String,
+        aggregate: String,
+        index: usize,
+    },
+    Raw(String),
     Phi {
         result: String,
         ty: String,
@@ -751,6 +968,51 @@ impl LlvmInstr {
                     format!("call {ret_ty} {callee}({args_rendered})")
                 }
             }
+            LlvmInstr::InlineAsm {
+                result,
+                ret_ty,
+                template,
+                constraints,
+                args,
+                sideeffect,
+                alignstack,
+            } => {
+                let args_rendered = args
+                    .iter()
+                    .map(|(ty, val)| format!("{ty} {val}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let mut flags = Vec::new();
+                if *sideeffect {
+                    flags.push("sideeffect");
+                }
+                if *alignstack {
+                    flags.push("alignstack");
+                }
+                let flags = if flags.is_empty() {
+                    String::new()
+                } else {
+                    format!(" {}", flags.join(" "))
+                };
+                let template = escape_llvm_string(template);
+                let constraints = escape_llvm_string(constraints);
+                if let Some(var) = result {
+                    format!(
+                        "{var} = call {ret_ty} asm{flags} \"{template}\", \"{constraints}\"({args_rendered})"
+                    )
+                } else {
+                    format!(
+                        "call {ret_ty} asm{flags} \"{template}\", \"{constraints}\"({args_rendered})"
+                    )
+                }
+            }
+            LlvmInstr::ExtractValue {
+                result,
+                aggregate_ty,
+                aggregate,
+                index,
+            } => format!("{result} = extractvalue {aggregate_ty} {aggregate}, {index}"),
+            LlvmInstr::Raw(text) => text.clone(),
             LlvmInstr::Phi {
                 result,
                 ty,
@@ -797,6 +1059,25 @@ impl LlvmTerminator {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct InlineAsmUse {
+    pub function: String,
+    pub template: String,
+    pub template_hash: String,
+    pub constraints: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LlvmIrUse {
+    pub function: String,
+    pub template: String,
+    pub template_hash: String,
+    pub inputs: Vec<String>,
+    pub result_type: String,
+    pub has_result: bool,
+    pub invalid_placeholders: Vec<usize>,
+}
+
 /// LLVM 風モジュール IR。
 #[derive(Clone, Debug)]
 pub struct ModuleIr {
@@ -807,6 +1088,8 @@ pub struct ModuleIr {
     pub metadata: Vec<String>,
     pub intrinsic_uses: Vec<IntrinsicUse>,
     pub unstable_uses: Vec<UnstableUse>,
+    pub inline_asm_uses: Vec<InlineAsmUse>,
+    pub llvm_ir_uses: Vec<LlvmIrUse>,
     pub windows_toolchain: Option<WindowsToolchainConfig>,
     pub target_context: TargetDiagnosticContext,
     pub bridge_metadata: BridgeMetadataContext,
@@ -855,6 +1138,8 @@ pub struct CodegenContext {
     module_metadata: Vec<String>,
     intrinsic_uses: Vec<IntrinsicUse>,
     unstable_uses: Vec<UnstableUse>,
+    inline_asm_uses: Vec<InlineAsmUse>,
+    llvm_ir_uses: Vec<LlvmIrUse>,
     target_context: TargetDiagnosticContext,
     bridge_metadata: BridgeMetadataContext,
     llvm_ir_builder: LlvmIrBuilder,
@@ -882,6 +1167,8 @@ impl CodegenContext {
             module_metadata: Vec::new(),
             intrinsic_uses: Vec::new(),
             unstable_uses: Vec::new(),
+            inline_asm_uses: Vec::new(),
+            llvm_ir_uses: Vec::new(),
             target_context,
             bridge_metadata,
         }
@@ -945,6 +1232,15 @@ impl CodegenContext {
                 });
             }
         }
+        if !mir.exprs.is_empty() {
+            self.inline_asm_uses
+                .extend(collect_inline_asm_uses(&mir.name, &mir.exprs));
+            self.llvm_ir_uses.extend(collect_llvm_ir_uses(
+                &mir.name,
+                &mir.exprs,
+                &self.type_mapping,
+            ));
+        }
         let branch_plans = if mir.exprs.is_empty() {
             mir.match_plans.clone()
         } else {
@@ -1000,6 +1296,8 @@ impl CodegenContext {
             metadata: self.module_metadata,
             intrinsic_uses: self.intrinsic_uses,
             unstable_uses: self.unstable_uses,
+            inline_asm_uses: self.inline_asm_uses,
+            llvm_ir_uses: self.llvm_ir_uses,
             windows_toolchain: self.target_machine.windows_toolchain.clone(),
             target_context: self.target_context.clone(),
             bridge_metadata: self.bridge_metadata.clone(),
@@ -1042,6 +1340,72 @@ impl LlvmIrBuilder {
     fn render_ir(&self, func: &LlvmFunction) -> String {
         func.describe()
     }
+}
+
+fn collect_inline_asm_uses(function: &str, exprs: &[MirExpr]) -> Vec<InlineAsmUse> {
+    let mut uses = Vec::new();
+    for expr in exprs {
+        if let MirExprKind::InlineAsm {
+            template,
+            outputs,
+            inputs,
+            clobbers,
+            ..
+        } = &expr.kind
+        {
+            let constraints = build_inline_asm_constraint_list(outputs, inputs, clobbers);
+            uses.push(InlineAsmUse {
+                function: function.to_string(),
+                template: template.clone(),
+                template_hash: hash_template(template),
+                constraints,
+            });
+        }
+    }
+    uses
+}
+
+fn collect_llvm_ir_uses(
+    function: &str,
+    exprs: &[MirExpr],
+    type_mapping: &TypeMappingContext,
+) -> Vec<LlvmIrUse> {
+    let mut expr_map = HashMap::new();
+    for expr in exprs {
+        expr_map.insert(expr.id, expr);
+    }
+    let ssa = LlvmBuilder::new(type_mapping.clone());
+    let mut uses = Vec::new();
+    for expr in exprs {
+        if let MirExprKind::LlvmIr {
+            result_type,
+            template,
+            inputs,
+        } = &expr.kind
+        {
+            let mut input_labels = Vec::new();
+            for input_id in inputs {
+                let label = expr_map
+                    .get(input_id)
+                    .map(|value| value.ty.clone())
+                    .filter(|value| !value.trim().is_empty())
+                    .unwrap_or_else(|| infer_expr_llvm_type(*input_id, &expr_map, &ssa));
+                input_labels.push(label);
+            }
+            let invalid_placeholders = collect_invalid_llvm_ir_placeholders(template, inputs.len());
+            let has_result = find_last_assigned_ssa(template).is_some();
+            uses.push(LlvmIrUse {
+                function: function.to_string(),
+                template: template.clone(),
+                template_hash: hash_template(template),
+                inputs: input_labels,
+                result_type: result_type.clone(),
+                has_result,
+                invalid_placeholders,
+            });
+        }
+    }
+    uses
 }
 
 fn render_branch_plans(exprs: &[MirExpr]) -> Vec<String> {
@@ -3980,6 +4344,13 @@ fn infer_expr_type_hint(
         MirExprKind::EffectBlock { body } | MirExprKind::Unsafe { body } => {
             return infer_expr_type_hint(*body, expr_map, _ssa);
         }
+        MirExprKind::LlvmIr { result_type, .. } => {
+            if !result_type.trim().is_empty() {
+                result_type.clone()
+            } else {
+                "Result".into()
+            }
+        }
         MirExprKind::Literal { summary } => {
             match parse_literal_summary(summary) {
                 LiteralSummary::Unit => "Unit".into(),
@@ -4009,10 +4380,7 @@ fn infer_expr_type_hint(
         | MirExprKind::Propagate { .. }
         | MirExprKind::Panic { .. }
         | MirExprKind::Binary { .. }
-        | MirExprKind::EffectBlock { .. }
-        | MirExprKind::Unsafe { .. }
         | MirExprKind::InlineAsm { .. }
-        | MirExprKind::LlvmIr { .. }
         | MirExprKind::Unknown => "Result".into(),
     }
 }
@@ -4147,6 +4515,10 @@ fn infer_expr_llvm_type(
         MirExprKind::EffectBlock { body } | MirExprKind::Unsafe { body } => {
             infer_expr_llvm_type(*body, expr_map, ssa)
         }
+        MirExprKind::LlvmIr { result_type, .. } => {
+            map_type_token_to_llvm(result_type, ssa).unwrap_or_else(|| ssa.pointer_type())
+        }
+        MirExprKind::InlineAsm { .. } => ssa.pointer_type(),
         _ => ssa.pointer_type(),
     }
 }
@@ -4828,6 +5200,179 @@ fn emit_value_expr(
                 .push(LlvmInstr::Comment(format!("unsafe_block expr#{expr_id}")));
             value
         }
+        MirExprKind::InlineAsm {
+            template,
+            outputs,
+            inputs,
+            clobbers,
+            options,
+        } => {
+            let mut instrs = Vec::new();
+            let mut input_values = Vec::new();
+            for input in inputs {
+                let mut value = emit_value_expr(input.expr, expr_map, ssa);
+                instrs.extend(std::mem::take(&mut value.instrs));
+                input_values.push(value);
+            }
+            let mut output_targets: Vec<(MirExprId, Option<(String, String)>, String)> =
+                Vec::new();
+            for output in outputs {
+                let target_value = emit_value_expr(output.target, expr_map, ssa);
+                instrs.extend(target_value.instrs);
+                let output_ty = infer_output_llvm_type(output.target, expr_map, ssa);
+                output_targets.push((
+                    output.target,
+                    Some((target_value.operand, target_value.ty)),
+                    output_ty,
+                ));
+            }
+            let constraint_list = build_inline_asm_constraint_list(outputs, inputs, clobbers);
+            let constraints = constraint_list.join(",");
+            let (sideeffect, alignstack) = parse_inline_asm_options(options);
+            let ret_ty = if output_targets.is_empty() {
+                "void".into()
+            } else if output_targets.len() == 1 {
+                output_targets
+                    .first()
+                    .map(|(_, _, ty)| ty.clone())
+                    .unwrap_or_else(|| ssa.pointer_type())
+            } else {
+                let joined = output_targets
+                    .iter()
+                    .map(|(_, _, ty)| ty.clone())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{{{joined}}}")
+            };
+            let call_result = if output_targets.is_empty() {
+                None
+            } else {
+                Some(ssa.new_tmp("asm"))
+            };
+            instrs.push(LlvmInstr::InlineAsm {
+                result: call_result.clone(),
+                ret_ty: ret_ty.clone(),
+                template: template.clone(),
+                constraints,
+                args: input_values
+                    .iter()
+                    .map(|value| (value.ty.clone(), value.operand.clone()))
+                    .collect(),
+                sideeffect,
+                alignstack,
+            });
+            let mut result = emit_unit_value(ssa);
+            result.instrs = instrs;
+            if output_targets.is_empty() {
+                result.instrs.push(LlvmInstr::Comment(format!(
+                    "inline_asm expr#{expr_id} -> unit"
+                )));
+                return result;
+            }
+            let aggregate = call_result.unwrap_or_else(|| ssa.new_tmp("asm_missing"));
+            if output_targets.len() == 1 {
+                let (target_id, target_operand, output_ty) = output_targets
+                    .first()
+                    .cloned()
+                    .unwrap_or((expr_id, None, ssa.pointer_type()));
+                result.instrs.extend(rebind_target_operand(
+                    target_id,
+                    target_operand,
+                    aggregate.clone(),
+                    output_ty.clone(),
+                    expr_map,
+                    ssa,
+                ));
+                if let Some(expr_ty) = map_type_token_to_llvm(&expr.ty, ssa) {
+                    if expr_ty == output_ty {
+                        return EmittedValue {
+                            ty: expr_ty,
+                            operand: aggregate,
+                            instrs: result.instrs,
+                        };
+                    }
+                }
+                result.instrs.push(LlvmInstr::Comment(format!(
+                    "inline_asm expr#{expr_id} -> output stored"
+                )));
+                return result;
+            }
+            for (index, (target_id, target_operand, output_ty)) in
+                output_targets.into_iter().enumerate()
+            {
+                let extracted = ssa.new_tmp("asm_out");
+                result.instrs.push(LlvmInstr::ExtractValue {
+                    result: extracted.clone(),
+                    aggregate_ty: ret_ty.clone(),
+                    aggregate: aggregate.clone(),
+                    index,
+                });
+                result.instrs.extend(rebind_target_operand(
+                    target_id,
+                    target_operand,
+                    extracted,
+                    output_ty,
+                    expr_map,
+                    ssa,
+                ));
+            }
+            result.instrs.push(LlvmInstr::Comment(format!(
+                "inline_asm expr#{expr_id} -> outputs stored"
+            )));
+            result
+        }
+        MirExprKind::LlvmIr {
+            result_type,
+            template,
+            inputs,
+        } => {
+            let mut instrs = Vec::new();
+            let mut input_operands = Vec::new();
+            for input_id in inputs {
+                let value = emit_value_expr(*input_id, expr_map, ssa);
+                instrs.extend(value.instrs);
+                input_operands.push(value.operand);
+            }
+            let prefix = format!("llvm_ir{expr_id}_");
+            let renamed = rename_llvm_ir_ssa(template, &prefix);
+            let (rendered, invalid_placeholders) =
+                replace_llvm_ir_placeholders(&renamed, &input_operands);
+            let result_operand = find_last_assigned_ssa(&rendered);
+            let ret_ty = map_type_token_to_llvm(result_type, ssa)
+                .unwrap_or_else(|| ssa.pointer_type());
+            for line in rendered.lines() {
+                let trimmed = line.trim();
+                if !trimmed.is_empty() {
+                    instrs.push(LlvmInstr::Raw(trimmed.to_string()));
+                }
+            }
+            if !invalid_placeholders.is_empty() {
+                instrs.push(LlvmInstr::Comment(format!(
+                    "llvm_ir expr#{expr_id} invalid placeholders: {:?}",
+                    invalid_placeholders
+                )));
+            }
+            if matches!(result_type.trim().to_ascii_lowercase().as_str(), "void" | "unit") {
+                let mut result = emit_unit_value(ssa);
+                result.instrs = instrs;
+                result
+            } else if let Some(result_operand) = result_operand {
+                EmittedValue {
+                    ty: ret_ty,
+                    operand: result_operand,
+                    instrs,
+                }
+            } else {
+                instrs.push(LlvmInstr::Comment(format!(
+                    "llvm_ir expr#{expr_id} missing result"
+                )));
+                EmittedValue {
+                    ty: ret_ty,
+                    operand: "null".into(),
+                    instrs,
+                }
+            }
+        }
         MirExprKind::Return { value } => {
             let mut inner = if let Some(value_id) = value {
                 emit_value_expr(*value_id, expr_map, ssa)
@@ -5046,8 +5591,6 @@ fn emit_value_expr(
             }
         }
         MirExprKind::Match { .. }
-        | MirExprKind::InlineAsm { .. }
-        | MirExprKind::LlvmIr { .. }
         | MirExprKind::Unknown => EmittedValue {
             ty: ssa.pointer_type(),
             operand: format!("#{}", expr_id),

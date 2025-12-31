@@ -198,6 +198,81 @@ impl Verifier {
                 );
             }
         }
+        for inline_asm in &module.inline_asm_uses {
+            audit.record_value("native.inline_asm.used", &Value::Bool(true));
+            audit.record("asm.template_hash", inline_asm.template_hash.clone());
+            let constraint_values = Value::Array(
+                inline_asm
+                    .constraints
+                    .iter()
+                    .cloned()
+                    .map(Value::String)
+                    .collect(),
+            );
+            audit.record_value("asm.constraints", &constraint_values);
+            if inline_asm
+                .constraints
+                .iter()
+                .any(|constraint| !is_inline_asm_constraint_valid(constraint))
+            {
+                diagnostics.push(
+                    Diagnostic::new(
+                        "Native",
+                        "native.inline_asm.invalid_constraint",
+                        "Inline ASM の制約文字列が無効です。",
+                    )
+                    .with_extension("asm.template_hash", inline_asm.template_hash.clone())
+                    .with_extension(
+                        "asm.constraints",
+                        serde_json::to_string(&inline_asm.constraints)
+                            .unwrap_or_else(|_| format!("{:?}", inline_asm.constraints)),
+                    ),
+                );
+            }
+        }
+        for llvm_ir in &module.llvm_ir_uses {
+            audit.record_value("native.llvm_ir.used", &Value::Bool(true));
+            audit.record("llvm_ir.template_hash", llvm_ir.template_hash.clone());
+            let input_values = Value::Array(
+                llvm_ir
+                    .inputs
+                    .iter()
+                    .cloned()
+                    .map(Value::String)
+                    .collect(),
+            );
+            audit.record_value("llvm_ir.inputs", &input_values);
+            if !llvm_ir.invalid_placeholders.is_empty() {
+                diagnostics.push(
+                    Diagnostic::new(
+                        "Native",
+                        "native.llvm_ir.invalid_placeholder",
+                        "LLVM IR のプレースホルダが inputs と一致しません。",
+                    )
+                    .with_extension("llvm_ir.template_hash", llvm_ir.template_hash.clone())
+                    .with_extension(
+                        "llvm_ir.inputs",
+                        serde_json::to_string(&llvm_ir.inputs)
+                            .unwrap_or_else(|_| format!("{:?}", llvm_ir.inputs)),
+                    ),
+                );
+            }
+            if !llvm_ir.has_result && !is_void_llvm_ir_result(&llvm_ir.result_type) {
+                diagnostics.push(
+                    Diagnostic::new(
+                        "Native",
+                        "native.llvm_ir.verify_failed",
+                        "LLVM IR テンプレートから結果 SSA を取得できません。",
+                    )
+                    .with_extension("llvm_ir.template_hash", llvm_ir.template_hash.clone())
+                    .with_extension(
+                        "llvm_ir.inputs",
+                        serde_json::to_string(&llvm_ir.inputs)
+                            .unwrap_or_else(|_| format!("{:?}", llvm_ir.inputs)),
+                    ),
+                );
+            }
+        }
         audit.record(
             "audit.verdict",
             if diagnostics.is_empty() {
@@ -217,4 +292,22 @@ impl Verifier {
             audit_log: audit,
         }
     }
+}
+
+fn is_inline_asm_constraint_valid(constraint: &str) -> bool {
+    let trimmed = constraint.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    if trimmed.chars().any(|ch| ch.is_whitespace() || ch == ',') {
+        return false;
+    }
+    true
+}
+
+fn is_void_llvm_ir_result(result_type: &str) -> bool {
+    matches!(
+        result_type.trim().to_ascii_lowercase().as_str(),
+        "void" | "unit"
+    )
 }
