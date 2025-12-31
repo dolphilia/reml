@@ -61,6 +61,11 @@
   - LLVM の `ArrayType` で表現する場合の利点/制約（ABI、関数引数の取り扱い）を整理し、採用可否をメモする。
   - 直ちに `ArrayType` を使わない場合は、`RemlType::Array` を検出して `backend.todo.fixed_array_codegen` を発行しつつ `Pointer` に落とす方針を明記する。
   - 生成経路が複数ある場合（引数/戻り値/ローカル/メモリコピー）で統一ルールを宣言し、未対応箇所を TODO で列挙する。
+ - 確認結果:
+   - `LlvmIrBuilder::build_function` は `TypeMappingContext::layout_of` の `description` をそのまま関数引数/戻り値へ反映しており、`RemlType::Array` は `[N x <elem>]` の表記で出力される。
+   - `LlvmInstr::Alloca` / `Load` / `Store` も `layout_of` の文字列表現を用いるため、ローカル領域でも配列型は同じ表記で扱われる。
+   - 現段階の方針として、Backend の LLVM 風 IR では `ArrayType` 相当の表記を採用し、コード生成段階で `Pointer` へ強制フォールバックしない。
+   - ABI 互換性（配列の値渡し/戻り値の扱い）は未検証のため、実 LLVM への移行時に `backend.todo.fixed_array_codegen` 相当の診断 or 変換規則を追加する前提で別計画へ接続する。
 
 ### フェーズ 4: Runtime 影響確認
 - 固定長配列が Runtime ABI を要求しないことを確認する。
@@ -89,7 +94,7 @@
 - 進捗欄（運用用）:
   - [ ] フェーズ 1 完了
   - [ ] フェーズ 2 完了
-  - [ ] フェーズ 3 完了
+  - [x] フェーズ 3 完了
   - [ ] フェーズ 4 完了
   - [ ] フェーズ 5 完了
 
