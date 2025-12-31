@@ -100,11 +100,11 @@
 ## 作業チェックリスト
 
 ### フェーズA: 仕様整備
-- [ ] `docs/spec/1-1-syntax.md` に Inline ASM / LLVM IR 構文を追加
-- [ ] `docs/spec/1-5-formal-grammar-bnf.md` に BNF を追加
-- [ ] `docs/spec/1-3-effects-safety.md` に `!{native}` と `unsafe` ブロック境界、`@cfg` 要件を追加
-- [ ] `docs/spec/3-6-core-diagnostics-audit.md` に監査キーを追加
-- [ ] `docs/spec/3-8-core-runtime-capability.md` に Capability を追加
+- [x] `docs/spec/1-1-syntax.md` に Inline ASM / LLVM IR 構文を追加
+- [x] `docs/spec/1-5-formal-grammar-bnf.md` に BNF を追加
+- [x] `docs/spec/1-3-effects-safety.md` に `!{native}` と `unsafe` ブロック境界、`@cfg` 要件を追加
+- [x] `docs/spec/3-6-core-diagnostics-audit.md` に監査キーを追加
+- [x] `docs/spec/3-8-core-runtime-capability.md` に Capability を追加
 
 ### フェーズB: フロントエンド構文と型検証
 - [ ] Parser に Inline ASM / LLVM IR を追加
