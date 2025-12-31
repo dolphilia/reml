@@ -1103,6 +1103,9 @@ fn expr_contains_array(expr: &Expr) -> bool {
         | ExprKind::Unsafe { body: inner }
         | ExprKind::Defer { body: inner } => expr_contains_array(inner),
         ExprKind::Handle { handle } => expr_contains_array(&handle.target),
+        ExprKind::EffectBlock { body } => expr_contains_array(body),
+        ExprKind::Async { body, .. } => expr_contains_array(body),
+        ExprKind::Await { expr: inner } => expr_contains_array(inner),
         ExprKind::Lambda { body, .. } => expr_contains_array(body),
         ExprKind::IfElse {
             condition,
@@ -1122,7 +1125,9 @@ fn expr_contains_array(expr: &Expr) -> bool {
             expr_contains_array(condition) || expr_contains_array(body)
         }
         ExprKind::For { start, end, .. } => expr_contains_array(start) || expr_contains_array(end),
-        ExprKind::Block { statements, .. } => statements.iter().any(stmt_contains_array),
+        ExprKind::Block { statements, defers, .. } => {
+            statements.iter().any(stmt_contains_array) || defers.iter().any(expr_contains_array)
+        }
         ExprKind::Return { value } => value
             .as_ref()
             .map_or(false, |expr| expr_contains_array(expr)),
@@ -1132,6 +1137,7 @@ fn expr_contains_array(expr: &Expr) -> bool {
         ExprKind::Break { value } => value
             .as_ref()
             .map_or(false, |expr| expr_contains_array(expr)),
+        ExprKind::InlineAsm(_) | ExprKind::LlvmIr(_) => false,
     }
 }
 
@@ -1258,6 +1264,8 @@ fn build_function(body: Expr, attrs: Vec<Attribute>) -> Function {
         ret_type: None,
         where_clause: Vec::new(),
         effect: None,
+        is_async: false,
+        is_unsafe: false,
         span: dummy_span(),
         attrs,
     }
