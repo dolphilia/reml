@@ -124,9 +124,9 @@
 - [x] Rust バックエンド検証ステップの診断/監査更新
 
 ### フェーズE: 監査ログ / Capability / Runtime 連携
-- [ ] `compiler/rust/runtime/src/native` の監査連携
-- [ ] `AuditEnvelope.metadata` へのキー追加
-- [ ] Capability Registry 更新
+- [x] `compiler/rust/runtime/src/native` の監査連携
+- [x] `AuditEnvelope.metadata` へのキー追加
+- [x] Capability Registry 更新
 
 ### フェーズF: サンプルと回帰接続
 - [ ] `examples/native/asm` / `examples/native/llvm_ir` を追加

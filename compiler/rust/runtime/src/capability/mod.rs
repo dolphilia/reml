@@ -10,6 +10,7 @@ pub mod hardware;
 pub mod io;
 pub mod memory;
 pub mod metrics;
+pub mod native;
 pub mod plugin;
 pub mod process;
 pub mod realtime;
@@ -36,6 +37,7 @@ pub use hardware::{HardwareAcceleratorKind, HardwareCapability, HardwareCapabili
 pub use io::{IoAdapterKind, IoCapability, IoCapabilityMetadata, IoOperationKind};
 pub use memory::{MemoryCapability, MemoryCapabilityMetadata, MemoryModel};
 pub use metrics::{MetricsCapability, MetricsCapabilityMetadata, MetricsExporterKind};
+pub use native::{NativeCapability, NativeCapabilityMetadata};
 pub use plugin::{PluginCapability, PluginCapabilityMetadata};
 pub use process::{ProcessCapability, ProcessCapabilityMetadata, ProcessSpawnStrategy};
 pub use realtime::{RealtimeCapability, RealtimeCapabilityMetadata, RealtimeClockSource};

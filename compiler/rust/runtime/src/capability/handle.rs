@@ -7,9 +7,9 @@ use super::{
     actor::ActorCapability, async_runtime::AsyncCapability, audit::AuditCapability,
     collections::CollectionsCapability, gc::GcCapability, hardware::HardwareCapability,
     io::IoCapability, memory::MemoryCapability, metrics::MetricsCapability,
-    plugin::PluginCapability, process::ProcessCapability, realtime::RealtimeCapability,
-    security::SecurityCapability, signal::SignalCapability, system::SystemCapability,
-    CapabilityDescriptor,
+    native::NativeCapability, plugin::PluginCapability, process::ProcessCapability,
+    realtime::RealtimeCapability, security::SecurityCapability, signal::SignalCapability,
+    system::SystemCapability, CapabilityDescriptor,
 };
 
 /// Capability ごとの型付きハンドル。
@@ -23,6 +23,7 @@ pub enum CapabilityHandle {
     Metrics(MetricsCapability),
     Memory(MemoryCapability),
     Security(SecurityCapability),
+    Native(NativeCapability),
     Plugin(PluginCapability),
     Actor(ActorCapability),
     Process(ProcessCapability),
@@ -43,6 +44,7 @@ impl CapabilityHandle {
             CapabilityHandle::Metrics(handle) => handle.descriptor(),
             CapabilityHandle::Memory(handle) => handle.descriptor(),
             CapabilityHandle::Security(handle) => handle.descriptor(),
+            CapabilityHandle::Native(handle) => handle.descriptor(),
             CapabilityHandle::Plugin(handle) => handle.descriptor(),
             CapabilityHandle::Actor(handle) => handle.descriptor(),
             CapabilityHandle::Process(handle) => handle.descriptor(),
@@ -63,6 +65,7 @@ impl CapabilityHandle {
             CapabilityHandle::Metrics(_) => CapabilityHandleKind::Metrics,
             CapabilityHandle::Memory(_) => CapabilityHandleKind::Memory,
             CapabilityHandle::Security(_) => CapabilityHandleKind::Security,
+            CapabilityHandle::Native(_) => CapabilityHandleKind::Native,
             CapabilityHandle::Plugin(_) => CapabilityHandleKind::Plugin,
             CapabilityHandle::Actor(_) => CapabilityHandleKind::Actor,
             CapabilityHandle::Process(_) => CapabilityHandleKind::Process,
@@ -125,6 +128,13 @@ impl CapabilityHandle {
     pub fn as_security(&self) -> Option<&SecurityCapability> {
         match self {
             CapabilityHandle::Security(handle) => Some(handle),
+            _ => None,
+        }
+    }
+
+    pub fn as_native(&self) -> Option<&NativeCapability> {
+        match self {
+            CapabilityHandle::Native(handle) => Some(handle),
             _ => None,
         }
     }
@@ -227,6 +237,12 @@ impl From<SecurityCapability> for CapabilityHandle {
     }
 }
 
+impl From<NativeCapability> for CapabilityHandle {
+    fn from(value: NativeCapability) -> Self {
+        CapabilityHandle::Native(value)
+    }
+}
+
 impl From<PluginCapability> for CapabilityHandle {
     fn from(value: PluginCapability) -> Self {
         CapabilityHandle::Plugin(value)
@@ -281,6 +297,7 @@ pub enum CapabilityHandleKind {
     Metrics,
     Memory,
     Security,
+    Native,
     Plugin,
     Actor,
     Process,
@@ -365,6 +382,7 @@ impl_try_from_handle!(AuditCapability, Audit, Audit);
 impl_try_from_handle!(MetricsCapability, Metrics, Metrics);
 impl_try_from_handle!(MemoryCapability, Memory, Memory);
 impl_try_from_handle!(SecurityCapability, Security, Security);
+impl_try_from_handle!(NativeCapability, Native, Native);
 impl_try_from_handle!(PluginCapability, Plugin, Plugin);
 impl_try_from_handle!(ActorCapability, Actor, Actor);
 impl_try_from_handle!(ProcessCapability, Process, Process);

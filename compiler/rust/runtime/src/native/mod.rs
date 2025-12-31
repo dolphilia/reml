@@ -15,6 +15,24 @@ pub const SIGNATURE_CTPOP_I64: &str = "(i64) -> i64";
 pub const SIGNATURE_CTPOP_I32: &str = "(i32) -> i32";
 pub const SIGNATURE_MEMCPY_P0_P0_I64: &str = "(ptr, ptr, i64) -> void";
 
+/// `native.inline_asm.*` の監査メタデータを `AuditEnvelope` に挿入する。
+pub fn insert_inline_asm_audit_metadata<S: AsRef<str>>(
+    envelope: &mut AuditEnvelope,
+    template_hash: &str,
+    constraints: &[S],
+) {
+    record_inline_asm_audit_metadata(envelope, template_hash, constraints);
+}
+
+/// `native.llvm_ir.*` の監査メタデータを `AuditEnvelope` に挿入する。
+pub fn insert_llvm_ir_audit_metadata<S: AsRef<str>>(
+    envelope: &mut AuditEnvelope,
+    template_hash: &str,
+    inputs: &[S],
+) {
+    record_llvm_ir_audit_metadata(envelope, template_hash, inputs);
+}
+
 /// `native.intrinsic.*` の監査メタデータを `AuditEnvelope` に挿入する。
 pub fn insert_intrinsic_audit_metadata(envelope: &mut AuditEnvelope, name: &str, signature: &str) {
     record_intrinsic_audit_metadata(envelope, name, signature);
@@ -43,6 +61,52 @@ pub(crate) fn record_intrinsic_audit_metadata(
     envelope.metadata.insert(
         "intrinsic.signature".into(),
         Value::String(signature.to_string()),
+    );
+}
+
+pub(crate) fn record_inline_asm_audit_metadata<S: AsRef<str>>(
+    envelope: &mut AuditEnvelope,
+    template_hash: &str,
+    constraints: &[S],
+) {
+    envelope
+        .metadata
+        .insert("native.inline_asm.used".into(), Value::Bool(true));
+    envelope.metadata.insert(
+        "asm.template_hash".into(),
+        Value::String(template_hash.to_string()),
+    );
+    envelope.metadata.insert(
+        "asm.constraints".into(),
+        Value::Array(
+            constraints
+                .iter()
+                .map(|value| Value::String(value.as_ref().to_string()))
+                .collect(),
+        ),
+    );
+}
+
+pub(crate) fn record_llvm_ir_audit_metadata<S: AsRef<str>>(
+    envelope: &mut AuditEnvelope,
+    template_hash: &str,
+    inputs: &[S],
+) {
+    envelope
+        .metadata
+        .insert("native.llvm_ir.used".into(), Value::Bool(true));
+    envelope.metadata.insert(
+        "llvm_ir.template_hash".into(),
+        Value::String(template_hash.to_string()),
+    );
+    envelope.metadata.insert(
+        "llvm_ir.inputs".into(),
+        Value::Array(
+            inputs
+                .iter()
+                .map(|value| Value::String(value.as_ref().to_string()))
+                .collect(),
+        ),
     );
 }
 

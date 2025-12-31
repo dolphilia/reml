@@ -23,6 +23,7 @@ use super::{
     io::{IoAdapterKind, IoCapability, IoCapabilityMetadata, IoOperationKind},
     memory::{MemoryCapability, MemoryCapabilityMetadata},
     metrics::{MetricsCapability, MetricsCapabilityMetadata, MetricsExporterKind},
+    native::{NativeCapability, NativeCapabilityMetadata},
     plugin::{PluginCapability, PluginCapabilityMetadata},
     realtime::{RealtimeCapability, RealtimeCapabilityMetadata, RealtimeClockSource},
     security::{SecurityCapability, SecurityCapabilityMetadata, SecurityPolicyKind},
@@ -750,6 +751,16 @@ fn builtin_capabilities() -> Vec<CapabilityHandle> {
         collections_ref_capability(),
         audit_capability("core.collections.audit", StageId::Stable, &["audit", "mem"]),
         metrics_capability("metrics.emit", StageId::Stable, &["audit"]),
+        native_capability(
+            "native.inline_asm",
+            StageId::Experimental,
+            &["native", "audit", "unsafe"],
+        ),
+        native_capability(
+            "native.llvm_ir",
+            StageId::Experimental,
+            &["native", "audit", "unsafe"],
+        ),
     ]
 }
 
@@ -831,6 +842,13 @@ fn metrics_capability(id: &'static str, stage: StageId, effects: &[&str]) -> Cap
             supports_histogram: true,
             supports_sampling: true,
         },
+    ))
+}
+
+fn native_capability(id: &'static str, stage: StageId, effects: &[&str]) -> CapabilityHandle {
+    CapabilityHandle::Native(NativeCapability::new(
+        descriptor(id, stage, effects),
+        NativeCapabilityMetadata::default(),
     ))
 }
 
