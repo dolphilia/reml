@@ -103,6 +103,12 @@
   - 仕様（`docs/spec/3-9-core-async-ffi-unsafe.md`）と照らし、必要な Runtime ハンドラ/Capability を整理する。
   - Backend 側で未対応診断を返す方針の場合、Runtime への追加作業が無いことを計画書内に明記する。
   - Runtime 側の追加が必要と判断した場合は、別途 `1-2-impl-gap-backend-runtime-plan-YYYYMMDD.md` を追加する。
+- 確認結果:
+  - `compiler/rust/runtime/src/prelude/async.rs` は `Future<T>` / `AsyncStream<T>` の opaque 型のみで、実行器や `await` の具体 API は未定義。
+  - `compiler/rust/runtime/src/runtime/async_bridge.rs` は `ActorSystem` の最小実装があり、`Core.Async` 本体のスケジューラ/タスク実行は未実装。
+  - `compiler/rust/runtime/ffi/src/registry.rs` に `BridgeIntent::Await` があるが、`await` を直接処理するブリッジ実装は現状見当たらない。
+  - 仕様（`docs/spec/3-9-core-async-ffi-unsafe.md`）は `Future` / `SchedulerHandle` / `block_on` などを定義するため、Runtime の本格対応は別フェーズで必要。
+  - 現段階は Backend 側で `backend.todo.async` / `backend.todo.await` を返す方針のため、Runtime への追加変更は不要と判断する。
 
 ### フェーズ 4: 検証
 - Backend MIR 取り込みのスモークテスト（JSON 変換で失敗しないこと）を追加する。
@@ -125,7 +131,7 @@
 - 進捗欄（運用用）:
   - [x] フェーズ 1 完了
   - [x] フェーズ 2 完了
-  - [ ] フェーズ 3 完了
+  - [x] フェーズ 3 完了
   - [ ] フェーズ 4 完了
 
 ## 関連リンク
