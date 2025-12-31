@@ -13,6 +13,7 @@ use crate::type_mapping::RemlType;
 use crate::verify::Verifier;
 use serde::Deserialize;
 use serde_json::Value;
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::{fmt, fs::File, io, path::Path};
@@ -336,6 +337,29 @@ impl MirModuleSpec {
                 "Backend.backend.todo.impl_registry.unresolved: impl_id={unresolved}"
             ));
         }
+        diagnostics.extend(self.collect_type_diagnostics());
+        diagnostics
+    }
+
+    fn collect_type_diagnostics(&self) -> Vec<String> {
+        let mut diagnostics = Vec::new();
+        for function in &self.functions {
+            for param in &function.params {
+                let token = param.type_token();
+                parse_reml_type_with_diagnostics(&token, Some(&mut diagnostics));
+            }
+            if let Some(ret) = function.return_type.as_deref() {
+                parse_reml_type_with_diagnostics(ret, Some(&mut diagnostics));
+            }
+            for ffi in &function.ffi_calls {
+                for arg in &ffi.args {
+                    parse_reml_type_with_diagnostics(arg, Some(&mut diagnostics));
+                }
+                if let Some(ret) = ffi.ret.as_deref() {
+                    parse_reml_type_with_diagnostics(ret, Some(&mut diagnostics));
+                }
+            }
+        }
         diagnostics
     }
 
@@ -479,6 +503,15 @@ impl MirParamJson {
         match self {
             MirParamJson::Bare(token) => token,
             MirParamJson::Detailed { ty } => ty.unwrap_or_else(|| "pointer".into()),
+        }
+    }
+
+    fn type_token(&self) -> Cow<'_, str> {
+        match self {
+            MirParamJson::Bare(token) => Cow::Borrowed(token),
+            MirParamJson::Detailed { ty } => {
+                Cow::Borrowed(ty.as_deref().unwrap_or("pointer"))
+            }
         }
     }
 }
@@ -1362,6 +1395,13 @@ pub fn generate_w3_snapshot() -> BackendDiffSnapshot {
 }
 
 fn parse_reml_type(token: &str) -> RemlType {
+    parse_reml_type_with_diagnostics(token, None)
+}
+
+fn parse_reml_type_with_diagnostics(
+    token: &str,
+    mut diagnostics: Option<&mut Vec<String>>,
+) -> RemlType {
     let trimmed = token.trim();
     if trimmed.eq_ignore_ascii_case("&str") {
         return RemlType::String;
@@ -1385,7 +1425,61 @@ fn parse_reml_type(token: &str) -> RemlType {
         if inner.is_empty() {
             return RemlType::Pointer;
         }
-        return RemlType::Slice(Box::new(parse_reml_type(inner)));
+        if let Some((element, length)) = inner.split_once(';') {
+            let element = element.trim();
+            let length = length.trim();
+            if element.is_empty() {
+                push_fixed_array_diagnostic(
+                    &mut diagnostics,
+                    trimmed,
+                    "element_empty",
+                );
+                return RemlType::Pointer;
+            }
+            if length.is_empty() {
+                push_fixed_array_diagnostic(
+                    &mut diagnostics,
+                    trimmed,
+                    "length_empty",
+                );
+                return RemlType::Pointer;
+            }
+            if length.starts_with('-') {
+                push_fixed_array_diagnostic(
+                    &mut diagnostics,
+                    trimmed,
+                    "length_negative",
+                );
+                return RemlType::Pointer;
+            }
+            if !length.chars().all(|ch| ch.is_ascii_digit()) {
+                push_fixed_array_diagnostic(
+                    &mut diagnostics,
+                    trimmed,
+                    "length_not_decimal",
+                );
+                return RemlType::Pointer;
+            }
+            if length.parse::<u64>().is_err() {
+                push_fixed_array_diagnostic(
+                    &mut diagnostics,
+                    trimmed,
+                    "length_overflow",
+                );
+                return RemlType::Pointer;
+            }
+            parse_reml_type_with_diagnostics(element, diagnostics.as_deref_mut());
+            push_fixed_array_diagnostic(
+                &mut diagnostics,
+                trimmed,
+                "fixed_array_unsupported",
+            );
+            return RemlType::Pointer;
+        }
+        return RemlType::Slice(Box::new(parse_reml_type_with_diagnostics(
+            inner,
+            diagnostics,
+        )));
     }
     if let Some((name, inner)) = split_generic_type(trimmed) {
         if name.eq_ignore_ascii_case("set") {
@@ -1407,6 +1501,18 @@ fn parse_reml_type(token: &str) -> RemlType {
         "pointer" | "ptr" | "i8*" => RemlType::Pointer,
         "string" | "str" => RemlType::String,
         _ => RemlType::Pointer,
+    }
+}
+
+fn push_fixed_array_diagnostic(
+    diagnostics: &mut Option<&mut Vec<String>>,
+    token: &str,
+    reason: &str,
+) {
+    if let Some(diagnostics) = diagnostics.as_deref_mut() {
+        diagnostics.push(format!(
+            "Backend.backend.todo.fixed_array_type: token={token} reason={reason}"
+        ));
     }
 }
 
