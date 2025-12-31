@@ -153,6 +153,9 @@ fn format_reml_type(ty: &RemlType) -> String {
         RemlType::F64 => "f64".to_string(),
         RemlType::Pointer => "ptr".to_string(),
         RemlType::String => "string".to_string(),
+        RemlType::Array { element, length } => {
+            format!("[{}; {}]", format_reml_type(element), length)
+        }
         RemlType::Slice(inner) => format!("[{}]", format_reml_type(inner)),
         RemlType::Set(inner) => format!("Set<{}>", format_reml_type(inner)),
         RemlType::Ref { mutable, to } => {

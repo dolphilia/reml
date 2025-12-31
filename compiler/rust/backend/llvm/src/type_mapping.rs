@@ -9,6 +9,10 @@ pub enum RemlType {
     F64,
     Pointer,
     String,
+    Array {
+        element: Box<RemlType>,
+        length: u64,
+    },
     Slice(Box<RemlType>),
     Set(Box<RemlType>),
     Ref {
@@ -79,6 +83,25 @@ impl TypeMappingContext {
                 align: 8,
                 description: "{i8*, i64}".into(),
             },
+            RemlType::Array { element, length } => {
+                let element_layout = self.layout_of(element);
+                let size = if *length == 0 {
+                    Some(0)
+                } else {
+                    element_layout.size.checked_mul(*length)
+                };
+                // TODO(backend.todo.fixed_array_layout): 長さ 0 やオーバーフロー時の診断を追加する。
+                if let Some(size) = size {
+                    TypeLayout {
+                        size,
+                        // 配列は要素のアラインメントを継承する。
+                        align: element_layout.align,
+                        description: format!("[{} x {}]", length, element_layout.description),
+                    }
+                } else {
+                    self.layout_of(&RemlType::Pointer)
+                }
+            }
             RemlType::Slice(_) => TypeLayout {
                 size: 16,
                 align: 8,
