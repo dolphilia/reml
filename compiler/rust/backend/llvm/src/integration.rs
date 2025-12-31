@@ -1,8 +1,9 @@
 use crate::codegen::{
     summarize_pattern, ActivePatternKind, CodegenContext, GeneratedFunction, MatchArmLowering,
-    MatchLoweringPlan, MirActivePatternCall, MirExpr, MirExprKind, MirFunction, MirJumpTarget,
-    MirLambdaCapture, MirLambdaParam, MirMatchArm, MirPattern, MirPatternKind,
-    MirPatternRecordField, MirSlicePattern, MirSliceRest, MirStmt, MirStmtKind, PatternLowering,
+    MatchLoweringPlan, MirActivePatternCall, MirExpr, MirExprKind, MirFunction,
+    MirInlineAsmInput, MirInlineAsmOutput, MirJumpTarget, MirLambdaCapture, MirLambdaParam,
+    MirMatchArm, MirPattern, MirPatternKind, MirPatternRecordField, MirSlicePattern, MirSliceRest,
+    MirStmt, MirStmtKind, PatternLowering,
 };
 use crate::ffi_lowering::FfiCallSignature;
 use crate::target_machine::{
@@ -272,6 +273,14 @@ impl MirModuleSpec {
                     )),
                     MirExprKindJson::Await { .. } => diagnostics.push(format!(
                         "Backend.backend.todo.await: function={} expr_id={}",
+                        function.name, expr.id
+                    )),
+                    MirExprKindJson::InlineAsm { .. } => diagnostics.push(format!(
+                        "Backend.backend.todo.inline_asm: function={} expr_id={}",
+                        function.name, expr.id
+                    )),
+                    MirExprKindJson::LlvmIr { .. } => diagnostics.push(format!(
+                        "Backend.backend.todo.llvm_ir: function={} expr_id={}",
                         function.name, expr.id
                     )),
                     _ => {}
@@ -653,6 +662,24 @@ enum MirExprKindJson {
     Unsafe {
         body: usize,
     },
+    InlineAsm {
+        template: String,
+        #[serde(default)]
+        outputs: Vec<MirInlineAsmOutputJson>,
+        #[serde(default)]
+        inputs: Vec<MirInlineAsmInputJson>,
+        #[serde(default)]
+        clobbers: Vec<String>,
+        #[serde(default)]
+        options: Vec<String>,
+    },
+    LlvmIr {
+        #[serde(default)]
+        result_type: String,
+        template: String,
+        #[serde(default)]
+        inputs: Vec<usize>,
+    },
     FieldAccess {
         target: usize,
         field: String,
@@ -728,6 +755,18 @@ enum MirStmtKindJson {
 struct MirEffectCallJson {
     effect: Value,
     argument: usize,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirInlineAsmOutputJson {
+    constraint: String,
+    target: usize,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirInlineAsmInputJson {
+    constraint: String,
+    expr: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -972,6 +1011,40 @@ fn convert_expr_kind(kind: MirExprKindJson) -> MirExprKind {
         MirExprKindJson::Async { .. } => MirExprKind::Unknown,
         MirExprKindJson::Await { .. } => MirExprKind::Unknown,
         MirExprKindJson::Unsafe { body } => MirExprKind::Unsafe { body },
+        MirExprKindJson::InlineAsm {
+            template,
+            outputs,
+            inputs,
+            clobbers,
+            options,
+        } => MirExprKind::InlineAsm {
+            template,
+            outputs: outputs
+                .into_iter()
+                .map(|output| MirInlineAsmOutput {
+                    constraint: output.constraint,
+                    target: output.target,
+                })
+                .collect(),
+            inputs: inputs
+                .into_iter()
+                .map(|input| MirInlineAsmInput {
+                    constraint: input.constraint,
+                    expr: input.expr,
+                })
+                .collect(),
+            clobbers,
+            options,
+        },
+        MirExprKindJson::LlvmIr {
+            result_type,
+            template,
+            inputs,
+        } => MirExprKind::LlvmIr {
+            result_type,
+            template,
+            inputs,
+        },
         MirExprKindJson::FieldAccess { target, field } => {
             MirExprKind::FieldAccess { target, field }
         }

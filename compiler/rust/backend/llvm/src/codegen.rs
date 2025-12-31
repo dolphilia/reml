@@ -220,7 +220,31 @@ pub enum MirExprKind {
     Unsafe {
         body: MirExprId,
     },
+    InlineAsm {
+        template: String,
+        outputs: Vec<MirInlineAsmOutput>,
+        inputs: Vec<MirInlineAsmInput>,
+        clobbers: Vec<String>,
+        options: Vec<String>,
+    },
+    LlvmIr {
+        result_type: String,
+        template: String,
+        inputs: Vec<MirExprId>,
+    },
     Unknown,
+}
+
+#[derive(Clone, Debug)]
+pub struct MirInlineAsmOutput {
+    pub constraint: String,
+    pub target: MirExprId,
+}
+
+#[derive(Clone, Debug)]
+pub struct MirInlineAsmInput {
+    pub constraint: String,
+    pub expr: MirExprId,
 }
 
 #[derive(Clone, Debug)]
@@ -3987,6 +4011,8 @@ fn infer_expr_type_hint(
         | MirExprKind::Binary { .. }
         | MirExprKind::EffectBlock { .. }
         | MirExprKind::Unsafe { .. }
+        | MirExprKind::InlineAsm { .. }
+        | MirExprKind::LlvmIr { .. }
         | MirExprKind::Unknown => "Result".into(),
     }
 }
@@ -5019,7 +5045,10 @@ fn emit_value_expr(
                 instrs,
             }
         }
-        MirExprKind::Match { .. } | MirExprKind::Unknown => EmittedValue {
+        MirExprKind::Match { .. }
+        | MirExprKind::InlineAsm { .. }
+        | MirExprKind::LlvmIr { .. }
+        | MirExprKind::Unknown => EmittedValue {
             ty: ssa.pointer_type(),
             operand: format!("#{}", expr_id),
             instrs: vec![LlvmInstr::Comment(format!(
