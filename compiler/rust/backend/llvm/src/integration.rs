@@ -1428,7 +1428,7 @@ fn split_generic_type(token: &str) -> Option<(&str, &str)> {
 mod tests {
     use super::{
         generate_snapshot_from_mir_json, load_mir_functions_from_json, parse_reml_type,
-        MirSnapshotError,
+        MirModuleSpec, MirSnapshotError,
     };
     use crate::target_machine::{
         CodeModel, DataLayoutSpec, OptimizationLevel, RelocModel, TargetMachineBuilder, Triple,
@@ -1607,11 +1607,11 @@ mod tests {
           "is_unsafe": true,
           "varargs": true,
           "exprs": [
-            {"id": 0, "ty": "unit", "kind": "effect_block", "body": 1},
-            {"id": 1, "ty": "unit", "kind": "async", "body": 2, "is_move": true},
-            {"id": 2, "ty": "unit", "kind": "await", "expr": 3},
-            {"id": 3, "ty": "unit", "kind": "unsafe", "body": 4},
-            {"id": 4, "ty": "unit", "kind": "block"}
+            {"id": 0, "ty": "unit", "kind": {"kind": "effect_block", "body": 1}},
+            {"id": 1, "ty": "unit", "kind": {"kind": "async", "body": 2, "is_move": true}},
+            {"id": 2, "ty": "unit", "kind": {"kind": "await", "expr": 3}},
+            {"id": 3, "ty": "unit", "kind": {"kind": "unsafe", "body": 4}},
+            {"id": 4, "ty": "unit", "kind": {"kind": "block"}}
           ],
           "body": 0
         }
@@ -1625,6 +1625,58 @@ mod tests {
         assert_eq!(func.name, "@json_main");
         assert_eq!(func.body, Some(0));
         assert_eq!(func.exprs.len(), 5);
+        fs::remove_file(tmp)?;
+        Ok(())
+    }
+
+    #[test]
+    fn collect_todo_diagnostics_from_async_effect_unsafe_externs() -> Result<(), MirSnapshotError> {
+        let spec = r#"
+    {
+      "module": "json_module",
+      "externs": [
+        {
+          "name": "c_func",
+          "abi": "C",
+          "symbol": "c_func",
+          "span": {"start": 0, "end": 1}
+        }
+      ],
+      "functions": [
+        {
+          "name": "@json_main",
+          "calling_conv": "ccc",
+          "is_async": true,
+          "exprs": [
+            {"id": 0, "ty": "unit", "kind": {"kind": "effect_block", "body": 1}},
+            {"id": 1, "ty": "unit", "kind": {"kind": "async", "body": 2, "is_move": true}},
+            {"id": 2, "ty": "unit", "kind": {"kind": "await", "expr": 3}},
+            {"id": 3, "ty": "unit", "kind": {"kind": "unsafe", "body": 4}},
+            {"id": 4, "ty": "unit", "kind": {"kind": "block"}}
+          ],
+          "body": 0
+        }
+      ]
+    }
+    "#;
+        let tmp = env::temp_dir().join("reml_mir_todo_diagnostics.json");
+        fs::write(&tmp, spec)?;
+        let module = MirModuleSpec::from_file(&tmp)?;
+        let diagnostics = module.collect_todo_diagnostics();
+        let expected = [
+            "Backend.backend.todo.async_function: function=@json_main",
+            "Backend.backend.todo.effect_block: function=@json_main expr_id=0",
+            "Backend.backend.todo.async: function=@json_main expr_id=1",
+            "Backend.backend.todo.await: function=@json_main expr_id=2",
+            "Backend.backend.todo.unsafe_block: function=@json_main expr_id=3",
+            "Backend.backend.todo.extern_decl: name=c_func abi=C symbol=c_func",
+        ];
+        for entry in expected {
+            assert!(
+                diagnostics.iter().any(|diagnostic| diagnostic == entry),
+                "{entry} が含まれること"
+            );
+        }
         fs::remove_file(tmp)?;
         Ok(())
     }
