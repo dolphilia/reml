@@ -23,7 +23,7 @@ pub type PlatformSyscalls
 pub type i64
 pub type SyscallNumber = i64
 pub type SyscallRet = i64
-pub type SyscallArgs = [i64]
+pub type SyscallArgs = [i64; 6]
 pub type SyscallThunk = fn() -> Result<SyscallRet, SyscallError>
 
 pub type SyscallCapability = {
@@ -53,11 +53,11 @@ pub type WindowsSyscalls
 pub type MacOSSyscalls
 pub type WasiSyscalls
 
-pub type LinuxSyscalls = {
-  sys_read: fn(i32, MutPtr<u8>, usize) -> Result<usize, SyscallError>,
-  sys_write: fn(i32, Ptr<u8>, usize) -> Result<usize, SyscallError>,
-  sys_openat: fn(i32, Ptr<u8>, i32, i32) -> Result<i32, SyscallError>,
-  sys_close: fn(i32) -> Result<(), SyscallError>,
+pub struct LinuxSyscalls {
+  sys_read: fn(fd: i32, buf: MutPtr<u8>, len: usize) -> Result<usize, SyscallError>,
+  sys_write: fn(fd: i32, buf: Ptr<u8>, len: usize) -> Result<usize, SyscallError>,
+  sys_openat: fn(dirfd: i32, path: Ptr<u8>, flags: i32, mode: i32) -> Result<i32, SyscallError>,
+  sys_close: fn(fd: i32) -> Result<(), SyscallError>,
   // 追加候補: epoll, mmap, clone 等
 }
 

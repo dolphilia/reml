@@ -3724,20 +3724,22 @@ fn module_parser<'src>(
             ))
             .then_ignore(just(TokenKind::Arrow))
             .then(ty.clone().cut())
-            .map_with_span(|(params, ret_ty), span: Range<usize>| TypeAnnot {
+            .map_with_span(|(params, ret_ty), span: Range<usize>| {
                 let (param_labels, params) =
                     params.into_iter().fold((Vec::new(), Vec::new()), |mut acc, entry| {
                         acc.0.push(entry.0);
                         acc.1.push(entry.1);
                         acc
                     });
-                span: range_to_span(span),
-                kind: TypeKind::Fn {
-                    params,
-                    param_labels,
-                    ret: Box::new(ret_ty),
-                },
-                annotation_kind: None,
+                TypeAnnot {
+                    span: range_to_span(span),
+                    kind: TypeKind::Fn {
+                        params,
+                        param_labels,
+                        ret: Box::new(ret_ty),
+                    },
+                    annotation_kind: None,
+                }
             });
 
         let atom = recursive(|atom| {

@@ -6,7 +6,7 @@ pub type PlatformSyscalls
 pub type i64
 pub type SyscallNumber = i64
 pub type SyscallRet = i64
-pub type SyscallArgs = [i64]
+pub type SyscallArgs = [i64; 6]
 pub type SyscallThunk = fn() -> Result<SyscallRet, SyscallError>
 
 pub type SyscallCapability = {
