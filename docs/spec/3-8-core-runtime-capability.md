@@ -109,6 +109,8 @@ pub enum CapabilityHandle =
 | `metrics.emit` | `Stable` | `audit` | Core | - |
 | `native.intrinsic` | `Experimental` | `native`<br>`audit`<br>`unsafe` | Core | - |
 | `native.embed` | `Experimental` | `native`<br>`audit`<br>`unsafe` | Core | - |
+| `native.inline_asm` | `Experimental` | `native`<br>`audit`<br>`unsafe` | Core | - |
+| `native.llvm_ir` | `Experimental` | `native`<br>`audit`<br>`unsafe` | Core | - |
 <!-- capability-table:end -->
 
 Capability Registry は上記バリアントを通じてシステム API を表面化し、効果タグと runtime 権限を整合させる。
@@ -491,12 +493,14 @@ Stage/Bridge/Effect の整合検証に関わる監査イベントは `AuditEnvel
 
 #### 1.4.1 Native Escape Hatches の Capability 整合
 
-`native.intrinsic` / `native.embed` は **Stage = Experimental** を既定とし、Phase 4 の最小実装では `@requires_capability(stage="experimental")` と同等の取り扱いを行う。昇格条件は `docs/notes/dsl-plugin-roadmap.md` の Stage 監査手順と揃え、監査ログが整備された時点で `Beta` へ進める。
+`native.intrinsic` / `native.embed` / `native.inline_asm` / `native.llvm_ir` は **Stage = Experimental** を既定とし、Phase 4 の最小実装では `@requires_capability(stage="experimental")` と同等の取り扱いを行う。昇格条件は `docs/notes/dsl-plugin-roadmap.md` の Stage 監査手順と揃え、監査ログが整備された時点で `Beta` へ進める。
 
 | Capability | 目的 | 必須監査キー | 関連診断 |
 | --- | --- | --- | --- |
 | `native.intrinsic` | LLVM intrinsic / ネイティブ最適化呼び出し | `native.intrinsic.used`, `intrinsic.name`, `intrinsic.signature` | `native.intrinsic.invalid_type`, `native.intrinsic.signature_mismatch` |
 | `native.embed` | 埋め込み API と ABI エントリポイント | `native.embed.entrypoint`, `embed.abi.version` | `native.embed.abi_mismatch`, `native.embed.unsupported_target` |
+| `native.inline_asm` | Inline ASM によるネイティブ命令列の埋め込み | `native.inline_asm.used`, `asm.template_hash`, `asm.constraints` | `native.inline_asm.disabled`, `native.inline_asm.invalid_constraint` |
+| `native.llvm_ir` | LLVM IR テンプレートの直書き | `native.llvm_ir.used`, `llvm_ir.template_hash`, `llvm_ir.inputs` | `native.llvm_ir.verify_failed`, `native.llvm_ir.invalid_placeholder` |
 
 `Core.Runtime` のガード API は `effect {native}` を含む呼び出しに対して `CapabilityRegistry::verify_capability_stage` を適用し、Stage 不一致の場合は `effects.contract.stage_mismatch` を優先して報告する。`native.*` の監査キーは [3-6 §2.4.4](3-6-core-diagnostics-audit.md#diagnostic-native) と同じ表記を用い、`RuntimeBridgeAuditSpec` でもキー体系を統一する。
 

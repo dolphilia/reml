@@ -319,9 +319,9 @@ fn popcount(x: i64) -> i64 = x
 
 #### 不安定機能属性 `@unstable`
 
-* `@unstable` は **関数宣言または `unsafe` ブロック** に付与できる属性で、Phase 4 の研究プロトタイプ（Inline ASM / LLVM IR）を明示します。
+* `@unstable` は **関数宣言または `unsafe` ブロック** に付与できる属性で、Inline ASM / LLVM IR 直書きの実験機能を明示します。
 * 書式は `@unstable("inline_asm")` または `@unstable("llvm_ir")` の **文字列リテラル 1 つ**に限定する。識別子式や補間文字列、名前付き引数（`kind=...`）は許可しない。
-* `@cfg(target_arch/target_os/target_family)` を併用し、対象ターゲットを明示する。無効化された要素は `@unstable` の検証対象外とする。
+* Inline ASM / LLVM IR を含むブロックや関数では `@cfg(target_...)` を併用し、対象ターゲットを明示する。無効化された要素は `@unstable` の検証対象外とする。
 * フロントエンドは `@unstable("inline_asm")` を `unstable:inline_asm`、`@unstable("llvm_ir")` を `unstable:llvm_ir` の内部属性に変換し、後続フェーズへ渡す。
 * `feature = "native-unstable"` が無効な場合、バックエンドは `native.unstable.disabled` を報告する。
 
@@ -635,6 +635,42 @@ fn write_buf(buf) -> () {
   }
 }
 ```
+
+### C.7.1 ネイティブエスケープハッチ（Inline ASM / LLVM IR）
+
+`inline_asm` と `llvm_ir!` はネイティブエスケープハッチとして **`unsafe` ブロック内**でのみ使用でき、`@unstable("inline_asm")` / `@unstable("llvm_ir")` を伴う必要がある。加えて `@cfg(target_...)` によるターゲット限定が必須となる（効果契約は [1.3 §F.1](1-3-effects-safety.md#f1-effect-native-の意味と境界) を参照）。
+
+**Inline ASM**
+
+```reml
+unsafe {
+  inline_asm(
+    "rdtsc",
+    outputs("=a": lo, "=d": hi),
+    clobbers("rcx", "r11"),
+    options("volatile")
+  )
+}
+```
+
+* 先頭引数は **テンプレート文字列**で、後続に `outputs` / `inputs` / `clobbers` / `options` を任意順で列挙する。
+* `outputs("<constraint>": <lvalue>)` は出力先を表し、`inputs("<constraint>": <expr>)` は入力値を表す。
+* `clobbers` / `options` は LLVM の規約に準じる文字列リストで、詳細は `docs/guides/llvm-integration-notes.md` を参照する。
+
+**LLVM IR 直書き**
+
+```reml
+unsafe {
+  let sum = llvm_ir!(i32) {
+    "%0 = add nsw i32 $0, $1",
+    inputs(a, b)
+  }
+  sum
+}
+```
+
+* `llvm_ir!(Type) { "template", inputs(...) }` の形式を取り、`$0` / `$1` は `inputs` の順序に対応する。
+* テンプレートは 1 つの文字列リテラルで表し、`inputs` は式の並びで指定する。
 
 ### C.8 伝播演算子 `?`
 
@@ -1035,6 +1071,8 @@ Primary        ::= Literal
                  | ForExpr
                  | LoopExpr
                  | UnsafeBlock
+                 | InlineAsmExpr
+                 | LlvmIrExpr
                  | Block
                  | PerformExpr
                  | DoExpr
@@ -1055,6 +1093,26 @@ WhileExpr      ::= "while" Expr Block
 ForExpr        ::= "for" Pattern "in" Expr Block
 LoopExpr       ::= "loop" Block
 UnsafeBlock    ::= Attrs? "unsafe" Block
+InlineAsmExpr  ::= "inline_asm" "(" StringLiteral InlineAsmTail? ")"
+InlineAsmTail  ::= "," InlineAsmArg { "," InlineAsmArg } [","]
+InlineAsmArg   ::= InlineAsmOutputs
+                 | InlineAsmInputs
+                 | InlineAsmClobbers
+                 | InlineAsmOptions
+InlineAsmOutputs ::= "outputs" "(" InlineAsmOutputList? ")"
+InlineAsmInputs  ::= "inputs" "(" InlineAsmInputList? ")"
+InlineAsmOutputList ::= InlineAsmOutput { "," InlineAsmOutput } [","]
+InlineAsmInputList  ::= InlineAsmInput { "," InlineAsmInput } [","]
+InlineAsmOutput ::= StringLiteral ":" LValue
+InlineAsmInput  ::= StringLiteral ":" Expr
+InlineAsmClobbers ::= "clobbers" "(" StringLiteral { "," StringLiteral } [","] ")"
+InlineAsmOptions  ::= "options" "(" StringLiteral { "," StringLiteral } [","] ")"
+
+LlvmIrExpr     ::= "llvm_ir!" "(" Type ")" LlvmIrBlock
+LlvmIrBlock    ::= "{" StringLiteral LlvmIrTail? "}"
+LlvmIrTail     ::= "," LlvmIrInputs
+LlvmIrInputs   ::= "inputs" "(" LlvmIrInputList? ")"
+LlvmIrInputList ::= Expr { "," Expr } [","]
 
 Lambda         ::= "|" ParamList? "|" ["->" Type] LambdaBody
 ParamList      ::= Param { "," Param }

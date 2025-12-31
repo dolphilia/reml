@@ -226,6 +226,8 @@ Primary         ::= Literal
                   | ForExpr
                   | LoopExpr
                   | UnsafeBlock
+                  | InlineAsmExpr
+                  | LlvmIrExpr
                   | Block
                   | PerformExpr
                   | DoExpr
@@ -246,6 +248,26 @@ WhileExpr       ::= "while" Expr Block
 ForExpr         ::= "for" Pattern "in" Expr Block
 LoopExpr        ::= "loop" Block
 UnsafeBlock     ::= Attrs? "unsafe" Block
+InlineAsmExpr   ::= "inline_asm" "(" StringLiteral InlineAsmTail? ")"
+InlineAsmTail   ::= "," InlineAsmArg { "," InlineAsmArg } [","]
+InlineAsmArg    ::= InlineAsmOutputs
+                  | InlineAsmInputs
+                  | InlineAsmClobbers
+                  | InlineAsmOptions
+InlineAsmOutputs ::= "outputs" "(" InlineAsmOutputList? ")"
+InlineAsmInputs  ::= "inputs" "(" InlineAsmInputList? ")"
+InlineAsmOutputList ::= InlineAsmOutput { "," InlineAsmOutput } [","]
+InlineAsmInputList  ::= InlineAsmInput { "," InlineAsmInput } [","]
+InlineAsmOutput ::= StringLiteral ":" LValue
+InlineAsmInput  ::= StringLiteral ":" Expr
+InlineAsmClobbers ::= "clobbers" "(" StringLiteral { "," StringLiteral } [","] ")"
+InlineAsmOptions  ::= "options" "(" StringLiteral { "," StringLiteral } [","] ")"
+
+LlvmIrExpr      ::= "llvm_ir!" "(" Type ")" LlvmIrBlock
+LlvmIrBlock     ::= "{" StringLiteral LlvmIrTail? "}"
+LlvmIrTail      ::= "," LlvmIrInputs
+LlvmIrInputs    ::= "inputs" "(" LlvmIrInputList? ")"
+LlvmIrInputList ::= Expr { "," Expr } [","]
 
 Lambda          ::= "|" ParamList? "|" ["->" Type] LambdaBody
 ParamList       ::= Param { "," Param }

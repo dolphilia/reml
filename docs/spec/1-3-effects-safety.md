@@ -199,6 +199,8 @@ fn sum(xs: [i64]) -> i64 = {
 
 * `effect {native}` は **ABI/メモリ境界を跨ぐネイティブ操作**を示す監査対象の効果であり、`@intrinsic` や埋め込み API (`Core.Embed.*`) を利用する関数/モジュールに必須となる。
 * `unsafe` は局所的な危険区画であり、`effect {native}` を **置き換えない**。`unsafe` を使っても `native` 効果は残留し、監査ログと Capability 検証の対象になる。
+* Inline ASM / LLVM IR 直書き (`inline_asm` / `llvm_ir!`) は `effect {native}` と `unsafe` の **両方**を要求し、`@unstable("inline_asm")` / `@unstable("llvm_ir")` を伴う。関数シグネチャの `!{native}` が欠落している場合は型検査で拒否し、`native.inline_asm.missing_effect` / `native.llvm_ir.missing_effect` を報告する。
+* Inline ASM は `@cfg(target_arch/target_os/target_family)` を必須とし、LLVM IR 直書きも `@cfg(target_...)` によるターゲット限定を必須とする。`@cfg` が欠落している場合は `native.inline_asm.missing_cfg` / `native.llvm_ir.missing_cfg` を報告する。
 * `@intrinsic` を付与する場合は、関数の効果注釈に `native` を含める（例: `fn sqrt_f64(x: f64) -> f64 !{native}`）。`native` が欠落した場合は型検査で拒否し、`native.intrinsic.missing_effect` を報告する。
 * ネイティブ依存の関数は **`@cfg` でターゲット条件を限定することを推奨**する。複数ターゲットを想定する場合は `@cfg` 付き定義とポリフィルを併記し、効果集合の差分が `@pure` 等の契約を破らないように設計する。
 * 埋め込み API と Runtime Bridge の運用手順は [docs/guides/runtime-bridges.md](../guides/runtime-bridges.md) を参照し、Capability 監査キーの整合性を確認する。
