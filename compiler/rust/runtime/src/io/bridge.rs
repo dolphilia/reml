@@ -30,6 +30,9 @@ mod tests {
 
     #[test]
     fn attaches_bridge_stage_metadata_once_recorded() {
+        let _guard = RuntimeBridgeRegistry::test_lock()
+            .lock()
+            .expect("RuntimeBridgeRegistry test lock poisoned");
         RuntimeBridgeRegistry::global().clear();
         let capability = "io.fs.read";
         record_bridge_stage_probe(
