@@ -26,9 +26,9 @@
 
 ## 調査結果（現状）
 ### 1. `.reml` とサンプルの影響
-- `examples/practical/core_env/envcfg/env_merge_by_profile.reml` が `Core.Env` を参照している。
-- `examples/language-impl-comparison/reml/config_manifest_lifecycle.reml` が `Core.Env` を参照している。
-- `docs/spec/3-18-core-system.md` の `reml` コードブロックは棚卸し表に未登録で、`examples/docs-examples/spec/3-18-core-system/` が未作成。
+- `examples/practical/core_env/envcfg/env_merge_by_profile.reml` は `Core.System.Env` へ更新済み。
+- `examples/language-impl-comparison/reml/config_manifest_lifecycle.reml` は `Core.System.Env` へ更新済み。
+- `docs/spec/3-18-core-system.md` の `reml` コードブロックは棚卸し表に登録し、`examples/docs-examples/spec/3-18-core-system/` を作成済み。
 - `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` には `docs/spec/4-2-process-plugin.md` / `4-4-signal-plugin.md` の `migration:core.system.*` タグが付与済み。
 
 ### 2. Rust テストの影響
@@ -55,6 +55,26 @@
 1. 更新した `.reml` の検証を `reml_frontend` で実行し、`reports/spec-audit/` にログを追加する。
 2. `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` の状態・備考を更新する。
 3. `docs-migrations.log` に移行履歴を記録する。
+
+## 進捗状況
+### フェーズA: サンプル棚卸しと抽出
+- [x] `docs/spec/3-18-core-system.md` の `reml` ブロックを抽出し、`examples/docs-examples/spec/3-18-core-system/` に配置する。
+- [x] 在庫表へ 3-18 の各節（Process/Signal/Daemon）を登録し、`migration:core.system.process` / `migration:core.system.signal` / `migration:core.system.daemon` を付与する。
+- [x] `docs/spec/3-10-core-env.md` の既存 `.reml` に `migration:core.system.env` を付与し、正準 API 追従の対象として明示する。
+
+### フェーズB: 既存 `.reml` の更新
+- [x] `examples/practical/core_env/envcfg/env_merge_by_profile.reml` を `Core.System.Env` 基準へ更新する（互換 API を使う場合は注記を添える）。
+- [x] `examples/language-impl-comparison/reml/config_manifest_lifecycle.reml` の `use Core.Env` を `Core.System.Env` へ更新し、文中の説明も正準 API に合わせる。
+- [x] `examples/docs-examples/spec/4-2-process-plugin/*.reml` / `4-4-signal-plugin/*.reml` を確認し、型参照が `Core.System.Signal` / `Core.System.Process` と整合するよう更新する（必要に応じて `use` を追加）。
+
+### フェーズC: Rust テストの確認
+- [ ] `compiler/rust/runtime/tests/core_system_api.rs` の命名・コメントが `Core.System` 正準に沿っているか確認し、必要ならリネームまたは注記を追加する。
+- [ ] `core.process` / `core.signal` / `core.system` の Capability ID が仕様通りに維持されているかを再確認する。
+
+### フェーズD: 監査と記録
+- [ ] 更新した `.reml` の検証を `reml_frontend` で実行し、`reports/spec-audit/` にログを追加する。
+- [ ] `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` の状態・備考を更新する。
+- [ ] `docs-migrations.log` に移行履歴を記録する。
 
 ## 成果物
 - `examples/docs-examples/spec/3-18-core-system/` の追加と在庫表登録。

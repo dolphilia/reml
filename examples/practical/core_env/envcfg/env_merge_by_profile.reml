@@ -1,7 +1,7 @@
 module Examples.Practical.CoreEnv.EnvCfg.Merge
 
 use Core.Collections
-use Core.Env
+use Core.System.Env as Env
 
 fn main() -> Str {
   let base_values = Map.insert(Map.empty_map(), "API_URL", "https://prod");

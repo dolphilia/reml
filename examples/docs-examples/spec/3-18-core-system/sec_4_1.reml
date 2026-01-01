@@ -1,0 +1,29 @@
+module Core.System.Signal
+
+pub type Signal = Core.Runtime.Signal
+pub type SignalInfo = Core.Runtime.SignalInfo
+
+pub enum SignalPayload =
+  | UserData(Int)
+  | RealTime(Int)
+  | Custom(Map<Str, Str>)
+
+pub type SignalDetail = {
+  info: SignalInfo,
+  timestamp: Option<Core.Numeric.Time.Timestamp>,
+  payload: Option<SignalPayload>,
+  source_pid: Option<Core.System.Process.ProcessId>,
+  raw_code: Option<Int>,
+}
+
+pub enum SignalErrorKind = Unsupported | PermissionDenied | TimedOut | InvalidSignal | RuntimeFailure
+
+pub type SignalError = {
+  kind: SignalErrorKind,
+  message: Str,
+}
+
+fn from_runtime_info(info: Core.Runtime.SignalInfo) -> SignalDetail
+fn send(pid: Core.System.Process.ProcessId, signal: Signal) -> Result<(), SignalError> // effect {signal, process}
+fn wait(signals: Set<Signal>, timeout: Option<Core.Numeric.Time.Duration>) -> Result<SignalDetail, SignalError> // effect {signal, io.blocking}
+fn raise(signal: Signal) -> Result<(), SignalError> // effect {signal}

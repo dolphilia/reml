@@ -2,7 +2,7 @@ module samples.language_impl_comparison.config_manifest_lifecycle
 
 use ::Core.Config as Config
 use ::Core.Config.Manifest as Manifest
-use ::Core.Env as Env
+use ::Core.System.Env as Env
 use ::Core.Diagnostics as Diag
 use ::Core.IO as IO
 use ::Core.Path as Path
@@ -11,7 +11,7 @@ use ::Core.Collection.List as List
 use ::Core.Collection.Map as Map
 use ::Core.Data.Json as Json
 
-/// Core.Config.Manifest と Core.Env を組み合わせ、
+/// Core.Config.Manifest と Core.System.Env を組み合わせ、
 /// reml.toml 読み込み→環境変数による互換モード上書き→Diagnostic 生成までを
 /// 一連で示す。
 ///
