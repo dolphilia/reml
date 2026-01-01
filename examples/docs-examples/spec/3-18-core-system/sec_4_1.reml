@@ -1,7 +1,10 @@
 module Core.System.Signal
 
-pub type Signal = Core.Runtime.Signal
-pub type SignalInfo = Core.Runtime.SignalInfo
+pub type Signal
+pub type SignalInfo
+pub type ProcessId
+pub type Timestamp
+pub type Duration
 
 pub enum SignalPayload =
   | UserData(Int)
@@ -10,9 +13,9 @@ pub enum SignalPayload =
 
 pub type SignalDetail = {
   info: SignalInfo,
-  timestamp: Option<Core.Numeric.Time.Timestamp>,
+  timestamp: Option<Timestamp>,
   payload: Option<SignalPayload>,
-  source_pid: Option<Core.System.Process.ProcessId>,
+  source_pid: Option<ProcessId>,
   raw_code: Option<Int>,
 }
 
@@ -23,7 +26,7 @@ pub type SignalError = {
   message: Str,
 }
 
-fn from_runtime_info(info: Core.Runtime.SignalInfo) -> SignalDetail
-fn send(pid: Core.System.Process.ProcessId, signal: Signal) -> Result<(), SignalError> // effect {signal, process}
-fn wait(signals: Set<Signal>, timeout: Option<Core.Numeric.Time.Duration>) -> Result<SignalDetail, SignalError> // effect {signal, io.blocking}
+fn from_runtime_info(info: SignalInfo) -> SignalDetail
+fn send(pid: ProcessId, signal: Signal) -> Result<(), SignalError> // effect {signal, process}
+fn wait(signals: Set<Signal>, timeout: Option<Duration>) -> Result<SignalDetail, SignalError> // effect {signal, io.blocking}
 fn raise(signal: Signal) -> Result<(), SignalError> // effect {signal}

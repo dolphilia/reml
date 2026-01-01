@@ -77,6 +77,7 @@
 - [x] `docs-migrations.log` に移行履歴を記録する。
   - 2026-01-01 初回実行時は `reml_frontend` のリンクエラーで失敗。`reports/spec-audit/summary.md` に記録済み。
   - `RUSTFLAGS="-C link-arg=-fuse-ld=lld"` で再実行し diagnostics を採取済み。
+  - `sec_3`/`sec_4_1`/`sec_6` のサンプル補正後、diagnostics 0 件を確認。
 
 ## 成果物
 - `examples/docs-examples/spec/3-18-core-system/` の追加と在庫表登録。

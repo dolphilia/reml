@@ -1,5 +1,9 @@
 module Core.System.Daemon
 
+pub type Path
+pub type ProcessId
+pub type ProcessError
+
 pub type DaemonConfig = {
   name: Str,
   pid_file: Option<Path>,

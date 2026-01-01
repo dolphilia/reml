@@ -2,7 +2,10 @@ module Core.System.Process
 
 pub type ProcessId = Int
 pub type ExitStatus = Int
-pub type Duration = Core.Numeric.Time.Duration
+pub type Duration
+pub type Timestamp
+pub type Path
+pub type Signal
 
 pub type Command = {
   program: Path,
@@ -20,7 +23,7 @@ pub type SpawnOptions = {
 
 pub type ProcessHandle = {
   pid: ProcessId,
-  started_at: Option<Core.Numeric.Time.Timestamp>,
+  started_at: Option<Timestamp>,
 }
 
 pub type ThreadHandle = Int
@@ -48,7 +51,7 @@ pub type ProcessError = {
 }
 
 fn spawn(command: Command, options: SpawnOptions) -> Result<ProcessHandle, ProcessError> // effect {process}
-fn wait(handle: ProcessHandle, timeout: Option<Duration>) -> Result<ExitStatus, ProcessError> // effect {process, io.blocking}
-fn kill(handle: ProcessHandle, signal: Core.System.Signal.Signal) -> Result<(), ProcessError> // effect {process, signal}
+fn wait(proc_handle: ProcessHandle, timeout: Option<Duration>) -> Result<ExitStatus, ProcessError> // effect {process, io.blocking}
+fn kill(proc_handle: ProcessHandle, signal: Signal) -> Result<(), ProcessError> // effect {process, signal}
 fn create_thread(start: ThreadStart, options: ThreadOptions) -> Result<ThreadHandle, ThreadError> // effect {thread}
-fn join_thread(handle: ThreadHandle, timeout: Option<Duration>) -> Result<(), ThreadError> // effect {thread, io.blocking}
+fn join_thread(thread_handle: ThreadHandle, timeout: Option<Duration>) -> Result<(), ThreadError> // effect {thread, io.blocking}
