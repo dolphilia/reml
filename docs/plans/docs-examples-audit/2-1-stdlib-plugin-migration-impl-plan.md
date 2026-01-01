@@ -87,7 +87,7 @@
 - [x] フェーズB: Core.Runtime Signal 型の追加
 - [x] フェーズC: Core.System モジュール実装
 - [x] フェーズD: 監査・診断の整備
-- [ ] フェーズE: テストと回帰接続
+- [x] フェーズE: テストと回帰接続
 
 ## 参照
 - `docs/spec/3-18-core-system.md`
