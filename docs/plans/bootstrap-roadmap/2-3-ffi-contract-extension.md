@@ -45,7 +45,7 @@
 | 5. 監査ログ統合 | **進行中** | `tooling/runtime/audit-schema.json` に bridge オブジェクトを追加し、`tooling/ci/collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を集計。`reports/ffi-bridge-summary.md` を更新し、メタデータ確認項目とターゲット別進捗を記録。 | Typer 実装後に `AuditEnvelope` ゴールデンを追加し、CI ゲート（`sync-iterator-audit.sh`）へ FFI ブリッジ検証を統合。Linux/Windows 監査ログのゴールデン化と pass rate 自動チェックを実装。 |
 | 6. プラットフォーム別テスト | **進行中** | Apple Silicon で `scripts/ci-local.sh --target macos --arch arm64 --stage beta` を再実行し、Lint/Build 完了後に `compiler/ocaml/tests/test_ffi_lowering` の SEGV で停止する事象を記録。`reports/ffi-macos-summary.md` を更新し、Linux/Windows 版テンプレート（`reports/ffi-linux-summary.md`, `reports/ffi-windows-summary.md`）を追加。 | `test_ffi_lowering` のクラッシュ原因を解消したうえで macOS で再実行し、Build/Test/Runtime のログを取得。FFI サンプル（借用/転送/構造体戻り）を各ターゲットで実行し、テンプレートへ結果を反映。Windows CI (`windows-latest`) への `ffi_bridge.audit_pass_rate` 収集を常設。 |
 | 7. ランタイム連携とテスト | **進行中** | `runtime/native/include/reml_ffi_bridge.h` に加え `src/ffi_bridge.c` を実装し、借用/移譲ヘルパと `reml_ffi_bridge_*` 計測 API を提供。`runtime/native/tests/test_ffi_bridge.c` を追加し、`make test` で計測値・Span 変換を検証。 | ランタイム計測値を CI アウトプットへ連携し、失敗ケースが `ffi_bridge.audit_pass_rate` に反映されるよう CLI/監査パイプラインを拡充。 |
-| 8. ドキュメント更新と引き継ぎ | **進行中** | `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に FFI ブリッジ指標を追加し、`reports/ffi-macos-summary.md` を再構成。`reports/ffi-bridge-summary.md` を更新し、Linux/Windows/macOS 向けの記入テンプレートを整備。`docs/notes/licensing-todo.md` で外部ツール導入時の確認項目を下書き。 | 実装進捗に合わせて仕様 (`docs/spec/3-9`, `docs/guides/runtime-bridges.md`) と引継ぎ資料を更新。ライセンス調査の TODO を精査し、Phase 3 移行時のチェックリストとして確定。 |
+| 8. ドキュメント更新と引き継ぎ | **進行中** | `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に FFI ブリッジ指標を追加し、`reports/ffi-macos-summary.md` を再構成。`reports/ffi-bridge-summary.md` を更新し、Linux/Windows/macOS 向けの記入テンプレートを整備。`docs/notes/licensing-todo.md` で外部ツール導入時の確認項目を下書き。 | 実装進捗に合わせて仕様 (`docs/spec/3-9`, `docs/guides/runtime/runtime-bridges.md`) と引継ぎ資料を更新。ライセンス調査の TODO を精査し、Phase 3 移行時のチェックリストとして確定。 |
 
 ### 最新進捗サマリー（2025-10-21）
 
@@ -98,7 +98,7 @@
    - 検証指標: `scripts/ci-local.sh --target <linux|windows|macos> --arch <x86_64|arm64> --stage beta` の成功、監査ゴールデン差分が `git status` 上でゼロ、`reports/ffi-*-summary.md` の TODO が消化済みになること。
 4. **仕様・ドキュメントとライセンス整理**
    - 仕様書 `docs/spec/3-9-core-async-ffi-unsafe.md` に stub メタデータ出力と計測 API (`reml_ffi_bridge_get_metrics`, `reml_ffi_bridge_pass_rate`) の参照フローを追記し、`docs/spec/3-6-core-diagnostics-audit.md` に `ffi_bridge.*` 診断キーと `AuditEnvelope.metadata.bridge.*` の定義を統合する。
-   - ガイド `docs/guides/runtime-bridges.md` を更新し、CI へのログ収集手順・`reports/ffi-*-summary.md` テンプレートの利用方法・プラットフォーム別注意点（Win32 API サンプル、Darwin codesign チェック等）を盛り込む。
+   - ガイド `docs/guides/runtime/runtime-bridges.md` を更新し、CI へのログ収集手順・`reports/ffi-*-summary.md` テンプレートの利用方法・プラットフォーム別注意点（Win32 API サンプル、Darwin codesign チェック等）を盛り込む。
 - `docs/notes/licensing-todo.md` のチェックリストを精査し、生成ヘッダの SPDX 表記・コミットハッシュ埋め込み手順・外部ツール採用時のライセンス対応を Phase 2-3 中に決定。決定事項は `reports/ffi-bridge-summary.md` §5 に転記する。
 - 検証指標: ドキュメント更新後に `docs/spec/README.md` と `README.md` の該当リンクを追記済みであること、レビューコメントに `reports/ffi-bridge-summary.md` と `docs/notes/licensing-todo.md` の更新差分を添付できる状態になっていること。
 
@@ -163,7 +163,7 @@
 
 - **実装仕上げ**: `llvm_gen/codegen.ml` と `llvm_gen/ffi_value_lowering.ml` に Borrowed/Transferred 返り値処理を実装し、`runtime/native/src/ffi_bridge.c` のヘルパと連動させる。ローカル環境で `_build/default/src/main.exe --emit-ir --out-dir <out>` を実行し、`tmp/cli-callconv-sample.reml` を用いた Linux/Windows/macOS の IR・監査ログを取得して `reports/ffi-bridge-summary.md`・`reports/ffi-macos-summary.md` に反映する。
 - **監査・CI 統合**: `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` に `ffi_bridge.audit_pass_rate` と Darwin プリセット成功条件を追加し、`--emit-audit` ゴールデン（`compiler/ocaml/tests/golden/audit/ffi-bridge-*.jsonl.golden`）を更新する。`AuditEnvelope` スキーマへ `bridge.*` フィールドを正式追加し、CI の JSON 検証を必須化する。
-- **ドキュメント整合と引き継ぎ**: 仕様書（`docs/spec/3-9`, `docs/spec/3-6`）とガイド（`docs/guides/runtime-bridges.md`）へ stub メタデータと監査指標の整合結果を追記し、Phase 3 に引き継ぐ TODO リストと Plan 2-3 完了報告の下書きを本計画書に追加してレビューする。
+- **ドキュメント整合と引き継ぎ**: 仕様書（`docs/spec/3-9`, `docs/spec/3-6`）とガイド（`docs/guides/runtime/runtime-bridges.md`）へ stub メタデータと監査指標の整合結果を追記し、Phase 3 に引き継ぐ TODO リストと Plan 2-3 完了報告の下書きを本計画書に追加してレビューする。
 
 ### 1. ABI モデル設計と仕様整理（29-30週目）
 **担当領域**: FFI 基盤設計
@@ -346,7 +346,7 @@
 - 新規サンプルコードの追加
 
 8.2. **ガイド更新**
-- `docs/guides/runtime-bridges.md` の FFI セクション更新
+- `docs/guides/runtime/runtime-bridges.md` の FFI セクション更新
 - プラットフォーム別の注意事項を追記
 - cbindgen 等のツール使用例
 - トラブルシューティング情報

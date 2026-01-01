@@ -28,4 +28,4 @@ cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend 
 - 差分が出た場合は、元ドキュメントの節・脚注に根拠ログを追記する。
 
 ## TODO
-- `docs/guides/ai-integration.md` のコード例と監査ログの接続方法を定義する。
+- `docs/guides/ecosystem/ai-integration.md` のコード例と監査ログの接続方法を定義する。

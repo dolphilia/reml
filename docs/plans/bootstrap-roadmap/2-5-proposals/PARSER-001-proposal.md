@@ -59,7 +59,7 @@ Menhir の `checkpoint` から `reply` を構築し、`ParseResult` へ畳み込
 ## 6. 依存関係と連携
 - **TYPE-003**: `ParseResult` で `effect_capabilities` を集計できるよう、辞書復元フロー（`docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-003-proposal.md`）とメトリクス記録を同期させる。シム導入時に IR への影響範囲を共有し、型クラス辞書の `committed` 境界を壊さない。
 - **DIAG-002**: `Diagnostic.audit` / `timestamp` 必須化に合わせ、`ParseResult.diagnostics` へ格納するすべての診断で `AuditEnvelope` を補完する処理を `parser_driver` レイヤに追加する。
-- **ERR-001 / EXEC-001**: 期待集合とストリーミングランナーの PoC が `DiagState` を共有できるよう API を公開し、`docs/guides/core-parse-streaming.md` へサンプルを追記する。
+- **ERR-001 / EXEC-001**: 期待集合とストリーミングランナーの PoC が `DiagState` を共有できるよう API を公開し、`docs/guides/compiler/core-parse-streaming.md` へサンプルを追記する。
 - **技術的負債 ID 22/23**: Windows/macOS 監査ゲート（`compiler/ocaml/docs/technical-debt.md`）に影響するため、`ParseResult` の追加フィールドを LSP/CLI 双方で検証し、各プラットフォームの CI ログに `parser.parse_result_consistency` を表示する。
 
 ## 7. 残課題

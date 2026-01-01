@@ -50,12 +50,12 @@
 ## 4. TODO / フォローアップメモ
 - [ ] 共通シリアライズ層導入前に CLI/LSP 双方の現在の JSON 出力を `reports/diagnostic-format-regression.md`（作成予定）へ記録する。
 - [ ] `tooling/ci/sync-iterator-audit.sh` への LSP JSON スキーマ検証フック追加案を検討する。
-- [ ] LSP V2 で追加される `structured_hints` の LSP `command` 変換仕様を `docs/guides/plugin-authoring.md` へ反映する。
+- [ ] LSP V2 で追加される `structured_hints` の LSP `command` 変換仕様を `docs/guides/dsl/plugin-authoring.md` へ反映する。
 
 ## 5. 参考資料
 - `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md`
 - `docs/plans/bootstrap-roadmap/2-3-to-2-4-handover.md`
 - `docs/spec/3-6-core-diagnostics-audit.md`
-- `docs/guides/ai-integration.md`
+- `docs/guides/ecosystem/ai-integration.md`
 - `tooling/json-schema/diagnostic-v2.schema.json`
 - `tooling/lsp/tests/client_compat/README.md`

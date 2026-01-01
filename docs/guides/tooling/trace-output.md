@@ -166,5 +166,5 @@ JSON には以下のフィールドが追加される。
 ## 参考資料
 
 - [docs/plans/bootstrap-roadmap/1-6-developer-experience.md](../plans/bootstrap-roadmap/1-6-developer-experience.md)
-- [docs/guides/diagnostic-format.md](diagnostic-format.md)
+- [docs/guides/tooling/diagnostic-format.md](docs/guides/tooling/diagnostic-format.md)
 - [docs/spec/3-6-core-diagnostics-audit.md](../spec/3-6-core-diagnostics-audit.md)

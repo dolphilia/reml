@@ -34,7 +34,7 @@
 - `runtime/native/mingw/`（想定）: MinGW 向け差分実装と抽象化ヘッダー
 - `tooling/ci`, `.github/workflows/` : Windows ランナーの CI 定義と補助スクリプト
 - `tooling/toolchains/` : Windows 診断スクリプトとログ（`check-windows-bootstrap-env.ps1`, `reports/windows-env-check.json`）
-- `docs/guides/llvm-integration-notes.md`, `docs/spec/3-9-core-async-ffi-unsafe.md` : Windows 章の更新
+- `docs/guides/compiler/llvm-integration-notes.md`, `docs/spec/3-9-core-async-ffi-unsafe.md` : Windows 章の更新
 - `docs/notes/llvm-spec-status-survey.md` : プラットフォーム差分・リスクの記録
 
 ## ビルド検証ログ（2025-11-03）
@@ -172,10 +172,10 @@ Error: Library "llvm" not found.
 - 2025-11-09 調査サマリ:
   - `docs/notes/llvm-spec-status-survey.md` §2.2.2a を拡張し、呼出規約／構造体レイアウト／名前マングリング／DLL 公開手順の比較表を追加。
   - Win64 Shadow Space と `byval`/`sret` 属性の適用条件を Reml 実装メモへ記録し、`examples/ffi/windows/struct_passing.reml` の期待値と照合。
-  - `docs/guides/reml-ffi-handbook.md` の Win64 章更新 TODO を追記（ステップ3でのガイド同期タスク）。
+  - `docs/guides/ffi/reml-ffi-handbook.md` の Win64 章更新 TODO を追記（ステップ3でのガイド同期タスク）。
 - フォローアップ:
   - LLVM IR 拡張フェーズで `win64cc` 属性と Shadow Space 予約を実装・検証（ステップ3へ引き継ぎ）。
-  - GitHub Actions `windows-latest` ジョブへ ABI 定点テストを追加し、Shadow Space 未確保時の診断を自動化（`docs/guides/ci-strategy.md` 更新タスク）。
+  - GitHub Actions `windows-latest` ジョブへ ABI 定点テストを追加し、Shadow Space 未確保時の診断を自動化（`docs/guides/tooling/ci-strategy.md` 更新タスク）。
 
 **成果物**: ABI 差分レポート（`docs/notes/llvm-spec-status-survey.md` §2.2.2a 更新）、関連ガイド更新タスク
 
@@ -184,7 +184,7 @@ Error: Library "llvm" not found.
 **ステータス**: 🟡 進行中 (2025-11-12)
 
 3.1. **ターゲット切替ロジックの実装**
-- ✅ CLI フラグ `--target` を `compiler/ocaml/src/cli/options.ml` から `llvm_gen/target_config.ml` に伝搬し、`TargetMachine` 生成時に `x86_64-pc-windows-msvc` / `x86_64-w64-windows-gnu` の双方を選択できる設計草案を作成。CLI のヘルプ更新案を `docs/guides/llvm-integration-notes.md` に TODO として追加。
+- ✅ CLI フラグ `--target` を `compiler/ocaml/src/cli/options.ml` から `llvm_gen/target_config.ml` に伝搬し、`TargetMachine` 生成時に `x86_64-pc-windows-msvc` / `x86_64-w64-windows-gnu` の双方を選択できる設計草案を作成。CLI のヘルプ更新案を `docs/guides/compiler/llvm-integration-notes.md` に TODO として追加。
 - ✅ LLVM `DataLayout` 文字列の差分を整理し、MSVC 向けは `e-m:w-i64:64-f80:128-n8:16:32:64-S128`、MinGW 向けは既存レイアウトを維持する方針を確定。`llc -mtriple=x86_64-pc-windows-msvc -filetype=obj smoke_test.ll` を用いた検証手順をドラフト化（`windows-llvm-build-investigation.md` 更新準備）。
 - 🟡 CLI/ターゲット切替テスト: `compiler/ocaml/tests/llvm-ir/target_selection/` に MSVC/MinGW の比較ゴールデン (`msvc_shadow_space.ll`, `gnu_shadow_space.ll`) と CLI スナップショット (`test_cli_target_switch.ml`) を追加するブランチを作成済み。`dune runtest codegen` で新テストが実行されることを確認する手順メモを整備し、2025-11-15 までにレビューへ提出予定。
 
@@ -195,7 +195,7 @@ Error: Library "llvm" not found.
 
 3.3. **デバッグ情報の生成**
 - ✅ Windows では CodeView/PDB を既定、`--emit-dwarf` 指定時に DWARF を出力する切替を `compiler/ocaml/src/llvm_gen/codegen.ml`/`debug_info` で制御する設計をまとめ、Visual Studio / WinDbg での検証項目を列挙。
-- ✅ `DICompileUnit` のソースパス正規化（`\\` → `/`）と `DW_LANG_C_plus_plus_17` など言語識別子の更新を含むチェックリストを作成し、`docs/guides/llvm-integration-notes.md` の追記箇所を特定。
+- ✅ `DICompileUnit` のソースパス正規化（`\\` → `/`）と `DW_LANG_C_plus_plus_17` など言語識別子の更新を含むチェックリストを作成し、`docs/guides/compiler/llvm-integration-notes.md` の追記箇所を特定。
 - 🟡 PDB スモークテスト: `tooling/toolchains/test-pdb-smoke.ps1` で `llc -filetype=obj` → `lld-link /DEBUG` → `llvm-pdbutil -summary` を連鎖実行し、`Summary:` 内に `Publics` と `Globals` が出力されることを確認する自動化スクリプトの骨子を作成。CI 取り込みに向けてアーティファクト保存（`artifact: pdb-smoke-report.txt`）の仕様書きを 2025-11-19 までに確定する。
 
 #### 進捗サマリ（2025-11-12）
@@ -206,7 +206,7 @@ Error: Library "llvm" not found.
 #### フォローアップ
 1. ターゲット切替テストブランチのレビューと `compiler/ocaml/tests/llvm-ir/target_selection` ゴールデン取り込み（担当: Windows チーム、期限 2025-11-15、参照: `compiler/ocaml/tests/llvm-ir`）。
 2. Shadow Space FileCheck スクリプト (`tooling/scripts/run-win64-filecheck.ps1`) とテスト資産のコミット、`docs/notes/llvm-spec-status-survey.md` §2.2.2a への結果追記（期限 2025-11-18）。
-3. PDB スモークテスト自動化 (`tooling/toolchains/test-pdb-smoke.ps1`) を CI に統合し、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`・`docs/guides/llvm-integration-notes.md` に運用手順を追記（期限 2025-11-19、担当: CI チーム）。
+3. PDB スモークテスト自動化 (`tooling/toolchains/test-pdb-smoke.ps1`) を CI に統合し、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`・`docs/guides/compiler/llvm-integration-notes.md` に運用手順を追記（期限 2025-11-19、担当: CI チーム）。
 
 ### 4. ランタイム C コードの移植（20-21週目）
 **担当領域**: ランタイム実装
@@ -325,7 +325,7 @@ Error: Library "llvm" not found.
 **担当領域**: ドキュメント
 
 7.1. **セットアップ手順の文書化**
-- `docs/guides/llvm-integration-notes.md` への Windows セクション追加
+- `docs/guides/compiler/llvm-integration-notes.md` への Windows セクション追加
 - 環境変数の設定方法
 - トラブルシューティング情報
 - よくある質問（FAQ）

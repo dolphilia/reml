@@ -111,7 +111,7 @@ Phase 2 では以下のマイルストーンを達成します：
 - [x] [1-2-types-Inference.md](../../../docs/spec/1-2-types-Inference.md) - 型システム仕様（完了）
 - [x] [2-5-error.md](../../../docs/spec/2-5-error.md) - エラー仕様（Phase 2 で拡張済み）
 - [x] [3-6-core-diagnostics-audit.md](../../../docs/spec/3-6-core-diagnostics-audit.md) - 診断・監査（Phase 3 で参照済み）
-- [x] LLVM 連携ガイド - [guides/llvm-integration-notes.md](../../../docs/guides/llvm-integration-notes.md)（Phase 3 で実装済み）
+- [x] LLVM 連携ガイド - [guides/llvm-integration-notes.md](../../../docs/guides/compiler/llvm-integration-notes.md)（Phase 3 で実装済み）
 
 ---
 

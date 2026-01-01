@@ -16,7 +16,7 @@
 
 ## 成果物
 - 仕様追記: `docs/spec/2-2-core-combinator.md`, `docs/spec/2-0-parser-api-overview.md`
-- Pretty 連携: `docs/spec/3-13-core-text-pretty.md`, `docs/guides/formatter-authoring.md`
+- Pretty 連携: `docs/spec/3-13-core-text-pretty.md`, `docs/guides/dsl/formatter-authoring.md`
 - 実装メモ: `docs/notes/core-parse-cst-design.md`（CST 付着ルールと実装判断の根拠）
 - 回帰資産: `examples/`, `expected/`, `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
 
@@ -77,7 +77,7 @@ match result.value {
 3. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に CST シナリオを登録する（例: `CH2-PARSE-930`）。
 
 ### フェーズE: ドキュメントと運用整理
-1. `docs/guides/formatter-authoring.md` に CST 利用時の注意点（Trivia 付着/空白戦略）を追加する。
+1. `docs/guides/dsl/formatter-authoring.md` に CST 利用時の注意点（Trivia 付着/空白戦略）を追加する。
 2. `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に CST の回帰条件を追記する。
 3. `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加し、更新方針を明記する。
 
@@ -105,7 +105,7 @@ match result.value {
 - [x] `phase4-scenario-matrix.csv` に CST シナリオを登録した
 
 ### フェーズE: ドキュメントと運用整理
-- [x] `docs/guides/formatter-authoring.md` に CST 利用注意点を追記した
+- [x] `docs/guides/dsl/formatter-authoring.md` に CST 利用注意点を追記した
 - [x] `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に回帰条件を追記した
 - [x] `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加した
 
@@ -129,7 +129,7 @@ match result.value {
 
 ## 依存関係
 - `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan-v2.md` の `autoWhitespace` 実装完了が前提。
-- `docs/spec/3-13-core-text-pretty.md` と `docs/guides/formatter-authoring.md` の仕様整合。
+- `docs/spec/3-13-core-text-pretty.md` と `docs/guides/dsl/formatter-authoring.md` の仕様整合。
 - `docs/plans/bootstrap-roadmap/4-1-core-parse-lex-helpers-impl-plan.md` の Lex プロファイル定義。
 
 ## リスクと緩和策
@@ -145,5 +145,5 @@ match result.value {
 - `docs/spec/2-2-core-combinator.md`
 - `docs/spec/2-0-parser-api-overview.md`
 - `docs/spec/3-13-core-text-pretty.md`
-- `docs/guides/formatter-authoring.md`
+- `docs/guides/dsl/formatter-authoring.md`
 - `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan-v2.md`

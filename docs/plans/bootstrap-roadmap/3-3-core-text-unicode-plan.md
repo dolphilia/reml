@@ -288,7 +288,7 @@
 - Unicode 依存の注意事項（サポート Unicode バージョン、正規化/ケース変換の制約）を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` のリスク表と同期し、ユーザーが参照できる FAQ を `docs/notes/text-unicode-known-issues.md` にまとめる。  
 - `docs/plans/bootstrap-roadmap/SUMMARY.md` の Phase 3 節を更新して `Core.Text` 関連ドキュメントへのクロスリンクを整理する。
 
-5.3. `docs/guides/core-parse-streaming.md`/`docs/guides/ai-integration.md` 等、Unicode 処理に関係するガイドを更新する。  
+5.3. `docs/guides/compiler/core-parse-streaming.md`/`docs/guides/ecosystem/ai-integration.md` 等、Unicode 処理に関係するガイドを更新する。  
 実施ステップ:  
 - ストリーミングパーサガイドに `decode_stream`/`TextBuilder` の利用例を追加し、`AI integration` ガイドでは入力正規化の注意点を脚注として追記する。  
 - ガイド更新時に `README.md` と `docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md` のリンクを見直し、相互参照が切れていないか `rg "../"` で検証する。  
@@ -305,8 +305,8 @@
 - `docs/plans/bootstrap-roadmap/checklists/doc-sync-text.md` を更新し、DOC-01〜04 のリンク確認と完了状況を `Y / Done` でマーク。更新結果は `docs/notes/docs-update-log.md` に記録。
 
 #### 5.3 実施ログ（2027-03-30）
-- `docs/guides/core-parse-streaming.md` に §10「decode_stream と TextBuilder の連携」を追加し、`TextDecodeOptions` や `log_grapheme_stats` を Streaming Runner から呼び出す手順・CI コマンドを共有。  
-- `docs/guides/ai-integration.md` §6 を拡張し、AI 入出力で `Unicode.normalize`/`prepare_identifier` を必須ステップとして扱う注意事項と `examples/core-text` のゴールデン参照手順を追加。  
+- `docs/guides/compiler/core-parse-streaming.md` に §10「decode_stream と TextBuilder の連携」を追加し、`TextDecodeOptions` や `log_grapheme_stats` を Streaming Runner から呼び出す手順・CI コマンドを共有。  
+- `docs/guides/ecosystem/ai-integration.md` §6 を拡張し、AI 入出力で `Unicode.normalize`/`prepare_identifier` を必須ステップとして扱う注意事項と `examples/core-text` のゴールデン参照手順を追加。  
 - ガイド改訂に合わせて `docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md` §6（ドキュメント更新）へ Text/AI ガイドの依存関係を明記し、ルート README のサンプル一覧を再確認した。
 
 ### 6. テスト・ベンチマーク統合（43-44週目）

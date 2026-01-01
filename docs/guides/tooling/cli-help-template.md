@@ -8,7 +8,7 @@
 ## 1. 運用ポリシー
 - 一次ソースは `compiler/ocaml/src/cli/options.ml` の `print_full_help`。この関数を更新したら本書とテンプレートを同じコミットで更新する。
 - man ページは Markdown テンプレート（`docs/guides/man/remlc-ocaml.1.md`）から生成し、リリース時に `pandoc` もしくは `ronn` で変換する。直接 `.1` を編集しない。
-- ガイド文書（`docs/guides/cli-workflow.md`）およびサンプル README（`examples/cli/README.md`）はヘルプ内容から派生する情報として同期する。
+- ガイド文書（`docs/guides/tooling/cli-workflow.md`）およびサンプル README（`examples/cli/README.md`）はヘルプ内容から派生する情報として同期する。
 
 ## 2. 更新手順チェックリスト
 1. `options.ml` のオプション説明・例を修正する。
@@ -42,7 +42,7 @@
 | ヘルプ | `--help`, `-help` | セクション化された詳細ヘルプを表示 | - |
 
 ## 4. man ページテンプレート
-- テンプレート本文: [`docs/guides/man/remlc-ocaml.1.md`](man/remlc-ocaml.1.md)
+- テンプレート本文: [`docs/guides/man/remlc-ocaml.1.md`](docs/guides/man/remlc-ocaml.1.md)
 - 生成スクリプト: `tooling/cli/scripts/update-man-pages.sh`（`--check` でテンプレートとの差分を確認可能）
 - `pandoc` を直接利用する場合のコマンド例:
 
@@ -59,19 +59,19 @@ pandoc \
 ## 5. 同期確認ポイント
 - `print_full_help` と man テンプレートの文言・区切り順が一致しているか。
 - サンプルコマンドが `examples/cli/README.md` のチェックリストと同じか。
-- 環境変数の説明が `docs/guides/config-cli.md` と矛盾していないか。
-- 参考リンクで `docs/guides/cli-workflow.md` と `docs/guides/trace-output.md` を案内しているか。
+- 環境変数の説明が `docs/guides/tooling/config-cli.md` と矛盾していないか。
+- 参考リンクで `docs/guides/tooling/cli-workflow.md` と `docs/guides/tooling/trace-output.md` を案内しているか。
 
 ## 6. TODO / 追加検討
 - [x] `tooling/cli/scripts/update-man-pages.sh` を追加してテンプレートとの同期手順を確立する（Phase 1-6 完了）。
 - [ ] Phase 1-7 で CI に man ページ生成スクリプトを組み込み、整合性チェックを自動化する。
 - [ ] `pandoc` に依存しない最小ジェネレーター（OCaml スクリプト）の検討。
-- [ ] `docs/guides/diagnostic-format.md` の JSON スキーマ確定後に man ページへリンクする。
+- [ ] `docs/guides/tooling/diagnostic-format.md` の JSON スキーマ確定後に man ページへリンクする。
 
 ---
 
 ## 参考資料
 - `compiler/ocaml/src/cli/options.ml`
 - `docs/plans/bootstrap-roadmap/1-6-developer-experience.md`
-- `docs/guides/cli-workflow.md`
-- `docs/guides/trace-output.md`
+- `docs/guides/tooling/cli-workflow.md`
+- `docs/guides/tooling/trace-output.md`

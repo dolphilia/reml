@@ -30,7 +30,7 @@
 - CLI/LSP の JSON には `data.localization = { "message_key": ..., "locale": ..., "locale_args": [...] }` が追加されている。`reml_frontend --output lsp --format json` の結果を `jq '.params.diagnostics[].data.localization'` で抽出し、`message_key=parse.expected` や `effects.contract.stage_mismatch` が期待どおり埋め込まれているか確認する。
 - Runbook: `reml_frontend --output lsp --emit-parse-debug tmp/l10n.json examples/spec/ch1/effect_handler.reml > tmp/lsp-l10n.log` → `jq '.params.diagnostics[].data.localization' tmp/lsp-l10n.log`. `null` が返った場合は `FrontendDiagnostic::expected_message_key` などのフィールド連携を確認する。
 - `tooling/lsp/tests/client_compat/fixtures/*.json` は `data.localization.message_key` を必須フィールドとし、`npm run update-localization --prefix tooling/lsp/tests/client_compat`（今後追加予定）の前に `tooling/lsp/src/handlers/diagnostics.rs` で `inject_localization` を呼び出しているかチェックする。
-- CLI Human モードでは `localization: key=..., locale=..., args=[...]` の 1 行が追加される。ロケールの表示内容が差分として現れた場合は `docs/guides/ai-integration.md#51-lsp-診断ローカライズキー対応表` を参照し、キー分類が正しいかレビューする。
+- CLI Human モードでは `localization: key=..., locale=..., args=[...]` の 1 行が追加される。ロケールの表示内容が差分として現れた場合は `docs/guides/ecosystem/ai-integration.md#51-lsp-診断ローカライズキー対応表` を参照し、キー分類が正しいかレビューする。
 
 ### 1.3 診断フィルタ／監査ポリシーの記録（2029-07-10 追加）
 - `reml_frontend` は `--diagnostic-filter <key=value>` と `--audit-policy <key=value>` で CLI/LSP へ渡すフィルタリング条件を指定できる。例: `reml_frontend --diagnostic-filter severity=warning --diagnostic-filter include=effects.* --audit-policy level=info --audit-policy anonymize_pii=true examples/spec/ch1/effect_handler.reml`.

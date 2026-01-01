@@ -278,22 +278,22 @@ end
 
 ## Phase 2-5 Step6 ドキュメント同期と引き継ぎ（2025-12-24）
 
-- `docs/spec/2-2-core-combinator.md` に `Core_parse` 進捗脚注を追加し、OCaml 実装が公開した `rule`/`label`/`cut`/Packrat 指標が仕様に反映されたことを明文化した。`docs/guides/plugin-authoring.md` と `docs/guides/core-parse-streaming.md` にはコンビネーター利用例と RunConfig 共有手順を追記し、CLI/LSP/ストリーミングで同じ設定を再現できるガイドを整備。  
+- `docs/spec/2-2-core-combinator.md` に `Core_parse` 進捗脚注を追加し、OCaml 実装が公開した `rule`/`label`/`cut`/Packrat 指標が仕様に反映されたことを明文化した。`docs/guides/dsl/plugin-authoring.md` と `docs/guides/compiler/core-parse-streaming.md` にはコンビネーター利用例と RunConfig 共有手順を追記し、CLI/LSP/ストリーミングで同じ設定を再現できるガイドを整備。  
 - リポジトリ索引として `README.md` と `docs/plans/bootstrap-roadmap/2-5-proposals/README.md` を更新し、PARSER-003 の進捗が一目で把握できるようリンクとタイムスタンプを追加。`docs/plans/bootstrap-roadmap/2-5-review-log.md` 2025-12-24 エントリに作業ログを記録。  
 - テレメトリ統合と Menhir 置換方針は未決定のため、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に TODO を移送。Packrat 指標と `parser.core.rule.*` メタデータを活用した監査強化を Phase 2-7 で評価する。
 
 ## TODO: Rust Lex/Streaming/Plugin 連携 {#todo-rust-lex-streaming-plugin}
 
 - Rust ランタイムには `Parser<T>` / Packrat / 期待集合生成が導入されたが、`RunConfig.extensions["lex"]` プロファイルの共有やコメント/トリビア消費、`Core.Parse.Streaming` / `Core.Parse.Plugin` との橋渡しは未実装。4.1 Core.Parse 計画 Phase 6 のフォローアップとして、Lex ブリッジと Plugin Capability 連携の設計案を立案する。  
-- `docs/guides/core-parse-streaming.md` と `docs/guides/plugin-authoring.md` に暫定の非対応メモを追加済み。実装着手後は同ガイドと `docs/spec/2-0-parser-api-overview.md` / `2-2-core-combinator.md` の脚注を更新し、RunConfig 共有キーや診断メタデータの差分を明文化する。  
+- `docs/guides/compiler/core-parse-streaming.md` と `docs/guides/dsl/plugin-authoring.md` に暫定の非対応メモを追加済み。実装着手後は同ガイドと `docs/spec/2-0-parser-api-overview.md` / `2-2-core-combinator.md` の脚注を更新し、RunConfig 共有キーや診断メタデータの差分を明文化する。  
 - Streaming Runner の PoC を Rust で復元する際は、Packrat キャッシュ共有と `Recover` 同期トークンが欠落しないかを micro テストで検証し、欠落箇所を `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan.md` へ逆流させる。  
 - Phase 12 で追加した回帰シナリオ（`CH2-PARSE-901` autoWhitespace/Layout、`CH2-PARSE-902` ParserProfile JSON）向けに Rust 側サンプル・expected を作成する。`RunConfig.extensions["lex"].layout_profile` 未設定時のフォールバックと `profile_output` 書き出し失敗が診断に影響しないことを CLI/LSP/Streaming で確認する。
 - `CP-WS3-001`（LexPack 基本サンプル）を `examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml` + `expected/.../core-parse-lexpack-basic.{stdout,diagnostic.json}` で追加。空白/コメント混在の入力でも AST が安定することを確認済み。診断のラベル（identifier/number/string）確認は `reml_frontend --parse-driver` を利用し、サンプル冒頭コメントの `Parse.run("alpha = ;")` から抽出した失敗入力に対して `parser.syntax.expected_tokens` が出ることを回帰で固定する。
 
 ## Phase 4-1 Phase11 Plugin/Streaming/OpBuilder 連携メモ
 
-- Plugin 経由で Core.Parse を呼び出す際の安全策として、`RuntimeBridgeAuditSpec`（`docs/spec/3-8-core-runtime-capability.md`）で要求される `bridge.stage.*` / `effect.capabilities[*]` を `register_parser` 経路に転写するチェックリストを `docs/guides/plugin-authoring.md` に追加。Stage 不一致や署名乖離は `@dsl_export` → Manifest → CLI 検証（`reml plugin verify` 想定）で検出し、プラグイン固有の RunConfig を同時に共有する方針を明文化した。
-- Streaming との接続では、`ParserId`・Packrat・期待集合を共有したまま `Parser<T>` を `StreamDriver` へ渡す変換手順（lex/layout/autoWhitespace/優先度テーブルの共有を必須とする）を `docs/guides/core-parse-streaming.md#94-parser-から-streamingparser-への変換指針（phase-11）` に追記。Rust 実装欠落分は `#todo-rust-lex-streaming-plugin` へ残し、実装開始時のギャップ一覧として利用する。
+- Plugin 経由で Core.Parse を呼び出す際の安全策として、`RuntimeBridgeAuditSpec`（`docs/spec/3-8-core-runtime-capability.md`）で要求される `bridge.stage.*` / `effect.capabilities[*]` を `register_parser` 経路に転写するチェックリストを `docs/guides/dsl/plugin-authoring.md` に追加。Stage 不一致や署名乖離は `@dsl_export` → Manifest → CLI 検証（`reml plugin verify` 想定）で検出し、プラグイン固有の RunConfig を同時に共有する方針を明文化した。
+- Streaming との接続では、`ParserId`・Packrat・期待集合を共有したまま `Parser<T>` を `StreamDriver` へ渡す変換手順（lex/layout/autoWhitespace/優先度テーブルの共有を必須とする）を `docs/guides/compiler/core-parse-streaming.md#94-parser-から-streamingparser-への変換指針（phase-11）` に追記。Rust 実装欠落分は `#todo-rust-lex-streaming-plugin` へ残し、実装開始時のギャップ一覧として利用する。
 - OpBuilder と autoWhitespace/演算子優先度ビルダーの上書き経路を RunConfig (`extensions["parse"].operator_table`) で統一する方針を記録。CLI/OpBuilder DSL からの上書きがプラグイン側設定と衝突した場合に備え、`phase4-scenario-matrix.csv` で該当シナリオを追加し回帰監視する案を Phase 12 へ引き継ぐ。
 
 ---

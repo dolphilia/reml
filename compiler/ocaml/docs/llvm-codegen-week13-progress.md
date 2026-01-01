@@ -252,7 +252,7 @@ else
 ## 参考資料
 
 - 計画書: [docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md](../../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md)
-- LLVM統合ガイド: [docs/guides/llvm-integration-notes.md](../../../docs/guides/llvm-integration-notes.md)
+- LLVM統合ガイド: [docs/guides/compiler/llvm-integration-notes.md](../../../docs/guides/compiler/llvm-integration-notes.md)
 - Core IR仕様: [src/core_ir/ir.ml](../../src/core_ir/ir.ml)
 - 型マッピング実装: [src/llvm_gen/type_mapping.ml](../../src/llvm_gen/type_mapping.ml)
 - ターゲット設定: [src/llvm_gen/target_config.ml](../../src/llvm_gen/target_config.ml)

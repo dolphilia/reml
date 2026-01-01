@@ -13,7 +13,7 @@
 
 ## 2. パーサーとエラーモデルの参照元
 
-- **Parsec / FParsec / Megaparsec / FastParse / PEG 系**（`2-1-parser-type.md`, `docs/guides/early-design-concepts.md`, `2-6-execution-strategy.md`）
+- **Parsec / FParsec / Megaparsec / FastParse / PEG 系**（`2-1-parser-type.md`, `docs/guides/ecosystem/early-design-concepts.md`, `2-6-execution-strategy.md`）
   - `consumed/committed` 管理や `cut`、`attempt`、Packrat メモ化、左再帰サポートなど、既存パーサーコンビネーター実装の知見を統合。
   - `precedence` ビルダーやエラー期待集合の整備など、複数ライブラリの長所取り込みを明言。
 
@@ -25,16 +25,16 @@
 
 ## 4. コンパイラ実装技術
 
-- **LLVM**（`docs/guides/llvm-integration-notes.md`, `2-6-execution-strategy.md`）
+- **LLVM**（`docs/guides/compiler/llvm-integration-notes.md`, `2-6-execution-strategy.md`）
   - IR 生成フロー、データレイアウト、ターゲットトリプル整合など LLVM ベースのバックエンドを前提にした設計。
-- **OCaml**（`docs/guides/llvm-integration-notes.md`）
+- **OCaml**（`docs/guides/compiler/llvm-integration-notes.md`）
   - ブートストラップ段階で OCaml + Menhir を利用する計画が示され、型推論やコンパイラ実装経験を活用。
 
 ## 5. 標準ライブラリとDSL設計への示唆
 
 - **Rust / F# / OCaml 標準ライブラリ**（`docs/notes/core-library-scope.md`）
   - コレクション、テキスト、診断 API などでこれらのエコシステムを比較参照し、Reml の API 範囲と優先度を決定。
-- **DSL ファースト思想**（`0-1-project-purpose.md`, `docs/guides/early-design-concepts.md`）
+- **DSL ファースト思想**（`0-1-project-purpose.md`, `docs/guides/ecosystem/early-design-concepts.md`）
   - パーサーコンビネーターを言語コアに内蔵し、DSL 構築と相互運用を最優先する設計哲学。既存 DSL ツール（ANTLR, PEG.js 等）との性能比較を意識。
 
 ## 6. まとめ

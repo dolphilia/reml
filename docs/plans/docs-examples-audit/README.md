@@ -32,5 +32,5 @@
 ## 関連資料
 - `docs/spec/0-3-code-style-guide.md`
 - `docs/spec/1-1-syntax.md`
-- `docs/guides/core-parse-streaming.md`
+- `docs/guides/compiler/core-parse-streaming.md`
 - `docs/plans/repository-restructure-plan.md`

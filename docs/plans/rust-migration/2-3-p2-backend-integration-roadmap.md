@@ -22,7 +22,7 @@ Phase P2 の目的は、OCaml 実装と等価な LLVM バックエンドを Rust
 
 | 成果物 | 目的 | 参照先 |
 | --- | --- | --- |
-| Rust LLVM バックエンド crate 設計書 | `compiler/rust/backend/llvm/` のモジュール配置、`TargetMachine` 初期化、PassManager 抽象化 | `docs/plans/rust-migration/2-0-llvm-backend-plan.md`, `docs/guides/llvm-integration-notes.md` |
+| Rust LLVM バックエンド crate 設計書 | `compiler/rust/backend/llvm/` のモジュール配置、`TargetMachine` 初期化、PassManager 抽象化 | `docs/plans/rust-migration/2-0-llvm-backend-plan.md`, `docs/guides/compiler/llvm-integration-notes.md` |
 | バックエンド差分ハーネス更新 | `--emit-llvm` dual-write、`opt -verify`/`llc` 自動化、`reports/diagnostic-format-regression.md` への連携 | `0-1-baseline-and-diff-assets.md`, `scripts/poc_dualwrite_compare.sh` |
 | Runtime/Capability 連携仕様 | `ForeignPtr`/`Span`/`RuntimeString`、`CapabilityRegistry` Stage チェック、`AuditEnvelope.metadata.bridge.*` テンプレート | `docs/plans/rust-migration/2-1-runtime-integration.md`, `docs/spec/3-8` |
 | Adapter API ガイド | FS/Network/Time/Random/Process/Env の抽象化、およびターゲット能力マップ | `docs/plans/rust-migration/2-2-adapter-layer-guidelines.md`, `runtime/native/include/reml_os.h` |

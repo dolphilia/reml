@@ -1,6 +1,6 @@
 # Runtime Bridges ロードマップメモ
 
-`docs/guides/runtime-bridges.md` と Phase3 Core.IO/Path の計画 (`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md`) を接続する運用メモ。Bridge / Plugin / サンプル実行が参照すべき Runbook をここに集約し、CI 指標とリンクさせる。
+`docs/guides/runtime/runtime-bridges.md` と Phase3 Core.IO/Path の計画 (`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md`) を接続する運用メモ。Bridge / Plugin / サンプル実行が参照すべき Runbook をここに集約し、CI 指標とリンクさせる。
 
 ## 1. Core.IO & Path サンプルの取り込み
 - `examples/practical/core_io/file_copy/canonical.reml` と `examples/practical/core_path/security_check/relative_denied.reml`（旧 `examples/core_io` / `examples/core_path`）を `tooling/examples/run_examples.sh --suite core_io|core_path` から実行する。CI では `core_io.example_suite_pass_rate`（`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`）として 1.0 を維持する。
@@ -10,7 +10,7 @@
 ## 2. Runtime Bridge で確認すべきポイント
 - `IoContext.helper` / `metadata.io.helper`: Bridge 名を一意に付与し、`examples.core_io.file_copy` などサンプルと同じ命名規約で揃える。
 - `Capability` 検証: `io.fs.*`, `security.fs.policy`, `memory.buffered_io`, `watcher.*` を `FsAdapter::ensure_*` / `WatcherAdapter::ensure_*` / `SecurityPolicy::enforce` から呼ぶ。Stage mismatch は `effects.contract.stage_mismatch` を発火させる。
-- `log_io` / 監査メタデータ: `docs/guides/runtime-bridges.md` §1.4 を更新済み。Bridge 実装前にサンプルを実行して `AuditEnvelope.metadata["io.*"]` のキーを確認する。
+- `log_io` / 監査メタデータ: `docs/guides/runtime/runtime-bridges.md` §1.4 を更新済み。Bridge 実装前にサンプルを実行して `AuditEnvelope.metadata["io.*"]` のキーを確認する。
 
 ## 3. Runbook（簡易）
 1. `tooling/examples/run_examples.sh --suite core_io`
@@ -22,8 +22,8 @@
 
 ## 4. 参照ドキュメント
 - `docs/spec/3-5-core-io-path.md`
-- `docs/guides/runtime-bridges.md`
-- `docs/guides/plugin-authoring.md`
+- `docs/guides/runtime/runtime-bridges.md`
+- `docs/guides/dsl/plugin-authoring.md`
 - `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §6
 - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`
 

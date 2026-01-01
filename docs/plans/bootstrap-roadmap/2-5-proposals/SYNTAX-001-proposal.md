@@ -18,7 +18,7 @@
 ## 3. 影響範囲と検証
 - **テスト**: Unicode 識別子を含むサンプルを `compiler/ocaml/tests/unicode_ident_tests.ml`（新設）に追加し、ASCII 実装ではスキップ、Unicode 実装後に有効化する。  
 - **メトリクス**: `0-3-audit-and-metrics.md` に登録済みの `lexer.identifier_profile_unicode` を更新し、Phase 2-5 では 0.0 を記録、Phase 2-7 `lexer-unicode` 完了時に 1.0 を目標とする。  
-- **仕様・ガイド**: `docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/0-2-glossary.md`・`docs/guides/plugin-authoring.md` 等に ASCII 制限の暫定注意書きと Unicode 対応予定を追記し、索引（`docs/spec/README.md`）のリンク整合を確認する。
+- **仕様・ガイド**: `docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/0-2-glossary.md`・`docs/guides/dsl/plugin-authoring.md` 等に ASCII 制限の暫定注意書きと Unicode 対応予定を追記し、索引（`docs/spec/README.md`）のリンク整合を確認する。
 
 ## 4. 実施ステップと調査項目
 
@@ -109,7 +109,7 @@
 
 #### Step 6: CLI/LSP・監査整合の検証（着手週 TBD・Tooling/Docs）
 - **目的**: Unicode 識別子導入後の CLI/LSP 表示と監査ログの整合を保証する。  
-- **作業**: CLI でのエラー表示改善案を適用し、`Diagnostic.extensions` に識別子正規化の補助情報を追加。LSP/VS Code 拡張の補完・ハイライトに `--lex-profile=unicode` を連動させ、`docs/guides/plugin-authoring.md`・`docs/notes/dsl-plugin-roadmap.md` の TODO を消化する。  
+- **作業**: CLI でのエラー表示改善案を適用し、`Diagnostic.extensions` に識別子正規化の補助情報を追加。LSP/VS Code 拡張の補完・ハイライトに `--lex-profile=unicode` を連動させ、`docs/guides/dsl/plugin-authoring.md`・`docs/notes/dsl-plugin-roadmap.md` の TODO を消化する。  
 - **調査**: `collect-iterator-audit-metrics.py --require-success` の Unicode プロファイル指標、`docs/spec/3-8-core-runtime-capability.md` Stage 表との整合性、`docs/notes/dsl-plugin-roadmap.md` §7 のチェックリストを追跡。  
 - **成果物**: CLI/LSP フィクスチャ更新、監査ログサンプル、レビュー記録。
 
@@ -119,12 +119,12 @@
 2. ドキュメント更新  
    - `docs/spec/1-1-syntax.md`, `1-5-formal-grammar-bnf.md`, `2-3-lexer.md`, `0-2-glossary.md`, `docs/spec/README.md` から ASCII 暫定脚注を撤去し、`RunConfig.extensions["lex"].identifier_profile` の互換切替手順を追記。  
 3. ガイド・ロードマップ同期  
-   - `docs/guides/plugin-authoring.md` と `docs/notes/dsl-plugin-roadmap.md` を Unicode 既定前提へ改訂し、ASCII フォールバック時の監査要件とハンドオーバー先（ID22/ID23）を明示した。
+   - `docs/guides/dsl/plugin-authoring.md` と `docs/notes/dsl-plugin-roadmap.md` を Unicode 既定前提へ改訂し、ASCII フォールバック時の監査要件とハンドオーバー先（ID22/ID23）を明示した。
 
 ## 5. フォローアップ
 - Phase 2-7 `lexer-unicode` サブタスクで Step5/6 の実装と検証を完了し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の Unicode セクションを更新する。  
 - Unicode 対応後に Chapter 1 脚注を整理し、`docs/spec/1-5-formal-grammar-bnf.md`・サンプルコード・`docs/spec/README.md` から暫定文言を撤去する。  
-- CLI/LSP 側の識別子ハイライトや補完機能が Unicode 対応と整合するかを Step6 の成果物で再確認し、必要な場合は `docs/guides/runtime-bridges.md` へ脚注を追加する。  
+- CLI/LSP 側の識別子ハイライトや補完機能が Unicode 対応と整合するかを Step6 の成果物で再確認し、必要な場合は `docs/guides/runtime/runtime-bridges.md` へ脚注を追加する。  
 - Phase 3 着手前に `0-3-audit-and-metrics.md` および `0-4-risk-handling.md` の関連項目をレビューし、`lexer.identifier_profile_unicode` が 1.0 を維持していることをセルフホスト移行条件に含める。  
 - **タイミング**: Phase 2-5 の間に Step1〜4 を完了し、Unicode 機能の実装自体は Phase 2-7 の着手時に Step5/6 へ移行する。
 

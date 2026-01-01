@@ -152,7 +152,7 @@ let _ = match record with
 #### 対応計画
 - `collect-iterator-audit-metrics.py --section streaming --platform windows-msvc --require-success`（必要に応じて `--platform macos-arm64`）を週次ジョブへ組み込み、結果を `reports/audit/dashboard/streaming.md` と `reports/ffi-bridge-summary.md` に記録する。
 - `scripts/validate-diagnostic-json.sh --suite streaming` に Backpressure 診断の必須フィールドを追加し、欠落時に CI が失敗するよう更新する。
-- `docs/guides/runtime-bridges.md` §10 のチェックリストに Stage 監査の回帰手順を追記し、再現手順を `reports/audit/phase2-7/backpressure/` に保存する。
+- `docs/guides/runtime/runtime-bridges.md` §10 のチェックリストに Stage 監査の回帰手順を追記し、再現手順を `reports/audit/phase2-7/backpressure/` に保存する。
 
 #### 成功基準
 - 上記 3 指標がすべて 1.0 を維持し、逸脱発生時には `STREAM-POC-BACKPRESSURE` リスクを 1 営業日以内に更新できる。

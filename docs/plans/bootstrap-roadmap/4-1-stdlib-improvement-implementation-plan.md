@@ -116,14 +116,14 @@ Phase 4 の `CH3-TEST-401` / `CH3-CLI-401` / `CH3-PRETTY-401` / `CH3-DOC-401` / 
 
 ## 進捗状況
 - ドラフト作成時点では未着手。各フェーズの完了時に日付を追記する。
-- 2025-12-19: フェーズA Step2 を実施。`docs/spec/3-11-core-test.md` にテストブロック糖衣構文とスナップショット安定化ポリシーを追記し、`docs/guides/testing.md` に更新ルールを反映。
+- 2025-12-19: フェーズA Step2 を実施。`docs/spec/3-11-core-test.md` にテストブロック糖衣構文とスナップショット安定化ポリシーを追記し、`docs/guides/tooling/testing.md` に更新ルールを反映。
 - 2025-12-19: フェーズA Step1 の最小 API 受け口を Rust Runtime に追加。`compiler/rust/runtime/src/test/mod.rs` で `assert_snapshot`/`table_test`/`fuzz_bytes` 等のスタブ実装と in-memory スナップショット保持を用意。
 - 2025-12-19: フェーズA Step1 の診断/監査連携を追加。`test.failed` の診断生成と `SnapshotUpdated` 監査イベント記録を Rust Runtime に接続。
 - 2025-12-19: `examples/practical/core_test/snapshot/basic_ok.reml` の構文を現行 `match ... with` 形式へ更新し、`CH3-TEST-401` の CLI 実行ログ（`reports/spec-audit/ch4/logs/stdlib-test-20251219.md`）を採取して `phase4-scenario-matrix.csv` を更新。
 - 2025-12-19: `reml_frontend` の audit 出力連携を追加し、`remlc` のビルドエラーを修正。`compiler/rust/runtime/src/ffi/dsl/mod.rs` の OnceLock/再帰型修正、`compiler/rust/runtime/src/test/mod.rs` の `catch_unwind` 安全化、`compiler/rust/frontend/src/bin/remlc.rs` のエラー処理/型派生/manifest_path 修正を実施。
 - 2025-12-19: ビルド警告の整理とパッチ警告の解消を実施。`compiler/rust/runtime` と `compiler/rust/frontend` の dead_code 警告を個別 `#[allow]` で抑制し、`proc-macro-crate` の未使用パッチを削除して `cargo build` を警告なしで通過させた。
 - 2025-12-19: Core.Cli の最小ランタイム実装を追加。`compiler/rust/runtime/src/cli/mod.rs` で宣言的ビルダー・解析・診断・監査イベント記録を実装し、`lib.rs` で公開。
-- 2025-12-19: Core.Cli の実装方針を `docs/spec/3-12-core-cli.md` と `docs/guides/cli-authoring.md` に反映し、Core.Env との分担を明記。
+- 2025-12-19: Core.Cli の実装方針を `docs/spec/3-12-core-cli.md` と `docs/guides/tooling/cli-authoring.md` に反映し、Core.Env との分担を明記。
 - 2025-12-19: CLI サンプル（解析/検証/整形）を `examples/practical/core_cli/` に追加し、`expected/` を CLI JSON 出力で更新。`reports/spec-audit/ch4/logs/stdlib-cli-20251219.md` を採取し、`phase4-scenario-matrix.csv` の `CH3-CLI-401`/`402`/`403` を `ok` に更新。
 - 2025-12-19: Core.Text.Pretty の最小実装を `compiler/rust/runtime/src/text/pretty.rs` に追加し、`examples/practical/core_text/pretty/layout_width_basic.reml` と `expected/practical/core_text/pretty/layout_width_basic.stdout` を幅差の出力に合わせて更新。
 - 2025-12-19: Core.Doc/Core.Lsp の最小ランタイム実装を追加。`compiler/rust/runtime/src/doc/mod.rs` と `compiler/rust/runtime/src/lsp/mod.rs` を新設し、`compiler/rust/runtime/src/audit/mod.rs` に Doctest 監査種別を追加した。

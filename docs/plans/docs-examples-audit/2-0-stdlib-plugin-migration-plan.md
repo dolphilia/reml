@@ -49,7 +49,7 @@
 - `docs/spec/5-4-community-content.md`: 参照章の更新（Process/Signal の移行先を反映）。
 - `docs/spec/5-5-roadmap-metrics.md`: 参照章の更新。
 - `docs/spec/5-6-risk-governance.md`: 参照章の更新。
-- `docs/guides/portability.md`: `Core.Process` 記述を `Core.System.Process` へ修正。
+- `docs/guides/runtime/portability.md`: `Core.Process` 記述を `Core.System.Process` へ修正。
 
 ### 影響調査対象（必要に応じて）
 - `docs/notes/stdlib-expansion-research.md`: 「移行済み」反映の注記追加。
@@ -74,7 +74,7 @@
 
 ### フェーズD: 参照整合と README 更新
 1. `docs/spec/README.md` と Chapter 5 の参照章を更新する。
-2. `docs/guides/portability.md` の `Core.Process` 表記を `Core.System.Process` に改める。
+2. `docs/guides/runtime/portability.md` の `Core.Process` 表記を `Core.System.Process` に改める。
 3. 参照リンク切れ・命名揺れを `docs/plans/rust-migration/4-2-documentation-sync.md` のチェックリストに従って確認する。
 
 ### フェーズE: サンプル/監査ログ更新（docs-examples-audit）
@@ -105,7 +105,7 @@
 - [x] `docs/spec/4-2-process-plugin.md` / `docs/spec/4-4-signal-plugin.md` の位置付け更新
 - [x] `docs/spec/4-1-system-plugin.md` / `4-3/4-5/4-6` の参照更新
 - [x] `docs/spec/README.md` / `docs/spec/5-4-community-content.md` / `docs/spec/5-5-roadmap-metrics.md` / `docs/spec/5-6-risk-governance.md` の参照更新
-- [x] `docs/guides/portability.md` の `Core.Process` 表記を `Core.System.Process` へ更新
+- [x] `docs/guides/runtime/portability.md` の `Core.Process` 表記を `Core.System.Process` へ更新
 - [x] `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` の移行対象タグ付け
 - [ ] `examples/docs-examples/spec/` の `.reml` 更新と監査ログ再採取
 

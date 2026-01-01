@@ -135,7 +135,7 @@
 
 #### 3. TODO / フォローアップ
 1. Phase 2-7 で `compiler/ocaml/tests/effect_syntax_tests.ml` を新設し、PoC サンプルをゴールデンとして固定。テスト導入時は `syntax.effect_construct_acceptance` の基準値を 1.0 に更新する。
-2. `-Zalgebraic-effects` の最終公開名と CLI ドキュメント（`docs/spec/0-0-overview.md`、`docs/guides/ai-integration.md`）への記載を Phase 2-7 内で確定する。名称決定までは Experimental フラグを維持し、解除判断は Phase 2-7 終盤のレビューにて行う。
+2. `-Zalgebraic-effects` の最終公開名と CLI ドキュメント（`docs/spec/0-0-overview.md`、`docs/guides/ecosystem/ai-integration.md`）への記載を Phase 2-7 内で確定する。名称決定までは Experimental フラグを維持し、解除判断は Phase 2-7 終盤のレビューにて行う。
 3. `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に記載した Stage 遷移条件が満たされた時点で、`docs/notes/effect-system-tracking.md` のステージ表を更新し、脚注 `[^effects-syntax-poc-phase25]` の撤去手順を Phase 2-8 へ通知する。
 
 ## 6. 進捗記録（Phase 2-5）

@@ -9,5 +9,5 @@
 
 関連ドキュメント:
 - `docs/spec/3-5-core-io-path.md` §7「使用例」
-- `docs/guides/runtime-bridges.md` §1.4「Core.IO コンテキストと監査」
+- `docs/guides/runtime/runtime-bridges.md` §1.4「Core.IO コンテキストと監査」
 - `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §6「ドキュメント・サンプル更新」

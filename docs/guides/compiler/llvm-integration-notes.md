@@ -145,7 +145,7 @@ Reml源コード
   * 代数的データ型は `{i32 tag, [payload]}` を基本とし、payload は最大幅の union または variant ごとの構造体に Lower。
   * 文字列/スライスは `{ptr data, i64 len}`。FFI 渡し時は所有権ルール（下記）が必須。
 * **所有権モデル**：
-  * RC ベース。`extern` へ渡す場合は `inc_ref` で寿命を延長し、戻ったら `dec_ref`。逆方向で受け取る場合は FFI 側が `reml_release_*` を呼ぶ契約を `docs/guides/reml-ffi-handbook.md` で定義する。
+  * RC ベース。`extern` へ渡す場合は `inc_ref` で寿命を延長し、戻ったら `dec_ref`。逆方向で受け取る場合は FFI 側が `reml_release_*` を呼ぶ契約を `docs/guides/ffi/reml-ffi-handbook.md` で定義する。
   * `unsafe` 境界で未解放が起こらないよう、FFI シムは RAII 風ヘルパを提供予定。
 * **例外とパニック**：Reml は例外を持たず、`panic` は `abort` 相当。C++ 例外との境界では `noexcept` としてリンク。
 * **WASM/WASI**：DataLayout と ABI は未定。別途調査メモを参照し、この節に将来追加する。

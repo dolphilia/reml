@@ -1,6 +1,6 @@
 # 2.2 アダプタ層ガイドライン
 
-本章は Phase P2 バックエンド統合の一環として、Rust 実装が各プラットフォーム差異（ファイルシステム、ネットワーク、時刻、乱数、プロセス、環境変数等）を吸収するアダプタ層の設計方針をまとめる。`docs/spec/3-10-core-env.md`・`docs/guides/portability.md`・`runtime/native/include/reml_os.h` に定義された契約と整合し、`2-0-llvm-backend-plan.md`・`2-1-runtime-integration.md` で必要となる環境依存 API を安全に提供することが目的である。
+本章は Phase P2 バックエンド統合の一環として、Rust 実装が各プラットフォーム差異（ファイルシステム、ネットワーク、時刻、乱数、プロセス、環境変数等）を吸収するアダプタ層の設計方針をまとめる。`docs/spec/3-10-core-env.md`・`docs/guides/runtime/portability.md`・`runtime/native/include/reml_os.h` に定義された契約と整合し、`2-0-llvm-backend-plan.md`・`2-1-runtime-integration.md` で必要となる環境依存 API を安全に提供することが目的である。
 
 ## 2.2.1 目的
 - 各プラットフォーム固有 API を抽象化する Rust アダプタ層（`adapter` モジュール）を整備し、バックエンド・ランタイム連携・CI から同一 API で利用できるようにする。
@@ -17,7 +17,7 @@
   - ハードウェア固有（GPU, GPIO 等）の詳細実装。必要に応じて後続フェーズで計画する。
   - パフォーマンス最適化（P4 スコープ）。
 - **前提**
-  - `docs/guides/portability.md` が定義するターゲットプロファイル／条件付きコンパイル (`@cfg`) ポリシーが共有されている。
+  - `docs/guides/runtime/portability.md` が定義するターゲットプロファイル／条件付きコンパイル (`@cfg`) ポリシーが共有されている。
   - `runtime/native/include/reml_os.h` に OS 抽象 API が存在し、Rust 側から FFI で呼び出せる。
   - P0/P1 で `RunConfig`／`Diagnostic` の拡張フィールドが整備済み。
 
@@ -31,10 +31,10 @@
 
 | 成果物 | 内容 | 依存資料 |
 | --- | --- | --- |
-| `compiler/rust/adapter/` | プラットフォーム差異吸収モジュール（FS/Network/Time/Random/Process/Env）。エラーモデルは `Result<T, AdapterError>`。 | `docs/guides/portability.md`, `docs/spec/3-10-core-env.md`, `runtime/native/include/reml_os.h` |
+| `compiler/rust/adapter/` | プラットフォーム差異吸収モジュール（FS/Network/Time/Random/Process/Env）。エラーモデルは `Result<T, AdapterError>`。 | `docs/guides/runtime/portability.md`, `docs/spec/3-10-core-env.md`, `runtime/native/include/reml_os.h` |
 | ターゲット能力マップ | プロファイル別（`desktop-x86_64`, `windows-gnu`, `windows-msvc`, `darwin-aarch64` 等）の Capability ↔ Adapter API 対応表。 | `docs/plans/rust-migration/0-2-windows-toolchain-audit.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` |
-| テストハーネス | クロスプラットフォーム Adapter テスト（ファイル操作、ソケット、時間計測、乱数品質、プロセス起動）。CI 連携（GitHub Actions matrix）。 | `tooling/ci/`, `runtime/native/tests/test_os.c`, `docs/guides/runtime-bridges.md` |
-| ポリシーガイド | Stage/Feature フラグ、`@cfg` ルール、監査ログテンプレート（`adapter.*`）。 | `docs/guides/portability.md`, `docs/spec/3-8`, `docs/spec/3-9` |
+| テストハーネス | クロスプラットフォーム Adapter テスト（ファイル操作、ソケット、時間計測、乱数品質、プロセス起動）。CI 連携（GitHub Actions matrix）。 | `tooling/ci/`, `runtime/native/tests/test_os.c`, `docs/guides/runtime/runtime-bridges.md` |
+| ポリシーガイド | Stage/Feature フラグ、`@cfg` ルール、監査ログテンプレート（`adapter.*`）。 | `docs/guides/runtime/portability.md`, `docs/spec/3-8`, `docs/spec/3-9` |
 
 ## 2.2.5 サブシステム別方針
 
@@ -63,7 +63,7 @@
 
 ### Random
 - `getrandom` crate と Windows `BCryptGenRandom` をラップし、`SecurityCapability` から `audit.log("adapter.random", ...)` を出力。  
-- 擬似乱数は Phase 2 では提供せず、`docs/guides/portability.md` のガイドに従って `feature = "prng"` で opt-in。  
+- 擬似乱数は Phase 2 では提供せず、`docs/guides/runtime/portability.md` のガイドに従って `feature = "prng"` で opt-in。  
 - 秘匿情報を扱う場合は `Diagnostic` に `security.redaction = true` を附帯する。
 
 ### Process / Env
@@ -118,7 +118,7 @@
 ## 2.2.11 次フェーズ連携
 - P3 CI 統合計画（`3-0-ci-and-dual-write-strategy.md`）でアダプタ API を活用し、dual-write テストや監査メトリクス収集の基盤を提供する。  
 - P4 リスク登録 (`4-0-risk-register.md`) ではアダプタ層の未対応ターゲット・依存クレート更新リスクを追跡する。  
-- DSL プラグイン／Capability 拡張（Chapter 4）の準備として、アダプタ API の公開仕様を `docs/guides/plugin-authoring.md` 等へ展開する。
+- DSL プラグイン／Capability 拡張（Chapter 4）の準備として、アダプタ API の公開仕様を `docs/guides/dsl/plugin-authoring.md` 等へ展開する。
 
 ---
-**参照**: `docs/guides/portability.md`, `docs/spec/3-10-core-env.md`, `docs/guides/runtime-bridges.md`, `runtime/native/include/reml_os.h`, `docs/plans/rust-migration/0-2-windows-toolchain-audit.md`, `docs/plans/rust-migration/2-0-llvm-backend-plan.md`, `docs/plans/rust-migration/2-1-runtime-integration.md`
+**参照**: `docs/guides/runtime/portability.md`, `docs/spec/3-10-core-env.md`, `docs/guides/runtime/runtime-bridges.md`, `runtime/native/include/reml_os.h`, `docs/plans/rust-migration/0-2-windows-toolchain-audit.md`, `docs/plans/rust-migration/2-0-llvm-backend-plan.md`, `docs/plans/rust-migration/2-1-runtime-integration.md`

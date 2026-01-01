@@ -31,7 +31,7 @@
      - `compiler/rust/ffi_bindgen/src/main.rs`（bin 名: `reml-bindgen`）
      - `compiler/rust/Cargo.toml` に workspace 追加
 2. `bindings.manifest.json` に `qualifiers` / 入力ハッシュ / 診断メタデータを記録し、`docs/spec/3-6-core-diagnostics-audit.md` と整合する形式を固定する。（完了）
-3. `ffi.bindgen.*` 診断キーを出力し、`docs/guides/reml-bindgen-guide.md` のログ例と一致させる。（完了）
+3. `ffi.bindgen.*` 診断キーを出力し、`docs/guides/ffi/reml-bindgen-guide.md` のログ例と一致させる。（完了）
 4. `examples/ffi/bindgen/minimal` を CLI 実行で再生成し、`expected/` へ出力ゴールデンを追加する。（完了）
 
 ### フェーズB: Core.Ffi.Dsl ランタイム実装
@@ -61,7 +61,7 @@
 1. `reml.json` の `ffi` セクション（`libraries`/`headers`/`bindgen`/`linker`）を `tooling/cli` でパースし、検証エラーを `ffi.build.*` で出力する。（完了: `remlc build` で最小検証を追加）
 2. `reml build` に `reml-bindgen` 呼び出しとキャッシュ層を追加し、入力ハッシュと生成物の一致を監査ログへ記録する。（進行中: `--emit-bindgen` / `--cache-dir` で起動・キャッシュ格納・復元・`ffi.bindgen` 監査ログを追加）
    - 検討: `cache_hit` 復元失敗時に `AuditEnvelope.metadata` へ `error.code` / `error.message` を追記するか整理する（要検討）。
-3. Linux/macOS/Windows の差分を `docs/spec/3-10-core-env.md` と照合し、`docs/guides/ffi-build-integration-guide.md` に合わせた出力を維持する。
+3. Linux/macOS/Windows の差分を `docs/spec/3-10-core-env.md` と照合し、`docs/guides/ffi/ffi-build-integration-guide.md` に合わせた出力を維持する。
 
 補足: bindgen 呼び出し/キャッシュ層のフック地点（案）
 - 入口: `remlc build` サブコマンドに `--emit-bindgen` / `--cache-dir` を追加し、`reml.json` の `ffi.bindgen` を解釈して `reml-bindgen` を起動する。
@@ -72,7 +72,7 @@
 ### フェーズD: WIT 調査ログと PoC
 1. `docs/notes/ffi-wasm-component-model-log.md` を更新し、WIT 型→Reml 型対応表の一次案を追加する。（完了）
 2. Canonical ABI のメモリ境界（Shared Nothing）と FFI との差分を調査ログに追記する。（完了）
-3. `docs/guides/ffi-wit-poc.md` に PoC 手順（WIT 生成→バインディング生成→呼び出し検証）を明記する。（完了）
+3. `docs/guides/ffi/ffi-wit-poc.md` に PoC 手順（WIT 生成→バインディング生成→呼び出し検証）を明記する。（完了）
 
 ### フェーズE: Phase 4 回帰接続
 1. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に FFI シナリオを追加（例: `FFI-BINDGEN-001` / `FFI-DSL-001` / `FFI-BUILD-001` / `FFI-WIT-001`）。（完了）
@@ -117,7 +117,7 @@
 - `docs/spec/3-9-core-async-ffi-unsafe.md`
 - `docs/spec/3-6-core-diagnostics-audit.md`
 - `docs/spec/3-10-core-env.md`
-- `docs/guides/reml-bindgen-guide.md`
-- `docs/guides/ffi-dsl-guide.md`
-- `docs/guides/ffi-build-integration-guide.md`
-- `docs/guides/ffi-wit-poc.md`
+- `docs/guides/ffi/reml-bindgen-guide.md`
+- `docs/guides/ffi/ffi-dsl-guide.md`
+- `docs/guides/ffi/ffi-build-integration-guide.md`
+- `docs/guides/ffi/ffi-wit-poc.md`

@@ -20,7 +20,7 @@
 - **前提**
   - P1 フロントエンド移植文書の完了条件（AST/診断ゴールデン整備）が満たされており、MIR 生成まで Rust 実装が進んでいる。
   - P0 で規定したゴールデン比較基盤 (`0-1-baseline-and-diff-assets.md`) が動作し、LLVM IR 用の比較テーブルが用意されている。
-  - `docs/guides/llvm-integration-notes.md` の設計原則と `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` の調査結果が最新である。
+  - `docs/guides/compiler/llvm-integration-notes.md` の設計原則と `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` の調査結果が最新である。
 
 ## 2.0.3 完了条件
 - Rust バックエンドが生成した LLVM IR が、P0/P1 ゴールデン比較で差分ゼロ（コメント・メタデータ差分は既知の許容範囲内）を維持し、`opt -verify` と `llc` による検証を全ターゲットで通過する。
@@ -32,7 +32,7 @@
 
 | 成果物 | 内容 | 依存資料 |
 | --- | --- | --- |
-| `compiler/rust/backend/llvm/` | Rust 版 LLVM コードジェン crate（MIR→LLVM IR、`Builder`／`Module` ラッパ、`TargetMachine` 初期化、最適化パス定義） | `compiler/ocaml/src/llvm_gen/`, `docs/guides/llvm-integration-notes.md` |
+| `compiler/rust/backend/llvm/` | Rust 版 LLVM コードジェン crate（MIR→LLVM IR、`Builder`／`Module` ラッパ、`TargetMachine` 初期化、最適化パス定義） | `compiler/ocaml/src/llvm_gen/`, `docs/guides/compiler/llvm-integration-notes.md` |
 | バックエンド差分ハーネス | OCaml/Rust バックエンド出力を比較する CLI (`--emit-llvm --backend={ocaml,rust}`)、`opt -verify` と `llc` 実行の自動化 | `0-1-baseline-and-diff-assets.md`, `tooling/ci/collect-iterator-audit-metrics.py` |
 | Windows ツールチェーン手順更新 | MSYS2 LLVM 16 継続利用と公式 ZIP 19.1.1 切替条件、`rustup target add`、`clang-cl`/`link.exe` 連携の手順書 | `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`, `docs/plans/rust-migration/0-2-windows-toolchain-audit.md` |
 | 監査メタデータ整備 | `Diagnostic.extensions["backend"]`, `audit.log("llvm.verify", ...)` 等の JSON フィールド定義と CI 保存先 | `docs/spec/3-6-core-diagnostics-audit.md`, `reports/diagnostic-format-regression.md` |
@@ -54,7 +54,7 @@
   - `TargetOptions`、`RelocMode`、`CodeModel`、`OptLevel` は OCaml 実装 (`codegen_config.ml`) を参照してマッピングし、Rust 側で Triple ごとの差分（MSVC = `CodeModel::Large`, GNU = `CodeModel::Default` など）を明示したテーブルを `appendix/glossary-alignment.md` に追記する。
 
 - **型レイアウト・ABI 整合**  
-  - `docs/guides/llvm-integration-notes.md` §5 のレイアウト仕様に沿って、`StructType`/`ArrayType` の配置とアライメントを Rust 側で計算する。  
+  - `docs/guides/compiler/llvm-integration-notes.md` §5 のレイアウト仕様に沿って、`StructType`/`ArrayType` の配置とアライメントを Rust 側で計算する。  
   - 呼出規約は `Abi::SystemV`（Linux/macOS）/`Abi::Win64`（Windows）で分岐し、`compiler/ocaml/src/llvm_gen/abi.ml` のロジックを `enum CallingConvention` で再現する。  
   - GC とランタイム呼び出し（`mem_alloc`/`inc_ref`/`dec_ref`/`panic`）は `2-1-runtime-integration.md` の FFI 層と連携し、`llvm::Attribute::NoUnwind` 等の付与規則を共有する。
 
@@ -76,7 +76,7 @@
 ## 2.0.8 リスクと対応
 - **LLVM バージョン差異による API 変更**  
   - *リスク*: LLVM 16 と 19 の API 差異で Rust 側ビルドが不安定化。  
-  - *対応*: `llvm-sys` を features 付きで 16/19 両対応にし、バージョン固有コードは `cfg(feature = "llvm19")` 等で切替。`docs/guides/llvm-integration-notes.md` へ差異一覧を追記する。
+  - *対応*: `llvm-sys` を features 付きで 16/19 両対応にし、バージョン固有コードは `cfg(feature = "llvm19")` 等で切替。`docs/guides/compiler/llvm-integration-notes.md` へ差異一覧を追記する。
 
 - **Windows MSVC ライブラリ欠落**  
   - *リスク*: `conf-llvm-static.19` の静的ライブラリ検出が再発し、Rust バックエンドがリンク失敗。  
@@ -121,7 +121,7 @@
 | --- | --- | --- |
 | `codegen` | MIR→LLVM IR のエントリ。`type_mapping`/`abi`/`target_config` から型・ABI 情報を取り込み LLVM Builder を動かす | `type_mapping`, `abi`, `llvm_attr`, `target_config` |
 | `type_mapping` | Reml 型を LLVM 型へ丸めつつ、アライメントを `alignment_spec` で計算 | `target_config` の `pointer_size` と `alignment_spec` を参照 |
-| `target_config` | Triple/`DataLayout`/`CallingConvention`・アラインメントを定義し、`Llvm.set_target_triple`/`set_data_layout` を呼ぶ | `docs/guides/llvm-integration-notes.md §5.0` と整合 |
+| `target_config` | Triple/`DataLayout`/`CallingConvention`・アラインメントを定義し、`Llvm.set_target_triple`/`set_data_layout` を呼ぶ | `docs/guides/compiler/llvm-integration-notes.md §5.0` と整合 |
 | `abi` | SystemV・Win64 論理を `CallingConvention` 文字列として公開 | `target_config` の `calling_conv` を利用 |
 | `llvm_attr` | `NoUnwind`, `AlwaysInline` 等の属性を定義し、`codegen` や `verify` が再利用 | `llvm_attr_stubs.c` との連携点も確認 |
 | `verify` | `opt -verify` 実行 + `Diagnostic.domain = "Backend"` 診断を生成 | `llvm_attr`, `target_config`, `reports/diagnostic-format-regression.md` を参照 |
@@ -136,7 +136,7 @@
 ### W2
 
 - **W2-W1 追行計画**
-  1. `docs/spec/0-1-project-purpose.md` と `docs/plans/rust-migration/unified-porting-principles.md` の行動指針を貼り合わせて W2 での「振る舞いの同一性優先」を確認しつつ、`docs/guides/llvm-integration-notes.md` のセクション 5.0 で示された `TargetMachine`/`DataLayout` 設定を Rust 側ゴールとして定量化する。
+  1. `docs/spec/0-1-project-purpose.md` と `docs/plans/rust-migration/unified-porting-principles.md` の行動指針を貼り合わせて W2 での「振る舞いの同一性優先」を確認しつつ、`docs/guides/compiler/llvm-integration-notes.md` のセクション 5.0 で示された `TargetMachine`/`DataLayout` 設定を Rust 側ゴールとして定量化する。
   2. `2-1-runtime-integration.md` と `2-2-adapter-layer-guidelines.md` の境界を意識しながら `codegen` から `ffi_value_lowering` までの呼び出し連鎖をトレースし、監査用チェックリスト（Triple、Alignment、CallingConv、verify 診断）のエントリを W1 に追加する。
   3. `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` で定義された差分監査プロセスを使って `target_config`/`type_mapping` 由来の設定と現行 Rust コードのスナップショットを対比し、`docs-migrations.log` への参照を残す。
 
@@ -147,12 +147,12 @@
 
 - **W2 実施状況（Rust LLVM ラッパ層）**
   1. `docs/plans/rust-migration/appendix/llvm-backend-inventory.md` を作成し、OCaml モジュール/責務一覧・`TargetMachine`/`DataLayout` 設定・診断/verify の呼び出し順を記録することで W2 以降の実装ガイドにした。
-  2. `TargetMachineBuilder` 設計案では Triple/CPU/features/relocation/code_model/opt_level を `docs/guides/llvm-integration-notes.md` §5.0 の `DataLayout` と一致させ、Windows toolchain では `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` に記された MSYS2 LLVM 16 及び LLVM 19.1.1 のパスを切り替える API を想定している。
+  2. `TargetMachineBuilder` 設計案では Triple/CPU/features/relocation/code_model/opt_level を `docs/guides/compiler/llvm-integration-notes.md` §5.0 の `DataLayout` と一致させ、Windows toolchain では `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` に記された MSYS2 LLVM 16 及び LLVM 19.1.1 のパスを切り替える API を想定している。
   3. `verify`/`opt -verify`/`llc` の出力を `reports/diagnostic-format-regression.md` の診断 ID と照合する手順と、`Diagnostic.extensions["backend"]` や `audit.log("llvm.verify", ...)` に差分を記録する方針を明記し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の監査プロセスにつなげた。
 
 - **実績と次の展望**
   - W1 では OCaml 側構成の完全な棚卸しにより Rust ゴールの土台を固めたため、今後は `compiler/rust/backend/llvm/` の初期実装でこのチェックリストを反映する。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と `docs/notes/dsl-plugin-roadmap.md` に補足する差分記録は、P2 後半での監査に備えたエビデンスとして残す。
-  - 暫定の差異監査結果とリンクは `docs-migrations.log` の W2 章にまとめ、該当箇所が `docs/guides/llvm-integration-notes.md` や `docs/spec/3-8-core-runtime-capability.md` に影響する場合は脚注を追加して整合性を維持する。
+  - 暫定の差異監査結果とリンクは `docs-migrations.log` の W2 章にまとめ、該当箇所が `docs/guides/compiler/llvm-integration-notes.md` や `docs/spec/3-8-core-runtime-capability.md` に影響する場合は脚注を追加して整合性を維持する。
 
 ### W3：LLVM IR 実装と差分検証
 
@@ -180,7 +180,7 @@
 
 - **目的**：`x86_64-pc-windows-gnu`/`x86_64-pc-windows-msvc`/`x86_64-apple-darwin` を含むビルドマトリクスで Rust LLVM バックエンドを動作させ、`opt -verify`/`llc` による差分検証と TargetMachine 設定を OCaml 実装と一致させながら P3 CI へ引き渡せる状態をつくる。
 - **実施内容**
-  1. `TargetMachineBuilder` に Triple・Relocation・CodeModel のテーブルを用意し、Windows 上では `CodeModel::Large`（MSVC）/`Default`（GNU）や `DataLayout` の差異を `docs/guides/llvm-integration-notes.md §5.0`・`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` に定義されたゴールに合わせる。`REML_LLVM_DISTRIBUTION={msys2,official-zip}` フラグで MSYS2 LLVM 16 と公式 ZIP 19.1.1 の `llvm-config` パス・ライブラリ配置を切り替え、`docs/plans/rust-migration/0-2-windows-toolchain-audit.md` に `libcmt.lib`/`msvcprt.lib` などの依存を追加する。
+  1. `TargetMachineBuilder` に Triple・Relocation・CodeModel のテーブルを用意し、Windows 上では `CodeModel::Large`（MSVC）/`Default`（GNU）や `DataLayout` の差異を `docs/guides/compiler/llvm-integration-notes.md §5.0`・`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` に定義されたゴールに合わせる。`REML_LLVM_DISTRIBUTION={msys2,official-zip}` フラグで MSYS2 LLVM 16 と公式 ZIP 19.1.1 の `llvm-config` パス・ライブラリ配置を切り替え、`docs/plans/rust-migration/0-2-windows-toolchain-audit.md` に `libcmt.lib`/`msvcprt.lib` などの依存を追加する。
   2. Windows の `clang-cl`/`link.exe` および macOS の `clang`/`lld` をそれぞれ `tooling/toolchains/` スクリプトで囲い、`REML_LLVM_TARGET` で `cargo build` をターゲットごとに切り替える。`opt -verify`/`llc` は `REML_BACKEND_VERIFY=1` により `reports/backend-verify/<target>/opt-verify.log` と `.../llc.ll` に出力し、`reports/backend-ir-diff/{target}/` に dual-run 差分を保存して `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` のドリフト監査へ連動させる。
   3. GitHub Actions `llvm-backend-verify` マトリクスを `windows-latest`/`macos-latest` 向けに拡張し、`remlc --backend=rust` と `--backend=ocaml` の dual run を実施。各ターゲットで `reports/backend-verify/{target}/` の成果物をアップロードし、5 連続成功を契機に `3-0-ci-and-dual-write-strategy.md` の P3 CI ジョブへ通知する。
 - **検証とメトリクス**
@@ -191,4 +191,4 @@
   - W4 の成果（`target` 設定・`opt -verify` 自動化）を `docs/plans/bootstrap-roadmap/2-9-rust-migration-p2-plan.md` および `3-0-ci-and-dual-write-strategy.md` に渡し、P3/P4 に `TargetMachine` 設定・`opt -verify` 自動化を再利用可能な形で共有する。
 
 ---
-**参照**: `docs/plans/rust-migration/overview.md`, `docs/plans/rust-migration/unified-porting-principles.md`, `docs/guides/llvm-integration-notes.md`, `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/plans/bootstrap-roadmap/2-9-rust-migration-p2-plan.md`, `docs/plans/rust-migration/0-2-windows-toolchain-audit.md`, `3-0-ci-and-dual-write-strategy.md`, `reports/diagnostic-format-regression.md`
+**参照**: `docs/plans/rust-migration/overview.md`, `docs/plans/rust-migration/unified-porting-principles.md`, `docs/guides/compiler/llvm-integration-notes.md`, `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/plans/bootstrap-roadmap/2-9-rust-migration-p2-plan.md`, `docs/plans/rust-migration/0-2-windows-toolchain-audit.md`, `3-0-ci-and-dual-write-strategy.md`, `reports/diagnostic-format-regression.md`

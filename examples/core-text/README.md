@@ -41,5 +41,5 @@ cargo run --manifest-path compiler/rust/runtime/Cargo.toml --bin text_stream_dec
 
 - `docs/spec/3-3-core-text-unicode.md` §2〜§5（三層モデル・正規化・ストリーミング）
 - `docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md` §5（サンプル／ドキュメント更新タスク）
-- `docs/guides/core-parse-streaming.md` §10（`decode_stream` と TextBuilder の連携例）
-- `docs/guides/ai-integration.md` §6（AI 入力正規化の注意点）
+- `docs/guides/compiler/core-parse-streaming.md` §10（`decode_stream` と TextBuilder の連携例）
+- `docs/guides/ecosystem/ai-integration.md` §6（AI 入力正規化の注意点）

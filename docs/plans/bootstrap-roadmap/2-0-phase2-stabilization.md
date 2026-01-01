@@ -10,7 +10,7 @@ Phase 2 は OCaml 実装を用いて Reml 言語仕様の全体を検証し、MV
 ## 2.0.2 スコープ境界
 - **含む**: 型クラス/辞書渡し、代数的効果タグの静的検証、`RuntimeBridge` との Stage 整合、FFI 所有権契約の正式化、診断メタデータの出力。
 - **含まない**: セルフホスト化、Reml 実装での再構築、JIT ターゲット・クロスコンパイル最適化。これらは Phase 3 以降で実施。
-- **前提条件**: Phase 1 の成果物、`docs/guides/llvm-integration-notes.md` の Phase 2 要件、`docs/notes/llvm-spec-status-survey.md` で列挙された未決領域リスト。
+- **前提条件**: Phase 1 の成果物、`docs/guides/compiler/llvm-integration-notes.md` の Phase 2 要件、`docs/notes/llvm-spec-status-survey.md` で列挙された未決領域リスト。
 
 ## 2.0.2a 作業ディレクトリ
 - `compiler/ocaml/src` : 型クラス・効果タグ対応の実装
@@ -51,7 +51,7 @@ Phase 2 は OCaml 実装を用いて Reml 言語仕様の全体を検証し、MV
 6. **Windows x64 (MSVC ABI) 対応**
    - **`-target x86_64-pc-windows-msvc`** でのビルドパイプラインを確立し、呼出規約・名前マングリングの差異を検証。
    - `llc -mtriple=x86_64-pc-windows-msvc` で生成した PE バイナリを Windows 環境で実行（CI: GitHub Actions windows-latest）。
-   - DataLayout・ABI の差異を `docs/guides/llvm-integration-notes.md` §5.0 の表に従って実装。
+   - DataLayout・ABI の差異を `docs/guides/compiler/llvm-integration-notes.md` §5.0 の表に従って実装。
 
 ## 2.0.5 測定と検証
 - **性能トレンド**: Phase 1 と同じベンチマークを継続し、型クラス導入によるオーバーヘッドを定量化。辞書渡しとモノモルフィゼーションの比較結果を記録。

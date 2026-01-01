@@ -35,7 +35,7 @@ let cfg = {
 - `extensions.lsp.highlight` : トークン種別を LSP の `SemanticTokens` へ変換。
 - `extensions.lsp.completion` : プラグイン capability (`parser.requires`) を参照し DSL 別の補完候補を生成。
 - `extensions.lsp.codeActions` : FixIt 情報を LSP CodeAction として返す。
-- `extensions.lsp.semanticTokens` : 拡張モジュール。`docs/guides/runtime-bridges.md` と同様に構造化ログと連動。
+- `extensions.lsp.semanticTokens` : 拡張モジュール。`docs/guides/runtime/runtime-bridges.md` と同様に構造化ログと連動。
 - `locale` が `Some` のときは `RunConfig` から `PrettyOptions` へロケールを伝搬し、診断メッセージと期待テンプレートの両方を同じ言語で整形する。
 - `extensions.i18n` は LSP 側の翻訳カタログの監視・ホットリロード設定を保持し、`workspace/didChangeWatchedFiles` で更新を拾う。
 
@@ -152,7 +152,7 @@ reml-run lint config.ks --format json --domain config   | jq '.diagnostics[] | {
 ```
 
 - CLI と LSP の診断結果は同じ JSON フォーマットを共有し、CI/CD と IDE の結果照合が容易。
-- `audit_id` をキーにランタイムガイド（`docs/guides/runtime-bridges.md`）で差分適用ログと結合する。
+- `audit_id` をキーにランタイムガイド（`docs/guides/runtime/runtime-bridges.md`）で差分適用ログと結合する。
 
 ## 6. 運用メモ
 
@@ -169,8 +169,8 @@ reml-run lint config.ks --format json --domain config   | jq '.diagnostics[] | {
 | 項目 | 内容 | 参照 |
 | --- | --- | --- |
 | `Diagnostic.data.stream` | `StreamDriver` ベースの差分解析をサポートするクライアントは `ContinuationMeta` のサマリを解釈できるか | 2-6 実行戦略 §F |
-| `Diagnostic.data.quality_report_id` | データ品質診断リンクが `docs/guides/data-model-reference.md#quality-report-schema` に従うか | データモデルリファレンス |
-| `gc.stats` メッセージ | IDE が GC メトリクスを取得する場合 `docs/guides/runtime-bridges.md#10-2` のスキーマを処理できるか | Runtime Bridges |
+| `Diagnostic.data.quality_report_id` | データ品質診断リンクが `docs/guides/ecosystem/data-model-reference.md#quality-report-schema` に従うか | データモデルリファレンス |
+| `gc.stats` メッセージ | IDE が GC メトリクスを取得する場合 `docs/guides/runtime/runtime-bridges.md#10-2` のスキーマを処理できるか | Runtime Bridges |
 | CLI / LSP 診断整合 | `reml-run lint --format json` と LSP 診断が同一 `audit_id` / `code` を保持しているか | 本ガイド §5 |
 | レガシークライアント | `Diagnostic.data` を無視しても従来どおり動作できるか（フォールバックポリシーの確認） | 互換性ポリシー |
 

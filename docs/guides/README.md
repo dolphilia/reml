@@ -3,50 +3,57 @@
 Reml の実装・運用に関するガイドをカテゴリ別に整理しています。
 
 ## 開発ワークフロー & ツールチェーン
-- [cli-workflow.md](cli-workflow.md)
-- [cli-help-template.md](cli-help-template.md)
-- [cli-authoring.md](cli-authoring.md)
+- [tooling/cli-workflow.md](tooling/cli-workflow.md)
+- [tooling/cli-help-template.md](tooling/cli-help-template.md)
+- [tooling/cli-authoring.md](tooling/cli-authoring.md)
 - [man/remlc-ocaml.1.md](man/remlc-ocaml.1.md)
-- [testing.md](testing.md)
-- [trace-output.md](trace-output.md)
-- [config-cli.md](config-cli.md)
-- [ci-strategy.md](ci-strategy.md)
-- [lsp-integration.md](lsp-integration.md)
-- [lsp-authoring.md](lsp-authoring.md)
-- [llvm-integration-notes.md](llvm-integration-notes.md)
-- [system-programming-primer.md](system-programming-primer.md)
+- [tooling/testing.md](tooling/testing.md)
+- [tooling/trace-output.md](tooling/trace-output.md)
+- [tooling/diagnostic-format.md](tooling/diagnostic-format.md)
+- [tooling/config-cli.md](tooling/config-cli.md)
+- [tooling/ci-strategy.md](tooling/ci-strategy.md)
+
+## LSP 連携
+- [lsp/lsp-integration.md](lsp/lsp-integration.md)
+- [lsp/lsp-authoring.md](lsp/lsp-authoring.md)
+
+## コンパイラ / 解析
+- [compiler/core-parse-streaming.md](compiler/core-parse-streaming.md)
+- [compiler/llvm-integration-notes.md](compiler/llvm-integration-notes.md)
 
 ## DSL / プラグイン
-- [DSL-plugin.md](DSL-plugin.md)
-- [plugin-authoring.md](plugin-authoring.md)
-- [dsl-first-guide.md](dsl-first-guide.md)
-- [dsl-gallery.md](dsl-gallery.md)
-- [dsl-performance-playbook.md](dsl-performance-playbook.md)
-- [conductor-pattern.md](conductor-pattern.md)
-- [constraint-dsl-best-practices.md](constraint-dsl-best-practices.md)
-- [formatter-authoring.md](formatter-authoring.md)
-- [doc-authoring.md](doc-authoring.md)
+- [dsl/DSL-plugin.md](dsl/DSL-plugin.md)
+- [dsl/plugin-authoring.md](dsl/plugin-authoring.md)
+- [dsl/dsl-first-guide.md](dsl/dsl-first-guide.md)
+- [dsl/dsl-gallery.md](dsl/dsl-gallery.md)
+- [dsl/dsl-performance-playbook.md](dsl/dsl-performance-playbook.md)
+- [dsl/conductor-pattern.md](dsl/conductor-pattern.md)
+- [dsl/constraint-dsl-best-practices.md](dsl/constraint-dsl-best-practices.md)
+- [dsl/formatter-authoring.md](dsl/formatter-authoring.md)
+- [dsl/doc-authoring.md](dsl/doc-authoring.md)
 
 ## エコシステム & コミュニティ
-- [ai-integration.md](ai-integration.md)
-- [manifest-authoring.md](manifest-authoring.md)
-- [package-management.md](package-management.md)
-- [community-handbook.md](community-handbook.md)
-- [early-design-concepts.md](early-design-concepts.md)
-- [collection-pipeline-guide.md](collection-pipeline-guide.md)
-- [data-model-reference.md](data-model-reference.md)
+- [ecosystem/ai-integration.md](ecosystem/ai-integration.md)
+- [ecosystem/manifest-authoring.md](ecosystem/manifest-authoring.md)
+- [ecosystem/package-management.md](ecosystem/package-management.md)
+- [ecosystem/community-handbook.md](ecosystem/community-handbook.md)
+- [ecosystem/early-design-concepts.md](ecosystem/early-design-concepts.md)
+- [ecosystem/collection-pipeline-guide.md](ecosystem/collection-pipeline-guide.md)
+- [ecosystem/data-model-reference.md](ecosystem/data-model-reference.md)
 
 ## ランタイム / システム連携
-- [runtime-bridges.md](runtime-bridges.md)
-- [reml-ffi-handbook.md](reml-ffi-handbook.md)
-- [reml-bindgen-guide.md](reml-bindgen-guide.md)
-- [ffi-dsl-guide.md](ffi-dsl-guide.md)
-- [ffi-build-integration-guide.md](ffi-build-integration-guide.md)
-- [ffi-wit-poc.md](ffi-wit-poc.md)
-- [core-unsafe-ptr-api-draft.md](core-unsafe-ptr-api-draft.md)
-- [core-parse-streaming.md](core-parse-streaming.md)
-- [cross-compilation.md](cross-compilation.md)
-- [portability.md](portability.md)
+- [runtime/runtime-bridges.md](runtime/runtime-bridges.md)
+- [runtime/system-programming-primer.md](runtime/system-programming-primer.md)
+- [runtime/cross-compilation.md](runtime/cross-compilation.md)
+- [runtime/portability.md](runtime/portability.md)
+
+## FFI / 低レベル
+- [ffi/reml-ffi-handbook.md](ffi/reml-ffi-handbook.md)
+- [ffi/reml-bindgen-guide.md](ffi/reml-bindgen-guide.md)
+- [ffi/ffi-dsl-guide.md](ffi/ffi-dsl-guide.md)
+- [ffi/ffi-build-integration-guide.md](ffi/ffi-build-integration-guide.md)
+- [ffi/ffi-wit-poc.md](ffi/ffi-wit-poc.md)
+- [ffi/core-unsafe-ptr-api-draft.md](ffi/core-unsafe-ptr-api-draft.md)
 
 ---
 各ガイドは `docs/spec/` の対応する節と整合するよう維持してください。更新時は `docs/README.md` とルート README のリンクも合わせて調整します。

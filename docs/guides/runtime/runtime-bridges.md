@@ -10,7 +10,7 @@
 
 * `Core.Env.infer_target_from_env()`（[3-10](../spec/3-10-core-env.md)）で得たターゲット情報を `RunConfig.extensions["target"]` へマージし、コンパイル時と実行時のプラットフォーム差異を監視する。
 * ランタイム起動時は `platform_info()`（[3-8](../spec/3-8-core-runtime-capability.md)）を取得し、`extensions["target"].diagnostics=true` を設定すると `@cfg` 評価のログを `Diagnostic.extensions["cfg"]` に反映できる。`Diagnostic.domain = Target` の詳細から `requested` / `detected` を比較し、クロスリンカ設定の齟齬を特定できる。Phase 2-5 DIAG-003 Step5 で `Target` / `Plugin` / `Lsp` ドメインの監査メタデータと CLI/LSP 出力を再整理し、本ガイドの参照先を仕様と揃えた[^diag003-phase25-runtime-guide]。
-* クロスコンパイル時は `reml toolchain verify` と `reml target validate` を実行し、`ffi.callconv.*` を含む `TargetCapability` が満たされているか確認する。手順は `docs/guides/cross-compilation.md` を参照。
+* クロスコンパイル時は `reml toolchain verify` と `reml target validate` を実行し、`ffi.callconv.*` を含む `TargetCapability` が満たされているか確認する。手順は `docs/guides/runtime/cross-compilation.md` を参照。
 * CI では `REML_TARGET_PROFILE`, `REML_TARGET_CAPABILITIES` 等の環境変数をセットし、`Core.Env` が期待通りに解決したか `target.config.*` 診断を確認する。誤ったプロファイルで起動した場合は即座に `Error` を発生させて差異を明らかにする。
 
 ## 1. FFI 境界の設計
@@ -52,7 +52,7 @@
 ### 1.3 型付き `CapabilityHandle` の取り扱い
 
 - `CapabilityRegistry::verify_capability_stage` は型付きバリアント (`Gc`/`Io`/`Async` など) を返す設計になったため、FFI 境界では `match handle { CapabilityHandle::Gc(cap) => ... }` あるいは `handle.as_gc()` のようなヘルパを使って目的の API にアクセスしてください。型ごとに `descriptor()` で `stage`/`effect_scope` も利用でき、`docs/spec/3-8-core-runtime-capability.md` の契約と整合する監査ログを出しやすくなります。
-- `SecurityCapability` には `SecurityPolicy` を適用する `enforce` メソッドがあり、`AuditEnvelope` に `stage_requirement`/`effect_scope` 情報を追加したい場合は `SecurityCapability` を経由して `audit.log` へ送ってください。具体的な `CapabilityHandle` の分解例とライフサイクルは `docs/guides/reml-ffi-handbook.md#11-3-capability-handle` を参照し、DSL や Bridge 側での型安全な分岐を検証してください。
+- `SecurityCapability` には `SecurityPolicy` を適用する `enforce` メソッドがあり、`AuditEnvelope` に `stage_requirement`/`effect_scope` 情報を追加したい場合は `SecurityCapability` を経由して `audit.log` へ送ってください。具体的な `CapabilityHandle` の分解例とライフサイクルは `docs/guides/ffi/reml-ffi-handbook.md#11-3-capability-handle` を参照し、DSL や Bridge 側での型安全な分岐を検証してください。
 
 ### 1.4 Core.IO コンテキストと監査
 
@@ -83,7 +83,7 @@ fn load_release_note(path: Path, audit: AuditSink) -> Result<Bytes, IoError> =
 ### 1.7 TypeChecker テレメトリと Graphviz 連携
 - `TraitResolutionTelemetry` のグラフ構造を共有する際は `--emit-telemetry constraint_graph=<path>` で JSON を取得し、`tooling/telemetry/export_graphviz.rs` を `cargo run --manifest-path tooling/telemetry/Cargo.toml -- --dot-out <dot> --svg-out <svg> --graph-name <name> <json>` の形式で実行する。`tooling/telemetry/export_graphviz` は `serde_json` のルートに `graph` フィールドが存在しない場合でも自動で解釈するため、`docs/spec/3-6-core-diagnostics-audit.md` §1.4 の図版更新にそのまま利用できる。
 - 代表例として `examples/core_diagnostics/constraint_graph/simple_chain.reml` と `examples/core_diagnostics/output/simple_chain-{constraint_graph.json,dot,svg}` を保管している。Runtime Bridge/TypeChecker 雙方で再利用する場合は `README.md` に記載した手順で JSON → DOT/SVG を再生成し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Telemetry KPI に紐付ける。
-- Graphviz で生成した SVG は `docs/spec/3-6-core-diagnostics-audit.md` や `docs/guides/runtime-bridges.md` の図版差し替えに使用し、Stage/Audit の条件が変わった場合は Run ID と `examples/core_diagnostics/output/` のファイルを揃えてから `docs/notes/` に追記する。`dot` 実行時には `graph_name`（例: `SimpleChain`）を指定し、CI でも同じ名前空間が使われるよう統一する。
+- Graphviz で生成した SVG は `docs/spec/3-6-core-diagnostics-audit.md` や `docs/guides/runtime/runtime-bridges.md` の図版差し替えに使用し、Stage/Audit の条件が変わった場合は Run ID と `examples/core_diagnostics/output/` のファイルを揃えてから `docs/notes/` に追記する。`dot` 実行時には `graph_name`（例: `SimpleChain`）を指定し、CI でも同じ名前空間が使われるよう統一する。
 
 ### 1.8 埋め込み API (Phase 4)
 
@@ -145,7 +145,7 @@ fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New
 
 1. `schema`（2-7）で定義された設定に対し `Config.compare` を実行。
 2. 差分 (`change_set`) を `reml-config diff old new` で可視化し、レビューを経て `Config.apply_diff` を実行。
-3. `audit_id` を発行し、`docs/guides/config-cli.md` に記載された CLI でログを残す。
+3. `audit_id` を発行し、`docs/guides/tooling/config-cli.md` に記載された CLI でログを残す。
 4. ランタイム側は `reload` API で新設定を適用、監査ログと照合する。
 
 ## 4. CLI 統合
@@ -271,13 +271,13 @@ fn run_wasi(parser: Parser<T>, bytes: Bytes) -> Result<T, Diagnostic> =
   wasm_run(parser, bytes, RunConfig { left_recursion = "off", packrat = false, ..default });
 ```
 
-- `docs/guides/portability.md` のチェックリストに従い、`RunConfig.left_recursion` と `packrat` の既定値を `off` にし、`RunConfig.extensions["target"].profile_id = Some("wasi-preview2")` を設定して誤ったランタイムを検知する。
+- `docs/guides/runtime/portability.md` のチェックリストに従い、`RunConfig.left_recursion` と `packrat` の既定値を `off` にし、`RunConfig.extensions["target"].profile_id = Some("wasi-preview2")` を設定して誤ったランタイムを検知する。
 - I/O は WASI 標準の `stdin`/`stdout` のみに限定し、`Core.Env` を通じて環境変数取得を行う。
 
 ### 9.2 コンテナ / サーバーレス
 
 - `container_profile("serverless")` をベースに `RunConfig` を初期化し、短時間ジョブ向けに診断を最小化する。
-- ローリングデプロイでは `docs/guides/ci-strategy.md` の構造化ログを活用し、`target_config_errors` をダッシュボード表示する。
+- ローリングデプロイでは `docs/guides/tooling/ci-strategy.md` の構造化ログを活用し、`target_config_errors` をダッシュボード表示する。
 
 ## 10. ストリーミング / async ランナー活用例
 
@@ -415,7 +415,7 @@ task.join().await?;
 
 | 項目 | 内容 | 参照 |
 | --- | --- | --- |
-| `gc.stats` JSON | すべてのフィールドが `docs/guides/runtime-bridges.md#10-2` の例に従うか | 本節 |
+| `gc.stats` JSON | すべてのフィールドが `docs/guides/runtime/runtime-bridges.md#10-2` の例に従うか | 本節 |
 | プロファイル既定値 | `RunConfig.extensions["runtime"].gc.profile` が `game/ide/web/data` の場合、テンプレート表の既定値が適用されるか | §10.1 |
 | Metrics API | `RuntimeCapabilities.metrics()` が `heap_bytes` 等 GC メトリクスを含む構造体を返すか | 2-9 実行時基盤 |
 | Legacy 互換 | GC 設定を指定しない場合でも従来の RC/ヒープ動作が維持されるか | 2-6 実行戦略 |
@@ -507,6 +507,6 @@ fn with_foreign_stub(req: Request) -> Result<Response, FfiError> ! {} =
 3. CI では `reml-run lint --domain async --deny experimental` を実行し、`@requires_capability(stage="experimental")` が残っていないか監査する。`DistributedActor` が `experimental` のときは本番ビルドから除外する。
 4. IDE/LSP 連携では `ActorContext.span` を `AsyncTracing` から受け取り、`async.trace.latency` メトリクスをダッシュボードに流す。メトリクス未対応ならトレースを無効化し、警告を一度だけ表示する。
 
-> 参考: Reml Actor DSL の追加コード生成フローは `3-9-core-async-ffi-unsafe.md §1.9` を参照。Transport 設定の CLI ワークフローは今後 `docs/guides/runtime-bridges.md` に拡充予定。
+> 参考: Reml Actor DSL の追加コード生成フローは `3-9-core-async-ffi-unsafe.md §1.9` を参照。Transport 設定の CLI ワークフローは今後 `docs/guides/runtime/runtime-bridges.md` に拡充予定。
 
 [^diag003-phase25-runtime-guide]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で本ガイドと関連仕様を更新し、`Target` / `Plugin` / `Lsp` ドメインの監査メタデータを `Diagnostic.extensions["target"]`, `["plugin"]`, `["lsp"]` に統一した。CI 監査ダッシュボード改修 TODO は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` で追跡中。

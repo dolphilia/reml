@@ -30,7 +30,7 @@ Phase 3 Week 12-16: [1-4-llvm-targeting.md](1-4-llvm-targeting.md)（LLVM IR 生
 
 ## 目的
 - Phase 1 マイルストーン M3 に向けて、Parser/TypeChecker の出力を Core IR へ正規化し、LLVM 生成に渡す手前の最小最適化を整備する。
-- `docs/guides/llvm-integration-notes.md` の Core IR 設計方針を OCaml 実装で具現化し、Phase 2 以降の最適化拡張に備える。
+- `docs/guides/compiler/llvm-integration-notes.md` の Core IR 設計方針を OCaml 実装で具現化し、Phase 2 以降の最適化拡張に備える。
 
 ## スコープ
 - **含む**: Core IR データ構造の定義、構文糖の剥離、ベーシックブロック構成、定数畳み込み、死コード削除 (DCE)、簡易な代入伝播。

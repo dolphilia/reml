@@ -205,7 +205,7 @@ let speclist = [
 **成果物**:
 - `compiler/ocaml/src/cli/diagnostic_formatter.ml` （新規）
 - `compiler/ocaml/src/diagnostic.ml` （拡張）
-- `docs/guides/diagnostic-format.md` （新規）
+- `docs/guides/tooling/diagnostic-format.md` （新規）
 
 ### Week 15: トレース・ログ機能
 
@@ -229,7 +229,7 @@ let speclist = [
 **成果物**:
 - `compiler/ocaml/src/cli/trace.ml` （新規）
 - `compiler/ocaml/src/cli/stats.ml` （新規）
-- `docs/guides/trace-output.md` （新規）
+- `docs/guides/tooling/trace-output.md` （新規）
 
 ### Week 16: ヘルプ・ドキュメント整備とCI統合
 
@@ -239,7 +239,7 @@ let speclist = [
    - セクション分け（入力、出力、診断、デバッグ）
 
 2. **CLI使用ガイド作成**
-   - `docs/guides/cli-workflow.md` の作成
+   - `docs/guides/tooling/cli-workflow.md` の作成
    - サンプルコード整備
    - トラブルシューティング
 
@@ -250,7 +250,7 @@ let speclist = [
 
 **成果物**:
 - `compiler/ocaml/src/main.ml` （拡張）
-- `docs/guides/cli-workflow.md` （新規）
+- `docs/guides/tooling/cli-workflow.md` （新規）
 - `compiler/ocaml/tests/cli/snapshots/` （新規）
 
 ---

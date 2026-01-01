@@ -273,9 +273,9 @@ Rust 実装は `Numeric`/`IterNumericExt` を用意したものの、`mean`/`var
 - `README.md` Phase3 ロードマップの bullet を更新し、本計画書へのリンクを設定する。
 - ドキュメント更新履歴を `docs-migrations.log` に記録しておく。
 
-6.3. `docs/guides/runtime-bridges.md`/`docs/guides/ai-integration.md` 等でメトリクス活用例を更新する。  
+6.3. `docs/guides/runtime/runtime-bridges.md`/`docs/guides/ecosystem/ai-integration.md` 等でメトリクス活用例を更新する。  
 実施ステップ:
-- `docs/guides/runtime-bridges.md` に `MetricPoint`/`emit_metric` を使ったブリッジ実装例を追加し、`docs/guides/ai-integration.md` には AI ワークロード監視のケーススタディを記載する。
+- `docs/guides/runtime/runtime-bridges.md` に `MetricPoint`/`emit_metric` を使ったブリッジ実装例を追加し、`docs/guides/ecosystem/ai-integration.md` には AI ワークロード監視のケーススタディを記載する。
 - `docs/notes/dsl-plugin-roadmap.md` にメトリクス/時間 API を利用するプラグイン要件を追記し、Capability Stage との整合を脚注に記す。
 - ガイド更新後に `scripts/check-links.sh docs/guides` を実行してリンク切れを検証する。
 

@@ -22,7 +22,7 @@
 
 ## 運用ルール
 - 本計画の成果物（サンプル/期待出力/シナリオ登録）は、原則として `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` と同期し、Phase4 回帰の監視対象として扱います。
-- 仕様変更が発生する場合は、必ず `docs/spec/2-x` と `docs/guides/core-parse-streaming.md` 等の関連文書へ横断的に反映し、差分の根拠（判断理由・影響範囲）を脚注または TODO として残します。
+- 仕様変更が発生する場合は、必ず `docs/spec/2-x` と `docs/guides/compiler/core-parse-streaming.md` 等の関連文書へ横断的に反映し、差分の根拠（判断理由・影響範囲）を脚注または TODO として残します。
 - 本ディレクトリの文書を更新した場合は、`docs/plans/README.md` と `docs/plans/bootstrap-roadmap/` 側の参照リンクの整合も確認します。
 
 ## 変更履歴

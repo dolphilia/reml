@@ -44,7 +44,7 @@ val run_stream :
   - `parser_driver.ml` と `parser_run_config.ml` の現状 API/拡張マップを確認し、`extensions["stream"]` の流入経路を洗い出す。
   - Phase 2-5 の進捗（`PARSER-002`, `ERR-001`, `ERR-002`）とクロスリファレンスし、ストリーミングが再利用すべき診断・RunConfig・Recover 設定を一覧化する。
 - 調査・検証:
-  - `docs/guides/core-parse-streaming.md` と `docs/plans/bootstrap-roadmap/2-5-review-log.md` の該当エントリを読み、仕様上の必須メタデータ（`DemandHint`, `ContinuationMeta`, 指標名）を再確認。
+  - `docs/guides/compiler/core-parse-streaming.md` と `docs/plans/bootstrap-roadmap/2-5-review-log.md` の該当エントリを読み、仕様上の必須メタデータ（`DemandHint`, `ContinuationMeta`, 指標名）を再確認。
   - `tooling/ci/collect-iterator-audit-metrics.py` の Packrat/Recover 指標を調査し、ストリーミング PoC で観測すべきメトリクスを決める。
 
 > 2025-12-?? 更新: Step 0 の棚卸しと記録を完了。以下のサマリをもとに Step 1 へ移行する。
@@ -63,12 +63,12 @@ val run_stream :
 **再利用する既存設定・資産**
 
 - RunConfig まわりの橋渡しは `PARSER-002` で導入済みの `Run_config` サブモジュールを再利用する（`docs/plans/bootstrap-roadmap/2-5-review-log.md:211`）。バッチ経路では `Run_config.Recover.of_run_config` が診断へ流れているため（`compiler/ocaml/src/parser_driver.ml:228`）、ストリーミングでも同じ設定を利用できる。
-- 期待集合は `ERR-001` で整備された `Parser_expectation.summarize_with_defaults` をそのまま使用できる（`compiler/ocaml/src/parser_expectation.mli:30`, `docs/plans/bootstrap-roadmap/2-5-proposals/ERR-001-proposal.md:13`）。継続メタデータに `ExpectationSummary` を格納し、`docs/guides/core-parse-streaming.md:70` で示されている運用方針と整合させる。
+- 期待集合は `ERR-001` で整備された `Parser_expectation.summarize_with_defaults` をそのまま使用できる（`compiler/ocaml/src/parser_expectation.mli:30`, `docs/plans/bootstrap-roadmap/2-5-proposals/ERR-001-proposal.md:13`）。継続メタデータに `ExpectationSummary` を格納し、`docs/guides/compiler/core-parse-streaming.md:70` で示されている運用方針と整合させる。
 - 回復情報と FixIt の生成は `ERR-002` の成果物を共有し、`RunConfig.extensions["recover"]` を継続へ引き渡す（`docs/plans/bootstrap-roadmap/2-5-proposals/ERR-002-proposal.md:15`）。`Parser_diag_state.recover_config` から `sync_tokens`/`notes` を取得可能（`compiler/ocaml/src/parser_diag_state.ml:52`）。
 
 **メトリクス整理**
 
-- CI では既に `collect-iterator-audit-metrics.py` が RunConfig と Packrat の指標を収集しているため（`tooling/ci/collect-iterator-audit-metrics.py:1352`, `tooling/ci/collect-iterator-audit-metrics.py:1610`, `tooling/ci/collect-iterator-audit-metrics.py:1776`）、ストリーミング指標を追加する余地がある。`docs/guides/core-parse-streaming.md:170` が要求する `resume_hint` / `StreamMeta` を JSON に出力し、`parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` を 0-3 メトリクスへ登録する案を次ステップで検討する。
+- CI では既に `collect-iterator-audit-metrics.py` が RunConfig と Packrat の指標を収集しているため（`tooling/ci/collect-iterator-audit-metrics.py:1352`, `tooling/ci/collect-iterator-audit-metrics.py:1610`, `tooling/ci/collect-iterator-audit-metrics.py:1776`）、ストリーミング指標を追加する余地がある。`docs/guides/compiler/core-parse-streaming.md:170` が要求する `resume_hint` / `StreamMeta` を JSON に出力し、`parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` を 0-3 メトリクスへ登録する案を次ステップで検討する。
 
 ##### RunConfig `extensions["stream"]` の型案（Step1 着手前メモ）
 
@@ -188,7 +188,7 @@ val run_stream :
   - `RunConfig extensions["stream"]` のプレースホルダ（`checkpoint`, `resume_hint`, `flow_mode` 等）を読み取るロジックを追加。
 - 調査・検証:
   - `Core_parse.State.record_packrat_access` の呼び出しタイミングをバッチと比較し、Packrat 指標の整合を確認。
-  - `docs/guides/core-parse-streaming.md` §5-§7 のドライバ例を PoC に当てはめ、欠落 API を洗い出す。
+  - `docs/guides/compiler/core-parse-streaming.md` §5-§7 のドライバ例を PoC に当てはめ、欠落 API を洗い出す。
 
 > 2026-01-16 更新: Step 3 の PoC 制御ループ設計を完了。Feeder からの入力を `StreamDriver` が状態遷移形式で受け取り、`Pending`/`Completed` の分岐と `DemandHint` 再計算を含む骨格を確定した。RunConfig 連携と診断橋渡しの整合も合わせて確認済み。
 
@@ -232,7 +232,7 @@ val run_stream :
   `Parser_diag_state` から抽出した `ExpectationSummary` を `Continuation_meta.expected_tokens` に格納し、`docs/spec/2-7-core-parse-streaming.md` §C に記載された `resume_notes` オプションに備えた。Packrat 指標は `Core_parse.State.packrat_queries/hits` を `StreamMeta.packrat = Some (queries, hits)` で転記、`Pending` 時には未消化の問い合わせがあっても再度要求できることを確認した。`Stream_meta.diagnostics_pending` は `Parser_diag_state.diagnostics` の長さで算出し、`Pending` を返す際に通知する。
 
 - **RunConfig / Continuation 同期**  
-  `RunConfig.extensions["stream"]` から取得した `checkpoint` / `flow_mode` / `demand` 情報を `Continuation_meta` の `commit_watermark`・`resume_hint` に反映し、`resume` 実行後は `with_stream_extension` で次回呼び出しへ戻す手順を定義。継続には `Trace_label` と `span_trace` の末尾を保存し、IDE 補助が `docs/guides/core-parse-streaming.md` §6 で示す補完 UI と整合することを確認した。
+  `RunConfig.extensions["stream"]` から取得した `checkpoint` / `flow_mode` / `demand` 情報を `Continuation_meta` の `commit_watermark`・`resume_hint` に反映し、`resume` 実行後は `with_stream_extension` で次回呼び出しへ戻す手順を定義。継続には `Trace_label` と `span_trace` の末尾を保存し、IDE 補助が `docs/guides/compiler/core-parse-streaming.md` §6 で示す補完 UI と整合することを確認した。
 
 - **測定とフォローアップ**  
   `StreamMeta` へ `bytes_consumed` / `chunks_consumed` / `await_count` を追加し、`0-3-audit-and-metrics.md` で新設する `parser.stream.await_ratio`・`parser.stream.demandhint_coverage` の計測式を定義。Step 4 では CLI/LSP 図面へイベントを配線し、`Pending` から `resume` までのレイテンシを取得する TODO を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に追記する。
@@ -259,24 +259,24 @@ val run_stream :
 ### Step 5. ドキュメント・フォローアップ登録（1.5日）
 - 目的: PoC の制限・今後の課題を記録し、Phase 2-7 以降のフル実装に繋げる。
 - 主な作業:
-  - `docs/guides/core-parse-streaming.md`、`docs/spec/2-6-execution-strategy.md`、`docs/spec/2-7-core-parse-streaming.md` に PoC 状態と既知制限を脚注追加。
-  - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と `docs/guides/runtime-bridges.md` へ制限/連携要件を追記。
+  - `docs/guides/compiler/core-parse-streaming.md`、`docs/spec/2-6-execution-strategy.md`、`docs/spec/2-7-core-parse-streaming.md` に PoC 状態と既知制限を脚注追加。
+  - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と `docs/guides/runtime/runtime-bridges.md` へ制限/連携要件を追記。
   - `0-3-audit-and-metrics.md` に新規指標（例: `parser.stream.outcome_consistency`, `parser.stream.demandhint_coverage`）を登録し、計測結果を記録する。
 - 調査・検証:
   - Phase 3 計画書におけるストリーミング要件を確認し、PoC で満たせていない項目を列挙。
   - CLI/LSP チームとレビューを実施し、PoC 公開チャネル（`-Zstreaming` フラグ等）の合意形成状況をまとめる。
 
 > 2026-01-26 更新: Step5 を実施し、PoC 状態の公開と Phase 2-7 フォローアップ登録を完了。
-> - 仕様・ガイド更新: `docs/spec/2-6-execution-strategy.md` / `docs/spec/2-7-core-parse-streaming.md` に Phase 2-5 PoC の脚注を追加し、`RunConfig.extensions["stream"]` の監視指標と未解決の制限（Packrat 共有・バックプレッシャ自動化・Pending/Error 監査）を明文化。`docs/guides/core-parse-streaming.md` §10 へ PoC 状況サマリを追加し、利用者向けに既知制限を提示。
-> - フォローアップ登録: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に「ストリーミング PoC フォローアップ」セクションを新設し、Phase 2-7 で解消するタスク（Packrat キャッシュ共有、バックプレッシャ自動化、監査連携、CLI メトリクス統合、Runtime Bridge 連携）を列挙。`docs/guides/runtime-bridges.md` へストリーミング信号の橋渡し手順と監査要件を追加。
+> - 仕様・ガイド更新: `docs/spec/2-6-execution-strategy.md` / `docs/spec/2-7-core-parse-streaming.md` に Phase 2-5 PoC の脚注を追加し、`RunConfig.extensions["stream"]` の監視指標と未解決の制限（Packrat 共有・バックプレッシャ自動化・Pending/Error 監査）を明文化。`docs/guides/compiler/core-parse-streaming.md` §10 へ PoC 状況サマリを追加し、利用者向けに既知制限を提示。
+> - フォローアップ登録: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に「ストリーミング PoC フォローアップ」セクションを新設し、Phase 2-7 で解消するタスク（Packrat キャッシュ共有、バックプレッシャ自動化、監査連携、CLI メトリクス統合、Runtime Bridge 連携）を列挙。`docs/guides/runtime/runtime-bridges.md` へストリーミング信号の橋渡し手順と監査要件を追加。
 > - メトリクス登録: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` を追加し、`tooling/ci/collect-iterator-audit-metrics.py --require-success` と `scripts/validate-diagnostic-json.sh` を通じて CI 監視する運用を確定。
 > - レビュー記録: `docs/plans/bootstrap-roadmap/2-5-review-log.md` へ Step5 実施ログを追記し、CLI/LSP 連携チームとの合意内容（`-Zstreaming` の公開チャネル方針は Phase 2-7 で決定、自動化タスクは上記フォローアップへ移送）をまとめた。
 
 ## 5. フォローアップ
 - PoC の仕様制限（例: チャンクサイズ固定、`Pending` の暗黙タイムアウト未実装）を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に記録し、本実装フェーズへ引き継ぐ。  
-- `docs/guides/core-parse-streaming.md` のサンプルを PoC API で動作させ、差分を脚注として追加。  
+- `docs/guides/compiler/core-parse-streaming.md` のサンプルを PoC API で動作させ、差分を脚注として追加。  
 - Phase 3 の self-host 計画書で `run_stream` をクリティカルパスに含めるため、進捗を `0-3-audit-and-metrics.md` に定期記録する。
-- `docs/guides/runtime-bridges.md` にストリーミング API と Runtime Bridge の連携要件を追記し、バックプレッシャ信号の橋渡し方法を明文化する。
+- `docs/guides/runtime/runtime-bridges.md` にストリーミング API と Runtime Bridge の連携要件を追記し、バックプレッシャ信号の橋渡し方法を明文化する。
 - **タイミング**: PARSER-001/002/LEXER-002 が揃った Phase 2-5 後半に PoC 実装へ着手し、Phase 2-6 開始前までに最小機能のストリーミングランナーを完成させる。
 
 ## 6. 残課題

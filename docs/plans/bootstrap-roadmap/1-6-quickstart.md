@@ -210,7 +210,7 @@ opam exec -- dune exec -- remlc /tmp/test_error.reml --format=json 2>&1 | jq .
 - [ ] カラーコード対応が動作する（`--color` オプション）
 - [ ] JSON出力フォーマットが動作する（`--format=json` オプション）
 - [ ] 既存テストがすべて成功する（143/143）
-- [ ] `docs/guides/diagnostic-format.md` を作成
+- [ ] `docs/guides/tooling/diagnostic-format.md` を作成
 
 ---
 
@@ -352,7 +352,7 @@ val log : log_level -> string -> unit
 - [ ] 統計情報収集が動作する（`--stats` オプション）
 - [ ] `--verbose` レベル管理が動作する
 - [ ] 既存テストがすべて成功する
-- [ ] `docs/guides/trace-output.md` を作成
+- [ ] `docs/guides/tooling/trace-output.md` を作成
 
 ---
 
@@ -410,7 +410,7 @@ EXAMPLES:
 
 ### タスク2: CLI使用ガイド作成
 
-**ファイル**: `docs/guides/cli-workflow.md` (新規)
+**ファイル**: `docs/guides/tooling/cli-workflow.md` (新規)
 
 **内容**:
 1. **基本的な使い方**
@@ -462,7 +462,7 @@ EXAMPLES:
 ### Week 16 完了条件
 
 - [ ] `--help` 出力が充実している
-- [ ] `docs/guides/cli-workflow.md` を作成
+- [ ] `docs/guides/tooling/cli-workflow.md` を作成
 - [ ] サンプルコード（4件）を作成
 - [ ] CLI スナップショットテストが動作する
 - [ ] 既存テストがすべて成功する
@@ -486,9 +486,9 @@ Phase 1-6 完了の判定基準：
 
 ### ドキュメント
 
-- [x] `docs/guides/diagnostic-format.md`
-- [x] `docs/guides/trace-output.md`
-- [x] `docs/guides/cli-workflow.md`
+- [x] `docs/guides/tooling/diagnostic-format.md`
+- [x] `docs/guides/tooling/trace-output.md`
+- [x] `docs/guides/tooling/cli-workflow.md`
 - [x] サンプルコード（4件）
 
 ### テスト

@@ -9,7 +9,7 @@
 | 言語仕様 | `1-1-syntax.md`, `1-2-types-Inference.md`, `2-6-execution-strategy.md` | `@cfg` のターゲットキー正式化、`RunConfigTarget` と `TargetProfile` の相互運用、クロスビルド診断コードの追加 | 性能 1.1: ターゲット整合で線形処理維持、安全性 1.2: 型安全な条件分岐と ABI ミスマッチ防止 |
 | 標準 API | `3-10-core-env.md`, `3-8-core-runtime-capability.md`, `3-6-core-diagnostics-audit.md`, `3-5-core-io-path.md` | `TargetCapability` グループと `has_capability` 拡張、`infer_target_from_env` のフィールド追加、クロスビルド監査イベント、ターゲット別パス/FS 補助 | 安全性 1.2: Capability によるフォールバック保証、エラー品質 2.2: 診断強化 |
 | エコシステム | `4-1-package-manager-cli.md`, `4-2-registry-distribution.md`, `4-3-developer-toolchain.md`, `4-0-ecosystem-integration-plan.md` | `reml target list/show/validate` サブコマンド、標準ライブラリ/ランタイムのターゲット別配布、レジストリメタデータ (targets, runtime_revision) | 性能 1.1: 事前ビルド配布でビルド時間短縮、エコシステム統合 3.2: CLI/レジストリ連携 |
-| ガイド | `docs/guides/portability.md`, `docs/guides/ci-strategy.md`, （新規）`docs/guides/cross-compilation.md`, `docs/guides/runtime-bridges.md` | クロスビルド手順、CI マトリクス例、エミュレーション/リモートテスト運用、Runtime/FFI との整合チェックリスト | 書きやすさ 2.1: パターン化による導入容易化、エラー品質 2.2: 運用手順でトリアージ時間短縮 |
+| ガイド | `docs/guides/runtime/portability.md`, `docs/guides/tooling/ci-strategy.md`, （新規）`docs/guides/runtime/cross-compilation.md`, `docs/guides/runtime/runtime-bridges.md` | クロスビルド手順、CI マトリクス例、エミュレーション/リモートテスト運用、Runtime/FFI との整合チェックリスト | 書きやすさ 2.1: パターン化による導入容易化、エラー品質 2.2: 運用手順でトリアージ時間短縮 |
 
 ### 1.1 詳細項目
 
@@ -29,10 +29,10 @@
   - Registry: パッケージメタデータに `targets` 配列、`runtime_revision`、`requires_capabilities` を追加し、互換チェック失敗時のエラーを規定。
 
 - **ガイド**
-  - `docs/guides/portability.md` に TargetProfile のセットアップ手順を追加し、既存チェックリストを更新。
-  - `docs/guides/ci-strategy.md`（執筆予定）にマトリクス例 (`os`, `arch`, `emulator`) とキャッシュ戦略を追加。
-  - 新規 `docs/guides/cross-compilation.md` を作成し、CLI/Toolchain/Registry/CI の統合手順を包括的に解説。
-  - `docs/guides/runtime-bridges.md` にクロスビルド成果物のリンク/エミュレーション連携を追記。
+  - `docs/guides/runtime/portability.md` に TargetProfile のセットアップ手順を追加し、既存チェックリストを更新。
+  - `docs/guides/tooling/ci-strategy.md`（執筆予定）にマトリクス例 (`os`, `arch`, `emulator`) とキャッシュ戦略を追加。
+  - 新規 `docs/guides/runtime/cross-compilation.md` を作成し、CLI/Toolchain/Registry/CI の統合手順を包括的に解説。
+  - `docs/guides/runtime/runtime-bridges.md` にクロスビルド成果物のリンク/エミュレーション連携を追記。
 
 ## 2. 仕様更新計画
 
@@ -55,10 +55,10 @@
 4. 依存: フェーズBの API 拡張結果。
 
 ### フェーズD: ガイド更新・新規作成 (優先度: 中)
-1. `docs/guides/portability.md` の更新（TargetProfile 設定と診断活用）。
-2. `docs/guides/ci-strategy.md` にクロスマトリクス/キャッシュ/エミュレーション例を追記（初稿が未整備の場合は同フェーズでドラフト作成）。
-3. 新規 `docs/guides/cross-compilation.md` を執筆し、CLI 操作例・ターゲットプロファイル作成・CI テンプレート・検証手順をまとめる。
-4. `docs/guides/runtime-bridges.md` にクロスリンカ設定と FFI シムの ABI 検証手順を追加。
+1. `docs/guides/runtime/portability.md` の更新（TargetProfile 設定と診断活用）。
+2. `docs/guides/tooling/ci-strategy.md` にクロスマトリクス/キャッシュ/エミュレーション例を追記（初稿が未整備の場合は同フェーズでドラフト作成）。
+3. 新規 `docs/guides/runtime/cross-compilation.md` を執筆し、CLI 操作例・ターゲットプロファイル作成・CI テンプレート・検証手順をまとめる。
+4. `docs/guides/runtime/runtime-bridges.md` にクロスリンカ設定と FFI シムの ABI 検証手順を追加。
 
 ### フェーズE: 整合性レビューとクロスリファレンス更新 (優先度: 中)
 1. すべての文書の相互リンク (`[ターゲットプロファイル](4-1-package-manager-cli.md#target-profile)` など) を整備。
@@ -70,7 +70,7 @@
 
 - **ABI ミスマッチリスク**: フェーズA/B で `TargetProfile` と `RuntimeCapability` を明記し、CLI/レジストリ側で検証を必須化する。
 - **ドキュメント負荷**: フェーズ分割と優先度設定により、先行して必要な言語・API 仕様を固めた上でガイドを段階的に更新する。
-- **CI/エミュレーション依存**: `docs/guides/ci-strategy.md` と新規ガイドで QEMU/リモート実行の推奨設定を示し、性能 1.1 の基準を守る。
+- **CI/エミュレーション依存**: `docs/guides/tooling/ci-strategy.md` と新規ガイドで QEMU/リモート実行の推奨設定を示し、性能 1.1 の基準を守る。
 
 ---
 

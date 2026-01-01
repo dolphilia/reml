@@ -1246,7 +1246,7 @@ impl RuntimeBridgeHandle {
 - `flow_policy = Some("auto")` の場合は `backpressure` を必須とし、`collect-iterator-audit-metrics.py --section streaming --platform <profile>` が `parser.stream.bridge_backpressure_diagnostics = 1.0` を維持することを CI ゲートとする。  
 - `Completed` Signal を送る際は Stage が `Stable` であることを確認し、`Stage::Experimental` / `Stage::Beta` のまま終了しようとした場合は `RuntimeBridgeError::StageViolation` を返してロールバックパスへ誘導する。
 
-[^diag003-phase25-capability]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で `Target` / `Plugin` / `Lsp` ドメインの監査メタデータと脚注を更新し、`Diagnostic.extensions["target"]`, `["plugin"]`, `["lsp"]`, `["capability"]` を OCaml 実装と仕様で統一した。関連ドキュメント（`docs/spec/3-6-core-diagnostics-audit.md`, `docs/guides/runtime-bridges.md`, `docs/notes/dsl-plugin-roadmap.md`）も同日に同期済み。
+[^diag003-phase25-capability]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で `Target` / `Plugin` / `Lsp` ドメインの監査メタデータと脚注を更新し、`Diagnostic.extensions["target"]`, `["plugin"]`, `["lsp"]`, `["capability"]` を OCaml 実装と仕様で統一した。関連ドキュメント（`docs/spec/3-6-core-diagnostics-audit.md`, `docs/guides/runtime/runtime-bridges.md`, `docs/notes/dsl-plugin-roadmap.md`）も同日に同期済み。
 
 [^effects-syntax-poc-phase25]:
     Phase 2-5 `SYNTAX-003 S0` の整理に基づき、効果構文を提供する Capability は `StageId::Experimental` として登録し、`-Zalgebraic-effects` フラグを要求する PoC 扱いに留める。正式ステージへの昇格や `StageRequirement` 更新は Phase 2-7 で `parser.mly` と効果解析を統合した後に判断する。ロードマップの詳細は `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-003-proposal.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の `SYNTAX-003` 項を参照。

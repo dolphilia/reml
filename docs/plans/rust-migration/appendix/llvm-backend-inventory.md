@@ -8,12 +8,12 @@
 ## OCaml 実装のモジュールと責務（参照: `compiler/ocaml/src/llvm_gen/`）
 | モジュール | 主な責務 | Rust 側の対応候補 | 参照ドキュメント |
 | --- | --- | --- | --- |
-| `codegen.ml` | MIR→LLVM IR 変換、関数/ブロック構成、builder 管理 | `compiler/rust/backend/llvm/src/codegen.rs`（予定）、`Builder`/`Module` ラッパ | `docs/guides/llvm-integration-notes.md` §5.0、`docs/plans/rust-migration/2-1-runtime-integration.md` |
+| `codegen.ml` | MIR→LLVM IR 変換、関数/ブロック構成、builder 管理 | `compiler/rust/backend/llvm/src/codegen.rs`（予定）、`Builder`/`Module` ラッパ | `docs/guides/compiler/llvm-integration-notes.md` §5.0、`docs/plans/rust-migration/2-1-runtime-integration.md` |
 | `type_mapping.ml` | Reml 型・ADT → LLVM 型と構造体アラインメント | `type_mapping.rs` + `data_layout.rs` | `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`（チェックリスト） |
-| `target_config.ml` | `TargetMachine`/`DataLayout`/Triple/CallingConvention/最適化レベル | `target_machine.rs` + `target_config.rs`（ビルダー） | `docs/guides/llvm-integration-notes.md` §5.0、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` |
+| `target_config.ml` | `TargetMachine`/`DataLayout`/Triple/CallingConvention/最適化レベル | `target_machine.rs` + `target_config.rs`（ビルダー） | `docs/guides/compiler/llvm-integration-notes.md` §5.0、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` |
 | `llvm_attr.ml` | 関数属性と呼出規約（`noalias`/`nounwind` 等） | `llvm_attr.rs`（属性マップ）、`FunctionAttributeSet` | `docs/spec/3-6-core-diagnostics-audit.md` |
 | `verify.ml` | `opt -verify`/`llc` 呼び出し、診断ログ・`audit`/`Diagnostic` 拡張 | `verify.rs` + CLI 側 `audit` フック | `reports/diagnostic-format-regression.md` |
-| `ffi_value_lowering.ml` + `runtime_link.ml` | RC/panic/リンク処理、runtime 境界 | `ffi_lowering.rs` + `runtime_link.rs`（予定）、`docs/plans/rust-migration/2-1-runtime-integration.md` との照合 | `docs/guides/reml-ffi-handbook.md`, `docs/plans/rust-migration/2-2-adapter-layer-guidelines.md` |
+| `ffi_value_lowering.ml` + `runtime_link.ml` | RC/panic/リンク処理、runtime 境界 | `ffi_lowering.rs` + `runtime_link.rs`（予定）、`docs/plans/rust-migration/2-1-runtime-integration.md` との照合 | `docs/guides/ffi/reml-ffi-handbook.md`, `docs/plans/rust-migration/2-2-adapter-layer-guidelines.md` |
 
 > **補足**: `ffi_value_lowering` 以降は P2-1/2-2 の境界をまたぐため、Rust 側でも呼び出し順を表形式で追跡し、`docs-migrations.log` の W2 セクションで差分や未対応項目を記録する。
 
@@ -21,10 +21,10 @@
 
 ### 1. TargetMachine + DataLayout API
 - `TargetMachineBuilder` 構造体を導入し、以下をチェーン可能な設定 API として提供する。
-  - `.with_triple(triple: Triple)` : `x86_64-unknown-linux-gnu` / `x86_64-apple-darwin` / `x86_64-pc-windows-gnu` / `x86_64-pc-windows-msvc`（`docs/guides/llvm-integration-notes.md` §5.0 の表に整合）。
+  - `.with_triple(triple: Triple)` : `x86_64-unknown-linux-gnu` / `x86_64-apple-darwin` / `x86_64-pc-windows-gnu` / `x86_64-pc-windows-msvc`（`docs/guides/compiler/llvm-integration-notes.md` §5.0 の表に整合）。
   - `.with_cpu(cpu: &str)` / `.with_features(features: &str)` : OCaml `target_config` の `cpu`/`features` を再現し、`TargetMachine::getTargetCPU` / `getTargetFeatureString` と一致させる。
   - `.with_relocation_model(model: RelocModel)` / `.with_code_model(model: CodeModel)` / `.with_optimization_level(level: OptimizationLevel)` : `target_config` と照合し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` で監査する項目に含める。
-  - `.with_data_layout(layout: DataLayoutSpec)` : `docs/guides/llvm-integration-notes.md` §5.0 に記録された文字列（例: `e-m:e-i64:64-f64:64:64-v128:128:128-a:0:64`) を生成し、モジュールに設定する。
+  - `.with_data_layout(layout: DataLayoutSpec)` : `docs/guides/compiler/llvm-integration-notes.md` §5.0 に記録された文字列（例: `e-m:e-i64:64-f64:64:64-v128:128:128-a:0:64`) を生成し、モジュールに設定する。
 - Windows では `TargetMachineBuilder` に `windows_toolchain` を注入し、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` が示す MSYS2 LLVM 16 と公式 LLVM 19.1.1 を切り替えるオプションを持ち、選択理由を `docs-migrations.log` に残して監査経路につなげる。
 
 ### 2. Type mapping と LLVM 属性
@@ -49,7 +49,7 @@
 
 ## W2 チェックリスト（差分監査との接続）
 1. `TargetMachineBuilder` の Triple/CPU/features/relocation/code_model/opt_level を `target_config.ml` の数値と照合し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分欄に記帳。
-2. `DataLayoutSpec` の文字列と `type_mapping` に記録したアラインメント（`i8:8` 等）を `docs/guides/llvm-integration-notes.md` §5.0 の表と突き合わせ、差異があれば `docs-migrations.log` に対応箇所を記録。
+2. `DataLayoutSpec` の文字列と `type_mapping` に記録したアラインメント（`i8:8` 等）を `docs/guides/compiler/llvm-integration-notes.md` §5.0 の表と突き合わせ、差異があれば `docs-migrations.log` に対応箇所を記録。
 3. `verify.rs` で起動する `opt -verify`/`llc` の出力を `reports/diagnostic-format-regression.md` の診断一覧にマップし、`diagnostic.extensions["backend"]` に `backend=rust` を付けて `audit.log` に記録する。
 4. Windows では `TargetMachineBuilder::windows_toolchain` が `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` の MSYS2 LLVM 16 と公式 LLVM 19.1.1 を切り替える設定を持ち、`docs-migrations.log` に選択理由と `llc`/`opt` のパスを追記。
 5. `ffi_lowering` → `runtime_link` の呼び出し順を `docs/plans/rust-migration/2-1-runtime-integration.md` の `ffi_value_lowering` フェーズと照合し、差分が生じた場合は `docs-migrations.log` の W2 セクションでコード行と理由を記録。

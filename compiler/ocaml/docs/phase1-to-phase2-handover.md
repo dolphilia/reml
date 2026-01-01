@@ -355,7 +355,7 @@
 - `docs/spec/3-8-core-runtime-capability.md` - Capability システム仕様
 
 ### 技術ガイド
-- `docs/guides/llvm-integration-notes.md` - LLVM 統合ガイド
+- `docs/guides/compiler/llvm-integration-notes.md` - LLVM 統合ガイド
 - `docs/notes/llvm-spec-status-survey.md` - LLVM 仕様調査ノート
 
 ### Phase 1 報告書

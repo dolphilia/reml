@@ -24,7 +24,7 @@
 | `3-6-core-diagnostics-audit.md:62` | `DiagnosticDomain::Effect` までで停止。 | 効果ハンドラ関連の診断コード、監査メタ情報（捕捉/未捕捉効果）を追加。 |
 | `3-8-core-runtime-capability.md:10` | Capability とタグのマッピングが静的。 | 効果宣言の `realm/capability` メタデータとハンドラによる縮退時の検証ステップを追加。 |
 | `3-9-core-async-ffi-unsafe.md:16` | `io.*` 効果を直接 API に付与。 | Async/FFI を effect 宣言ベースで説明し直し、ハンドラ経由の置換を許容。 |
-| `docs/guides/runtime-bridges.md` 等 | 実装ガイドはタグ前提。 | 効果ハンドラを用いたモック/非同期連携の手順を追加。 |
+| `docs/guides/runtime/runtime-bridges.md` 等 | 実装ガイドはタグ前提。 | 効果ハンドラを用いたモック/非同期連携の手順を追加。 |
 
 ## 3. 更新フェーズとタスク
 
@@ -54,7 +54,7 @@
 
 ### フェーズD: エコシステム & ガイド（4週間）
 - **進捗**: D1 の改訂内容・サンプルを反映済み（runtime-bridges / reml-ffi-handbook 更新、`examples/algebraic-effects/` 追加）。D2/D3 を継続。
-- **D1**: `docs/guides/runtime-bridges.md`, `docs/guides/reml-ffi-handbook.md` 等のガイドにハンドラ利用方法、モック実装の手順、監査連携を追加。責任: ドキュメント担当。
+- **D1**: `docs/guides/runtime/runtime-bridges.md`, `docs/guides/ffi/reml-ffi-handbook.md` 等のガイドにハンドラ利用方法、モック実装の手順、監査連携を追加。責任: ドキュメント担当。
   - 改訂計画: Async/FFI の stage 昇格フローをガイドへ反映し、3-9 で追加した `collect_logs`/`with_foreign_stub` をベースに実装手順と CLI/Capability 設定例を追記する。必要サンプル: effect ハンドラ差し替えによる async テスト、`ForeignCall` スタブ、stage 昇格チェックの CLI コマンド。
 - **D2**: DSL 仕様（`3-7-core-config-data.md`, `3-8`, `notes` 系）で `@dsl_export` と効果宣言の連動を説明（更新済み）。引き続き DSL/LSP 整合をフォロー。責任: DSL 担当。
 - **D3**: LSP/IDE 仕様（該当 notes）を更新し、効果ツリー・ハンドラ捕捉状況の可視化要件を追加。責任: ツール担当。

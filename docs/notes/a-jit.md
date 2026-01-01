@@ -14,12 +14,12 @@
 - [ ] コンテナ/サーバーレス環境における JIT 実行のセキュリティ評価（`run-as-nonroot`, seccomp, sandbox）
 
 ## 3. 参考
-- `docs/guides/runtime-bridges.md` のクラウド/サーバーレスセクション
-- `docs/guides/portability.md` のターゲット戦略チェックリスト
+- `docs/guides/runtime/runtime-bridges.md` のクラウド/サーバーレスセクション
+- `docs/guides/runtime/portability.md` のターゲット戦略チェックリスト
 - LLVM ORC JIT / MCJIT のサポート状況
 
 ## 4. 調査計画
 - [ ] LLVM ORC JIT の WASM 対応状況を確認し、必要なフラグと依存関係を整理
 - [ ] ARM64 NEON/SVE 向けの `TargetMachine` 設定例を作成し、ベンチマーク候補（例: JSON パーサ DSL）を選定
 - [ ] サーバーレス（AWS Lambda / Cloud Run）での JIT 実行制限を調査し、サンドボックス方針をまとめる
-- [ ] `docs/guides/ci-strategy.md` に JIT ベンチマークジョブを追加する前提条件を列挙
+- [ ] `docs/guides/tooling/ci-strategy.md` に JIT ベンチマークジョブを追加する前提条件を列挙

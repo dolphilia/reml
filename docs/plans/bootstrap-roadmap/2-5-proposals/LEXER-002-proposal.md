@@ -23,7 +23,7 @@
 
 ## 4. フォローアップ
 - `PARSER-002`（RunConfig 導入）と連動し、字句設定を `RunConfig` から読み込む順序を調整する。  
-- `docs/guides/core-parse-streaming.md` のサンプルを OCaml 実装で動かせるよう、Lex API を呼び出す例を追加する。  
+- `docs/guides/compiler/core-parse-streaming.md` のサンプルを OCaml 実装で動かせるよう、Lex API を呼び出す例を追加する。  
 - Unicode プロファイル（LEXER-001）の対応と並行して、字句 API のテストを整備する。
 - `docs/notes/core-parse-streaming-todo.md` に Lex API 抽出の進捗を追記し、Streaming PoC（EXEC-001）との依存関係を明確化する。
 - **タイミング**: Phase 2-5 の中盤で RunConfig シムと並行して着手し、EXEC-001 ストリーミング PoC を開始するまでに Lex API 抽出を完了させる。
@@ -76,7 +76,7 @@
 - 2025-11-30 実施: `docs/notes/lexer-performance-study.md` を作成し、`scripts/benchmark-parse-throughput.sh` を用いた測定手順と `remlc` 未構築により計測を後続へ持ち越した旨を記録。`remlc` 準備完了後に 3 プロファイルで再計測する TODO を登録した。
 
 ### Step 6: ドキュメント反映とレビュー記録（Week33 Day5）
-- `docs/spec/2-3-lexer.md` と `docs/spec/2-6-execution-strategy.md` に OCaml 実装の進捗脚注を追加し、`RunConfig` 経由で Lex API を共有できる状態になったことを明記する。`docs/guides/core-parse-streaming.md` のサンプルコードも新 API に合わせて更新する。
+- `docs/spec/2-3-lexer.md` と `docs/spec/2-6-execution-strategy.md` に OCaml 実装の進捗脚注を追加し、`RunConfig` 経由で Lex API を共有できる状態になったことを明記する。`docs/guides/compiler/core-parse-streaming.md` のサンプルコードも新 API に合わせて更新する。
 - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step1〜6 の結果を追記し、未解決事項は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ引き継ぐ。
 - 仕様差分計画本体（`../2-5-spec-drift-remediation.md`）の §6.2 脚注を更新し、LEXER-002 のステータス・残課題・メトリクス参照先をリンクする。
 

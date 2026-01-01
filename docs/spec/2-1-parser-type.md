@@ -223,7 +223,7 @@ fn configure(parser: Parser<Any>, file: Path, project_id: ProjectId) -> () = {
 ## E. コミットと消費の意味論
 
 [^runconfig-ocaml-phase25]:
-    2025-11-18 更新。`PARSER-002` Step 1（RunConfig 型設計）で `Parser_run_config` モジュールを追加し、仕様に定義されたフィールドと拡張マップ操作を不変レコードとして提供。後続ステップで `parser_driver` へ適用する前提条件を満たした。2025-11-24 追記。Step 6 で CLI (`compiler/ocaml/src/main.ml`) と LSP (`tooling/lsp/run_config_loader.ml`) が `RunConfig` を共有し、`docs/guides/core-parse-streaming.md` に連携ワークフローを記録。監査ログは `parser-runconfig-packrat.json.golden` を用いて `parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate` を検証できる。
+    2025-11-18 更新。`PARSER-002` Step 1（RunConfig 型設計）で `Parser_run_config` モジュールを追加し、仕様に定義されたフィールドと拡張マップ操作を不変レコードとして提供。後続ステップで `parser_driver` へ適用する前提条件を満たした。2025-11-24 追記。Step 6 で CLI (`compiler/ocaml/src/main.ml`) と LSP (`tooling/lsp/run_config_loader.ml`) が `RunConfig` を共有し、`docs/guides/compiler/core-parse-streaming.md` に連携ワークフローを記録。監査ログは `parser-runconfig-packrat.json.golden` を用いて `parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate` を検証できる。
 
 * `consumed`：**入力を1バイト以上前進**したか。
 * `committed`：`cut` 境界を**越えた**とマーク（消費の有無に関わらず）。ゼロ幅の `cut_here()` でも `committed=true` になり、`or` の右枝を試さない。

@@ -6,7 +6,7 @@
 | 系列 | 目的 | 主な内容 | 主参照仕様 |
 |------|------|----------|------------|
 | 0.x | 原則・運用ガバナンス | 基本原則（0-1）、文書構造と更新プロセス（0-2）、測定指標（0-3）、リスク管理（0-4） | [0-1-project-purpose.md](../../spec/0-1-project-purpose.md), [0-0-overview.md](../../spec/0-0-overview.md) |
-| 1.x | Phase 1 ブートストラップ計画 | OCaml 実装の最小パイプライン構築と性能ベースライン | `docs/guides/llvm-integration-notes.md`, [1-1-syntax.md](../../spec/1-1-syntax.md) |
+| 1.x | Phase 1 ブートストラップ計画 | OCaml 実装の最小パイプライン構築と性能ベースライン | `docs/guides/compiler/llvm-integration-notes.md`, [1-1-syntax.md](../../spec/1-1-syntax.md) |
 | 2.x | Phase 2 仕様安定化計画 | 型システム・効果タグ・診断の安定化 | [1-2-types-Inference.md](../../spec/1-2-types-Inference.md), [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
 | 3.x | Phase 3 Self-Host 計画 | Reml 実装への移行と互換性維持 | [2-7-core-parse-streaming.md](../../spec/2-7-core-parse-streaming.md), [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) |
 | 4.x | Phase 4 移行完了計画 | リリース体制、ツールチェーン移行、エコシステム支援 | [5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md), `docs/notes/llvm-spec-status-survey.md` |

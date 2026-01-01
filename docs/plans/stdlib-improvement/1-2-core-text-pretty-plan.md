@@ -19,7 +19,7 @@
 - 連携: `docs/spec/3-3-core-text-unicode.md`（テキストモデル/グラフェム整合）
 
 ## ガイド/サンプル
-- 新設: `docs/guides/formatter-authoring.md`
+- 新設: `docs/guides/dsl/formatter-authoring.md`
 - サンプル方針: 代表的な DSL のフォーマッタ例と幅変更の比較出力を準備する。
 
 ## リスクと対策

@@ -156,7 +156,7 @@ e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64
 - Darwin: `compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin --preset darwin-arm64` で varargs / sret サンプルを継続検証し、成果を `reports/ffi-macos-summary.md` に記録。
 - Windows: `ffi_stub_builder` / `llvm_gen/codegen` で Win64 の 8B 閾値と `byval`/`sret` 属性を強制し、`examples/ffi/windows/struct_passing.reml` で回帰テストを維持。
 - Windows: 呼出コード生成時に 32B Shadow Space 予約と XMM6-15 保存方針を確認し、`docs/plans/bootstrap-roadmap/2-6-windows-support.md` のステップ3（LLVM IR 拡張）へ引き継ぎ。
-- 共通: `docs/guides/reml-ffi-handbook.md` の Win64 章を更新し、`#[calling_convention("win64")]` と `#[link_name]` の利用手順を同期。
+- 共通: `docs/guides/ffi/reml-ffi-handbook.md` の Win64 章を更新し、`#[calling_convention("win64")]` と `#[link_name]` の利用手順を同期。
 
 ### 2.3 型対応表
 
@@ -448,12 +448,12 @@ cl /Fe:foo.exe foo.c foo.ll libreml_runtime.lib
 - [ ] LLVM ORC JITのWASM対応状況確認、必要なフラグと依存関係整理
 - [ ] ARM64 NEON/SVE向け`TargetMachine`設定例作成、ベンチマーク候補選定（例: JSONパーサDSL）
 - [ ] サーバーレス（AWS Lambda/Cloud Run）でのJIT実行制限調査、サンドボックス方針まとめ
-- [ ] `docs/guides/ci-strategy.md`にJITベンチマークジョブ追加の前提条件列挙
+- [ ] `docs/guides/tooling/ci-strategy.md`にJITベンチマークジョブ追加の前提条件列挙
 
 ### 5.4 参考情報（notes/a-jit.md §3）
 
-- `docs/guides/runtime-bridges.md` のクラウド/サーバーレスセクション
-- `docs/guides/portability.md` のターゲット戦略チェックリスト
+- `docs/guides/runtime/runtime-bridges.md` のクラウド/サーバーレスセクション
+- `docs/guides/runtime/portability.md` のターゲット戦略チェックリスト
 - LLVM ORC JIT / MCJITのサポート状況
 
 ---

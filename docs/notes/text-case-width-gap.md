@@ -14,5 +14,5 @@ ICU / Unicode 標準との挙動差を記録し、`text-locale-support.csv` と 
 
 ## TODO
 - [x] East Asian Width 表を取り込み、`width_map` API で `effect {mem}` を計測する。
-- [ ] ケース変換例外を `docs/guides/ai-integration.md` の FAQ に追加。
+- [ ] ケース変換例外を `docs/guides/ecosystem/ai-integration.md` の FAQ に追加。
 - [x] `width_corrections.csv`（emoji / ZWJ / regional indicator 向け補正）を `compiler/rust/runtime/src/text/data/` に追加し、`width_map` の実装で参照する。

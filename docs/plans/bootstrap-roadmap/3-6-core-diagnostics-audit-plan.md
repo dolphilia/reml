@@ -94,7 +94,7 @@
     - 2.2.c `docs/spec/3-6-core-diagnostics-audit.md` の §2 表を引用したコメントを Builder に付与し、仕様が更新された際に差分チェックを行う TODO をコメント化する。
 2.3. CLI/LSP 出力フォーマットを整備し、`message` テンプレートとローカライズキーの整合を確認する。
     - 2.3.a `compiler/rust/frontend/src/output/cli.rs` と `tooling/lsp/src/handlers/diagnostics.rs` へ `LocalizationKey` を受け取るパスを追加する。
-    - 2.3.b `docs/guides/ai-integration.md` へ LSP 診断のキー表を追記し、`README.md` から参照できるようリンクを更新する。
+    - 2.3.b `docs/guides/ecosystem/ai-integration.md` へ LSP 診断のキー表を追記し、`README.md` から参照できるようリンクを更新する。
     - 2.3.c `reports/diagnostic-format-regression.md` のローカライズ節に新規ケースを登録し、CI 差分チェック対象に加える。
 
 ### 3. AuditEnvelope / AuditEvent 実装（51週目）
@@ -155,12 +155,12 @@
 4.3. `ResolutionState`, `ConstraintGraphSummary` 等のデータを Graphviz 等にエクスポートするヘルパを追加する。
     - 4.3.a `tooling/telemetry/export_graphviz.rs` を作成し、JSON から dot を生成する CLI を提供する。
     - 4.3.b `examples/core_diagnostics/constraint_graph/*.reml` を追加し、生成 dot/svg を `examples/core_diagnostics/output/` に格納する。
-    - 4.3.c `docs/guides/runtime-bridges.md` へ Graphviz エクスポート手順を追記し、TypeChecker 以外のチームも再利用できるよう説明する。
+    - 4.3.c `docs/guides/runtime/runtime-bridges.md` へ Graphviz エクスポート手順を追記し、TypeChecker 以外のチームも再利用できるよう説明する。
 
 #### 4.3 実施結果（Run ID: 20290712-graphviz-cli）
 - `tooling/telemetry/` に単独の Cargo プロジェクトを追加し、`export_graphviz.rs` を `cargo run --manifest-path tooling/telemetry/Cargo.toml -- --dot-out <DOT> --svg-out <SVG> --graph-name <NAME> <JSON>` 形式で実行できるようにした。内部依存は `serde` + `serde_json` のみとし、ネットワーク遮断環境でもビルド可能。DOT 出力は `rankdir=LR` / ノード種別ごとの `shape` / `capability`/`implementation` ラベルを備え、CI で自動生成した場合も仕様書の図にそのまま貼り付けられる。
 - サンプルプログラムとして `examples/core_diagnostics/constraint_graph/simple_chain.reml` を作成し、`compiler/rust/frontend` で `--emit-telemetry constraint_graph=examples/core_diagnostics/output/simple_chain-constraint_graph.json` を取得。続けて Graphviz CLI で DOT/SVG (`examples/core_diagnostics/output/simple_chain.{dot,svg}`) を生成し、`README.md` に再現手順と CLI コマンドを記録した。Runtime/TypeChecker/Docs いずれのチームも同 README に従えば同じグラフを再生成できる。
-- `docs/guides/runtime-bridges.md` §1.7 を新設し、`tooling/telemetry/export_graphviz` の実行手順・Graph 名の統一ルール・`examples/core_diagnostics/output/` へのサンプル保存を明文化。`docs/spec/3-6-core-diagnostics-audit.md` 等で図版を差し替える際は Run ID と JSON/DOT/SVG を揃え、`docs/notes/` に差分メモを残す方針を記載した。
+- `docs/guides/runtime/runtime-bridges.md` §1.7 を新設し、`tooling/telemetry/export_graphviz` の実行手順・Graph 名の統一ルール・`examples/core_diagnostics/output/` へのサンプル保存を明文化。`docs/spec/3-6-core-diagnostics-audit.md` 等で図版を差し替える際は Run ID と JSON/DOT/SVG を揃え、`docs/notes/` に差分メモを残す方針を記載した。
 
 ### 5. ポリシー設定とフィルタリング（52週目）
 **担当領域**: 運用制御
@@ -168,7 +168,7 @@
 5.1. 診断抑制ポリシー (`--ack-experimental-diagnostics` 等) を実装し、ステージ別で Severity が切り替わることをテストする。
     - 5.1.a `compiler/rust/frontend/src/config/runconfig.rs` に `AckExperimentalDiagnostics` フラグとステージ紐付けロジックを追加する。
     - 5.1.b `compiler/rust/frontend/tests/diagnostic_filtering.rs` で Stage ごとの Severity 再分類をテーブル駆動テスト化する。
-    - 5.1.c `docs/guides/ai-integration.md` の診断抑制フラグ一覧を更新し、AI 支援シナリオでの使用例を追記する。
+    - 5.1.c `docs/guides/ecosystem/ai-integration.md` の診断抑制フラグ一覧を更新し、AI 支援シナリオでの使用例を追記する。
 5.2. `DiagnosticFilter`/`AuditPolicy` を実装し、CLI/LSP で指定できるようにする。
     - 5.2.a CLI 引数 `--diagnostic-filter` `--audit-policy` を `structopt` / `clap` に登録し、Config へ伝搬する。
     - 5.2.b LSP 側は `workspace/configuration` からフィルタ値を受け取る JSON スキーマを定義し、`tooling/lsp/tests` で検証する。
@@ -204,14 +204,14 @@
 - `README.md` の「サンプル実装」へ `examples/core_diagnostics/README.md` を追加し、3.6 章のゴールデンを押さえる導線をトップページからも辿れるようにした。
 - `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` のマイルストーン表（M5: Diagnostics & Config）に `schema_version=3.0.0-alpha`・`structured_hints`・`config.migration.*`・`bridge.stage.*` の固定化を明記し、Phase 3 判定条件へ CLI/Audit ゴールデンの存在を組み込んだ。
 - `docs/plans/rust-migration/overview.md` P3 セクションへ `docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` を正式な参照として追加し、Rust 移植タスクから Core Diagnostics 計画書へ直結できるようにした。
-6.3. `docs/guides/ai-integration.md`/`docs/guides/runtime-bridges.md` の診断・監査セクションを更新する。
+6.3. `docs/guides/ecosystem/ai-integration.md`/`docs/guides/runtime/runtime-bridges.md` の診断・監査セクションを更新する。
     - 6.3.a AI ガイドでは診断 JSON の解釈手順と `effect.stage.*` の注意点を解説する段落を追加する。
     - 6.3.b Runtime Bridges ガイドでは `AuditEnvelope` の `bridge.stage.*` 例を載せ、プラグイン開発者が参照できるようにする。
     - 6.3.c 更新後に `docs/notes/dsl-plugin-roadmap.md` へ交差参照を追記し、プラグイン昇格審査と診断監査が同じ証跡を共有することを明記する。
 
 #### 6.3 実施結果（Run ID: 20290730-guide-bridge-ai）
-- `docs/guides/ai-integration.md` §5.4 に `structured_hints`・`fixits`・`audit_metadata` の読み取り手順を新設し、AI 連携時に Stage/Audit 情報へアクセスする方法を `schema_version="3.0.0-alpha"` とともに説明した。
-- `docs/guides/runtime-bridges.md` §1.2 に `bridge_stage_verified` の NDJSON 例を挿入し、`bridge.stage.*` と `pipeline.*` が同一 `AuditEnvelope` に含まれる形をサンプル化。`docs/notes/dsl-plugin-roadmap.md` では AI ガイドと Runtime Bridge ガイドの該当節を指す交差参照を追加し、プラグイン審査で共有する証跡セットを揃えた。
+- `docs/guides/ecosystem/ai-integration.md` §5.4 に `structured_hints`・`fixits`・`audit_metadata` の読み取り手順を新設し、AI 連携時に Stage/Audit 情報へアクセスする方法を `schema_version="3.0.0-alpha"` とともに説明した。
+- `docs/guides/runtime/runtime-bridges.md` §1.2 に `bridge_stage_verified` の NDJSON 例を挿入し、`bridge.stage.*` と `pipeline.*` が同一 `AuditEnvelope` に含まれる形をサンプル化。`docs/notes/dsl-plugin-roadmap.md` では AI ガイドと Runtime Bridge ガイドの該当節を指す交差参照を追加し、プラグイン審査で共有する証跡セットを揃えた。
 
 #### 6.1 実施結果（Run ID: 20290730-doc-golden）
 - `docs/spec/3-6-core-diagnostics-audit.md` §9 を再構成し、`examples/core_diagnostics/pipeline_branch.reml` のコード片と `CliDiagnosticEnvelope`／`AuditEvent` の JSON 抜粋を掲載した。`pipeline_branch.expected.diagnostic.json` と `pipeline_success.expected.audit.jsonl` を引用し、`pipeline.*` キーや `run_config` の必須項目を明文化した。
@@ -223,8 +223,8 @@
 - `docs/plans/rust-migration/overview.md` に CLI/Audit ゴールデンを Phase 3 の共通ベースラインとする旨を追記し、Rust 実装でも `tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` を利用するワークフローを明記した。
 
 #### 6.3 実施結果（Run ID: 20290730-guide-link）
-- `docs/guides/ai-integration.md` §5.3 を新設し、`effects.stage.*` や `pipeline.*` の読み方と `examples/core_diagnostics/*.expected.*` への参照を追加。AI 連携が Stage/Audit 情報をどのように解析すべきかを文章化した。
-- `docs/guides/runtime-bridges.md` に Core Diagnostics ゴールデンへの参照を追加し、Runtime Bridge 実装が `pipeline_started` / `pipeline_completed` を監査ログへ出力する際のベースラインを定義した。
+- `docs/guides/ecosystem/ai-integration.md` §5.3 を新設し、`effects.stage.*` や `pipeline.*` の読み方と `examples/core_diagnostics/*.expected.*` への参照を追加。AI 連携が Stage/Audit 情報をどのように解析すべきかを文章化した。
+- `docs/guides/runtime/runtime-bridges.md` に Core Diagnostics ゴールデンへの参照を追加し、Runtime Bridge 実装が `pipeline_started` / `pipeline_completed` を監査ログへ出力する際のベースラインを定義した。
 - `docs/notes/dsl-plugin-roadmap.md` に CLI/Audit ゴールデンの参照を追加し、プラグイン昇格審査で診断・監査ログの証跡として利用することを推奨した。
 
 ### 7. テスト・CI 統合（53週目）

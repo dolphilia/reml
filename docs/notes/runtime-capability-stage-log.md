@@ -61,7 +61,7 @@ Core.Runtime の Capability で Stage 要件や監査メタデータの扱いに
   - `scripts/validate-diagnostic-json.sh --pattern core.io --pattern core.path.security --pattern core.io.watcher` を用いて診断メタデータが欠落していないことを検証し、結果を `reports/spec-audit/ch3/core_io_summary-YYYYMMDD.md` に記録する。
   - Watcher 実装後は `RuntimeBridgeRegistry` の `describe_bridge("native.fs.watch")` 出力を `docs/notes/runtime-bridges-roadmap.md` に添付し、Stage mismtach が出た場合は本ログにも Run ID を追記する。
 - ✅ 2025-12-19: `compiler/rust/runtime/src/path/security.rs` で `SecurityPolicy` / `PathSecurityError` を導入し、`validate_path` / `sandbox_path` / `is_safe_symlink` が `FsAdapter::ensure_security_policy()`・`ensure_symlink_query()` を呼び出すように更新。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml path_security` と `tests/data/core_path/security/*.json` で `core.path.security.invalid`/`violation`/`symlink` 診断に `metadata.security.reason`, `effect.security`, `effect.stage.required = "stable"` が含まれることを確認した。`core-io-capability-map` と `core-io-effects-matrix` にも Rust 実装の検証ポイントを追記済み。
-- 関連ドキュメント: `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md`, `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §1.3, `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md`（Runbook 追記）、`docs/guides/runtime-bridges.md`
+- 関連ドキュメント: `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md`, `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §1.3, `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md`（Runbook 追記）、`docs/guides/runtime/runtime-bridges.md`
 
 ## 2025-12-06 Core.IO Capability マトリクス（Run ID: 20251206-core-io-capability-matrix）
 - 対象 Capability: `io.fs.*`, `fs.permissions.*`, `fs.symlink.*`, `fs.watcher.*`, `watcher.*`, `security.fs.policy`, `memory.buffered_io`

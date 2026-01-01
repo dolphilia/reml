@@ -151,7 +151,7 @@
 - 期限: 2027-06-30
 - 状態: Monitoring
 - 関連フェーズ: Phase 3 (3-3)
-- 参照: `examples/core-text/README.md`, `docs/guides/core-parse-streaming.md` §11, `docs/guides/ai-integration.md` §6, `reports/spec-audit/ch1/core_text_examples-20270330.md`
+- 参照: `examples/core-text/README.md`, `docs/guides/compiler/core-parse-streaming.md` §11, `docs/guides/ecosystem/ai-integration.md` §6, `reports/spec-audit/ch1/core_text_examples-20270330.md`
 - 担当: Phase 3 Core.Text チーム
 - 登録日: 2025-10-10
 - タイトル: Debian sysroot アーカイブのハッシュ未確定

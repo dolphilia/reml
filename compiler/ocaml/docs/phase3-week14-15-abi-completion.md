@@ -274,7 +274,7 @@ $ opam exec -- dune build
 ### 計画書・仕様書
 
 - [1-4-llvm-targeting.md](../../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md) §5 - ABI実装計画
-- [llvm-integration-notes.md](../../../docs/guides/llvm-integration-notes.md) §5.0, §5.2 - ABI設計方針
+- [llvm-integration-notes.md](../../../docs/guides/compiler/llvm-integration-notes.md) §5.0, §5.2 - ABI設計方針
 - [0-1-project-purpose.md](../../../docs/spec/0-1-project-purpose.md) - プロジェクト目的
 
 ### 実装ファイル

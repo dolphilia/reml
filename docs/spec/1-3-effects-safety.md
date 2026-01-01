@@ -203,7 +203,7 @@ fn sum(xs: [i64]) -> i64 = {
 * Inline ASM は `@cfg(target_arch/target_os/target_family)` を必須とし、LLVM IR 直書きも `@cfg(target_...)` によるターゲット限定を必須とする。`@cfg` が欠落している場合は `native.inline_asm.missing_cfg` / `native.llvm_ir.missing_cfg` を報告する。
 * `@intrinsic` を付与する場合は、関数の効果注釈に `native` を含める（例: `fn sqrt_f64(x: f64) -> f64 !{native}`）。`native` が欠落した場合は型検査で拒否し、`native.intrinsic.missing_effect` を報告する。
 * ネイティブ依存の関数は **`@cfg` でターゲット条件を限定することを推奨**する。複数ターゲットを想定する場合は `@cfg` 付き定義とポリフィルを併記し、効果集合の差分が `@pure` 等の契約を破らないように設計する。
-* 埋め込み API と Runtime Bridge の運用手順は [docs/guides/runtime-bridges.md](../guides/runtime-bridges.md) を参照し、Capability 監査キーの整合性を確認する。
+* 埋め込み API と Runtime Bridge の運用手順は [docs/guides/runtime/runtime-bridges.md](../guides/runtime-bridges.md) を参照し、Capability 監査キーの整合性を確認する。
 
 ```reml
 @cfg(target_arch = "aarch64")

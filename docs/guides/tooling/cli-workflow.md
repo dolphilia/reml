@@ -124,7 +124,7 @@ opam exec -- dune exec -- \
 
 - `--format=text`（既定）: ソーススニペット付きの日本語メッセージ。
 - `--format=json`: CI・エディタ統合向けの JSON。  
-  詳細は [docs/guides/diagnostic-format.md](diagnostic-format.md) を参照。
+  詳細は [docs/guides/tooling/diagnostic-format.md](docs/guides/tooling/diagnostic-format.md) を参照。
 
 カラー出力は `--color=auto|always|never` で制御する。`NO_COLOR` や `FORCE_COLOR` 環境変数も考慮される。
 
@@ -154,7 +154,7 @@ opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --trace
 
 ### 3.3 コンパイル統計
 
-`--stats` でトークン数・AST ノード数・unify 呼び出しなどを収集できる。詳細は [docs/guides/trace-output.md](trace-output.md) を参照。
+`--stats` でトークン数・AST ノード数・unify 呼び出しなどを収集できる。詳細は [docs/guides/tooling/trace-output.md](docs/guides/tooling/trace-output.md) を参照。
 
 ### 3.4 メトリクスファイル出力（Phase 1-6 Week 16 追加）
 
@@ -248,6 +248,6 @@ Phase 2-7 では代数的効果構文（`perform` / `handle`）が PoC ステー
 ## 8. 参考資料
 
 - [docs/plans/bootstrap-roadmap/1-6-developer-experience.md](../plans/bootstrap-roadmap/1-6-developer-experience.md)
-- [docs/guides/trace-output.md](trace-output.md)
-- [docs/guides/diagnostic-format.md](diagnostic-format.md)
-- [docs/guides/llvm-integration-notes.md](llvm-integration-notes.md)
+- [docs/guides/tooling/trace-output.md](docs/guides/tooling/trace-output.md)
+- [docs/guides/tooling/diagnostic-format.md](docs/guides/tooling/diagnostic-format.md)
+- [docs/guides/compiler/llvm-integration-notes.md](docs/guides/compiler/llvm-integration-notes.md)

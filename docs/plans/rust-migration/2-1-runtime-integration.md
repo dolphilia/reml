@@ -19,7 +19,7 @@
   - CI/監査メトリクスのダッシュボード構築（P3 スコープ）。
 - **前提**
   - `runtime/native/` の API が Phase 1-5 時点で整備されており、ヘッダ `reml_runtime.h` `reml_os.h` `reml_platform.h` が最新。
-  - `docs/guides/runtime-bridges.md`・`docs/guides/reml-ffi-handbook.md` の手順がベースラインとして共有済み。
+  - `docs/guides/runtime/runtime-bridges.md`・`docs/guides/ffi/reml-ffi-handbook.md` の手順がベースラインとして共有済み。
   - `appendix/glossary-alignment.md` に Rust ↔ Reml 用語対応表が収録されている。
 
 ## 2.1.3 完了条件
@@ -32,15 +32,15 @@
 
 | 成果物 | 内容 | 依存資料 |
 | --- | --- | --- |
-| `compiler/rust/runtime/ffi/` | ランタイム FFI ラッパ crate（`extern` 宣言、`Result<T, FfiError>` 変換、所有権ヘルパ、`AuditContext` 連携） | `runtime/native/include/`, `docs/guides/reml-ffi-handbook.md`, `docs/spec/3-9` |
+| `compiler/rust/runtime/ffi/` | ランタイム FFI ラッパ crate（`extern` 宣言、`Result<T, FfiError>` 変換、所有権ヘルパ、`AuditContext` 連携） | `runtime/native/include/`, `docs/guides/ffi/reml-ffi-handbook.md`, `docs/spec/3-9` |
 | Capability Registry バインディング | Rust 側 `CapabilityRegistry` 実装／FFI、Stage/効果タグチェック、`verify_capability_stage` API（`compiler/rust/runtime/src/capability/registry.rs` の `registry()` シングルトン） | `docs/spec/3-8-core-runtime-capability.md`, `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` |
 
 > **補足（2029-12-21 Run ID: 20291221-core-runtime-capability）**  
 > `docs/plans/bootstrap-roadmap/assets/capability-handle-inventory.csv` と `assets/capability-stage-field-gap.csv` に Rust 実装の欠落点を集約した。Registry/Stage 判定の進捗を追う際は本計画から該当 CSV へ直接遷移して確認すること。
 > **更新（2029-06-14 Run ID: 20290614-capability-registry-singleton）**  
 > Capability Registry は `OnceLock<CapabilityRegistry>` によるシングルトン初期化（`registry()`）が導入され、`cargo test -p reml_runtime capability_registry_traits` で `Send + Sync` 要件を静的検証する。Config → Diagnostics → Runtime 初期化図では `RunConfig` 読み込み後に `registry()` を起動し、Stage 判定のキャッシュを共有するフローとした。
-| 監査・診断 API | `audit.log`, `Diagnostic.extensions["bridge"]`, `security.report_violation` の Rust ラッパ | `docs/spec/3-6-core-diagnostics-audit.md`, `docs/guides/runtime-bridges.md` |
-| テストハーネス | Rust 側 `cargo test` 相当の FFI/ランタイム検証、`ffi-smoke`（同期/非同期/タイムアウト） | `runtime/native/tests/`, `docs/guides/reml-ffi-handbook.md` |
+| 監査・診断 API | `audit.log`, `Diagnostic.extensions["bridge"]`, `security.report_violation` の Rust ラッパ | `docs/spec/3-6-core-diagnostics-audit.md`, `docs/guides/runtime/runtime-bridges.md` |
+| テストハーネス | Rust 側 `cargo test` 相当の FFI/ランタイム検証、`ffi-smoke`（同期/非同期/タイムアウト） | `runtime/native/tests/`, `docs/guides/ffi/reml-ffi-handbook.md` |
 
 ## 2.1.5 マイルストーン（目安）
 
@@ -104,7 +104,7 @@ W3 では Rust 側で `CapabilityRegistry` を直接取り込み、`AuditContext
 
 - **監査ログ・診断メタデータの蓄積**  
   - `audit.log("ffi.call.*", …)` の結果を `reports/runtime-bridge/*.json` に記録し、`Diagnostic.extensions["bridge"]` に `CapabilityRegistry`/`AuditContext` の値（`bridge.stage`, `bridge.capability_id`, `bridge.status`）を含める。`reports/dual-write/front-end/P1_W4.5_frontend_handover/diag/effects/` で管理している Run ID と比較し、Rust 側監査と OCaml 側監査で共通するメタデータを確認。
-  - `CapabilityRegistry::register` の呼び出しと `AuditEnvelope.metadata.bridge.stage` の更新を README に追記し、W4 以降のクロスプラットフォーム検証や CI で同じ stage 情報を引き継げるようにする（`docs/guides/runtime-bridges.md` / `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` にも脚注を追加）。
+  - `CapabilityRegistry::register` の呼び出しと `AuditEnvelope.metadata.bridge.stage` の更新を README に追記し、W4 以降のクロスプラットフォーム検証や CI で同じ stage 情報を引き継げるようにする（`docs/guides/runtime/runtime-bridges.md` / `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` にも脚注を追加）。
 
 W3 の成果を `docs/migrations` シリーズに記録するとともに、`3-0-ci-and-dual-write-strategy.md` に連携ログの自動比較ルートとして `reports/runtime-bridge/` を加え、P3 CI で `AuditEnvelope.metadata.bridge` の整合性を活用できるようにする。
 
@@ -115,7 +115,7 @@ W3 の成果を `docs/migrations` シリーズに記録するとともに、`3-0
   - `mem_alloc` は `NonNull<c_void>` を返し、`Layout` 情報を保持して呼び出し元の MIR 決定と一致させる。`inc_ref`/`dec_ref` は `unsafe` block 内で呼び出し、`AuditEnvelope.metadata.bridge.ownership` を `Borrowed` / `Transferred` などで記録する。
 
 - **所有権ラッパ／エラーモデル**  
-  - Rust の `ForeignPtr<T>`（`repr(transparent)`）を実装し、`Ownership` 列挙体（`Borrowed`, `Transferred`, `Pinned` 等）を `docs/guides/reml-ffi-handbook.md` §5 に合わせる。  
+  - Rust の `ForeignPtr<T>`（`repr(transparent)`）を実装し、`Ownership` 列挙体（`Borrowed`, `Transferred`, `Pinned` 等）を `docs/guides/ffi/reml-ffi-handbook.md` §5 に合わせる。  
   - `FfiError` は `FfiErrorKind` + `metadata`（JSON）として保持し、`Diagnostic` への変換 (`code = "ffi.call.failed"`) を提供。`panic` 呼び出しは `AbortError` として扱い、`effect {unsafe}` を要求する。
 
 - **Capability Registry 連携**  
@@ -172,4 +172,4 @@ W3 の成果を `docs/migrations` シリーズに記録するとともに、`3-0
 - Adapter 層設計 (`2-2-adapter-layer-guidelines.md`) と連携し、プラットフォーム差異を FFI 呼び出し前に吸収するための API 要件を同期する。
 
 ---
-**参照**: `docs/plans/rust-migration/2-0-llvm-backend-plan.md`, `docs/guides/runtime-bridges.md`, `docs/guides/reml-ffi-handbook.md`, `docs/spec/3-8-core-runtime-capability.md`, `docs/spec/3-9-core-async-ffi-unsafe.md`, `runtime/native/README.md`, `compiler/ocaml/docs/runtime-api-integration-status.md`
+**参照**: `docs/plans/rust-migration/2-0-llvm-backend-plan.md`, `docs/guides/runtime/runtime-bridges.md`, `docs/guides/ffi/reml-ffi-handbook.md`, `docs/spec/3-8-core-runtime-capability.md`, `docs/spec/3-9-core-async-ffi-unsafe.md`, `runtime/native/README.md`, `compiler/ocaml/docs/runtime-api-integration-status.md`

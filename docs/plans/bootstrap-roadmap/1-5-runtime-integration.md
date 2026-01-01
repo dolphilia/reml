@@ -2,7 +2,7 @@
 
 ## 目的
 - Phase 1 マイルストーン M3/M5 で必要となる最小ランタイム API (`mem_alloc`, `panic`, `inc_ref`, `dec_ref`) を整備し、生成した LLVM IR とリンク可能にする。
-- 参照カウント (RC) ベースの所有権モデルを `docs/guides/llvm-integration-notes.md` §5 に沿って実装し、リーク/ダングリング検出テストを提供する。
+- 参照カウント (RC) ベースの所有権モデルを `docs/guides/compiler/llvm-integration-notes.md` §5 に沿って実装し、リーク/ダングリング検出テストを提供する。
 
 ## スコープ
 - **含む**: C/LLVM IR で記述された最小ランタイム、メモリアロケータの抽象化（malloc ベース）、参照カウントヘルパ、エラーハンドラ、テスト用検証フック。
@@ -23,7 +23,7 @@
 **担当領域**: ランタイムインタフェース定義
 
 1.1. **必須API仕様策定**
-- 最小ランタイム（`docs/guides/llvm-integration-notes.md` §5.4 / `docs/notes/llvm-spec-status-survey.md` §2.5）と同一の関数セットを採用
+- 最小ランタイム（`docs/guides/compiler/llvm-integration-notes.md` §5.4 / `docs/notes/llvm-spec-status-survey.md` §2.5）と同一の関数セットを採用
   - メモリ管理: `void* mem_alloc(size_t size)`, `void mem_free(void* ptr)`
   - 参照カウント: `void inc_ref(void* ptr)`, `void dec_ref(void* ptr)`
   - エラー処理: `void panic(const char* msg)`
@@ -172,7 +172,7 @@
 **担当領域**: 文書化とCI設定
 
 8.1. **API仕様書整備**
-- `docs/guides/llvm-integration-notes.md` へのランタイムセクション追加
+- `docs/guides/compiler/llvm-integration-notes.md` へのランタイムセクション追加
 - 各関数の詳細仕様とサンプルコード
 - 型タグ一覧表の作成
 
@@ -264,7 +264,7 @@
 10.5. **CI・ドキュメント連携**
 - `.github/workflows/bootstrap-linux.yml` に `macos-latest` クロスビルドジョブを追加し、`toolchains` キャッシュ（`actions/cache`）と `run-linux-remote.sh --ci` を組み合わせた smoke テストを行う。CI 落下時は `cache: restore-keys` を利用して差分診断を高速化する。
 - `compiler/ocaml/README.md` の「直近の準備チェックリスト」にクロスツールチェーン導入手順とリモート実行フロー（および代替エミュレーション手段）を追記し、フェーズ進捗レポートには `Runtime Cross Build Status: GREEN/AMBER/RED` を追加する。
-- クロスビルド手順を `docs/guides/llvm-integration-notes.md` §6 と `docs/notes/cross-compilation-spec-update-plan.md` に反映し、Docker ベースの運用（§9）との役割分担を明文化する。ローカル実行と CI 実行の差異は表形式で整理する。
+- クロスビルド手順を `docs/guides/compiler/llvm-integration-notes.md` §6 と `docs/notes/cross-compilation-spec-update-plan.md` に反映し、Docker ベースの運用（§9）との役割分担を明文化する。ローカル実行と CI 実行の差異は表形式で整理する。
 - 失敗時のトリアージフロー（ツールチェーン破損、sysroot ドリフト、リモートホスト障害／代替エミュレータ不整合）を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に登録し、`Severity` と `Mitigation` を記入する。トリアージ担当は Phase 1 チーム（macOS）と Phase 1-7 Linux 検証チームで二重化する。
 
 10.6. **クロス環境監査と継続的メンテナンス**

@@ -215,7 +215,7 @@
 
 6.1. 仕様書内サンプル (`reml` コードブロック) を Reml 実装で実行し、必要に応じて修正または `NOTE` 追記を行う。
 6.2. `README.md` および `3-0-phase3-self-host.md` に Prelude/Iter 移行ステータスを追記し、利用者向けハイライトを作成する。
-6.3. 新規 API の使用例を `examples/` ディレクトリに追加し、`docs/guides/core-parse-streaming.md` 等関連ガイドへのリンクを更新する。
+6.3. 新規 API の使用例を `examples/` ディレクトリに追加し、`docs/guides/compiler/core-parse-streaming.md` 等関連ガイドへのリンクを更新する。
 
 ### 7. テスト・ベンチマーク統合とリリース準備（39週目）
 **担当領域**: 品質保証

@@ -1,6 +1,6 @@
 # クロスコンパイル実務ガイド
 
-> 目的：Reml プロジェクトでクロスコンパイルを行う際に必要な CLI 操作、ツールチェーン管理、レジストリ連携、CI 構築の流れを一箇所で把握できるようにする。本ガイドは `docs/guides/portability.md` と `docs/guides/ci-strategy.md` を補完し、日常運用の手引きを提供する。
+> 目的：Reml プロジェクトでクロスコンパイルを行う際に必要な CLI 操作、ツールチェーン管理、レジストリ連携、CI 構築の流れを一箇所で把握できるようにする。本ガイドは `docs/guides/runtime/portability.md` と `docs/guides/tooling/ci-strategy.md` を補完し、日常運用の手引きを提供する。
 
 ## 1. クイックスタート
 
@@ -144,7 +144,7 @@ jobs:
             reports/tests.json
 ```
 
-CI 全体の運用は `docs/guides/ci-strategy.md` のマトリクスと併せて調整してください。
+CI 全体の運用は `docs/guides/tooling/ci-strategy.md` のマトリクスと併せて調整してください。
 
 ## 6. レジストリ公開チェック
 

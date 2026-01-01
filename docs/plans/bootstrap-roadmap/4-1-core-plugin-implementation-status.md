@@ -58,11 +58,11 @@
 - [x] Bundle JSON 形式の仕様追記  
   - `docs/spec/4-7-core-parse-plugin.md`
 - [x] `reml plugin install --bundle` のガイド追記  
-  - `docs/guides/plugin-authoring.md`
-  - `docs/guides/cli-workflow.md`
+  - `docs/guides/dsl/plugin-authoring.md`
+  - `docs/guides/tooling/cli-workflow.md`
 - [x] `--output json` の例とスキーマ参照を追加  
   - `docs/spec/4-7-core-parse-plugin.md`
-  - `docs/guides/cli-workflow.md`
+  - `docs/guides/tooling/cli-workflow.md`
   - `docs/schemas/plugin-bundle-registration.schema.json`
 
 ### F. 実装安定化・テスト実行
@@ -170,7 +170,7 @@
 
 #### G.1 目的とスコープ
 - [x] Phase 4 で必要な **最小導線**（`install`/`verify` と Capability の可視化）を固め、運用ログと監査キーを揃える
-- [x] 仕様/ガイド（`docs/spec/4-7-core-parse-plugin.md`, `docs/guides/cli-workflow.md`）と整合する CLI 挙動を確定する
+- [x] 仕様/ガイド（`docs/spec/4-7-core-parse-plugin.md`, `docs/guides/tooling/cli-workflow.md`）と整合する CLI 挙動を確定する
 
 #### G.2 CLI 仕様（MVP）
 - [x] `reml plugin install --bundle <path> --policy <strict|permissive> [--output human|json]`

@@ -142,7 +142,7 @@ typedef struct {
 ### ドキュメント整合性（完了）
 
 - [x] 計画書 §1.1 の関数一覧と `reml_runtime.h` の宣言が一致
-- [x] `docs/guides/llvm-integration-notes.md` §5.4 との整合を確認
+- [x] `docs/guides/compiler/llvm-integration-notes.md` §5.4 との整合を確認
 - [x] `panic` のシグネチャ差異が明示的に文書化されている
 
 ### コンパイラ統合（次ステップで検証）
@@ -174,7 +174,7 @@ typedef struct {
 ## 参考資料
 
 - **計画書**: `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md`
-- **LLVM 統合ガイド**: `docs/guides/llvm-integration-notes.md` §5
+- **LLVM 統合ガイド**: `docs/guides/compiler/llvm-integration-notes.md` §5
 - **仕様調査**: `docs/notes/llvm-spec-status-survey.md` §2.5
 - **コンパイラ実装**: `compiler/ocaml/src/llvm_gen/codegen.ml:176-200`
 - **ABI 実装**: `compiler/ocaml/src/llvm_gen/abi.ml`, `compiler/ocaml/src/llvm_gen/llvm_attr.ml`

@@ -13,4 +13,4 @@
 
 - 仕様: `docs/spec/3-3-core-text-unicode.md` §9 のサンプルを `examples/core-text/text_unicode.reml` へ移し、`expected/` 配下のゴールデンで CLI/Streaming/監査の整合を検証する。
 - KPI: `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --source examples/core-text/expected/text_unicode.grapheme_stats.golden --require-success` を追加して `text.grapheme.cache_hit` を監視する予定。
-- リンク: `docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md` §5、`docs/guides/core-parse-streaming.md` §11、`docs/guides/ai-integration.md` §6。
+- リンク: `docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md` §5、`docs/guides/compiler/core-parse-streaming.md` §11、`docs/guides/ecosystem/ai-integration.md` §6。

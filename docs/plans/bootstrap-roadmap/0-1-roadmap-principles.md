@@ -3,7 +3,7 @@
 Reml 本体のブートストラップ計画は、[0-1-project-purpose.md](../../spec/0-1-project-purpose.md) で定義された価値観を実装ロードマップに具体化するための指針です。本章では計画書全体が従うべき優先順位と判断基準を明文化し、各フェーズで妥協できない条件を共有します。
 
 ## 0.1.1 性能と安全性の両立
-- **性能指標の継承**: 解析速度 O(n)・メモリ使用量 2×入力以下・50MB までのスケーラビリティという最優先要件を、MVP からセルフホスト移行後まで一貫して検証する。性能測定は `docs/guides/llvm-integration-notes.md` のパイプライン各段階で実施し、観測値は計画書 2 系列で追跡する。
+- **性能指標の継承**: 解析速度 O(n)・メモリ使用量 2×入力以下・50MB までのスケーラビリティという最優先要件を、MVP からセルフホスト移行後まで一貫して検証する。性能測定は `docs/guides/compiler/llvm-integration-notes.md` のパイプライン各段階で実施し、観測値は計画書 2 系列で追跡する。
 - **安全性ゲート**: 型安全・メモリ安全・例外制御に関する契約（`Result` ベースのエラーハンドリング、RC 所有権モデル）は Chapter 3（`3-8`, `3-9`）と矛盾してはならない。段階的に `effect` タグと Capability 監査（[3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md)）を導入し、Unsafe 機能はステージ昇格テーブルに基づいて解禁する。
 
 ## 0.1.2 開発者体験と段階的習得
@@ -12,7 +12,7 @@ Reml 本体のブートストラップ計画は、[0-1-project-purpose.md](../..
 
 ## 0.1.3 Capability Stage と実行環境の整合
 - **Stage 契約の遵守**: [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) の Stage 区分（`Experimental`→`Preview`→`Stable`）をロードマップに直結させ、Capability 昇格条件をフェーズ定義の一部として記載する。Stage Mismatch が検出された場合はフェーズを進めない。
-- **Runtime Bridge と FFI**: `docs/guides/llvm-integration-notes.md` と [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) で規定された RC 所有権・呼出規約・監査ログの要件を、Phase 3 以降でセルフホストと同時に満たす。ブートストラップ段階での一時的な例外は、根拠とリミットを明記し、フォローアップを Phase 4 の必須タスクに登録する。
+- **Runtime Bridge と FFI**: `docs/guides/compiler/llvm-integration-notes.md` と [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) で規定された RC 所有権・呼出規約・監査ログの要件を、Phase 3 以降でセルフホストと同時に満たす。ブートストラップ段階での一時的な例外は、根拠とリミットを明記し、フォローアップを Phase 4 の必須タスクに登録する。
 
 ## 0.1.4 意思決定とフィードバックループ
 - **意思決定手順**: [0-1-project-purpose.md](../../spec/0-1-project-purpose.md) §2 の比較フレームワーク（短期/長期・性能/安全性のトレードオフ）をロードマップ検討会で毎回適用し、決定理由と却下理由を本計画書の付録（3 系列）に記録する。

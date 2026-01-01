@@ -29,7 +29,7 @@
 
 ## 4. フォローアップ
 - Packrat/左再帰・コンビネータ抽出は `PARSER-003` に委譲しつつ、RunConfig スイッチを `PARSER-003` が利用できるよう先行で注入する。  
-- RunConfig シム導入後は CLI フラグ・LSP 設定ファイル・ガイド類（`docs/guides/core-parse-streaming.md`, `docs/guides/plugin-authoring.md`）を更新し、ユーザーが仕様準拠の設定を選択できるようにする。  
+- RunConfig シム導入後は CLI フラグ・LSP 設定ファイル・ガイド類（`docs/guides/compiler/core-parse-streaming.md`, `docs/guides/dsl/plugin-authoring.md`）を更新し、ユーザーが仕様準拠の設定を選択できるようにする。  
 - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と連携して RunConfig/lex/stream 設定のダッシュボード化と監査指標整備を Phase 2-7 へ接続する。  
 - `TYPE-001` 値制限・`EFFECT-003` 複数 Capability 実装が RunConfig 経由で設定を取得できるかレビューし、必要なデータ共有（例: `extensions["effects"]` / `["runtime"]`）を追加する。  
 - RunConfig 導入状況を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に段階記録し、Phase 3 での Reml 実装移植作業に備えて `docs/notes/core-parser-migration.md` へまとめる。
@@ -66,7 +66,7 @@
 | `\"config\"` | コンフィグ互換モード共有（docs/spec/2-1-parser-type.md:171、docs/spec/2-3-lexer.md:255-267） | 未実装。CLI/LSP 設定も RunConfig へ反映されない | `ConfigTriviaProfile` 等を格納する API 設計が必要。 |
 | `\"recover\"` | 回復シンクトークン/notes 共有（docs/spec/2-1-parser-type.md:172、docs/spec/2-6-execution-strategy.md:62-66） | 未実装。`Parser_diag_state` は固定挙動 | `ERR-002` で利用できる構造体を RunConfig へ格納。 |
 | `\"stream\"` | ストリーミング継続共有（docs/spec/2-1-parser-type.md:173、docs/spec/2-6-execution-strategy.md:68-74） | 未実装。`run_partial` もスタブのまま | `EXEC-001` 向けに checkpoint/resume 情報を出し入れできるプレースホルダを要整備。 |
-| `\"lsp\"` | IDE 設定共有（docs/spec/2-1-parser-type.md:174、docs/guides/ai-integration.md 等） | LSP 実装が `RunConfig` を持たないため未使用 | LSP 側設定ローダと RunConfig 構築ヘルパの設計が必要。 |
+| `\"lsp\"` | IDE 設定共有（docs/spec/2-1-parser-type.md:174、docs/guides/ecosystem/ai-integration.md 等） | LSP 実装が `RunConfig` を持たないため未使用 | LSP 側設定ローダと RunConfig 構築ヘルパの設計が必要。 |
 | `\"runtime\"` / `\"effects\"` / `\"target\"` | Capability/Stage・ターゲット情報（docs/spec/2-1-parser-type.md:124、docs/spec/2-6-execution-strategy.md:76-105、docs/spec/3-8-core-runtime-capability.md:264） | `Diagnostic.extensions` に断片的な情報があるが RunConfig 未連携 | `EFFECT-003`・`TYPE-001` と合意したキー構造を RunConfig に集約する。 |
 
 ##### API/呼び出し経路棚卸し
@@ -126,10 +126,10 @@
 
 ### Step 6: 共有とレビュー記録（Week32 Day5）
 - 実装結果を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記録し、完了条件（RunConfig フィールド実装、メトリクス更新、CLI/LSP 連携）を明確にする。  
-- `docs/spec/2-1-parser-type.md`・`docs/spec/2-6-execution-strategy.md`・`docs/guides/core-parse-streaming.md` に移行脚注と利用例を追記し、仕様との整合を示す。  
+- `docs/spec/2-1-parser-type.md`・`docs/spec/2-6-execution-strategy.md`・`docs/guides/compiler/core-parse-streaming.md` に移行脚注と利用例を追記し、仕様との整合を示す。  
 - `docs/notes/core-parser-migration.md`（新設予定）に RunConfig 移行ステップと今後の課題（Packrat 実装、ストリーミング連携）を整理し、Phase 3 の self-host 作業へ渡す。
 
-> 2025-11-24 更新: Step 6 完了。`docs/plans/bootstrap-roadmap/2-5-review-log.md` に Day6 エントリを追加し、RunConfig 共有手順と残課題を整理した。`docs/spec/2-1-parser-type.md` と `docs/spec/2-6-execution-strategy.md` に CLI/LSP 共有脚注と利用例を追記し、`docs/guides/core-parse-streaming.md` §9 へ RunConfig 連携ワークフローを掲載。`docs/notes/core-parser-migration.md` で Step1〜6 の完了状況とフォローアップ先（`PARSER-003`/`LEXER-002`/`EXEC-001`）を一覧化した。
+> 2025-11-24 更新: Step 6 完了。`docs/plans/bootstrap-roadmap/2-5-review-log.md` に Day6 エントリを追加し、RunConfig 共有手順と残課題を整理した。`docs/spec/2-1-parser-type.md` と `docs/spec/2-6-execution-strategy.md` に CLI/LSP 共有脚注と利用例を追記し、`docs/guides/compiler/core-parse-streaming.md` §9 へ RunConfig 連携ワークフローを掲載。`docs/notes/core-parser-migration.md` で Step1〜6 の完了状況とフォローアップ先（`PARSER-003`/`LEXER-002`/`EXEC-001`）を一覧化した。
 
 ## 6. 依存関係と連携
 - **PARSER-001**: `ParseResult` シムを導入済み。RunConfig を渡すために `parser_driver` API 変更が前提。  

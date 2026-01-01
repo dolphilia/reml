@@ -187,7 +187,7 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 
 2.1. **`--format` / `--json-mode` 集約**
 - `compiler/ocaml/src/cli/options.ml` で `--format` と `--json-mode` の派生オプションを整理し、`SerializedDiagnostic` を利用するフォーマッタ選択ロジックを再構築。
-- `docs/spec/0-0-overview.md` と `docs/guides/ai-integration.md` に新オプションを追記。
+- `docs/spec/0-0-overview.md` と `docs/guides/ecosystem/ai-integration.md` に新オプションを追記。
 
 2.2. **テキストフォーマット刷新**
 - `compiler/ocaml/src/cli/diagnostic_formatter.ml` を `SerializedDiagnostic` ベースへ移行し、`unicode_segment.ml`（新規）を導入して Grapheme 単位のハイライトを実装。
@@ -207,7 +207,7 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 
 3.2. **`lsp-contract` CI ジョブ**
 - GitHub Actions に `lsp-contract` ジョブを追加し、V1/V2 双方の JSON を `tooling/json-schema/diagnostic-v2.schema.json` で検証。
-- `tooling/lsp/README.md` と `docs/guides/plugin-authoring.md` に V2 連携手順を追記。
+- `tooling/lsp/README.md` と `docs/guides/dsl/plugin-authoring.md` に V2 連携手順を追記。
 
 3.3. **互換レイヤ仕上げ**
 - `tooling/lsp/compat/diagnostic_v1.ml` を安定化させ、`[@deprecated]` 属性を付与。
@@ -243,7 +243,7 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 - **完了状況 (2025-11-07)**: `compiler/ocaml/docs/technical-debt.md` で ID22/23 を完了扱いに更新し、H1〜H4 のレビュー結果を追記した。`reports/diagnostic-format-regression.md` / `reports/ffi-bridge-summary.md` へ Step4 の差分確認ログを追加し、`reports/audit/phase2-7/*.audit.jsonl` と `reports/audit/index.json` を生成。`tooling/ci/tests/test_create_audit_index.py` を新設し、index 生成ロジックの単体テストを整備済み。
 
 ### 6. ストリーミング PoC フォローアップ（Phase 2-7 序盤）
-*参照*: `docs/guides/core-parse-streaming.md`, `docs/guides/runtime-bridges.md`, `docs/spec/2-7-core-parse-streaming.md`, `docs/plans/bootstrap-roadmap/2-5-to-2-7-handover.md` §3.4-§3.5  
+*参照*: `docs/guides/compiler/core-parse-streaming.md`, `docs/guides/runtime/runtime-bridges.md`, `docs/spec/2-7-core-parse-streaming.md`, `docs/plans/bootstrap-roadmap/2-5-to-2-7-handover.md` §3.4-§3.5  
 **担当領域**: Core.Parse.Streaming / Runtime Bridge / CLI
 
 6.1. **Packrat キャッシュ共有と KPI 監視**
@@ -256,13 +256,13 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 6.2. **FlowController とバックプレッシャ自動化**
 - `RunConfig.extensions["stream"].flow` を構造体化し、`FlowController.policy = Auto` の `BackpressureSpec`（`max_lag`, `debounce`, `throttle`）を CLI (`compiler/ocaml/src/cli/options.ml`) / LSP (`tooling/lsp/run_config_loader.ml`) から設定できるようにする。
 - `--stream-flow auto` 指定時に `DemandHint.min_bytes` / `preferred_bytes` が `PendingReason::Backpressure` と同期するかを `compiler/ocaml/tests/streaming_runner_tests.ml` と `tooling/lsp/tests/client_compat/streaming_*.json` で検証する。
-- `docs/guides/core-parse-streaming.md` §10 の制限リストを更新し、Auto ポリシーのパラメータ例と既知制約を脚注 `[^streaming-flow-auto-phase27]` へ集約する。
+- `docs/guides/compiler/core-parse-streaming.md` §10 の制限リストを更新し、Auto ポリシーのパラメータ例と既知制約を脚注 `[^streaming-flow-auto-phase27]` へ集約する。
 - **実装ステップ詳細**:
   1. `parser_run_config.ml` / `parser_driver.ml` に `FlowController.policy` と `BackpressureSpec`（`max_lag_bytes`, `debounce_ms`, `throttle_ratio`）の構造体を追加し、`RunConfig.extensions["stream"].flow` を CLI・LSP 共通の JSON でシリアライズできるようにする。CLI では `--stream-flow <auto|manual>`・`--stream-flow-max-lag` 等のオプションを追加し、LSP では `streaming.flow` セクションを `RunConfigLoader.decode_extensions` に統合する。
   2. `FlowController.Auto` が `PendingReason::Backpressure` を発火した際に `DemandHint.min_bytes` / `preferred_bytes` を即時に再計算し、`ContinuationMeta.backpressure_counter` と同期させる。`Parser_driver.Streaming` の Pending→Resume 経路にも `FlowController.feedback` を挿入し、`BackpressureSpec` の閾値変更が 1 チャンク以内で反映されることを保証する。
   3. `compiler/ocaml/tests/streaming_runner_tests.ml` へ `flow_auto_backpressure_sync_*` 系テストを追加し、CLI/LSP からの設定値が `DemandHint` と `PendingReason` のハンドオフに反映されるかをゴールデンで検証する。`tooling/lsp/tests/client_compat/streaming_flow_auto.json` では V2 publishDiagnostics に `extensions.stream_meta.backpressure.policy = \"auto\"` が出力されることを確認する。
   4. `collect-iterator-audit-metrics.py --section streaming` に `parser.stream.backpressure_sync`, `parser.stream.flow.auto_coverage` 指標を追加し、`reports/audit/dashboard/streaming.md` で Linux/macOS/Windows の同期率を比較できるようにする。指標逸脱時は `0-4-risk-handling.md` の `STREAM-POC-BACKPRESSURE` を再オープンするワークフローを整備する。
-  5. `docs/guides/core-parse-streaming.md` §10 / `docs/guides/runtime-bridges.md` §10 / `docs/spec/2-7-core-parse-streaming.md` に Auto ポリシーの構成例と制限事項を追記し、脚注 `[^streaming-flow-auto-phase27]` に `FlowController.policy = Auto` のパラメータ表と `RuntimeBridge` 連携条件を集約する。CI 手順は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と連動させる。
+  5. `docs/guides/compiler/core-parse-streaming.md` §10 / `docs/guides/runtime/runtime-bridges.md` §10 / `docs/spec/2-7-core-parse-streaming.md` に Auto ポリシーの構成例と制限事項を追記し、脚注 `[^streaming-flow-auto-phase27]` に `FlowController.policy = Auto` のパラメータ表と `RuntimeBridge` 連携条件を集約する。CI 手順は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と連動させる。
 - **ステップ別進捗詳細**:
   - **ステップ1 — RunConfig / FlowController 構造化**
     - `parser_run_config.ml` に `FlowController.policy`（`Manual | Auto`）と `BackpressureSpec`（`max_lag_bytes`, `debounce_ms`, `throttle_ratio`）のレコード追加、`RunConfig.extensions["stream"].flow` の JSON シリアライズ仕様（`{"policy":"auto","backpressure":{...}}`）を確定。CLI (`compiler/ocaml/src/cli/options.ml`) の新オプションと LSP (`tooling/lsp/run_config_loader.ml`) の `streaming.flow` デコーダ方針を `parser_design.md` §4.3、および `docs/spec/2-1-parser-type.md` RunConfig 表に反映する。
@@ -277,16 +277,16 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
     - `tooling/ci/collect-iterator-audit-metrics.py` に `parser.stream.backpressure_sync`（DemandHint と PendingReason の同期率）と `parser.stream.flow.auto_coverage`（FlowController Auto 有効化率）を追加し、`reports/audit/dashboard/streaming.md` へグラフを掲載。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に KPI を登録し、逸脱時のハンドラを `0-4-risk-handling.md#stream-poc-backpressure` と連動させる。
     - **進捗 (2026-11-05)**: Linux ランナーで暫定指標 (`backpressure_sync = 0.92`, `auto_coverage = 0.35`) を取得し、Python ヘルパ `StreamingMetrics.ensure_backpressure_sync` を PoC 実装。Windows/macOS データ取得は 6.5 の Runtime Bridge 連携タスクへ連携済み。
   - **ステップ5 — ガイド / 仕様更新と脚注整理**
-    - `docs/guides/core-parse-streaming.md` §10 に FlowController Auto の構成例とロールバック手順 (`--stream-flow manual`) を追加し、`docs/guides/runtime-bridges.md` §10 へ `RuntimeBridge` の `stream_signal` 連携チェックリストを追記。`docs/spec/2-7-core-parse-streaming.md` に脚注 `[^streaming-flow-auto-phase27]` を記載し、`docs/spec/README.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` から参照する。
-    - **進捗 (2026-11-05)**: `docs/guides/core-parse-streaming.md` / `docs/guides/runtime-bridges.md` のドラフト更新を作成し、本書末尾へ脚注 `[^streaming-flow-auto-phase27]` の本文を追加する準備を完了。最終レビューは FlowController 実装完了後に実施予定。
+    - `docs/guides/compiler/core-parse-streaming.md` §10 に FlowController Auto の構成例とロールバック手順 (`--stream-flow manual`) を追加し、`docs/guides/runtime/runtime-bridges.md` §10 へ `RuntimeBridge` の `stream_signal` 連携チェックリストを追記。`docs/spec/2-7-core-parse-streaming.md` に脚注 `[^streaming-flow-auto-phase27]` を記載し、`docs/spec/README.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` から参照する。
+    - **進捗 (2026-11-05)**: `docs/guides/compiler/core-parse-streaming.md` / `docs/guides/runtime/runtime-bridges.md` のドラフト更新を作成し、本書末尾へ脚注 `[^streaming-flow-auto-phase27]` の本文を追加する準備を完了。最終レビューは FlowController 実装完了後に実施予定。
 - **検証・完了条件**:
   - CLI/LSP から `flow.auto` パラメータを与えた場合に `RunConfig` JSON が同一構造でエクスポートされ、`collect-iterator-audit-metrics.py --require-success --section streaming` で `parser.stream.backpressure_sync = 1.0` を報告する。
   - `streaming_runner_tests.ml` / `tooling/lsp/tests/client_compat` / `reports/diagnostic-format-regression.md` に追加したゴールデンが全プラットフォームで安定し、`PendingReason::Backpressure` を含む診断が `stream_meta.backpressure` を欠損しない。
-  - `docs/guides/core-parse-streaming.md` および `docs/guides/runtime-bridges.md` が Auto ポリシーの導入背景・制約・ロールバック手順 (`--stream-flow manual`) を明記し、脚注 `[^streaming-flow-auto-phase27]` が README や関連計画から参照可能になっている。
+  - `docs/guides/compiler/core-parse-streaming.md` および `docs/guides/runtime/runtime-bridges.md` が Auto ポリシーの導入背景・制約・ロールバック手順 (`--stream-flow manual`) を明記し、脚注 `[^streaming-flow-auto-phase27]` が README や関連計画から参照可能になっている。
 - **進捗 (2026-11-05)**:
   - `parser_run_config.ml` と `parser_driver.ml` の構造整理案をハンドオーバー資料 `2-5-to-2-7-handover.md` に沿ってレビューし、`FlowController.policy`, `BackpressureSpec` のフィールド定義とシリアライズ形式を確定した。CLI 側のフラグ仕様 (`--stream-flow`, `--stream-flow-max-lag`, `--stream-flow-debounce-ms`, `--stream-flow-throttle`) を `compiler/ocaml/src/cli/options.ml` へ反映する設計メモを作成済み。
   - `collect-iterator-audit-metrics.py` に `parser.stream.backpressure_sync` / `parser.stream.flow.auto_coverage` を追加する PoC ブランチを作成し、Linux ランナーで `--stream-flow auto` を有効化したテストケースのサンプルログを `reports/audit/dashboard/streaming.md` に貼り付けた。Windows/macOS では KPI が未計測のため、週次での CI 追加を次スプリントにアサインした。
-  - `docs/guides/core-parse-streaming.md` §10 草案と脚注 `[^streaming-flow-auto-phase27]` を本計画内に記録し、`docs/guides/runtime-bridges.md` 側の Backpressure 連携チェックリストに Auto ポリシー要件を追加するドラフトを共有した。残課題として Runtime Bridge 連携の CLI E2E テストと LSP フィクスチャ増強を 6.5 / 6.6 と連動して実施する。
+  - `docs/guides/compiler/core-parse-streaming.md` §10 草案と脚注 `[^streaming-flow-auto-phase27]` を本計画内に記録し、`docs/guides/runtime/runtime-bridges.md` 側の Backpressure 連携チェックリストに Auto ポリシー要件を追加するドラフトを共有した。残課題として Runtime Bridge 連携の CLI E2E テストと LSP フィクスチャ増強を 6.5 / 6.6 と連動して実施する。
 
 6.3. **Pending/Error 監査と DemandHint カバレッジ**
 - `StreamEvent::{Pending,Error}` を `AuditEnvelope` `parser.stream.pending` / `parser.stream.error` へ転送し、`resume_hint`, `last_reason`, `continuation.meta.last_checkpoint`, `expected_tokens` を必須キーとして `scripts/validate-diagnostic-json.sh --suite streaming` で検証する。
@@ -299,10 +299,10 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
   - **進捗 (2026-11-06)**: `Cli.Stats` に `stream_meta` レコードを追加し、`json_formatter` の JSON 出力・`--stats` 表示・`scripts/validate-diagnostic-json.sh --suite streaming` の検証項目を更新。`compiler/ocaml/tests/test_cli_diagnostics.ml` と `streaming_runner_tests.ml`、ゴールデン (`diagnostics/severity/info-hint.json.golden`, `parser/streaming-outcome.json.golden`) を同期済み。
 - LSP publishDiagnostics にも `stream_meta` を添付し、`tooling/lsp/tests/client_compat/streaming_meta*.snapshot` で比較する。`docs/spec/2-1-parser-type.md` §D の RunConfig 共有節に `extensions["stream"].stats=true` の運用例を追記。
   - **進捗 (2026-11-06)**: `tooling/lsp/lsp_transport.ml`／`diagnostic_transport.ml`／`jsonrpc_server.ml` を拡張し、V2 `data` ブロックへ `stream_meta` を埋め込む経路を実装。`tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-streaming-meta.json` と `client_compat.test.ts` にカバレッジを追加し、`tooling/json-schema/diagnostic-v2.schema.json` を更新。
-- CLI `--stats` 出力と `reports/audit/index.json` の指標名を同期し、ログ収集基盤が `stream_meta.*` を自動集計できるよう `docs/guides/ai-integration.md` のログ例を更新する。
+- CLI `--stats` 出力と `reports/audit/index.json` の指標名を同期し、ログ収集基盤が `stream_meta.*` を自動集計できるよう `docs/guides/ecosystem/ai-integration.md` のログ例を更新する。
 
 6.5. **Runtime Bridge 連携と Stage 監査**
-- `docs/guides/runtime-bridges.md` §10 を更新し、`DemandHint` / Backpressure hooks を Runtime Bridge へ渡すチェックリストと `effects.contract.stage_mismatch` 連携手順を追加する。
+- `docs/guides/runtime/runtime-bridges.md` §10 を更新し、`DemandHint` / Backpressure hooks を Runtime Bridge へ渡すチェックリストと `effects.contract.stage_mismatch` 連携手順を追加する。
 - `RuntimeBridgeRegistry` に `stream_signal` ハンドラを追加し、`PendingReason::Backpressure` を `bridge.stage.backpressure` 診断で監査する。`reports/ffi-bridge-summary.md` にストリーミング信号の導入結果を追記する。
 - `collect-iterator-audit-metrics.py --platform windows-msvc --section streaming` を週次で実行し、Windows でも Backpressure signal が取得できるよう `docs/plans/bootstrap-roadmap/2-6-windows-support.md` の監査要件と同期させる。
 - **完了 (2026-11-20)**: `RuntimeBridgeRegistry.stream_signal` を実装し、`Streaming.build_bridge_stage_diagnostic` から既存の直接組み立てを差し替えてバックプレッシャ診断へ監査メタデータ (`cli.*`, `event.*`, Stage 情報) を付与。`compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` を更新し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section streaming --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` で `parser.stream.bridge_backpressure_diagnostics` / `parser.stream.bridge_stage_propagation` の pass_rate=1.0 を確認した（監査 presence 指標は Pending 0 件のため null ）。`collect-iterator-audit-metrics.py` には `IGNORED_BRIDGE_CODES` を追加して `bridge.stage.backpressure` 系診断を KPI 集計から除外、CLI 側は `dune exec tests/test_cli_diagnostics.exe` で JSON 出力回帰を確認済み。Windows 週次の `--platform windows-msvc --section streaming` でも同じコマンドで評価可能になった。
@@ -314,7 +314,7 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 
 **成果物**: Packrat 共有済み Streaming ランナー、FlowController Auto 設定、Pending/Error 監査ログ、`stream_meta` 付き CLI/LSP 出力、Runtime Bridge 拡張ガイド、`reports/audit/dashboard/streaming.md`、`compiler/ocaml/docs/technical-debt.md`（Streaming 項目）、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`
 
-- **完了状況 (2025-11-04)**: 6.1〜6.6 の作業単位と KPI を明確化し、参照資料・成果物・監査手順を本節に集約した。今後の実装進捗は各小項目へ検証ログを追記し、`collect-iterator-audit-metrics.py` と `docs/guides/runtime-bridges.md` の更新タイミングを同期させる。
+- **完了状況 (2025-11-04)**: 6.1〜6.6 の作業単位と KPI を明確化し、参照資料・成果物・監査手順を本節に集約した。今後の実装進捗は各小項目へ検証ログを追記し、`collect-iterator-audit-metrics.py` と `docs/guides/runtime/runtime-bridges.md` の更新タイミングを同期させる。
 - **完了状況 (2026-11-21)**: Streaming ダッシュボードへ Backpressure/Stage 監査を含む KPI テーブルを追加し、pass_rate=1.0 の最新値と収集手順を記録した。技術的負債リストへ `STREAM-POC-PACKRAT` / `STREAM-POC-BACKPRESSURE` を追加してリスク対処フローを定義し、`0-3-audit-and-metrics.md` に週次レビュー結果を転記して Phase 2-8 への引き継ぎ資料と同期済み。
 
 ### 7. Unicode 識別子プロファイル移行（SYNTAX-001 / LEXER-001）
@@ -353,7 +353,7 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 
 7.3. **ドキュメントとクライアント整備**
 - `docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md` の暫定脚注を撤去し、Unicode 識別子仕様への更新内容を `docs/spec/0-2-glossary.md` と `docs/spec/README.md` に波及させる。
-- CLI/LSP のエラーメッセージから ASCII 制限文言を除去し、Unicode 識別子が正しく表示されることを `compiler/ocaml/tests/golden/diagnostics` と `tooling/lsp/tests/client_compat` で検証する。`docs/guides/plugin-authoring.md` と `docs/notes/dsl-plugin-roadmap.md` のチェックリストを更新する。
+- CLI/LSP のエラーメッセージから ASCII 制限文言を除去し、Unicode 識別子が正しく表示されることを `compiler/ocaml/tests/golden/diagnostics` と `tooling/lsp/tests/client_compat` で検証する。`docs/guides/dsl/plugin-authoring.md` と `docs/notes/dsl-plugin-roadmap.md` のチェックリストを更新する。
 - `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md` Step5/6 の進捗を反映し、完了後は Phase 2-8 へ脚注撤去タスクを引き継ぐ。
 
 **成果物**: Unicode プロファイル既定の lexer/parser、更新済みテスト・CI 指標、仕様およびガイドの脚注整理
@@ -370,9 +370,9 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 
 8.2. **フラグ運用とドキュメント**
 - **タスクブレークダウン**:
-  - CLI/RunConfig: `compiler/ocaml/src/cli/options.ml` に `-Zalgebraic-effects`（別名 `--experimental-effects`）を追加し、`Options.to_run_config` で `Parser_run_config.set_experimental_effects` を呼び出す。`compiler/ocaml/src/main.ml` では `Parser_run_config` に伝播した値を `Parser_driver.run` へ渡し、`Parser_flags.set_experimental_effects_enabled` の初期化シーケンスが CLI 実行毎にリセットされることを確認する。ヘルプ出力と `docs/guides/cli-workflow.md` にフラグ説明を追加し、Stage Override メッセージと文言を揃える。
+  - CLI/RunConfig: `compiler/ocaml/src/cli/options.ml` に `-Zalgebraic-effects`（別名 `--experimental-effects`）を追加し、`Options.to_run_config` で `Parser_run_config.set_experimental_effects` を呼び出す。`compiler/ocaml/src/main.ml` では `Parser_run_config` に伝播した値を `Parser_driver.run` へ渡し、`Parser_flags.set_experimental_effects_enabled` の初期化シーケンスが CLI 実行毎にリセットされることを確認する。ヘルプ出力と `docs/guides/tooling/cli-workflow.md` にフラグ説明を追加し、Stage Override メッセージと文言を揃える。
   - Tooling/LSP/CI: `tooling/lsp/tests/client_compat` の初期化経路（`diagnostic_transport.ml` ほか）で RunConfig を拡張し、`experimental_effects` を LSP セッションへ伝搬する。`tooling/ci/collect-iterator-audit-metrics.py` と `scripts/validate-diagnostic-json.sh` は効果ゴールデン生成時にフラグを既定有効とし、PoC ゴールデン再生成用の補助スクリプト（`scripts/update-effect-poc.sh` 仮称）を整備する。
-  - 文書/脚注: Stage 昇格後に脚注 `[^effects-syntax-poc-phase25]` を撤去できるよう、`docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/3-8-core-runtime-capability.md`・`docs/spec/README.md` に解除チェックリストを追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と同期する。`docs/guides/plugin-authoring.md`・`docs/notes/dsl-plugin-roadmap.md` にフラグ依存の記述を追加し、外部連携ドキュメントの整合を取る。
+  - 文書/脚注: Stage 昇格後に脚注 `[^effects-syntax-poc-phase25]` を撤去できるよう、`docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/3-8-core-runtime-capability.md`・`docs/spec/README.md` に解除チェックリストを追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と同期する。`docs/guides/dsl/plugin-authoring.md`・`docs/notes/dsl-plugin-roadmap.md` にフラグ依存の記述を追加し、外部連携ドキュメントの整合を取る。
   - プラグイン／監査: `effects.syntax.constructs.*` メトリクスへフラグ状態を記録し、`RuntimeBridge` 監査と `reports/diagnostic-format-regression.md` の差分レビューで Experimental モードの挙動を追跡できるようにする。
 - **検証観点**:
   - CLI: `dune exec bin/remlc -- --help` にフラグ説明が表示され、`-Zalgebraic-effects` 有効／無効の双方で `compiler/ocaml/tests/effect_syntax_tests.ml` と `compiler/ocaml/tests/effect_handler_poc_tests.ml` が通過する。
@@ -460,7 +460,7 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 - LSP V2 導入に伴うクライアント側調整: `tooling/lsp/compat/diagnostic_v1.ml` を一定期間維持し、互換性レイヤ廃止時のスケジュールを Phase 3 で検討。
 - PARSER-003 Step5 連携: Packrat キャッシュ実装後に `effect.stage.*`／`effect.capabilities[*]` が欠落しないことを CI で確認するため、`tooling/ci/collect-iterator-audit-metrics.py --require-success` に Packrat 専用チェックを追加する（Stage 監査テストケースを新設）。  
 - Recover 拡張: §3.4 で定義した Packrat カバレッジ・notes ローカライズ・ストリーミング重複検証を遅延させず実施する。`RunConfig.extensions["recover"].notes` を CLI/LSP 表示へ反映し、`Diagnostic.extensions["recover"]` の多言語テンプレートを `docs/spec/2-5-error.md` 脚注と同期させる。
-- PARSER-003 Step6 連携: `Core_parse` モジュールのテレメトリ統合と Menhir 完全置換の是非を評価し、`parser.core_comb_rule_coverage` / `parser.packrat_cache_hit_ratio` を利用した監査ダッシュボード拡張を決定する。仕様更新時は `docs/spec/2-2-core-combinator.md` 脚注と `docs/guides/plugin-authoring.md` / `core-parse-streaming.md` の共有手順を再検証する。
+- PARSER-003 Step6 連携: `Core_parse` モジュールのテレメトリ統合と Menhir 完全置換の是非を評価し、`parser.core_comb_rule_coverage` / `parser.packrat_cache_hit_ratio` を利用した監査ダッシュボード拡張を決定する。仕様更新時は `docs/spec/2-2-core-combinator.md` 脚注と `docs/guides/dsl/plugin-authoring.md` / `core-parse-streaming.md` の共有手順を再検証する。
 - 効果構文の Stage 遷移: `syntax.effect_construct_acceptance` が 1.0 未満、または CLI/LSP で `-Zalgebraic-effects` の挙動が不一致になった場合は Phase 2-7 のクリティカルリスクとして即時エスカレーションする。Stage 遷移が遅延する場合、Phase 2-8 の仕様凍結に影響するため優先度を再評価する。
 
 ### <a id="iterator-adapter-esc"></a>Iter Adapter ESC テンプレート

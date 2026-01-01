@@ -163,24 +163,24 @@
 
 **差分リスト（2025-10-28 初版）**
 - `LEXER-001` Unicode/プロファイル未対応: 仕様（docs/spec/2-3-lexer.md:1-124）は UAX #31/XID ベースの識別子と Unicode ホワイトスペース処理、`lexeme`/`symbol` 等のトリビア共有を前提とするが、実装は ASCII 限定（compiler/ocaml/src/lexer.mll:41-71）の簡易版で、`string_normal` も ASCII エスケープのみ対応。結果として Chapter 2 のサンプル（`identifier(profile=DefaultId)` 等）が実行できず、`Stage`/`Capability` 名の Unicode 別名も受理されない。修正案ドラフト: Unicode 対応は Phase 2-7 `lexer-unicode` サブタスクへ移管し、仕様には `Phase 2-5` の暫定制限を明記。差分チェックリストに ASCII 制約で問題となる箇所（DSL プラグイン、FFI）を追加する。→ **2025-12-12 更新**: Step1 で ASCII 限定挙動とエラーメッセージを棚卸し（`docs/plans/bootstrap-roadmap/2-5-review-log.md` `LEXER-001 Step1`）、再現フィクスチャとテストを追加して差分検証手順を固定化した。→ **2026-02-18 更新**: Step2 で `docs/spec/2-3-lexer.md` D-1・`docs/spec/1-1-syntax.md`・`docs/spec/0-2-glossary.md`・`docs/spec/README.md` に ASCII 制約脚注と索引追記を実施し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `lexer.identifier_profile_unicode` 指標を登録、レビュー記録を `docs/plans/bootstrap-roadmap/2-5-review-log.md` へ追加した。→ **2026-03-04 更新**: Step3 で DSL/プラグインチーム向け運用ルールを `docs/notes/dsl-plugin-roadmap.md` §7 に整理し、ASCII 限定運用と Phase 2-7 フォローアップ TODO を登録、レビュー記録へ共有事項を追記した。→ **2026-03-21 更新**: Step4 で CI 指標と `--lex-profile=ascii|unicode` スイッチ設計を確定し、`tooling/ci/collect-iterator-audit-metrics.py` にプレースホルダ集計を追加。Phase 2-7 `lexer-unicode` の受け入れ条件として `expected_pass_fraction=1.0` を差分リストに登録した。[^lexer001-phase25]
-- `LEXER-002` Core.Parse.Lex API 欠落: 仕様が提供する `whitespace`/`commentBlock`/`leading`/`trim`（docs/spec/2-3-lexer.md:126-156）に相当する API が実装側に存在せず、`parser_driver` から直接 `Lexer.token` を呼び出す構成で `RunConfig.extensions["lex"]` も未使用。ガイド（docs/guides/core-parse-streaming.md）で想定する共有トリビア設定が適用できない。修正案ドラフト: Phase 2-5 で `Lexer` から `Core.Parse.Lex` 互換のヘルパーを切り出す案と、仕様脚注で「OCaml 実装は直接トークン化」を併記する案を比較し、採用案を 33 週レビューで決定。
+- `LEXER-002` Core.Parse.Lex API 欠落: 仕様が提供する `whitespace`/`commentBlock`/`leading`/`trim`（docs/spec/2-3-lexer.md:126-156）に相当する API が実装側に存在せず、`parser_driver` から直接 `Lexer.token` を呼び出す構成で `RunConfig.extensions["lex"]` も未使用。ガイド（docs/guides/compiler/core-parse-streaming.md）で想定する共有トリビア設定が適用できない。修正案ドラフト: Phase 2-5 で `Lexer` から `Core.Parse.Lex` 互換のヘルパーを切り出す案と、仕様脚注で「OCaml 実装は直接トークン化」を併記する案を比較し、採用案を 33 週レビューで決定。
 - `OP-001` 演算子ビルダー未提供: `precedence`/`level` API（docs/spec/2-4-op-builder.md:1-139）を用いた宣言的優先度設定が実装に存在せず、Menhir の文法規則（compiler/ocaml/src/parser.mly:520-812 付近）で手動管理している。期待集合や `cut_here()` の自動挿入、FixIt 生成ができず、複数演算子の曖昧性処理（`choice_longest` 等）が仕様通りに動作しない。修正案ドラフト: Phase 2-5 で演算子宣言の再現手段（Menhir 規則→Op DSL 化）の調査タスクを起票し、仕様脚注で「2.4 は Phase 3 でのセルフホスト向け基準」と明示する。
 
 **修正案ドラフト対応方針**
 - `LEXER-001` は Phase 2-7 の Unicode 対応ロードマップを参照し、`Core.Parse` で必要となる最小要件（XID Start/Continue、Bidi 制御禁止、NFC 検証）を優先度 High として差分リストに記録する。
-- `LEXER-002` は `RunConfig.extensions["lex"]` を導入する設計書を 33 週レビューで共有し、ガイド類（docs/guides/plugin-authoring.md 等）を更新するフラグを立てる。
+- `LEXER-002` は `RunConfig.extensions["lex"]` を導入する設計書を 33 週レビューで共有し、ガイド類（docs/guides/dsl/plugin-authoring.md 等）を更新するフラグを立てる。
 - `OP-001` は 2-4 計画の PoC を Phase 2-7/Phase 3-1 と連携し、宣言 DSL の最小核（`infixl`/`prefix`）から順に導入する工程案を作成、`reports/diagnostic-format-regression.md` へ演算子診断のテストケースを追記する。
 
 3.3. **エラー・実行戦略のレビュー（`2-5`〜`2-6`）**
 - Phase 1 診断実装との差分抽出
 - Phase 2 診断拡張の反映
 - 実行戦略の記述精緻化
-- `docs/guides/core-parse-streaming.md` との整合
+- `docs/guides/compiler/core-parse-streaming.md` との整合
 
 **差分リスト（2025-10-28 初版）**
 - `ERR-001` 期待集合/summary 未出力: 仕様（docs/spec/2-5-error.md:1-160）は `Expectation` 集合と `ExpectationSummary` の生成を必須とするが、実装は `Diagnostic.of_parser_error` 呼び出し時に `expected = []` を固定（compiler/ocaml/src/parser_driver.ml:10-38）。CLI/LSP での候補提示や `effects.contract` 連携が機能せず、Phase 2-4 の診断共通化成果を活かせない。修正案ドラフト: `Core.Parse` シム整備と同時に Menhir からの `expected` を収集する仕組み（`Parser.MenhirInterpreter.expected`）を設計し、仕様へ暫定脚注（「OCaml 実装は期待集合を返さない」）を追加、`reports/diagnostic-format-regression.md` で差分テストを拡充する。→ **2025-11-17 更新**: Phase 2-5 ERR-001 S5 で仕様脚注・ガイド・監査 TODO を整備し、期待集合出力は OCaml 実装／CLI／LSP／監査で完全に反映された。暫定脚注は撤去済み。
 - `ERR-002` recover/notes/fixit 欠如: `recover`/`severity_hint`/`fixits` の仕様（docs/spec/2-5-error.md:161-318）に対し、実装は `Result.Error` で単一診断を返すのみで回復・FixIt を生成しない。`scripts/validate-diagnostic-json.sh` で期待されるフィールドが欠落し、Phase 2-7 で予定している CLI テキスト刷新にも影響する。修正案ドラフト: 差分補正で `recover` ポイント候補と FixIt 生成ルールを整理し、`0-4-risk-handling.md` に「回復なし」のリスクを登録、Phase 2-7 と連携して JSON スキーマ拡張を前倒しする。**2025-12-09 追記**: Step2 で FixIt テンプレートと `extensions["recover"].has_fixits` 追加案を確定し、notes/hints 文面とゴールデン更新計画を Step3 へ引き継いだ。**2025-12-12 追記**: Step3 で CLI/LSP/ストリーミング各経路のゴールデンと `parser_recover_tests.ml` を整備し、`parser.recover_fixit_coverage = 1.0` を CI で確認。Packrat 経路と notes 翻訳ルールは Phase 2-7 へ移管済み。
-- `EXEC-001` 実行戦略/ストリーミング未実装: 仕様（docs/spec/2-6-execution-strategy.md, docs/guides/core-parse-streaming.md）で定義されるトランポリン・Packrat・`run_stream` API が実装に存在せず、`parser_driver` は同期一括解析のみを提供する。`RunConfig.stream` 拡張やバックプレッシャ制御（DemandHint）が未接続で、Phase 3 のセルフホスト `run_stream` 互換性検証ができない。修正案ドラフト: Phase 2-5 でストリーミング API の PoC 領域を定義し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ「stream-runner PoC」の依頼を追加、仕様には暫定脚注で対応状況を記載する。
+- `EXEC-001` 実行戦略/ストリーミング未実装: 仕様（docs/spec/2-6-execution-strategy.md, docs/guides/compiler/core-parse-streaming.md）で定義されるトランポリン・Packrat・`run_stream` API が実装に存在せず、`parser_driver` は同期一括解析のみを提供する。`RunConfig.stream` 拡張やバックプレッシャ制御（DemandHint）が未接続で、Phase 3 のセルフホスト `run_stream` 互換性検証ができない。修正案ドラフト: Phase 2-5 でストリーミング API の PoC 領域を定義し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ「stream-runner PoC」の依頼を追加、仕様には暫定脚注で対応状況を記載する。
 
 **修正案ドラフト対応方針**
 - `ERR-001` は `Parser.MenhirInterpreter` の `invocation.expected` を使う取り出し手順を調査し、期待集合を `Diagnostic` へ渡すための設計書を 33 週レビューで提示、成果は `0-3-audit-and-metrics.md` の診断メトリクスへ記録する。
@@ -207,7 +207,7 @@
 **差分リスト（2025-10-29 初版）**
 - `DIAG-001` Severity 列挙の欠落: 仕様では `Severity = Error | Warning | Info | Hint` を必須としている（`docs/spec/3-6-core-diagnostics-audit.md:20`）が、OCaml 実装は `type severity = Error | Warning | Note` のままで `Info`/`Hint` を出力できない（`compiler/ocaml/src/diagnostic.ml:39`）。CLI/LSP のインフォメーション診断が `Warning` へ丸められ、フェーズ 3 の段階的リリース条件（情報レベルの警告分離）が満たせない。→ **2025-10-27 更新**: `compiler/ocaml/src/diagnostic.ml` と `diagnostic_serialization.ml` を更新し、ネイティブに `Info`/`Hint` をハンドリングできるよう修正済み。CLI カラーリングも `Info=青` / `Hint=シアン` で整合。残差分: JSON スキーマ／ゴールデン／メトリクスの `Info`/`Hint` 追加を Step3 以降で対応。→ **2025-11-09 追記**: `diagnostic-v2-info-hint.json` フィクスチャと LSP テストを追加し、`collect-iterator-audit-metrics.py` に `diagnostics.info_hint_ratio` を実装。CLI/LSP/監査の整合確認（Step4）まで完了。→ **2025-11-10 追記**: `docs/spec/3-6-core-diagnostics-audit.md` に DIAG-001 脚注を追加し、Severity 4 値化の履歴を明文化。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `diagnostic.info_hint_ratio` / `diagnostic.hint_surface_area` を登録し、レビュー記録へ完了メモを追記して差分補正を完了。
 - `DIAG-002` `Diagnostic.audit`/`timestamp` 必須化: Builder/Legacy/CLI テスト経路すべてを `phase2.5.audit.v1` テンプレートへ移行し、`audit_id = "cli/<build_id>#<sequence>"`・`change_set.policy = "phase2.5.audit.v1"` を強制する実装を完了（compiler/ocaml/src/diagnostic.ml:292-561, compiler/ocaml/src/main.ml:416-515, compiler/ocaml/tests/test_*）。`python3 tooling/ci/collect-iterator-audit-metrics.py --require-success` で `iterator.stage` / `typeclass.dictionary` / `ffi_bridge` の pass rate が 1.0 に回復した。詳細と検証ログは [`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md`](./2-5-proposals/DIAG-002-proposal.md) §3 を参照。
-- `DIAG-003` Domain/Metadata の語彙不足: 仕様の `DiagnosticDomain` には `Effect`/`Target`/`Plugin`/`Lsp`/`Other(Str)` が含まれる（`docs/spec/3-6-core-diagnostics-audit.md:172`）が、実装は `Parser/Type/Config/Runtime/Network/Data/Audit/Security/CLI` のみ対応（`compiler/ocaml/src/diagnostic.ml:54`）。`effect.stage.*` 拡張キーも CLI JSON では `extensions["effects"]` のみに出力され、監査ログ側の `metadata["event.kind"]` 等が空のまま（`compiler/ocaml/src/diagnostic.ml:342`）。→ Domain 列挙と `AuditEnvelope.metadata` のキー体系を仕様と揃え、`docs/spec/3-8-core-runtime-capability.md` の Stage テーブル更新とあわせて 2-7 へフィードバックする。**2025-11-27 更新**: Step3 で `Other` ドメインの正規化（`extensions["domain.other"]` への退避）、JSON スキーマ列挙、および Plugin/Lsp/Other ゴールデン追加を完了。**2025-11-28 更新**: `event.domain` / `capability.ids` / `plugin.bundle_id` を監査ログへ出力し、`diagnostics.domain_coverage` / `diagnostics.effect_stage_consistency` / `diagnostics.plugin_bundle_ratio` 指標を導入。**2025-11-30 更新**: Step5 で `docs/spec/3-6-core-diagnostics-audit.md`, `docs/spec/0-2-glossary.md`, `docs/spec/3-8-core-runtime-capability.md`, `docs/guides/runtime-bridges.md`, `docs/notes/dsl-plugin-roadmap.md` に脚注・周知メモを追加し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ CI ダッシュボード改修 TODO を登録。
+- `DIAG-003` Domain/Metadata の語彙不足: 仕様の `DiagnosticDomain` には `Effect`/`Target`/`Plugin`/`Lsp`/`Other(Str)` が含まれる（`docs/spec/3-6-core-diagnostics-audit.md:172`）が、実装は `Parser/Type/Config/Runtime/Network/Data/Audit/Security/CLI` のみ対応（`compiler/ocaml/src/diagnostic.ml:54`）。`effect.stage.*` 拡張キーも CLI JSON では `extensions["effects"]` のみに出力され、監査ログ側の `metadata["event.kind"]` 等が空のまま（`compiler/ocaml/src/diagnostic.ml:342`）。→ Domain 列挙と `AuditEnvelope.metadata` のキー体系を仕様と揃え、`docs/spec/3-8-core-runtime-capability.md` の Stage テーブル更新とあわせて 2-7 へフィードバックする。**2025-11-27 更新**: Step3 で `Other` ドメインの正規化（`extensions["domain.other"]` への退避）、JSON スキーマ列挙、および Plugin/Lsp/Other ゴールデン追加を完了。**2025-11-28 更新**: `event.domain` / `capability.ids` / `plugin.bundle_id` を監査ログへ出力し、`diagnostics.domain_coverage` / `diagnostics.effect_stage_consistency` / `diagnostics.plugin_bundle_ratio` 指標を導入。**2025-11-30 更新**: Step5 で `docs/spec/3-6-core-diagnostics-audit.md`, `docs/spec/0-2-glossary.md`, `docs/spec/3-8-core-runtime-capability.md`, `docs/guides/runtime/runtime-bridges.md`, `docs/notes/dsl-plugin-roadmap.md` に脚注・周知メモを追加し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ CI ダッシュボード改修 TODO を登録。
 
 **修正案ドラフト対応方針**
 - `DIAG-001` `Severity` 拡張と JSON スキーマ改版案を Phase 2-5 差分リストにまとめ、CLI/LSP 双方のゴールデンを更新するタイムラインを 2-7 チームへ共有。Step5 で仕様・指標ドキュメントの更新とレビュー記録追記まで完了しているため、Phase 2-7 では CLI テキスト出力刷新と `diagnostic.hint_surface_area` 集計実装を引き受ける。
@@ -310,7 +310,7 @@
   - Week31 Day3-4: Menhir ドライバ呼び出しを `Core.Parse` 互換シムに差し替え、`ParseResult.diagnostics` へ複数診断を束ねる PoC を `parser_driver_tests.ml`（新規）で検証する。`parser.parse_result_consistency` と `parser.farthest_error_offset` を `0-3-audit-and-metrics.md` に登録し、CI で `run`/`run_partial` 一致率を測定する。
   - Week31 Day5: `docs/spec/2-1-parser-type.md` と `docs/spec/2-6-execution-strategy.md` に移行脚注を追加し、CLI/LSP で `ParseResult.recovered` を JSON 出力へ載せるための更新作業を Phase 2-5 Week32 のドキュメント反映ステップへ連携する。完了条件は `scripts/validate-diagnostic-json.sh` で `ParseResult` 拡張フィールドが検証されること。
 - **PARSER-003 Step6**: 2025-12-24 時点でコアコンビネーター抽出計画のドキュメント同期を実施し、`Core_parse` PoC の状況を仕様・ガイド・索引へ反映する。
-  - `docs/spec/2-2-core-combinator.md` に OCaml 実装進捗の脚注を追加し、`rule`/`label`/`cut` と Packrat 指標が仕様側で追跡できるよう整備。`docs/guides/plugin-authoring.md` / `docs/guides/core-parse-streaming.md` へ RunConfig 共有手順とコンビネーター利用例を追記した。
+  - `docs/spec/2-2-core-combinator.md` に OCaml 実装進捗の脚注を追加し、`rule`/`label`/`cut` と Packrat 指標が仕様側で追跡できるよう整備。`docs/guides/dsl/plugin-authoring.md` / `docs/guides/compiler/core-parse-streaming.md` へ RunConfig 共有手順とコンビネーター利用例を追記した。
   - `README.md` と `docs/plans/bootstrap-roadmap/2-5-proposals/README.md` の索引を更新し、PARSER-003 の Step6 完了を記録。`docs/notes/core-parse-api-evolution.md` に Step6 セクション、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に 2025-12-24 ログを追加した。
   - テレメトリ統合・Menhir 置換判断は未完了のため `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ TODO を移送し、Phase 2-7 で Packrat 指標 (`parser.core_comb_rule_coverage` など) の監査強化を検討する。
 - **TYPE-003 / DIAG-002**: Phase 2-5 開始直後に実装を進め、`ParseResult` シム導入後でも型クラス辞書復元・監査必須化が阻害されないよう依存関係を整理する。完了後は各仕様章へ脚注・脚注解除の予定を反映する。TYPE-003 については以下の 5 ステップを Week31 Day1-5 で順に進める。
@@ -370,7 +370,7 @@
 - 2025-12-15 更新: ERR-002 Step4 で `docs/spec/2-5-error.md`・`docs/spec/3-6-core-diagnostics-audit.md` の脚注と共有ログ（`docs/plans/bootstrap-roadmap/2-5-review-log.md`）を整備し、Packrat／notes／ストリーミング重複の残課題を `docs/notes/core-parse-streaming-todo.md` と Phase 2-7 計画 §3.4 へ移管した。
 - 2026-01-16 更新: EXEC-001 Step3 でストリーミング制御ループ PoC（`StreamDriver` ステートマシン、`DemandHint` 再計算、`StreamMeta` 指標集計）の設計を完了し、`Pending`/`Completed` 遷移表と計測方針を `EXEC-001` 計画書に記録した。Step4 では CLI/LSP/CI への配線とレイテンシ測定を実装する。
 - 2026-01-24 更新: Step4 で CLI/LSP/CI へストリーミング PoC を接続。`--streaming` 系フラグ、`Parser_driver.Streaming`、`streaming_runner_tests.ml`、`streaming-outcome.json.golden`、`parser.stream_extension_field_coverage` を実装し、Pending→`resume`→Completed の往復を確認済み。残課題（Packrat 共有・バックプレッシャ通知・CLI メトリクス転送）は Phase 2-7 へ引き継ぎ。
-- 完了後は `docs/guides/core-parse-streaming.md` や `docs/spec/2-2-core-combinator.md` に脚注・更新を反映させ、関連サンプルが動作することを確認する。
+- 完了後は `docs/guides/compiler/core-parse-streaming.md` や `docs/spec/2-2-core-combinator.md` に脚注・更新を反映させ、関連サンプルが動作することを確認する。
 
 6.5. **Phase 2-7 以降に向けた準備**
 - **LEXER-001 / SYNTAX-001 / SYNTAX-003 / EFFECT-002 / TYPE-002** など Phase 2-7 移行案件は、Phase 2-5 期間中に脚注整備・ロードマップ作成・必要なノート作成（`docs/notes/effect-system-tracking.md` 等）を完了する。`SYNTAX-003 S4` で整理したハンドオーバー チェックリスト H-O1〜H-O5 を Phase 2-7 計画へ転記済みであるため、進捗確認は同チェックリストに沿って実施する。
@@ -388,9 +388,9 @@
 - 脚注・TODO の追加
 
 **更新チェックリスト（優先度順）**
-- [x] `docs/spec/3-6-core-diagnostics-audit.md`・`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`・`docs/guides/runtime-bridges.md` 間で Severity 4 値化と `DiagnosticDomain` 拡張（DIAG-001〜003）の脚注・メトリクス・ガイド記述が一致しているか再確認し、不整合がある場合は `docs/spec/3-0-core-library-overview.md` と `docs/notes/dsl-plugin-roadmap.md` も同時に更新する。
+- [x] `docs/spec/3-6-core-diagnostics-audit.md`・`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`・`docs/guides/runtime/runtime-bridges.md` 間で Severity 4 値化と `DiagnosticDomain` 拡張（DIAG-001〜003）の脚注・メトリクス・ガイド記述が一致しているか再確認し、不整合がある場合は `docs/spec/3-0-core-library-overview.md` と `docs/notes/dsl-plugin-roadmap.md` も同時に更新する。
 - [x] `docs/spec/1-1-syntax.md`・`docs/spec/1-3-effects-safety.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/notes/effect-system-tracking.md` に掲載された `Σ_before`/`Σ_after` PoC 脚注（EFFECT-002 Step4/5）と KPI (`syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`) の説明が揃っているか確認し、差分があれば Phase 2-7 向けの撤去条件を明示する。
-- [x] `docs/spec/2-1-parser-type.md`・`docs/spec/2-6-execution-strategy.md`・`docs/guides/core-parse-streaming.md`・`docs/notes/core-parse-api-evolution.md` で RunConfig（PARSER-002/003 Step6）に関する表記と参照リンクが一致しているか確認し、`parser-runconfig-packrat.json.golden` の更新履歴を脚注に追記する。
+- [x] `docs/spec/2-1-parser-type.md`・`docs/spec/2-6-execution-strategy.md`・`docs/guides/compiler/core-parse-streaming.md`・`docs/notes/core-parse-api-evolution.md` で RunConfig（PARSER-002/003 Step6）に関する表記と参照リンクが一致しているか確認し、`parser-runconfig-packrat.json.golden` の更新履歴を脚注に追記する。
 - [x] `docs/spec/1-2-types-Inference.md`・`docs/spec/3-6-core-diagnostics-audit.md` の `type_row_mode = "metadata-only"` 脚注（TYPE-002 Step3）と `effects.type_row.integration_blocked` KPI の説明を同一語彙に統一し、解除条件を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と同期させる。
 
 7.2. **用語集・索引の更新**
@@ -439,7 +439,7 @@
 **リンク検証ノート**
 - `scripts/validate-diagnostic-json.sh` や `tooling/ci/collect-iterator-audit-metrics.py --summary` の出力で参照する Markdown が 404 にならないか手動確認し、必要に応じてパスを更新する。
 - Phase 2-5 で新設した脚注（例: `[^effects-syntax-poc-phase25]` など）が全ファイルで整合しているか確認し、撤去が完了したものは差分ログに完了理由を記録する。
-- `docs/notes/`・`docs/guides/` に追加した参照（`docs/notes/effect-system-tracking.md`, `docs/guides/core-parse-streaming.md` 等）から仕様書への逆リンクが成立しているか確認する。
+- `docs/notes/`・`docs/guides/` に追加した参照（`docs/notes/effect-system-tracking.md`, `docs/guides/compiler/core-parse-streaming.md` 等）から仕様書への逆リンクが成立しているか確認する。
 
 8.3. **ガイド・ノートの整合**
 - `docs/guides/` 以下のガイド更新
@@ -448,7 +448,7 @@
 - 廃止されたドキュメントの削除/非推奨化
 
 **整合アクション**
-- [x] `docs/guides/runtime-bridges.md`・`docs/guides/core-parse-streaming.md`・`docs/guides/plugin-authoring.md` で DIAG／RunConfig／効果 PoC に関する脚注と仕様参照が最新化されているか確認し、未反映の場合は脚注を更新する。
+- [x] `docs/guides/runtime/runtime-bridges.md`・`docs/guides/compiler/core-parse-streaming.md`・`docs/guides/dsl/plugin-authoring.md` で DIAG／RunConfig／効果 PoC に関する脚注と仕様参照が最新化されているか確認し、未反映の場合は脚注を更新する。
 - [x] `docs/notes/effect-system-tracking.md`・`docs/notes/core-parse-api-evolution.md`・`docs/notes/dsl-plugin-roadmap.md` に記録した Phase 2-5 の進捗と `docs/plans/bootstrap-roadmap/2-5-review-log.md` のエントリが相互参照できるかを確認し、欠落していればメモを追加する。
 - [x] 廃止・移設予定のノートが残っている場合は `docs/plans/repository-restructure-plan.md` と `docs-migrations.log` に補足を追記し、読者が移行経路を把握できるようにする。
 

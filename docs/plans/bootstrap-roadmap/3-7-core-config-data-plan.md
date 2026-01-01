@@ -54,11 +54,11 @@
 2.2. `load_manifest`/`validate_manifest`/`declared_effects`/`update_dsl_signature` 等の API を実装し、エラー時に `Diagnostic` を返す仕組みを整備する。
     - ファイル IO と `Diagnostic` の橋渡しを行う `ManifestLoader` を `effect {io,config}` でタグ付けし、`Result<Manifest, Diagnostic>` を返す共通エントリポイントを `compiler/rust/core/config/mod.rs` に配置する。
     - バリデーションでは `spec/3-6-core-diagnostics-audit.md` の `config.missing_field`/`config.invalid_stage` 等のコードを使用し、`core_iter_collectors.snap` を更新してスナップショットテストで検証する。
-    - DSL シグネチャ更新 (`update_dsl_signature`) は `compiler/rust/frontend/src/dsl/export.rs` と連携させ、`@dsl_export` 注釈から得た情報を Manifest 側へ逆反映させる手順を `docs/guides/plugin-authoring.md` にも記載する。
+    - DSL シグネチャ更新 (`update_dsl_signature`) は `compiler/rust/frontend/src/dsl/export.rs` と連携させ、`@dsl_export` 注釈から得た情報を Manifest 側へ逆反映させる手順を `docs/guides/dsl/plugin-authoring.md` にも記載する。
 2.3. DSL エクスポートシグネチャとの同期 (`@dsl_export`) を確認し、Capability/Stage 情報が正しく投影されることをテストする。
     - `compiler/rust/frontend/tests/core_iter_collectors.rs` のような既存テストを流用し、Manifest→DSL→Capability の往復経路を `cargo test core_iter_collectors -- --nocapture` で再現し、監査ログ (`reports/spec-audit/ch1/core_iter_collectors.audit.jsonl`) を比較する。
     - Stage 情報は `RuntimeBridgeAuditSpec` のキー（`bridge.stage.required`, `bridge.stage.actual`）が埋まるかを確認し、不足時は `docs/spec/3-8-core-runtime-capability.md` との整合タスクを追加する。
-    - `docs/guides/plugin-authoring.md` と `docs/guides/runtime-bridges.md` に `@dsl_export` × Manifest 連携例を掲載し、サンプル `examples/core_config/` を用意する。
+    - `docs/guides/dsl/plugin-authoring.md` と `docs/guides/runtime/runtime-bridges.md` に `@dsl_export` × Manifest 連携例を掲載し、サンプル `examples/core_config/` を用意する。
 
 #### 2.2 実施結果（Run ID: 20250719-manifest-loader）
 - `compiler/rust/runtime/src/config/manifest.rs` へ `ManifestLoader`/`load_manifest`/`validate_manifest`/`declared_effects`/`update_dsl_signature` を追加し、`effect {io,config}` 相当のエラーをすべて `GuardDiagnostic` (`config.*` / `manifest.entry.missing`) で返すよう統合した。`config.path`/`config.key_path` メタデータを `Diagnostic.extensions["config"]` と監査メタデータに同時転写することで 3-6 §6.1.3 と整合。
@@ -79,7 +79,7 @@
 3.3. `compatibility_profile`/`resolve_compat` 等の API を実装し、Manifest/RunConfig からの利用を確認する。
     - Manifest → `RunConfig` 伝搬の制御フロー図を作成し、`compiler/rust/runtime/run_config.rs` で `ConfigCompatibility` が `Core.Env` へ渡ることを確認する。
     - `resolve_compat` は `Result<CompatibilitySet, Diagnostic>` を返すよう統一し、実験的フラグは環境変数 `REML_CONFIG_EXPERIMENTAL` で切り替え可能にする。
-    - CLI (`reml config lint`) と LSP で互換性設定が反映されることを `docs/guides/ai-integration.md` §6 のシナリオで QA し、結果を `reports/spec-audit/ch3/config_compatibility-lsp.md` に記録する。
+    - CLI (`reml config lint`) と LSP で互換性設定が反映されることを `docs/guides/ecosystem/ai-integration.md` §6 のシナリオで QA し、結果を `reports/spec-audit/ch3/config_compatibility-lsp.md` に記録する。
 
 #### 3.3 実施結果（Run ID: 20250214-config-resolve）
 - `compiler/rust/runtime/src/config/compat.rs` に Stage/Format 別の `compatibility_profile_for_stage`・優先順位付き `resolve_compat`・`CompatibilityLayer`/`ResolvedConfigCompatibility` を追加し、CLI / Env / Manifest / Default の 4 レイヤーから最終プロファイルを決定できるようにした。`resolve_compat` は `ConfigCompatibilitySource::{Cli,Env,Manifest,Default}` を記録し、診断・監査メタデータで `config.compatibility_source` を共有する。
@@ -154,26 +154,26 @@
 - 仕様 `docs/spec/3-7-core-config-data.md` と `docs/spec/3-6-core-diagnostics-audit.md`（診断コード補足）へ互換条件と新コードを追記し、`docs/notes/dsl-plugin-roadmap.md` へ移行ステップ表と `MIGRATION-BLOCKER-001` を登録して Phase4 連携の導線を確保した。
 5.3. CLI 連携 (`reml config lint`, `reml config diff`) の出力仕様を整備し、サンプルを作成する。
     - `compiler/rust/cli/src/commands/config.rs` に `lint`/`diff` サブコマンドを追加し、`ChangeSet` との整合を `snap` テストで担保する。
-    - `docs/guides/runtime-bridges.md` と `docs/guides/ai-integration.md` に CLI 出力例を掲載し、JSON/TTY 両方のサンプルを示す。
+    - `docs/guides/runtime/runtime-bridges.md` と `docs/guides/ecosystem/ai-integration.md` に CLI 出力例を掲載し、JSON/TTY 両方のサンプルを示す。
     - `examples/core_config/cli/` に最小構成の Manifest/Schema を配置し、`scripts/run_examples.sh --suite core_config` で検証できるようにする。
 
 #### 5.3 実施結果（Run ID: 20240305-config-cli-diff）
 - `compiler/rust/frontend/src/bin/remlc.rs` を拡張し、`config lint`/`config diff` サブコマンドを新設。`GuardDiagnostic` を `LintDiagnostic` へ整形する JSON レポートと TTY 出力を実装し、`ChangeSet` と `SchemaDiff` を同時出力するテスト（`diff_report_contains_expected_change_set` など）を追加した。Exit Code も `lint` で 0/2 を返し、CI へ直接組み込める形にした。
 - `examples/core_config/cli/` に Manifest/Schema/DSL と `config_old.json`/`config_new.json`、および `lint.expected.json`/`diff.expected.json` を追加。`tooling/examples/run_examples.sh --suite core_config` で `cargo run --bin remlc` を呼び出し、`--update-golden` 時にゴールデンを更新できるよう Bash スイートを拡張した。
-- `docs/guides/runtime-bridges.md` と `docs/guides/ai-integration.md` に CLI 操作例・JSON スニペットを追記し、AI 連携や Runtime Bridge ガイドから直接 `examples/core_config/cli` を参照できるようにした。
+- `docs/guides/runtime/runtime-bridges.md` と `docs/guides/ecosystem/ai-integration.md` に CLI 操作例・JSON スニペットを追記し、AI 連携や Runtime Bridge ガイドから直接 `examples/core_config/cli` を参照できるようにした。
 
 ### 6. ドキュメント・サンプル更新（55-56週目）
 **担当領域**: 情報整備
 
-6.1. 仕様書内の表・サンプルを実装に合わせて更新し、`examples/` に Manifest/Schema 例を追加する（Core.Text ガイド更新時は `docs/guides/core-parse-streaming.md` §10 と整合させる）。
+6.1. 仕様書内の表・サンプルを実装に合わせて更新し、`examples/` に Manifest/Schema 例を追加する（Core.Text ガイド更新時は `docs/guides/compiler/core-parse-streaming.md` §10 と整合させる）。
     - `docs/spec/3-7-core-config-data.md` の章末サンプルを最新 API で書き換え、`git grep "Manifest::"` で旧記法を洗い出して一括更新する。
     - `examples/core_config/basic_manifest/` を新設し、`README.md` 付きで `reml config lint` の結果を貼る。`tooling/examples/run_examples.sh --suite core_config --update-golden` 手順を説明書として追記する。
-    - Core.Text ガイドとの整合確認は `docs/guides/core-parse-streaming.md` §10 の参照リンクを更新し、Config/Data 例との相互リンクを README に追加する。
-6.2. `README.md`/`3-0-phase3-self-host.md` に Config/Data 実装状況を記載し、Phase 4 への連携点をまとめる（AI 入力ポリシーの共有は `docs/guides/ai-integration.md` §6 と同期）。
+    - Core.Text ガイドとの整合確認は `docs/guides/compiler/core-parse-streaming.md` §10 の参照リンクを更新し、Config/Data 例との相互リンクを README に追加する。
+6.2. `README.md`/`3-0-phase3-self-host.md` に Config/Data 実装状況を記載し、Phase 4 への連携点をまとめる（AI 入力ポリシーの共有は `docs/guides/ecosystem/ai-integration.md` §6 と同期）。
     - 進捗サマリを `README.md#phase-3-bootstrap-roadmap` に箇条書きで追記し、完了/進行中のモジュールを色分け Legend で説明する。
     - `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` のマイルストーン表に Config/Data 行を追加し、Phase 4 との依存（MigrationPlan, Registry 連携）を注記で示す。
-    - AI 連携ポリシー ( `docs/guides/ai-integration.md` §6 ) に Config/Data API の利用例を追記し、AI ツールへ Manifest 情報を渡す際の制約をまとめる。
-6.3. `docs/guides/runtime-bridges.md`/`docs/guides/plugin-authoring.md` 等で設定連携の記述を更新する。
+    - AI 連携ポリシー ( `docs/guides/ecosystem/ai-integration.md` §6 ) に Config/Data API の利用例を追記し、AI ツールへ Manifest 情報を渡す際の制約をまとめる。
+6.3. `docs/guides/runtime/runtime-bridges.md`/`docs/guides/dsl/plugin-authoring.md` 等で設定連携の記述を更新する。
     - runtime bridge ガイドに Config/Data の流れ図を追加し、`RuntimeBridgeRegistry` が Manifest 由来の Capability を参照するステップを説明する。
     - plugin authoring ガイドで `@dsl_export` → Manifest → Schema → CLI/LSP という手順をケーススタディとしてまとめ、ステージ別注意点を列挙する。
     - ガイド更新後は `docs/notes/dsl-plugin-roadmap.md` へ変更ログをリンクし、再編履歴 (`docs-migrations.log`) に章番号と日付を記載する。

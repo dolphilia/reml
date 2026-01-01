@@ -148,7 +148,7 @@
 - `compiler/rust/runtime/tests/manifest_validation.rs` に `conductor_capability_contract_round_trip` と `manifest_capabilities_detect_duplicate_ids` を追加し、`Manifest::conductor_capability_contract()` が `StageRequirement::AtLeast(StageId::Beta)`・`declared_effects`・`manifest_path` を保持すること、`ManifestCapabilities::from_manifest()` が重複 ID を `ManifestCapabilityError::DuplicateCapability` として検出することを検証した。Stage / Effect の期待値は `RunCapabilityEntry::declared_effects` をソート・重複排除する既存ロジックと突き合わせている。
 - `cargo test -p reml_runtime manifest_validation` を実行し、結果と CLI ログを `reports/spec-audit/ch3/manifest_capability-20260225.md` に保存した。ログには `tests/manifest_validation.rs` の対象ケース、利用した manifest ビルダー（`capability_entry` ヘルパ）、期待エラー内容が含まれる。
 - Config 計画書 `docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md#5.1` に本 Run ID とレポートへの参照を追記し、Manifest/Capability 連携タスクの完了点から 3-8 計画を逆参照できるようにした。
-5.4. `core.collections.ref` capability を `CapabilityRegistry` に登録し、`RefHandle` を介した `collector.effect.rc`/`collector.effect.mut` の監査を `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` の 3.2.3 セクションと `docs/guides/runtime-bridges.md` の橋渡し解説に記録することで、Core.Collections と RuntimeBridge の契約整合性を担保する。
+5.4. `core.collections.ref` capability を `CapabilityRegistry` に登録し、`RefHandle` を介した `collector.effect.rc`/`collector.effect.mut` の監査を `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` の 3.2.3 セクションと `docs/guides/runtime/runtime-bridges.md` の橋渡し解説に記録することで、Core.Collections と RuntimeBridge の契約整合性を担保する。
     - 5.4.a `CapabilityHandle::CollectionsRef`（仮）を追加し、`reml_runtime::collections::ref` の API から Stage チェックを呼び出す。
     - 5.4.b `collector.effect.rc`/`collector.effect.mut` の Stage 情報を `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md#3.2.3` の KPI へ追記し、`reports/spec-audit/ch3/collections_ref-YYYYMMDD.md` に実測ログを保存する。
     - 5.4.c `RuntimeBridgeRegistry` の `describe_bridge("collections.ref")` に Stage 情報を写し、`collect-iterator-audit-metrics.py --section runtime --scenario collections_ref` で監査する。
@@ -156,7 +156,7 @@
 - `compiler/rust/runtime/src/capability/collections.rs` を新設し、`CapabilityHandle::Collections` と `CollectionsCapabilityMetadata` を導入。`CapabilityRegistry` のビルトインに `core.collections.ref (Stage=Stable, effect_scope=["mem","mut","rc"])` を追加し、`CapabilityHandleKind` / `impl_try_from_handle!` へも Variant を拡張した。
 - `compiler/rust/runtime/src/collections/mutable/ref.rs` に `OnceCell` ベースの Stage ガードを実装し、`EffectfulRef::try_new` / `RefHandle::try_new` から `CapabilityRegistry::verify_capability_stage("core.collections.ref", StageRequirement::Exact(StageId::Stable))` を呼び出すよう更新した。Capability 違反は `BorrowError::CapabilityDenied` にマッピングし、FFI では `RefHandle::new` をラップする `try_new` を追加。
 - `python3 tooling/ci/collect-iterator-audit-metrics.py --suite collectors --scenario ref_internal_mutation --output reports/spec-audit/ch3/collections_ref-20251206.json --require-success --require-cell` を実行し、`collector.effect.cell_rc` KPI で `cell_mutations_total=1` / `rc_ops_total=2` を記録（既知の `collector.table.csv_import` 閾値未実装により終了コードは 1、詳細は `reports/spec-audit/ch3/collections_ref-20251206.md` 参照）。
-- ドキュメント連携: `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md#3.2.3` に Stage ガード整備と KPI 更新手順を追記し、`docs/guides/runtime-bridges.md` では `RefHandle::try_new` と Capability 検証フローを補足した。
+- ドキュメント連携: `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md#3.2.3` に Stage ガード整備と KPI 更新手順を追記し、`docs/guides/runtime/runtime-bridges.md` では `RefHandle::try_new` と Capability 検証フローを補足した。
 5.5. Core.IO / Path で定義した Capability (`io.fs.*`, `fs.permissions.*`, `fs.symlink.*`, `fs.watcher.*`, `security.fs.policy`) 用の Runbook を整備する。`docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` を Capability Registry の基準票とし、`File::open`/`watch` 実装から `verify_capability_stage` を呼び出すフックを追加する。CI では `python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario capability_matrix --matrix docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md --output reports/spec-audit/ch3/core_io_capabilities.json --require-success` を Phase3 `core-io-path` ジョブへ組み込み、`docs/notes/runtime-capability-stage-log.md` に `io.fs.*` 系 Stage 結果を追記する。`RuntimeBridgeRegistry` 経由で Watcher を提供する場合は `describe_bridge("native.fs.watch")` の Stage 情報を `CapabilityDescriptor` へ転写し、Stage mismatch が発生した際は `effects.contract.stage_mismatch` 診断と `AuditEnvelope.metadata["io.watch.*"]` を同時に確認する。  
  　加えて、クロスプラットフォームで挙動が分かれる Watcher 付帯 Capability（`watcher.fschange`/`watcher.recursive`/`watcher.resource_limits`）を `IoErrorKind::UnsupportedPlatform` で可視化し、`metadata.io.platform` / `metadata.io.feature` を `watcher_audit` シナリオの必須キーとして扱う。Runbook では `docs/notes/runtime-capability-stage-log.md#2025-12-21-coreio-watcher-クロスプラットフォーム-capability` を参照し、非対応 OS 向けの `reports/spec-audit/ch3/io_watcher-unsupported_platform.md` の更新手順も記載する。
 
@@ -197,12 +197,12 @@
 6.3. `docs/notes/dsl-plugin-roadmap.md` に Stage/Capability の適用例を追加し、プラグイン開発者向けに共有する。
     - 6.3.a DSL プラグイン別の Capability 要求表を `docs/plans/bootstrap-roadmap/assets/plugin-capability-matrix.csv` として作成し、`4-7-core-parse-plugin.md` から参照する。
     - 6.3.b `docs/notes/dsl-plugin-roadmap.md#effect-handling-matrix` に Stage 要件のサンプル（`verify_conductor_contract` 実行例）を追記する。
-    - 6.3.c `docs/guides/plugin-authoring.md` に `reml capability describe <plugin-id>` の利用方法と Plan 3.8 への依存を追記する。
+    - 6.3.c `docs/guides/dsl/plugin-authoring.md` に `reml capability describe <plugin-id>` の利用方法と Plan 3.8 への依存を追記する。
 
 #### 6.3 実施結果（Run ID: 20251230-plugin-capability）
 - `docs/plans/bootstrap-roadmap/assets/plugin-capability-matrix.csv` を作成し、`plugin.dsl.template` / `plugin.dsl.observability` / `plugin.native-ui` の Capability/Stage 依存を CSV で一覧化した。
 - `docs/notes/dsl-plugin-roadmap.md` に `### 5.2 Capability 要求マトリクス` を追加し、上記 CSV と `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json`・`runtime_bridge-stage-records-20251206.json` を使った検証方法を共有した。
-- `docs/guides/plugin-authoring.md` の §2.2 に `reml_capability describe` / `scripts/capability/generate_md.py` の利用例と Stage mismatch チェック手順を追記し、Plan 3.8 の成果物をガイドへ組み込んだ。
+- `docs/guides/dsl/plugin-authoring.md` の §2.2 に `reml_capability describe` / `scripts/capability/generate_md.py` の利用例と Stage mismatch チェック手順を追記し、Plan 3.8 の成果物をガイドへ組み込んだ。
 
 ### 7. テスト・CI 統合（59週目）
 **担当領域**: 品質保証

@@ -148,12 +148,12 @@
 
 | リスク | 影響 | 緩和策 |
 | --- | --- | --- |
-| Inline ASM の制約記法が曖昧 | バックエンドが不正な `call asm` を生成 | `docs/guides/llvm-integration-notes.md` の Inline ASM 仕様に準拠し、`native.inline_asm.invalid_constraint` を追加する |
+| Inline ASM の制約記法が曖昧 | バックエンドが不正な `call asm` を生成 | `docs/guides/compiler/llvm-integration-notes.md` の Inline ASM 仕様に準拠し、`native.inline_asm.invalid_constraint` を追加する |
 | LLVM IR 直書きが LLVM バージョン差に影響 | `opt -verify` が失敗 | `llvm_ir.template_hash` を監査に記録し、失敗例を `reports/spec-audit/ch4/logs/` に保存 |
 | `!{native}` の乱用 | 安全性の崩壊 | `native.inline_asm.used` / `native.llvm_ir.used` を必須監査キー化し、Capability でゲート |
 
 ## TODO（調査メモ付き）
-- Inline ASM の constraint 仕様は `docs/notes/native-escape-hatches-research.md` と `docs/guides/llvm-integration-notes.md` の差分を確認して決定する。
+- Inline ASM の constraint 仕様は `docs/notes/native-escape-hatches-research.md` と `docs/guides/compiler/llvm-integration-notes.md` の差分を確認して決定する。
 - LLVM IR 直書きのテンプレート構文は `compiler/rust/backend/llvm/src/codegen.rs` の IR 生成方針と整合させる。
 
 ## 参照
@@ -164,5 +164,5 @@
 - `docs/spec/1-5-formal-grammar-bnf.md`
 - `docs/spec/3-6-core-diagnostics-audit.md`
 - `docs/spec/3-8-core-runtime-capability.md`
-- `docs/guides/llvm-integration-notes.md`
+- `docs/guides/compiler/llvm-integration-notes.md`
 - `docs/plans/bootstrap-roadmap/4-1-native-escape-hatches-plan.md`

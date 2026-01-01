@@ -12,34 +12,34 @@
 
 ## 3. 統合対象別計画
 
-### 3.1 Core.Parse.Streaming 拡張 (`docs/guides/core-parse-streaming.md:1`)
+### 3.1 Core.Parse.Streaming 拡張 (`docs/guides/compiler/core-parse-streaming.md:1`)
 - **現状**: `run_stream`/`resume` など公式 API を定義し、仕様上は `2-6-execution-strategy.md:261` が詳細をガイドへ委譲。
 - **収容先**: Parser 章に「2-7 Core.Parse.Streaming (Draft→正式)」節を新設。`2-1-parser-type.md:171` の `extensions["stream"]` 説明と連動させる。
 - **主な作業**:
   - API 定義・型 (`StreamOutcome`, `FlowController`) を新節へ移設。✅ 完了（`2-7-core-parse-streaming.md` 作成）
   - RunConfig 統合要件を `2-6-execution-strategy.md` 本文へ昇格し、バッチ実行との整合テーブルを追加。✅ 完了
-  - IDE/CLI 事例など運用寄りの記述はガイドへ縮約し、相互リンクを更新。✅ 完了（`docs/guides/core-parse-streaming.md` を運用ガイド化）
+  - IDE/CLI 事例など運用寄りの記述はガイドへ縮約し、相互リンクを更新。✅ 完了（`docs/guides/compiler/core-parse-streaming.md` を運用ガイド化）
 - **検証ポイント**: `Diagnostic` と監査ログ統合（`StreamEvent`）が現行仕様の効果タグ表と矛盾しないか確認。✅ 完了（`2-7 §G`, `3-8-core-runtime-capability.md:283` 更新）
 
-### 3.2 Core.Unsafe.Ptr API (`docs/guides/core-unsafe-ptr-api-draft.md:1`)
-- **現状**: unsafe ポインタ型と操作 API を詳細に列挙。章末 TODO で仕様編入を明示（`docs/guides/core-unsafe-ptr-api-draft.md:210`）。
+### 3.2 Core.Unsafe.Ptr API (`docs/guides/ffi/core-unsafe-ptr-api-draft.md:1`)
+- **現状**: unsafe ポインタ型と操作 API を詳細に列挙。章末 TODO で仕様編入を明示（`docs/guides/ffi/core-unsafe-ptr-api-draft.md:210`）。
 - **収容先**: `3-9-core-async-ffi-unsafe.md` 内に `Core.Unsafe.Ptr` 節を追加し、効果タグ・Capability 契約を正式化。
 - **主な作業**:
   - 型・API を仕様へ移植し、効果タグ (`effect {memory}`) と Capability 要件を明文化。✅ 完了（`3-9-core-async-ffi-unsafe.md` §3 更新）
   - 監査テンプレートと CI スモークテスト要求を 3-9 のテスト節へ統合。✅ 完了（`3-9` §3.7 へ追加）
-  - ガイド側には運用メモと追加 TODO のみ残し、「仕様へ統合済み」脚注を追加。✅ 完了（`docs/guides/core-unsafe-ptr-api-draft.md` を運用ガイド化）
+  - ガイド側には運用メモと追加 TODO のみ残し、「仕様へ統合済み」脚注を追加。✅ 完了（`docs/guides/ffi/core-unsafe-ptr-api-draft.md` を運用ガイド化）
 - **検証ポイント**: `3-9` に既出の `Core.Async` / FFI セクションとの重複排除、用語と命名規則の統一。✅ 完了（`UnsafeError`/`TaggedPtr` を統一）
 
-### 3.3 Nest.Data リファレンス (`docs/guides/data-model-reference.md:1`)
+### 3.3 Nest.Data リファレンス (`docs/guides/ecosystem/data-model-reference.md:1`)
 - **現状**: `Schema.build` 応用、QualityReport JSON スキーマ、監査整合テストを定義。
 - **収容先**: `3-7-core-config-data.md` に「データ品質・監査」節を追加し、QualityReport スキーマと CLI/API フローを正式化。
 - **主な作業**:
   - QualityReport JSON スキーマとテストケースを仕様へ組み込み。✅ 完了（`3-7-core-config-data.md` §4.4）
   - CLI サンプルは仕様ではコマンド概要のみ残し、詳細手順をガイドへ残留。✅ 完了（`3-7-core-config-data.md` §4.6 とガイド側注記）
-  - `docs/guides/constraint-dsl-best-practices.md` や `docs/guides/runtime-bridges.md` からの参照を、新章節に貼り直し。✅ 完了（引用先を `3-7-core-config-data.md` §4 へ更新）
+  - `docs/guides/dsl/constraint-dsl-best-practices.md` や `docs/guides/runtime/runtime-bridges.md` からの参照を、新章節に貼り直し。✅ 完了（引用先を `3-7-core-config-data.md` §4 へ更新）
 - **検証ポイント**: 監査ログ項目が `3-6-core-diagnostics-audit.md` の命名規約と揃っているか確認。✅ 完了（`3-7-core-config-data.md` §4.5）
 
-### 3.4 Runtime Bridges (`docs/guides/runtime-bridges.md:1`)
+### 3.4 Runtime Bridges (`docs/guides/runtime/runtime-bridges.md:1`)
 - **現状**: Runtime Bridge の Stage 運用、`reload` 手順、WASI/コンテナ運用まで仕様レベルの契約を記述。`3-9-core-async-ffi-unsafe.md:12` が参照。
 - **収容先**: 3 系に「Runtime Bridge 契約」節を追加し、Stage/Capability 契約を正式化。
 - **主な作業**:
@@ -48,22 +48,22 @@
   - WASI/コンテナ手順は portability ガイドと重複しないよう整合。✅ 完了（§10.4 でターゲット互換性とチェックリストを定義）
 - **検証ポイント**: `3-8-core-runtime-capability.md` の特権 Capability 記述と整合する Stage 要件か確認。✅ Stage テーブルを更新し `verify_capability_stage` と連携を明文化。
 
-### 3.5 FFI ハンドブック (`docs/guides/reml-ffi-handbook.md:1`)
+### 3.5 FFI ハンドブック (`docs/guides/ffi/reml-ffi-handbook.md:1`)
 - **現状**: ABI/データレイアウト、所有権契約、監査テンプレートなど Core.Ffi の基礎仕様を包含。
-- **収容先**: `3-9` に `Core.Ffi` 節を整備し、ABI 表やエラーモデルを正式化。LLVM 詳細は `docs/guides/llvm-integration-notes.md` へリンク。
+- **収容先**: `3-9` に `Core.Ffi` 節を整備し、ABI 表やエラーモデルを正式化。LLVM 詳細は `docs/guides/compiler/llvm-integration-notes.md` へリンク。
 - **主な作業**:
   - ✅ ABI テーブル、所有権契約、効果タグ整理を仕様へ移植（`3-9-core-async-ffi-unsafe.md` §2.1–§2.7）。
   - ✅ 監査テンプレートを `3-6` 参照付きで統合し、`CapabilitySecurity` チェックリストを 3-8 に反映。
   - ✅ ガイド側は多言語サンプル・段階的ロードマップに縮約し、仕様への参照を追記。
-- **検証ポイント**: ✅ `docs/guides/core-unsafe-ptr-api-draft.md` と重複するポインタ運用記述を整理（仕様に統合した内容へ誘導）。
+- **検証ポイント**: ✅ `docs/guides/ffi/core-unsafe-ptr-api-draft.md` と重複するポインタ運用記述を整理（仕様に統合した内容へ誘導）。
 
-### 3.6 DSL プラグイン & Capability (`docs/guides/DSL-plugin.md:1`)
+### 3.6 DSL プラグイン & Capability (`docs/guides/dsl/DSL-plugin.md:1`)
 - **現状**: `ParserPlugin` 構造、署名検証、CLI プロトコルを定義。`docs/notes/dsl-plugin-roadmap.md` と連携。
 - **収容先**: Chapter 4 に「4.7 Core.Parse.Plugin 仕様」節を追加し、CLI フローは付録化。
 - **主な作業**:
   - ✅ プラグインメタデータ、`register_plugin`/`register_bundle` API を [4-7-core-parse-plugin.md](../spec/4-7-core-parse-plugin.md) に仕様化し、Bundle 識別子・エラーモデルまで定義。
   - ✅ 署名検証ワークフローを Stage/Capability 監査と接続（`4-7` §3、`3-8-core-runtime-capability.md` §1.2 と連動）。
-  - ✅ ガイド側には導入手順・ベストプラクティスを残し、仕様へのリンクを追記（`docs/guides/DSL-plugin.md`、`docs/notes/dsl-plugin-roadmap.md`）。
+  - ✅ ガイド側には導入手順・ベストプラクティスを残し、仕様へのリンクを追記（`docs/guides/dsl/DSL-plugin.md`、`docs/notes/dsl-plugin-roadmap.md`）。
 - **検証ポイント**: ✅ `4-0-official-plugins-overview.md` と `README.md`、`0-0-overview.md` のリンク構成を更新済み。
 
 ## 4. 横断作業

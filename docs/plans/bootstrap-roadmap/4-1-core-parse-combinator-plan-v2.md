@@ -16,7 +16,7 @@
 
 ## 仕様・参照
 - `docs/spec/2-0-parser-api-overview.md`, `docs/spec/2-2-core-combinator.md`（API 契約の基礎）  
-- `docs/guides/core-parse-streaming.md`, `docs/guides/plugin-authoring.md`（接合要件）  
+- `docs/guides/compiler/core-parse-streaming.md`, `docs/guides/dsl/plugin-authoring.md`（接合要件）  
 - `docs/notes/core-parse-combinator-survey.md`（Phase 0 調査結果）  
 - `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan.md`（完了済み計画の履歴）  
 - `docs/plans/bootstrap-roadmap/4-1-scenario-matrix-plan.md`, `4-1-spec-core-regression-plan.md`（シナリオ/回帰追跡方針）
@@ -82,24 +82,24 @@
 - ベンチ: Phase8/9 の演算子チェーンを用いたマイクロベンチ `benchmarks/parse/profile.rs` を新設し、`packrat_only` と `packrat_with_profile` を比較できる Criterion グループ `parse::profile` を登録（`benchmarks/Cargo.toml`）。
 
 ### Phase 11: Plugin/Streaming/OpBuilder 連携強化
-- Plugin: `docs/guides/plugin-authoring.md` と `docs/spec/3-8-core-runtime-capability.md` を踏まえ、Core.Parse パーサをプラグインから安全に呼び出すための API ガイドラインを追加。署名検証/Stage 整合をチェックリスト化。  
+- Plugin: `docs/guides/dsl/plugin-authoring.md` と `docs/spec/3-8-core-runtime-capability.md` を踏まえ、Core.Parse パーサをプラグインから安全に呼び出すための API ガイドラインを追加。署名検証/Stage 整合をチェックリスト化。  
 - Streaming: `core-parse-streaming` ガイドに合わせ、`Parser` → `StreamingParser` への変換方針と制約を整理（完全実装は次フェーズでも可）。  
 - OpBuilder: 新ビルダー/autoWhitespace を `OpBuilder` DSL に統合するための変更点を洗い出し、回帰テストを更新。互換性リスクを `docs/notes/core-parse-api-evolution.md` に記載。
 
 #### 実施記録
-- Plugin: `docs/guides/plugin-authoring.md` に Stage/Capability 署名検証と RunConfig 共有のチェックリストを追加し、`RuntimeBridgeAuditSpec`（`docs/spec/3-8-core-runtime-capability.md`）準拠で `bridge.stage.*` を転写する手順を明文化。`reml plugin verify`（署名検証）と RunConfig 経由の `extensions["parse"].operator_table` 共有を併記。
-- Streaming: `docs/guides/core-parse-streaming.md#94-parser-から-streamingparser-への変換指針（phase-11）` を新設し、`Parser<T>` を `StreamDriver` に受け渡す際の Packrat/期待集合/lex/layout/演算子テーブル共有ポリシーと Stage 伝播の扱い、Rust 実装欠落時の TODO を整理。
+- Plugin: `docs/guides/dsl/plugin-authoring.md` に Stage/Capability 署名検証と RunConfig 共有のチェックリストを追加し、`RuntimeBridgeAuditSpec`（`docs/spec/3-8-core-runtime-capability.md`）準拠で `bridge.stage.*` を転写する手順を明文化。`reml plugin verify`（署名検証）と RunConfig 経由の `extensions["parse"].operator_table` 共有を併記。
+- Streaming: `docs/guides/compiler/core-parse-streaming.md#94-parser-から-streamingparser-への変換指針（phase-11）` を新設し、`Parser<T>` を `StreamDriver` に受け渡す際の Packrat/期待集合/lex/layout/演算子テーブル共有ポリシーと Stage 伝播の扱い、Rust 実装欠落時の TODO を整理。
 - OpBuilder/autoWhitespace: RunConfig での演算子テーブル上書き方針とプラグイン設定衝突時の回帰監視案を `docs/notes/core-parse-api-evolution.md#phase-4-1-phase11-pluginstreamingopbuilder-連携メモ` に追記。`phase4-scenario-matrix.csv` への追加と Phase 12 のフォローアップを次ステップとして残した。
 
 ### Phase 12: ドキュメント・回帰更新
 - 仕様: `docs/spec/2-2-core-combinator.md` に新 API/挙動変更の脚注を追加し、必要に応じて `2-0-parser-api-overview.md` へ概要を追記。  
-- ガイド: `docs/guides/plugin-authoring.md`, `core-parse-streaming.md` に新機能の利用例/制約を追記。  
+- ガイド: `docs/guides/dsl/plugin-authoring.md`, `core-parse-streaming.md` に新機能の利用例/制約を追記。  
 - 回帰: Phase4 シナリオ表と `4-1-spec-core-regression-plan.md` の PhaseF トラッカーへ新シナリオを登録し、完了時にチェックボックスを更新。  
 - ハンドオーバー: 未着手/保留項目は `docs/notes/core-parse-api-evolution.md` に TODO として残し、次フェーズの入口を明示。
 
 #### 実施記録
 - 仕様更新: `docs/spec/2-2-core-combinator.md` に autoWhitespace/Layout + ParserProfile の回帰登録脚注を追加し、`phase4-scenario-matrix.csv` の `CH2-PARSE-901/902` と PhaseF トラッカーを参照できるようにした。`docs/spec/2-0-parser-api-overview.md` では RunConfig の lex/layout/profile フラグにシナリオ紐付けを追記。
-- ガイド更新: `docs/guides/plugin-authoring.md` のチェックリストへ autoWhitespace/Layout 共有と観測フラグの扱いを追加し、`docs/guides/core-parse-streaming.md#94-parser-から-streamingparser-への変換指針（phase-11）` に ParserProfile 出力時の注意と `CH2-PARSE-902` 監視メモを記載。
+- ガイド更新: `docs/guides/dsl/plugin-authoring.md` のチェックリストへ autoWhitespace/Layout 共有と観測フラグの扱いを追加し、`docs/guides/compiler/core-parse-streaming.md#94-parser-から-streamingparser-への変換指針（phase-11）` に ParserProfile 出力時の注意と `CH2-PARSE-902` 監視メモを記載。
 - 回帰登録: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH2-PARSE-901`（autoWhitespace/Layout）と `CH2-PARSE-902`（ParserProfile JSON）を追加し、`docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` PhaseF チェックリストへ未実施タスクとして転写。`docs/notes/core-parse-api-evolution.md` にサンプル/expected 作成 TODO を残した。
 
 ## 成果物と完了条件

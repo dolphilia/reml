@@ -37,7 +37,7 @@
    - `reports/spec-audit/ch4` に診断サンプルを追加し、`phase4-scenario-matrix.csv` 用の `diagnostic_keys` を定義。
 5. **移行・互換性メモ**  
    - 既存の関数呼び出しと Active Pattern 名の衝突を避ける命名ルール案を提示。  
-   - `docs/guides/ai-integration.md` へ導入時の LLM 提案ガイドライン追記案を準備。
+   - `docs/guides/ecosystem/ai-integration.md` へ導入時の LLM 提案ガイドライン追記案を準備。
 
 ## 成果物（出口条件）
 
@@ -48,7 +48,7 @@
 ## 未解決事項 / TODO
 
 - `Result` ベースの Active Pattern を正式に許容するかは網羅性計算コストを評価して決定する。
-- LSP での補完候補提示（`(|Name|_|)`）の表示ポリシーは別ガイド（`docs/guides/core-parse-streaming.md` 付録を想定）に委ねる。
+- LSP での補完候補提示（`(|Name|_|)`）の表示ポリシーは別ガイド（`docs/guides/compiler/core-parse-streaming.md` 付録を想定）に委ねる。
 
 ## 仕様差分メモ（1-1 / 1-5 に対する追記箇所）
 

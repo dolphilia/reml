@@ -19,7 +19,7 @@
 - 連携: `docs/spec/3-6-core-diagnostics-audit.md`（診断出力）
 
 ## ガイド/サンプル
-- 新設: `docs/guides/doc-authoring.md`
+- 新設: `docs/guides/dsl/doc-authoring.md`
 - サンプル方針: DSL ライブラリのドキュメント生成例と Doctest 例を追加する。
 
 ## リスクと対策

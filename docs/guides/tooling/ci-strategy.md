@@ -1,6 +1,6 @@
 # CI/テスト戦略ガイド
 
-このガイドでは Reml プロジェクトを複数ターゲットで継続的に検証するためのベストプラクティスをまとめます。`docs/guides/portability.md` と合わせて利用し、`RunConfig.extensions["target"]` と診断ポリシーの整合性を保ってください。
+このガイドでは Reml プロジェクトを複数ターゲットで継続的に検証するためのベストプラクティスをまとめます。`docs/guides/runtime/portability.md` と合わせて利用し、`RunConfig.extensions["target"]` と診断ポリシーの整合性を保ってください。
 
 ## 1. マルチターゲットマトリクス
 
@@ -88,7 +88,7 @@ Windows ジョブでは MSVC 用の環境変数を確実に設定し、診断ロ
 | Linux/ARM64 on x86 CI | `qemu-aarch64` | `reml test --target mobile-arm64 --runtime emulator=qemu-aarch64 --runtime-flags "-L /usr/aarch64-linux-gnu"` |
 
 - エミュレーションジョブでは `reml target sync --runtime emulator` を実行して実行時差異を明示し、`target.config.mismatch` を Warning としてレポートします。
-- 実機検証が必要な場合は `docs/guides/cross-compilation.md` に記載のリモート実行テンプレートを利用してください。
+- 実機検証が必要な場合は `docs/guides/runtime/cross-compilation.md` に記載のリモート実行テンプレートを利用してください。
 
 ## 5. FFI・ABI テスト
 
@@ -104,7 +104,7 @@ Windows ジョブでは MSVC 用の環境変数を確実に設定し、診断ロ
 
 ## 6. 診断メトリクスの収集
 
-`docs/guides/runtime-bridges.md` に記載された構造化ログを利用し、次の JSON フィールドを CI からメトリクスベースへ送信します。
+`docs/guides/runtime/runtime-bridges.md` に記載された構造化ログを利用し、次の JSON フィールドを CI からメトリクスベースへ送信します。
 
 ```json
 {
@@ -126,7 +126,7 @@ Windows ジョブでは MSVC 用の環境変数を確実に設定し、診断ロ
 1. **設定**: `setup-target` ステップで `REML_TARGET` と `RunConfig.extensions["target"]` を同期。
 2. **ビルド**: `reml build --target` と `reml fmt --check` を実行し、構文/仕様回帰を検出。
 3. **テスト**: プラットフォーム固有の統合テストを実行し、`CliDiagnosticEnvelope` を収集。
-4. **レポート**: `docs/guides/portability.md` のチェックリストに沿って結果を整理し、GitHub Projects などでトラッキング。
+4. **レポート**: `docs/guides/runtime/portability.md` のチェックリストに沿って結果を整理し、GitHub Projects などでトラッキング。
 5. **自動化**: `platform_info()` から得た `runtime_capabilities` を使い、重いテスト（例: SIMD ベンチマーク）を必要ターゲットでのみ有効化。
 
 ---
@@ -147,6 +147,6 @@ Windows ジョブでは MSVC 用の環境変数を確実に設定し、診断ロ
 2. **ターゲットビルド**: `remlc --target wasm32-wasi` でモジュールを生成し、`RunConfig.extensions["target"].extra.wasi = "preview2"` を書き出した JSON をアーティファクト化します。
 3. **ランタイム試験**: `wasmtime run --dir=. build/main.wasm` のように実際の WASM ランタイムで DSL テストを実行し、`target_config_errors` が 0 であることを確認します。
 4. **制約の検証**: Packrat/左再帰を無効化した構成と、WASI に適合しない機能（FFI、ネイティブ I/O）が `@cfg` により除去されているかをテストケースで明示します。
-5. **レポート**: 実機テスト結果を `ci-artifacts/wasi/diagnostics.json` として保存し、`docs/guides/portability.md` のチェックリストに沿って差分をレビューします。
+5. **レポート**: 実機テスト結果を `ci-artifacts/wasi/diagnostics.json` として保存し、`docs/guides/runtime/portability.md` のチェックリストに沿って差分をレビューします。
 
 > メモ: 実行時間の長いテストは nightly ジョブへ分離し、軽量スモークテストのみを PR 必須にすることで CI コストを抑えます。

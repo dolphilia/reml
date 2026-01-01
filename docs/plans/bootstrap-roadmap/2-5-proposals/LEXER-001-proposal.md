@@ -50,8 +50,8 @@
 
 #### Step 3: DSL/プラグインチーム連携（週32, DSL チーム）
 - **目的**: DSL プラグインの別名ポリシーに Unicode プロファイル差分を反映し、Phase 2-7 までの運用ルールを確立する。  
-- **作業**: `docs/notes/dsl-plugin-roadmap.md` に「Unicode プロファイル導入準備」節を追加し、Capability 名の別名運用と互換モード利用時の制約を整理する。`docs/guides/plugin-authoring.md` へ脚注リンクを付与し、プラグイン作者への周知経路を確保する。  
-- **調査**: `docs/spec/3-8-core-runtime-capability.md` の Stage 契約と `docs/guides/runtime-bridges.md` のブリッジ要件を参照し、Capability ID が ASCII に固定されている箇所を洗い出す。
+- **作業**: `docs/notes/dsl-plugin-roadmap.md` に「Unicode プロファイル導入準備」節を追加し、Capability 名の別名運用と互換モード利用時の制約を整理する。`docs/guides/dsl/plugin-authoring.md` へ脚注リンクを付与し、プラグイン作者への周知経路を確保する。  
+- **調査**: `docs/spec/3-8-core-runtime-capability.md` の Stage 契約と `docs/guides/runtime/runtime-bridges.md` のブリッジ要件を参照し、Capability ID が ASCII に固定されている箇所を洗い出す。
 - **成果物**: DSL ノートの更新、Stage/Capability 関連 TODO の登録、`compiler/ocaml/docs/technical-debt.md`（ID22/23）との整合メモ。
 
 ##### Step3 実施記録（2026-03-04）
@@ -88,8 +88,8 @@
 
 #### Step 7: 互換モードと検証フローの構築（Phase 2-7 終盤, CLI/LSP チーム）
 - **目的**: ASCII プロファイルを継続利用するユーザーへの互換性を確保しつつ、Unicode 化後の回帰を防ぐ。  
-- **作業**: `RunConfig`（CLI/LSP 共通）に `lex.identifier_profile` 切替フラグを追加し、ASCII/Unicode で診断メッセージが変わる箇所を `test_cli_diagnostics.ml`・`streaming_runner_tests.ml` 等で比較できるようテストを整理する。`docs/guides/ai-integration.md` にフラグ利用例を記載し、AI ツールが誤った Suggestion を出さないよう指針を追加する。  
-- **調査**: `compiler/ocaml/src/diagnostic.ml` のハイライト生成、`docs/guides/core-parse-streaming.md` のストリーム実行要件を参照し、Unicode 文字を含むポジション計算の妥当性を確認する。
+- **作業**: `RunConfig`（CLI/LSP 共通）に `lex.identifier_profile` 切替フラグを追加し、ASCII/Unicode で診断メッセージが変わる箇所を `test_cli_diagnostics.ml`・`streaming_runner_tests.ml` 等で比較できるようテストを整理する。`docs/guides/ecosystem/ai-integration.md` にフラグ利用例を記載し、AI ツールが誤った Suggestion を出さないよう指針を追加する。  
+- **調査**: `compiler/ocaml/src/diagnostic.ml` のハイライト生成、`docs/guides/compiler/core-parse-streaming.md` のストリーム実行要件を参照し、Unicode 文字を含むポジション計算の妥当性を確認する。
 - **成果物**: 実装済みの互換フラグ、ASCII/Unicode 双方で通過するゴールデンテスト、CI メトリクスの PASS 判定。
 
 ## 5. フォローアップ

@@ -17,7 +17,7 @@
 ## 成果物
 - `docs/spec/3-14-core-lsp.md` に `Core.Lsp.Derive` の API と導出規則を追記。
 - `docs/spec/2-2-core-combinator.md` に LSP 向けメタデータ（`rule`/`keyword`/`symbol`/`token`/Doc comment）の収集規約を追記。
-- `docs/guides/lsp-authoring.md` に Auto-LSP 導出の使い方と最小例を追記。
+- `docs/guides/lsp/lsp-authoring.md` に Auto-LSP 導出の使い方と最小例を追記。
 - `examples/practical/core_lsp/` の導出サンプル、および `expected/practical/core_lsp/` の期待出力。
 - Rust 実装 (`compiler/rust/runtime/src/lsp/derive.rs` など) の導入と CLI 出力の拡張。
 
@@ -89,7 +89,7 @@ conductor my_dsl_server {
 ### フェーズA: 仕様整理
 1. [x] `docs/spec/3-14-core-lsp.md` に `Core.Lsp.Derive` の型と導出ルールを追加する。
 2. [x] `docs/spec/2-2-core-combinator.md` に `ParserMeta` と Doc comment 収集規約を追記する。
-3. [x] `docs/guides/lsp-authoring.md` に `Derive` の最小導入例と落とし穴（`rule`/`keyword` を使わない場合の補完不足）を追記する。
+3. [x] `docs/guides/lsp/lsp-authoring.md` に `Derive` の最小導入例と落とし穴（`rule`/`keyword` を使わない場合の補完不足）を追記する。
 
 ### フェーズB: メタデータ設計
 1. [x] `ParserMetaKind`/`ParserMeta` の最小構造（`kind`/`name`/`doc`/`children`/`token_kind`）を確定する。
@@ -153,5 +153,5 @@ conductor my_dsl_server {
 - `docs/spec/0-1-project-purpose.md`
 - `docs/spec/2-2-core-combinator.md`
 - `docs/spec/3-14-core-lsp.md`
-- `docs/guides/lsp-authoring.md`
+- `docs/guides/lsp/lsp-authoring.md`
 - `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md`

@@ -39,7 +39,7 @@ P4 フェーズでは最適化とハンドオーバーを進めながら、Phase
 ### P4-R3 ドキュメント同期遅延
 - 登録日: 2027-02-18
 - カテゴリ: エコシステム
-- 詳細: 最終調整期間に仕様・ガイド・ノートを更新し損ねると、Phase 3 Self-Host 前提条件（[`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md`](../bootstrap-roadmap/3-0-phase3-self-host.md)）の整合が崩れる。Rust 実装の差分が `docs/spec/1-x` や `docs/guides/runtime-bridges.md` に反映されないまま Phase 3 へ進むと、セルフホスト計画が旧設計を参照したまま進行する恐れがある。
+- 詳細: 最終調整期間に仕様・ガイド・ノートを更新し損ねると、Phase 3 Self-Host 前提条件（[`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md`](../bootstrap-roadmap/3-0-phase3-self-host.md)）の整合が崩れる。Rust 実装の差分が `docs/spec/1-x` や `docs/guides/runtime/runtime-bridges.md` に反映されないまま Phase 3 へ進むと、セルフホスト計画が旧設計を参照したまま進行する恐れがある。
 - 対応案: `4-2-documentation-sync.md` で定義するチェックリストに沿って、PR クローズ前に `docs/spec/`・`docs/guides/`・`docs/notes/` の該当セクションを更新し、`docs-migrations.log` に操作履歴を残す。同期漏れが発覚した場合は `Mitigating` に移行し、72 時間以内に該当文書へ脚注を追記して差分理由を共有する。
 - 期限: 2027-02-28
 - 状態: Open

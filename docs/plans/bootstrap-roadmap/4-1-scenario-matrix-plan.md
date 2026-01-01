@@ -8,7 +8,7 @@
 - `.reml` 実行を通じて、Chapter 1（構文・型・効果）〜Chapter 3（標準ライブラリ）の仕様どおりの許容範囲を明文化し、複数の表記揺れ・境界・意地悪ケースを網羅する。
 
 ## スコープ
-- **含む**: `docs/spec/1-x`〜`3-x`・`docs/guides/core-parse-streaming.md` のサンプル抽出、`.reml` テストケース作成、`phase4-scenario-matrix.csv` の定義と更新フロー、`examples/spec_core`/`examples/practical` ディレクトリ構成案、`reports/spec-audit/ch4/` へのリンク整備。
+- **含む**: `docs/spec/1-x`〜`3-x`・`docs/guides/compiler/core-parse-streaming.md` のサンプル抽出、`.reml` テストケース作成、`phase4-scenario-matrix.csv` の定義と更新フロー、`examples/spec_core`/`examples/practical` ディレクトリ構成案、`reports/spec-audit/ch4/` へのリンク整備。
 - **含まない**: Rust 実装や CLI の挙動修正、セルフホスト工程そのもの、Phase 4 M2 以降で扱う CI ワークフロー設定（`4-2` 以降で管理）。
   - ただし、マトリクスの実行導線（`tooling/examples/run_phase4_suite.py` / `tooling/examples/run_examples.sh`）の最小更新は「マトリクス運用」の一部として扱う（スイート追加・レポート出力先追加など）。
 - **前提条件**: Phase 3 の章別資産が `compiler/rust/`・`examples/` に揃っている、`docs/plans/bootstrap-roadmap/0-2-roadmap-structure.md` に沿って新規ファイルの命名・参照が決まっている。
@@ -47,13 +47,13 @@
 ### 2. `.reml` ケース作成とリンク付け（70〜71週目）
 - `docs/spec/1-x` 各節に対して「正例/境界例/負例」の `.reml` を最低 1 セット作成し、`examples/spec_core/chapter1/` に配置。`docs/spec/1-5-formal-grammar-bnf.md` の各規則 ID をファイル名に含め、双方向参照を可能にする。
 - `docs/spec/3-5-core-io-path.md`, `docs/spec/3-6-core-diagnostics-audit.md`, `docs/spec/3-8-core-runtime-capability.md`, `docs/spec/3-10-core-env.md` の実用例を `examples/practical/` に移植し、入出力および監査ログ例を `expected/` ディレクトリに保存。
-- `docs/guides/runtime-bridges.md` / `docs/guides/plugin-authoring.md` と連携し、Capability を要求する `.reml` には `runtime_bridge`/`capability` の列を追加。Stage 要件を `phase4-scenario-matrix.csv` へ反映する。
+- `docs/guides/runtime/runtime-bridges.md` / `docs/guides/dsl/plugin-authoring.md` と連携し、Capability を要求する `.reml` には `runtime_bridge`/`capability` の列を追加。Stage 要件を `phase4-scenario-matrix.csv` へ反映する。
 - Chapter 1 の各構文に対し、`.reml` で表現可能な全バリエーションを列挙（例: `let` のパターン束縛書式、`match` の分岐、`effect handler` の `with`/`match` 等）。規則ごとに `variant` 列を設け、表記揺れの漏れが可視化されるようにする。
 
 #### ✅ 70〜71 週実施ログ
 
 - `examples/spec_core/README.md` を新設し、`chapter1/let_binding/`・`chapter1/effect_handlers/` に BNF 規則名を含むファイル（`bnf-valdecl-let-simple-ok.reml` など）と `expected/spec_core/...` のゴールデンを配置。`phase4-scenario-matrix.csv` の `CH1-LET-*` 行をこれらの ID へ差し替えて BNF ベースの命名規約を固定した。
-- `examples/practical/core_io/file_copy/canonical.reml`, `examples/practical/core_path/security_check/relative_denied.reml`, `examples/practical/core_config/audit_bridge/audit_bridge.reml` を追加し、既存の `expected/practical/*` JSON / stdout / audit ログを新パスへ更新。関連仕様（`docs/spec/3-5-core-io-path.md`, `docs/spec/3-0-core-library-overview.md`）とガイド（`docs/guides/runtime-bridges.md`, `docs/guides/plugin-authoring.md`）の参照先も Practical 配下に揃えた。
+- `examples/practical/core_io/file_copy/canonical.reml`, `examples/practical/core_path/security_check/relative_denied.reml`, `examples/practical/core_config/audit_bridge/audit_bridge.reml` を追加し、既存の `expected/practical/*` JSON / stdout / audit ログを新パスへ更新。関連仕様（`docs/spec/3-5-core-io-path.md`, `docs/spec/3-0-core-library-overview.md`）とガイド（`docs/guides/runtime/runtime-bridges.md`, `docs/guides/dsl/plugin-authoring.md`）の参照先も Practical 配下に揃えた。
 - `examples/README.md`・`examples/practical/README.md` に Phase 4 の `spec_core`/`practical` 階層を追記し、`docs/notes/examples-regression-log.md` へ Practical 反映ログを残した。旧 `examples/core_io/*` などの参照は「実務ケースは `practical/` へ移行した」旨の注記を追加。
 - `phase4-scenario-matrix.csv` へ `runtime_bridge` 列を追加し、`CH3-PLG-310` など Capability を要求する行に `audit_bridge` を登録。IO/Path/Plugin 系の `input_path` を Practical パスへ統一し、`expected/practical/core_io/file_copy/canonical.audit.jsonl` などのゴールデンと 1:1 対応させた。
 - `examples/language-impl-comparison/`（比較サンプル）も Phase4 マトリクスで追跡できるよう、`tooling/examples/run_phase4_suite.py` に `--suite language_impl_comparison` を追加。`CH2-PARSE-501`（`basic_interpreter_combinator.reml`）を 1 件目として回帰実行できる状態にした（レポート出力: `reports/spec-audit/ch4/language-impl-comparison-dashboard.md`）。

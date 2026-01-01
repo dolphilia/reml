@@ -2,7 +2,7 @@
 
 ## 目的
 - Phase 1 マイルストーン M3 において LLVM IR を確実に生成し、x86_64 Linux (System V ABI) を既定ターゲットとしてコンパイルできるようにする。
-- `docs/guides/llvm-integration-notes.md` §5 の ABI 要件と `docs/notes/llvm-spec-status-survey.md` のギャップを解消し、後続フェーズでのマルチターゲット化に備える。
+- `docs/guides/compiler/llvm-integration-notes.md` §5 の ABI 要件と `docs/notes/llvm-spec-status-survey.md` のギャップを解消し、後続フェーズでのマルチターゲット化に備える。
 
 ## スコープ
 - **含む**: LLVM IR ビルダーの実装、データレイアウト (`e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64`) 設定、関数シグネチャ/ABI マッピング、x86_64 Linux 用ランタイムシンボルとのリンケージ。
@@ -57,7 +57,7 @@
 - 代数的データ型 → `{i32 tag, payload}` のタグ付きユニオン表現
 
 2.3. **型マッピング表の実装**
-- `docs/guides/llvm-integration-notes.md` §4のマッピング表をコード化
+- `docs/guides/compiler/llvm-integration-notes.md` §4のマッピング表をコード化
 - 型変換関数 `reml_type_to_llvm: Type -> lltype`
 - マッピングの単体テスト（全プリミティブ型網羅）
 

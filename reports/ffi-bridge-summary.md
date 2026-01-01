@@ -148,7 +148,7 @@ $ _build/default/src/main.exe ../../tmp/cli-callconv-macos.reml \
 - [x] Linux/Windows/macOS の監査成果物で `cli.audit_id` / `cli.change_set` / `schema.version` / `bridge.audit_pass_rate` / `extensions.bridge.*` が欠落していないことを確認（2025-11-06）。`collect-iterator-audit-metrics.py --platform windows-msvc|macos-arm64 --require-success` と `tooling/ci/verify-audit-metadata.py --index reports/audit/index.json --strict` を CI で実行し、`failures[].missing` / `schema` エラーが空であるログを `reports/iterator-stage-summary-*.md` に添付。
 - [x] **`reports/ffi-macos-summary.md` を実測ログで更新**（2025-10-20完了）
 - [ ] `reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md` を実測ログで更新し、監査ゴールデン (`compiler/ocaml/tests/golden/audit/ffi-bridge-*.jsonl.golden`) を確定
-- [ ] 仕様書 `docs/spec/3-9`, `docs/spec/3-6` とガイド `docs/guides/runtime-bridges.md` を stub メタデータ/計測 API 情報で更新し、`docs/notes/licensing-todo.md` の TODO 消化を記録
+- [ ] 仕様書 `docs/spec/3-9`, `docs/spec/3-6` とガイド `docs/guides/runtime/runtime-bridges.md` を stub メタデータ/計測 API 情報で更新し、`docs/notes/licensing-todo.md` の TODO 消化を記録
 - [ ] `tooling/runtime/audit-schema.json`（ドラフト）を更新し、`bridge.*` フィールドを追加した v1.1 をレビューに回す。
 - [ ] Phase 2-3 完了報告と Phase 3 TODO リストをまとめたドラフトを計画書へ反映する。
 - [x] `llvm_gen/codegen.ml` の stub 生成で空エントリブロックが残存しないよう修正し、`--verify-ir` を再度有効化（2025-10-24 完了）。

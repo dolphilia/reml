@@ -24,8 +24,8 @@
 ## 4. フォローアップ
 - `ParseResult` シム（PARSER-001）と連携し、`DiagState` に保持した最遠エラー位置から期待集合を取得する実装計画をまとめる。  
 - 仕様書の脚注で「OCaml 実装は期待集合導入中」と明記し、実装完了時に脚注を削除する。  
-- `docs/guides/core-parse-streaming.md` に期待集合がストリーミングモードでも利用可能である旨を追記する。
-- `docs/guides/plugin-authoring.md` に期待集合 API の利用例を追加し、外部 DSL が CLI/LSP と同じ情報を取得できるようにする。
+- `docs/guides/compiler/core-parse-streaming.md` に期待集合がストリーミングモードでも利用可能である旨を追記する。
+- `docs/guides/dsl/plugin-authoring.md` に期待集合 API の利用例を追加し、外部 DSL が CLI/LSP と同じ情報を取得できるようにする。
 - **タイミング**: PARSER-001 のシム構築と並行して Phase 2-5 前半に対応し、Phase 2-5 中盤の CLI/LSP ゴールデン更新までに完了させる。
 
 ## 5. 実装ステップ
@@ -82,13 +82,13 @@
 - **目的**: 実装完了後の仕様・ガイド・ログ更新を一括で整理し、他チームとの連携事項を明確化する。
 - **調査**:
   - `docs/spec/2-5-error.md` と `docs/spec/3-6-core-diagnostics-audit.md` に期待集合関連の脚注や TODO が残っていないか確認する。
-  - `docs/guides/core-parse-streaming.md` / `docs/guides/plugin-authoring.md` に追加すべき API 説明を洗い出す。
+  - `docs/guides/compiler/core-parse-streaming.md` / `docs/guides/dsl/plugin-authoring.md` に追加すべき API 説明を洗い出す。
 - **タスク**:
   - 仕様書に「2025-Phase2.5 で期待集合が OCaml 実装へ導入済み」とする脚注を追加し、旧脚注（導入中）を削除する。
   - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に S1〜S4 の結果と検証ログ（`menhir --list-errors` 実行結果、CLI/LSP スナップショットリンク、CI 証跡）を追記する。
   - `docs/notes/spec-integrity-audit-checklist.md`（Phase 2-8 で参照予定）へ期待集合監視項目を追加するための草案メモを残す。
 - **成果物/完了条件**: 関連ドキュメントの更新とレビュー記録が完了し、Phase 2-7 以降のチームが期待集合の状態を追跡できること。
-- **S5 完了（2025-11-17）**: `docs/spec/2-5-error.md` / `docs/spec/3-6-core-diagnostics-audit.md` に Phase 2-5 完了脚注を追加し、`docs/guides/core-parse-streaming.md` と `docs/guides/plugin-authoring.md` で `ExpectationSummary` 活用手順を追記。共有ログ（`docs/plans/bootstrap-roadmap/2-5-review-log.md`）と監査 TODO 草案（`docs/notes/spec-integrity-audit-checklist.md`）も更新済み。
+- **S5 完了（2025-11-17）**: `docs/spec/2-5-error.md` / `docs/spec/3-6-core-diagnostics-audit.md` に Phase 2-5 完了脚注を追加し、`docs/guides/compiler/core-parse-streaming.md` と `docs/guides/dsl/plugin-authoring.md` で `ExpectationSummary` 活用手順を追記。共有ログ（`docs/plans/bootstrap-roadmap/2-5-review-log.md`）と監査 TODO 草案（`docs/notes/spec-integrity-audit-checklist.md`）も更新済み。
 
 ## 6. 残課題
 - Menhir の期待集合から `Expectation` 列挙へ写像する際の粒度（記号／規則／否定等）を Parser チームと調整する必要がある。  

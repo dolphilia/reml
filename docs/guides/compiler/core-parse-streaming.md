@@ -177,7 +177,7 @@ type StreamMeta = {
 
 *仕様参照: 2.7 §E, §G（監査連携）*
 
-- `docs/guides/runtime-bridges.md` にホットリロード／差分適用のワークフロー例を掲載。
+- `docs/guides/runtime/runtime-bridges.md` にホットリロード／差分適用のワークフロー例を掲載。
 - 非同期実行が必要な場合は `Core.Async` 拡張を併用し、`Feeder` を `Future` ベースで実装する。
 
 ## 9. RunConfig との統合

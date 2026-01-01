@@ -35,4 +35,4 @@
 ## 参照資料
 - 主要メモ: `docs/notes/pattern-matching-improvement.md`
 - 仕様: `docs/spec/1-1-syntax.md`, `docs/spec/1-5-formal-grammar-bnf.md`, `docs/spec/1-2-types-Inference.md`
-- ガイド: `docs/guides/core-parse-streaming.md`（Parse 系との整合確認）
+- ガイド: `docs/guides/compiler/core-parse-streaming.md`（Parse 系との整合確認）

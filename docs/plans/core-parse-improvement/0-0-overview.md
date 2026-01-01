@@ -30,7 +30,7 @@
 - 調査メモ: `docs/notes/core-parse-improvement-survey.md`
 - パーサ仕様: `docs/spec/2-0-parser-api-overview.md`, `docs/spec/2-1-parser-type.md`, `docs/spec/2-2-core-combinator.md`, `docs/spec/2-5-error.md`
 - 字句ヘルパ: `docs/spec/2-3-lexer.md`
-- ストリーミング: `docs/spec/2-7-core-parse-streaming.md`, `docs/guides/core-parse-streaming.md`
+- ストリーミング: `docs/spec/2-7-core-parse-streaming.md`, `docs/guides/compiler/core-parse-streaming.md`
 
 ## 進行方針（ワークストリーム）
 本計画は、機能を「一括投入」せず、回帰と連動する単位へ分割する。

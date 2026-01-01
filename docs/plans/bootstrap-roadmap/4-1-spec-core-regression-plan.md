@@ -24,7 +24,7 @@
   - `reports/spec-audit/ch4/logs/ffi-build-*.md`
   - `reports/spec-audit/ch4/logs/ffi-dsl-*.md`
   - `reports/spec-audit/ch4/logs/ffi-bindgen-*.md`
-- WIT 調査は `docs/notes/ffi-wasm-component-model-log.md` と `docs/guides/ffi-wit-poc.md` の更新内容を対象とし、PoC 実施後に外部ツール名と生成物パスを追記する。
+- WIT 調査は `docs/notes/ffi-wasm-component-model-log.md` と `docs/guides/ffi/ffi-wit-poc.md` の更新内容を対象とし、PoC 実施後に外部ツール名と生成物パスを追記する。
 
 ## 標準ライブラリ回帰接続（Phase 4 追加）
 

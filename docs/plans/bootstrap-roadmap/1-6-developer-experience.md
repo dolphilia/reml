@@ -15,7 +15,7 @@
 - ✅ カラーコード対応実装（`color.ml`）
 - ✅ JSON出力フォーマット実装（`json_formatter.ml`）
 - ✅ CLIオプション管理のモジュール化（`options.ml`）
-- ✅ 診断フォーマット仕様書作成（`docs/guides/diagnostic-format.md`）
+- ✅ 診断フォーマット仕様書作成（`docs/guides/tooling/diagnostic-format.md`）
 - ✅ CLI診断テスト修正完了（`test_cli_diagnostics.ml`）
 
 ### 完了した項目（Week 15）
@@ -23,14 +23,14 @@
 - ✅ GC 統計に基づくメモリアロケーション計測とトレースサマリー出力
 - ✅ 統計カウンタ実装（`cli/stats.ml`）と CLI オプション `--stats`
 - ✅ CLI トレース/統計テスト追加（`tests/test_cli_trace.ml`）
-- ✅ トレース出力ガイド作成（`docs/guides/trace-output.md`）
+- ✅ トレース出力ガイド作成（`docs/guides/tooling/trace-output.md`）
 
 ### 次のアクション
 
 **Week 16 フォーカス（優先度: High）**:
 1. **ヘルプ・ドキュメント整備**:
    - ✅ `--help` 出力のセクション化・使用例追加（`options.ml`）
-   - ✅ `docs/guides/cli-workflow.md` の初稿整備とトレースガイドへの相互リンク
+   - ✅ `docs/guides/tooling/cli-workflow.md` の初稿整備とトレースガイドへの相互リンク
    - ✅ `examples/cli/` サンプル整備（`emit_suite.reml` 追加、チェックリスト整備）
    - ✅ man ページ生成と同期テンプレート整備（`tooling/cli/scripts/update-man-pages.sh` と `tooling/cli/man/remlc-ocaml.1` を追加済み、CI 統合は Phase 1-7 で実施予定）
 2. **統計機能の拡張計画**:
@@ -53,7 +53,7 @@
 - `tooling/cli` : CLI 実装、オプション処理、ヘルプ出力
 - `tooling/cli/tests`（想定）: CLI スナップショット・メトリクス収集テスト
 - `compiler/ocaml/src` : CLI から呼び出すパイプライン統合ポイント
-- `docs/guides` : CLI 使⽤ガイドの更新。とくに `docs/guides/cli-workflow.md`
+- `docs/guides` : CLI 使⽤ガイドの更新。とくに `docs/guides/tooling/cli-workflow.md`
 - `tooling/ci` : CLI を exercise する CI ジョブ
 
 ## 作業ブレークダウン
@@ -138,7 +138,7 @@
 - `Cli.Stats.print_stats`・`Cli.Stats.to_json` を提供
 - テスト `test_cli_trace.ml` でカウンタ挙動を検証
 
-**成果物**: `cli/trace.ml`, `cli/stats.ml`, `docs/guides/trace-output.md`, `tests/test_cli_trace.ml`
+**成果物**: `cli/trace.ml`, `cli/stats.ml`, `docs/guides/tooling/trace-output.md`, `tests/test_cli_trace.ml`
 
 ### 5. 統計サマリ出力（15週目）⏸️ 部分完了
 **担当領域**: パフォーマンス可視化
@@ -155,7 +155,7 @@
 - ✅ プロセスメモリ使用量のサンプリング手段を `Gc.stat ().top_heap_words` 基準で統一し、64bit/32bit の `Sys.word_size` に応じて換算
 - ✅ ピークメモリの記録方法を仕様化（`peak_memory_bytes` と `memory_peak_ratio = peak_memory_bytes / input_size_bytes` を計算）
 - ✅ GC統計（OCaml GC）との差分検証を `test_cli_trace.ml` に追加し、回帰検知を自動化
-- ✅ 新しい取得フローと制約を `docs/guides/trace-output.md` に追記
+- ✅ 新しい取得フローと制約を `docs/guides/tooling/trace-output.md` に追記
 
 5.3. **メトリクス出力** ⏸️
 - ✅ `Cli.Stats.to_json` による JSON 取得
@@ -190,11 +190,11 @@
 - 生成済み man ページをリポジトリに含めた。インストールパスと CI 自動生成は Phase 1-7 で整備する。
 
 6.3. **ユーザーガイド作成** ⏸️
-- ✅ `docs/guides/cli-workflow.md` 初稿（ワークフロー・トレース活用・CI 連携）
+- ✅ `docs/guides/tooling/cli-workflow.md` 初稿（ワークフロー・トレース活用・CI 連携）
 - ⏳ サンプルプロジェクトとの連動、トラブルシューティング詳細（`examples/cli/README.md` にチェックリスト追加済み）
 - ⏳ CLI テンプレート（`examples/cli/`）の整備（段階的サンプルは整備済み、テンプレ自動生成は未着手）
 
-**成果物**: `options.ml` 拡張済みヘルプ、`docs/guides/cli-workflow.md` 初稿、`docs/guides/cli-help-template.md` と `docs/guides/man/remlc-ocaml.1.md`、`tooling/cli/scripts/update-man-pages.sh`、`tooling/cli/man/remlc-ocaml.1`（自動生成スクリプトは Phase 1-7 で CI へ組み込み予定）
+**成果物**: `options.ml` 拡張済みヘルプ、`docs/guides/tooling/cli-workflow.md` 初稿、`docs/guides/tooling/cli-help-template.md` と `docs/guides/man/remlc-ocaml.1.md`、`tooling/cli/scripts/update-man-pages.sh`、`tooling/cli/man/remlc-ocaml.1`（自動生成スクリプトは Phase 1-7 で CI へ組み込み予定）
 
 ### 7. サンプルプロジェクト整備（15-16週目）⏸️ 部分完了
 **担当領域**: 実践的な使用例
@@ -229,7 +229,7 @@
 - CI での定期実行
 
 8.3. **ドキュメント整備** ⏸️
-- ✅ 診断フォーマット仕様（`docs/guides/diagnostic-format.md`）
+- ✅ 診断フォーマット仕様（`docs/guides/tooling/diagnostic-format.md`）
 - ❌ CLI アーキテクチャの技術文書
 - ❌ Phase 2への引き継ぎ（LSP、設定ファイル）
 
@@ -238,7 +238,7 @@
 ## 成果物と検証
 - CLI コマンドが `dune exec remlc-ocaml -- --help` で利用可能になり、各オプションが CI のスモークテストで網羅される。
 - `Diagnostic` JSON のスキーマを `jsonschema` 形式で管理し、CI で検証。
-- ドキュメント (`docs/guides/llvm-integration-notes.md` または新規ガイド) に CLI 利用手順が掲載される。
+- ドキュメント (`docs/guides/compiler/llvm-integration-notes.md` または新規ガイド) に CLI 利用手順が掲載される。
 
 ## リスクとフォローアップ
 - 出力フォーマットの変更がフェーズ間で発生しやすいため、バージョンタグを付与し後方互換性を `0-4-risk-handling.md` で管理。

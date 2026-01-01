@@ -40,7 +40,7 @@
 
 5. **クロスチェックとドキュメント同期**  
    - 仕様: `docs/spec/1-5-formal-grammar-bnf.md` の `MatchExpr` 注記に、評価順序（スクラティニー 1 回評価、アーム順照合、`guard -> alias -> body`）と「Partial Active の `None` は次アームへフォールスルー」を明記して同期する。  
-   - ガイド: `docs/guides/core-parse-streaming.md` に付録（付録A）を追加し、`match` の評価順序とストリーミング運用（`Pending`/`Await` 分岐の扱い、ガードの純粋性）を整理して同期する。  
+   - ガイド: `docs/guides/compiler/core-parse-streaming.md` に付録（付録A）を追加し、`match` の評価順序とストリーミング運用（`Pending`/`Await` 分岐の扱い、ガードの純粋性）を整理して同期する。  
    - OCaml 実装: 本タスクでは進めない（別途、MIR 仕様確定後に `docs/plans/rust-migration/` へ差分メモを残す）。
 
 ## M1: MIR 拡張仕様（決定）
@@ -90,7 +90,7 @@
 
 #### ドキュメント同期ログ（2025-12-17）
 - `docs/spec/1-5-formal-grammar-bnf.md` に `MatchExpr` の評価順序と Partial Active のフォールスルー（`None` → 次アーム）を追記して同期。
-- `docs/guides/core-parse-streaming.md` に付録Aを追加し、ストリーミング運用での `match` 分岐の扱い（`Pending`/`Await`、ガードの純粋性）を整理。
+- `docs/guides/compiler/core-parse-streaming.md` に付録Aを追加し、ストリーミング運用での `match` 分岐の扱い（`Pending`/`Await`、ガードの純粋性）を整理。
 - Phase4 マトリクス（`docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`）の `CH1-MATCH-007..009` に run_id 記録を補完し、`CH1-ACT-001..003` / `CH1-MATCH-007..018` の run_id 記録が揃った状態を確認。
 - OCaml 実装差分メモは本計画の M5 で扱う（本タスクでは未実施）。
 

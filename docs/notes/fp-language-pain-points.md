@@ -80,7 +80,7 @@
 
 ### 4.4 エコシステムとガイド（Chapter 5 / guides）
 - **IDE/LSP での「型エラー読み解き」体験を強化**: `5-3-developer-toolchain.md` に LSP ダイアログ例と `PublishDiagnostics` のガイド付きスクリーンショットを追記し、初学者が UI で確認すべきポイントを明示する。[^9]
-- **新規ガイド `docs/guides/fp-transition.md`（仮）を追加**: 既存の `docs/guides/dsl-first-guide.md` と連携し、命令的思考→関数的思考へのステップ、`Iter` チェーンのリファクタ例、`Effect` 設計の FAQ を掲載する。本文完成後は README のガイド一覧にリンクを追記する。[^2][^5]
+- **新規ガイド `docs/guides/fp-transition.md`（仮）を追加**: 既存の `docs/guides/dsl/dsl-first-guide.md` と連携し、命令的思考→関数的思考へのステップ、`Iter` チェーンのリファクタ例、`Effect` 設計の FAQ を掲載する。本文完成後は README のガイド一覧にリンクを追記する。[^2][^5]
 - **学習リファレンスの索引整備**: README と `0-2-glossary.md` に新規用語（例: 「評価戦略デバッグ」「効果ステージ」）を追加し、関連章ヘの相互参照を更新する。[^2][^3][^7]
 
 ### 4.5 実行順序の提案

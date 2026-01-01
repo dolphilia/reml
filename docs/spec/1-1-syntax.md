@@ -655,7 +655,7 @@ unsafe {
 
 * 先頭引数は **テンプレート文字列**で、後続に `outputs` / `inputs` / `clobbers` / `options` を任意順で列挙する。
 * `outputs("<constraint>": <lvalue>)` は出力先を表し、`inputs("<constraint>": <expr>)` は入力値を表す。
-* `clobbers` / `options` は LLVM の規約に準じる文字列リストで、詳細は `docs/guides/llvm-integration-notes.md` を参照する。
+* `clobbers` / `options` は LLVM の規約に準じる文字列リストで、詳細は `docs/guides/compiler/llvm-integration-notes.md` を参照する。
 
 **LLVM IR 直書き**
 

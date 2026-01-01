@@ -34,7 +34,7 @@
    - 役割定義: `effect {native}` は ABI/メモリ境界に触れる操作を含むことを明示。
    - 使い分け: `unsafe` は局所的な危険区画、`effect {native}` はモジュール/関数単位の監査対象と整理。
    - 互換条件: `@intrinsic` 付与時は `effect {native}` 必須、`@cfg` でターゲット限定を推奨。
-   - ガイド連動: `docs/guides/runtime-bridges.md` から相互参照リンクを追加。
+   - ガイド連動: `docs/guides/runtime/runtime-bridges.md` から相互参照リンクを追加。
 3. `docs/spec/3-6-core-diagnostics-audit.md` に `native.intrinsic.*` / `native.embed.*` の監査キーを定義する。
    - キー定義: `native.intrinsic.used` / `native.intrinsic.invalid_type` / `native.intrinsic.signature_mismatch`。
    - 埋め込み用: `native.embed.entrypoint` / `native.embed.abi_mismatch` / `native.embed.unsupported_target`。
@@ -96,7 +96,7 @@
    - ABI 方針: C99 互換で `extern "C"` の関数群を定義し、`reml_*` 命名に統一。
    - ライフサイクル: `create`/`load`/`run`/`dispose` の最小フローを定義。
    - 安全性: 失敗時は `Result` 相当のエラーコードを返し、監査ログに `native.embed.*` を記録。
-2. `docs/guides/runtime-bridges.md` に埋め込み API の最小利用手順を追記する。
+2. `docs/guides/runtime/runtime-bridges.md` に埋め込み API の最小利用手順を追記する。
    - 章追加: 「埋め込み API (Phase 4)」節を追加し、C からの呼び出し例を示す。
    - 互換性: ABI バージョンと互換性ルールを明記する。
    - 参照: `docs/spec/3-8-core-runtime-capability.md` と相互リンクを張る。
@@ -153,7 +153,7 @@
 ### フェーズD: Rust 実装 - 埋め込み API
 - [x] 埋め込み用 C ABI 層（`reml_create_context` など）を実装
 - [x] 失敗時のエラーコードと `native.embed.*` 監査記録を確認
-- [x] `docs/guides/runtime-bridges.md` に埋め込み API 手順と互換性ルールを追記
+- [x] `docs/guides/runtime/runtime-bridges.md` に埋め込み API 手順と互換性ルールを追記
 - [x] `examples/native/embedding` と `expected/` を整備
 - [x] `abi_mismatch` / `unsupported_target` の埋め込みサンプルを追加
 - [x] `reports/spec-audit/ch4/logs/native-embed-*.md` に実行ログを記録
@@ -186,7 +186,7 @@
 | --- | --- | --- |
 | Intrinsic 名や ABI の不一致 | 実装と仕様の乖離、回帰失敗 | `docs/spec/1-1-syntax.md` と `compiler/rust/backend/llvm` の対応表を同時更新し、`expected/` で差分監査 |
 | `effect {native}` の乱用 | 安全性と監査の崩壊 | `native.intrinsic.*` / `native.embed.*` を必須監査キー化し、Capability で段階ゲート |
-| 埋め込み API の互換性不足 | 既存ホストアプリとの統合が困難 | `docs/guides/runtime-bridges.md` に ABI 互換性ルールを明記し、最小 API から段階拡張 |
+| 埋め込み API の互換性不足 | 既存ホストアプリとの統合が困難 | `docs/guides/runtime/runtime-bridges.md` に ABI 互換性ルールを明記し、最小 API から段階拡張 |
 
 ## 進捗状況
 - 2025-12-XX: 計画作成（未着手）
@@ -201,4 +201,4 @@
 - `docs/spec/1-3-effects-safety.md`
 - `docs/spec/3-6-core-diagnostics-audit.md`
 - `docs/spec/3-8-core-runtime-capability.md`
-- `docs/guides/runtime-bridges.md`
+- `docs/guides/runtime/runtime-bridges.md`

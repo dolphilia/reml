@@ -45,7 +45,7 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
 | --- | --- | --- | --- |
 | `expected_tokens` (recover 拡張) | 期待トークン列 | `docs/spec/2-5-error.md` | OCaml と同順序・同件数、`message/context` の有無一致 |
 | `effects.stage.*` | 効果段階監査 | `docs/spec/3-6-core-diagnostics-audit.md` | `type_row` 診断と連動、空配列は省略 |
-| `parser.stream.*` | ストリーミング監査 | `docs/guides/core-parse-streaming.md` | Packrat 収束率、`backpressure_sync` |
+| `parser.stream.*` | ストリーミング監査 | `docs/guides/compiler/core-parse-streaming.md` | Packrat 収束率、`backpressure_sync` |
 | `type_row.*` / `typeclass.dictionary.*` | 型行 / 型クラス辞書監査 | `docs/spec/1-3-effects-safety.md`, `EFFECT-002-proposal.md` | dual-write で JSON 配列順序を固定 |
 | `extensions["recover"]` | 再回復ヒント | `reports/diagnostic-format-regression.md` | CLI/LSP 両方で一致すること |
 

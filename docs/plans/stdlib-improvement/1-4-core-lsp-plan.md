@@ -19,7 +19,7 @@
 - 連携: `docs/spec/3-5-core-io-path.md`, `docs/spec/3-6-core-diagnostics-audit.md`
 
 ## ガイド/サンプル
-- 新設: `docs/guides/lsp-authoring.md`
+- 新設: `docs/guides/lsp/lsp-authoring.md`
 - サンプル方針: JSON DSL の LSP サンプル（診断/補完）を `examples/` に置く。
 
 ## リスクと対策

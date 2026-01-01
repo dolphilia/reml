@@ -30,7 +30,7 @@ reml-config render --template config/prod.ks --env staging --output generated/st
 ## 3. 構造化ログと監査
 
 - `--format json` の出力は `2-5-error.md` の `Diagnostic` 拡張に準拠し、`domain` / `audit_id` / `change_set` / `severity_hint` を含む。
-- `--audit` を指定すると `audit_id` を標準出力に含め、`docs/guides/runtime-bridges.md` のホットリロード手順と連結できる。
+- `--audit` を指定すると `audit_id` を標準出力に含め、`docs/guides/runtime/runtime-bridges.md` のホットリロード手順と連結できる。
 
 ## 3.1 ロケール指定と RunConfig 連携
 

@@ -229,10 +229,10 @@
 ### 6. ドキュメント・サンプル更新（49-50週目）
 **担当領域**: 情報整備
 
-6.1. 仕様書サンプル・ガイド (`docs/guides/runtime-bridges.md`) を更新し、実装差分を解消する。  
+6.1. 仕様書サンプル・ガイド (`docs/guides/runtime/runtime-bridges.md`) を更新し、実装差分を解消する。  
 実施ステップ:
 - `docs/spec/3-5-core-io-path.md` のコードサンプル・脚注を最新 API に合わせて改稿し、`docs/spec/3-0-core-library-overview.md` に概要を追記する。
-- `docs/guides/runtime-bridges.md`/`docs/guides/plugin-authoring.md` に IO/Path の利用例を追加し、Capability チェックや `IoContext` の記録方法を解説する。
+- `docs/guides/runtime/runtime-bridges.md`/`docs/guides/dsl/plugin-authoring.md` に IO/Path の利用例を追加し、Capability チェックや `IoContext` の記録方法を解説する。
 - `docs/plans/bootstrap-roadmap/README.md` と `docs/plans/rust-migration/overview.md` に本計画書へのリンクと更新履歴を追記する。
 
 6.2. `README.md`/`3-0-phase3-self-host.md` に IO/Path 実装ステータスを記載し、利用者向け注意事項を明示する。  
@@ -248,7 +248,7 @@
 - `docs/notes/examples-regression-log.md` に新例の実行結果とトラブルシューティングを記録し、リグレッション時の調査手順を共有する。
 
 > 進行ログ（Phase3 W50, §6）
-> - `docs/spec/3-5-core-io-path.md`、`docs/spec/3-0-core-library-overview.md`、`docs/guides/runtime-bridges.md`、`docs/guides/plugin-authoring.md` に Reader/Writer と Path セキュリティのサンプル参照を追記し、`docs/plans/bootstrap-roadmap/README.md`・`docs/plans/rust-migration/overview.md`・`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` にも本タスクの完了条件を明記した。
+> - `docs/spec/3-5-core-io-path.md`、`docs/spec/3-0-core-library-overview.md`、`docs/guides/runtime/runtime-bridges.md`、`docs/guides/dsl/plugin-authoring.md` に Reader/Writer と Path セキュリティのサンプル参照を追記し、`docs/plans/bootstrap-roadmap/README.md`・`docs/plans/rust-migration/overview.md`・`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` にも本タスクの完了条件を明記した。
 > - `examples/practical/core_io/file_copy/canonical.reml` / `examples/practical/core_path/security_check/relative_denied.reml`（旧 `examples/core_io` / `examples/core_path`）と `tooling/examples/run_examples.sh --suite core_io|core_path` を追加し、`core_io.example_suite_pass_rate` KPI を `0-3-audit-and-metrics.md` へ登録。`examples/README.md` と各 README に概要・実行手順を記録した。
 > - `docs/notes/runtime-bridges-roadmap.md` と `docs/notes/examples-regression-log.md` を新設し、Runtime Bridge / Plugin / サンプル実行の Runbook とリグレッション記録を共有。`docs/notes/core-io-path-gap-log.md` にも「サンプル・ドキュメント整合」のギャップ解消ログを追記した。
 

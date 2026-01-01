@@ -3,7 +3,7 @@
 ## 1. 背景と症状
 - 仕様では 15 個のコアコンビネーター（`rule` / `label` / `cut` / `recover` など）を標準 API として提供し、DSL・プラグインが共有することを想定している（docs/spec/2-2-core-combinator.md:9-88）。  
 - 現行 OCaml 実装は `parser.mly` に LR 規則を直書きしており、`Core.Parse` モジュールやコンビネーター層が存在しない（compiler/ocaml/src/parser.mly:1）。  
-- Phase 3 の self-host 計画で Reml 実装へ移行する際、コンビネーター API を経由したサンプルや DSL の写像が不可能で、`docs/guides/core-parse-streaming.md` のストリーミング設計とも齟齬が生じている。
+- Phase 3 の self-host 計画で Reml 実装へ移行する際、コンビネーター API を経由したサンプルや DSL の写像が不可能で、`docs/guides/compiler/core-parse-streaming.md` のストリーミング設計とも齟齬が生じている。
 
 ## 2. Before / After
 ### Before
@@ -36,7 +36,7 @@ end
 ## 4. フォローアップ
 - `PARSER-001` シム実装と連動し、`Reply` / `ParseResult` がコンビネーター層を経由するよう統合。  
 - Phase 2-7 `execution-config` タスクで `RunConfig.extensions["lex"]`・`["recover"]` をコンビネーターから参照できるよう、設定伝播の設計を加える。  
-- `docs/guides/plugin-authoring.md` に、OCaml 実装から提供されるコンビネーター API の利用例を追記する。
+- `docs/guides/dsl/plugin-authoring.md` に、OCaml 実装から提供されるコンビネーター API の利用例を追記する。
 - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にコンビネーター抽出後の残課題（テレメトリ、エラーメッセージ統合）を記録し、実装移行を段階化する。
 - **タイミング**: PARSER-001/002 と Lex API 抽出が揃った Phase 2-5 後半に着手し、Phase 2-6 へ入る前までにコアコンビネーター層の PoC を完成させる。
 
@@ -52,7 +52,7 @@ end
 - 次ステップでは `Core_parse` シグネチャ案に `ParserId` 生成・`committed` 操作・`recover` 同期トークン挿入用 API を盛り込み、`parser_driver` のフック増設方針を具体化する。
 
 2. **`Core_parse` シグネチャと ID 付与戦略の設計（Week31 Day3-4）**  
-   - **調査**: `docs/spec/2-2-core-combinator.md` §A〜§C と `docs/spec/2-6-execution-strategy.md` の Packrat/ストリーミング契約、`docs/guides/core-parse-streaming.md` の API 期待値を確認し、`ParserId`・`Reply`・`recover` のメタデータ要件を整理する[^spec-exec][^guide-stream].  
+   - **調査**: `docs/spec/2-2-core-combinator.md` §A〜§C と `docs/spec/2-6-execution-strategy.md` の Packrat/ストリーミング契約、`docs/guides/compiler/core-parse-streaming.md` の API 期待値を確認し、`ParserId`・`Reply`・`recover` のメタデータ要件を整理する[^spec-exec][^guide-stream].  
    - **設計**: `compiler/ocaml/src/core_parse_combinator.mli`（新設）に公開する最小シグネチャ案を作成し、`rule`・`label`・`cut` など committed/consumed フラグの扱いを `Reply` 型に写像する。`PARSER-002` で導入した `Run_config` と `extensions` のフック点を洗い直し、コンビネーター側から `RunConfig.extensions["lex"]`/`["recover"]` を参照するフックを定義する。  
    - **承認**: モジュール署名案を `docs/notes/core-parse-api-evolution.md`（新設予定）に掲載し、Phase 2-5 レビューで承認を得る。
 
@@ -120,12 +120,12 @@ end
     - **記録**: テスト結果とメトリクス導入状況を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に追記し、残課題を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ移送する。
 
 6. **ドキュメントとロードマップの同期（Week33 Day5）**  
-    - **更新**: `docs/spec/2-2-core-combinator.md` に OCaml 実装の進捗脚注を追加し、`docs/guides/plugin-authoring.md` / `docs/guides/core-parse-streaming.md` にコンビネーター利用例と RunConfig 連携の手順を追記する。  
+    - **更新**: `docs/spec/2-2-core-combinator.md` に OCaml 実装の進捗脚注を追加し、`docs/guides/dsl/plugin-authoring.md` / `docs/guides/compiler/core-parse-streaming.md` にコンビネーター利用例と RunConfig 連携の手順を追記する。  
     - **索引整備**: `README.md`・`docs/plans/bootstrap-roadmap/2-5-proposals/README.md` を更新して新モジュール導線を掲載し、`docs/notes/core-parse-api-evolution.md` に API 変更履歴を記録する。  
     - **引き継ぎ**: Phase 2-7 以降へ渡す TODO（テレメトリ統合、Menhir 置換判断）を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に整理し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` の最終日にまとめる。
 
 ### Step6 実施記録（2025-12-24）
-- `docs/spec/2-2-core-combinator.md` に `Core_parse` 進捗脚注を追加し、`rule`/`label`/`cut` と Packrat 指標が仕様で参照できるよう更新。`docs/guides/plugin-authoring.md` と `docs/guides/core-parse-streaming.md` には RunConfig 共有手順とコンビネーター利用例を追記した。  
+- `docs/spec/2-2-core-combinator.md` に `Core_parse` 進捗脚注を追加し、`rule`/`label`/`cut` と Packrat 指標が仕様で参照できるよう更新。`docs/guides/dsl/plugin-authoring.md` と `docs/guides/compiler/core-parse-streaming.md` には RunConfig 共有手順とコンビネーター利用例を追記した。  
 - リポジトリ索引 `README.md` と `docs/plans/bootstrap-roadmap/2-5-proposals/README.md` を更新し、PARSER-003 の Step6 完了状況を追記。`docs/notes/core-parse-api-evolution.md` へ Step6 セクションを追加し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に 2025-12-24 ログを登録した。  
 - テレメトリ統合と Menhir 置換判断は保留のため、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ TODO を転記し、Phase 2-7 で Packrat 指標の監査強化・ダッシュボード統合を検討する。
 
@@ -136,5 +136,5 @@ end
 [^spec-core-comb]: `docs/spec/2-2-core-combinator.md` §A〜§H。コアコンビネーター 15 種と Capability 連携要件を定義。
 [^review-log]: `docs/plans/bootstrap-roadmap/2-5-review-log.md`。Day エントリに作業ログ・検証結果を追記する運用。
 [^spec-exec]: `docs/spec/2-6-execution-strategy.md`。Packrat メモ化、ストリーミング実行時の契約、`reply.committed` の規則を規定。
-[^guide-stream]: `docs/guides/core-parse-streaming.md`。RunConfig 連携とストリーミング利用時の `Core.Parse` API 期待値を整理。
+[^guide-stream]: `docs/guides/compiler/core-parse-streaming.md`。RunConfig 連携とストリーミング利用時の `Core.Parse` API 期待値を整理。
 [^core-parse-api-note]: `docs/notes/core-parse-api-evolution.md` Phase 2-5 Step2 Core_parse シグネチャ草案。

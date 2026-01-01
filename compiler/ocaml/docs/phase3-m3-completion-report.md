@@ -466,7 +466,7 @@ let add_sret_attr llctx llvm_fn _ret_ty param_index =
 ### 仕様書
 - [docs/spec/1-1-syntax.md](../../../docs/spec/1-1-syntax.md) — 構文仕様
 - [docs/spec/1-2-types-Inference.md](../../../docs/spec/1-2-types-Inference.md) — 型システム
-- [docs/guides/llvm-integration-notes.md](../../../docs/guides/llvm-integration-notes.md) — LLVM連携ガイド
+- [docs/guides/compiler/llvm-integration-notes.md](../../../docs/guides/compiler/llvm-integration-notes.md) — LLVM連携ガイド
 
 ---
 

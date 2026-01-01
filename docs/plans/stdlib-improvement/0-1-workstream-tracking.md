@@ -8,11 +8,11 @@
 ## ストリーム一覧
 | ストリーム | 優先度 | 主目的 | 主要参照 | 成果物（ドラフト） |
 | --- | --- | --- | --- | --- |
-| Core.Test | 高 | DSL の統合/ゴールデン/ファジング基盤 | `docs/spec/3-6-core-diagnostics-audit.md` | `docs/spec/3-11-core-test.md` と `docs/guides/testing.md` |
-| Core.Cli | 高 | DSL 用 CLI の宣言的構築 | `docs/spec/3-10-core-env.md` | `docs/spec/3-12-core-cli.md` と `docs/guides/cli-authoring.md` |
-| Core.Text.Pretty | 中 | フォーマッタ/コード生成の整形基盤 | `docs/spec/3-3-core-text-unicode.md` | `docs/spec/3-13-core-text-pretty.md` と `docs/guides/formatter-authoring.md` |
-| Core.Lsp | 中 | IDE 連携の標準ツールキット | `docs/spec/3-5-core-io-path.md` | `docs/spec/3-14-core-lsp.md` と `docs/guides/lsp-authoring.md` |
-| Core.Doc | 低 | ドキュメント/Doctest 基盤 | `docs/spec/3-6-core-diagnostics-audit.md` | `docs/spec/3-15-core-doc.md` と `docs/guides/doc-authoring.md` |
+| Core.Test | 高 | DSL の統合/ゴールデン/ファジング基盤 | `docs/spec/3-6-core-diagnostics-audit.md` | `docs/spec/3-11-core-test.md` と `docs/guides/tooling/testing.md` |
+| Core.Cli | 高 | DSL 用 CLI の宣言的構築 | `docs/spec/3-10-core-env.md` | `docs/spec/3-12-core-cli.md` と `docs/guides/tooling/cli-authoring.md` |
+| Core.Text.Pretty | 中 | フォーマッタ/コード生成の整形基盤 | `docs/spec/3-3-core-text-unicode.md` | `docs/spec/3-13-core-text-pretty.md` と `docs/guides/dsl/formatter-authoring.md` |
+| Core.Lsp | 中 | IDE 連携の標準ツールキット | `docs/spec/3-5-core-io-path.md` | `docs/spec/3-14-core-lsp.md` と `docs/guides/lsp/lsp-authoring.md` |
+| Core.Doc | 低 | ドキュメント/Doctest 基盤 | `docs/spec/3-6-core-diagnostics-audit.md` | `docs/spec/3-15-core-doc.md` と `docs/guides/dsl/doc-authoring.md` |
 
 ## Phase 4 との接続
 - 各ストリームの成果物は `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に登録し、回帰シナリオの対象へ追加する。

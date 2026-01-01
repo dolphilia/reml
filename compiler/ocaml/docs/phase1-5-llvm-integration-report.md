@@ -238,7 +238,7 @@ clang sample.o runtime/native/build/libreml_runtime.a -o sample -lc -lm
 ## 参考資料
 
 - **計画書**: `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` §6
-- **ランタイム仕様**: `docs/guides/llvm-integration-notes.md` §5
+- **ランタイム仕様**: `docs/guides/compiler/llvm-integration-notes.md` §5
 - **ランタイム実装**: `runtime/native/include/reml_runtime.h`
 - **技術的負債**: `compiler/ocaml/docs/technical-debt.md` ID 10（型付き属性制限）→ 解決済み
 

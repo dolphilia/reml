@@ -290,7 +290,7 @@ dune exec -- ./tests/test_llvm_verify.exe
 ## 参考資料
 
 - [1-4-llvm-targeting.md](../../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md) — LLVM IR生成計画
-- [guides/llvm-integration-notes.md](../../../docs/guides/llvm-integration-notes.md) — LLVM統合設計
+- [guides/llvm-integration-notes.md](../../../docs/guides/compiler/llvm-integration-notes.md) — LLVM統合設計
 - [3-6-core-diagnostics-audit.md](../../../docs/spec/3-6-core-diagnostics-audit.md) — 診断形式仕様
 - [LLVM Language Reference](https://llvm.org/docs/LangRef.html)
 - [LLVM Verifier](https://llvm.org/docs/Passes.html#verify-module-verifier)

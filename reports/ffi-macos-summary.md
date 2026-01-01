@@ -128,7 +128,7 @@ Command got signal SEGV. (修正前ログ)
 - [x] `AuditEnvelope.metadata.bridge.*` スキーマを確定し、macOS サンプルをゴールデン化する（`tooling/runtime/audit-schema.json` を正式版へ更新済み、`cli-ffi-bridge-macos.jsonl.golden` で検証）
 - [x] CLI `--emit-audit` のゴールデンに Borrowed/Transferred 返り値ケースを追加し、macOS arm64 の JSONL を固定化
 - [x] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` へ `ffi_bridge.audit_pass_rate` と Darwin プリセット成功条件を追加
-- [x] 仕様書（`docs/spec/3-9`, `docs/spec/3-6`）とガイド（`docs/guides/runtime-bridges.md`）の macOS 章を更新し、Phase 3 へ渡す TODO リストを整備
+- [x] 仕様書（`docs/spec/3-9`, `docs/spec/3-6`）とガイド（`docs/guides/runtime/runtime-bridges.md`）の macOS 章を更新し、Phase 3 へ渡す TODO リストを整備
 
 > **アップデート**: `.github/workflows/bootstrap-macos.yml` の `iterator-audit` ジョブで `ffi_dispatch_async.reml` / `ffi_malloc_arm64.reml` を自動実行し、`tooling/ci/ffi-audit/macos/ffi_dispatch_async.audit.jsonl` と `ffi_malloc_arm64.audit.jsonl` を生成。`collect-iterator-audit-metrics.py --audit-source` と `sync-iterator-audit.sh --macos-ffi-samples` により `ffi_bridge.audit_pass_rate (macos-arm64)` のゲートを有効化済み（技術的負債 ID 23 をクローズ）。
 

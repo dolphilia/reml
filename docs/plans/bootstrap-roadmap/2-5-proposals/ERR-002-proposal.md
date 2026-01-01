@@ -24,7 +24,7 @@
 ## 4. フォローアップ
 - Phase 2-7 診断タスクと協力して、CLI/LSP のテキスト出力・自動修正インターフェイスを更新する。  
 - 仕様書の脚注に「OCaml 実装は `recover`/FixIt の整備中」と明記し、実装完了時に脚注を削除。  
-- `docs/guides/ai-integration.md` に FixIt 情報を活用する運用例を追記する。
+- `docs/guides/ecosystem/ai-integration.md` に FixIt 情報を活用する運用例を追記する。
 - `docs/notes/core-parse-streaming-todo.md` にストリーミング解析での `recover` 活用状況と残課題を追記し、Phase 3 へ引き継ぐ。
 - **タイミング**: PARSER-001/002 の反映後、Phase 2-5 中盤〜後半にかけて実装し、Phase 2-7 の CLI/LSP 刷新に先行して FixIt 支援を提供する。
 
@@ -85,7 +85,7 @@
 - `docs/spec/2-5-error.md` / `docs/spec/3-6-core-diagnostics-audit.md` に OCaml 実装の整備状況を脚注で追記し、完了後に脚注を更新して Phase 2-7 へ周知する。  
 - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に実施記録を追加し、`docs/notes/core-parse-streaming-todo.md` へストリーミング経路の残課題と回復カバレッジを登録する。  
 - Phase 2-7 チームへ CLI/LSP 出力差分と自動修正インターフェイスの追随点を共有し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に必要な後続タスクを記録する。  
-- 調査: `docs/spec/0-1-project-purpose.md` §2.2（エラーメッセージ改善指標）、`docs/guides/ai-integration.md` FixIt 活用章、`docs/plans/bootstrap-roadmap/2-4-completion-report.md` の診断 KPI。
+- 調査: `docs/spec/0-1-project-purpose.md` §2.2（エラーメッセージ改善指標）、`docs/guides/ecosystem/ai-integration.md` FixIt 活用章、`docs/plans/bootstrap-roadmap/2-4-completion-report.md` の診断 KPI。
 
 #### Step4 実施記録（Week 33 Day4 完了）
 - **仕様脚注の更新**: `docs/spec/2-5-error.md` と `docs/spec/3-6-core-diagnostics-audit.md` に ERR-002 Step3/Step4 の整備状況を示す脚注を追加し、`parser.recover_fixit_coverage = 1.0` を維持していることを明記した。  

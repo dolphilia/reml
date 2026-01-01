@@ -7,7 +7,7 @@
 - CLI (`--emit-ir` / `--emit-audit`) を Linux・Windows・macOS で再実行し、`tmp/cli-callconv-out/<platform>/` に成果物を集約。監査ログには `bridge.platform` と `bridge.return.{ownership,status,wrap,release_handler,rc_adjustment}` を出力させた。
 - `tooling/runtime/audit-schema.json` を正式版へ更新し、`bridge.status` / `bridge.platform` / `bridge.return.*` を必須化。`compiler/ocaml/tests/golden/audit/ffi-bridge.jsonl.golden` および `diagnostics/ffi/unsupported-abi.json.golden` を同期。
 - `tooling/ci/collect-iterator-audit-metrics.py` / `tooling/ci/sync-iterator-audit.sh` に FFI ブリッジ指標を統合し、プラットフォーム別サマリーと macOS (`macos-arm64`) の pass_rate 判定を追加。
-- 仕様・ガイド（`docs/spec/3-9`, `docs/spec/3-6`, `docs/guides/runtime-bridges.md`）を更新し、監査キーの定義および CI 運用手順を明文化した。
+- 仕様・ガイド（`docs/spec/3-9`, `docs/spec/3-6`, `docs/guides/runtime/runtime-bridges.md`）を更新し、監査キーの定義および CI 運用手順を明文化した。
 - macOS 固有サンプル（`ffi_dispatch_async.reml` など）のビルド失敗、および Windows Stage override 自動検証の未整備は Phase 3 で対応する技術的負債 (ID 22, 23) として引き継ぐ。
 
 ## 2. 達成事項

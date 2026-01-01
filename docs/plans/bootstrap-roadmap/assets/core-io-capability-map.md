@@ -59,7 +59,7 @@
 - **Runtime Native (`runtime/native/src/*.c`)**  
   - `os.c` は `reml_os_file_open_*` / `reml_os_file_read/write` 等の最小 API を提供するが、permissions・symlink・watcher・metadata の拡張が欠如している。  
   - Windows では UTF-8 → UTF-16 変換ヘルパを保持しており、`FsAdapter` で `PathBuf ↔ wchar_t` 変換を集約する。POSIX では `stat`/`lstat` の薄いラッパを追加して `fs.permissions.*` Capability と紐付ける。  
-  - Watcher API（inotify/FSEvents/ReadDirectoryChangesW）は実装されておらず、`RuntimeBridge` 経由で外部監視デーモンを利用する案が `docs/guides/runtime-bridges.md` に記載されている。`core-io-capability-map` は Stage 判定で `RuntimeBridgeId = "native.fs.watch"` を参照する前提で記述している。
+  - Watcher API（inotify/FSEvents/ReadDirectoryChangesW）は実装されておらず、`RuntimeBridge` 経由で外部監視デーモンを利用する案が `docs/guides/runtime/runtime-bridges.md` に記載されている。`core-io-capability-map` は Stage 判定で `RuntimeBridgeId = "native.fs.watch"` を参照する前提で記述している。
 
 - **Runtime Bridge**  
   - Rust 実装側に `compiler/rust/runtime/src/runtime_bridge/` ディレクトリはまだ存在せず、`RuntimeBridgeRegistry` のロジックは OCaml 実装のみ（`compiler/ocaml/src/runtime_bridge_registry.ml`）にある。  

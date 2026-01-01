@@ -19,7 +19,7 @@
 - 連携: `docs/spec/3-10-core-env.md`（環境取得との役割分担）
 
 ## ガイド/サンプル
-- 新設: `docs/guides/cli-authoring.md`
+- 新設: `docs/guides/tooling/cli-authoring.md`
 - サンプル方針: DSL 用 CLI のサンプル（解析/フォーマット/検証）を `examples/` に整理する。
 
 ## リスクと対策

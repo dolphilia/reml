@@ -42,7 +42,7 @@
 
 ## 5. フォローアップ
 1. Phase 2-7 にて CLI テキスト出力刷新と Windows/macOS 監査ゲートを完了させ、Phase 2-5 の差分補正で参照する診断ログを安定化させる。
-2. LSP V2 互換テストを拡充し、`docs/guides/plugin-authoring.md` に V2 連携手順を追記した上で `lsp-contract` CI ジョブを導入する。
+2. LSP V2 互換テストを拡充し、`docs/guides/dsl/plugin-authoring.md` に V2 連携手順を追記した上で `lsp-contract` CI ジョブを導入する。
 3. `tooling/ci/collect-iterator-audit-metrics.py` の集計結果を `reports/audit/dashboard/` に反映し、Phase 2-8 の仕様監査に備えてベースラインを確定する。
 
 ## 6. 添付・参照

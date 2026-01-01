@@ -6,7 +6,7 @@ WASM Component Model（WIT）の導入可能性を調査し、Reml FFI の将来
 ## 関連資料
 - 設計計画: `docs/plans/ffi-improvement/1-3-wasm-component-model-plan.md`
 - 既存仕様: `docs/spec/3-9-core-async-ffi-unsafe.md`
-- 調査ガイド: `docs/guides/ffi-wit-poc.md`
+- 調査ガイド: `docs/guides/ffi/ffi-wit-poc.md`
 - 既存調査: `docs/notes/ffi-improvement-survey.md`
 
 ## WIT 型 → Reml 型 対応表（一次案）

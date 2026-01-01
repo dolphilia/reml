@@ -86,7 +86,7 @@
 
 ### Phase 6: 文書・ハンドオーバー
 - `docs/spec/2-2-core-combinator.md` に Rust 実装の対応範囲・未対応箇所の脚注を追加し、`2-0-parser-api-overview.md` にも実装状況を一文追記。  
-- `docs/guides/core-parse-streaming.md` / `plugin-authoring.md` へ「Rust 実装対応状況」サブセクションを追加し、`RunConfig` との連動制限や TODO を明記。  
+- `docs/guides/compiler/core-parse-streaming.md` / `plugin-authoring.md` へ「Rust 実装対応状況」サブセクションを追加し、`RunConfig` との連動制限や TODO を明記。  
 - `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` の PhaseF トラッカーに `basic_interpreter_combinator.reml` をチェック項目として追加し、完了時に `[x]` へ更新。  
 - 未対応の Lex/Streaming/Plugin 連携は `docs/notes/core-parse-api-evolution.md` に TODO で残し、次フェーズへのハンドオーバー項目として整理。
 

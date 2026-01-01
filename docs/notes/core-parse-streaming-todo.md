@@ -9,7 +9,7 @@
 - **TODO（共有タスク案）**:
   1. `core_parse_lex.{mli,ml}` 設計時に `Run_config.Lex` から `ConfigTriviaProfile` へ変換するヘルパを用意し、Streaming ランナーが `lex.space_id()` を検証できるよう `ParserId` 生成ポリシーを定義する。
   2. Streaming `run_stream` 初期化で `RunConfig.extensions["lex"]` を必須化し、未設定時は `parser.runconfig.lex_unset` 警告を返す。CLI 側で fallback を注入する場合は脚注で仕様に明記する。
-  3. Lex API 抽出後、`docs/guides/core-parse-streaming.md` のサンプルを更新し、`lexeme` / `config_trivia` を利用したストリーミング例（`resume`/`checkpoint` 付き）を追加する。
+  3. Lex API 抽出後、`docs/guides/compiler/core-parse-streaming.md` のサンプルを更新し、`lexeme` / `config_trivia` を利用したストリーミング例（`resume`/`checkpoint` 付き）を追加する。
 - **2025-11-26 追記**: Step1 で `Pack` レコード（`space`/`lexeme`/`symbol`/`space_id`）と `Bridge.effective_profile`/`attach_space` を設計済み。`space_id` は `Parser_diag_state` の ID 発行器を流用し `RunConfig.extensions["lex"].space_id` へ round-trip させる方針。Streaming 実装では Checkpoint 作成前に `Pack.space_id` と `RunConfig` の値が一致するか検証する。
 
 [^lexer-step0]: `docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-002-proposal.md` Step0 調査サマリ、および `docs/plans/bootstrap-roadmap/2-5-review-log.md` 「LEXER-002 Day1」参照。

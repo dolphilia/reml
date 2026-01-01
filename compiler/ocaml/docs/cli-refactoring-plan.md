@@ -369,7 +369,7 @@ compiler/ocaml/src/dune
 1. **アーキテクチャ**: `tooling/cli/ARCHITECTURE.md`（既存）
 2. **オプション仕様**: `tooling/cli/OPTIONS.md`（既存）
 3. **リファクタリング計画**: `compiler/ocaml/docs/cli-refactoring-plan.md`（本ドキュメント）
-4. **使用ガイド**: `docs/guides/cli-workflow.md`（Week 16 作成予定）
+4. **使用ガイド**: `docs/guides/tooling/cli-workflow.md`（Week 16 作成予定）
 
 ---
 

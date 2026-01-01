@@ -13,19 +13,19 @@
 - カラーコード対応（`color.ml`）
 - JSON 出力フォーマット（`json_formatter.ml`）
 - CLI オプション管理のモジュール化（`options.ml`）
-- 診断フォーマット仕様書（`docs/guides/diagnostic-format.md`）
+- 診断フォーマット仕様書（`docs/guides/tooling/diagnostic-format.md`）
 
 **トレース・ログ機能（Week 15）**:
 - `--trace` オプション実装（`cli/trace.ml`）
 - 統計情報収集（`cli/stats.ml`）
 - GC 統計ベースのメモリ計測
 - トレースと統計の統合ビュー
-- トレース出力ガイド（`docs/guides/trace-output.md`）
+- トレース出力ガイド（`docs/guides/tooling/trace-output.md`）
 
 **ヘルプ・ドキュメント整備（Week 16 部分完了）**:
 - `--help` 出力の充実（セクション化、使用例）
 - man ページ生成スクリプト（`tooling/cli/scripts/update-man-pages.sh`）
-- CLI 使用ガイド初稿（`docs/guides/cli-workflow.md`）
+- CLI 使用ガイド初稿（`docs/guides/tooling/cli-workflow.md`）
 - サンプルコード整備（`examples/cli/` 配下）
 
 **CI 依存関係修正**:
@@ -260,9 +260,9 @@ Phase 1-7 では x86_64 Linux 検証インフラの構築に注力します：
 ### 4. ドキュメントの現状
 
 **実装済み**:
-- `docs/guides/diagnostic-format.md` - 診断フォーマット仕様
-- `docs/guides/trace-output.md` - トレース出力仕様
-- `docs/guides/cli-workflow.md` - CLI 使用ガイド初稿
+- `docs/guides/tooling/diagnostic-format.md` - 診断フォーマット仕様
+- `docs/guides/tooling/trace-output.md` - トレース出力仕様
+- `docs/guides/tooling/cli-workflow.md` - CLI 使用ガイド初稿
 - `examples/cli/README.md` - サンプル説明
 
 **未実装**:
@@ -379,9 +379,9 @@ Phase 1-7 では x86_64 Linux 検証インフラの構築に注力します：
 
 | ファイル | 説明 | Phase 1-7 での利用 |
 |---------|------|-------------------|
-| `docs/guides/cli-workflow.md` | CLI 使用ガイド | CI 設定の参考 |
-| `docs/guides/diagnostic-format.md` | 診断フォーマット仕様 | CI ログ解析の参考 |
-| `docs/guides/trace-output.md` | トレース出力仕様 | CI メトリクスの参考 |
+| `docs/guides/tooling/cli-workflow.md` | CLI 使用ガイド | CI 設定の参考 |
+| `docs/guides/tooling/diagnostic-format.md` | 診断フォーマット仕様 | CI ログ解析の参考 |
+| `docs/guides/tooling/trace-output.md` | トレース出力仕様 | CI メトリクスの参考 |
 | `compiler/ocaml/docs/phase1-6-completion-report.md` | Phase 1-6 完了報告 | 制約事項参照 |
 
 ### サンプルコード

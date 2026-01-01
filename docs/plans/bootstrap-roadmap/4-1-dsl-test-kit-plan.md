@@ -16,7 +16,7 @@
 
 ## 成果物
 - `docs/spec/3-11-core-test.md` への DSL Test Kit 仕様追記（構文・Matcher・Error 期待値）。
-- `docs/guides/testing.md` への運用ガイド追記（ゴールデンファイル、更新手順、診断の安定化）。
+- `docs/guides/tooling/testing.md` への運用ガイド追記（ゴールデンファイル、更新手順、診断の安定化）。
 - `examples/` と `expected/` の DSL テストサンプル、および Phase 4 シナリオ登録。
 
 ## 仕様ドラフト（最小構成）
@@ -51,7 +51,7 @@ test_parser(my_parser) {
 
 ### フェーズB: ゴールデンファイル運用
 1. [x] `golden_case` の入出力命名規則（`*.input`/`*.ast`/`*.error`）を定義する。
-2. [x] `Core.Test` のスナップショット更新ポリシーと統合し、差分更新の手順を `docs/guides/testing.md` に記載する。
+2. [x] `Core.Test` のスナップショット更新ポリシーと統合し、差分更新の手順を `docs/guides/tooling/testing.md` に記載する。
 3. [x] `AuditEnvelope` に記録するイベント名とキー（例: `snapshot.updated`）を整理する。
 
 ### フェーズC: サンプルと回帰接続
@@ -111,7 +111,7 @@ test_parser(my_parser) {
 | --- | --- | --- |
 | Matcher 記法が複雑化する | 学習コスト増大 | 最小記法に限定し、拡張は Phase 5 へ移管 |
 | 診断位置の揺れ | 回帰が不安定 | `at` の解釈ルールを `Span` 起点で統一し、テスト入力を短く保つ |
-| ゴールデン差分の増加 | レビュー負担増 | 更新手順と差分レビュー基準を `docs/guides/testing.md` に明記 |
+| ゴールデン差分の増加 | レビュー負担増 | 更新手順と差分レビュー基準を `docs/guides/tooling/testing.md` に明記 |
 
 ## 参照
 - `docs/notes/dsl-enhancement-proposal.md`
@@ -119,5 +119,5 @@ test_parser(my_parser) {
 - `docs/spec/2-5-error.md`
 - `docs/spec/3-11-core-test.md`
 - `docs/spec/3-6-core-diagnostics-audit.md`
-- `docs/guides/testing.md`
+- `docs/guides/tooling/testing.md`
 - `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md`

@@ -19,7 +19,7 @@
 - 連携: `docs/spec/3-6-core-diagnostics-audit.md`（診断/監査の検証経路）
 
 ## ガイド/サンプル
-- 新設: `docs/guides/testing.md`
+- 新設: `docs/guides/tooling/testing.md`
 - サンプル方針: `examples/` に DSL 解析結果のスナップショット例を配置し、Phase 4 回帰へ登録する。
 
 ## リスクと対策

@@ -3,7 +3,7 @@
 ## 背景と決定事項
 - `docs/notes/dsl-enhancement-proposal.md` の提案「3.6 DSL Composability Standard」を Phase 4 の実装計画へ落とし込む。
 - `conductor` を DSL 協働の司令塔として扱い、解析・実行・診断・LSP を一貫した契約で束ねる（[docs/spec/1-1-syntax.md](../../spec/1-1-syntax.md) B.8.3）。
-- ストリーミング時のバックプレッシャ協調は [docs/guides/core-parse-streaming.md](../../guides/core-parse-streaming.md) 4.1 を準拠し、親子 DSL で同一ポリシーを共有する。
+- ストリーミング時のバックプレッシャ協調は [docs/guides/compiler/core-parse-streaming.md](../../guides/core-parse-streaming.md) 4.1 を準拠し、親子 DSL で同一ポリシーを共有する。
 
 ## 目的
 1. 埋め込み DSL の共通インターフェース（境界トークン、復帰位置、回復規約、診断境界）を仕様化する。
@@ -18,7 +18,7 @@
 - `docs/spec/1-1-syntax.md` B.8.3 に `embedded_dsl` 契約と `conductor` の DSL 合成ルールを追記。
 - `docs/spec/2-2-core-combinator.md` に `embedded_dsl` の API 仕様と `EmbeddedMode`/`ContextBridge` を追記。
 - `docs/spec/3-6-core-diagnostics-audit.md` に `Diagnostic.source_dsl`/`AuditEnvelope.metadata["dsl.id"]` の標準キーを追記。
-- `docs/guides/conductor-pattern.md` に埋め込み DSL の運用パターン（境界/回復/委譲）を追記。
+- `docs/guides/dsl/conductor-pattern.md` に埋め込み DSL の運用パターン（境界/回復/委譲）を追記。
 - `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に composability シナリオを追加。
 - Rust 実装（`compiler/rust/runtime/src/parse/embedded.rs` など）と回帰サンプル。
 
@@ -59,12 +59,12 @@ conductor docs_pipeline {
 1. `docs/spec/1-1-syntax.md` B.8.3 に `embedded_dsl`/`with_embedded` の契約、`dsl_id` の必須性、診断境界を追記する。
 2. `docs/spec/2-2-core-combinator.md` に `embedded_dsl` の型シグネチャと `EmbeddedMode`/`ContextBridge` の定義を追加する。
 3. `docs/spec/3-6-core-diagnostics-audit.md` に `Diagnostic.source_dsl` と `AuditEnvelope.metadata["dsl.id"]` を標準キーとして追記する。
-4. `docs/guides/conductor-pattern.md` に「Markdown + Reml の埋め込み」例と運用チェックリスト（境界・復帰・回復）を追加する。
+4. `docs/guides/dsl/conductor-pattern.md` に「Markdown + Reml の埋め込み」例と運用チェックリスト（境界・復帰・回復）を追加する。
 
 ### フェーズB: 実行/委譲契約の整理
 1. `docs/spec/3-8-core-runtime-capability.md` の `verify_conductor_contract` と `dsl_id` の対応ルールを整理する。
 2. `docs/spec/3-9-core-async-ffi-unsafe.md` の `ExecutionPlan` に `EmbeddedMode` の反映ルール（並列/直列/優先度）を追記する。
-3. `docs/guides/core-parse-streaming.md` 4.1 と整合するバックプレッシャ共有ルールを明記する。
+3. `docs/guides/compiler/core-parse-streaming.md` 4.1 と整合するバックプレッシャ共有ルールを明記する。
 
 ### フェーズC: Rust 実装追加
 1. `compiler/rust/runtime/src/parse/embedded.rs` を追加し、基礎型を定義する。
@@ -112,12 +112,12 @@ conductor docs_pipeline {
 - [x] `docs/spec/1-1-syntax.md` に `embedded_dsl`/`with_embedded` の契約と診断境界を追記
 - [x] `docs/spec/2-2-core-combinator.md` に `embedded_dsl` API と `EmbeddedMode`/`ContextBridge` を追記
 - [x] `docs/spec/3-6-core-diagnostics-audit.md` に `Diagnostic.source_dsl` と `dsl.*` 監査キーを追記
-- [x] `docs/guides/conductor-pattern.md` に埋め込み DSL の運用例を追記
+- [x] `docs/guides/dsl/conductor-pattern.md` に埋め込み DSL の運用例を追記
 
 ### フェーズB: 実行/委譲契約の整理
 - [x] `docs/spec/3-8-core-runtime-capability.md` に `dsl_id` 連携ルールを追記
 - [x] `docs/spec/3-9-core-async-ffi-unsafe.md` に `EmbeddedMode` と `ExecutionPlan` の対応を追記
-- [x] `docs/guides/core-parse-streaming.md` にバックプレッシャ共有ルールを追記
+- [x] `docs/guides/compiler/core-parse-streaming.md` にバックプレッシャ共有ルールを追記
 
 ### フェーズC: Rust 実装追加
 - [x] `compiler/rust/runtime/src/parse/embedded.rs` を追加し `EmbeddedDslSpec` などを定義
@@ -176,6 +176,6 @@ conductor docs_pipeline {
 - `docs/spec/3-6-core-diagnostics-audit.md`
 - `docs/spec/3-8-core-runtime-capability.md`
 - `docs/spec/3-9-core-async-ffi-unsafe.md`
-- `docs/guides/conductor-pattern.md`
-- `docs/guides/core-parse-streaming.md`
+- `docs/guides/dsl/conductor-pattern.md`
+- `docs/guides/compiler/core-parse-streaming.md`
 - `docs/plans/bootstrap-roadmap/4-1-core-parse-cst-plan.md`

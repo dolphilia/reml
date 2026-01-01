@@ -588,7 +588,7 @@ type options = {
 **成果物**:
 - 充実したヘルプメッセージ
 - 使用例 4 件
-- `docs/guides/cli-workflow.md` 更新
+- `docs/guides/tooling/cli-workflow.md` 更新
 
 ### Week 16: 統合テスト
 

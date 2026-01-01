@@ -72,7 +72,7 @@ Phase 3 では以下のマイルストーンを達成します：
 - [x] [1-2-types-Inference.md](../../../docs/spec/1-2-types-Inference.md) - 型システム仕様（完了）
 - [x] [2-5-error.md](../../../docs/spec/2-5-error.md) - エラー仕様（Phase 2 で拡張済み）
 - [ ] [3-6-core-diagnostics-audit.md](../../../docs/spec/3-6-core-diagnostics-audit.md) - 診断・監査（Phase 3 で参照）
-- [ ] LLVM 連携ガイド - [guides/llvm-integration-notes.md](../../../docs/guides/llvm-integration-notes.md)
+- [ ] LLVM 連携ガイド - [guides/llvm-integration-notes.md](../../../docs/guides/compiler/llvm-integration-notes.md)
 
 ## 既存コードベースの構造
 
@@ -179,7 +179,7 @@ compiler/ocaml/
 
 **参考**:
 - [1-3-core-ir-min-optimization.md](../../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md) §1
-- [guides/llvm-integration-notes.md](../../../docs/guides/llvm-integration-notes.md)
+- [guides/llvm-integration-notes.md](../../../docs/guides/compiler/llvm-integration-notes.md)
 
 ### 2. 糖衣削除（Desugaring） ✅ 完了
 
@@ -315,7 +315,7 @@ Phase 2 から引き継ぐ技術的負債は [technical-debt.md](./technical-deb
 ### 仕様書の理解
 
 - [ ] [1-3-core-ir-min-optimization.md](../../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md) を読む
-- [ ] [guides/llvm-integration-notes.md](../../../docs/guides/llvm-integration-notes.md) を読む
+- [ ] [guides/llvm-integration-notes.md](../../../docs/guides/compiler/llvm-integration-notes.md) を読む
 - [ ] Core IR の設計方針を理解する
 
 ### 計画書の確認
@@ -369,7 +369,7 @@ Phase 2 から引き継ぐ技術的負債は [technical-debt.md](./technical-deb
 ### 仕様書
 
 - Core IR 計画: [1-3-core-ir-min-optimization.md](../../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md)
-- LLVM 連携: [guides/llvm-integration-notes.md](../../../docs/guides/llvm-integration-notes.md)
+- LLVM 連携: [guides/llvm-integration-notes.md](../../../docs/guides/compiler/llvm-integration-notes.md)
 - 診断・監査: [3-6-core-diagnostics-audit.md](../../../docs/spec/3-6-core-diagnostics-audit.md)
 
 ### 計画書
