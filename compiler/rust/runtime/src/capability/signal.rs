@@ -39,7 +39,7 @@ impl Default for SignalCapabilityMetadata {
     fn default() -> Self {
         Self {
             handled_signals: Vec::new(),
-            supports_subscribe: false,
+            supports_subscribe: true,
             requires_native_support: true,
         }
     }

@@ -39,7 +39,7 @@ impl Default for ProcessCapabilityMetadata {
     fn default() -> Self {
         Self {
             supports_spawn: true,
-            supports_kill: false,
+            supports_kill: true,
             spawn_strategy: ProcessSpawnStrategy::Blocking,
         }
     }

@@ -25,8 +25,11 @@ use super::{
     metrics::{MetricsCapability, MetricsCapabilityMetadata, MetricsExporterKind},
     native::{NativeCapability, NativeCapabilityMetadata},
     plugin::{PluginCapability, PluginCapabilityMetadata},
+    process::{ProcessCapability, ProcessCapabilityMetadata},
     realtime::{RealtimeCapability, RealtimeCapabilityMetadata, RealtimeClockSource},
     security::{SecurityCapability, SecurityCapabilityMetadata, SecurityPolicyKind},
+    signal::{SignalCapability, SignalCapabilityMetadata},
+    system::{SystemCapability, SystemCapabilityMetadata},
 };
 use crate::{
     audit::{AuditEnvelope, AuditEvent, AuditEventKind},
@@ -746,6 +749,31 @@ fn builtin_capabilities() -> Vec<CapabilityHandle> {
         ),
         memory_capability("memory.buffered_io", StageId::Stable, &["mem"]),
         security_capability("security.fs.policy", StageId::Stable, &["security"]),
+        process_capability(
+            "core.process",
+            StageId::Experimental,
+            &[
+                "process",
+                "thread",
+                "io.blocking",
+                "signal",
+                "hardware",
+                "security",
+            ],
+            ProcessCapabilityMetadata::default(),
+        ),
+        signal_capability(
+            "core.signal",
+            StageId::Experimental,
+            &["signal", "process", "unsafe", "audit", "security", "io.blocking"],
+            SignalCapabilityMetadata::default(),
+        ),
+        system_capability(
+            "core.system",
+            StageId::Experimental,
+            &["syscall", "unsafe", "audit", "security", "memory"],
+            SystemCapabilityMetadata::default(),
+        ),
         realtime_capability("core.time.timezone.lookup", StageId::Beta, &["time"]),
         realtime_capability("core.time.timezone.local", StageId::Beta, &["time"]),
         collections_ref_capability(),
@@ -809,6 +837,42 @@ fn security_capability(id: &'static str, stage: StageId, effects: &[&str]) -> Ca
             enforces_path_sandbox: true,
             tracks_manifest: true,
         },
+    ))
+}
+
+fn process_capability(
+    id: &'static str,
+    stage: StageId,
+    effects: &[&str],
+    metadata: ProcessCapabilityMetadata,
+) -> CapabilityHandle {
+    CapabilityHandle::Process(ProcessCapability::new(
+        descriptor(id, stage, effects),
+        metadata,
+    ))
+}
+
+fn signal_capability(
+    id: &'static str,
+    stage: StageId,
+    effects: &[&str],
+    metadata: SignalCapabilityMetadata,
+) -> CapabilityHandle {
+    CapabilityHandle::Signal(SignalCapability::new(
+        descriptor(id, stage, effects),
+        metadata,
+    ))
+}
+
+fn system_capability(
+    id: &'static str,
+    stage: StageId,
+    effects: &[&str],
+    metadata: SystemCapabilityMetadata,
+) -> CapabilityHandle {
+    CapabilityHandle::System(SystemCapability::new(
+        descriptor(id, stage, effects),
+        metadata,
     ))
 }
 

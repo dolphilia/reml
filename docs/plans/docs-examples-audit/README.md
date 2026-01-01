@@ -22,6 +22,7 @@
 - [1-2-impl-gap-backend-runtime-plan-20251224-2.md](1-2-impl-gap-backend-runtime-plan-20251224-2.md)
 - [1-7-backend-runtime-type-decl-layout-plan-20251227.md](1-7-backend-runtime-type-decl-layout-plan-20251227.md)
 - [2-0-stdlib-plugin-migration-plan.md](2-0-stdlib-plugin-migration-plan.md)
+- [2-1-stdlib-plugin-migration-impl-plan.md](2-1-stdlib-plugin-migration-impl-plan.md)
 
 ## 配置ポリシー（概要）
 - `.reml` は `examples/docs-examples/<kind>/<doc-path>/` に配置する。
