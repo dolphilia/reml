@@ -86,7 +86,7 @@
 - [x] フェーズA: Capability Registry の拡充
 - [x] フェーズB: Core.Runtime Signal 型の追加
 - [x] フェーズC: Core.System モジュール実装
-- [ ] フェーズD: 監査・診断の整備
+- [x] フェーズD: 監査・診断の整備
 - [ ] フェーズE: テストと回帰接続
 
 ## 参照

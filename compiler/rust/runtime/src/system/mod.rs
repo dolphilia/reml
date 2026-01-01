@@ -4,3 +4,4 @@ pub mod daemon;
 pub mod env;
 pub mod process;
 pub mod signal;
+pub mod audit;
