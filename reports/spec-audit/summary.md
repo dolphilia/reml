@@ -90,3 +90,9 @@
 | 06:58 | `compiler/rust/frontend` | `error[E0308]`/`error[E0609]` でビルド停止 | `OperationDecl` に `body` がなく、extern パラメータ型が `Param` と不一致 | `inspect_decl` の `effect` 分岐から `body` 参照を削除し、extern パラメータを `Param` へ統一 | `なし` | ✅ 成功 | `compiler/rust/frontend/src/parser/mod.rs` を修正。 |
 | 00:00 | `compiler/rust/<crate>` |  |  |  | `なし` / `あり` |  |  |
 | 10:30 | `compiler/rust/frontend` | `error[E0599]` でビルド停止 | `frontend` のみ再現、依存更新が要因 | `parser/lexer.rs` の型変換を修正 | `なし` | ✅ 成功 | `cargo build --manifest-path compiler/rust/frontend/Cargo.toml` |
+
+## 2026-01-01 docs-examples-audit Core.System サンプル検証
+| JST 時刻 | コマンド | 結果 | 備考 |
+|----------|----------|------|------|
+| 22:42 | `for f in examples/docs-examples/spec/3-18-core-system/sec_3.reml examples/docs-examples/spec/3-18-core-system/sec_4_1.reml examples/docs-examples/spec/3-18-core-system/sec_6.reml; do sec=$(basename "$f" .reml); out="reports/spec-audit/ch3/3-18-core-system__${sec}-20260101-diagnostics.json"; cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json "$f" > "$out"; done` | ❌ `reml_frontend` のリンクで失敗 | `ld: Assertion failed: (name.size() <= maxLength)` によりビルド失敗。空の diagnostics は削除済み。 |
+| 22:44 | `for f in examples/docs-examples/spec/3-18-core-system/sec_3.reml examples/docs-examples/spec/3-18-core-system/sec_4_1.reml examples/docs-examples/spec/3-18-core-system/sec_6.reml; do sec=$(basename "$f" .reml); out="reports/spec-audit/ch3/3-18-core-system__${sec}-20260101-diagnostics.json"; RUSTFLAGS="-C link-arg=-fuse-ld=lld" cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json "$f" > "$out"; done` | ⚠️ diagnostics を検出 | `sec_3` = 1 (`parser.syntax.expected_tokens`)、`sec_4_1` = 17 (`type.unresolved_ident`)、`sec_6` = 6 (`type.unresolved_ident`)。 |

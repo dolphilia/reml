@@ -68,13 +68,15 @@
 - [x] `examples/docs-examples/spec/4-2-process-plugin/*.reml` / `4-4-signal-plugin/*.reml` を確認し、型参照が `Core.System.Signal` / `Core.System.Process` と整合するよう更新する（必要に応じて `use` を追加）。
 
 ### フェーズC: Rust テストの確認
-- [ ] `compiler/rust/runtime/tests/core_system_api.rs` の命名・コメントが `Core.System` 正準に沿っているか確認し、必要ならリネームまたは注記を追加する。
-- [ ] `core.process` / `core.signal` / `core.system` の Capability ID が仕様通りに維持されているかを再確認する。
+- [x] `compiler/rust/runtime/tests/core_system_api.rs` の命名・コメントが `Core.System` 正準に沿っているか確認し、必要ならリネームまたは注記を追加する。
+- [x] `core.process` / `core.signal` / `core.system` の Capability ID が仕様通りに維持されているかを再確認する。
 
 ### フェーズD: 監査と記録
-- [ ] 更新した `.reml` の検証を `reml_frontend` で実行し、`reports/spec-audit/` にログを追加する。
-- [ ] `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` の状態・備考を更新する。
-- [ ] `docs-migrations.log` に移行履歴を記録する。
+- [x] 更新した `.reml` の検証を `reml_frontend` で実行し、`reports/spec-audit/` にログを追加する。
+- [x] `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` の状態・備考を更新する。
+- [x] `docs-migrations.log` に移行履歴を記録する。
+  - 2026-01-01 初回実行時は `reml_frontend` のリンクエラーで失敗。`reports/spec-audit/summary.md` に記録済み。
+  - `RUSTFLAGS="-C link-arg=-fuse-ld=lld"` で再実行し diagnostics を採取済み。
 
 ## 成果物
 - `examples/docs-examples/spec/3-18-core-system/` の追加と在庫表登録。
