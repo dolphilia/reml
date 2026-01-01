@@ -84,7 +84,7 @@
 
 ## 進捗チェック
 - [x] フェーズA: Capability Registry の拡充
-- [ ] フェーズB: Core.Runtime Signal 型の追加
+- [x] フェーズB: Core.Runtime Signal 型の追加
 - [ ] フェーズC: Core.System モジュール実装
 - [ ] フェーズD: 監査・診断の整備
 - [ ] フェーズE: テストと回帰接続
