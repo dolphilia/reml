@@ -11,8 +11,8 @@
 | ステータス | ドラフト（再検討中） |
 | プラグインID | `core.memory` |
 | 効果タグ | `effect {memory}`, `effect {syscall}`, `effect {unsafe}`, `effect {process}`, `effect {security}` |
-| 依存モジュール | `Core.Runtime`, [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-2 Process Capability プラグイン](4-2-process-plugin.md), `Core.Diagnostics`, `Core.Unsafe.Ptr`, `Core.IO` |
-| 相互参照 | [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-5 Core IO & Path](3-5-core-io-path.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
+| 依存モジュール | `Core.Runtime`, [4-1 System Capability プラグイン](4-1-system-plugin.md), [3-18 Core System](3-18-core-system.md), `Core.Diagnostics`, `Core.Unsafe.Ptr`, `Core.IO` |
+| 相互参照 | [3.18 Core System](3-18-core-system.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-5 Core IO & Path](3-5-core-io-path.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
 
 ## 0.5 改訂案（標準ライブラリとの境界）
 
@@ -63,7 +63,7 @@ pub type SharedMemory = {
   owner: SharedMemoryOwner,
 }
 
-pub enum SharedMemoryOwner = Local | Remote(ProcessId)
+pub enum SharedMemoryOwner = Local | Remote(Core.System.Process.ProcessId)
 ```
 
 - `SharedMemory` は `MappedMemory` を内含し、所有者情報で参照元プロセスを追跡する。

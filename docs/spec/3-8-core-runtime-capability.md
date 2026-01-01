@@ -9,7 +9,7 @@
 | ステータス | 正式仕様 |
 | 効果タグ | `@pure`, `effect {runtime}`, `effect {audit}`, `effect {unsafe}`, `effect {security}` |
 | 依存モジュール | `Core.Prelude`, `Core.Diagnostics`, `Core.Numeric & Time`, `Core.IO`, `Core.Config`, `Core.Env` |
-| 相互参照 | [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3.9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md), [3-10 Core Env & Platform Bridge](3-10-core-env.md) |
+| 相互参照 | [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3.9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md), [3-10 Core Env & Platform Bridge](3-10-core-env.md), [3-18 Core System](3-18-core-system.md) |
 
 > **段階的導入ポリシー**: Capability の追加や効果カテゴリの拡張は `-Z` 実験フラグ経由で opt-in し、`CapabilityRegistry::register` に渡すメタデータで `stage = Experimental | Beta | Stable` を明示する。`stage` が `Experimental` の Capability は `@requires_capability(stage="experimental")` を伴う API からのみ呼び出せる。ベータ／安定化の手順は `../notes/algebraic-effects-implementation-roadmap-revised.md` を参照し、`@pure`/`@dsl_export` 契約との整合チェックを完了してから `stage = Stable` へ更新すること。
 > 効果構文（`perform` / `handle`）を公開する Capability は Phase 2-5 では `StageId::Experimental` として登録し、`-Zalgebraic-effects` フラグを必須とする。[^effects-syntax-poc-phase25]
@@ -649,6 +649,12 @@ pub type SignalCapability = {
   raise: fn(Signal) -> Result<(), SignalError>,                                        // effect {signal}
 }
 ```
+
+#### 2.4.1 Core.System ブリッジ
+
+- `Core.System.Signal` は `Core.Runtime.Signal` の型エイリアスとして定義し、`Core.System.SignalInfo` は本節の `SignalInfo` を再エクスポートする。
+- `Core.System.SignalDetail` は `SignalInfo` を拡張する標準ライブラリ側の構造体であり、`from_runtime_info` が不足メタデータを `None` で補完する。
+- `raw_code` の監査マスク方針や `SignalPayload` の定義は [3-18 Core System](3-18-core-system.md) に従い、ランタイム側の `SignalCapability` は低レベル情報のみを提供する。
 
 ### 2.5 HardwareCapability
 

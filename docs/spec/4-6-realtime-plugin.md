@@ -11,8 +11,8 @@
 | ステータス | ドラフト（再検討中） |
 | プラグインID | `core.realtime` |
 | 効果タグ | `effect {realtime}`, `effect {thread}`, `effect {memory}`, `effect {io.timer}`, `effect {security}`, `effect {audit}` |
-| 依存モジュール | `Core.Runtime`, [4-2 Process Capability プラグイン](4-2-process-plugin.md), [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-3 Memory Capability プラグイン](4-3-memory-plugin.md), `Core.Diagnostics`, `Core.Numeric & Time` |
-| 相互参照 | [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-5 Core IO & Path](3-5-core-io-path.md) |
+| 依存モジュール | `Core.Runtime`, [3-18 Core System](3-18-core-system.md), [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-3 Memory Capability プラグイン](4-3-memory-plugin.md), `Core.Diagnostics`, `Core.Numeric & Time` |
+| 相互参照 | [3.18 Core System](3-18-core-system.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-5 Core IO & Path](3-5-core-io-path.md) |
 
 ## 0.5 改訂案（標準ライブラリとの境界）
 

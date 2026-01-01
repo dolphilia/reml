@@ -8,7 +8,7 @@
 | --- | --- |
 | ステータス | 執筆中（Working Draft） |
 | 参照文書 | [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md) §5.4, §6 |
-| 関連章 | [4-1-system-plugin.md](4-1-system-plugin.md), [4-2-process-plugin.md](4-2-process-plugin.md), [4-5-hardware-plugin.md](4-5-hardware-plugin.md), [5-5-roadmap-metrics.md](5-5-roadmap-metrics.md) |
+| 関連章 | [3-18-core-system.md](3-18-core-system.md), [4-1-system-plugin.md](4-1-system-plugin.md), [4-5-hardware-plugin.md](4-5-hardware-plugin.md), [5-5-roadmap-metrics.md](5-5-roadmap-metrics.md) |
 
 ## 1. リスク分類
 

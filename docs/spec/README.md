@@ -45,6 +45,7 @@
 - [3-15-core-doc.md](3-15-core-doc.md)
 - [3-16-core-dsl-paradigm-kits.md](3-16-core-dsl-paradigm-kits.md)
 - [3-17-core-net.md](3-17-core-net.md)
+- [3-18-core-system.md](3-18-core-system.md)
 
 ## 4.x 公式プラグイン仕様（Draft / 再検討中）
 - [4-0-official-plugins-overview.md](4-0-official-plugins-overview.md)

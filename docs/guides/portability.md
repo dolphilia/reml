@@ -147,7 +147,7 @@ let shim = with_abi_adaptation(symbol, conv)?;
 | ファイルシステム（大文字小文字無視） | `fs.case_insensitive` | Windows/一部 Mac の挙動。パス衝突回避ロジックが必要 |
 | Path UTF-8 | `fs.path_utf8` | UTF-8 パスを想定。未対応環境ではバイト列 API を使用 |
 | Thread Local Storage | `thread.local` | `Core.Runtime` の TLS API が有効 |
-| Job Control | `process.job_control` | `Core.Process` でジョブ制御が利用可能 |
+| Job Control | `process.job_control` | `Core.System.Process` でジョブ制御が利用可能 |
 | 呼出規約 (C / SysV / Win64 / Wasm) | `ffi.callconv.*` | `Core.Async.Ffi` が指定の ABI を提供 |
 
 Capability 名は `capability_name(TargetCapability::…)` の戻り値と一致させます。`@cfg(capability = "...")` の判定にも同じ文字列を使用してください。

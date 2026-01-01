@@ -1,16 +1,5 @@
-pub enum Signal = SIGTERM | SIGINT | SIGKILL | SIGUSR1 | SIGUSR2 | SIGCHLD | SIGPIPE | SIGALRM | SIGHUP | Custom(i32)
-
-pub type SignalHandler = fn(SignalInfo) -> SignalAction
-
-pub type SignalInfo = {
-  signal: Signal,
-  source_pid: Option<ProcessId>,
-  timestamp: Timestamp,
-  payload: Option<SignalPayload>,
-}
-
-pub enum SignalPayload = UserData(i32) | RealTime(u64) | None
-
-pub enum SignalAction = Continue | Terminate | Ignore
+pub type Signal = Core.Runtime.Signal
+pub type SignalInfo = Core.Runtime.SignalInfo
+pub type SignalHandler = fn(Signal) -> ()
 
 pub type SignalMask = Set<Signal>

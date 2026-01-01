@@ -1,24 +1,24 @@
 # 4.2 Process Capability プラグイン — Native Process & Thread Control
 
-> 位置付け: 公式プラグイン（オプション）。プロセス生成やスレッド制御は `effect {process}` / `effect {thread}` を伴い安全性リスクが高いため、標準API（Chapter 3）から切り離し、導入時に `SecurityCapability` で審査できるよう別章で管理する。
+> 位置付け: 公式プラグイン（オプション）。プロセス生成やスレッド制御は `effect {process}` / `effect {thread}` を伴い安全性リスクが高いため、標準 API は [3-18 Core System](3-18-core-system.md) に移行し、本章は低レベル Capability と監査審査の運用に特化する。
 >
-> ドラフト再整理メモ: `Core.System` への昇格が検討されているため、本章は標準ライブラリ移行に向けた再編中（`docs/notes/stdlib-expansion-research.md` / `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md` 参照）。
+> ドラフト再整理メモ: `Core.System.Process` への移行が確定したため、本章は Capability の残留範囲とブリッジ方針を整理する。
 
 ## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | ドラフト（再検討中） |
+| ステータス | ドラフト（低レベル維持） |
 | プラグインID | `core.process` |
 | 効果タグ | `effect {process}`, `effect {thread}`, `effect {io.blocking}`, `effect {signal}`, `effect {hardware}`, `effect {security}` |
-| 依存モジュール | `Core.Runtime`, [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-3 Memory Capability プラグイン](4-3-memory-plugin.md), `Core.Diagnostics`, `Core.Config` |
-| 相互参照 | [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [4-4 Signal Capability プラグイン](4-4-signal-plugin.md) |
+| 依存モジュール | `Core.Runtime`, `Core.System`, [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-3 Memory Capability プラグイン](4-3-memory-plugin.md), `Core.Diagnostics`, `Core.Config` |
+| 相互参照 | [3.18 Core System](3-18-core-system.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [4-4 Signal Capability プラグイン](4-4-signal-plugin.md) |
 
-## 0.5 改訂案（標準ライブラリ移行）
+## 0.5 標準ライブラリ移行の確定
 
-- **モジュール再配置**: `core.process` は `Core.System.Process` として標準ライブラリへ昇格し、`Core.Env` を `Core.System.Env` に統合する案を前提とする。
-- **Signal 連携の整理**: `Signal` 型は `Core.System.Signal`（または `Core.System.Process.Signal`）側に移し、Capability は低レベル操作のバックエンドとして扱う。
-- **権限と監査**: 標準ライブラリ側は安全なデフォルトを提供し、Capability で `effect_scope` の拡張を許可する設計に寄せる。
+- **モジュール再配置**: `core.process` は `Core.System.Process` として標準ライブラリへ移行済み。`Core.Env` は `Core.System.Env` へ統合し、`Core.Env` は互換エイリアスとして残す。
+- **Signal 連携の整理**: `Signal` 型は `Core.System.Signal` 側に移行し、Capability は低レベル操作のバックエンドとして扱う。
+- **権限と監査**: 標準ライブラリ側は安全なデフォルトを提供し、Capability では `effect_scope` と `SecurityCapability` の審査範囲を明示する。
 
 ## 1. ProcessCapability API
 
@@ -35,7 +35,7 @@ pub type ProcessCapability = {
 
 - `Command` と `Environment` はプロセス生成時のコマンドラインと環境変数を表す構造体。
 - `ProcessHandle` / `ThreadHandle` は OS 依存ハンドルをラップし、`Drop` 時の自動解放は行わない（明示的解放を推奨）。
-- `Signal` 型は [4-4 Signal Capability プラグイン](4-4-signal-plugin.md) で定義される。
+- `Signal` 型は [3-18 Core System](3-18-core-system.md) の `Core.System.Signal` を正準とする。
 
 ## 2. プロセス生成と監査
 

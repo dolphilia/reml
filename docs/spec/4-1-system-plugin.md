@@ -12,12 +12,12 @@
 | プラグインID | `core.system` |
 | 効果タグ | `effect {syscall}`, `effect {unsafe}`, `effect {audit}`, `effect {security}`, `effect {memory}` |
 | 依存モジュール | `Core.Runtime`, `Core.IO`, `Core.Diagnostics`, `Core.Memory`（[4-3](4-3-memory-plugin.md)） |
-| 相互参照 | [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-5 Core IO & Path](3-5-core-io-path.md), [4-4 Signal Capability プラグイン](4-4-signal-plugin.md) |
+| 相互参照 | [3.18 Core System](3-18-core-system.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-5 Core IO & Path](3-5-core-io-path.md), [4-4 Signal Capability プラグイン](4-4-signal-plugin.md) |
 
 ## 0.5 改訂案（標準ライブラリとの境界整理）
 
 - **低レベル syscall の維持**: `raw_syscall` は Capability 側に残し、標準ライブラリは安全なラッパ API のみを公開する。
-- **`Core.System` への橋渡し**: `Core.System`（`Core.System.Process` / `Core.System.Env` など）から本 Capability を間接利用する構成を想定する。
+- **`Core.System` への橋渡し**: [3-18](3-18-core-system.md) の `Core.System.Process` / `Core.System.Env` / `Core.System.Signal` から本 Capability を間接利用する構成を想定する。
 - **公開 API の制限**: 標準ライブラリから直接 `SyscallCapability` を露出しない方針を明文化する。
 
 ## 1. SyscallCapability API

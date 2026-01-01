@@ -1,6 +1,6 @@
 # 3.10 Core Env & Platform Bridge
 
-> 目的：環境変数・一時ディレクトリ・実行中プラットフォーム情報へのアクセスを標準化し、`@cfg` と `RunConfig.extensions["target"]` の整合性を保つ。環境依存の差異を安全に露出し、ポータビリティ指針（[ポータビリティガイド](../guides/portability.md)）を仕様へ落とし込む。
+> 目的：環境変数・一時ディレクトリ・実行中プラットフォーム情報へのアクセスを標準化し、`@cfg` と `RunConfig.extensions["target"]` の整合性を保つ。環境依存の差異を安全に露出し、ポータビリティ指針（[ポータビリティガイド](../guides/portability.md)）を仕様へ落とし込む。`Core.System.Env` を正準 API とし、`Core.Env` は互換エイリアスとして維持する。
 
 ## 0. 仕様メタデータ
 
@@ -9,7 +9,7 @@
 | ステータス | ドラフト（Phase 1 優先タスク） |
 | 効果タグ | `effect {io}`, `effect {runtime}`, `effect {security}` |
 | 依存モジュール | `Core.Prelude`, `Core.IO`, `Core.Path`, `Core.Diagnostics`, `Core.Runtime` |
-| 相互参照 | [3-5 Core IO & Path](3-5-core-io-path.md), [3-8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), Guides: [ポータビリティガイド](../guides/portability.md) |
+| 相互参照 | [3-5 Core IO & Path](3-5-core-io-path.md), [3-8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-18 Core System](3-18-core-system.md), Guides: [ポータビリティガイド](../guides/portability.md) |
 
 ## 1. 環境変数アクセス
 
@@ -87,7 +87,7 @@ fn platform_info() -> PlatformInfo                               // `effect {run
 fn has_capability(cap: Capability) -> Bool                       // `effect {runtime}`
 ```
 
-* `PlatformInfo` と `Capability` は [3-8](3-8-core-runtime-capability.md#platform-info) にて定義される。`Core.Env` は単なるフェデレーションモジュールであり、`Core.Runtime` の Capability Registry からデータを引き出して公開する。
+* `PlatformInfo` と `Capability` は [3-8](3-8-core-runtime-capability.md#platform-info) にて定義される。`Core.System.Env` が正準モジュールであり、`Core.Env` は互換エイリアスとして `Core.Runtime` の Capability Registry からデータを引き出して公開する。
 * `platform_info()` の結果は `RunConfig.extensions["target"]` と同期する責務がある。CLI はコンパイル時ターゲット、ランタイムは実行中ターゲットを提供するが、差異がある場合は `Diagnostic.domain = Target`（3-6 §7 新設）で `data.cfg.mismatch = true` を付けて警告を促す。
 * `RunConfigTarget.feature_requirements` は `@cfg(feature = "...")` で参照された機能集合を保持し、`resolve_run_config_target` が `features` との整合性を確認した上で格納する。`merge_runtime_target` はランタイムが追加機能を報告した場合でも `feature_requirements` を変更せず、ビルド時要求との比較に利用する。
 

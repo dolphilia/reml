@@ -8,7 +8,7 @@
 | --- | --- |
 | ステータス | 執筆中（Working Draft） |
 | 参照文書 | [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md) §3.3, §4.1, §4.2 |
-| 関連章 | [4-1-system-plugin.md](4-1-system-plugin.md), [4-2-process-plugin.md](4-2-process-plugin.md), [guides/community-handbook.md](../guides/community-handbook.md) |
+| 関連章 | [3-18-core-system.md](3-18-core-system.md), [4-1-system-plugin.md](4-1-system-plugin.md), [guides/community-handbook.md](../guides/community-handbook.md) |
 
 ## 1. 公式サイト & ドキュメント
 

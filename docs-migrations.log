@@ -68,3 +68,4 @@
 - 2025-12-23 Docs Examples Move: Chapter 1 構文サンプルを `docs/spec/1-1-syntax/examples/` から `examples/docs-examples/spec/1-1-syntax/` へ移設し、`docs/spec/`・`docs/plans/`・`docs/notes/` 内の参照パスを更新（担当: Codex）
 - 2025-12-23 Docs Examples Audit Plan: `docs/plans/docs-examples-audit/` を新設し、Reml コード抽出・検証の計画書を追加。`docs/plans/README.md` にリンクを追記（担当: Codex）
 - 2025-12-27 Typeck Improvement: `docs/plans/typeck-improvement/` を新設し、`1-0-type-decl-realization-plan.md` と `README.md` を追加。`docs/plans/README.md` に索引を追記（担当: Codex）。
+- 2026-01-01 Stdlib Plugin Migration: `docs/spec/3-18-core-system.md` を新設し、Chapter 3/4/5/README と `docs/guides/portability.md` を Core.System 移行方針に合わせて更新。`docs/spec/4-4-signal-plugin.md` の低レベル化と `examples/docs-examples/spec/4-4-signal-plugin/*.reml` の整合、`docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` の移行タグ付けを追加（担当: Codex）

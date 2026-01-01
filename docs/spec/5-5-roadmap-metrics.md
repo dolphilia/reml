@@ -8,7 +8,7 @@
 | --- | --- |
 | ステータス | 執筆中（Working Draft） |
 | 参照文書 | [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md) §4, §5, §6 |
-| 関連章 | [4-1-system-plugin.md](4-1-system-plugin.md), [4-2-process-plugin.md](4-2-process-plugin.md), [4-3-memory-plugin.md](4-3-memory-plugin.md), [5-6-risk-governance.md](5-6-risk-governance.md) |
+| 関連章 | [3-18-core-system.md](3-18-core-system.md), [4-1-system-plugin.md](4-1-system-plugin.md), [4-3-memory-plugin.md](4-3-memory-plugin.md), [5-6-risk-governance.md](5-6-risk-governance.md) |
 
 ## 1. ロードマップ概要
 

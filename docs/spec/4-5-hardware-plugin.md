@@ -11,8 +11,8 @@
 | ステータス | ドラフト（再検討中） |
 | プラグインID | `core.hardware` |
 | 効果タグ | `effect {hardware}`, `effect {unsafe}`, `effect {security}`, `effect {thread}`, `effect {audit}` |
-| 依存モジュール | `Core.Runtime`, [4-2 Process Capability プラグイン](4-2-process-plugin.md), [4-1 System Capability プラグイン](4-1-system-plugin.md), `Core.Diagnostics`, `Core.Numeric & Time` |
-| 相互参照 | [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
+| 依存モジュール | `Core.Runtime`, [3-18 Core System](3-18-core-system.md), [4-1 System Capability プラグイン](4-1-system-plugin.md), `Core.Diagnostics`, `Core.Numeric & Time` |
+| 相互参照 | [3.18 Core System](3-18-core-system.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
 
 ## 0.5 改訂案（標準ライブラリとの境界）
 
@@ -35,7 +35,7 @@ pub type HardwareCapability = {
 
 - `rdtsc` / `rdtscp` は高精度タイムスタンプ。使用時は `effect {hardware}` に加え `timing` サブ効果を検討する。
 - `prefetch` は CPU キャッシュへのプリフェッチヒント。
-- NUMA 関連は [4-2 Process Capability プラグイン](4-2-process-plugin.md) の `set_thread_affinity` と連携。
+- NUMA 関連は [3-18 Core System](3-18-core-system.md) の `Core.System.Process` と連携。
 
 ## 2. 型定義
 
@@ -87,7 +87,7 @@ pub enum HardwareErrorKind = Unsupported | PermissionDenied | InvalidNode | Oper
 ## 4. 使用例ドラフト
 
 - SIMD 最適化: `cpu_features()` を参照し、`RuntimeCapability::SIMD` と整合。
-- NUMA アフィニティ: `bind_numa` を `ProcessCapability::set_thread_affinity` と組み合わせ、スレッドをノードに固定する例を追加予定。
+- NUMA アフィニティ: `bind_numa` を `Core.System.Process` と組み合わせ、スレッドをノードに固定する例を追加予定。
 
 ## 5. 今後の拡張
 

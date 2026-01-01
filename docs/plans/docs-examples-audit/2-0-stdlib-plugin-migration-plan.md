@@ -97,16 +97,16 @@
 - [x] `raw_code` の監査マスク方針を確定
 - [x] `from_runtime_info` の変換方針を確定
 - [x] `SignalPayload` の出典を `Core.System` 側とする方針を確定
-- [ ] `docs/spec/3-18-core-system.md` に Signal/SignalDetail 方針を反映
-- [ ] `docs/spec/3-8-core-runtime-capability.md` に SignalDetail との橋渡し記述を追記
-- [ ] `docs/spec/3-0-core-library-overview.md` に `Core.System` 章を追記
-- [ ] `docs/spec/3-10-core-env.md` の `Core.System.Env` 統合方針を反映
-- [ ] `docs/spec/4-0-official-plugins-overview.md` の移行済み領域を明記
-- [ ] `docs/spec/4-2-process-plugin.md` / `docs/spec/4-4-signal-plugin.md` の位置付け更新
-- [ ] `docs/spec/4-1-system-plugin.md` / `4-3/4-5/4-6` の参照更新
-- [ ] `docs/spec/README.md` / `docs/spec/5-4-community-content.md` / `docs/spec/5-5-roadmap-metrics.md` / `docs/spec/5-6-risk-governance.md` の参照更新
-- [ ] `docs/guides/portability.md` の `Core.Process` 表記を `Core.System.Process` へ更新
-- [ ] `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` の移行対象タグ付け
+- [x] `docs/spec/3-18-core-system.md` に Signal/SignalDetail 方針を反映
+- [x] `docs/spec/3-8-core-runtime-capability.md` に SignalDetail との橋渡し記述を追記
+- [x] `docs/spec/3-0-core-library-overview.md` に `Core.System` 章を追記
+- [x] `docs/spec/3-10-core-env.md` の `Core.System.Env` 統合方針を反映
+- [x] `docs/spec/4-0-official-plugins-overview.md` の移行済み領域を明記
+- [x] `docs/spec/4-2-process-plugin.md` / `docs/spec/4-4-signal-plugin.md` の位置付け更新
+- [x] `docs/spec/4-1-system-plugin.md` / `4-3/4-5/4-6` の参照更新
+- [x] `docs/spec/README.md` / `docs/spec/5-4-community-content.md` / `docs/spec/5-5-roadmap-metrics.md` / `docs/spec/5-6-risk-governance.md` の参照更新
+- [x] `docs/guides/portability.md` の `Core.Process` 表記を `Core.System.Process` へ更新
+- [x] `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` の移行対象タグ付け
 - [ ] `examples/docs-examples/spec/` の `.reml` 更新と監査ログ再採取
 
 ## リスクと対応
