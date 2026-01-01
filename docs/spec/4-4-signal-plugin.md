@@ -62,11 +62,14 @@ fn log_signal(event: Str, info: SignalInfo, audit: AuditSink) -> Result<(), Diag
 ### 4.1 グレースフルシャットダウン
 
 ```reml
-fn install_shutdown_handler(audit: AuditSink) -> Result<(), SignalError> = {
-  let handler = |signal: Signal| {
-    let _ = audit.log("signal.shutdown", json!({ "signal": signal }));
+fn install_shutdown_handler(audit: AuditSink) -> Result<(), SignalError> {
+  let shutdown_handler = |signal: Signal| {
+    let _ = audit.log(
+      "signal.shutdown",
+      Map::empty().insert("signal", signal),
+    );
   };
-  SignalCapability::register_handler(SIGTERM, handler)?;
+  SignalCapability::register_handler(SIGTERM, shutdown_handler)?;
   Ok(())
 }
 ```
@@ -76,8 +79,9 @@ fn install_shutdown_handler(audit: AuditSink) -> Result<(), SignalError> = {
 ### 4.2 シグナル待ち
 
 ```reml
-fn wait_for_child() -> Result<SignalInfo, SignalError> =
-  SignalCapability::wait(set![SIGCHLD], Some(Duration::from_secs(5)))
+fn wait_for_child() -> Result<SignalInfo, SignalError> {
+  SignalCapability::wait([SIGCHLD], Some(Duration::from_secs(5)))
+}
 ```
 
 - タイムアウト経過時は `SignalErrorKind::TimedOut` を返す。

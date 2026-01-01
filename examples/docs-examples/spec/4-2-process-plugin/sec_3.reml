@@ -4,4 +4,4 @@ pub type WaitOptions = {
   collect_output: Bool,
 }
 
-fn wait_with_options(handle: ProcessHandle, options: WaitOptions) -> Result<ExitStatus, ProcessError> // effect {process, io.blocking}
+fn wait_with_options(proc_handle: ProcessHandle, options: WaitOptions) -> Result<ExitStatus, ProcessError> // effect {process, io.blocking}

@@ -59,11 +59,16 @@ pub enum StdioSpec = Inherit | Null | Pipe | File(Path)
 ### 2.1 `spawn_process` の動作例
 
 ```reml
-fn spawn_pipeline(cmd: Command, audit: AuditSink) -> Result<ProcessHandle, ProcessError> = {
+fn spawn_pipeline(cmd: Command, audit: AuditSink) -> Result<ProcessHandle, ProcessError> {
   let ctx = AuditContext::new("process", cmd.program.to_string())?;
-  let handle = ProcessCapability::spawn_process(cmd.clone(), Environment::default())?;
-  ctx.log("process.spawned", json!({ "pid": handle.pid, "args": cmd.args }))?;
-  Ok(handle)
+  let proc_handle = ProcessCapability::spawn_process(cmd.clone(), Environment::default())?;
+  ctx.log(
+    "process.spawned",
+    Map::empty()
+      .insert("pid", proc_handle.pid)
+      .insert("args", cmd.args),
+  )?;
+  Ok(proc_handle)
 }
 ```
 
@@ -76,7 +81,7 @@ pub type WaitOptions = {
   collect_output: Bool,
 }
 
-fn wait_with_options(handle: ProcessHandle, options: WaitOptions) -> Result<ExitStatus, ProcessError> // effect {process, io.blocking}
+fn wait_with_options(proc_handle: ProcessHandle, options: WaitOptions) -> Result<ExitStatus, ProcessError> // effect {process, io.blocking}
 ```
 
 - タイムアウト発生時は `ProcessErrorKind::TimedOut` を返す。
