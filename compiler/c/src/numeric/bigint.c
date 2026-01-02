@@ -112,7 +112,8 @@ bool reml_bigint_to_string(const reml_bigint *value, int base, char **out_str) {
   if (!buffer) {
     return false;
   }
-  if (mp_to_radix(&value->value, buffer, base) != MP_OKAY) {
+  size_t written = 0;
+  if (mp_to_radix(&value->value, buffer, (size_t)size, &written, base) != MP_OKAY) {
     free(buffer);
     return false;
   }
