@@ -182,14 +182,23 @@ static reml_token_kind reml_keyword_kind(const reml_string_view *view) {
   if (view->length == 2 && strncmp(view->data, "if", 2) == 0) {
     return REML_TOKEN_KW_IF;
   }
+  if (view->length == 4 && strncmp(view->data, "then", 4) == 0) {
+    return REML_TOKEN_KW_THEN;
+  }
   if (view->length == 4 && strncmp(view->data, "else", 4) == 0) {
     return REML_TOKEN_KW_ELSE;
   }
   if (view->length == 5 && strncmp(view->data, "match", 5) == 0) {
     return REML_TOKEN_KW_MATCH;
   }
+  if (view->length == 4 && strncmp(view->data, "with", 4) == 0) {
+    return REML_TOKEN_KW_WITH;
+  }
   if (view->length == 3 && strncmp(view->data, "let", 3) == 0) {
     return REML_TOKEN_KW_LET;
+  }
+  if (view->length == 3 && strncmp(view->data, "var", 3) == 0) {
+    return REML_TOKEN_KW_VAR;
   }
   if (view->length == 2 && strncmp(view->data, "fn", 2) == 0) {
     return REML_TOKEN_KW_FN;
@@ -423,6 +432,11 @@ reml_token reml_lexer_next(reml_lexer *lexer) {
       return reml_make_token(REML_TOKEN_SEMI, lexer, start_offset, start_line, start_column,
                              lexer->index, lexer->line, lexer->column);
     case ':':
+      if (reml_peek_byte(lexer) == '=') {
+        reml_advance_bytes(lexer, 1);
+        return reml_make_token(REML_TOKEN_COLONEQ, lexer, start_offset, start_line, start_column,
+                               lexer->index, lexer->line, lexer->column);
+      }
       return reml_make_token(REML_TOKEN_COLON, lexer, start_offset, start_line, start_column,
                              lexer->index, lexer->line, lexer->column);
     case '?':
@@ -509,6 +523,8 @@ reml_token reml_lexer_next(reml_lexer *lexer) {
         return reml_make_token(REML_TOKEN_PIPE_FORWARD, lexer, start_offset, start_line,
                                start_column, lexer->index, lexer->line, lexer->column);
       }
+      return reml_make_token(REML_TOKEN_PIPE, lexer, start_offset, start_line, start_column,
+                             lexer->index, lexer->line, lexer->column);
       break;
     default:
       break;
@@ -544,12 +560,18 @@ const char *reml_token_kind_name(reml_token_kind kind) {
       return "KW_FALSE";
     case REML_TOKEN_KW_IF:
       return "KW_IF";
+    case REML_TOKEN_KW_THEN:
+      return "KW_THEN";
     case REML_TOKEN_KW_ELSE:
       return "KW_ELSE";
     case REML_TOKEN_KW_MATCH:
       return "KW_MATCH";
+    case REML_TOKEN_KW_WITH:
+      return "KW_WITH";
     case REML_TOKEN_KW_LET:
       return "KW_LET";
+    case REML_TOKEN_KW_VAR:
+      return "KW_VAR";
     case REML_TOKEN_KW_FN:
       return "KW_FN";
     case REML_TOKEN_KW_PUB:
@@ -576,6 +598,8 @@ const char *reml_token_kind_name(reml_token_kind kind) {
       return "SEMI";
     case REML_TOKEN_COLON:
       return "COLON";
+    case REML_TOKEN_COLONEQ:
+      return "COLONEQ";
     case REML_TOKEN_DOT:
       return "DOT";
     case REML_TOKEN_QUESTION:
@@ -590,6 +614,8 @@ const char *reml_token_kind_name(reml_token_kind kind) {
       return "LOGICAL_AND";
     case REML_TOKEN_LOGICAL_OR:
       return "LOGICAL_OR";
+    case REML_TOKEN_PIPE:
+      return "PIPE";
     case REML_TOKEN_PIPE_FORWARD:
       return "PIPE_FORWARD";
     case REML_TOKEN_PLUS:
