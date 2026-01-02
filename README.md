@@ -30,7 +30,7 @@ fn main() -> Str = describe(Some(42))
 
 ## クイックスタート
 
-Rust 版 Remlコンパイラは `compiler/rust/` 配下で開発しています。ルートには `Cargo.toml.ws` のみがあるため、`--manifest-path` 指定で実行します。
+Rust 版 Remlコンパイラは `compiler/rust/` 配下で開発しています。ルートには `Cargo.toml.ws` のみがあるため、基本的に `--manifest-path` 指定で実行します。
 
 ```bash
 cargo build --manifest-path compiler/rust/frontend/Cargo.toml
