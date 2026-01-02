@@ -183,6 +183,24 @@ static void test_sema_match_range_ok(void **state) {
   reml_compilation_unit_free(unit);
 }
 
+static void test_sema_enum_constructor_ok(void **state) {
+  (void)state;
+
+  const char *source = "let x = Some(1); match x with | Some(1) -> 1 | None -> 2;";
+  reml_compilation_unit *unit = parse_source(source);
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+
+  const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+  assert_true(ok);
+  assert_int_equal(reml_diagnostics_count(diags), 0);
+
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+}
+
 void test_sema(void **state) {
   test_sema_basic_ok(state);
   test_sema_type_mismatch(state);
@@ -192,4 +210,5 @@ void test_sema(void **state) {
   test_sema_match_unreachable(state);
   test_sema_match_guard_ok(state);
   test_sema_match_range_ok(state);
+  test_sema_enum_constructor_ok(state);
 }

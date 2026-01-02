@@ -33,6 +33,7 @@ typedef enum {
   REML_EXPR_IDENT,
   REML_EXPR_UNARY,
   REML_EXPR_BINARY,
+  REML_EXPR_CONSTRUCTOR,
   REML_EXPR_BLOCK,
   REML_EXPR_IF,
   REML_EXPR_WHILE,
@@ -51,6 +52,12 @@ typedef struct {
   reml_expr *left;
   reml_expr *right;
 } reml_binary_expr;
+
+typedef struct {
+  reml_string_view name;
+  UT_array *args;
+  int32_t tag;
+} reml_constructor_expr;
 
 typedef struct {
   UT_array *statements;
@@ -137,6 +144,7 @@ struct reml_expr {
     reml_string_view ident;
     reml_unary_expr unary;
     reml_binary_expr binary;
+    reml_constructor_expr ctor;
     reml_block_expr block;
     reml_if_expr if_expr;
     reml_while_expr while_expr;
@@ -171,6 +179,7 @@ reml_expr *reml_expr_make_ident(reml_span span, reml_string_view ident);
 reml_expr *reml_expr_make_unary(reml_span span, reml_token_kind op, reml_expr *operand);
 reml_expr *reml_expr_make_binary(reml_span span, reml_token_kind op, reml_expr *left,
                                  reml_expr *right);
+reml_expr *reml_expr_make_constructor(reml_span span, reml_string_view name, UT_array *args);
 reml_expr *reml_expr_make_block(reml_span span, reml_block_expr block);
 reml_expr *reml_expr_make_if(reml_span span, reml_expr *condition, reml_expr *then_branch,
                              reml_expr *else_branch);

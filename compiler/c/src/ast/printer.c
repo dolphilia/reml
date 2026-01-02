@@ -162,6 +162,18 @@ void reml_ast_write_expr(FILE *out, const reml_expr *expr) {
       reml_ast_write_expr(out, expr->data.binary.right);
       fputs(")", out);
       return;
+    case REML_EXPR_CONSTRUCTOR:
+      fputs("(ctor ", out);
+      reml_write_view(out, expr->data.ctor.name);
+      if (expr->data.ctor.args) {
+        for (reml_expr **it = (reml_expr **)utarray_front(expr->data.ctor.args); it != NULL;
+             it = (reml_expr **)utarray_next(expr->data.ctor.args, it)) {
+          fputs(" ", out);
+          reml_ast_write_expr(out, *it);
+        }
+      }
+      fputs(")", out);
+      return;
     case REML_EXPR_BLOCK:
       fputs("(block", out);
       if (expr->data.block.statements) {

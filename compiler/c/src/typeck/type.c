@@ -1,6 +1,135 @@
 #include "reml/typeck/type.h"
 
 #include <stdlib.h>
+#include <string.h>
+
+static bool reml_string_view_equal(reml_string_view left, reml_string_view right) {
+  if (left.length != right.length) {
+    return false;
+  }
+  if (left.length == 0) {
+    return true;
+  }
+  return memcmp(left.data, right.data, left.length) == 0;
+}
+
+static reml_enum_variant *reml_enum_variant_find(reml_type *enum_type, reml_string_view name) {
+  if (!enum_type || enum_type->kind != REML_TYPE_ENUM || !enum_type->data.enum_type.variants) {
+    return NULL;
+  }
+  for (reml_enum_variant *it =
+           (reml_enum_variant *)utarray_front(enum_type->data.enum_type.variants);
+       it != NULL;
+       it = (reml_enum_variant *)utarray_next(enum_type->data.enum_type.variants, it)) {
+    if (reml_string_view_equal(it->name, name)) {
+      return it;
+    }
+  }
+  return NULL;
+}
+
+static bool reml_enum_variant_merge(reml_type_ctx *ctx, reml_enum_variant *dst,
+                                    const reml_enum_variant *src) {
+  if (!dst || !src) {
+    return false;
+  }
+  size_t dst_count = dst->fields ? utarray_len(dst->fields) : 0;
+  size_t src_count = src->fields ? utarray_len(src->fields) : 0;
+  if (dst_count != src_count) {
+    return false;
+  }
+  if (dst_count == 0) {
+    return true;
+  }
+  for (size_t i = 0; i < dst_count; ++i) {
+    reml_type **dst_field = (reml_type **)utarray_eltptr(dst->fields, i);
+    reml_type **src_field = (reml_type **)utarray_eltptr(src->fields, i);
+    if (dst_field && src_field) {
+      if (!reml_type_unify(ctx, *dst_field, *src_field)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+static bool reml_enum_variant_clone(reml_type_ctx *ctx, reml_type *enum_type,
+                                    const reml_enum_variant *src) {
+  if (!ctx || !enum_type || !src) {
+    return false;
+  }
+  if (!enum_type->data.enum_type.variants) {
+    UT_icd variant_icd = {sizeof(reml_enum_variant), NULL, NULL, NULL};
+    utarray_new(enum_type->data.enum_type.variants, &variant_icd);
+  }
+  reml_enum_variant clone;
+  clone.name = src->name;
+  clone.tag = src->tag;
+  clone.fields = NULL;
+  if (src->fields) {
+    UT_icd field_icd = {sizeof(reml_type *), NULL, NULL, NULL};
+    utarray_new(clone.fields, &field_icd);
+    for (reml_type **it = (reml_type **)utarray_front(src->fields); it != NULL;
+         it = (reml_type **)utarray_next(src->fields, it)) {
+      reml_type *field_type = *it;
+      utarray_push_back(clone.fields, &field_type);
+    }
+  }
+  utarray_push_back(enum_type->data.enum_type.variants, &clone);
+  return true;
+}
+
+static bool reml_type_unify_enum(reml_type_ctx *ctx, reml_type *left, reml_type *right) {
+  if (!left || !right || left->kind != REML_TYPE_ENUM || right->kind != REML_TYPE_ENUM) {
+    return false;
+  }
+  if (left == right) {
+    return true;
+  }
+  if (!left->data.enum_type.variants) {
+    UT_icd variant_icd = {sizeof(reml_enum_variant), NULL, NULL, NULL};
+    utarray_new(left->data.enum_type.variants, &variant_icd);
+  }
+  if (!right->data.enum_type.variants) {
+    UT_icd variant_icd = {sizeof(reml_enum_variant), NULL, NULL, NULL};
+    utarray_new(right->data.enum_type.variants, &variant_icd);
+  }
+
+  for (reml_enum_variant *it =
+           (reml_enum_variant *)utarray_front(right->data.enum_type.variants);
+       it != NULL;
+       it = (reml_enum_variant *)utarray_next(right->data.enum_type.variants, it)) {
+    reml_enum_variant *existing = reml_enum_variant_find(left, it->name);
+    if (existing) {
+      if (!reml_enum_variant_merge(ctx, existing, it)) {
+        return false;
+      }
+      it->tag = existing->tag;
+    } else {
+      if (!reml_enum_variant_clone(ctx, left, it)) {
+        return false;
+      }
+    }
+  }
+
+  for (reml_enum_variant *it =
+           (reml_enum_variant *)utarray_front(left->data.enum_type.variants);
+       it != NULL;
+       it = (reml_enum_variant *)utarray_next(left->data.enum_type.variants, it)) {
+    reml_enum_variant *existing = reml_enum_variant_find(right, it->name);
+    if (existing) {
+      if (!reml_enum_variant_merge(ctx, existing, it)) {
+        return false;
+      }
+      existing->tag = it->tag;
+    } else {
+      if (!reml_enum_variant_clone(ctx, right, it)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
 
 static reml_type *reml_type_new(reml_type_ctx *ctx, reml_type_kind kind) {
   reml_type *type = (reml_type *)calloc(1, sizeof(reml_type));
@@ -180,7 +309,7 @@ bool reml_type_unify(reml_type_ctx *ctx, reml_type *left, reml_type *right) {
 
   if (left->kind == right->kind) {
     if (left->kind == REML_TYPE_ENUM) {
-      return left == right;
+      return reml_type_unify_enum(ctx, left, right);
     }
     if (left->kind == REML_TYPE_TUPLE || left->kind == REML_TYPE_FUNCTION) {
       return reml_type_unify_composite(ctx, left, right);

@@ -1,6 +1,7 @@
 #include "reml/sema/sema.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -897,6 +898,13 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
     }
   }
   if (!exhaustive) {
+    scrutinee = reml_type_prune(scrutinee);
+    if (scrutinee && scrutinee->kind == REML_TYPE_INT) {
+      exhaustive = reml_interval_covers(seen_intervals, (int64_t)INT64_MIN,
+                                        (int64_t)INT64_MAX);
+    }
+  }
+  if (!exhaustive) {
     reml_report_diag(sema, REML_DIAG_PATTERN_EXHAUSTIVENESS_MISSING, expr->span,
                      "non-exhaustive match expression");
   }
@@ -912,6 +920,43 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
   }
   *effect = reml_effect_union(*effect, scrutinee_effect);
   return result ? result : reml_type_error(&sema->types);
+}
+
+static reml_type *reml_infer_constructor(reml_sema *sema, reml_expr *expr,
+                                         reml_effect_set *effect) {
+  if (!sema || !expr) {
+    return reml_type_error(&sema->types);
+  }
+  reml_type *enum_type = reml_type_make_enum(&sema->types);
+  if (!enum_type) {
+    return reml_type_error(&sema->types);
+  }
+  size_t arg_count = expr->data.ctor.args ? utarray_len(expr->data.ctor.args) : 0;
+  reml_enum_variant *variant =
+      reml_enum_variant_add(&sema->types, enum_type, expr->data.ctor.name, arg_count);
+  if (!variant) {
+    return reml_type_error(&sema->types);
+  }
+  expr->data.ctor.tag = variant->tag;
+
+  if (expr->data.ctor.args && variant->fields) {
+    size_t index = 0;
+    for (reml_expr **it = (reml_expr **)utarray_front(expr->data.ctor.args); it != NULL;
+         it = (reml_expr **)utarray_next(expr->data.ctor.args, it)) {
+      reml_effect_set arg_effect = REML_EFFECT_NONE;
+      reml_type *arg_type = reml_infer_expr(sema, *it, &arg_effect);
+      if (effect) {
+        *effect = reml_effect_union(*effect, arg_effect);
+      }
+      reml_type **field_type = (reml_type **)utarray_eltptr(variant->fields, index);
+      if (field_type) {
+        reml_expect_type(sema, arg_type, *field_type, (*it)->span);
+      }
+      index++;
+    }
+  }
+
+  return enum_type;
 }
 
 static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
@@ -940,6 +985,9 @@ static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_
       break;
     case REML_EXPR_BINARY:
       result = reml_infer_binary(sema, expr, &local_effect);
+      break;
+    case REML_EXPR_CONSTRUCTOR:
+      result = reml_infer_constructor(sema, expr, &local_effect);
       break;
     case REML_EXPR_BLOCK:
       result = reml_infer_block(sema, expr, &local_effect);

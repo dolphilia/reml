@@ -61,6 +61,17 @@ static void reml_free_pattern_array(UT_array *items) {
   utarray_free(items);
 }
 
+static void reml_free_expr_array(UT_array *items) {
+  if (!items) {
+    return;
+  }
+  for (reml_expr **it = (reml_expr **)utarray_front(items); it != NULL;
+       it = (reml_expr **)utarray_next(items, it)) {
+    reml_expr_free(*it);
+  }
+  utarray_free(items);
+}
+
 static void reml_free_match_arms(UT_array *arms) {
   if (!arms) {
     return;
@@ -362,6 +373,44 @@ static reml_expr *reml_parse_primary(reml_parser *parser) {
   switch (token.kind) {
     case REML_TOKEN_IDENT: {
       reml_parser_advance(parser);
+      if (parser->current.kind == REML_TOKEN_LPAREN) {
+        reml_token start_token = parser->current;
+        reml_parser_advance(parser);
+        UT_icd arg_icd = {sizeof(reml_expr *), NULL, NULL, NULL};
+        UT_array *args = NULL;
+        utarray_new(args, &arg_icd);
+
+        if (parser->current.kind != REML_TOKEN_RPAREN) {
+          reml_expr *first = reml_parse_expression_prec(parser, 0);
+          if (!first) {
+            reml_free_expr_array(args);
+            return NULL;
+          }
+          utarray_push_back(args, &first);
+
+          while (parser->current.kind == REML_TOKEN_COMMA) {
+            reml_parser_advance(parser);
+            if (parser->current.kind == REML_TOKEN_RPAREN) {
+              break;
+            }
+            reml_expr *next = reml_parse_expression_prec(parser, 0);
+            if (!next) {
+              reml_free_expr_array(args);
+              return NULL;
+            }
+            utarray_push_back(args, &next);
+          }
+        }
+
+        reml_token end_token = parser->current;
+        if (!reml_parser_expect(parser, REML_TOKEN_RPAREN, "expected ')'")) {
+          reml_free_expr_array(args);
+          return NULL;
+        }
+        reml_span span = reml_span_combine(token.span, end_token.span);
+        (void)start_token;
+        return reml_expr_make_constructor(span, token.lexeme, args);
+      }
       return reml_expr_make_ident(token.span, token.lexeme);
     }
     case REML_TOKEN_INT:

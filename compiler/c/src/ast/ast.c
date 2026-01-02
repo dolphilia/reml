@@ -52,6 +52,17 @@ reml_expr *reml_expr_make_binary(reml_span span, reml_token_kind op, reml_expr *
   return expr;
 }
 
+reml_expr *reml_expr_make_constructor(reml_span span, reml_string_view name, UT_array *args) {
+  reml_expr *expr = reml_expr_alloc(REML_EXPR_CONSTRUCTOR, span);
+  if (!expr) {
+    return NULL;
+  }
+  expr->data.ctor.name = name;
+  expr->data.ctor.args = args;
+  expr->data.ctor.tag = -1;
+  return expr;
+}
+
 reml_expr *reml_expr_make_block(reml_span span, reml_block_expr block) {
   reml_expr *expr = reml_expr_alloc(REML_EXPR_BLOCK, span);
   if (!expr) {
@@ -229,6 +240,15 @@ void reml_expr_free(reml_expr *expr) {
     case REML_EXPR_BINARY:
       reml_expr_free(expr->data.binary.left);
       reml_expr_free(expr->data.binary.right);
+      break;
+    case REML_EXPR_CONSTRUCTOR:
+      if (expr->data.ctor.args) {
+        for (reml_expr **it = (reml_expr **)utarray_front(expr->data.ctor.args); it != NULL;
+             it = (reml_expr **)utarray_next(expr->data.ctor.args, it)) {
+          reml_expr_free(*it);
+        }
+        utarray_free(expr->data.ctor.args);
+      }
       break;
     case REML_EXPR_BLOCK:
       if (expr->data.block.statements) {
