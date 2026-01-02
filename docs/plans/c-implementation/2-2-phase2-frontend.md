@@ -4,11 +4,13 @@
 
 ## 2.1 字句解析 (Lexer)
 - **ライブラリ**: `re2c` (Lexer Generator) + `utf8proc` (検証)。
+  - 現状は `compiler/c/src/lexer/lexer.c` に手書き実装を置き、`re2c` 統合は次フェーズで置換する。
 - **仕様**: `docs/spec/1-5-formal-grammar-bnf.md`, `docs/spec/2-3-lexer.md`。
 - **タスク**:
   1.  トークン型の定義 (`include/reml/lexer/token.h`)。
   2.  `lexer.re` (re2c ソースファイル) の実装。
       - `lexer.c` を生成するためのビルドルールを CMake に構築。
+      - 暫定的に `lexer.c` を手書きで用意。
   3.  **Unicode 処理**:
       - `utf8proc` を使用して UTF-8 の妥当性を検証。
       - ソース位置の追跡 (バイト位置, 行, 列)。
@@ -125,9 +127,9 @@ Parser/Diagnostics で共有する。
 - **リファレンス**: 既存の `compiler/rust/tests` または `examples/spec_core` のテストケースをゴールデンスタンダードとして使用。
 
 ## チェックリスト
-- [ ] `lexer.re` がコンパイルされ、基本的な構文を処理できる。
-- [ ] `tokens` ダンプ CLI コマンドの実装 (`reml internal lex <file>`)。
-- [ ] Core 仕様に対する AST 定義の完了。
-- [ ] 基本的な式と宣言に対する `parser` の実装。
-- [ ] `ast` ダンプ CLI コマンドの実装 (`reml internal parse <file>`)。
-- [ ] `reml.toml` の解析が動作する。
+- [ ] `lexer.re` がコンパイルされ、基本的な構文を処理できる（手書き `lexer.c` の置換は未着手）。
+- [x] `tokens` ダンプ CLI コマンドの実装 (`reml internal lex <file>`)。
+- [x] Core 仕様に対する AST 定義の完了（最小構成）。
+- [x] 基本的な式と宣言に対する `parser` の実装（最小構成）。
+- [x] `ast` ダンプ CLI コマンドの実装 (`reml internal parse <file>`)。
+- [x] `reml.toml` の解析が動作する。

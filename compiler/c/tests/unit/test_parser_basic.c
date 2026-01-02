@@ -1,0 +1,45 @@
+#include <setjmp.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <cmocka.h>
+
+#include "reml/ast/printer.h"
+#include "reml/parser/parser.h"
+
+static char *render_unit(reml_compilation_unit *unit) {
+  char *buffer = NULL;
+  size_t size = 0;
+  FILE *stream = open_memstream(&buffer, &size);
+  if (!stream) {
+    return NULL;
+  }
+  reml_ast_write_compilation_unit(stream, unit);
+  fclose(stream);
+  return buffer;
+}
+
+static void test_parser_basic_return_expression(void **state) {
+  (void)state;
+
+  const char *source = "return 1 + 2 * 3;";
+  reml_parser parser;
+  reml_parser_init(&parser, source, strlen(source));
+
+  reml_compilation_unit *unit = reml_parse_compilation_unit(&parser);
+  assert_non_null(unit);
+
+  char *rendered = render_unit(unit);
+  assert_non_null(rendered);
+  assert_string_equal(rendered, "(unit (return (+ (int 1) (* (int 2) (int 3)))))");
+
+  free(rendered);
+  reml_compilation_unit_free(unit);
+}
+
+void test_parser_basic(void **state) {
+  test_parser_basic_return_expression(state);
+}

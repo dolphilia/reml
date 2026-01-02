@@ -18,17 +18,26 @@ reml_make_core_dependencies()
 
 add_library(reml_core
   src/util/logger.c
+  src/util/span.c
+  src/lexer/lexer.c
+  src/ast/ast.c
+  src/ast/printer.c
+  src/parser/parser.c
   src/parser/operator_table.c
+  src/manifest/manifest.c
 )
 
 target_include_directories(reml_core
   PUBLIC
     include
+    ${REML_UTHASH_INCLUDE_DIR}
 )
 
 target_link_libraries(reml_core
   PUBLIC
     reml_logc
+    reml_utf8proc
+    reml_tomlc99
 )
 
 add_executable(reml
@@ -67,10 +76,13 @@ reml_make_test_dependencies()
 add_executable(reml_unit_tests
   tests/unit/test_main.c
   tests/unit/test_parser_operator_table.c
+  tests/unit/test_lexer_basic.c
+  tests/unit/test_parser_basic.c
 )
 
 target_link_libraries(reml_unit_tests
   PRIVATE
+    reml_core
     ${REML_CMOCKA_TARGET}
 )
 

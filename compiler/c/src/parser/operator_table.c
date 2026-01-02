@@ -1,5 +1,7 @@
 #include "reml/parser/operator_table.h"
 
+#include <stddef.h>
+
 static const reml_operator_entry kOperators[] = {
   {REML_TOKEN_CARET, REML_PREC_POW, REML_ASSOC_LEFT, "^"},
   {REML_TOKEN_STAR, REML_PREC_MUL, REML_ASSOC_LEFT, "*"},
