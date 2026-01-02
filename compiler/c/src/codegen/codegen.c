@@ -29,6 +29,22 @@ typedef struct {
   bool terminated;
 } reml_codegen_value;
 
+typedef struct {
+  LLVMValueRef value;
+  LLVMBasicBlockRef block;
+} reml_codegen_phi_incoming;
+
+typedef struct {
+  reml_match_arm *arm;
+  LLVMValueRef value;
+} reml_codegen_switch_case;
+
+static bool reml_type_is_int(reml_type *type);
+static bool reml_type_is_bigint(reml_type *type);
+static bool reml_type_is_float(reml_type *type);
+static bool reml_type_is_bool(reml_type *type);
+static bool reml_type_is_unit(reml_type *type);
+
 static void reml_codegen_report(reml_codegen *codegen, reml_diagnostic_code code, reml_span span,
                                 const char *message) {
   if (!codegen) {
@@ -231,6 +247,26 @@ static LLVMValueRef reml_codegen_call_bigint_cmp(reml_codegen *codegen, const ch
   return LLVMBuildCall2(codegen->builder, fn_type, fn, args, 2, "bigint.cmp");
 }
 
+static bool reml_pattern_is_catch_all(const reml_pattern *pattern) {
+  if (!pattern) {
+    return false;
+  }
+  return pattern->kind == REML_PATTERN_WILDCARD || pattern->kind == REML_PATTERN_IDENT;
+}
+
+static bool reml_pattern_is_switch_literal(const reml_pattern *pattern, reml_type *type) {
+  if (!pattern || pattern->kind != REML_PATTERN_LITERAL) {
+    return false;
+  }
+  if (reml_type_is_bool(type)) {
+    return pattern->data.literal.kind == REML_LITERAL_BOOL;
+  }
+  if (reml_type_is_int(type)) {
+    return pattern->data.literal.kind == REML_LITERAL_INT;
+  }
+  return false;
+}
+
 typedef enum {
   REML_NUMERIC_OK,
   REML_NUMERIC_INVALID,
@@ -276,6 +312,100 @@ static bool reml_parse_float_literal(reml_literal literal, double *out_value) {
   }
   *out_value = value;
   return true;
+}
+
+static LLVMValueRef reml_codegen_emit_literal_value(reml_codegen *codegen, reml_literal literal,
+                                                    reml_span span) {
+  switch (literal.kind) {
+    case REML_LITERAL_INT: {
+      int64_t value = 0;
+      reml_numeric_parse_result status = reml_parse_int_literal(literal, &value);
+      if (status != REML_NUMERIC_OK) {
+        reml_codegen_report(codegen,
+                            status == REML_NUMERIC_OVERFLOW ? REML_DIAG_NUMERIC_OVERFLOW
+                                                            : REML_DIAG_NUMERIC_INVALID,
+                            span,
+                            status == REML_NUMERIC_OVERFLOW ? "integer literal overflows i64"
+                                                            : "invalid integer literal");
+        return NULL;
+      }
+      return LLVMConstInt(LLVMInt64TypeInContext(codegen->context),
+                          (unsigned long long)value, 1);
+    }
+    case REML_LITERAL_BIGINT: {
+      char *text = reml_strip_numeric_literal(literal.text);
+      if (!text) {
+        reml_codegen_report(codegen, REML_DIAG_NUMERIC_INVALID, span,
+                            "invalid bigint literal");
+        return NULL;
+      }
+      LLVMValueRef literal_ptr = LLVMBuildGlobalStringPtr(codegen->builder, text, "bigint.lit");
+      free(text);
+
+      LLVMTypeRef bigint_ptr = reml_codegen_bigint_type(codegen);
+      LLVMTypeRef params[2] = {LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0),
+                               LLVMInt32TypeInContext(codegen->context)};
+      LLVMTypeRef fn_type = LLVMFunctionType(bigint_ptr, params, 2, 0);
+      LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, "reml_numeric_bigint_from_str",
+                                                    fn_type);
+      LLVMValueRef args[2] = {literal_ptr, LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0,
+                                                       1)};
+      return LLVMBuildCall2(codegen->builder, fn_type, fn, args, 2, "bigint.lit");
+    }
+    case REML_LITERAL_FLOAT: {
+      double value = 0.0;
+      if (!reml_parse_float_literal(literal, &value)) {
+        reml_codegen_report(codegen, REML_DIAG_NUMERIC_INVALID, span,
+                            "invalid float literal");
+        return NULL;
+      }
+      return LLVMConstReal(LLVMDoubleTypeInContext(codegen->context), value);
+    }
+    case REML_LITERAL_BOOL: {
+      bool is_true = literal.text.length > 0 && literal.text.data[0] == 't';
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), is_true ? 1 : 0, 0);
+    }
+    default:
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, span,
+                          "unsupported literal in pattern");
+      return NULL;
+  }
+}
+
+static bool reml_codegen_match_switch_value(reml_codegen *codegen, reml_pattern *pattern,
+                                            reml_type *type, int64_t *out_value,
+                                            LLVMValueRef *out_const) {
+  if (!pattern || !out_value || !out_const) {
+    return false;
+  }
+  if (!reml_pattern_is_switch_literal(pattern, type)) {
+    return false;
+  }
+  if (pattern->data.literal.kind == REML_LITERAL_BOOL) {
+    bool is_true = pattern->data.literal.text.length > 0 &&
+                   pattern->data.literal.text.data[0] == 't';
+    *out_value = is_true ? 1 : 0;
+    *out_const = LLVMConstInt(LLVMInt1TypeInContext(codegen->context), *out_value, 0);
+    return true;
+  }
+  if (pattern->data.literal.kind == REML_LITERAL_INT) {
+    int64_t value = 0;
+    reml_numeric_parse_result status = reml_parse_int_literal(pattern->data.literal, &value);
+    if (status != REML_NUMERIC_OK) {
+      reml_codegen_report(codegen,
+                          status == REML_NUMERIC_OVERFLOW ? REML_DIAG_NUMERIC_OVERFLOW
+                                                          : REML_DIAG_NUMERIC_INVALID,
+                          pattern->span,
+                          status == REML_NUMERIC_OVERFLOW ? "integer literal overflows i64"
+                                                          : "invalid integer literal");
+      return false;
+    }
+    *out_value = value;
+    *out_const = LLVMConstInt(LLVMInt64TypeInContext(codegen->context),
+                              (unsigned long long)value, 1);
+    return true;
+  }
+  return false;
 }
 
 static reml_codegen_value reml_codegen_make_value(LLVMValueRef value, reml_type *type,
@@ -478,6 +608,100 @@ static reml_codegen_value reml_codegen_emit_ident(reml_codegen *codegen,
   }
   LLVMValueRef loaded = LLVMBuildLoad2(codegen->builder, binding->type, binding->value, "load");
   return reml_codegen_make_value(loaded, expr->type, false);
+}
+
+static LLVMValueRef reml_codegen_emit_pattern_check(reml_codegen *codegen, reml_pattern *pattern,
+                                                    LLVMValueRef scrutinee, reml_type *type) {
+  if (!pattern) {
+    return NULL;
+  }
+  if (pattern->kind == REML_PATTERN_LITERAL) {
+    if (reml_type_is_bool(type) && pattern->data.literal.kind != REML_LITERAL_BOOL) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "boolean match expects a boolean literal");
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    if (reml_type_is_int(type) && pattern->data.literal.kind != REML_LITERAL_INT) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "integer match expects an integer literal");
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    if (reml_type_is_bigint(type) && pattern->data.literal.kind != REML_LITERAL_BIGINT) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "bigint match expects a bigint literal");
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    if (reml_type_is_float(type) && pattern->data.literal.kind != REML_LITERAL_FLOAT) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "float match expects a float literal");
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    LLVMValueRef literal_value =
+        reml_codegen_emit_literal_value(codegen, pattern->data.literal, pattern->span);
+    if (!literal_value) {
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+
+    if (reml_type_is_bool(type) || reml_type_is_int(type)) {
+      return LLVMBuildICmp(codegen->builder, LLVMIntEQ, scrutinee, literal_value, "match.cmp");
+    }
+    if (reml_type_is_float(type)) {
+      return LLVMBuildFCmp(codegen->builder, LLVMRealOEQ, scrutinee, literal_value, "match.cmp");
+    }
+    if (reml_type_is_bigint(type)) {
+      LLVMValueRef cmp =
+          reml_codegen_call_bigint_cmp(codegen, "reml_numeric_bigint_cmp", scrutinee,
+                                       literal_value);
+      LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
+      return LLVMBuildICmp(codegen->builder, LLVMIntEQ, cmp, zero, "match.cmp");
+    }
+  }
+
+  reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                      "unsupported pattern in codegen");
+  return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+}
+
+static void reml_codegen_bind_pattern(reml_codegen *codegen, reml_codegen_scope_stack *scopes,
+                                      reml_pattern *pattern, LLVMValueRef scrutinee,
+                                      reml_type *type) {
+  if (!pattern) {
+    return;
+  }
+  if (pattern->kind == REML_PATTERN_IDENT) {
+    if (pattern->symbol_id == REML_SYMBOL_ID_INVALID) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, pattern->span,
+                          "match binding is missing symbol id");
+      return;
+    }
+    LLVMTypeRef llvm_type = reml_codegen_lower_type(codegen, type);
+    if (!llvm_type) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "unsupported match binding type");
+      return;
+    }
+    char *name = reml_string_view_to_cstr(pattern->data.ident);
+    LLVMValueRef alloca = reml_codegen_create_entry_alloca(
+        codegen, llvm_type, name ? name : "match.bind");
+    free(name);
+    if (!alloca) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, pattern->span,
+                          "failed to allocate match binding");
+      return;
+    }
+    LLVMBuildStore(codegen->builder, scrutinee, alloca);
+    reml_codegen_scope_define(scopes, pattern->symbol_id, alloca, llvm_type);
+    return;
+  }
+  if (pattern->kind == REML_PATTERN_TUPLE || pattern->kind == REML_PATTERN_RECORD) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                        "complex patterns are not supported in codegen");
+    return;
+  }
+  if (pattern->kind == REML_PATTERN_CONSTRUCTOR) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                        "constructor patterns are not supported in codegen");
+  }
 }
 
 static bool reml_type_is_int(reml_type *type) {
@@ -890,6 +1114,293 @@ static reml_codegen_value reml_codegen_emit_while(reml_codegen *codegen,
   return reml_codegen_make_value(NULL, expr->type, false);
 }
 
+static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
+                                                  reml_codegen_scope_stack *scopes,
+                                                  reml_expr *expr) {
+  reml_codegen_value scrutinee =
+      reml_codegen_emit_expr(codegen, scopes, expr->data.match_expr.scrutinee);
+  if (scrutinee.terminated) {
+    return scrutinee;
+  }
+  if (!scrutinee.value) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                        "missing match scrutinee value");
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+
+  bool is_unit = reml_type_is_unit(expr->type);
+  LLVMTypeRef phi_type = NULL;
+  if (!is_unit) {
+    phi_type = reml_codegen_lower_type(codegen, expr->type);
+    if (!phi_type) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                          "unsupported match expression type");
+      return reml_codegen_make_value(NULL, expr->type, false);
+    }
+  }
+
+  LLVMBasicBlockRef merge_bb =
+      LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function, "match.merge");
+
+  UT_array *incoming = NULL;
+  if (!is_unit) {
+    UT_icd incoming_icd = {sizeof(reml_codegen_phi_incoming), NULL, NULL, NULL};
+    utarray_new(incoming, &incoming_icd);
+  }
+
+  bool has_fallthrough = true;
+  bool any_non_terminated = false;
+  LLVMBasicBlockRef current_bb = LLVMGetInsertBlock(codegen->builder);
+  bool use_switch = false;
+
+  if (expr->data.match_expr.arms && (reml_type_is_bool(scrutinee.type) ||
+                                     reml_type_is_int(scrutinee.type))) {
+    UT_icd case_icd = {sizeof(reml_codegen_switch_case), NULL, NULL, NULL};
+    UT_array *cases = NULL;
+    utarray_new(cases, &case_icd);
+    UT_icd seen_icd = {sizeof(int64_t), NULL, NULL, NULL};
+    UT_array *seen_values = NULL;
+    utarray_new(seen_values, &seen_icd);
+
+    reml_match_arm *default_arm = NULL;
+    size_t arm_count = utarray_len(expr->data.match_expr.arms);
+    size_t index = 0;
+    bool valid = true;
+    for (reml_match_arm *it = (reml_match_arm *)utarray_front(expr->data.match_expr.arms);
+         it != NULL; it = (reml_match_arm *)utarray_next(expr->data.match_expr.arms, it)) {
+      bool catch_all = reml_pattern_is_catch_all(it->pattern);
+      bool is_last = index + 1 == arm_count;
+      if (catch_all) {
+        if (!is_last || default_arm) {
+          valid = false;
+          break;
+        }
+        default_arm = it;
+      } else if (reml_pattern_is_switch_literal(it->pattern, scrutinee.type)) {
+        int64_t value = 0;
+        LLVMValueRef literal_value = NULL;
+        if (!reml_codegen_match_switch_value(codegen, it->pattern, scrutinee.type, &value,
+                                              &literal_value)) {
+          valid = false;
+          break;
+        }
+        bool seen = false;
+        for (int64_t *it_val = (int64_t *)utarray_front(seen_values); it_val != NULL;
+             it_val = (int64_t *)utarray_next(seen_values, it_val)) {
+          if (*it_val == value) {
+            seen = true;
+            break;
+          }
+        }
+        if (seen) {
+          valid = false;
+          break;
+        }
+        utarray_push_back(seen_values, &value);
+        reml_codegen_switch_case entry = {.arm = it, .value = literal_value};
+        utarray_push_back(cases, &entry);
+      } else {
+        valid = false;
+        break;
+      }
+      index++;
+    }
+
+    if (valid && utarray_len(cases) > 0) {
+      use_switch = true;
+      LLVMBasicBlockRef default_bb = NULL;
+      if (default_arm) {
+        default_bb = LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function,
+                                                   "match.default");
+        has_fallthrough = false;
+      } else {
+        default_bb = LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function,
+                                                   "match.default");
+      }
+
+      LLVMValueRef switch_inst =
+          LLVMBuildSwitch(codegen->builder, scrutinee.value, default_bb, (unsigned)utarray_len(cases));
+
+      for (reml_codegen_switch_case *it = (reml_codegen_switch_case *)utarray_front(cases);
+           it != NULL; it = (reml_codegen_switch_case *)utarray_next(cases, it)) {
+        LLVMBasicBlockRef arm_bb =
+            LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function, "match.arm");
+        LLVMAddCase(switch_inst, it->value, arm_bb);
+
+        LLVMPositionBuilderAtEnd(codegen->builder, arm_bb);
+        reml_codegen_scope_stack_push(scopes);
+        reml_codegen_bind_pattern(codegen, scopes, it->arm->pattern, scrutinee.value,
+                                  scrutinee.type);
+        reml_codegen_value body = reml_codegen_emit_expr(codegen, scopes, it->arm->body);
+        reml_codegen_scope_stack_pop(scopes);
+
+        if (!body.terminated) {
+          LLVMBuildBr(codegen->builder, merge_bb);
+          any_non_terminated = true;
+          if (!is_unit) {
+            if (!body.value) {
+              reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, it->arm->body->span,
+                                  "missing match arm value");
+            } else if (incoming) {
+              reml_codegen_phi_incoming entry = {.value = body.value, .block = arm_bb};
+              utarray_push_back(incoming, &entry);
+            }
+          }
+        }
+      }
+
+      LLVMPositionBuilderAtEnd(codegen->builder, default_bb);
+      if (default_arm) {
+        reml_codegen_scope_stack_push(scopes);
+        reml_codegen_bind_pattern(codegen, scopes, default_arm->pattern, scrutinee.value,
+                                  scrutinee.type);
+        reml_codegen_value body = reml_codegen_emit_expr(codegen, scopes, default_arm->body);
+        reml_codegen_scope_stack_pop(scopes);
+
+        if (!body.terminated) {
+          LLVMBuildBr(codegen->builder, merge_bb);
+          any_non_terminated = true;
+          if (!is_unit) {
+            if (!body.value) {
+              reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, default_arm->body->span,
+                                  "missing match arm value");
+            } else if (incoming) {
+              reml_codegen_phi_incoming entry = {.value = body.value, .block = default_bb};
+              utarray_push_back(incoming, &entry);
+            }
+          }
+        }
+      } else {
+        bool exhaustive = reml_type_is_bool(scrutinee.type) && utarray_len(cases) == 2;
+        if (!exhaustive) {
+          reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                              "non-exhaustive match expression");
+        } else {
+          has_fallthrough = false;
+        }
+        if (!is_unit) {
+          LLVMValueRef undef = LLVMGetUndef(phi_type);
+          LLVMBuildBr(codegen->builder, merge_bb);
+          if (incoming) {
+            reml_codegen_phi_incoming entry = {.value = undef, .block = default_bb};
+            utarray_push_back(incoming, &entry);
+          }
+          any_non_terminated = true;
+        } else {
+          LLVMBuildBr(codegen->builder, merge_bb);
+        }
+      }
+    }
+
+    if (seen_values) {
+      utarray_free(seen_values);
+    }
+    if (cases) {
+      utarray_free(cases);
+    }
+  }
+
+  if (!use_switch) {
+    if (expr->data.match_expr.arms) {
+      for (reml_match_arm *it = (reml_match_arm *)utarray_front(expr->data.match_expr.arms);
+           it != NULL && current_bb != NULL; it = (reml_match_arm *)utarray_next(
+                                                   expr->data.match_expr.arms, it)) {
+        bool catch_all = reml_pattern_is_catch_all(it->pattern);
+        LLVMBasicBlockRef arm_bb =
+            LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function, "match.arm");
+        LLVMBasicBlockRef next_bb = NULL;
+
+        if (catch_all) {
+          LLVMBuildBr(codegen->builder, arm_bb);
+          has_fallthrough = false;
+        } else {
+          next_bb = LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function,
+                                                  "match.next");
+          LLVMValueRef cond = reml_codegen_emit_pattern_check(codegen, it->pattern,
+                                                              scrutinee.value, scrutinee.type);
+          if (!cond) {
+            cond = LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+          }
+          LLVMBuildCondBr(codegen->builder, cond, arm_bb, next_bb);
+        }
+
+        LLVMPositionBuilderAtEnd(codegen->builder, arm_bb);
+        reml_codegen_scope_stack_push(scopes);
+        reml_codegen_bind_pattern(codegen, scopes, it->pattern, scrutinee.value, scrutinee.type);
+        reml_codegen_value body = reml_codegen_emit_expr(codegen, scopes, it->body);
+        reml_codegen_scope_stack_pop(scopes);
+
+        if (!body.terminated) {
+          LLVMBuildBr(codegen->builder, merge_bb);
+          any_non_terminated = true;
+          if (!is_unit) {
+            if (!body.value) {
+              reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, it->body->span,
+                                  "missing match arm value");
+            } else if (incoming) {
+              reml_codegen_phi_incoming entry = {.value = body.value, .block = arm_bb};
+              utarray_push_back(incoming, &entry);
+            }
+          }
+        }
+
+        if (catch_all) {
+          current_bb = NULL;
+          break;
+        }
+
+        LLVMPositionBuilderAtEnd(codegen->builder, next_bb);
+        current_bb = next_bb;
+      }
+    }
+
+    if (current_bb != NULL) {
+      if (has_fallthrough) {
+        reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                            "non-exhaustive match expression");
+      }
+      if (!is_unit) {
+        LLVMValueRef undef = LLVMGetUndef(phi_type);
+        LLVMBuildBr(codegen->builder, merge_bb);
+        if (incoming) {
+          reml_codegen_phi_incoming entry = {.value = undef, .block = current_bb};
+          utarray_push_back(incoming, &entry);
+        }
+        any_non_terminated = true;
+      } else {
+        LLVMBuildBr(codegen->builder, merge_bb);
+      }
+    }
+  }
+
+  LLVMPositionBuilderAtEnd(codegen->builder, merge_bb);
+
+  if (!any_non_terminated) {
+    if (incoming) {
+      utarray_free(incoming);
+    }
+    return reml_codegen_make_value(NULL, expr->type, true);
+  }
+
+  if (is_unit) {
+    if (incoming) {
+      utarray_free(incoming);
+    }
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+
+  LLVMValueRef phi = LLVMBuildPhi(codegen->builder, phi_type, "match.result");
+  if (incoming) {
+    for (reml_codegen_phi_incoming *it = (reml_codegen_phi_incoming *)utarray_front(incoming);
+         it != NULL; it = (reml_codegen_phi_incoming *)utarray_next(incoming, it)) {
+      LLVMAddIncoming(phi, &it->value, &it->block, 1);
+    }
+    utarray_free(incoming);
+  }
+
+  return reml_codegen_make_value(phi, expr->type, false);
+}
+
 static reml_codegen_value reml_codegen_emit_expr(reml_codegen *codegen,
                                                  reml_codegen_scope_stack *scopes,
                                                  reml_expr *expr) {
@@ -912,9 +1423,7 @@ static reml_codegen_value reml_codegen_emit_expr(reml_codegen *codegen,
     case REML_EXPR_WHILE:
       return reml_codegen_emit_while(codegen, scopes, expr);
     case REML_EXPR_MATCH:
-      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
-                          "match expression not supported in codegen");
-      return reml_codegen_make_value(NULL, expr->type, false);
+      return reml_codegen_emit_match(codegen, scopes, expr);
     default:
       reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
                           "unknown expression kind in codegen");

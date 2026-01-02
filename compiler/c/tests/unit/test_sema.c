@@ -17,6 +17,20 @@ static reml_compilation_unit *parse_source(const char *source) {
   return unit;
 }
 
+static bool has_diag(const reml_diagnostic_list *diags, reml_diagnostic_code code) {
+  if (!diags) {
+    return false;
+  }
+  size_t count = reml_diagnostics_count(diags);
+  for (size_t i = 0; i < count; ++i) {
+    const reml_diagnostic *diag = reml_diagnostics_at(diags, i);
+    if (diag && diag->code == code) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static void test_sema_basic_ok(void **state) {
   (void)state;
 
@@ -95,9 +109,49 @@ static void test_sema_bigint_literal_ok(void **state) {
   reml_compilation_unit_free(unit);
 }
 
+static void test_sema_match_non_exhaustive(void **state) {
+  (void)state;
+
+  const char *source = "let x = true; match x with | true -> 1;";
+  reml_compilation_unit *unit = parse_source(source);
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+
+  const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+  assert_false(ok);
+  assert_true(reml_diagnostics_count(diags) > 0);
+  assert_true(has_diag(diags, REML_DIAG_PATTERN_EXHAUSTIVENESS_MISSING));
+
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+}
+
+static void test_sema_match_unreachable(void **state) {
+  (void)state;
+
+  const char *source = "let x = true; match x with | _ -> 1 | false -> 2;";
+  reml_compilation_unit *unit = parse_source(source);
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+
+  const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+  assert_false(ok);
+  assert_true(reml_diagnostics_count(diags) > 0);
+  assert_true(has_diag(diags, REML_DIAG_PATTERN_UNREACHABLE_ARM));
+
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+}
+
 void test_sema(void **state) {
   test_sema_basic_ok(state);
   test_sema_type_mismatch(state);
   test_sema_undefined_symbol(state);
   test_sema_bigint_literal_ok(state);
+  test_sema_match_non_exhaustive(state);
+  test_sema_match_unreachable(state);
 }

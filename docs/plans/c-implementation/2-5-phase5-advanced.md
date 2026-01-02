@@ -72,6 +72,40 @@
   4.  Codegen: `DecisionTree` を LLVM IR (BasicBlocks, Br) に下降させる。
   5.  テスト: Enum/整数/タプル/リテラル/ガードの組み合わせ。
 
+### 5.2.1 進捗メモ（2026-01-03）
+- リテラル/ワイルドカード/識別子パターンを対象に、直列分岐の DecisionTree と LLVM IR への降下を追加。
+- bool の網羅性/到達不能診断（`REML_DIAG_PATTERN_EXHAUSTIVENESS_MISSING` / `REML_DIAG_PATTERN_UNREACHABLE_ARM`）を Sema に追加。
+- C 単体テストに match の成功/失敗ケースを追加。
+- int/bool のリテラルパターンに対する `switch` 化ヒューリスティックを Codegen に追加。
+- ADT/Enum への入口としてコンストラクタパターンの AST/パーサー表現を追加（セマンティクス/コード生成は未対応）。
+
+### 5.2.2 実装済み範囲（チェック）
+- [x] リテラル/ワイルドカード/識別子パターンの decision tree 生成（直列分岐）
+- [x] bool リテラルの網羅性/冗長性チェック
+- [x] LLVM IR への分岐降下（`br` ベース）
+- [x] int/bool リテラルパターンの `switch` 生成
+- [x] C 単体テストの追加（sema/codegen）
+- [x] コンストラクタパターンの AST/パーサー受理
+- [ ] Enum/ADT/タプル/レコードの分岐展開
+- [x] ガード/ネストパターンの優先順位ルール固定（仕様のみ）
+- [x] `switch` 化のヒューリスティック適用（Int/Bool のリテラルに限定）
+
+### 5.2.3 優先順位ルール（確定）
+- **評価順**: 外側パターン → 内側パターン（左から順に束縛）→ ガード式 → アーム本体。
+- **ガードの位置付け**: パターンが成功した後にのみ評価し、失敗時は次のアームへ進む。
+- **ネスト展開の基準**: ADT/Enum の場合はタグ判定を最優先し、タグ一致後にフィールド/サブパターンを評価する。
+- **束縛の可視性**: ガード/本体からはパターン束縛が参照可能。ガード失敗時に束縛は破棄される。
+
+### 5.2.4 `switch` 化ヒューリスティック（確定）
+- 対象: scrutinee が `Int`/`Bool` で、アームが **リテラルのみ + 末尾の catch-all** の場合に `switch` を生成する。
+- 除外: 非リテラルパターン（タプル/レコード/コンストラクタ/ガード）が含まれる場合は直列分岐へフォールバック。
+- 例外: `Bool` で `true/false` が揃う場合は catch-all 無しでも `switch` を許可する。
+
+### 5.2.1 進捗メモ（2026-01-03）
+- リテラル/ワイルドカード/識別子パターンを対象に、直列分岐の DecisionTree と LLVM IR への降下を追加。
+- bool の網羅性/到達不能診断（`REML_DIAG_PATTERN_EXHAUSTIVENESS_MISSING` / `REML_DIAG_PATTERN_UNREACHABLE_ARM`）を Sema に追加。
+- C 単体テストに match の成功/失敗ケースを追加。
+
 ## 5.3 Algebraic Effects (ランタイムサポート)
 - **目標**: `perform`, `resume`, `handle` のサポート。
 - **仕様参照**: `docs/spec/1-3-effects-safety.md`、`docs/spec/3-8-core-runtime-capability.md`。
@@ -151,6 +185,8 @@
 ## チェックリスト
 - [ ] `BigInt` 演算が動作する。
 - [ ] Enum と Integer に対してパターンマッチングがコンパイルされる。
+- [x] Integer/Bool のリテラル + ワイルドカード/識別子パターンの match がコンパイルされる。
+- [x] Integer/Bool のリテラルパターンが `switch` へ降下する。
 - [ ] 文字列リテラルと基本的な文字列操作が Unicode で正しく動作する。
 - [ ] 基本的な Effect Handler が動作する (少なくとも State/Exception に対して)。
 - [ ] ADT/レコード型がパース・型検査・コード生成まで通る。

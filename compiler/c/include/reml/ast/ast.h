@@ -73,7 +73,8 @@ typedef enum {
   REML_PATTERN_IDENT,
   REML_PATTERN_LITERAL,
   REML_PATTERN_TUPLE,
-  REML_PATTERN_RECORD
+  REML_PATTERN_RECORD,
+  REML_PATTERN_CONSTRUCTOR
 } reml_pattern_kind;
 
 typedef struct reml_pattern reml_pattern;
@@ -87,6 +88,11 @@ typedef struct {
   reml_pattern *pattern;
 } reml_pattern_field;
 
+typedef struct {
+  reml_string_view name;
+  UT_array *items;
+} reml_pattern_constructor;
+
 struct reml_pattern {
   reml_pattern_kind kind;
   reml_span span;
@@ -97,6 +103,7 @@ struct reml_pattern {
     reml_literal literal;
     UT_array *items;
     UT_array *fields;
+    reml_pattern_constructor ctor;
   } data;
 };
 
@@ -165,6 +172,7 @@ reml_pattern *reml_pattern_make_ident(reml_span span, reml_string_view ident);
 reml_pattern *reml_pattern_make_literal(reml_span span, reml_literal literal);
 reml_pattern *reml_pattern_make_tuple(reml_span span, UT_array *items);
 reml_pattern *reml_pattern_make_record(reml_span span, UT_array *fields);
+reml_pattern *reml_pattern_make_constructor(reml_span span, reml_string_view name, UT_array *items);
 
 reml_stmt *reml_stmt_make_expr(reml_span span, reml_expr *expr);
 reml_stmt *reml_stmt_make_return(reml_span span, reml_expr *expr);

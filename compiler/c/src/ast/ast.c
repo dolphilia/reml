@@ -143,6 +143,17 @@ reml_pattern *reml_pattern_make_record(reml_span span, UT_array *fields) {
   return pattern;
 }
 
+reml_pattern *reml_pattern_make_constructor(reml_span span, reml_string_view name,
+                                            UT_array *items) {
+  reml_pattern *pattern = reml_pattern_alloc(REML_PATTERN_CONSTRUCTOR, span);
+  if (!pattern) {
+    return NULL;
+  }
+  pattern->data.ctor.name = name;
+  pattern->data.ctor.items = items;
+  return pattern;
+}
+
 reml_stmt *reml_stmt_make_expr(reml_span span, reml_expr *expr) {
   reml_stmt *stmt = (reml_stmt *)calloc(1, sizeof(reml_stmt));
   if (!stmt) {
@@ -283,6 +294,16 @@ void reml_pattern_free(reml_pattern *pattern) {
           reml_pattern_free(it->pattern);
         }
         utarray_free(pattern->data.fields);
+      }
+      break;
+    case REML_PATTERN_CONSTRUCTOR:
+      if (pattern->data.ctor.items) {
+        for (reml_pattern **it = (reml_pattern **)utarray_front(pattern->data.ctor.items);
+             it != NULL;
+             it = (reml_pattern **)utarray_next(pattern->data.ctor.items, it)) {
+          reml_pattern_free(*it);
+        }
+        utarray_free(pattern->data.ctor.items);
       }
       break;
     default:

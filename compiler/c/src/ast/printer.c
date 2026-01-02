@@ -72,6 +72,19 @@ static void reml_ast_write_pattern(FILE *out, const reml_pattern *pattern) {
       }
       fputs(")", out);
       return;
+    case REML_PATTERN_CONSTRUCTOR:
+      fputs("(pctor ", out);
+      reml_write_view(out, pattern->data.ctor.name);
+      if (pattern->data.ctor.items) {
+        for (reml_pattern **it = (reml_pattern **)utarray_front(pattern->data.ctor.items);
+             it != NULL;
+             it = (reml_pattern **)utarray_next(pattern->data.ctor.items, it)) {
+          fputs(" ", out);
+          reml_ast_write_pattern(out, *it);
+        }
+      }
+      fputs(")", out);
+      return;
     default:
       fputs("(pattern ?)", out);
       return;

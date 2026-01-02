@@ -234,6 +234,63 @@ static void reml_var_ids_push_unique(UT_array *vars, uint32_t id) {
   utarray_push_back(vars, &id);
 }
 
+static bool reml_string_view_equal(reml_string_view left, reml_string_view right) {
+  if (left.length != right.length) {
+    return false;
+  }
+  if (left.length == 0) {
+    return true;
+  }
+  return memcmp(left.data, right.data, left.length) == 0;
+}
+
+static bool reml_literal_equal(reml_literal left, reml_literal right) {
+  if (left.kind != right.kind) {
+    return false;
+  }
+  return reml_string_view_equal(left.text, right.text);
+}
+
+static bool reml_type_is_bool(reml_type *type) {
+  type = type ? reml_type_prune(type) : NULL;
+  return type && type->kind == REML_TYPE_BOOL;
+}
+
+static bool reml_pattern_is_catch_all(const reml_pattern *pattern) {
+  if (!pattern) {
+    return false;
+  }
+  return pattern->kind == REML_PATTERN_WILDCARD || pattern->kind == REML_PATTERN_IDENT;
+}
+
+static bool reml_pattern_is_bool_literal(const reml_pattern *pattern, bool *out_value) {
+  if (!pattern || pattern->kind != REML_PATTERN_LITERAL) {
+    return false;
+  }
+  if (pattern->data.literal.kind != REML_LITERAL_BOOL) {
+    return false;
+  }
+  bool value = pattern->data.literal.text.length > 0 && pattern->data.literal.text.data[0] == 't';
+  if (out_value) {
+    *out_value = value;
+  }
+  return true;
+}
+
+static bool reml_match_literal_seen(UT_array *seen, reml_literal literal) {
+  if (!seen) {
+    return false;
+  }
+  for (reml_literal *it = (reml_literal *)utarray_front(seen); it != NULL;
+       it = (reml_literal *)utarray_next(seen, it)) {
+    if (reml_literal_equal(*it, literal)) {
+      return true;
+    }
+  }
+  utarray_push_back(seen, &literal);
+  return false;
+}
+
 static void reml_type_collect_vars(reml_type *type, UT_array *vars) {
   if (!type || !vars) {
     return;
@@ -574,10 +631,34 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
   reml_effect_set scrutinee_effect = REML_EFFECT_NONE;
   reml_type *scrutinee = reml_infer_expr(sema, expr->data.match_expr.scrutinee, &scrutinee_effect);
   reml_type *result = NULL;
+  bool has_catch_all = false;
+  bool bool_seen[2] = {false, false};
+  UT_icd literal_icd = {sizeof(reml_literal), NULL, NULL, NULL};
+  UT_array *seen_literals = NULL;
+  utarray_new(seen_literals, &literal_icd);
 
   if (expr->data.match_expr.arms) {
     for (reml_match_arm *it = (reml_match_arm *)utarray_front(expr->data.match_expr.arms);
          it != NULL; it = (reml_match_arm *)utarray_next(expr->data.match_expr.arms, it)) {
+      if (has_catch_all) {
+        reml_report_diag(sema, REML_DIAG_PATTERN_UNREACHABLE_ARM, it->pattern->span,
+                         "unreachable match arm");
+      } else if (reml_pattern_is_catch_all(it->pattern)) {
+        has_catch_all = true;
+      } else if (it->pattern && it->pattern->kind == REML_PATTERN_LITERAL) {
+        bool bool_value = false;
+        if (reml_pattern_is_bool_literal(it->pattern, &bool_value)) {
+          if (bool_seen[bool_value ? 1 : 0]) {
+            reml_report_diag(sema, REML_DIAG_PATTERN_UNREACHABLE_ARM, it->pattern->span,
+                             "unreachable match arm");
+          } else {
+            bool_seen[bool_value ? 1 : 0] = true;
+          }
+        } else if (reml_match_literal_seen(seen_literals, it->pattern->data.literal)) {
+          reml_report_diag(sema, REML_DIAG_PATTERN_UNREACHABLE_ARM, it->pattern->span,
+                           "unreachable match arm");
+        }
+      }
       reml_symbol_table_enter(sema->symbols);
       reml_effect_set arm_effect = REML_EFFECT_NONE;
       reml_check_pattern(sema, it->pattern, scrutinee, &arm_effect, true);
@@ -593,6 +674,18 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
     }
   }
 
+  bool exhaustive = has_catch_all;
+  if (!exhaustive && reml_type_is_bool(scrutinee)) {
+    exhaustive = bool_seen[0] && bool_seen[1];
+  }
+  if (!exhaustive) {
+    reml_report_diag(sema, REML_DIAG_PATTERN_EXHAUSTIVENESS_MISSING, expr->span,
+                     "non-exhaustive match expression");
+  }
+
+  if (seen_literals) {
+    utarray_free(seen_literals);
+  }
   *effect = reml_effect_union(*effect, scrutinee_effect);
   return result ? result : reml_type_error(&sema->types);
 }
@@ -740,6 +833,7 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
     }
     case REML_PATTERN_TUPLE:
     case REML_PATTERN_RECORD:
+    case REML_PATTERN_CONSTRUCTOR:
       reml_report_diag(sema, REML_DIAG_UNSUPPORTED_FEATURE, pattern->span,
                        "pattern kind not supported in phase 3");
       pattern->type = reml_type_error(&sema->types);

@@ -187,6 +187,42 @@ static reml_pattern *reml_parse_pattern_primary(reml_parser *parser) {
     if (reml_token_is_underscore(&token)) {
       return reml_pattern_make_wildcard(token.span);
     }
+    if (parser->current.kind == REML_TOKEN_LPAREN) {
+      reml_parser_advance(parser);
+      UT_icd item_icd = {sizeof(reml_pattern *), NULL, NULL, NULL};
+      UT_array *items = NULL;
+      utarray_new(items, &item_icd);
+
+      if (parser->current.kind != REML_TOKEN_RPAREN) {
+        reml_pattern *first = reml_parse_pattern(parser);
+        if (!first) {
+          reml_free_pattern_array(items);
+          return NULL;
+        }
+        utarray_push_back(items, &first);
+
+        while (parser->current.kind == REML_TOKEN_COMMA) {
+          reml_parser_advance(parser);
+          if (parser->current.kind == REML_TOKEN_RPAREN) {
+            break;
+          }
+          reml_pattern *next = reml_parse_pattern(parser);
+          if (!next) {
+            reml_free_pattern_array(items);
+            return NULL;
+          }
+          utarray_push_back(items, &next);
+        }
+      }
+
+      reml_token end_token = parser->current;
+      if (!reml_parser_expect(parser, REML_TOKEN_RPAREN, "expected ')'")) {
+        reml_free_pattern_array(items);
+        return NULL;
+      }
+      reml_span span = reml_span_combine(token.span, end_token.span);
+      return reml_pattern_make_constructor(span, token.lexeme, items);
+    }
     return reml_pattern_make_ident(token.span, token.lexeme);
   }
 
