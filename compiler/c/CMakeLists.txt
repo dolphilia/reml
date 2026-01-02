@@ -9,6 +9,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(REML_ENABLE_LLVM "Enable LLVM backend" ON)
+
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
@@ -43,6 +45,34 @@ target_link_libraries(reml_core
     reml_tomlc99
 )
 
+if(REML_ENABLE_LLVM)
+  find_package(LLVM REQUIRED CONFIG)
+  message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+
+  add_definitions(${LLVM_DEFINITIONS})
+  llvm_map_components_to_libnames(LLVM_LIBS core analysis target asmparser asmprinter support native nativecodegen)
+
+  add_library(reml_codegen
+    src/codegen/codegen.c
+  )
+
+  target_include_directories(reml_codegen
+    SYSTEM PUBLIC
+      ${LLVM_INCLUDE_DIRS}
+  )
+
+  target_link_libraries(reml_codegen
+    PUBLIC
+      reml_core
+      ${LLVM_LIBS}
+  )
+
+  target_include_directories(reml_codegen
+    PUBLIC
+      include
+  )
+endif()
+
 add_executable(reml
   src/main.c
 )
@@ -57,6 +87,13 @@ target_include_directories(reml
   PRIVATE
     include
 )
+
+if(REML_ENABLE_LLVM)
+  target_link_libraries(reml
+    PRIVATE
+      reml_codegen
+  )
+endif()
 
 if(MSVC)
   target_compile_options(reml_core PRIVATE /W4)
@@ -91,3 +128,18 @@ target_link_libraries(reml_unit_tests
 )
 
 add_test(NAME reml_unit_tests COMMAND reml_unit_tests)
+
+if(REML_ENABLE_LLVM)
+  add_executable(reml_codegen_tests
+    tests/unit/test_codegen_main.c
+    tests/unit/test_codegen.c
+  )
+
+  target_link_libraries(reml_codegen_tests
+    PRIVATE
+      reml_codegen
+      ${REML_CMOCKA_TARGET}
+  )
+
+  add_test(NAME reml_codegen_tests COMMAND reml_codegen_tests)
+endif()

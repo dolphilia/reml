@@ -4,9 +4,11 @@
 
 #include "argparse.h"
 #include "reml/ast/printer.h"
+#include "reml/codegen/codegen.h"
 #include "reml/lexer/lexer.h"
 #include "reml/manifest/manifest.h"
 #include "reml/parser/parser.h"
+#include "reml/sema/sema.h"
 #include "reml/util/logger.h"
 
 #define REML_VERSION "0.1.0-dev"
@@ -77,6 +79,136 @@ static char *read_file(const char *path, size_t *out_length) {
     *out_length = (size_t)size;
   }
   return buffer;
+}
+
+static void print_diagnostics(const char *stage, const reml_diagnostic_list *list) {
+  if (!list) {
+    return;
+  }
+  size_t count = reml_diagnostics_count(list);
+  for (size_t i = 0; i < count; ++i) {
+    const reml_diagnostic *diag = reml_diagnostics_at(list, i);
+    if (!diag) {
+      continue;
+    }
+    if (reml_span_is_valid(&diag->span)) {
+      fprintf(stderr, "%s:%d:%d: %s\n", stage, diag->span.start_line, diag->span.start_column,
+              diag->message);
+    } else {
+      fprintf(stderr, "%s: %s\n", stage, diag->message);
+    }
+  }
+}
+
+static int command_internal_codegen(int argc, const char **argv) {
+  if (argc < 1) {
+    fprintf(stderr, "missing file path\n");
+    return 1;
+  }
+
+  const char *input_path = argv[0];
+  const char *ir_path = NULL;
+  const char *obj_path = NULL;
+
+  for (int i = 1; i < argc; ++i) {
+    if (strcmp(argv[i], "--emit-ir") == 0 || strcmp(argv[i], "--emit-llvm") == 0) {
+      if (i + 1 >= argc) {
+        fprintf(stderr, "missing path after %s\n", argv[i]);
+        return 1;
+      }
+      ir_path = argv[++i];
+      continue;
+    }
+    if (strcmp(argv[i], "--emit-obj") == 0) {
+      if (i + 1 >= argc) {
+        fprintf(stderr, "missing path after --emit-obj\n");
+        return 1;
+      }
+      obj_path = argv[++i];
+      continue;
+    }
+    fprintf(stderr, "unknown option: %s\n", argv[i]);
+    return 1;
+  }
+
+  if (!ir_path && !obj_path) {
+    obj_path = "out.o";
+  }
+
+  size_t length = 0;
+  char *content = read_file(input_path, &length);
+  if (!content) {
+    fprintf(stderr, "failed to read file: %s\n", input_path);
+    return 1;
+  }
+
+  reml_parser parser;
+  reml_parser_init(&parser, content, length);
+  reml_compilation_unit *unit = reml_parse_compilation_unit(&parser);
+  if (!unit) {
+    const reml_parse_error *error = reml_parser_error(&parser);
+    if (error) {
+      fprintf(stderr, "parse error: %s\n", error->message);
+    } else {
+      fprintf(stderr, "parse error\n");
+    }
+    free(content);
+    return 1;
+  }
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+  if (!ok) {
+    print_diagnostics("sema", reml_sema_diagnostics(&sema));
+    reml_sema_deinit(&sema);
+    reml_compilation_unit_free(unit);
+    free(content);
+    return 1;
+  }
+
+  reml_codegen codegen;
+  if (!reml_codegen_init(&codegen, "reml_module")) {
+    print_diagnostics("codegen", reml_codegen_diagnostics(&codegen));
+    reml_codegen_deinit(&codegen);
+    reml_sema_deinit(&sema);
+    reml_compilation_unit_free(unit);
+    free(content);
+    return 1;
+  }
+
+  if (!reml_codegen_generate(&codegen, unit)) {
+    print_diagnostics("codegen", reml_codegen_diagnostics(&codegen));
+    reml_codegen_deinit(&codegen);
+    reml_sema_deinit(&sema);
+    reml_compilation_unit_free(unit);
+    free(content);
+    return 1;
+  }
+
+  if (ir_path && !reml_codegen_emit_ir(&codegen, ir_path)) {
+    print_diagnostics("codegen", reml_codegen_diagnostics(&codegen));
+    reml_codegen_deinit(&codegen);
+    reml_sema_deinit(&sema);
+    reml_compilation_unit_free(unit);
+    free(content);
+    return 1;
+  }
+
+  if (obj_path && !reml_codegen_emit_object(&codegen, obj_path)) {
+    print_diagnostics("codegen", reml_codegen_diagnostics(&codegen));
+    reml_codegen_deinit(&codegen);
+    reml_sema_deinit(&sema);
+    reml_compilation_unit_free(unit);
+    free(content);
+    return 1;
+  }
+
+  reml_codegen_deinit(&codegen);
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+  free(content);
+  return 0;
 }
 
 static int command_internal_lex(const char *path) {
@@ -151,7 +283,7 @@ int main(int argc, const char **argv) {
   };
 
   struct argparse argparse;
-  argparse_init(&argparse, options, kUsage, 0);
+  argparse_init(&argparse, options, kUsage, ARGPARSE_STOP_AT_NON_OPTION);
   argparse_describe(&argparse, "Reml C compiler (bootstrap)", NULL);
   filtered_argc = argparse_parse(&argparse, filtered_argc, filtered_argv);
 
@@ -193,6 +325,13 @@ int main(int argc, const char **argv) {
         return 1;
       }
       return command_internal_parse(filtered_argv[2]);
+    }
+    if (strcmp(subcommand, "codegen") == 0) {
+      if (filtered_argc < 3) {
+        fprintf(stderr, "missing file path\n");
+        return 1;
+      }
+      return command_internal_codegen(filtered_argc - 2, filtered_argv + 2);
     }
     if (strcmp(subcommand, "manifest") == 0) {
       if (filtered_argc < 3) {
