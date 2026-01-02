@@ -3651,7 +3651,32 @@ fn module_parser<'src>(
             },
         );
 
-        let multiplicative = unary
+        let power = unary
+            .clone()
+            .then(
+                just(TokenKind::Caret)
+                    .to("^")
+                    .then(unary.clone().cut())
+                    .repeated(),
+            )
+            .map(|(first, rest)| {
+                if rest.is_empty() {
+                    return first;
+                }
+                let mut operands = Vec::with_capacity(rest.len() + 1);
+                operands.push(first);
+                for (_op, rhs) in rest {
+                    operands.push(rhs);
+                }
+                let mut rhs = operands.pop().expect("power operands");
+                while let Some(lhs) = operands.pop() {
+                    let span = span_union(lhs.span(), rhs.span());
+                    rhs = Expr::binary("^", lhs, rhs, span);
+                }
+                rhs
+            });
+
+        let multiplicative = power
             .clone()
             .then(
                 choice((
@@ -3659,7 +3684,7 @@ fn module_parser<'src>(
                     just(TokenKind::Slash).to("/"),
                     just(TokenKind::Percent).to("%"),
                 ))
-                .then(unary.clone().cut())
+                .then(power.clone().cut())
                 .repeated(),
             )
             .map(|(first, rest)| {
@@ -3709,11 +3734,43 @@ fn module_parser<'src>(
                     just(TokenKind::Ge).to(">="),
                     just(TokenKind::Lt).to("<"),
                     just(TokenKind::Le).to("<="),
+                ))
+                .then(range_expr.clone().cut())
+                .or_not(),
+            )
+            .map(|(first, rest)| match rest {
+                Some((op, rhs)) => {
+                    let span = span_union(first.span(), rhs.span());
+                    Expr::binary(op, first, rhs, span)
+                }
+                None => first,
+            });
+
+        let equality = comparison
+            .clone()
+            .then(
+                choice((
                     just(TokenKind::EqEq).to("=="),
                     just(TokenKind::NotEqual).to("!="),
                 ))
-                .then(range_expr.clone().cut())
-                .repeated(),
+                .then(comparison.clone().cut())
+                .or_not(),
+            )
+            .map(|(first, rest)| match rest {
+                Some((op, rhs)) => {
+                    let span = span_union(first.span(), rhs.span());
+                    Expr::binary(op, first, rhs, span)
+                }
+                None => first,
+            });
+
+        let logical_and = equality
+            .clone()
+            .then(
+                just(TokenKind::LogicalAnd)
+                    .to("&&")
+                    .then(equality.clone().cut())
+                    .repeated(),
             )
             .map(|(first, rest)| {
                 rest.into_iter().fold(first, |lhs, (op, rhs)| {
@@ -3722,12 +3779,27 @@ fn module_parser<'src>(
                 })
             });
 
-        let pipe_expr = comparison
+        let logical_or = logical_and
+            .clone()
+            .then(
+                just(TokenKind::LogicalOr)
+                    .to("||")
+                    .then(logical_and.clone().cut())
+                    .repeated(),
+            )
+            .map(|(first, rest)| {
+                rest.into_iter().fold(first, |lhs, (op, rhs)| {
+                    let span = span_union(lhs.span(), rhs.span());
+                    Expr::binary(op, lhs, rhs, span)
+                })
+            });
+
+        let pipe_expr = logical_or
             .clone()
             .then(
                 just(TokenKind::PipeForward)
                     .to("|>")
-                    .then(comparison.clone().cut())
+                    .then(logical_or.clone().cut())
                     .repeated(),
             )
             .map(|(first, rest)| {
@@ -7017,6 +7089,21 @@ mod driver {
                 expected_messages: &[],
             },
             Case {
+                source: "fn pow(a, b, c) = a ^ b ^ c",
+                expected_ast: Some("fn pow(a, b, c) = binary(var(a) ^ binary(var(b) ^ var(c)))"),
+                expected_messages: &[],
+            },
+            Case {
+                source: "fn mix(a, b, c) = a ^ b * c",
+                expected_ast: Some("fn mix(a, b, c) = binary(binary(var(a) ^ var(b)) * var(c))"),
+                expected_messages: &[],
+            },
+            Case {
+                source: "fn logic(a, b, c) = a || b && c",
+                expected_ast: Some("fn logic(a, b, c) = binary(var(a) || binary(var(b) && var(c)))"),
+                expected_messages: &[],
+            },
+            Case {
                 source: r#"effect ConsoleLog
 fn emit(msg: String) = perform ConsoleLog(msg)
 fn main() = emit("leak")"#,
@@ -7044,7 +7131,7 @@ fn main() = emit("leak")"#,
         assert_eq!(diag.notes[0].label, "recover.expected_tokens");
         assert_eq!(
             diag.notes[0].message,
-            "ここで`!=`、`%`、`(`、`)`、`*`、`+`、`,`、`-`、`.`、`..`、`/`、`:`、`<`、`<=`、`==`、`>`、`>=`、`?` または `|>`のいずれかが必要です"
+            "ここで`!=`、`%`、`&&`、`(`、`)`、`*`、`+`、`,`、`-`、`.`、`..`、`/`、`:`、`<`、`<=`、`==`、`>`、`>=`、`?`、`^`、`|>` または `||`のいずれかが必要です"
         );
     }
 
