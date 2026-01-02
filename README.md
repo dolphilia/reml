@@ -21,13 +21,13 @@ fn main() -> Str = describe(Some(42))
 
 ## 目的
 
-本リポジトリは言語仕様、設計ガイド、実装（Rust/OCaml）、開発ツール、サンプルコードを統合し、Reml の実装とエコシステム整備を進めるための中枢として機能します。
+Reml 言語の実装とエコシステム、各種ドキュメントの整備を進めています。
 
 - 言語仕様の策定と更新（`docs/spec/`）
-- Rust を中心とした公式実装の開発（`compiler/rust/`、`runtime/`、`tooling/`）
-- 参照実装としての OCaml 版の保持（`compiler/ocaml/`）
+- 言語実装の開発（`compiler/rust/`、`runtime/`、`tooling/`）
 - 実務ガイド、調査ノート、計画書の整理（`docs/`）
 - サンプルとテストケースの集約（`examples/`、`tests/`）
+- 参照実装としての OCaml 版の保持（`compiler/ocaml/`）
 
 ## クイックスタート
 
