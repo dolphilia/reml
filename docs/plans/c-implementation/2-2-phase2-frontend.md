@@ -43,7 +43,28 @@
 - **トップレベル**: `CompilationUnit`, `ModuleHeader`, `UseDecl`, `PubDecl`, `Attrs`, `Attribute`。
 - **式/文**: `Expr`, `Stmt`, `Block`, `ReturnStmt`, `AssignStmt`。
 - **リテラル/識別子**: `Literal`, `Ident`, `StringLiteral`, `IntLiteral`, `FloatLiteral`。
-- **パターン**: `Pattern` (変数束縛/タプル/レコード/ワイルドカードの最小構成)。
+- **パターン**: `Pattern` (変数束縛/タプル/レコード/ワイルドカード/リテラルパターン)。
+
+#### 2.2.1.1 Pattern 最小構成
+- 変数束縛: `Ident`
+- ワイルドカード: `_`
+- リテラルパターン: `IntLiteral`, `FloatLiteral`, `StringLiteral`, `CharLiteral`, `BoolLiteral`
+- タプルパターン: `("(" Pattern "," Pattern { "," Pattern } [","] ")")`
+- レコードパターン: `"{" FieldPattern { "," FieldPattern } [","] "}"`
+  - `FieldPattern`: `Ident [":" Pattern]` (省略時はフィールド名を束縛)
+
+#### 2.2.1.2 Literal 最小構成
+- 数値: `IntLiteral`, `FloatLiteral`
+- 文字列: `StringLiteral` (raw/multiline の区別は token に保持)
+- 文字: `CharLiteral`
+- 真偽値: `BoolLiteral` (`true`/`false`)
+
+#### 2.2.1.3 Primary 最小構成
+- `Ident` / `Literal`
+- 括弧式: `"(" Expr ")"`
+- ブロック: `Block`
+- 条件: `IfExpr`
+- 分岐: `MatchExpr`
 
 ### 2.2.2 Span 付与方針
 全ノードに `Span` を持たせるか、`Spanned<T>` ラッパーで表現するかを決定し、
@@ -64,6 +85,32 @@ Parser/Diagnostics で共有する。
 ### 2.3.1 エントリポイントと優先順位
 - エントリポイントは `CompilationUnit` 固定とし、`docs/spec/1-5-formal-grammar-bnf.md` に合わせる。
 - 演算子の優先順位テーブルを計画書内に固定し、Rust 実装との差分を監視する。
+
+#### 2.3.1.1 演算子優先順位テーブル (Rust 実装準拠)
+`compiler/rust/frontend/src/parser/mod.rs` の式パーサーに合わせる。
+
+| 優先度 (高 -> 低) | 非終端 | 演算子/構文 | 結合性 |
+| --- | --- | --- | --- |
+| 6 | PostfixExpr | `.`, `( )`, `?` | 左結合 |
+| 5 | UnaryExpr | `-`, `!`, `async`, `await`, `rec` | 右結合 |
+| 4 | MulExpr | `*`, `/`, `%` | 左結合 |
+| 3 | AddExpr | `+`, `-` | 左結合 |
+| 2 | RangeExpr | `..` | 左結合 |
+| 1 | CmpExpr | `<`, `<=`, `>`, `>=`, `==`, `!=` | 左結合 |
+| 0 | PipeExpr | `|>` | 左結合 |
+
+補足:
+- `CallExpr` は `PostfixExpr` の `("(" Args? ")")` で表現する。
+- 現行 Rust 版は `^` (Pow) と `&&` / `||` を構文として扱っていないため、C 実装では **保留** とする。
+
+#### 2.3.1.2 仕様との差分 (RangeExpr)
+- `docs/spec/1-5-formal-grammar-bnf.md` の式文法には `..` の `RangeExpr` が存在しない。
+- Rust 実装は `AddExpr` と `CmpExpr` の間に `RangeExpr (..)` を追加している。
+- `..` はパターン文法では `RangePattern` として仕様化されているが、式側は未定義。
+
+対応方針:
+- C 実装は **仕様優先** とし、`RangeExpr` は導入しない。
+- Rust 実装準拠を選ぶ場合は、仕様側に `RangeExpr` の追加を提案する。
 
 ### 2.3.2 Parser 診断
 - Lexer と同様に **期待集合 + 最遠位置 + ラベル** を保持するエラー構造を採用。
