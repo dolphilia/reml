@@ -332,6 +332,75 @@ static bool reml_parse_int_literal(reml_literal literal, int64_t *out_value) {
   return true;
 }
 
+typedef struct {
+  int64_t start;
+  int64_t end;
+} reml_int_interval;
+
+static int reml_int_interval_cmp(const void *left, const void *right) {
+  const reml_int_interval *a = (const reml_int_interval *)left;
+  const reml_int_interval *b = (const reml_int_interval *)right;
+  if (a->start < b->start) {
+    return -1;
+  }
+  if (a->start > b->start) {
+    return 1;
+  }
+  if (a->end < b->end) {
+    return -1;
+  }
+  if (a->end > b->end) {
+    return 1;
+  }
+  return 0;
+}
+
+static bool reml_interval_covers(UT_array *intervals, int64_t start, int64_t end) {
+  if (!intervals) {
+    return false;
+  }
+  for (reml_int_interval *it = (reml_int_interval *)utarray_front(intervals); it != NULL;
+       it = (reml_int_interval *)utarray_next(intervals, it)) {
+    if (it->start <= start && it->end >= end) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void reml_interval_insert(UT_array *intervals, int64_t start, int64_t end) {
+  if (!intervals) {
+    return;
+  }
+  reml_int_interval interval = {.start = start, .end = end};
+  utarray_push_back(intervals, &interval);
+  size_t count = utarray_len(intervals);
+  if (count <= 1) {
+    return;
+  }
+  reml_int_interval *data = (reml_int_interval *)utarray_front(intervals);
+  qsort(data, count, sizeof(reml_int_interval), reml_int_interval_cmp);
+  size_t write = 0;
+  for (size_t i = 0; i < count; ++i) {
+    reml_int_interval current = data[i];
+    if (write == 0) {
+      data[write++] = current;
+      continue;
+    }
+    reml_int_interval *last = &data[write - 1];
+    if (current.start <= last->end + 1) {
+      if (current.end > last->end) {
+        last->end = current.end;
+      }
+    } else {
+      data[write++] = current;
+    }
+  }
+  while (utarray_len(intervals) > write) {
+    utarray_pop_back(intervals);
+  }
+}
+
 static bool reml_type_is_bool(reml_type *type) {
   type = type ? reml_type_prune(type) : NULL;
   return type && type->kind == REML_TYPE_BOOL;
@@ -720,6 +789,9 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
   UT_icd tag_icd = {sizeof(int32_t), NULL, NULL, NULL};
   UT_array *seen_tags = NULL;
   utarray_new(seen_tags, &tag_icd);
+  UT_icd interval_icd = {sizeof(reml_int_interval), NULL, NULL, NULL};
+  UT_array *seen_intervals = NULL;
+  utarray_new(seen_intervals, &interval_icd);
 
   if (expr->data.match_expr.arms) {
     for (reml_match_arm *it = (reml_match_arm *)utarray_front(expr->data.match_expr.arms);
@@ -743,6 +815,18 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
           reml_report_diag(sema, REML_DIAG_PATTERN_UNREACHABLE_ARM, it->pattern->span,
                            "unreachable match arm");
         }
+        if (reml_type_prune(scrutinee) &&
+            reml_type_prune(scrutinee)->kind == REML_TYPE_INT) {
+          int64_t value = 0;
+          if (reml_parse_int_literal(it->pattern->data.literal, &value)) {
+            if (reml_interval_covers(seen_intervals, value, value)) {
+              reml_report_diag(sema, REML_DIAG_PATTERN_UNREACHABLE_ARM, it->pattern->span,
+                               "unreachable match arm");
+            } else {
+              reml_interval_insert(seen_intervals, value, value);
+            }
+          }
+        }
       } else if (it->pattern && it->pattern->kind == REML_PATTERN_CONSTRUCTOR && !has_guard) {
         int32_t tag = it->pattern->data.ctor.tag;
         bool seen = false;
@@ -758,6 +842,26 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
                            "unreachable match arm");
         } else {
           utarray_push_back(seen_tags, &tag);
+        }
+      } else if (it->pattern && it->pattern->kind == REML_PATTERN_RANGE && !has_guard) {
+        if (reml_type_prune(scrutinee) &&
+            reml_type_prune(scrutinee)->kind == REML_TYPE_INT) {
+          int64_t start_value = 0;
+          int64_t end_value = 0;
+          if (reml_parse_int_literal(it->pattern->data.range.start, &start_value) &&
+              reml_parse_int_literal(it->pattern->data.range.end, &end_value)) {
+            int64_t last_value =
+                it->pattern->data.range.inclusive ? end_value : (end_value - 1);
+            if (start_value > last_value) {
+              reml_report_diag(sema, REML_DIAG_PATTERN_UNREACHABLE_ARM, it->pattern->span,
+                               "unreachable match arm");
+            } else if (reml_interval_covers(seen_intervals, start_value, last_value)) {
+              reml_report_diag(sema, REML_DIAG_PATTERN_UNREACHABLE_ARM, it->pattern->span,
+                               "unreachable match arm");
+            } else {
+              reml_interval_insert(seen_intervals, start_value, last_value);
+            }
+          }
         }
       }
       reml_symbol_table_enter(sema->symbols);
@@ -802,6 +906,9 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
   }
   if (seen_tags) {
     utarray_free(seen_tags);
+  }
+  if (seen_intervals) {
+    utarray_free(seen_intervals);
   }
   *effect = reml_effect_union(*effect, scrutinee_effect);
   return result ? result : reml_type_error(&sema->types);

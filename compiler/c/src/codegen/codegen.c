@@ -37,6 +37,7 @@ typedef struct {
 typedef struct {
   reml_match_arm *arm;
   LLVMValueRef value;
+  size_t index;
 } reml_codegen_switch_case;
 
 static bool reml_type_is_int(reml_type *type);
@@ -196,7 +197,7 @@ static LLVMTypeRef reml_codegen_lower_type(reml_codegen *codegen, reml_type *typ
     case REML_TYPE_UNIT:
       return LLVMVoidTypeInContext(codegen->context);
     case REML_TYPE_ENUM:
-      return LLVMInt32TypeInContext(codegen->context);
+      return LLVMPointerType(codegen->enum_repr_type, 0);
     default:
       return NULL;
   }
@@ -618,6 +619,9 @@ static LLVMValueRef reml_codegen_emit_pattern_check(reml_codegen *codegen, reml_
   if (!pattern) {
     return NULL;
   }
+  if (pattern->kind == REML_PATTERN_WILDCARD || pattern->kind == REML_PATTERN_IDENT) {
+    return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 1, 0);
+  }
   if (pattern->kind == REML_PATTERN_LITERAL) {
     if (reml_type_is_bool(type) && pattern->data.literal.kind != REML_LITERAL_BOOL) {
       reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
@@ -693,23 +697,106 @@ static LLVMValueRef reml_codegen_emit_pattern_check(reml_codegen *codegen, reml_
                           "constructor pattern expects enum scrutinee");
       return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
     }
-    size_t field_count =
-        pattern->data.ctor.items ? utarray_len(pattern->data.ctor.items) : 0;
-    if (field_count > 0) {
-      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
-                          "constructor payload matching is not supported");
-      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
-    }
+    LLVMValueRef tag_ptr =
+        LLVMBuildStructGEP2(codegen->builder, codegen->enum_repr_type, scrutinee, 0,
+                            "enum.tag.ptr");
+    LLVMValueRef tag_value =
+        LLVMBuildLoad2(codegen->builder, LLVMInt32TypeInContext(codegen->context), tag_ptr,
+                       "enum.tag");
     LLVMValueRef tag_const =
         LLVMConstInt(LLVMInt32TypeInContext(codegen->context),
                      (unsigned long long)pattern->data.ctor.tag, 1);
-    return LLVMBuildICmp(codegen->builder, LLVMIntEQ, scrutinee, tag_const, "match.tag");
+    LLVMValueRef tag_match =
+        LLVMBuildICmp(codegen->builder, LLVMIntEQ, tag_value, tag_const, "match.tag");
+
+    size_t field_count =
+        pattern->data.ctor.items ? utarray_len(pattern->data.ctor.items) : 0;
+    if (field_count == 0) {
+      return tag_match;
+    }
+
+    reml_type *enum_type = reml_type_prune(type);
+    reml_enum_variant *variant = NULL;
+    if (enum_type && enum_type->kind == REML_TYPE_ENUM && enum_type->data.enum_type.variants) {
+      for (reml_enum_variant *it =
+               (reml_enum_variant *)utarray_front(enum_type->data.enum_type.variants);
+           it != NULL;
+           it = (reml_enum_variant *)utarray_next(enum_type->data.enum_type.variants, it)) {
+        if (it->tag == pattern->data.ctor.tag) {
+          variant = it;
+          break;
+        }
+      }
+    }
+    if (!variant || !variant->fields || utarray_len(variant->fields) != field_count) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, pattern->span,
+                          "missing enum variant payload information");
+      return tag_match;
+    }
+
+    LLVMValueRef payload_ptr =
+        LLVMBuildStructGEP2(codegen->builder, codegen->enum_repr_type, scrutinee, 1,
+                            "enum.payload.ptr");
+    LLVMValueRef payload_raw =
+        LLVMBuildLoad2(codegen->builder, LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0),
+                       payload_ptr, "enum.payload");
+
+    size_t field_total = utarray_len(variant->fields);
+    LLVMTypeRef *field_types = (LLVMTypeRef *)calloc(field_total, sizeof(LLVMTypeRef));
+    if (!field_types) {
+      return tag_match;
+    }
+    for (size_t i = 0; i < field_total; ++i) {
+      reml_type **field_type = (reml_type **)utarray_eltptr(variant->fields, i);
+      field_types[i] = reml_codegen_lower_type(codegen, field_type ? *field_type : NULL);
+      if (!field_types[i]) {
+        field_types[i] = LLVMInt64TypeInContext(codegen->context);
+      }
+    }
+    LLVMTypeRef payload_struct =
+        LLVMStructTypeInContext(codegen->context, field_types, (unsigned)field_total, 0);
+    free(field_types);
+
+    LLVMValueRef payload_typed =
+        LLVMBuildBitCast(codegen->builder, payload_raw, LLVMPointerType(payload_struct, 0),
+                         "enum.payload.cast");
+
+    LLVMValueRef all_match = tag_match;
+    size_t index = 0;
+    for (reml_pattern **it = (reml_pattern **)utarray_front(pattern->data.ctor.items);
+         it != NULL;
+         it = (reml_pattern **)utarray_next(pattern->data.ctor.items, it)) {
+      reml_type **field_type = (reml_type **)utarray_eltptr(variant->fields, index);
+      LLVMTypeRef field_llvm =
+          reml_codegen_lower_type(codegen, field_type ? *field_type : NULL);
+      if (!field_llvm) {
+        field_llvm = LLVMInt64TypeInContext(codegen->context);
+      }
+      LLVMValueRef field_ptr =
+          LLVMBuildStructGEP2(codegen->builder, payload_struct, payload_typed, (unsigned)index,
+                              "enum.field.ptr");
+      LLVMValueRef field_value =
+          LLVMBuildLoad2(codegen->builder, field_llvm, field_ptr, "enum.field");
+      reml_type *field_reml = field_type ? *field_type : NULL;
+      LLVMValueRef field_match =
+          reml_codegen_emit_pattern_check(codegen, *it, field_value, field_reml);
+      if (!field_match) {
+        field_match = LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+      }
+      all_match = LLVMBuildAnd(codegen->builder, all_match, field_match, "match.and");
+      index++;
+    }
+    return all_match;
   }
 
   reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
                       "unsupported pattern in codegen");
   return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
 }
+
+static void reml_codegen_bind_pattern_value(reml_codegen *codegen, reml_codegen_scope_stack *scopes,
+                                            reml_pattern *pattern, LLVMValueRef value,
+                                            reml_type *type);
 
 static void reml_codegen_bind_pattern(reml_codegen *codegen, reml_codegen_scope_stack *scopes,
                                       reml_pattern *pattern, LLVMValueRef scrutinee,
@@ -718,28 +805,7 @@ static void reml_codegen_bind_pattern(reml_codegen *codegen, reml_codegen_scope_
     return;
   }
   if (pattern->kind == REML_PATTERN_IDENT) {
-    if (pattern->symbol_id == REML_SYMBOL_ID_INVALID) {
-      reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, pattern->span,
-                          "match binding is missing symbol id");
-      return;
-    }
-    LLVMTypeRef llvm_type = reml_codegen_lower_type(codegen, type);
-    if (!llvm_type) {
-      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
-                          "unsupported match binding type");
-      return;
-    }
-    char *name = reml_string_view_to_cstr(pattern->data.ident);
-    LLVMValueRef alloca = reml_codegen_create_entry_alloca(
-        codegen, llvm_type, name ? name : "match.bind");
-    free(name);
-    if (!alloca) {
-      reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, pattern->span,
-                          "failed to allocate match binding");
-      return;
-    }
-    LLVMBuildStore(codegen->builder, scrutinee, alloca);
-    reml_codegen_scope_define(scopes, pattern->symbol_id, alloca, llvm_type);
+    reml_codegen_bind_pattern_value(codegen, scopes, pattern, scrutinee, type);
     return;
   }
   if (pattern->kind == REML_PATTERN_TUPLE || pattern->kind == REML_PATTERN_RECORD) {
@@ -753,12 +819,124 @@ static void reml_codegen_bind_pattern(reml_codegen *codegen, reml_codegen_scope_
     if (field_count == 0) {
       return;
     }
-    reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
-                        "constructor payload matching is not supported in codegen");
+    reml_type *enum_type = reml_type_prune(type);
+    if (!enum_type || enum_type->kind != REML_TYPE_ENUM) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "constructor binding expects enum type");
+      return;
+    }
+    reml_enum_variant *variant = NULL;
+    if (enum_type->data.enum_type.variants) {
+      for (reml_enum_variant *it =
+               (reml_enum_variant *)utarray_front(enum_type->data.enum_type.variants);
+           it != NULL;
+           it = (reml_enum_variant *)utarray_next(enum_type->data.enum_type.variants, it)) {
+        if (it->tag == pattern->data.ctor.tag) {
+          variant = it;
+          break;
+        }
+      }
+    }
+    if (!variant || !variant->fields || utarray_len(variant->fields) != field_count) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, pattern->span,
+                          "missing enum payload information");
+      return;
+    }
+    LLVMValueRef payload_ptr =
+        LLVMBuildStructGEP2(codegen->builder, codegen->enum_repr_type, scrutinee, 1,
+                            "enum.payload.ptr");
+    LLVMValueRef payload_raw =
+        LLVMBuildLoad2(codegen->builder, LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0),
+                       payload_ptr, "enum.payload");
+
+    size_t field_total = utarray_len(variant->fields);
+    LLVMTypeRef *field_types = (LLVMTypeRef *)calloc(field_total, sizeof(LLVMTypeRef));
+    if (!field_types) {
+      return;
+    }
+    for (size_t i = 0; i < field_total; ++i) {
+      reml_type **field_type = (reml_type **)utarray_eltptr(variant->fields, i);
+      field_types[i] = reml_codegen_lower_type(codegen, field_type ? *field_type : NULL);
+      if (!field_types[i]) {
+        field_types[i] = LLVMInt64TypeInContext(codegen->context);
+      }
+    }
+    LLVMTypeRef payload_struct =
+        LLVMStructTypeInContext(codegen->context, field_types, (unsigned)field_total, 0);
+    free(field_types);
+
+    LLVMValueRef payload_typed =
+        LLVMBuildBitCast(codegen->builder, payload_raw, LLVMPointerType(payload_struct, 0),
+                         "enum.payload.cast");
+
+    size_t index = 0;
+    for (reml_pattern **it = (reml_pattern **)utarray_front(pattern->data.ctor.items);
+         it != NULL;
+         it = (reml_pattern **)utarray_next(pattern->data.ctor.items, it)) {
+      reml_type **field_type = (reml_type **)utarray_eltptr(variant->fields, index);
+      LLVMTypeRef field_llvm =
+          reml_codegen_lower_type(codegen, field_type ? *field_type : NULL);
+      if (!field_llvm) {
+        field_llvm = LLVMInt64TypeInContext(codegen->context);
+      }
+      LLVMValueRef field_ptr =
+          LLVMBuildStructGEP2(codegen->builder, payload_struct, payload_typed, (unsigned)index,
+                              "enum.field.ptr");
+      LLVMValueRef field_value =
+          LLVMBuildLoad2(codegen->builder, field_llvm, field_ptr, "enum.field");
+      reml_codegen_bind_pattern_value(codegen, scopes, *it, field_value,
+                                      field_type ? *field_type : NULL);
+      index++;
+    }
     return;
   }
   if (pattern->kind == REML_PATTERN_RANGE) {
     return;
+  }
+}
+
+static void reml_codegen_bind_pattern_value(reml_codegen *codegen, reml_codegen_scope_stack *scopes,
+                                            reml_pattern *pattern, LLVMValueRef value,
+                                            reml_type *type) {
+  if (!pattern) {
+    return;
+  }
+  switch (pattern->kind) {
+    case REML_PATTERN_IDENT: {
+      if (pattern->symbol_id == REML_SYMBOL_ID_INVALID) {
+        reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, pattern->span,
+                            "match binding is missing symbol id");
+        return;
+      }
+      LLVMTypeRef llvm_type = reml_codegen_lower_type(codegen, type);
+      if (!llvm_type) {
+        reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                            "unsupported match binding type");
+        return;
+      }
+      char *name = reml_string_view_to_cstr(pattern->data.ident);
+      LLVMValueRef alloca = reml_codegen_create_entry_alloca(
+          codegen, llvm_type, name ? name : "match.bind");
+      free(name);
+      if (!alloca) {
+        reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, pattern->span,
+                            "failed to allocate match binding");
+        return;
+      }
+      LLVMBuildStore(codegen->builder, value, alloca);
+      reml_codegen_scope_define(scopes, pattern->symbol_id, alloca, llvm_type);
+      return;
+    }
+    case REML_PATTERN_CONSTRUCTOR:
+      reml_codegen_bind_pattern(codegen, scopes, pattern, value, type);
+      return;
+    case REML_PATTERN_TUPLE:
+    case REML_PATTERN_RECORD:
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "complex patterns are not supported in codegen");
+      return;
+    default:
+      return;
   }
 }
 
@@ -1177,6 +1355,123 @@ static reml_codegen_value reml_codegen_emit_while(reml_codegen *codegen,
   return reml_codegen_make_value(NULL, expr->type, false);
 }
 
+static LLVMBasicBlockRef reml_codegen_emit_match_chain(
+    reml_codegen *codegen, reml_codegen_scope_stack *scopes, UT_array *arms, size_t start_index,
+    reml_codegen_value scrutinee, reml_expr *expr, LLVMBasicBlockRef merge_bb, bool is_unit,
+    bool report_non_exhaustive, bool emit_fallthrough, bool *has_fallthrough,
+    bool *any_non_terminated, UT_array *incoming, LLVMTypeRef phi_type) {
+  if (!arms) {
+    return LLVMGetInsertBlock(codegen->builder);
+  }
+  size_t arm_count = utarray_len(arms);
+  LLVMBasicBlockRef current_bb = LLVMGetInsertBlock(codegen->builder);
+  for (size_t index = start_index; index < arm_count && current_bb != NULL; ++index) {
+    reml_match_arm *arm = (reml_match_arm *)utarray_eltptr(arms, index);
+    if (!arm) {
+      continue;
+    }
+    bool catch_all = reml_pattern_is_catch_all(arm->pattern);
+    bool has_guard = arm->guard != NULL;
+    LLVMBasicBlockRef arm_bb =
+        LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function, "match.arm");
+    LLVMBasicBlockRef next_bb = NULL;
+
+    if (catch_all) {
+      if (has_guard) {
+        next_bb = LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function,
+                                                "match.next");
+      }
+      LLVMBuildBr(codegen->builder, arm_bb);
+      if (!has_guard && has_fallthrough) {
+        *has_fallthrough = false;
+      }
+    } else {
+      next_bb = LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function,
+                                              "match.next");
+      LLVMValueRef cond =
+          reml_codegen_emit_pattern_check(codegen, arm->pattern, scrutinee.value, scrutinee.type);
+      if (!cond) {
+        cond = LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+      }
+      LLVMBuildCondBr(codegen->builder, cond, arm_bb, next_bb);
+    }
+
+    LLVMPositionBuilderAtEnd(codegen->builder, arm_bb);
+    reml_codegen_scope_stack_push(scopes);
+    reml_codegen_bind_pattern(codegen, scopes, arm->pattern, scrutinee.value, scrutinee.type);
+
+    reml_codegen_value body = {0};
+    LLVMBasicBlockRef body_bb = arm_bb;
+    if (has_guard) {
+      reml_codegen_value guard = reml_codegen_emit_expr(codegen, scopes, arm->guard);
+      if (guard.terminated || !guard.value) {
+        reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, arm->guard->span,
+                            "missing match guard value");
+        LLVMBuildBr(codegen->builder, next_bb);
+        reml_codegen_scope_stack_pop(scopes);
+        LLVMPositionBuilderAtEnd(codegen->builder, next_bb);
+        current_bb = next_bb;
+        continue;
+      }
+      LLVMBasicBlockRef guard_bb = LLVMAppendBasicBlockInContext(
+          codegen->context, codegen->current_function, "match.guard");
+      LLVMBuildCondBr(codegen->builder, guard.value, guard_bb, next_bb);
+      LLVMPositionBuilderAtEnd(codegen->builder, guard_bb);
+      body_bb = guard_bb;
+      body = reml_codegen_emit_expr(codegen, scopes, arm->body);
+    } else {
+      body = reml_codegen_emit_expr(codegen, scopes, arm->body);
+    }
+    reml_codegen_scope_stack_pop(scopes);
+
+    if (!body.terminated) {
+      LLVMBuildBr(codegen->builder, merge_bb);
+      if (any_non_terminated) {
+        *any_non_terminated = true;
+      }
+      if (!is_unit) {
+        if (!body.value) {
+          reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, arm->body->span,
+                              "missing match arm value");
+        } else if (incoming) {
+          reml_codegen_phi_incoming entry = {.value = body.value, .block = body_bb};
+          utarray_push_back(incoming, &entry);
+        }
+      }
+    }
+
+    if (catch_all && !has_guard) {
+      current_bb = NULL;
+      break;
+    }
+
+    LLVMPositionBuilderAtEnd(codegen->builder, next_bb);
+    current_bb = next_bb;
+  }
+
+  if (current_bb != NULL && emit_fallthrough) {
+    if (report_non_exhaustive && has_fallthrough && *has_fallthrough) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                          "non-exhaustive match expression");
+    }
+    if (!is_unit) {
+      LLVMValueRef undef = LLVMGetUndef(phi_type);
+      LLVMBuildBr(codegen->builder, merge_bb);
+      if (incoming) {
+        reml_codegen_phi_incoming entry = {.value = undef, .block = current_bb};
+        utarray_push_back(incoming, &entry);
+      }
+      if (any_non_terminated) {
+        *any_non_terminated = true;
+      }
+    } else {
+      LLVMBuildBr(codegen->builder, merge_bb);
+    }
+  }
+
+  return current_bb;
+}
+
 static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
                                                   reml_codegen_scope_stack *scopes,
                                                   reml_expr *expr) {
@@ -1215,7 +1510,6 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
   bool any_non_terminated = false;
   LLVMBasicBlockRef current_bb = LLVMGetInsertBlock(codegen->builder);
   bool use_switch = false;
-  bool has_guard = false;
 
   if (expr->data.match_expr.arms && (reml_type_is_bool(scrutinee.type) ||
                                      reml_type_is_int(scrutinee.type) ||
@@ -1233,11 +1527,6 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
     bool valid = true;
     for (reml_match_arm *it = (reml_match_arm *)utarray_front(expr->data.match_expr.arms);
          it != NULL; it = (reml_match_arm *)utarray_next(expr->data.match_expr.arms, it)) {
-      if (it->guard) {
-        has_guard = true;
-        valid = false;
-        break;
-      }
       bool catch_all = reml_pattern_is_catch_all(it->pattern);
       bool is_last = index + 1 == arm_count;
       if (catch_all) {
@@ -1267,7 +1556,7 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
           break;
         }
         utarray_push_back(seen_values, &value);
-        reml_codegen_switch_case entry = {.arm = it, .value = literal_value};
+        reml_codegen_switch_case entry = {.arm = it, .value = literal_value, .index = index};
         utarray_push_back(cases, &entry);
       } else if (it->pattern && it->pattern->kind == REML_PATTERN_RANGE &&
                  reml_type_is_int(scrutinee.type)) {
@@ -1305,7 +1594,7 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
           LLVMValueRef literal_value =
               LLVMConstInt(LLVMInt64TypeInContext(codegen->context),
                            (unsigned long long)value, 1);
-          reml_codegen_switch_case entry = {.arm = it, .value = literal_value};
+          reml_codegen_switch_case entry = {.arm = it, .value = literal_value, .index = index};
           utarray_push_back(cases, &entry);
         }
         if (!valid) {
@@ -1336,7 +1625,7 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
         LLVMValueRef literal_value =
             LLVMConstInt(LLVMInt32TypeInContext(codegen->context),
                          (unsigned long long)value, 1);
-        reml_codegen_switch_case entry = {.arm = it, .value = literal_value};
+        reml_codegen_switch_case entry = {.arm = it, .value = literal_value, .index = index};
         utarray_push_back(cases, &entry);
       } else {
         valid = false;
@@ -1357,8 +1646,17 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
                                                    "match.default");
       }
 
+      LLVMValueRef switch_value = scrutinee.value;
+      if (reml_type_is_enum(scrutinee.type)) {
+        LLVMValueRef tag_ptr =
+            LLVMBuildStructGEP2(codegen->builder, codegen->enum_repr_type, scrutinee.value, 0,
+                                "enum.tag.ptr");
+        switch_value =
+            LLVMBuildLoad2(codegen->builder, LLVMInt32TypeInContext(codegen->context), tag_ptr,
+                           "enum.tag");
+      }
       LLVMValueRef switch_inst =
-          LLVMBuildSwitch(codegen->builder, scrutinee.value, default_bb, (unsigned)utarray_len(cases));
+          LLVMBuildSwitch(codegen->builder, switch_value, default_bb, (unsigned)utarray_len(cases));
 
       for (reml_codegen_switch_case *it = (reml_codegen_switch_case *)utarray_front(cases);
            it != NULL; it = (reml_codegen_switch_case *)utarray_next(cases, it)) {
@@ -1370,8 +1668,37 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
         reml_codegen_scope_stack_push(scopes);
         reml_codegen_bind_pattern(codegen, scopes, it->arm->pattern, scrutinee.value,
                                   scrutinee.type);
-        reml_codegen_value body = reml_codegen_emit_expr(codegen, scopes, it->arm->body);
-        reml_codegen_scope_stack_pop(scopes);
+        reml_codegen_value body = {0};
+        LLVMBasicBlockRef body_bb = arm_bb;
+        if (it->arm->guard) {
+          reml_codegen_value guard = reml_codegen_emit_expr(codegen, scopes, it->arm->guard);
+          if (guard.terminated || !guard.value) {
+            reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, it->arm->guard->span,
+                                "missing match guard value");
+            reml_codegen_scope_stack_pop(scopes);
+          } else {
+            LLVMBasicBlockRef guard_bb = LLVMAppendBasicBlockInContext(
+                codegen->context, codegen->current_function, "match.guard");
+            LLVMBasicBlockRef fallback_bb = LLVMAppendBasicBlockInContext(
+                codegen->context, codegen->current_function, "match.retry");
+            LLVMBuildCondBr(codegen->builder, guard.value, guard_bb, fallback_bb);
+            LLVMPositionBuilderAtEnd(codegen->builder, guard_bb);
+            body_bb = guard_bb;
+            body = reml_codegen_emit_expr(codegen, scopes, it->arm->body);
+            reml_codegen_scope_stack_pop(scopes);
+
+            LLVMPositionBuilderAtEnd(codegen->builder, fallback_bb);
+            bool fallback_fallthrough = true;
+            reml_codegen_emit_match_chain(codegen, scopes, expr->data.match_expr.arms,
+                                          it->index + 1, scrutinee, expr, merge_bb, is_unit,
+                                          false, true, &fallback_fallthrough, &any_non_terminated,
+                                          incoming, phi_type);
+            LLVMPositionBuilderAtEnd(codegen->builder, body_bb);
+          }
+        } else {
+          body = reml_codegen_emit_expr(codegen, scopes, it->arm->body);
+          reml_codegen_scope_stack_pop(scopes);
+        }
 
         if (!body.terminated) {
           LLVMBuildBr(codegen->builder, merge_bb);
@@ -1381,7 +1708,7 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
               reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, it->arm->body->span,
                                   "missing match arm value");
             } else if (incoming) {
-              reml_codegen_phi_incoming entry = {.value = body.value, .block = arm_bb};
+              reml_codegen_phi_incoming entry = {.value = body.value, .block = body_bb};
               utarray_push_back(incoming, &entry);
             }
           }
@@ -1393,8 +1720,37 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
         reml_codegen_scope_stack_push(scopes);
         reml_codegen_bind_pattern(codegen, scopes, default_arm->pattern, scrutinee.value,
                                   scrutinee.type);
-        reml_codegen_value body = reml_codegen_emit_expr(codegen, scopes, default_arm->body);
-        reml_codegen_scope_stack_pop(scopes);
+        reml_codegen_value body = {0};
+        LLVMBasicBlockRef body_bb = default_bb;
+        if (default_arm->guard) {
+          reml_codegen_value guard = reml_codegen_emit_expr(codegen, scopes, default_arm->guard);
+          if (guard.terminated || !guard.value) {
+            reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, default_arm->guard->span,
+                                "missing match guard value");
+            reml_codegen_scope_stack_pop(scopes);
+          } else {
+            LLVMBasicBlockRef guard_bb = LLVMAppendBasicBlockInContext(
+                codegen->context, codegen->current_function, "match.guard");
+            LLVMBasicBlockRef fallback_bb = LLVMAppendBasicBlockInContext(
+                codegen->context, codegen->current_function, "match.retry");
+            LLVMBuildCondBr(codegen->builder, guard.value, guard_bb, fallback_bb);
+            LLVMPositionBuilderAtEnd(codegen->builder, guard_bb);
+            body_bb = guard_bb;
+            body = reml_codegen_emit_expr(codegen, scopes, default_arm->body);
+            reml_codegen_scope_stack_pop(scopes);
+
+            LLVMPositionBuilderAtEnd(codegen->builder, fallback_bb);
+            bool fallback_fallthrough = true;
+            reml_codegen_emit_match_chain(codegen, scopes, expr->data.match_expr.arms,
+                                          arm_count, scrutinee, expr, merge_bb, is_unit, false,
+                                          true, &fallback_fallthrough, &any_non_terminated,
+                                          incoming, phi_type);
+            LLVMPositionBuilderAtEnd(codegen->builder, body_bb);
+          }
+        } else {
+          body = reml_codegen_emit_expr(codegen, scopes, default_arm->body);
+          reml_codegen_scope_stack_pop(scopes);
+        }
 
         if (!body.terminated) {
           LLVMBuildBr(codegen->builder, merge_bb);
@@ -1404,7 +1760,7 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
               reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, default_arm->body->span,
                                   "missing match arm value");
             } else if (incoming) {
-              reml_codegen_phi_incoming entry = {.value = body.value, .block = default_bb};
+              reml_codegen_phi_incoming entry = {.value = body.value, .block = body_bb};
               utarray_push_back(incoming, &entry);
             }
           }
@@ -1448,105 +1804,10 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
   }
 
   if (!use_switch) {
-    if (expr->data.match_expr.arms) {
-      for (reml_match_arm *it = (reml_match_arm *)utarray_front(expr->data.match_expr.arms);
-           it != NULL && current_bb != NULL; it = (reml_match_arm *)utarray_next(
-                                                   expr->data.match_expr.arms, it)) {
-      bool catch_all = reml_pattern_is_catch_all(it->pattern);
-      bool has_guard = it->guard != NULL;
-      LLVMBasicBlockRef arm_bb =
-          LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function, "match.arm");
-      LLVMBasicBlockRef next_bb = NULL;
-
-      if (catch_all) {
-        if (has_guard) {
-          next_bb = LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function,
-                                                  "match.next");
-        }
-        LLVMBuildBr(codegen->builder, arm_bb);
-        if (!has_guard) {
-          has_fallthrough = false;
-        }
-      } else {
-        next_bb = LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function,
-                                                "match.next");
-        LLVMValueRef cond = reml_codegen_emit_pattern_check(codegen, it->pattern,
-                                                            scrutinee.value, scrutinee.type);
-          if (!cond) {
-            cond = LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
-          }
-          LLVMBuildCondBr(codegen->builder, cond, arm_bb, next_bb);
-        }
-
-      LLVMPositionBuilderAtEnd(codegen->builder, arm_bb);
-      reml_codegen_scope_stack_push(scopes);
-      reml_codegen_bind_pattern(codegen, scopes, it->pattern, scrutinee.value, scrutinee.type);
-
-      reml_codegen_value body = {0};
-      LLVMBasicBlockRef body_bb = arm_bb;
-      if (has_guard) {
-        reml_codegen_value guard = reml_codegen_emit_expr(codegen, scopes, it->guard);
-        if (guard.terminated || !guard.value) {
-          reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, it->guard->span,
-                              "missing match guard value");
-          LLVMBuildBr(codegen->builder, next_bb);
-          reml_codegen_scope_stack_pop(scopes);
-          LLVMPositionBuilderAtEnd(codegen->builder, next_bb);
-          current_bb = next_bb;
-          continue;
-        }
-        LLVMBasicBlockRef guard_bb = LLVMAppendBasicBlockInContext(
-            codegen->context, codegen->current_function, "match.guard");
-        LLVMBuildCondBr(codegen->builder, guard.value, guard_bb, next_bb);
-        LLVMPositionBuilderAtEnd(codegen->builder, guard_bb);
-        body_bb = guard_bb;
-        body = reml_codegen_emit_expr(codegen, scopes, it->body);
-      } else {
-        body = reml_codegen_emit_expr(codegen, scopes, it->body);
-      }
-      reml_codegen_scope_stack_pop(scopes);
-
-        if (!body.terminated) {
-          LLVMBuildBr(codegen->builder, merge_bb);
-          any_non_terminated = true;
-        if (!is_unit) {
-          if (!body.value) {
-            reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, it->body->span,
-                                "missing match arm value");
-          } else if (incoming) {
-            reml_codegen_phi_incoming entry = {.value = body.value, .block = body_bb};
-            utarray_push_back(incoming, &entry);
-          }
-        }
-      }
-
-      if (catch_all && !has_guard) {
-        current_bb = NULL;
-        break;
-      }
-
-      LLVMPositionBuilderAtEnd(codegen->builder, next_bb);
-      current_bb = next_bb;
-    }
-  }
-
-    if (current_bb != NULL) {
-      if (has_fallthrough) {
-        reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
-                            "non-exhaustive match expression");
-      }
-      if (!is_unit) {
-        LLVMValueRef undef = LLVMGetUndef(phi_type);
-        LLVMBuildBr(codegen->builder, merge_bb);
-        if (incoming) {
-          reml_codegen_phi_incoming entry = {.value = undef, .block = current_bb};
-          utarray_push_back(incoming, &entry);
-        }
-        any_non_terminated = true;
-      } else {
-        LLVMBuildBr(codegen->builder, merge_bb);
-      }
-    }
+    current_bb = reml_codegen_emit_match_chain(codegen, scopes, expr->data.match_expr.arms, 0,
+                                               scrutinee, expr, merge_bb, is_unit, true, true,
+                                               &has_fallthrough, &any_non_terminated, incoming,
+                                               phi_type);
   }
 
   LLVMPositionBuilderAtEnd(codegen->builder, merge_bb);
@@ -1632,6 +1893,11 @@ bool reml_codegen_init(reml_codegen *codegen, const char *module_name) {
       LLVMModuleCreateWithNameInContext(module_name ? module_name : "reml", codegen->context);
   codegen->builder = LLVMCreateBuilderInContext(codegen->context);
   codegen->alloca_builder = LLVMCreateBuilderInContext(codegen->context);
+  codegen->enum_repr_type = LLVMStructTypeInContext(
+      codegen->context,
+      (LLVMTypeRef[]){LLVMInt32TypeInContext(codegen->context),
+                      LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0)},
+      2, 0);
 
   codegen->target_triple = LLVMGetDefaultTargetTriple();
   if (!codegen->target_triple) {
