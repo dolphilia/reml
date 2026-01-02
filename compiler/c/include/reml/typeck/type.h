@@ -13,6 +13,7 @@ extern "C" {
 typedef enum {
   REML_TYPE_ERROR,
   REML_TYPE_INT,
+  REML_TYPE_BIGINT,
   REML_TYPE_FLOAT,
   REML_TYPE_BOOL,
   REML_TYPE_CHAR,
@@ -48,6 +49,7 @@ typedef struct {
   uint32_t next_var_id;
   reml_type *error_type;
   reml_type *prim_int;
+  reml_type *prim_bigint;
   reml_type *prim_float;
   reml_type *prim_bool;
   reml_type *prim_char;
@@ -64,6 +66,7 @@ bool reml_type_unify(reml_type_ctx *ctx, reml_type *left, reml_type *right);
 
 reml_type *reml_type_error(reml_type_ctx *ctx);
 reml_type *reml_type_int(reml_type_ctx *ctx);
+reml_type *reml_type_bigint(reml_type_ctx *ctx);
 reml_type *reml_type_float(reml_type_ctx *ctx);
 reml_type *reml_type_bool(reml_type_ctx *ctx);
 reml_type *reml_type_char(reml_type_ctx *ctx);

@@ -1,5 +1,7 @@
 #include "reml/parser/parser.h"
 
+#include <limits.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -82,31 +84,97 @@ static void reml_free_record_fields(UT_array *fields) {
   utarray_free(fields);
 }
 
-static reml_literal reml_literal_from_token(reml_token token) {
-  reml_literal literal;
+static bool reml_int_literal_fits_i64(reml_string_view view, bool *fits_i64) {
+  if (!fits_i64) {
+    return false;
+  }
+  *fits_i64 = true;
+
+  size_t index = 0;
+  int base = 10;
+  if (view.length >= 2 && view.data[0] == '0') {
+    char prefix = view.data[1];
+    if (prefix == 'x' || prefix == 'X') {
+      base = 16;
+      index = 2;
+    } else if (prefix == 'o' || prefix == 'O') {
+      base = 8;
+      index = 2;
+    } else if (prefix == 'b' || prefix == 'B') {
+      base = 2;
+      index = 2;
+    }
+  }
+
+  uint64_t value = 0;
+  bool has_digit = false;
+
+  for (; index < view.length; ++index) {
+    char c = view.data[index];
+    if (c == '_') {
+      continue;
+    }
+
+    int digit = -1;
+    if (c >= '0' && c <= '9') {
+      digit = c - '0';
+    } else if (base == 16 && c >= 'a' && c <= 'f') {
+      digit = 10 + (c - 'a');
+    } else if (base == 16 && c >= 'A' && c <= 'F') {
+      digit = 10 + (c - 'A');
+    }
+
+    if (digit < 0 || digit >= base) {
+      return false;
+    }
+
+    has_digit = true;
+    if (*fits_i64) {
+      if (value > (uint64_t)(INT64_MAX - digit) / (uint64_t)base) {
+        *fits_i64 = false;
+      } else {
+        value = value * (uint64_t)base + (uint64_t)digit;
+      }
+    }
+  }
+
+  return has_digit;
+}
+
+static bool reml_literal_from_token(reml_parser *parser, reml_token token, reml_literal *out) {
+  if (!out) {
+    return false;
+  }
+
   switch (token.kind) {
-    case REML_TOKEN_INT:
-      literal.kind = REML_LITERAL_INT;
+    case REML_TOKEN_INT: {
+      bool fits_i64 = false;
+      if (!reml_int_literal_fits_i64(token.lexeme, &fits_i64)) {
+        reml_parser_set_error(parser, "invalid integer literal", token.span);
+        return false;
+      }
+      out->kind = fits_i64 ? REML_LITERAL_INT : REML_LITERAL_BIGINT;
       break;
+    }
     case REML_TOKEN_FLOAT:
-      literal.kind = REML_LITERAL_FLOAT;
+      out->kind = REML_LITERAL_FLOAT;
       break;
     case REML_TOKEN_STRING:
-      literal.kind = REML_LITERAL_STRING;
+      out->kind = REML_LITERAL_STRING;
       break;
     case REML_TOKEN_CHAR:
-      literal.kind = REML_LITERAL_CHAR;
+      out->kind = REML_LITERAL_CHAR;
       break;
     case REML_TOKEN_KW_TRUE:
     case REML_TOKEN_KW_FALSE:
-      literal.kind = REML_LITERAL_BOOL;
+      out->kind = REML_LITERAL_BOOL;
       break;
     default:
-      literal.kind = REML_LITERAL_INT;
+      out->kind = REML_LITERAL_INT;
       break;
   }
-  literal.text = token.lexeme;
-  return literal;
+  out->text = token.lexeme;
+  return true;
 }
 
 static reml_pattern *reml_parse_pattern(reml_parser *parser);
@@ -126,7 +194,10 @@ static reml_pattern *reml_parse_pattern_primary(reml_parser *parser) {
       token.kind == REML_TOKEN_CHAR || token.kind == REML_TOKEN_KW_TRUE ||
       token.kind == REML_TOKEN_KW_FALSE) {
     reml_parser_advance(parser);
-    reml_literal literal = reml_literal_from_token(token);
+    reml_literal literal;
+    if (!reml_literal_from_token(parser, token, &literal)) {
+      return NULL;
+    }
     return reml_pattern_make_literal(token.span, literal);
   }
 
@@ -244,7 +315,10 @@ static reml_expr *reml_parse_primary(reml_parser *parser) {
     case REML_TOKEN_KW_TRUE:
     case REML_TOKEN_KW_FALSE: {
       reml_parser_advance(parser);
-      reml_literal literal = reml_literal_from_token(token);
+      reml_literal literal;
+      if (!reml_literal_from_token(parser, token, &literal)) {
+        return NULL;
+      }
       return reml_expr_make_literal(token.span, literal);
     }
     case REML_TOKEN_LBRACE: {

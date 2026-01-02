@@ -27,6 +27,7 @@ add_library(reml_core
   src/parser/parser.c
   src/parser/operator_table.c
   src/manifest/manifest.c
+  src/numeric/bigint.c
   src/typeck/type.c
   src/sema/diagnostic.c
   src/sema/sema.c
@@ -36,6 +37,7 @@ target_include_directories(reml_core
   PUBLIC
     include
     ${REML_UTHASH_INCLUDE_DIR}
+    ${REML_TOMMATH_INCLUDE_DIR}
 )
 
 target_link_libraries(reml_core
@@ -43,6 +45,7 @@ target_link_libraries(reml_core
     reml_logc
     reml_utf8proc
     reml_tomlc99
+    ${REML_TOMMATH_TARGET}
 )
 
 if(REML_ENABLE_LLVM)

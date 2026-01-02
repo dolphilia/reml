@@ -26,6 +26,7 @@ void reml_type_ctx_init(reml_type_ctx *ctx) {
   ctx->next_var_id = 1;
   ctx->error_type = reml_type_new(ctx, REML_TYPE_ERROR);
   ctx->prim_int = reml_type_new(ctx, REML_TYPE_INT);
+  ctx->prim_bigint = reml_type_new(ctx, REML_TYPE_BIGINT);
   ctx->prim_float = reml_type_new(ctx, REML_TYPE_FLOAT);
   ctx->prim_bool = reml_type_new(ctx, REML_TYPE_BOOL);
   ctx->prim_char = reml_type_new(ctx, REML_TYPE_CHAR);
@@ -193,6 +194,10 @@ reml_type *reml_type_error(reml_type_ctx *ctx) {
 
 reml_type *reml_type_int(reml_type_ctx *ctx) {
   return ctx ? ctx->prim_int : NULL;
+}
+
+reml_type *reml_type_bigint(reml_type_ctx *ctx) {
+  return ctx ? ctx->prim_bigint : NULL;
 }
 
 reml_type *reml_type_float(reml_type_ctx *ctx) {

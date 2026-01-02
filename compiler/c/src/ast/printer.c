@@ -92,6 +92,11 @@ void reml_ast_write_expr(FILE *out, const reml_expr *expr) {
           reml_write_view(out, expr->data.literal.text);
           fputs(")", out);
           return;
+        case REML_LITERAL_BIGINT:
+          fputs("(bigint ", out);
+          reml_write_view(out, expr->data.literal.text);
+          fputs(")", out);
+          return;
         case REML_LITERAL_FLOAT:
           fputs("(float ", out);
           reml_write_view(out, expr->data.literal.text);

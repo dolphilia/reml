@@ -360,6 +360,8 @@ static reml_type *reml_infer_literal(reml_sema *sema, reml_literal literal) {
   switch (literal.kind) {
     case REML_LITERAL_INT:
       return reml_type_int(&sema->types);
+    case REML_LITERAL_BIGINT:
+      return reml_type_bigint(&sema->types);
     case REML_LITERAL_FLOAT:
       return reml_type_float(&sema->types);
     case REML_LITERAL_STRING:
@@ -375,7 +377,8 @@ static reml_type *reml_infer_literal(reml_sema *sema, reml_literal literal) {
 
 static bool reml_is_numeric_type(reml_type *type, reml_type_ctx *ctx) {
   type = reml_type_prune(type);
-  return type == reml_type_int(ctx) || type == reml_type_float(ctx);
+  return type == reml_type_int(ctx) || type == reml_type_bigint(ctx) ||
+         type == reml_type_float(ctx);
 }
 
 static reml_type *reml_infer_unary(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {

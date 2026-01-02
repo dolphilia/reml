@@ -196,24 +196,31 @@ static LLVMValueRef reml_codegen_create_entry_alloca(reml_codegen *codegen, LLVM
   return LLVMBuildAlloca(codegen->alloca_builder, type, name);
 }
 
-static bool reml_parse_int_literal(reml_literal literal, int64_t *out_value) {
+typedef enum {
+  REML_NUMERIC_OK,
+  REML_NUMERIC_INVALID,
+  REML_NUMERIC_OVERFLOW
+} reml_numeric_parse_result;
+
+static reml_numeric_parse_result reml_parse_int_literal(reml_literal literal, int64_t *out_value) {
   if (!out_value) {
-    return false;
+    return REML_NUMERIC_INVALID;
   }
   char *text = reml_strip_numeric_literal(literal.text);
   if (!text) {
-    return false;
+    return REML_NUMERIC_INVALID;
   }
   errno = 0;
   char *end = NULL;
   long long value = strtoll(text, &end, 0);
   bool ok = (errno == 0 && end != NULL && *end == '\0');
+  bool overflow = (errno == ERANGE);
   free(text);
   if (!ok) {
-    return false;
+    return overflow ? REML_NUMERIC_OVERFLOW : REML_NUMERIC_INVALID;
   }
   *out_value = (int64_t)value;
-  return true;
+  return REML_NUMERIC_OK;
 }
 
 static bool reml_parse_float_literal(reml_literal literal, double *out_value) {
@@ -365,19 +372,28 @@ static reml_codegen_value reml_codegen_emit_literal(reml_codegen *codegen, reml_
   switch (literal.kind) {
     case REML_LITERAL_INT: {
       int64_t value = 0;
-      if (!reml_parse_int_literal(literal, &value)) {
-        reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
-                            "invalid integer literal");
+      reml_numeric_parse_result status = reml_parse_int_literal(literal, &value);
+      if (status != REML_NUMERIC_OK) {
+        reml_codegen_report(codegen,
+                            status == REML_NUMERIC_OVERFLOW ? REML_DIAG_NUMERIC_OVERFLOW
+                                                            : REML_DIAG_NUMERIC_INVALID,
+                            expr->span,
+                            status == REML_NUMERIC_OVERFLOW ? "integer literal overflows i64"
+                                                            : "invalid integer literal");
         return reml_codegen_make_value(NULL, expr->type, false);
       }
       LLVMValueRef llvm_value = LLVMConstInt(LLVMInt64TypeInContext(codegen->context),
                                              (unsigned long long)value, 1);
       return reml_codegen_make_value(llvm_value, expr->type, false);
     }
+    case REML_LITERAL_BIGINT:
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                          "bigint literal requires runtime support");
+      return reml_codegen_make_value(NULL, expr->type, false);
     case REML_LITERAL_FLOAT: {
       double value = 0.0;
       if (!reml_parse_float_literal(literal, &value)) {
-        reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+        reml_codegen_report(codegen, REML_DIAG_NUMERIC_INVALID, expr->span,
                             "invalid float literal");
         return reml_codegen_make_value(NULL, expr->type, false);
       }

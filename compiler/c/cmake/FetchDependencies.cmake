@@ -54,6 +54,8 @@ function(reml_make_core_dependencies)
     FetchContent_Populate(tomlc99)
   endif()
 
+  FetchContent_MakeAvailable(libtommath)
+
   add_library(reml_argparse STATIC ${argparse_SOURCE_DIR}/argparse.c)
   target_include_directories(reml_argparse PUBLIC ${argparse_SOURCE_DIR})
 
@@ -65,6 +67,15 @@ function(reml_make_core_dependencies)
 
   add_library(reml_tomlc99 STATIC ${tomlc99_SOURCE_DIR}/toml.c)
   target_include_directories(reml_tomlc99 PUBLIC ${tomlc99_SOURCE_DIR})
+
+  if(TARGET tommath)
+    set(REML_TOMMATH_TARGET tommath PARENT_SCOPE)
+  elseif(TARGET libtommath)
+    set(REML_TOMMATH_TARGET libtommath PARENT_SCOPE)
+  else()
+    message(FATAL_ERROR "libtommath target not found")
+  endif()
+  set(REML_TOMMATH_INCLUDE_DIR ${libtommath_SOURCE_DIR} PARENT_SCOPE)
 
   set(REML_UTHASH_INCLUDE_DIR ${uthash_SOURCE_DIR}/src PARENT_SCOPE)
 endfunction()
