@@ -329,7 +329,7 @@ FieldPattern    ::= Ident [":" Pattern]
 ConstructorPattern ::= Ident "(" Pattern { "," Pattern } [","] ")"
 SlicePattern    ::= "[" SlicePatternItem { "," SlicePatternItem } [","] "]"
 SlicePatternItem::= Pattern | ".." [Ident]
-RangePattern    ::= RangeBound? ".." RangeBound? ["="]
+RangePattern    ::= RangeBound? ".." ["="] RangeBound?
 RegexPattern    ::= "r\"" RegexBody "\""
 RangeBound      ::= Literal | Ident | ConstructorPattern
 ActivePatternApp ::= "(|" Ident ("|_|")? "|)" Pattern?
@@ -337,7 +337,7 @@ ActivePatternApp ::= "(|" Ident ("|_|")? "|)" Pattern?
 
 `OrPattern` は左結合で解釈されるため、`pat1 | pat2 | pat3` は `(pat1 | pat2) | pat3` と等価となる。`ActivePatternApp` の `(|Name|_|)` 形式は `Option<T>` を返し、`Some` のときにマッチ成功、`None` のときは次のアームへ進む。`(|Name|)` 形式は常に成功する完全パターンとして扱われる。`RegexBody` の詳細はリテラル正規化規則（1.1 A.4/A.5）に従う。
 
-`BindingPattern` で同一識別子を `as`/`@` に跨って束縛した場合は `pattern.binding.duplicate_name` を報告する。`RegexPattern` は文字列/バイト列を対象とし、それ以外の型に適用した場合は `pattern.regex.unsupported_target` を返す。`SlicePattern` で `..` が 2 回以上現れた場合は `pattern.slice.multiple_rest`、対象がコレクションでない場合は `pattern.slice.type_mismatch` を報告する。`RangePattern` は両端を省略可能で、両端省略時はワイルドカードと等価となる。境界の型不一致は `pattern.range.type_mismatch`、整数リテラルで下限が上限を超える場合は `pattern.range.bound_inverted` を発行する。
+`BindingPattern` で同一識別子を `as`/`@` に跨って束縛した場合は `pattern.binding.duplicate_name` を報告する。`RegexPattern` は文字列/バイト列を対象とし、それ以外の型に適用した場合は `pattern.regex.unsupported_target` を返す。`SlicePattern` で `..` が 2 回以上現れた場合は `pattern.slice.multiple_rest`、対象がコレクションでない場合は `pattern.slice.type_mismatch` を報告する。`RangePattern` は両端を省略可能で、両端省略時はワイルドカードと等価となる。境界の型不一致は `pattern.range.type_mismatch`、整数リテラルで下限が上限を超える場合は `pattern.range.bound_inverted` を発行する。`..=` は字句上 `..` と `=` に分割される。
 
 ---
 

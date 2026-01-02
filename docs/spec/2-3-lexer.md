@@ -98,6 +98,7 @@ fn token<A>(p: Parser<A>, space: Parser<()>) -> Parser<(A, Span)> = todo
 * `leading(sc, expr)` は `skipL(sc, expr)` と等価で、構文側の空白処理を 1 行にまとめる。
 * `trim(sc, expr)` は `leading` と `lexeme` を組み合わせた糖衣。JSON や PL/0 サンプルのように両端の空白を許容する際に有効。【F:../examples/language-impl-comparison/reml/pl0_combinator.reml†L95-L107】
 * `token` は AST へ**位置**を付与したいときの定番（`spanned` の字句版）。
+* `..=` は **`..` と `=` に分割して**トークン化する（`..=` を単一トークンとしては扱わない）。
 
 > **実装状況メモ（Phase 2-5 Step6）**: OCaml 実装では `Core.Parse.Lex.Api` を公開し、`lexeme` / `symbol` / `leading` / `trim` / `token` が `RunConfig.extensions["lex"]` による共有プロファイルと連動するよう整備した。CLI/LSP/テストは `Run_config.Builder` を通じて `lex.profile` と `space_id` を注入し、`Core.Parse.Lex.Bridge` が `ConfigTriviaProfile` を再構成して `lexer.mll` の `set_trivia_profile`・`read_token` へ伝搬する。トリビア共有率は `lexer.shared_profile_pass_rate` メトリクスで CI 監視している[^lex-ocaml-phase25-step6]。
 
