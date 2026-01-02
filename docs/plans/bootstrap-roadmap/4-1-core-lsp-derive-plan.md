@@ -117,7 +117,7 @@ conductor my_dsl_server {
 ### フェーズD: サンプル/回帰接続
 1. [x] `examples/practical/core_lsp/auto_derive_basic.reml` と `expected/practical/core_lsp/auto_derive_basic.stdout` を追加する。
 2. [x] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に Auto-LSP 導出シナリオを登録する。
-3. [x] `reports/spec-audit/ch4/logs/` に実行ログのテンプレートを追加する。
+3. [x] `reports/spec-audit/ch5/logs/` に実行ログのテンプレートを追加する。
 
 ## Rust 実装の現状と追加案
 
@@ -146,7 +146,7 @@ conductor my_dsl_server {
 | --- | --- | --- |
 | メタデータが不足し導出が空になる | 補完/Outline が生成されず UX が低下 | `rule`/`keyword`/`symbol` の利用規約をガイドに明記し、検出時に警告診断を出す |
 | 既存パーサーとの互換性 | 既存 DSL の導出結果が不安定 | 既存 API を壊さず、`Derive` は opt-in で導入 |
-| CLI 出力形式の乱立 | 回帰サンプル管理が複雑化 | `OutputFormat::LspDerive` を追加し、`reports/spec-audit/ch4/logs/` で統一管理 |
+| CLI 出力形式の乱立 | 回帰サンプル管理が複雑化 | `OutputFormat::LspDerive` を追加し、`reports/spec-audit/ch5/logs/` で統一管理 |
 
 ## 参照
 - `docs/notes/dsl/dsl-enhancement-proposal.md`

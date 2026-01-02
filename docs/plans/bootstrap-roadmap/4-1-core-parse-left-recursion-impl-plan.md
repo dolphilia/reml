@@ -30,7 +30,7 @@
    - 期待条件:
      - 診断コードに `E4001` が含まれる。
      - 位置が `expr_left_recursion_direct` 定義の開始付近を指す。
-   - 出力ログ: `reports/spec-audit/ch4/logs/spec_core-CP-WS6-001-<timestamp>.diagnostic.json`
+   - 出力ログ: `reports/spec-audit/ch5/logs/spec_core-CP-WS6-001-<timestamp>.diagnostic.json`
    - `E4001` が出ない場合は、左再帰検出パスの診断出力を実装で補う。
 
 2. **CP-WS6-002（profile 指標）の出力確認**
@@ -54,8 +54,8 @@
   - `core-parse-left-recursion-direct.expected.md`
   - `core-parse-left-recursion-slow.expected.md`
 - ✅ CLI 実行ログ採取済み:
-  - `reports/spec-audit/ch4/logs/spec_core-CP-WS6-001-20251218T233918Z.diagnostic.json`
-  - `reports/spec-audit/ch4/logs/spec_core-CP-WS6-002-20251218T225547Z.diagnostic.json`
+  - `reports/spec-audit/ch5/logs/spec_core-CP-WS6-001-20251218T233918Z.diagnostic.json`
+  - `reports/spec-audit/ch5/logs/spec_core-CP-WS6-002-20251218T225547Z.diagnostic.json`
 - ✅ `profile_output` 生成済み:
   - `expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json`
   - `left_recursion_guard_hits=1` を確認。

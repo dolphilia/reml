@@ -129,7 +129,7 @@ Rust 実装を実務レベルの `.reml` シナリオで検証し、セルフホ
 
 **目標**: Phase 3 の標準ライブラリと Capability を用いた実践的シナリオを整備し、`0-3-audit-and-metrics.md` の KPI をエンドツーエンド測定に接続する。
 
-**主な作業ディレクトリ**: `examples/`, `tooling/examples/`, `compiler/rust/frontend`, `compiler/rust/tests`, `tooling/ci`, `reports/spec-audit/ch4`
+**主な作業ディレクトリ**: `examples/`, `tooling/examples/`, `compiler/rust/frontend`, `compiler/rust/tests`, `tooling/ci`, `reports/spec-audit/ch5`
 
 | ファイル | マイルストーン | 内容 | 期限目安 |
 |---------|--------------|------|---------|
@@ -160,8 +160,8 @@ Rust 実装を実務レベルの `.reml` シナリオで検証し、セルフホ
 
 #### Phase 4 監査レポートと自動同期
 
-- `tooling/examples/run_phase4_suite.py` / `tooling/examples/run_examples.sh --suite spec_core|practical` を用いて `reports/spec-audit/ch4/spec-core-dashboard.md`・`reports/spec-audit/ch4/practical-suite-index.md` を生成し、週次レビュー資料として参照する。
-- `tooling/examples/update_phase4_resolution.py` を実行すると最新の ScenarioResult が `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `resolution` / `resolution_notes` / `spec_vs_impl_decision` に反映される。`reports/spec-audit/ch4/logs/` と併せて KPI を追跡し、Phase 5 へのハンドオーバーに備える。
+- `tooling/examples/run_phase4_suite.py` / `tooling/examples/run_examples.sh --suite spec_core|practical` を用いて `reports/spec-audit/ch5/spec-core-dashboard.md`・`reports/spec-audit/ch5/practical-suite-index.md` を生成し、週次レビュー資料として参照する。
+- `tooling/examples/update_phase4_resolution.py` を実行すると最新の ScenarioResult が `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `resolution` / `resolution_notes` / `spec_vs_impl_decision` に反映される。`reports/spec-audit/ch5/logs/` と併せて KPI を追跡し、Phase 5 へのハンドオーバーに備える。
 
 ### Phase 5: セルフホスト移行
 

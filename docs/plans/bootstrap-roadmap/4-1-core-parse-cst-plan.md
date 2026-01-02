@@ -79,7 +79,7 @@ match result.value {
 ### フェーズE: ドキュメントと運用整理
 1. `docs/guides/dsl/formatter-authoring.md` に CST 利用時の注意点（Trivia 付着/空白戦略）を追加する。
 2. `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に CST の回帰条件を追記する。
-3. `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加し、更新方針を明記する。
+3. `reports/spec-audit/ch5/logs/` に実行ログテンプレートを追加し、更新方針を明記する。
 
 ## 進捗チェックリスト
 
@@ -107,7 +107,7 @@ match result.value {
 ### フェーズE: ドキュメントと運用整理
 - [x] `docs/guides/dsl/formatter-authoring.md` に CST 利用注意点を追記した
 - [x] `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に回帰条件を追記した
-- [x] `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加した
+- [x] `reports/spec-audit/ch5/logs/` に実行ログテンプレートを追加した
 
 ## Rust 実装の現状と追加案
 

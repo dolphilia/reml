@@ -117,7 +117,7 @@ val build : UrlParts -> Result<Url, UrlError>
    - 成功系と失敗系（タイムアウト、接続拒否、URL 解析失敗）をセットで用意する。
 2. `expected/` に stdout / diagnostics / audit のゴールデンを追加し、`docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` にシナリオを登録する。
    - `diagnostic_keys` / `audit_events` / `stage_requirement` を埋め、`resolution=pending` で初期登録する。
-3. `reports/spec-audit/ch4/logs/` に実行ログを保存し、診断/監査キーが `docs/spec/3-6-core-diagnostics-audit.md` と一致することを確認する。
+3. `reports/spec-audit/ch5/logs/` に実行ログを保存し、診断/監査キーが `docs/spec/3-6-core-diagnostics-audit.md` と一致することを確認する。
 4. 追加したサンプルが `docs/spec/3-17-core-net.md` のコード例と一致することを点検し、相互参照リンクを補完する。
 
 ## タイムライン（目安）

@@ -95,7 +95,7 @@ conductor docs_pipeline {
 1. `examples/practical/embedded_dsl/` に Markdown + Reml の複合サンプルを追加する。
 2. `expected/practical/embedded_dsl/` に診断・CST 出力の期待値を追加する。
 3. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH4-DSL-COMP-*` シナリオを登録する。
-4. `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加する。
+4. `reports/spec-audit/ch5/logs/` に実行ログテンプレートを追加する。
 
 #### 期待出力テンプレート（命名規則）
 
@@ -135,7 +135,7 @@ conductor docs_pipeline {
 - [x] `examples/practical/embedded_dsl/` に複合サンプルを追加
 - [x] `expected/practical/embedded_dsl/` に期待出力を追加
 - [x] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CH4-DSL-COMP-*` を登録
-- [x] `reports/spec-audit/ch4/logs/` に実行ログテンプレートを追加
+- [x] `reports/spec-audit/ch5/logs/` に実行ログテンプレートを追加
 
 ## Rust 実装の現状と追加案
 

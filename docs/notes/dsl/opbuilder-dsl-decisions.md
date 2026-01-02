@@ -14,12 +14,12 @@
 ## 拡張検討メモ
 - **追加 fixity**: 将来 `foldl`/`foldr` 相当の畳み込み用 fixity や `ternary` バリアント拡張を検討する場合、既存の `FixityKind` enum と BNF を破壊しない別ラベルを導入する。実装フラグ `dsl_opbuilder` の背後で試験運用し、仕様への昇格は Phase 5/6 の RFC プロセスで判断。
 - **API 表記**: `precedence` API と DSL を双方向にマッピングするサンプル（DSL→API、API→DSL）を `docs/spec/2-4-op-builder.md` に併記し、どちらを採用しても診断キーとエラーメッセージが一致することを明示する。
-- **診断スナップショット**: `expected/spec_core/chapter2/op_builder/*.diagnostic.json` を DSL 版で再取得し、`reports/spec-audit/ch4/spec-core-dashboard.md` の Pass/Fail と Run ID を紐付ける。差分が発生した場合は `docs/notes/process/examples-regression-log.md` へ記録し、再現手順を残す。
+- **診断スナップショット**: `expected/spec_core/chapter2/op_builder/*.diagnostic.json` を DSL 版で再取得し、`reports/spec-audit/ch5/spec-core-dashboard.md` の Pass/Fail と Run ID を紐付ける。差分が発生した場合は `docs/notes/process/examples-regression-log.md` へ記録し、再現手順を残す。
 
 ## ハンドオーバー時の確認チェック
 - `docs/spec/2-4-op-builder.md` へ DSL 仕様（構文・BNF・診断根拠）が反映済みか。
 - `phase4-scenario-matrix.csv` `CH2-OP-401` の `resolution=ok` と `diagnostic_keys=core.parse.opbuilder.*` が一致しているか。
-- `reports/spec-audit/ch4/spec-core-dashboard.md` に最新の Run ID と Pass/Fail が記録され、Dual-write の `summary.json` と整合しているか。
+- `reports/spec-audit/ch5/spec-core-dashboard.md` に最新の Run ID と Pass/Fail が記録され、Dual-write の `summary.json` と整合しているか。
 - Self-host パイプライン（`4-4-field-regression-and-readiness-plan.md` の節）で DSL ケースが実行され、`phase4-readiness.md` に結果が転記されているか。
 
 ## 参照

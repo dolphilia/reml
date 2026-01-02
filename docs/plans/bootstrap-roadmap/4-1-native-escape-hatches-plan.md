@@ -103,7 +103,7 @@
 3. `examples/native/embedding` と `expected/` を追加し、Phase 4 シナリオへ登録する。
    - サンプル: 最小の C ホストから `reml_run` を呼び出す例を用意。
    - 期待値: 実行ログと監査ログを `expected/` に追加。
-   - 参照更新: シナリオ ID とログ保存先を `reports/spec-audit/ch4` の README に追記。
+   - 参照更新: シナリオ ID とログ保存先を `reports/spec-audit/ch5` の README に追記。
 
 ### フェーズE: 研究プロトタイプ（ASM / LLVM IR）
 1. `docs/notes/ffi/native-escape-hatches-research.md` の「Inline ASM」「LLVM IR」節を更新し、Rust 実装でのガード条件（feature flag / `@cfg`）を明記する。
@@ -122,7 +122,7 @@
 2. `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に関連シナリオの実行手順を追記する。
    - 手順: `examples/native/*` の実行と `expected/` 差分確認のステップを追加。
    - 診断: `native.intrinsic.*` と `native.embed.*` のログが出ることを確認項目にする。
-3. `reports/spec-audit/ch4` にログが蓄積できるよう、実行手順と KPI を追記する。
+3. `reports/spec-audit/ch5` にログが蓄積できるよう、実行手順と KPI を追記する。
    - KPI: 成功率、監査キー欠落率、フォールバック発生率を追跡指標にする。
    - 保存先: ログ命名規則と格納ディレクトリを統一する。
 
@@ -156,8 +156,8 @@
 - [x] `docs/guides/runtime/runtime-bridges.md` に埋め込み API 手順と互換性ルールを追記
 - [x] `examples/native/embedding` と `expected/` を整備
 - [x] `abi_mismatch` / `unsupported_target` の埋め込みサンプルを追加
-- [x] `reports/spec-audit/ch4/logs/native-embed-*.md` に実行ログを記録
-- [x] `reports/spec-audit/ch4` のログ保存ルールを更新
+- [x] `reports/spec-audit/ch5/logs/native-embed-*.md` に実行ログを記録
+- [x] `reports/spec-audit/ch5` のログ保存ルールを更新
 
 ### フェーズE: 研究プロトタイプ（ASM / LLVM IR）
 - [x] `docs/notes/ffi/native-escape-hatches-research.md` にガード条件と位置づけを追記
@@ -168,7 +168,7 @@
 ### フェーズF: Phase 4 回帰接続
 - [x] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` にシナリオを追加
 - [x] `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に実行手順を追記
-- [x] `reports/spec-audit/ch4` の KPI とログ命名規則を追記
+- [x] `reports/spec-audit/ch5` の KPI とログ命名規則を追記
 
 ## タイムライン（目安）
 

@@ -149,7 +149,7 @@
 | リスク | 影響 | 緩和策 |
 | --- | --- | --- |
 | Inline ASM の制約記法が曖昧 | バックエンドが不正な `call asm` を生成 | `docs/guides/compiler/llvm-integration-notes.md` の Inline ASM 仕様に準拠し、`native.inline_asm.invalid_constraint` を追加する |
-| LLVM IR 直書きが LLVM バージョン差に影響 | `opt -verify` が失敗 | `llvm_ir.template_hash` を監査に記録し、失敗例を `reports/spec-audit/ch4/logs/` に保存 |
+| LLVM IR 直書きが LLVM バージョン差に影響 | `opt -verify` が失敗 | `llvm_ir.template_hash` を監査に記録し、失敗例を `reports/spec-audit/ch5/logs/` に保存 |
 | `!{native}` の乱用 | 安全性の崩壊 | `native.inline_asm.used` / `native.llvm_ir.used` を必須監査キー化し、Capability でゲート |
 
 ## TODO（調査メモ付き）

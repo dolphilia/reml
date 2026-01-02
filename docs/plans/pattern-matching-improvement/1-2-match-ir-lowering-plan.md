@@ -36,7 +36,7 @@
 4. **回帰資産の再取得とマトリクス更新**  
    - 対象: `examples/spec_core/chapter1/match_expr/*.reml`（Range/Slice/Or/Active miss 含む）および `active_patterns/*.reml`。  
    - コマンド記録: Phase4 マトリクスの該当行（CH1-ACT-00x / CH1-MATCH-01x）に run_id・再取得コマンドを追記し、diagnostic.message がレジストリ文面に一致することを確認。  
-   - IR ログ: `reports/spec-audit/ch4/logs/` に MIR/LLVM 簡易差分を保存し、ギャップがあればコメントで理由を残す。
+   - IR ログ: `reports/spec-audit/ch5/logs/` に MIR/LLVM 簡易差分を保存し、ギャップがあればコメントで理由を残す。
 
 5. **クロスチェックとドキュメント同期**  
    - 仕様: `docs/spec/1-5-formal-grammar-bnf.md` の `MatchExpr` 注記に、評価順序（スクラティニー 1 回評価、アーム順照合、`guard -> alias -> body`）と「Partial Active の `None` は次アームへフォールスルー」を明記して同期する。  
@@ -82,7 +82,7 @@
 - [x] M2: フロントエンド MIR 生成 — `compiler/rust/frontend/src/semantics/mir.rs` を新設し、`TypedExprKind::Match` から `MirExpr::Match` を構築。`--emit-mir`/`--debug-mir` オプションで JSON 出力できるように `compiler/rust/frontend/src/bin/reml_frontend.rs` を更新。`TypecheckReport` に MIR を保持しデバッグ出力へ組込み済み。**追加完了**: `FieldAccess`/`TupleAccess`/`Index` を TypedExpr/MIR に連携、`Some/None/Ok/Err/format`/`to_string`/`len`/`is_empty`/`starts_with`/`push`/`pop` などの簡易型推論を実装し、CH1-MATCH/ACT サンプルの `--emit-mir` で `Unknown` が 0 件になる状態を確認。  
 - [x] M3: バックエンド分岐生成 — `compiler/rust/backend/llvm` が MIR JSON（`tmp/mir-bnf-*.json`）を読み取り、Range/Slice/Or/Regex/Binding/Active Pattern（Partial/Total、guard/alias 含む）を LLVM 風 IR（`llvm_ir`）へ変換できる状態を確認。  
   - **確認コマンド**: `MIR_PATH=/abs/path/to/tmp/mir-bnf-match-binding-as-ok.json cargo test --manifest-path compiler/rust/backend/llvm/Cargo.toml dump_llvm_ir_from_mir_path -- --ignored --nocapture`  
-  - **ログ**: `reports/spec-audit/ch4/logs/match-ir-20251217T023255Z.md`（Range/Slice/Regex/Or/Active）にダンプ結果を保存。追加確認として Binding も同一テストで `binding whole <- ...` の生成を確認済み。  
+  - **ログ**: `reports/spec-audit/ch5/logs/match-ir-20251217T023255Z.md`（Range/Slice/Regex/Or/Active）にダンプ結果を保存。追加確認として Binding も同一テストで `binding whole <- ...` の生成を確認済み。  
 - [x] M4: 回帰資産更新 — CH1-MATCH/ACT の expected と Phase4 マトリクス run_id 記録を完了。  
   - **対象**: `CH1-ACT-001..003` / `CH1-MATCH-007..018`  
   - **根拠**: `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` の `resolution_notes` に run_id と CLI コマンドが記録され、`expected/spec_core/chapter1/{match_expr,active_patterns}/` に対応ファイルが存在する。  
@@ -95,8 +95,8 @@
 - OCaml 実装差分メモは本計画の M5 で扱う（本タスクでは未実施）。
 
 ### 次に着手する作業（優先順）
-1. ✅ **完了: Constructor の内側パターンに対応**: `Some(x)` / `Ok(x)` / `Err(x)` の payload を `arm*.ctor_payload` ブロックで取り出し、下位パターンへ伝搬する。根拠ログ: `reports/spec-audit/ch4/logs/match-ir-20251217T081600Z.md`。  
-2. ✅ **完了: Guard/Body の式評価を拡張**: `FieldAccess` / `Call` / `Binary`（例: `%` / `+`）を最小限で LLVM 風 IR へ落とし込み、`match_result <- #...` フォールバックを削減する。根拠ログ: `reports/spec-audit/ch4/logs/match-ir-20251217T081600Z.md`。  
+1. ✅ **完了: Constructor の内側パターンに対応**: `Some(x)` / `Ok(x)` / `Err(x)` の payload を `arm*.ctor_payload` ブロックで取り出し、下位パターンへ伝搬する。根拠ログ: `reports/spec-audit/ch5/logs/match-ir-20251217T081600Z.md`。  
+2. ✅ **完了: Guard/Body の式評価を拡張**: `FieldAccess` / `Call` / `Binary`（例: `%` / `+`）を最小限で LLVM 風 IR へ落とし込み、`match_result <- #...` フォールバックを削減する。根拠ログ: `reports/spec-audit/ch5/logs/match-ir-20251217T081600Z.md`。  
 3. ✅ **完了: @reml_* の整理**: LLVM 風 IR での暫定 intrinsic 名（`@reml_value` / `@reml_call` / `@reml_ctor_payload_*` など）を `compiler/rust/backend/llvm/src/codegen.rs` の定数/ヘルパへ集約し、境界名を固定する。再現テスト: `compiler/rust/backend/llvm/src/integration.rs` の `llvm_ir_*` 2 本。
 
 ## M5（無効化）メモ（クロス実装チェック）

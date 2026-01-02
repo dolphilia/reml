@@ -57,15 +57,15 @@ test_parser(my_parser) {
 ### フェーズC: サンプルと回帰接続
 1. [x] `examples/practical/` に DSL テストサンプルを追加し、`expected/` に期待出力を固定する。
 2. [x] `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に新規シナリオを登録する。
-3. [x] `reports/spec-audit/ch4/logs/` へのログ保存テンプレートを用意する。
-4. [x] `CH3-TEST-410/411/412` を `ok` に更新し、`reports/spec-audit/ch4/logs/stdlib-test-dsl-template.md` に実行ログを記録する。
+3. [x] `reports/spec-audit/ch5/logs/` へのログ保存テンプレートを用意する。
+4. [x] `CH3-TEST-410/411/412` を `ok` に更新し、`reports/spec-audit/ch5/logs/stdlib-test-dsl-template.md` に実行ログを記録する。
    - **補足**: `test_parser { case ... }` の糖衣構文で `CH3-TEST-410/411` を更新し、診断 0 件で確認した。
 
 ### フェーズD: Rust 実装追加
 1. [x] `compiler/rust/runtime/src/test/` に `Core.Test.Dsl` のエントリポイント（`test_parser`/`case`/`Error`）を追加する。
 2. [x] AST Matcher と Error Expectation の最小ロジックを実装し、`TestError`/`Diagnostic` への橋渡しを統一する。
 3. [x] ゴールデンファイル読み込み/比較の経路を `assert_snapshot` と揃え、`snapshot.updated` の監査イベントを記録する。
-4. [x] CLI で DSL サンプルを実行し、`reports/spec-audit/ch4/logs/stdlib-test-dsl-template.md` に実行ログを追記する。
+4. [x] CLI で DSL サンプルを実行し、`reports/spec-audit/ch5/logs/stdlib-test-dsl-template.md` に実行ログを追記する。
 
 #### フェーズD 残タスク（優先順）
 1. [x] ゴールデンファイル経路の実装

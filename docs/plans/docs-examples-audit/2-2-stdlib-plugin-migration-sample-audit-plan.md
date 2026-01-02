@@ -45,7 +45,7 @@
 ### フェーズB: 既存 `.reml` の更新
 1. `examples/practical/core_env/envcfg/env_merge_by_profile.reml` を `Core.System.Env` 基準へ更新する（互換 API を使う場合は注記を添える）。
 2. `examples/language-impl-comparison/reml/config_manifest_lifecycle.reml` の `use Core.Env` を `Core.System.Env` へ更新し、文中の説明も正準 API に合わせる。
-3. `examples/docs-examples/spec/4-2-process-plugin/*.reml` / `4-4-signal-plugin/*.reml` を確認し、型参照が `Core.System.Signal` / `Core.System.Process` と整合するよう更新する（必要に応じて `use` を追加）。
+3. `examples/docs-examples/spec/5-2-process-plugin/*.reml` / `4-4-signal-plugin/*.reml` を確認し、型参照が `Core.System.Signal` / `Core.System.Process` と整合するよう更新する（必要に応じて `use` を追加）。
 
 ### フェーズC: Rust テストの確認
 1. `compiler/rust/runtime/tests/core_system_api.rs` の命名・コメントが `Core.System` 正準に沿っているか確認し、必要ならリネームまたは注記を追加する。
@@ -65,7 +65,7 @@
 ### フェーズB: 既存 `.reml` の更新
 - [x] `examples/practical/core_env/envcfg/env_merge_by_profile.reml` を `Core.System.Env` 基準へ更新する（互換 API を使う場合は注記を添える）。
 - [x] `examples/language-impl-comparison/reml/config_manifest_lifecycle.reml` の `use Core.Env` を `Core.System.Env` へ更新し、文中の説明も正準 API に合わせる。
-- [x] `examples/docs-examples/spec/4-2-process-plugin/*.reml` / `4-4-signal-plugin/*.reml` を確認し、型参照が `Core.System.Signal` / `Core.System.Process` と整合するよう更新する（必要に応じて `use` を追加）。
+- [x] `examples/docs-examples/spec/5-2-process-plugin/*.reml` / `4-4-signal-plugin/*.reml` を確認し、型参照が `Core.System.Signal` / `Core.System.Process` と整合するよう更新する（必要に応じて `use` を追加）。
 
 ### フェーズC: Rust テストの確認
 - [x] `compiler/rust/runtime/tests/core_system_api.rs` の命名・コメントが `Core.System` 正準に沿っているか確認し、必要ならリネームまたは注記を追加する。

@@ -34,7 +34,7 @@
 - Step1 実装: `compiler/rust/runtime/src/parse/combinator.rs` の `label` が元エラーの期待集合を保持したままラベル名を追加するように修正済み。`compiler/rust/frontend/src/parser/mod.rs` で chumsky の `label()` を `ExpectedToken::rule` として `alternatives`/`context_note` へ反映する整形を追加済み。
 - ✅ 動作確認メモ: CLI にパース専用ドライバを追加（`--parse-driver` / `--parse-driver-label`）。これを使うと `core-parse-label-vs-token-*.reml` で期待集合を JSON 出力でき、with-label では Rule("expression") を含み、no-label は identifier/integer-literal のみになることを確認済み。
 - ✅ 2026-03-09: parse-driver の humanized/context を B-6/B-7 に合わせて整形し、`core-parse-label-vs-token-*.diagnostic.json` を更新。`phase4-scenario-matrix.csv` に `CP-WS2-001` を登録して with-label/no-label の期待集合差を固定。
-- ✅ 2026-03-09: `tooling/examples/run_phase4_suite.py` で CP-WS2-001 だけ `--parse-driver --parse-driver-label expression` を用いる分岐を追加し、spec_core/practical スイートを再実行して全件成功（レポート: `reports/spec-audit/ch4/spec-core-dashboard.md`, `.../practical-suite-index.md`）。
+- ✅ 2026-03-09: `tooling/examples/run_phase4_suite.py` で CP-WS2-001 だけ `--parse-driver --parse-driver-label expression` を用いる分岐を追加し、spec_core/practical スイートを再実行して全件成功（レポート: `reports/spec-audit/ch5/spec-core-dashboard.md`, `.../practical-suite-index.md`）。
 - ✅ 2025-12-18: LSP/Human 出力をスポット確認し、`expected.humanized` / `context_note` が B-6/B-7 どおり（with-label は Rule("expression") を保持、no-label は token/class のみ）であることを確認。フォールバック文言移植は現状不要と判断。
 
 ## 依存関係

@@ -73,5 +73,5 @@ test_parser(my_parser) {
 
 ## 6. 回帰への接続
 - `examples/practical/core_test/` と `expected/practical/core_test/` をセットで追加する。
-- 実行ログは `reports/spec-audit/ch4/logs/stdlib-test-*.md` に保存する。
+- 実行ログは `reports/spec-audit/ch5/logs/stdlib-test-*.md` に保存する。
 - Phase 4 の Core.Test サンプルは暫定的に CLI JSON 出力を `expected/` に合わせる（Runtime の stdout 経路整備後に `snapshot:ok` へ戻す）。

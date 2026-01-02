@@ -19,21 +19,21 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - 対象: `examples/core_path/security_check.reml`（EX-CORE-PATH-001 暫定）
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_path/security_check.reml`
 - 期待/実際: 期待=diagnostics `[]`、実際=diagnostics `[]` / run_id=`a55948c8-3a09-4a0e-8e3d-ab91f0f9eb51`
-- ログ: `reports/spec-audit/ch4/logs/core_path-20251211T092454Z.md`
+- ログ: `reports/spec-audit/ch5/logs/core_path-20251211T092454Z.md`
 - 対応: Example Fix としてトップレベルを `struct` から `type ... = new { ... }` へ移行し、`is_safe_symlink` のエラー経路を `map_err(...)?` で統一。フェーズF チェックリストを `[x]` 化。
 
 ## 2025-12-11 Core.Config CLI DSL フェーズF
 - 対象: `examples/core_config/cli/dsl/sample.reml`（EX-CORE-CONFIG-CLI-001 暫定）
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_config/cli/dsl/sample.reml`
 - 期待/実際: 期待=diagnostics `[]`、実際=diagnostics `[]` / run_id=`d8ffcb77-98f3-4b89-b10a-7c4fad72727d`
-- ログ: `reports/spec-audit/ch4/logs/core_config-20251211T093350Z.md`
+- ログ: `reports/spec-audit/ch5/logs/core_config-20251211T093350Z.md`
 - 対応: Effect 宣言に `operation` を追加し、`ensure` の遅延診断クロージャを `| | diagnostic(...)` 形式へ修正して BNF (`OperationDecl+`) と整合。Parser の `parser.syntax.expected_tokens` を解消し、フェーズF チェックリストを `[x]` 化。
 
 ## 2025-12-11 Core.Config Telemetry DSL フェーズF
 - 対象: `examples/core_config/dsl/telemetry_bridge.reml`（EX-CORE-CONFIG-DSL-002 暫定）
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_config/dsl/telemetry_bridge.reml`
 - 期待/実際: 期待=diagnostics `[]`、実際=diagnostics `[]` / run_id=`7f1bb8a3-f84a-43dc-99a7-97ca218ecf90`
-- ログ: `reports/spec-audit/ch4/logs/core_config-20251211T093648Z.md`
+- ログ: `reports/spec-audit/ch5/logs/core_config-20251211T093648Z.md`
 - 備考: docs/guides 向け Telemetry DSL プレースホルダが Parser/Typeck を通過することを確認し、フェーズF チェックリストを `[x]` 化。
 
 ## 2025-12-11 Core.IO canonical フェーズF 回帰修正
@@ -47,7 +47,7 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - 対象: `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`（`CH3-RUNTIME-601`）
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`
 - 期待/実際: 期待=`runtime.bridge.stage_mismatch`、実際=diagnostics 1（同コード、run_id=`d91aebaa-d239-4443-adcd-01249a5aa85a`）
-- ログ: `reports/spec-audit/ch4/logs/practical-20251211T014101Z.md`
+- ログ: `reports/spec-audit/ch5/logs/practical-20251211T014101Z.md`
 - 備考: runtime フェーズ有効化後の診断生成が想定どおりであることを再確認し、PhaseF チェックリストを更新。
 
 ## 2025-12-11 Core.Text grapheme_boundary_edge フェーズF 是正
@@ -55,21 +55,21 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_text/unicode/grapheme_boundary_edge.reml`
 - 期待/実際: 期待=diagnostics `[]`（segment_mismatch 期待を削除）、実際=diagnostics `[]` / run_id=`c39eec0c-e343-42da-913a-2cec905343bb`
 - 対応: grapheme 境界安全な `Text.slice_graphemes` を使っており、診断なしが正しいため Example Fix として expected を空診断に更新。`phase4-scenario-matrix.csv` の `CH3-TEXT-402` を `ok` / `example_fix` へ変更し、PhaseF チェックリストも `[x]` 化。
-- ログ: `reports/spec-audit/ch4/logs/practical-20251211T082727Z.md`
+- ログ: `reports/spec-audit/ch5/logs/practical-20251211T082727Z.md`
 
 ## 2025-12-11 Core.Text grapheme_nfc_mix フェーズF 実行
 - 対象: `examples/practical/core_text/unicode/grapheme_nfc_mix.reml`（`CH3-TEXT-401`）
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_text/unicode/grapheme_nfc_mix.reml`
 - 期待/実際: 期待=diagnostics `[]`、実際=diagnostics `[]` / run_id=`250a3b7c-b790-422f-9b30-e654d2343265`
 - stdout: ゴールデン `expected/practical/core_text/unicode/grapheme_nfc_mix.stdout`（`graphemes=2`、runtime_phase=none / artifact=null）
-- ログ: `reports/spec-audit/ch4/logs/practical-20251211T083527Z.md`
+- ログ: `reports/spec-audit/ch5/logs/practical-20251211T083527Z.md`
 - 備考: PhaseF チェックリストと `phase4-scenario-matrix.csv` を `resolution=ok`・`spec_vs_impl_decision=ok` へ更新。runtime フェーズ対象外だが parse/typeck は成功。
 
 ## 2025-12-11 Core.Env env_merge_by_profile フェーズF 実行
 - 対象: `examples/practical/core_env/envcfg/env_merge_by_profile.reml`（`CH3-ENV-701`）
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_env/envcfg/env_merge_by_profile.reml`
 - 期待/実際: 期待=diagnostics `[]` / stdout=`expected/practical/core_env/envcfg/env_merge_by_profile.stdout`（`https://cli.local`）、実際=diagnostics `[]`（run_id=`2f9ecb5d-3d75-4ba4-92f2-7233b6b00b5b`）
-- ログ: `reports/spec-audit/ch4/logs/practical-20251211T091650Z.md`
+- ログ: `reports/spec-audit/ch5/logs/practical-20251211T091650Z.md`
 - 備考: env プロファイル merge の runtime フェーズが診断なしで完了することを確認し、PhaseF チェックリストと `phase4-scenario-matrix.csv` を `resolution=ok` / `spec_vs_impl_decision=ok` へ更新。
 
 ## 2026-02-20 Core.Path relative_denied 回帰 → runtime 実行フェーズで解消
@@ -89,7 +89,7 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 ## 2025-12-10 CH3-PATH-202 runtime フェーズF 再実行
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_path/security_check/relative_denied.reml`
 - 期待/実際: 期待=`core.path.security.invalid`（relative_path_denied）、実際=diagnostics 1（同コード、run_id=`59e7be86-650c-406e-b865-a9a0a625c767`）
-- ログ: `reports/spec-audit/ch4/logs/practical-20251210T205757Z.md`
+- ログ: `reports/spec-audit/ch5/logs/practical-20251210T205757Z.md`
 - 備考: runtime フェーズの `validate_path`→`sandbox_path`→`is_safe_symlink` 経路で `security.reason=relative_path_denied` を確認し、PhaseF practical チェックリストを更新。
 
 ## 2025-12-10 OpBuilder DSL フェーズF
@@ -97,5 +97,5 @@ Core.IO / Core.Path サンプルの自動実行結果と Runbook を記録する
 - CLI: `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`
 - 期待/実際 Diagnostics: `core.parse.opbuilder.level_conflict`（Exit code 1, 診断想定）
 - ゴールデン: `expected/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.diagnostic.json`
-- ログ: `reports/spec-audit/ch4/logs/spec_core-20251210T125446Z.md`
+- ログ: `reports/spec-audit/ch5/logs/spec_core-20251210T125446Z.md`
 - 備考: DSL fixity シンボル（`:infix_left` / `:infix_right`）を再受理し、`phase4-scenario-matrix.csv` の `CH2-OP-401` を `resolution=ok` へ更新。

@@ -53,6 +53,6 @@
 ## 7. 参考リンク
 
 - `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
-- `reports/spec-audit/ch4/spec-core-dashboard.md`（variant coverage グラフ）
-- `reports/spec-audit/ch4/practical-suite-20250115.md`
+- `reports/spec-audit/ch5/spec-core-dashboard.md`（variant coverage グラフ）
+- `reports/spec-audit/ch5/practical-suite-20250115.md`
 - `docs/plans/bootstrap-roadmap/4-0-phase4-migration.md#405b-reml-実行による仕様検証ガイドライン`

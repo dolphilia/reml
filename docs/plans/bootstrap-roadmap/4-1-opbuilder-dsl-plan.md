@@ -15,7 +15,7 @@
 
 ## スコープ
 
-- **含む**: `docs/spec/2-4-op-builder.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/0-2-glossary.md` の改訂、`compiler/rust/frontend/src/{lexer,parser,typeck}` の DSL 復元、`compiler/rust/runtime` の API 再接続、`examples/` / `expected/` / `phase4-scenario-matrix.csv` / `reports/spec-audit/ch4/` の同期、CI/テスト整備。
+- **含む**: `docs/spec/2-4-op-builder.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/0-2-glossary.md` の改訂、`compiler/rust/frontend/src/{lexer,parser,typeck}` の DSL 復元、`compiler/rust/runtime` の API 再接続、`examples/` / `expected/` / `phase4-scenario-matrix.csv` / `reports/spec-audit/ch5/` の同期、CI/テスト整備。
 - **含まない**: OCaml 実装の即時改修、`precedence` API の破棄、Chapter 2 以外の DSL（Conductor など）へ波及する仕様変更。必要があれば別計画 (`4-2` 以降) で扱う。
 
 ## 成果物
@@ -23,7 +23,7 @@
 - OpBuilder DSL の正式仕様（サンプル/BNF/テンプレートコード、`docs/spec/2-4`）。
 - Rust Parser/Typeck/Runtime が DSL の AST を生成し、`core.parse.opbuilder.level_conflict` / `core.parse.opbuilder.fixity_missing` などの診断を返せる実装。
 - `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml` など DSL を用いた `.reml` と `expected/` ゴールデンの整備、`phase4-scenario-matrix.csv` の `CH2-OP-401` を `ok` へ更新。
-- `reports/spec-audit/ch4/spec-core-dashboard.md` で DSL シナリオが `pass` になったログ、および `docs/notes/process/examples-regression-log.md` への記録。
+- `reports/spec-audit/ch5/spec-core-dashboard.md` で DSL シナリオが `pass` になったログ、および `docs/notes/process/examples-regression-log.md` への記録。
 
 ## 作業ステップ
 
@@ -72,7 +72,7 @@
 2. `phase4-scenario-matrix.csv`
    - `CH2-OP-401` の `resolution` を `pending → ok` へ更新（完了時）。
    - `diagnostic_keys` / `scenario_notes` に DSL 仕様の anchor (`docs/spec/2-4-op-builder.md§A-2`) を追記。
-3. `reports/spec-audit/ch4/spec-core-dashboard.md`
+3. `reports/spec-audit/ch5/spec-core-dashboard.md`
    - フェーズF ログに DSL シナリオの pass/diagnostics を記録。
 4. `docs/notes/process/examples-regression-log.md`
    - OpBuilder DSL 復元の判断・CLI コマンド・ログ ID を追記。
@@ -110,5 +110,5 @@
 - `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md`
 - `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`
 - `phase4-scenario-matrix.csv` (`CH2-OP-401`)
-- `reports/spec-audit/ch4/logs/spec_core-20251210T081000Z.md`
+- `reports/spec-audit/ch5/logs/spec_core-20251210T081000Z.md`
 

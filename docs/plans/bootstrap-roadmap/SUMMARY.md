@@ -138,7 +138,7 @@ Phase 3 では Rust 版 Reml コンパイラを唯一の実装として標準ラ
 13. **[4-3-observability-and-metrics-plan.md](4-3-observability-and-metrics-plan.md)**: `collect-iterator-audit-metrics.py --section practical` とダッシュボード
 14. **[4-4-field-regression-and-readiness-plan.md](4-4-field-regression-and-readiness-plan.md)**: レグレッション管理と `phase4-readiness.md`
 15. `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`: シナリオ分類表
-16. `reports/spec-audit/ch4/*.md`: 実行ログと性能/診断/監査の集約
+16. `reports/spec-audit/ch5/*.md`: 実行ログと性能/診断/監査の集約
 
 ### 技術的ハイライト
 - `.reml` ベースのエンドツーエンドテスト

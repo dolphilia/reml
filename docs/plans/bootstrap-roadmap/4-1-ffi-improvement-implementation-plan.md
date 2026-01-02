@@ -80,7 +80,7 @@
      - `expected/ffi/bindgen/minimal/counter_bindings.reml`
      - `expected/ffi/bindgen/minimal/bindings.manifest.json`
 2. `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` に FFI 回帰の参照先と実行コマンドを追記する。（完了）
-3. `reports/spec-audit/ch4/spec-core-dashboard.md` に FFI 実行ログを登録し、Phase 5 へ引き継げるよう KPI を整理する。（完了）
+3. `reports/spec-audit/ch5/spec-core-dashboard.md` に FFI 実行ログを登録し、Phase 5 へ引き継げるよう KPI を整理する。（完了）
 
 ## タイムライン（目安）
 

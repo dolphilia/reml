@@ -34,7 +34,7 @@
    - Active Pattern 本体が例外/エラーを返した場合の診断を `core.parse` 系と揃える。
 4. **アセット計画**  
    - `examples/spec_core/chapter1/match_expr/` へ最小サンプル（成功/失敗/ガード併用）を追加する計画を整理。  
-   - `reports/spec-audit/ch4` に診断サンプルを追加し、`phase4-scenario-matrix.csv` 用の `diagnostic_keys` を定義。
+   - `reports/spec-audit/ch5` に診断サンプルを追加し、`phase4-scenario-matrix.csv` 用の `diagnostic_keys` を定義。
 5. **移行・互換性メモ**  
    - 既存の関数呼び出しと Active Pattern 名の衝突を避ける命名ルール案を提示。  
    - `docs/guides/ecosystem/ai-integration.md` へ導入時の LLM 提案ガイドライン追記案を準備。
@@ -166,7 +166,7 @@ RangeBound      ::= Literal | Ident | ConstructorPattern
    - `pattern.guard.if_deprecated` を警告レベルで登録し、将来のフェーズアウト方針（when 正規形）をメッセージ内に明示する。  
    - **進捗**: `pattern.guard.if_deprecated` の警告発火は継続。TypecheckDriver から `pattern.active.return_contract_invalid` / `pattern.active.effect_violation` / `pattern.exhaustiveness.missing` / `pattern.unreachable_arm` を生成し、CLI で JSON 出力を確認済み。diagnostics crate（共通レジストリ）への文面登録は未対応。
 6. **サンプル・E2E テスト連携**  
-   - `examples/spec_core/chapter1/match_expr/` に Active Pattern 成功/失敗サンプルを追加し、`tooling/examples/run_examples.sh --suite spec_core` で実行する期待結果 (`expected/` と `reports/spec-audit/ch4`) を更新。  
+   - `examples/spec_core/chapter1/match_expr/` に Active Pattern 成功/失敗サンプルを追加し、`tooling/examples/run_examples.sh --suite spec_core` で実行する期待結果 (`expected/` と `reports/spec-audit/ch5`) を更新。  
    - `compiler/rust/tests`（もしくは `frontend/tests`）で AST 正規化・網羅性診断・効果違反のユニット/スナップショットテストを追加し、`phase4-scenario-matrix.csv` の該当行に `diagnostic_keys` を登録する。  
    - **進捗**: Typecheck 連携テストを追加（戻り値契約違反、@pure 副作用、網羅性欠落、到達不能を検証）。`expected/spec_core/chapter1/active_patterns/bnf-activepattern-return-contract-error.diagnostic.json` と `phase4-scenario-matrix.csv` の CH1-ACT-* 行を更新済み。さらに網羅性回帰テスト（typeck_exhaustiveness.rs）を追加。その他サンプルの expected/ 再取得は未実施。
 7. **移行・互換性ガード**  

@@ -3,12 +3,12 @@
 ## 目的
 - Phase 4 M1（シナリオマトリクス確定）の出口条件を満たすため、`.reml` シナリオの分類・仕様根拠・期待結果を一元管理する。
 - `docs/spec/0-1-project-purpose.md` が定める性能と安全性の指標を、Chapter 1〜3 のコード例に沿って測定可能なテストケースへ落とし込む。
-- `docs/spec/1-0-language-core-overview.md` から `docs/spec/3-10-core-env.md` までの既存サンプルを、`.reml` 実行資産として `examples/` および `reports/spec-audit/ch4/` に再配置する。
+- `docs/spec/1-0-language-core-overview.md` から `docs/spec/3-10-core-env.md` までの既存サンプルを、`.reml` 実行資産として `examples/` および `reports/spec-audit/ch5/` に再配置する。
 - Phase 3 で整備したリスト（`docs/plans/rust-migration/p1-test-migration-*.txt` 等）を再利用し、Phase 5 Self-host の前提となる「正例/境界例/負例」のトリオを Chapter ごとに揃える。
 - `.reml` 実行を通じて、Chapter 1（構文・型・効果）〜Chapter 3（標準ライブラリ）の仕様どおりの許容範囲を明文化し、複数の表記揺れ・境界・意地悪ケースを網羅する。
 
 ## スコープ
-- **含む**: `docs/spec/1-x`〜`3-x`・`docs/guides/compiler/core-parse-streaming.md` のサンプル抽出、`.reml` テストケース作成、`phase4-scenario-matrix.csv` の定義と更新フロー、`examples/spec_core`/`examples/practical` ディレクトリ構成案、`reports/spec-audit/ch4/` へのリンク整備。
+- **含む**: `docs/spec/1-x`〜`3-x`・`docs/guides/compiler/core-parse-streaming.md` のサンプル抽出、`.reml` テストケース作成、`phase4-scenario-matrix.csv` の定義と更新フロー、`examples/spec_core`/`examples/practical` ディレクトリ構成案、`reports/spec-audit/ch5/` へのリンク整備。
 - **含まない**: Rust 実装や CLI の挙動修正、セルフホスト工程そのもの、Phase 4 M2 以降で扱う CI ワークフロー設定（`4-2` 以降で管理）。
   - ただし、マトリクスの実行導線（`tooling/examples/run_phase4_suite.py` / `tooling/examples/run_examples.sh`）の最小更新は「マトリクス運用」の一部として扱う（スイート追加・レポート出力先追加など）。
 - **前提条件**: Phase 3 の章別資産が `compiler/rust/`・`examples/` に揃っている、`docs/plans/bootstrap-roadmap/0-2-roadmap-structure.md` に沿って新規ファイルの命名・参照が決まっている。
@@ -16,7 +16,7 @@
 ## 成果物と出口条件
 - `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` を新設し、各行に `scenario_id`, `category`, `spec_anchor`, `input_path`, `expected`, `diagnostic_keys`, `stage_requirement`, `resolution` を必須フィールドとして登録する。加えて `audit_events`, `stage_condition` を監査/Stage 用の追加列として設ける。
 - `examples/spec_core/`・`examples/practical/` にサブディレクトリ（`chapter1/boundary` 等）を定義し、マトリクスの `input_path` と 1:1 で対応させる命名規約を決める。
-- `reports/spec-audit/ch4/spec-core-dashboard.md` と `reports/spec-audit/ch4/practical-suite-index.md` に、マトリクスと一致するハンドブックリンクを追加できる状態にする。
+- `reports/spec-audit/ch5/spec-core-dashboard.md` と `reports/spec-audit/ch5/practical-suite-index.md` に、マトリクスと一致するハンドブックリンクを追加できる状態にする。
 - `phase4-scenario-matrix.csv` に登録したカテゴリのうち 85% 以上が `.reml` 資産を伴い、`resolution` 列が `pending` 以外になっていることを確認する（M1 exit）。
 - Chapter 1 のすべての構文規則について「正例/境界例/ギリギリエラー/明確なエラー」の 4 パターンを `.reml` で登録し、複数表記がある規則は各記法を個別の行として掲載する。
 
@@ -56,7 +56,7 @@
 - `examples/practical/core_io/file_copy/canonical.reml`, `examples/practical/core_path/security_check/relative_denied.reml`, `examples/practical/core_config/audit_bridge/audit_bridge.reml` を追加し、既存の `expected/practical/*` JSON / stdout / audit ログを新パスへ更新。関連仕様（`docs/spec/3-5-core-io-path.md`, `docs/spec/3-0-core-library-overview.md`）とガイド（`docs/guides/runtime/runtime-bridges.md`, `docs/guides/dsl/plugin-authoring.md`）の参照先も Practical 配下に揃えた。
 - `examples/README.md`・`examples/practical/README.md` に Phase 4 の `spec_core`/`practical` 階層を追記し、`docs/notes/process/examples-regression-log.md` へ Practical 反映ログを残した。旧 `examples/core_io/*` などの参照は「実務ケースは `practical/` へ移行した」旨の注記を追加。
 - `phase4-scenario-matrix.csv` へ `runtime_bridge` 列を追加し、`CH3-PLG-310` など Capability を要求する行に `audit_bridge` を登録。IO/Path/Plugin 系の `input_path` を Practical パスへ統一し、`expected/practical/core_io/file_copy/canonical.audit.jsonl` などのゴールデンと 1:1 対応させた。
-- `examples/language-impl-comparison/`（比較サンプル）も Phase4 マトリクスで追跡できるよう、`tooling/examples/run_phase4_suite.py` に `--suite language_impl_comparison` を追加。`CH2-PARSE-501`（`basic_interpreter_combinator.reml`）を 1 件目として回帰実行できる状態にした（レポート出力: `reports/spec-audit/ch4/language-impl-comparison-dashboard.md`）。
+- `examples/language-impl-comparison/`（比較サンプル）も Phase4 マトリクスで追跡できるよう、`tooling/examples/run_phase4_suite.py` に `--suite language_impl_comparison` を追加。`CH2-PARSE-501`（`basic_interpreter_combinator.reml`）を 1 件目として回帰実行できる状態にした（レポート出力: `reports/spec-audit/ch5/language-impl-comparison-dashboard.md`）。
 
 #### 🔁 追加バックログ（Chapter 1〜3 `.reml` 拡充計画）
 
@@ -74,7 +74,7 @@
 - **CH1-INF-601**（[1-2 §H.1](../spec/1-2-types-Inference.md#h1-let-一般化)）: `chapter1/type_inference/bnf-inference-let-generalization-ok.reml` を追加し、`let id = fn x => x` が多相推論され `Vec<i64>`/`Vec<Text>` で再利用できることを `expected/...stdout` で実証する。
 - **CH1-INF-602**（[1-2 §C.3 値制限](../spec/1-2-types-Inference.md#c3-値制限value-restriction)）: `chapter1/type_inference/bnf-inference-value-restriction-error.reml` を追加し、`var cell = []` を一般化しようとすると `language.inference.value_restriction` 診断が発生することを確認する。
 - **CH1-EFF-701**（[1-3 §B](../spec/1-3-effects-safety.md#b-デフォルトの純粋性と値制限)）: `chapter1/effects/bnf-attr-pure-perform-error.reml` を増やし、`@pure fn` 内で `perform Console.log` を呼び出した際に `effects.purity.violated` 診断が発生することを `expected/...diagnostic.json` で固定する。
-- **CH1-DSL-801**（[1-1 §B.8](../spec/1-1-syntax.md#b8-dsl制御ブロック-conductor)）: `chapter1/conductor/bnf-conductor-basic-pipeline-ok.reml` を実装し、`conductor telemetry { channels { ... } execution { ... } }` のブロック展開結果を `expected/...stdout` で確認する。`reports/spec-audit/ch4/` に `conductor` 監査タグを追加する計画に紐付ける。
+- **CH1-DSL-801**（[1-1 §B.8](../spec/1-1-syntax.md#b8-dsl制御ブロック-conductor)）: `chapter1/conductor/bnf-conductor-basic-pipeline-ok.reml` を実装し、`conductor telemetry { channels { ... } execution { ... } }` のブロック展開結果を `expected/...stdout` で確認する。`reports/spec-audit/ch5/` に `conductor` 監査タグを追加する計画に紐付ける。
 - **CH1-MATCH-003**（[1-1 §C.3](../spec/1-1-syntax.md#c3-パターン束縛match-で共通)）: `chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml` を追加し、`Some(x) when x > 10 as large` のような `when` + `as` バインダを許容することを `expected/...stdout` で保証する。
 
 ##### Chapter 2（Parser API）
@@ -96,18 +96,18 @@
 ##### FFI/Core Prelude 依存（spec_core ハーネス）
 
 - **FFI-CORE-PRELUDE-001**（[3-1 Core Prelude](../spec/3-1-core-prelude-iteration.md) / [3-6 Diagnostics](../spec/3-6-core-diagnostics-audit.md)）：`compiler/rust/frontend/tests/core_iter_{effects,adapters,collectors,pipeline}.rs` を `.reml` シナリオと同様に追跡し、`reml_runtime_ffi` を `core_prelude` 付きで再利用できるかをマトリクスに記載する。`input_path` はテストファイル/スナップショット（`tests/snapshots/core_iter_*`）を指し、`expected` には `cargo test --package reml_frontend spec_core` の YAML ゴールデンを登録する。
-- `resolution` が `pending` のあいだは capability shim の導入（`reml_runtime_ffi` に `capability::registry` を再輸出する補助モジュールを追加）を Phase 4.1 のフォローアップとして扱い、完了時に `ok` として `phase4-scenario-matrix.csv` と `reports/spec-audit/ch4/spec-core-dashboard.md` を同時更新する。
+- `resolution` が `pending` のあいだは capability shim の導入（`reml_runtime_ffi` に `capability::registry` を再輸出する補助モジュールを追加）を Phase 4.1 のフォローアップとして扱い、完了時に `ok` として `phase4-scenario-matrix.csv` と `reports/spec-audit/ch5/spec-core-dashboard.md` を同時更新する。
 
 実装手順（共通）:
 
 1. `examples/spec_core/chapter1/{module_use,attributes,fn_decl,...}` および `chapter2/{parser_core,streaming,op_builder}`、`examples/practical/core_{text,diagnostics,runtime,env}` を作成し、`docs/spec/0-3-code-style-guide.md` に沿って `.reml` を配置する。
 2. 各 `.reml` に対応する `expected/` ゴールデン（`stdout`/`diagnostic.json`/`audit.jsonl`）を生成し、`phase4-scenario-matrix.csv` の `scenario_id` と 1:1 に対応させる。
-3. `run_examples.sh` へ `spec_core chapter1/chapter2` サブセットを追加し、`cargo test -p reml_e2e -- --scenario spec-core` で自動実行できるよう `reports/spec-audit/ch4/spec-core-dashboard.md` にタグを追加する。
+3. `run_examples.sh` へ `spec_core chapter1/chapter2` サブセットを追加し、`cargo test -p reml_e2e -- --scenario spec-core` で自動実行できるよう `reports/spec-audit/ch5/spec-core-dashboard.md` にタグを追加する。
 4. 診断ケース（`language.use.invalid_super` など）は `docs/spec/3-6-core-diagnostics-audit.md` のキー定義を引用し、必要に応じて `docs/spec/0-2-glossary.md` に用語を追記する。
 
 ### 3. マトリクス検証とレビューサインオフ（72週目）
 - `phase4-scenario-matrix.csv` に `resolution` 列を設け、`ok` / `impl_fix` / `spec_fix` を入力。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` とリンクするケースは `impl_fix` として登録。
-- `reports/spec-audit/ch4/spec-core-dashboard.md` にシナリオ一覧と Pass/Fail 状態を出力する `scripts/gen_phase4_dashboard.py` を用意し、レビューで差分を確認できるようにする。
+- `reports/spec-audit/ch5/spec-core-dashboard.md` にシナリオ一覧と Pass/Fail 状態を出力する `scripts/gen_phase4_dashboard.py` を用意し、レビューで差分を確認できるようにする。
 - Phase 4 レビュー会（週次）でマトリクスを共有し、未定義ケースを `docs/notes/phase4-practical-test-backlog.md` に追記。承認後に `phase4-scenario-matrix.csv` を `main` ブランチへ反映し、M1 完了を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記録。
 - `.reml` 実行結果から「コンパイラ修正」「仕様追記」「許容」の別を判定し、`resolution` + `notes` に根拠を記載。判断に迷うケースは `docs/spec/1-x` の該当節を引用し、レビュー時に仕様の解釈を再確認する。
 

@@ -37,7 +37,7 @@
   - Regex 糖衣は Active Pattern 診断を再利用する方針を明文化。
 - **サンプル計画**:  
   - `examples/spec_core/chapter1/match_expr/` に各機能の成功/失敗例を 1 本ずつ追加する案をまとめる。  
-  - `reports/spec-audit/ch4` に対応する診断サンプルを設計し、`phase4-scenario-matrix.csv` 用の `diagnostic_keys` を列挙。
+  - `reports/spec-audit/ch5` に対応する診断サンプルを設計し、`phase4-scenario-matrix.csv` 用の `diagnostic_keys` を列挙。
 - **導入順序**: Or → Slice → Range → Binding → Regex の順で仕様を確定し、各ステップで回帰計画（Phase 4）への影響をレビューする。
 
 ## 成果物（出口条件）
@@ -118,7 +118,7 @@
 
 ## サンプルファイル設計（下準備ステップ3）
 
-`examples/spec_core/chapter1/match_expr/` に追加する想定サンプルを成功/失敗で整理し、`reports/spec-audit/ch4/phase4-scenario-matrix.csv` に登録する `diagnostic_keys` を付記する。既存サンプルとの重複を避けるため、ファイル名は `bnf-match-*` 接頭辞で統一。
+`examples/spec_core/chapter1/match_expr/` に追加する想定サンプルを成功/失敗で整理し、`reports/spec-audit/ch5/phase4-scenario-matrix.csv` に登録する `diagnostic_keys` を付記する。既存サンプルとの重複を避けるため、ファイル名は `bnf-match-*` 接頭辞で統一。
 
 - Or パターン  
   - `bnf-match-or-pattern-ok.reml`（成功）: `Some(A | B)` の成功分岐で `"ok"` を返す。`diagnostic_keys` なし。  
@@ -165,6 +165,6 @@
 - **型検査・整合性チェック**: `typeck` のパターン検査に Slice/Range/Binding/Regex を追加し、`Iterator`/`Slice` 要件と Range 境界型一致・下限上限の大小比較を `pattern.range.type_mismatch`/`bound_inverted` で報告。Binding は `as`/`@` の重複束縛を検知し `pattern.binding.duplicate_name` を発行。
 - **網羅性/到達不能診断の拡張**: 既存の到達不能・網羅性判定ロジックを Or/Slice/Range/Active 呼び出しに対応させ、`pattern.exhaustiveness.missing` と `pattern.unreachable_arm` を Rust 側で発火できるようにする。Slice の可変長と Range の閉区間を考慮した分割戦略を実装し、Phase4 の診断キーと一致させる。
 - **診断キーの登録と出力整備**: `frontend/src/diagnostic` に上記キーを登録し、メッセージ文面を `docs/spec/2-5-error.md` 案と同期。警告/エラーのデフォルトレベルを Phase4（`docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md`）のゲートに合わせる。
-- **テスト・サンプル統合**: `examples/spec_core/chapter1/match_expr/` の追加ファイルを Rust フロントエンドで実行する `frontend/tests` を用意し、`expected/` ゴールデンを生成。失敗系は `diagnostic_keys` と一致することをアサートし、`reports/spec-audit/ch4/phase4-scenario-matrix.csv` への反映を自動化または手順化する。
+- **テスト・サンプル統合**: `examples/spec_core/chapter1/match_expr/` の追加ファイルを Rust フロントエンドで実行する `frontend/tests` を用意し、`expected/` ゴールデンを生成。失敗系は `diagnostic_keys` と一致することをアサートし、`reports/spec-audit/ch5/phase4-scenario-matrix.csv` への反映を自動化または手順化する。
 - **互換性フラグと段階的ロールアウト**: `when` ガード正規化や Regex/Slice/Range の導入で互換性リスクがあるため、`REML_EXPERIMENTAL_PATTERN` などのフラグで段階的に有効化し、CI ではフラグ有効/無効の両構成を走らせる。フラグ除去の判断を Phase4 週次レビューで決め、`docs/plans/bootstrap-roadmap` へ結果を記録。
 - **実装クロスレビューと OCaml 版との差分監査**: OCaml 実装の挙動と照らし合わせるため、同一 `.reml` サンプルを両実装で実行し差分ログを `reports/dual-write/front-end/` に保存。差分が出た箇所は仕様側の BNF/本文更新か実装修正かを切り分け、`docs/plans/rust-migration/` と本計画に補遺を残す。

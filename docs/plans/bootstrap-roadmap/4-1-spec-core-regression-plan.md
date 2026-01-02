@@ -3,13 +3,13 @@
 ## 背景と課題
 
 - `tooling/examples/run_examples.sh --suite spec_core` / `--suite practical`（`run_phase4_suite.py` 発行）により、Phase 4 で整備した `.reml` シナリオが Rust フロントエンドでは一貫して受理されていないことが判明した。
-- `reports/spec-audit/ch4/spec-core-dashboard.md` / `practical-suite-index.md` では **全シナリオが `parser.syntax.expected_tokens` と `typeck.aborted.ast_unavailable`（または CLI 正常終了だが診断ゼロ）** の状態であり、Chapter 1〜3 の仕様試験が成立していない。
+- `reports/spec-audit/ch5/spec-core-dashboard.md` / `practical-suite-index.md` では **全シナリオが `parser.syntax.expected_tokens` と `typeck.aborted.ast_unavailable`（または CLI 正常終了だが診断ゼロ）** の状態であり、Chapter 1〜3 の仕様試験が成立していない。
 - 実装側は `docs/spec/1-5-formal-grammar-bnf.md` のトップレベル規則（`module` + `use` + `fn/let`）を解析できず、`--output json` で AST/Typed AST を得られないため型推論や効果診断が一切回らない。Phase 4 M1 exit 条件（Scenario 85% 実行）を満たすには、回帰要因を特定し段階的に是正する計画が必要。
 
 ## 目的
 
 1. `examples/spec_core/`（Chapter 1〜2 BNF/推論）および `examples/practical/`（Chapter 3 実務ケース）を **Rust フロントエンド CLI で解析・型検査できる状態** に戻す。
-2. `phase4-scenario-matrix.csv` に登録された `diagnostic_keys` と CLI 出力を照合し、`reports/spec-audit/ch4/*.md` で Pass/Fail を追跡できるようにする。
+2. `phase4-scenario-matrix.csv` に登録された `diagnostic_keys` と CLI 出力を照合し、`reports/spec-audit/ch5/*.md` で Pass/Fail を追跡できるようにする。
 3. 解析の障害を修正する過程で、仕様側の不足が判明した場合は `docs/spec/1-x`〜`3-x` へ追記する判断材料（spec_fix/impl_fix）を明確にする。
 
 ## FFI 回帰接続（Phase 4 追加）
@@ -21,9 +21,9 @@
   - `expected/ffi/dsl/wrapped_safe.audit.json`
   - `expected/ffi/dsl/unsafe_direct.audit.json`
 - 実行ログの保存先:
-  - `reports/spec-audit/ch4/logs/ffi-build-*.md`
-  - `reports/spec-audit/ch4/logs/ffi-dsl-*.md`
-  - `reports/spec-audit/ch4/logs/ffi-bindgen-*.md`
+  - `reports/spec-audit/ch5/logs/ffi-build-*.md`
+  - `reports/spec-audit/ch5/logs/ffi-dsl-*.md`
+  - `reports/spec-audit/ch5/logs/ffi-bindgen-*.md`
 - WIT 調査は `docs/notes/ffi/ffi-wasm-component-model-log.md` と `docs/guides/ffi/ffi-wit-poc.md` の更新内容を対象とし、PoC 実施後に外部ツール名と生成物パスを追記する。
 
 ## 標準ライブラリ回帰接続（Phase 4 追加）
@@ -44,13 +44,13 @@
   - Core.Lsp: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_lsp/basic_diagnostics_ok.reml`
   - Core.Parse.Cst: `compiler/rust/frontend/target/debug/reml_frontend --output json examples/practical/core_parse/cst_lossless.reml`
 - 実行ログの保存先:
-  - `reports/spec-audit/ch4/logs/stdlib-test-*.md`
-  - `reports/spec-audit/ch4/logs/stdlib-cli-*.md`
-  - `reports/spec-audit/ch4/logs/stdlib-pretty-*.md`
-  - `reports/spec-audit/ch4/logs/stdlib-doc-*.md`
-  - `reports/spec-audit/ch4/logs/stdlib-lsp-*.md`
-  - `reports/spec-audit/ch4/logs/stdlib-parse-cst-*.md`
-- ログに残す項目は `reports/spec-audit/ch4/README.md` の「標準ライブラリ実行ログ（Phase 4）」を参照する。
+  - `reports/spec-audit/ch5/logs/stdlib-test-*.md`
+  - `reports/spec-audit/ch5/logs/stdlib-cli-*.md`
+  - `reports/spec-audit/ch5/logs/stdlib-pretty-*.md`
+  - `reports/spec-audit/ch5/logs/stdlib-doc-*.md`
+  - `reports/spec-audit/ch5/logs/stdlib-lsp-*.md`
+  - `reports/spec-audit/ch5/logs/stdlib-parse-cst-*.md`
+- ログに残す項目は `reports/spec-audit/ch5/README.md` の「標準ライブラリ実行ログ（Phase 4）」を参照する。
 
 ## Native Escape Hatches 回帰接続（Phase 4 追加）
 
@@ -81,11 +81,11 @@
   - `native.llvm_ir.used` / `llvm_ir.template_hash` / `llvm_ir.inputs` が監査ログに出力されること。
   - 期待 stdout と `expected/native/` の差分がないこと。
 - 実行ログの保存先:
-  - `reports/spec-audit/ch4/logs/native-intrinsic-*.md`
-  - `reports/spec-audit/ch4/logs/native-embed-*.md`
-  - `reports/spec-audit/ch4/logs/native-inline-asm-*.md`
-  - `reports/spec-audit/ch4/logs/native-llvm-ir-*.md`
-- KPI とログフォーマットは `reports/spec-audit/ch4/README.md` の「Native Escape Hatches 実行ログ（Phase 4）」を参照する。
+  - `reports/spec-audit/ch5/logs/native-intrinsic-*.md`
+  - `reports/spec-audit/ch5/logs/native-embed-*.md`
+  - `reports/spec-audit/ch5/logs/native-inline-asm-*.md`
+  - `reports/spec-audit/ch5/logs/native-llvm-ir-*.md`
+- KPI とログフォーマットは `reports/spec-audit/ch5/README.md` の「Native Escape Hatches 実行ログ（Phase 4）」を参照する。
 
 ## DSL パラダイム回帰接続（Phase 4 追加）
 
@@ -102,7 +102,7 @@
 
 ## スコープ
 
-- **含む**: Rust フロントエンド (`compiler/rust/frontend`) の Parser/Typeck/CLI オプション是正、`run_phase4_suite.py` の診断差分検知を活かしたレポーティング改善、`reports/spec-audit/ch4/` の定期更新。必要に応じて `RunConfig` / `ParseRunner` / `DiagnosticFilter` の既定値も調整する。
+- **含む**: Rust フロントエンド (`compiler/rust/frontend`) の Parser/Typeck/CLI オプション是正、`run_phase4_suite.py` の診断差分検知を活かしたレポーティング改善、`reports/spec-audit/ch5/` の定期更新。必要に応じて `RunConfig` / `ParseRunner` / `DiagnosticFilter` の既定値も調整する。
 - **含まない**: `.reml` シナリオ自体の削減や仕様変更の強行。実行環境依存（ファイルI/Oの実処理、Capability 実体）の stub 化は別タスクとして扱い、本計画では Parser/Typeck が構文どおりに動くことを優先する。
 
 ## 現状確認（2025-12-07 実行ログより）
@@ -205,7 +205,7 @@
 5. **条件式より前に戻り値型の不一致を検出**（5.2 週）  
    - `CH1-FN-103`（`bnf-fndecl-return-inference-error.reml`）の triage をフェーズBへ取り込み、`if` ブロックの各分岐で推論された戻り値型を比較した結果を Bool 条件チェックより優先して報告する。  
    - `compiler/rust/frontend/src/typeck/driver.rs` の `infer_if_expr`（`ExprKind::If` など）で、then/else の型解決を行った直後に `TypeMismatch` を生成するパスを追加し、`expected/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.diagnostic.json` と同等の `language.inference.return_conflict`（仮称）へマッピングする。  
-   - `compiler/rust/frontend/tests/spec_core/mod.rs` へ `ch1_fn_103_reports_return_mismatch_before_condition_error`（仮）を追加し、`if` 条件が Bool でなくても戻り値不一致の診断が最初に出力されることを保証する。CLI では `reports/spec-audit/ch4/logs/` のログ ID を更新し、`phase4-scenario-matrix.csv` の `resolution_notes` を `impl_fix` → `ok` へ遷移させる。
+   - `compiler/rust/frontend/tests/spec_core/mod.rs` へ `ch1_fn_103_reports_return_mismatch_before_condition_error`（仮）を追加し、`if` 条件が Bool でなくても戻り値不一致の診断が最初に出力されることを保証する。CLI では `reports/spec-audit/ch5/logs/` のログ ID を更新し、`phase4-scenario-matrix.csv` の `resolution_notes` を `impl_fix` → `ok` へ遷移させる。
 
 #### ✅ 5.2 週 実施ログ（Return inference conflict）
 
@@ -226,12 +226,12 @@
 
 ### フェーズC: 自動実行とレポートの固定化
 6. **`run_phase4_suite.py` のサマリ強化と CI 組み込み**（5.4 週）  
-   - 現在 `--allow-failures` 前提のレポート生成を、既定では「失敗があれば exit 1」としつつ、失敗時のログ保存（`reports/spec-audit/ch4/logs/`）を追加。  
+   - 現在 `--allow-failures` 前提のレポート生成を、既定では「失敗があれば exit 1」としつつ、失敗時のログ保存（`reports/spec-audit/ch5/logs/`）を追加。  
    - `.github/workflows/phase4-spec-core.yml`（新規）で `run_examples.sh --suite spec_core` → `--suite practical` を nightly で回し、成功件数/KPI を記録。
 
 7. **Phase4 Scenario Matrix の自動同期**（5.5 週）  
    - `ScenarioResult` を `phase4-scenario-matrix.csv` の `resolution_notes` に反映する補助スクリプト（`tooling/examples/update_phase4_resolution.py` 仮）を用意し、Pass/Fail に応じて `ok/impl_fix/spec_fix` を更新。  
-   - `reports/spec-audit/ch4/spec-core-dashboard.md` / `practical-suite-index.md` を Phase4 README で参照し、週次レビュー資料として扱う。
+   - `reports/spec-audit/ch5/spec-core-dashboard.md` / `practical-suite-index.md` を Phase4 README で参照し、週次レビュー資料として扱う。
 
 ### フェーズD: `reml_runtime_ffi` capability shim 回収（新規）
 
@@ -247,14 +247,14 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
    - `docs/plans/rust-migration/1-3-dual-write-runbook.md` の `capability` 共有セクションと整合するか確認し、必要であれば同 runbook へ補足する。
 
 3. **検証とフォローアップ**（5.8 週）  
-   - shim 経由で `core_prelude` が利用可能になったら、`tests/core_iter_*` の snapshot を更新し `reports/spec-audit/ch4/spec-core-dashboard.md` に `FFI/Core Prelude` の pass 率を新設。  
+   - shim 経由で `core_prelude` が利用可能になったら、`tests/core_iter_*` の snapshot を更新し `reports/spec-audit/ch5/spec-core-dashboard.md` に `FFI/Core Prelude` の pass 率を新設。  
    - `capability` shim の将来廃止に備え、`reml_runtime` モジュールを直接依存として使う長期方針を `docs/notes/stdlib/core-library-outline.md` へ TODO 記録し、Phase 5 で `reml_core_prelude` を共通 crate 化する提案を追記する。
 
 #### ✅ 5.7 週 実施ログ（FFI/Core Prelude capability shim）
 
 - `compiler/rust/runtime/ffi/src/lib.rs:16-74` と `src/capability.rs` を棚卸しし、`#[cfg(feature = "core_prelude")]` で読み込む `collections`/`config`/`prelude` 群が `crate::capability::{contract,registry}` を参照する前提になっていることを確認。`docs/spec/3-1-core-prelude-iteration.md§3` と `docs/spec/3-6-core-diagnostics-audit.md§1` の Stage 契約を根拠に、rustc 上で `cargo check -p reml_runtime_ffi --features core_prelude` を実行して shim が依存関係を満たすことを再検証した（log: `compiler/rust/runtime/ffi` 直下、2026-02-17 13:20JST）。
 - Phase4 KPI に FFI 回路を組み込むため `phase4-scenario-matrix.csv` へ `FFI-CORE-PRELUDE-001` を追加し、`category=FFI` / `spec_chapter=chapter3.prelude` / `stage_requirement=StageRequirement::AtLeast(Beta)` として `core_iter_effects` スナップショットを追跡。`docs/plans/bootstrap-roadmap/assets/README.md` に `FFI` 行を追加し、同時に `docs/spec/0-2-glossary.md` へ「FFI/Core Prelude 回帰カテゴリー」を登録した。`resolution_notes` には `cargo check -p reml_runtime_ffi --features core_prelude` と `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_effects` の組み合わせを記録し、以降の再実行ログを集約できるようにした。
-- dual-write ランブック `docs/plans/rust-migration/1-3-dual-write-runbook.md` の前提条件へ「FFI/Core Prelude ハーネス確認」を追加し、`core_iter_*` テストを実行する前に `reml_runtime_ffi` capability shim を `cargo check` で保証する手順を明文化。`reports/spec-audit/ch4/spec-core-dashboard.md` に `FFI/Core Prelude` KPI セクションを新設して、`FFI-CORE-PRELUDE-001` の pass 率と参照コマンドをレポートに残す。長期的には `docs/notes/stdlib/core-library-outline.md` の TODO に shim 廃止計画を追記し、Phase 5 で `reml_runtime` との直接依存へ移行することを記録した。
+- dual-write ランブック `docs/plans/rust-migration/1-3-dual-write-runbook.md` の前提条件へ「FFI/Core Prelude ハーネス確認」を追加し、`core_iter_*` テストを実行する前に `reml_runtime_ffi` capability shim を `cargo check` で保証する手順を明文化。`reports/spec-audit/ch5/spec-core-dashboard.md` に `FFI/Core Prelude` KPI セクションを新設して、`FFI-CORE-PRELUDE-001` の pass 率と参照コマンドをレポートに残す。長期的には `docs/notes/stdlib/core-library-outline.md` の TODO に shim 廃止計画を追記し、Phase 5 で `reml_runtime` との直接依存へ移行することを記録した。
 
 ### フェーズE: spec_core サンプル実行保証（新規）
 
@@ -262,10 +262,10 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 1. **ハーネス更新と一括実行**（5.9 週）  
    - `tooling/examples/run_examples.sh --suite spec-core` と `run_phase4_suite.py --suite spec-core` に `chapter1/control_flow`・`literals`・`lambda` など新設ディレクトリを登録し、`expected/spec_core/**` のゴールデン生成コマンドを README に追記する。  
-   - `cargo test -p reml_e2e --test scenario -- --scenario spec-core` を nightly CI に追加し、`examples/spec_core/chapter1` から `chapter2` までの `.reml` が少なくとも 1 回は CLI で解析・型検査・実行されることを KPI にする。`reports/spec-audit/ch4/spec-core-dashboard.md` には「Missing Examples Closeout」セクションを設け、実行件数と成功率を記録する。
+   - `cargo test -p reml_e2e --test scenario -- --scenario spec-core` を nightly CI に追加し、`examples/spec_core/chapter1` から `chapter2` までの `.reml` が少なくとも 1 回は CLI で解析・型検査・実行されることを KPI にする。`reports/spec-audit/ch5/spec-core-dashboard.md` には「Missing Examples Closeout」セクションを設け、実行件数と成功率を記録する。
 
 2. **失敗時の切り分け手順**（5.9〜6.0 週）  
-   - `reports/spec-audit/ch4/logs/` に保存される `*.stdout` と `*.diagnostic.json` を、`phase4-scenario-matrix.csv` の `expected`・`diagnostic_keys` と突き合わせて自動判定する `scripts/triage_spec_core_failures.py`（新規）を作成。  
+   - `reports/spec-audit/ch5/logs/` に保存される `*.stdout` と `*.diagnostic.json` を、`phase4-scenario-matrix.csv` の `expected`・`diagnostic_keys` と突き合わせて自動判定する `scripts/triage_spec_core_failures.py`（新規）を作成。  
    - 期待と異なる場合は (a) `.reml` サンプルや `expected/` が仕様と乖離している **Example Fix**、(b) Rust Frontend/Runtime の欠陥による **Compiler Fix**、(c) 仕様記述が足りない **Spec Fix** に分類し、`resolution` 列を `example_fix`/`impl_fix`/`spec_fix` で更新。分類根拠は `resolution_notes` に CLI コマンド・ログパスとともに記載する。
 
 3. **コード・コンパイラ修正フロー**（6.0 週以降継続）  
@@ -274,23 +274,23 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
    - Spec Fix は `docs/spec/1-x`〜`3-x` の該当章へ脚注または本文追記し、`phase4-scenario-matrix.csv` の `spec_anchor` を更新する。必要に応じて `docs/spec/0-2-glossary.md` に用語を追記し、解釈のブレを防ぐ。
 
 4. **フォローアップとハンドオーバー**（継続）  
-   - `reports/spec-audit/ch4/logs/spec_core-*.md` を週次レビュー資料として整備し、`examples/spec_core` の pass 率を Phase 4 KPI に追加。`docs/plans/bootstrap-roadmap/4-4-field-regression-and-readiness-plan.md` へフィードバックし、Phase 5 Self-host へ移行する前に Example Fix/Compiler Fix/Spec Fix の残件を可視化する。  
+   - `reports/spec-audit/ch5/logs/spec_core-*.md` を週次レビュー資料として整備し、`examples/spec_core` の pass 率を Phase 4 KPI に追加。`docs/plans/bootstrap-roadmap/5-4-field-regression-and-readiness-plan.md` へフィードバックし、Phase 5 Self-host へ移行する前に Example Fix/Compiler Fix/Spec Fix の残件を可視化する。  
    - `docs/plans/rust-migration/1-3-dual-write-runbook.md` の検証チェックリストへ「spec_core full suite」のステップを追加し、Phase 3 の Rust Migration 計画と Phase 4 のサンプル整備が一体で動作するようにする。
 
 #### ✅ 5.9 週 実施ログ（Missing Examples ハーネス更新）
 
 - `tooling/examples/run_examples.sh` と `tooling/examples/run_phase4_suite.py` へ `chapter1/control_flow` / `literals` / `lambda` の存在チェックを追加し、「必要ディレクトリが欠けている場合は Phase4 スイートを停止する」安全策を導入。Missing Examples を登録した `phase4-scenario-matrix.csv` と突き合わせて漏れがあれば即時に検知できるようにした。
 - `expected/spec_core/chapter1/control_flow|literals|lambda` を明示的に確保したうえで `examples/spec_core/README.md` にゴールデン生成コマンド（`cargo run --quiet --bin reml_frontend ... > expected/...`、診断例は `--output json | jq`）を追記し、今後の stdout / diagnostic JSON の再取得手順を文書化した。
-- `.github/workflows/phase4-spec-core.yml` に `cargo test -p reml_e2e --test scenario -- --scenario spec-core` を nightly Step として追加し、Missing Examples を含む `.reml` が 1 日 1 回は CLI 実行される KPI を確保。`reports/spec-audit/ch4/spec-core-dashboard.md` へ「Missing Examples Closeout」セクションを新設し、`chapter1/control_flow(0/8)`・`chapter1/literals(2/3)`・`chapter1/lambda(0/2)` の成功率を集計してフェーズ進捗を追跡する。
+- `.github/workflows/phase4-spec-core.yml` に `cargo test -p reml_e2e --test scenario -- --scenario spec-core` を nightly Step として追加し、Missing Examples を含む `.reml` が 1 日 1 回は CLI 実行される KPI を確保。`reports/spec-audit/ch5/spec-core-dashboard.md` へ「Missing Examples Closeout」セクションを新設し、`chapter1/control_flow(0/8)`・`chapter1/literals(2/3)`・`chapter1/lambda(0/2)` の成功率を集計してフェーズ進捗を追跡する。
 
 #### ✅ 6.0 週 実施ログ（Failure Triage 自動化）
 
-- `reports/spec-audit/ch4/logs/spec_core-*.md` に出力される失敗ログを解析し、`phase4-scenario-matrix.csv` の `resolution`/`resolution_notes` を自動更新する `scripts/triage_spec_core_failures.py` を作成。`--log`（Markdown ログ）、`--matrix`（CSV）、`--include-status`（既定: `pending`）、`--apply`（dry-run 切り替え）を引数に取り、`python3 scripts/triage_spec_core_failures.py --suite spec_core --log reports/spec-audit/ch4/logs/spec_core-20251208T173235Z.md --apply` で Phase4 backlog をまとめて triage できるようにした。
+- `reports/spec-audit/ch5/logs/spec_core-*.md` に出力される失敗ログを解析し、`phase4-scenario-matrix.csv` の `resolution`/`resolution_notes` を自動更新する `scripts/triage_spec_core_failures.py` を作成。`--log`（Markdown ログ）、`--matrix`（CSV）、`--include-status`（既定: `pending`）、`--apply`（dry-run 切り替え）を引数に取り、`python3 scripts/triage_spec_core_failures.py --suite spec_core --log reports/spec-audit/ch5/logs/spec_core-20251208T173235Z.md --apply` で Phase4 backlog をまとめて triage できるようにした。
 - 自動判定の基準を以下に整理し、`resolution` を `example_fix` / `impl_fix` / `spec_fix` のいずれかに決定するロジックを実装。判定理由は `resolution_notes` に `{日付} triage_spec_core_failures.py (...) で {resolution} 判定: {理由} / log=... / CLI="..." / 期待=... / 実際=...` の形式で残し、CLI コマンドやログパスの追跡ができるようにした。
   1. `example_fix`: `diagnostic_keys` が非空であるにもかかわらず CLI 出力の Diagnostics が 0 件（例: `CH1-ATTR-102` や `CH1-INF-602`）。`.reml` や `expected/` の修正が必要なケースを示す。
   2. `impl_fix`: `diagnostic_keys = []` のシナリオで Diagnostics や JSON 解析エラーが発生した場合、または exit code が非 0（例: `CH1-FN-101`, `CH1-CONTROL_FLOW-*`, `CH1-LAMBDA-*`）。Rust Frontend/Runtime の回収対象として扱う。
   3. `spec_fix`: 両者で Diagnostics が出力されているがコード集合が異なる場合（例: `CH1-EFF-701`, `CH1-LET-004`, `CH1-MATCH-004`）。仕様書または `diagnostic_keys` の定義自体を再検討する。
-- 上記スクリプトにより `resolution=pending` だった 26 シナリオ（`CH1-MOD-004`, `CH1-ATTR-101/102`, `CH1-FN-101`, `CH1-TYPE-201/202/203`, `CH1-INF-601/602`, `CH1-EFF-701`, `CH1-LET-004`, `CH1-MATCH-004`, `CH1-BLOCK-001`, `CH1` control_flow 系 10 件, `CH1-LIT-202`, `CH1-FN-103`, `CH1-LAMBDA-101/102`, `CH2-OP-401` 等）を `example_fix`・`impl_fix`・`spec_fix` に分類し、ログパス・CLI コマンド・期待/実測 Diagnsotics を `resolution_notes` に追記済み。`reports/spec-audit/ch4/README.md` に triage の使い方を追記し、Phase4 KPI レビューで再現コマンドと根拠を即参照できる状態を確保した。
+- 上記スクリプトにより `resolution=pending` だった 26 シナリオ（`CH1-MOD-004`, `CH1-ATTR-101/102`, `CH1-FN-101`, `CH1-TYPE-201/202/203`, `CH1-INF-601/602`, `CH1-EFF-701`, `CH1-LET-004`, `CH1-MATCH-004`, `CH1-BLOCK-001`, `CH1` control_flow 系 10 件, `CH1-LIT-202`, `CH1-FN-103`, `CH1-LAMBDA-101/102`, `CH2-OP-401` 等）を `example_fix`・`impl_fix`・`spec_fix` に分類し、ログパス・CLI コマンド・期待/実測 Diagnsotics を `resolution_notes` に追記済み。`reports/spec-audit/ch5/README.md` に triage の使い方を追記し、Phase4 KPI レビューで再現コマンドと根拠を即参照できる状態を確保した。
 
 #### ✅ 6.1 週 実施ログ（Example/Spec Fix フロー）
 
@@ -301,7 +301,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 - ルートモジュールで `super` を参照した `use` が無視されていた回帰に対し、Parser 側で `collect_use_diagnostics` を追加し、モジュールヘッダがルートを指す場合に `language.use.invalid_super` を発火させるよう実装。`compiler/rust/frontend/src/parser/mod.rs` では `UseTree` を走査し、`RelativeHead::Super` が含まれる場合に致命診断を生成する。
 - `compiler/rust/frontend/tests/spec_core/mod.rs::ch1_mod_004_reports_invalid_super_use` を新設し、`ParseDriver` 経由で `language.use.invalid_super` が常に出力されることを固定。`docs/spec/1-1-syntax.md §B.1` に「ルートモジュールでは `super` を利用できない」旨を追記し、仕様との整合を明文化した。
-- `phase4-scenario-matrix.csv` の `CH1-MOD-003/004` を `resolution=ok` へ更新し、`resolution_notes` に 2025-12-09 の CLI コマンドとログパス（`reports/spec-audit/ch4/logs/spec_core-20251209T093700Z.md`）を記録。`reports/spec-audit/ch4/spec-core-dashboard.md` と PhaseF トラッカーも同期し、`module_use` ディレクトリの 2 ケースが `[x]` になった。
+- `phase4-scenario-matrix.csv` の `CH1-MOD-003/004` を `resolution=ok` へ更新し、`resolution_notes` に 2025-12-09 の CLI コマンドとログパス（`reports/spec-audit/ch5/logs/spec_core-20251209T093700Z.md`）を記録。`reports/spec-audit/ch5/spec-core-dashboard.md` と PhaseF トラッカーも同期し、`module_use` ディレクトリの 2 ケースが `[x]` になった。
 
 #### ✅ 6.3 週 実施ログ（MatchExpr サンプル拡充）
 
@@ -316,7 +316,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 ### フェーズF: 全 `.reml` 逐次実行・完全是正（新規）
 
-`examples/` 配下にあるすべての `.reml` を 1 ファイルずつ愚直に実行し、期待した成功/失敗へ確実に到達させるフェーズ。効率よりも完遂を優先し、実行ログと仕様照合結果を `phase4-scenario-matrix.csv`・`reports/spec-audit/ch4/*.md`・`docs/notes/process/examples-regression-log.md` に逐次反映する。
+`examples/` 配下にあるすべての `.reml` を 1 ファイルずつ愚直に実行し、期待した成功/失敗へ確実に到達させるフェーズ。効率よりも完遂を優先し、実行ログと仕様照合結果を `phase4-scenario-matrix.csv`・`reports/spec-audit/ch5/*.md`・`docs/notes/process/examples-regression-log.md` に逐次反映する。
 
 #### フェーズF 実施手順
 
@@ -327,7 +327,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 2. **practical → core_* → そのほかの順で拡大**  
    - spec_core の全チェック完了後に `examples/practical/**`、続いて `examples/core_*`、`examples/cli`、`examples/ffi`、`examples/language-impl-comparison` を順番に処理する。  
-   - `phase4-scenario-matrix.csv` 未登録のファイルは `reports/spec-audit/ch4/logs/` の ID と対応づけた新規シナリオ（例: `GENERIC-LANG-001`）を追加し、`resolution=manual_review` で進捗管理を開始。
+   - `phase4-scenario-matrix.csv` 未登録のファイルは `reports/spec-audit/ch5/logs/` の ID と対応づけた新規シナリオ（例: `GENERIC-LANG-001`）を追加し、`resolution=manual_review` で進捗管理を開始。
 
 3. **失敗時の triage**  
    - `.reml` 実行結果が想定どおりかをまず確認し、期待と異なる場合は該当ファイルのコードを仕様書と照合して誤りがないか調査する。  
@@ -338,7 +338,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 4. **再実行と KPI 反映**  
    - 修正後は必ず同じ CLI コマンドで再実行し、期待結果を確認のうえチェックボックスを `[x]` 化する。  
-   - `reports/spec-audit/ch4/spec-core-dashboard.md` と `practical-suite-index.md` の KPI を更新し、`phase4-scenario-matrix.csv` の `resolution_notes` に参照ログ/コマンドを残す。
+   - `reports/spec-audit/ch5/spec-core-dashboard.md` と `practical-suite-index.md` の KPI を更新し、`phase4-scenario-matrix.csv` の `resolution_notes` に参照ログ/コマンドを残す。
 
 ### フェーズF 補足（runtime 実行フェーズの有効化条件）
 
@@ -362,7 +362,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
   - コード問題 → Example Fix として `.reml` / `expected` / `README` を更新。  
   - 実装問題 → Compiler Fix（Parser/Typeck/Runtime/FFI）として Phase A〜E の担当ラインへ逆流。  
   - 仕様不足 → Spec Fix で `docs/spec/` への追記を実施。  
-- **ログ記録**: すべての判断は `resolution_notes` と `reports/spec-audit/ch4/logs/` に CLI コマンド付きで記録する。効率化のためのバッチ実行は禁止し、逐次ログを取る。
+- **ログ記録**: すべての判断は `resolution_notes` と `reports/spec-audit/ch5/logs/` に CLI コマンド付きで記録する。効率化のためのバッチ実行は禁止し、逐次ログを取る。
 
 #### 補足: Cargo ワークスペース衝突時の対処
 
@@ -379,13 +379,13 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 > `[ ]` を `[x]` に変更することで達成状況を可視化する。`期待` は成功/失敗/TBD の初期想定であり、実施後は `phase4-scenario-matrix.csv` と同期する。
 
 **examples/spec_core/chapter1/type_inference**
-- [x] `examples/spec_core/chapter1/type_inference/bnf-inference-let-generalization-ok.reml`（期待: 成功 → 2025-12-09 CLI で診断 0 / `reports/spec-audit/ch4/logs/spec_core-20251209T002127Z.md` を参照）
-- [x] `examples/spec_core/chapter1/type_inference/bnf-inference-value-restriction-error.reml`（期待: 失敗診断 → 2025-12-09 CLI で `language.inference.value_restriction` を再取得 / `reports/spec-audit/ch4/logs/spec_core-20251209T003146Z.md` を参照）
+- [x] `examples/spec_core/chapter1/type_inference/bnf-inference-let-generalization-ok.reml`（期待: 成功 → 2025-12-09 CLI で診断 0 / `reports/spec-audit/ch5/logs/spec_core-20251209T002127Z.md` を参照）
+- [x] `examples/spec_core/chapter1/type_inference/bnf-inference-value-restriction-error.reml`（期待: 失敗診断 → 2025-12-09 CLI で `language.inference.value_restriction` を再取得 / `reports/spec-audit/ch5/logs/spec_core-20251209T003146Z.md` を参照）
 
 **examples/spec_core/chapter1/fn_decl**
-- [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-generic-default-effect-ok.reml`（期待: 成功 → 2025-12-09 CLI で診断 0 / log=reports/spec-audit/ch4/logs/spec_core-20251209T005935Z.md）
-- [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml`（期待: `language.inference.return_conflict` → `E7006` → 2026-02-18 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml` で診断順序を確認 / log=reports/spec-audit/ch4/logs/spec_core-20260218T041200Z.md / `cargo test --manifest-path compiler/rust/frontend/Cargo.toml --test spec_core ch1_fn_103_reports_return_mismatch_before_condition_error` でも順序を保証）
-- [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-no-args-ok.reml`（期待: 成功 → 2025-12-09 CLI で診断 0 / log=reports/spec-audit/ch4/logs/spec_core-20251209T005935Z.md）
+- [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-generic-default-effect-ok.reml`（期待: 成功 → 2025-12-09 CLI で診断 0 / log=reports/spec-audit/ch5/logs/spec_core-20251209T005935Z.md）
+- [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml`（期待: `language.inference.return_conflict` → `E7006` → 2026-02-18 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/fn_decl/bnf-fndecl-return-inference-error.reml` で診断順序を確認 / log=reports/spec-audit/ch5/logs/spec_core-20260218T041200Z.md / `cargo test --manifest-path compiler/rust/frontend/Cargo.toml --test spec_core ch1_fn_103_reports_return_mismatch_before_condition_error` でも順序を保証）
+- [x] `examples/spec_core/chapter1/fn_decl/bnf-fndecl-no-args-ok.reml`（期待: 成功 → 2025-12-09 CLI で診断 0 / log=reports/spec-audit/ch5/logs/spec_core-20251209T005935Z.md）
 
 **examples/spec_core/chapter1/effect_handlers**
 - [x] `examples/spec_core/chapter1/effect_handlers/bnf-handleexpr-perform-counter.reml`（期待: 成功）
@@ -396,21 +396,21 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/attributes/bnf-attr-cfg-let-gate-ok.reml`（期待: 成功）
 
 **examples/spec_core/chapter1/module_use**
-- [x] `examples/spec_core/chapter1/module_use/bnf-usedecl-super-root-invalid.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/module_use/bnf-usedecl-super-root-invalid.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T093700Z.md で `language.use.invalid_super` を確認）
-- [x] `examples/spec_core/chapter1/module_use/bnf-compilationunit-module-use-alias-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/module_use/bnf-compilationunit-module-use-alias-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T093700Z.md で診断 0 を確認）
+- [x] `examples/spec_core/chapter1/module_use/bnf-usedecl-super-root-invalid.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/module_use/bnf-usedecl-super-root-invalid.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251209T093700Z.md で `language.use.invalid_super` を確認）
+- [x] `examples/spec_core/chapter1/module_use/bnf-compilationunit-module-use-alias-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/module_use/bnf-compilationunit-module-use-alias-ok.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251209T093700Z.md で診断 0 を確認）
 
 **examples/spec_core/chapter1/lambda**
-- [x] `examples/spec_core/chapter1/lambda/bnf-lambda-arg-pattern.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/lambda/bnf-lambda-arg-pattern.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T123501Z.md）
-- [x] `examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T123501Z.md）
+- [x] `examples/spec_core/chapter1/lambda/bnf-lambda-arg-pattern.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/lambda/bnf-lambda-arg-pattern.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251209T123501Z.md）
+- [x] `examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/lambda/bnf-lambda-closure-capture-ok.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251209T123501Z.md）
 
 **examples/spec_core/chapter1/trait_impl**
-- [x] `examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T130043Z.md で `typeclass.impl.duplicate` のみ出力されることを再確認）
+- [x] `examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251209T130043Z.md で `typeclass.impl.duplicate` のみ出力されることを再確認）
 - [x] `examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/trait_impl/bnf-traitdecl-default-where-ok.reml` / 同ログで診断 0 件を確認）
 
 **examples/spec_core/chapter1/type_decl**
-- [x] `examples/spec_core/chapter1/type_decl/bnf-typedecl-alias-generic-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/type_decl/bnf-typedecl-alias-generic-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T145714Z.md で diagnostics=[] を確認）
-- [x] `examples/spec_core/chapter1/type_decl/bnf-typedecl-new-struct-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/type_decl/bnf-typedecl-new-struct-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T145714Z.md で diagnostics=[] を確認）
-- [x] `examples/spec_core/chapter1/type_decl/bnf-typedef-sum-recordpattern-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/type_decl/bnf-typedef-sum-recordpattern-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T145714Z.md で diagnostics=[] を確認）
+- [x] `examples/spec_core/chapter1/type_decl/bnf-typedecl-alias-generic-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/type_decl/bnf-typedecl-alias-generic-ok.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251209T145714Z.md で diagnostics=[] を確認）
+- [x] `examples/spec_core/chapter1/type_decl/bnf-typedecl-new-struct-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/type_decl/bnf-typedecl-new-struct-ok.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251209T145714Z.md で diagnostics=[] を確認）
+- [x] `examples/spec_core/chapter1/type_decl/bnf-typedef-sum-recordpattern-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/type_decl/bnf-typedef-sum-recordpattern-ok.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251209T145714Z.md で diagnostics=[] を確認）
 
 **examples/spec_core/chapter1/let_binding**
 - [x] `examples/spec_core/chapter1/let_binding/bnf-valdecl-let-pattern-tuple.reml`（期待: 成功 → 2026-02-18 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/let_binding/bnf-valdecl-let-pattern-tuple.reml` / diagnostics=[]）
@@ -419,89 +419,89 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter1/let_binding/bnf-valdecl-missing-initializer-error.reml`（期待: 失敗診断 → 2026-02-18 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/let_binding/bnf-valdecl-missing-initializer-error.reml` / diagnostics=`parser.syntax.expected_tokens`）
 
 **examples/spec_core/chapter1/control_flow**
-- [x] `examples/spec_core/chapter1/control_flow/bnf-ifexpr-missing-else-type-mismatch.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-ifexpr-missing-else-type-mismatch.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T220319Z.md で `parser.syntax.expected_tokens` のみを出力）
+- [x] `examples/spec_core/chapter1/control_flow/bnf-ifexpr-missing-else-type-mismatch.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-ifexpr-missing-else-type-mismatch.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251209T220319Z.md で `parser.syntax.expected_tokens` のみを出力）
 - [x] `examples/spec_core/chapter1/control_flow/bnf-ifexpr-blocks-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-ifexpr-blocks-ok.reml` / 同上 log で diagnostics=[] を確認）
-- [x] `examples/spec_core/chapter1/control_flow/bnf-loopexpr-break-value-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-loopexpr-break-value-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T220319Z.md。`var counter` へ型注釈を追加し、`else` で `continue` を返すようサンプルを是正して値制限/分岐型の衝突を回避）
+- [x] `examples/spec_core/chapter1/control_flow/bnf-loopexpr-break-value-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-loopexpr-break-value-ok.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251209T220319Z.md。`var counter` へ型注釈を追加し、`else` で `continue` を返すようサンプルを是正して値制限/分岐型の衝突を回避）
 - [x] `examples/spec_core/chapter1/control_flow/bnf-whileexpr-condition-type-error.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-whileexpr-condition-type-error.reml` / 同 log で `parser.lexer.unknown_token`×4 + `parser.syntax.expected_tokens` を確認）
-- [x] `examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-pattern-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-pattern-ok.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251209T220319Z.md。`var acc: Int` に注釈を付け Strict value restriction を回避）
+- [x] `examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-pattern-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-pattern-ok.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251209T220319Z.md。`var acc: Int` に注釈を付け Strict value restriction を回避）
 - [x] `examples/spec_core/chapter1/control_flow/bnf-loopexpr-unreachable-code.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-loopexpr-unreachable-code.reml` / 同 log で `language.control_flow.unreachable` が 2 箇所報告されることを確認）
 - [x] `examples/spec_core/chapter1/control_flow/bnf-whileexpr-condition-bool-ok.reml`（期待: 成功 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-whileexpr-condition-bool-ok.reml` / 同 log で diagnostics=[]。`var current: Int` へ明示型を追加）
 - [x] `examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-invalid-type.reml`（期待: 失敗診断 → 2025-12-09 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/control_flow/bnf-forexpr-iterator-invalid-type.reml` / 同 log で `language.iterator.expected` を確認）
 
 **examples/spec_core/chapter1/literals**
-- [x] `examples/spec_core/chapter1/literals/bnf-literal-int-boundary-max.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/literals/bnf-literal-int-boundary-max.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251210T065012Z.md / diagnostics=[] / stdout=expected/spec_core/chapter1/literals/bnf-literal-int-boundary-max.stdout）
-- [x] `examples/spec_core/chapter1/literals/bnf-literal-float-forms.reml`（期待: 成功 → 2025-12-10 parser/mod.rs に FloatLiteral / Expr::float を復元し tests/spec_core::ch1_lit_202_parses_float_literal_forms を追加。CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/literals/bnf-literal-float-forms.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251210T065012Z.md / diagnostics=[] / stdout=expected/spec_core/chapter1/literals/bnf-literal-float-forms.stdout）
-- [x] `examples/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251210T065012Z.md / diagnostics=[] / stdout=expected/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.stdout）
+- [x] `examples/spec_core/chapter1/literals/bnf-literal-int-boundary-max.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/literals/bnf-literal-int-boundary-max.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251210T065012Z.md / diagnostics=[] / stdout=expected/spec_core/chapter1/literals/bnf-literal-int-boundary-max.stdout）
+- [x] `examples/spec_core/chapter1/literals/bnf-literal-float-forms.reml`（期待: 成功 → 2025-12-10 parser/mod.rs に FloatLiteral / Expr::float を復元し tests/spec_core::ch1_lit_202_parses_float_literal_forms を追加。CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/literals/bnf-literal-float-forms.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251210T065012Z.md / diagnostics=[] / stdout=expected/spec_core/chapter1/literals/bnf-literal-float-forms.stdout）
+- [x] `examples/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251210T065012Z.md / diagnostics=[] / stdout=expected/spec_core/chapter1/literals/bnf-literal-string-raw-multiline.stdout）
 
 **examples/spec_core/chapter1/match_expr**
-- [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml`（期待: 成功 → 2025-12-10 CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml` で診断 0 / log=reports/spec-audit/ch4/logs/spec_core-20251210T073321Z.md）
+- [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml`（期待: 成功 → 2025-12-10 CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-when-guard-ok.reml` で診断 0 / log=reports/spec-audit/ch5/logs/spec_core-20251210T073321Z.md）
 - [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-option-canonical.reml`（期待: 成功 → 2025-12-10 CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-option-canonical.reml` / diagnostics=[] / 同ログ参照）
-- [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-missing-arrow-error.reml`（期待: 失敗診断 → 2025-12-10 CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-missing-arrow-error.reml` / diagnostics=`parser.syntax.expected_tokens` のみ / log=reports/spec-audit/ch4/logs/spec_core-20251210T073321Z.md / expected diagnostic JSON を新規作成）
-- [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml`（期待: 成功 → 2025-12-10 Parser の PatternKind::Literal を match arm から参照できるよう拡張し `tests/spec_core::ch1_match_002_accepts_tuple_literal_pattern` で回帰テスト化。CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml` / log=reports/spec-audit/ch4/logs/spec_core-20251210T073321Z.md）
+- [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-missing-arrow-error.reml`（期待: 失敗診断 → 2025-12-10 CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-missing-arrow-error.reml` / diagnostics=`parser.syntax.expected_tokens` のみ / log=reports/spec-audit/ch5/logs/spec_core-20251210T073321Z.md / expected diagnostic JSON を新規作成）
+- [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml`（期待: 成功 → 2025-12-10 Parser の PatternKind::Literal を match arm から参照できるよう拡張し `tests/spec_core::ch1_match_002_accepts_tuple_literal_pattern` で回帰テスト化。CLI= `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-tuple-alternate.reml` / log=reports/spec-audit/ch5/logs/spec_core-20251210T073321Z.md）
 - [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-alias-record-ok.reml`（期待: 成功 → 2025-12-12 CLI= `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-alias-record-ok.reml` / diagnostics=[] / stdout=`expected/spec_core/chapter1/match_expr/bnf-matchexpr-alias-record-ok.stdout`）
 - [x] `examples/spec_core/chapter1/match_expr/bnf-matchexpr-result-guard-else-ok.reml`（期待: 成功 → 2025-12-12 CLI= `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/match_expr/bnf-matchexpr-result-guard-else-ok.reml` / diagnostics=[] / stdout=`expected/spec_core/chapter1/match_expr/bnf-matchexpr-result-guard-else-ok.stdout`）
 
 **examples/spec_core/chapter1/effects・conductor・block**
-- [x] `examples/spec_core/chapter1/effects/bnf-attr-pure-perform-error.reml`（期待: 失敗診断 → CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/effects/bnf-attr-pure-perform-error.reml` / log=`reports/spec-audit/ch4/logs/spec_core-20251210T075036Z.md` / `effects.purity.violated`, `effects.contract.stage_mismatch` の 2 診断を再取得。`compiler/rust/frontend/src/typeck/capability.rs` で `Console.*` を Capability Registry に再登録し Stage mismatch を復元。)
-- [x] `examples/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.reml`（期待: 成功 → CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.reml` / log=`reports/spec-audit/ch4/logs/spec_core-20251210T075036Z.md` / diagnostics=[] / stdout=`expected/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.stdout` で確認。)
-- [x] `examples/spec_core/chapter1/block/bnf-block-unclosed-brace-error.reml`（期待: 失敗診断 → CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/block/bnf-block-unclosed-brace-error.reml` / log=`reports/spec-audit/ch4/logs/spec_core-20251210T075036Z.md` / diagnostics=`parser.syntax.expected_tokens` / `expected/spec_core/chapter1/block/bnf-block-unclosed-brace-error.diagnostic.json` を新規作成。)
+- [x] `examples/spec_core/chapter1/effects/bnf-attr-pure-perform-error.reml`（期待: 失敗診断 → CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/effects/bnf-attr-pure-perform-error.reml` / log=`reports/spec-audit/ch5/logs/spec_core-20251210T075036Z.md` / `effects.purity.violated`, `effects.contract.stage_mismatch` の 2 診断を再取得。`compiler/rust/frontend/src/typeck/capability.rs` で `Console.*` を Capability Registry に再登録し Stage mismatch を復元。)
+- [x] `examples/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.reml`（期待: 成功 → CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.reml` / log=`reports/spec-audit/ch5/logs/spec_core-20251210T075036Z.md` / diagnostics=[] / stdout=`expected/spec_core/chapter1/conductor/bnf-conductor-basic-pipeline-ok.stdout` で確認。)
+- [x] `examples/spec_core/chapter1/block/bnf-block-unclosed-brace-error.reml`（期待: 失敗診断 → CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter1/block/bnf-block-unclosed-brace-error.reml` / log=`reports/spec-audit/ch5/logs/spec_core-20251210T075036Z.md` / diagnostics=`parser.syntax.expected_tokens` / `expected/spec_core/chapter1/block/bnf-block-unclosed-brace-error.diagnostic.json` を新規作成。)
 
 **examples/spec_core/chapter2**
-- [x] `examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml` で diagnostics=[] / stdout=`expected/spec_core/chapter2/parser_core/core-parse-or-commit-ok.stdout` / log=reports/spec-audit/ch4/logs/spec_core-20251210T081000Z.md）
+- [x] `examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-or-commit-ok.reml` で diagnostics=[] / stdout=`expected/spec_core/chapter2/parser_core/core-parse-or-commit-ok.stdout` / log=reports/spec-audit/ch5/logs/spec_core-20251210T081000Z.md）
 - [x] `examples/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.reml`（期待: 失敗診断 → 2025-12-17 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.reml` で `parser.syntax.expected_tokens` を再取得 / expected=`expected/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.diagnostic.json`。比較対象（Cut 無し相当）=`examples/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead-no-cut.reml` / expected=`expected/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead-no-cut.diagnostic.json`）
 - [x] `examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren.reml`（期待: 失敗診断 → 2025-12-17 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren.reml` で `parser.syntax.expected_tokens` を再取得 / expected=`expected/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren.diagnostic.json`。比較対象（Cut 無し相当）=`examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren-no-cut.reml` / expected=`expected/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren-no-cut.diagnostic.json`）
-- [x] `examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml`（期待: 失敗診断 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml` で `core.parse.recover.branch` の単一診断を再取得 / log=reports/spec-audit/ch4/logs/spec_core-20251210T081000Z.md）
-- [x] `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`（期待: 失敗診断 → DSL 復元後の 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml` で `core.parse.opbuilder.level_conflict` を取得。最新の再実行: CLI=同左 / diagnostics=`core.parse.opbuilder.level_conflict` / log=reports/spec-audit/ch4/logs/spec_core-20251210T130034Z.md。仕様/実装整合は `docs/notes/dsl/opbuilder-dsl-decisions.md` に記録済み）
+- [x] `examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml`（期待: 失敗診断 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml` で `core.parse.recover.branch` の単一診断を再取得 / log=reports/spec-audit/ch5/logs/spec_core-20251210T081000Z.md）
+- [x] `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`（期待: 失敗診断 → DSL 復元後の 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml` で `core.parse.opbuilder.level_conflict` を取得。最新の再実行: CLI=同左 / diagnostics=`core.parse.opbuilder.level_conflict` / log=reports/spec-audit/ch5/logs/spec_core-20251210T130034Z.md。仕様/実装整合は `docs/notes/dsl/opbuilder-dsl-decisions.md` に記録済み）
 - [x] `examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml` で diagnostics=[] / stdout=`expected/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.stdout` / 同ログ参照）
 - [ ] `CH2-PARSE-901` autoWhitespace/Layout 回帰: `examples/spec_core/chapter2/parser_core/core-parse-autowhitespace-layout.reml` と stdout ゴールデンを追加（RunConfig.lex に layout_profile が無い場合も cfg.profile へフォールバックする構成）。PhaseF で CLI/LSP/Streaming を実行し、layout_token が期待どおり扱われるか確認する。
 - [ ] `CH2-PARSE-902` ParserProfile JSON: `examples/spec_core/chapter2/parser_core/core-parse-profile-output.reml` を追加し、`extensions["parse"].profile_output` で `expected/spec_core/chapter2/parser_core/core-parse-or-commit.profile.json` を best-effort 出力する経路を用意。PhaseF で CLI 実行し、profile 集計・書き出し失敗非影響を確認する。
 
 **examples/practical**
-- [x] `examples/practical/core_path/security_check/relative_denied.reml`（期待: 診断あり → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_path/security_check/relative_denied.reml` / log=`reports/spec-audit/ch4/logs/practical-20251210T205757Z.md` / diagnostics=`core.path.security.invalid`（reason=relative_path_denied、run_id=59e7be86-650c-406e-b865-a9a0a625c767））
-- [x] `examples/practical/core_config/audit_bridge/audit_bridge.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_config/audit_bridge/audit_bridge.reml` / log=`reports/spec-audit/ch4/logs/practical-20251211T013915Z.md` / diagnostics=[] / run_id=3febd846-c037-4a6b-ab44-6c98fdc5742e）
-- [x] `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`（期待: 失敗診断 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml` / log=`reports/spec-audit/ch4/logs/practical-20251211T014101Z.md` / diagnostics=`runtime.bridge.stage_mismatch` / run_id=d91aebaa-d239-4443-adcd-01249a5aa85a）
+- [x] `examples/practical/core_path/security_check/relative_denied.reml`（期待: 診断あり → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_path/security_check/relative_denied.reml` / log=`reports/spec-audit/ch5/logs/practical-20251210T205757Z.md` / diagnostics=`core.path.security.invalid`（reason=relative_path_denied、run_id=59e7be86-650c-406e-b865-a9a0a625c767））
+- [x] `examples/practical/core_config/audit_bridge/audit_bridge.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_config/audit_bridge/audit_bridge.reml` / log=`reports/spec-audit/ch5/logs/practical-20251211T013915Z.md` / diagnostics=[] / run_id=3febd846-c037-4a6b-ab44-6c98fdc5742e）
+- [x] `examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml`（期待: 失敗診断 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_runtime/capability/stage_mismatch_runtime_bridge.reml` / log=`reports/spec-audit/ch5/logs/practical-20251211T014101Z.md` / diagnostics=`runtime.bridge.stage_mismatch` / run_id=d91aebaa-d239-4443-adcd-01249a5aa85a）
 - [x] `examples/practical/core_io/file_copy/canonical.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_io/file_copy/canonical.reml` / diagnostics=[] / run_id=a1d9dcac-0505-4981-b5c8-5fe996ff28dd。Parser を更新しブロック内セミコロン任意化とレコードリテラルの `:` / `=` / フィールド省略（punning）を許容）
-- [x] `examples/practical/core_text/unicode/grapheme_boundary_edge.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_text/unicode/grapheme_boundary_edge.reml` / diagnostics=`[]` / log=reports/spec-audit/ch4/logs/practical-20251211T082727Z.md / `Text.slice_graphemes` を使うため `core.text.unicode.segment_mismatch` 期待を外し成功ケースとして固定）
-- [x] `examples/practical/core_text/unicode/grapheme_nfc_mix.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_text/unicode/grapheme_nfc_mix.reml` / diagnostics=[] / stdout golden=`expected/practical/core_text/unicode/grapheme_nfc_mix.stdout`（graphemes=2、runtime_phase=none） / log=reports/spec-audit/ch4/logs/practical-20251211T083527Z.md / run_id=250a3b7c-b790-422f-9b30-e654d2343265）
-- [x] `examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml` / diagnostics=[] / run_id=ae1f942b-b243-4653-936a-1cd1bb803300 / log=`reports/spec-audit/ch4/logs/practical-20251211T085850Z.md` / audit_log=`reports/spec-audit/ch4/logs/practical-20251211T085850Z.audit.jsonl` は pipeline_started/completed に `scenario.id` と `effect.stage.required/actual` を付与。`expected/practical/core_diagnostics/audit_envelope/stage_tag_capture.audit.jsonl` の schema 整備は継続検討）
-- [x] `examples/practical/core_env/envcfg/env_merge_by_profile.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_env/envcfg/env_merge_by_profile.reml` / diagnostics=[] / log=reports/spec-audit/ch4/logs/practical-20251211T091650Z.md / run_id=2f9ecb5d-3d75-4ba4-92f2-7233b6b00b5b / expected stdout=`expected/practical/core_env/envcfg/env_merge_by_profile.stdout`（`https://cli.local`）を前提に成功扱い）
-- [x] `examples/practical/core_async/basic_sleep.reml`（期待: 成功 → 2025-12-21 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_async/basic_sleep.reml` / diagnostics=[] / log=reports/spec-audit/ch4/logs/practical-20251221T004726Z.md / run_id=d232170c-b798-4713-b1a8-ab4d7fea04d3 / expected stdout=`expected/practical/core_async/basic_sleep.stdout`）
-- [x] `examples/practical/core_async/timeout_basic.reml`（期待: 成功 → 2025-12-21 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_async/timeout_basic.reml` / diagnostics=[] / log=reports/spec-audit/ch4/logs/practical-20251221T005126Z.md / run_id=60b82bd9-f460-4ea1-9695-50a64a4f1608 / expected stdout=`expected/practical/core_async/timeout_basic.stdout`）
+- [x] `examples/practical/core_text/unicode/grapheme_boundary_edge.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_text/unicode/grapheme_boundary_edge.reml` / diagnostics=`[]` / log=reports/spec-audit/ch5/logs/practical-20251211T082727Z.md / `Text.slice_graphemes` を使うため `core.text.unicode.segment_mismatch` 期待を外し成功ケースとして固定）
+- [x] `examples/practical/core_text/unicode/grapheme_nfc_mix.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_text/unicode/grapheme_nfc_mix.reml` / diagnostics=[] / stdout golden=`expected/practical/core_text/unicode/grapheme_nfc_mix.stdout`（graphemes=2、runtime_phase=none） / log=reports/spec-audit/ch5/logs/practical-20251211T083527Z.md / run_id=250a3b7c-b790-422f-9b30-e654d2343265）
+- [x] `examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml` / diagnostics=[] / run_id=ae1f942b-b243-4653-936a-1cd1bb803300 / log=`reports/spec-audit/ch5/logs/practical-20251211T085850Z.md` / audit_log=`reports/spec-audit/ch5/logs/practical-20251211T085850Z.audit.jsonl` は pipeline_started/completed に `scenario.id` と `effect.stage.required/actual` を付与。`expected/practical/core_diagnostics/audit_envelope/stage_tag_capture.audit.jsonl` の schema 整備は継続検討）
+- [x] `examples/practical/core_env/envcfg/env_merge_by_profile.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_env/envcfg/env_merge_by_profile.reml` / diagnostics=[] / log=reports/spec-audit/ch5/logs/practical-20251211T091650Z.md / run_id=2f9ecb5d-3d75-4ba4-92f2-7233b6b00b5b / expected stdout=`expected/practical/core_env/envcfg/env_merge_by_profile.stdout`（`https://cli.local`）を前提に成功扱い）
+- [x] `examples/practical/core_async/basic_sleep.reml`（期待: 成功 → 2025-12-21 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_async/basic_sleep.reml` / diagnostics=[] / log=reports/spec-audit/ch5/logs/practical-20251221T004726Z.md / run_id=d232170c-b798-4713-b1a8-ab4d7fea04d3 / expected stdout=`expected/practical/core_async/basic_sleep.stdout`）
+- [x] `examples/practical/core_async/timeout_basic.reml`（期待: 成功 → 2025-12-21 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/practical/core_async/timeout_basic.reml` / diagnostics=[] / log=reports/spec-audit/ch5/logs/practical-20251221T005126Z.md / run_id=60b82bd9-f460-4ea1-9695-50a64a4f1608 / expected stdout=`expected/practical/core_async/timeout_basic.stdout`）
 
 **examples/dsl_paradigm**
-- [x] `examples/dsl_paradigm/mini_ruby/mini_ruby_basic.reml`（期待: 成功 → 2025-12-22 CLI=`compiler/rust/frontend/target/debug/reml_frontend --output json examples/dsl_paradigm/mini_ruby/mini_ruby_basic.reml` / diagnostics=[] / log=reports/spec-audit/ch4/logs/dsl-paradigm-mini_ruby-20251222T010238Z.md / run_id=1ac49955-f6c4-4699-b53f-6775b60771f2）
-- [x] `examples/dsl_paradigm/mini_erlang/mini_erlang_basic.reml`（期待: 成功 → 2025-12-22 CLI=`compiler/rust/frontend/target/debug/reml_frontend --output json examples/dsl_paradigm/mini_erlang/mini_erlang_basic.reml` / diagnostics=[] / log=reports/spec-audit/ch4/logs/dsl-paradigm-mini_erlang-20251222T010311Z.md / run_id=49445f7d-0136-4076-b1aa-febab11e9243）
-- [x] `examples/dsl_paradigm/mini_vm/mini_vm_basic.reml`（期待: 成功 → 2025-12-22 CLI=`compiler/rust/frontend/target/debug/reml_frontend --output json examples/dsl_paradigm/mini_vm/mini_vm_basic.reml` / diagnostics=[] / log=reports/spec-audit/ch4/logs/dsl-paradigm-mini_vm-20251222T010257Z.md / run_id=e9e5b2f7-0255-4c3e-aec9-546ae94d597a）
+- [x] `examples/dsl_paradigm/mini_ruby/mini_ruby_basic.reml`（期待: 成功 → 2025-12-22 CLI=`compiler/rust/frontend/target/debug/reml_frontend --output json examples/dsl_paradigm/mini_ruby/mini_ruby_basic.reml` / diagnostics=[] / log=reports/spec-audit/ch5/logs/dsl-paradigm-mini_ruby-20251222T010238Z.md / run_id=1ac49955-f6c4-4699-b53f-6775b60771f2）
+- [x] `examples/dsl_paradigm/mini_erlang/mini_erlang_basic.reml`（期待: 成功 → 2025-12-22 CLI=`compiler/rust/frontend/target/debug/reml_frontend --output json examples/dsl_paradigm/mini_erlang/mini_erlang_basic.reml` / diagnostics=[] / log=reports/spec-audit/ch5/logs/dsl-paradigm-mini_erlang-20251222T010311Z.md / run_id=49445f7d-0136-4076-b1aa-febab11e9243）
+- [x] `examples/dsl_paradigm/mini_vm/mini_vm_basic.reml`（期待: 成功 → 2025-12-22 CLI=`compiler/rust/frontend/target/debug/reml_frontend --output json examples/dsl_paradigm/mini_vm/mini_vm_basic.reml` / diagnostics=[] / log=reports/spec-audit/ch5/logs/dsl-paradigm-mini_vm-20251222T010257Z.md / run_id=e9e5b2f7-0255-4c3e-aec9-546ae94d597a）
 
 #### 監査ログ検証メモ（PhaseF 補足）
 
 - 監査出力を確認したい場合は `--emit-audit` を付けて CLI を再実行する。例:  
-  `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --emit-audit --output json examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml 2> reports/spec-audit/ch4/logs/practical-<ts>.audit.jsonl`
+  `cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --emit-audit --output json examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml 2> reports/spec-audit/ch5/logs/practical-<ts>.audit.jsonl`
 - `AuditEnvelope.metadata` に最低限含まれるべきキー  
   - `scenario.id`（`pipeline.dsl_id` を反映）  
   - `effect.capability` / `effect.stage.required` / `effect.stage.actual`（StageAuditPayload から転写。primary_capability が無い場合でも `core.diagnostics` で補完）  
   - `pipeline.*` / `cli.*` / `audit.*`（既定のパイプライン識別子一式）
 - expected ファイルとの比較手順  
   1. `expected/practical/core_diagnostics/audit_envelope/stage_tag_capture.audit.jsonl` を開き、上記キーが揃っているか確認する。  
-  2. `reports/spec-audit/ch4/logs/practical-<ts>.audit.jsonl` の `pipeline_started` / `pipeline_completed` を diff し、`scenario.id` と `effect.stage.*` が一致していれば pass。  
+  2. `reports/spec-audit/ch5/logs/practical-<ts>.audit.jsonl` の `pipeline_started` / `pipeline_completed` を diff し、`scenario.id` と `effect.stage.*` が一致していれば pass。  
   3. キー欠落や Stage 値の不一致を見つけた場合は、`StageAuditPayload` / `pipeline::base_metadata` の補完ロジックを優先的に調査し、マトリクス `resolution_notes` に実行コマンドとログパスを記録する。
 
 **examples/core_path / core_config / cli / core_io / core-collections / string_literal**
-- [x] `examples/core_path/security_check.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_path/security_check.reml` / run_id=`a55948c8-3a09-4a0e-8e3d-ab91f0f9eb51` / log=reports/spec-audit/ch4/logs/core_path-20251211T092454Z.md。`struct` トップレベルを `type ... = new {...}` へ是正し、`map_err(...)?` で symlink チェックの回収経路を統一）
-- [x] `examples/core_config/cli/dsl/sample.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_config/cli/dsl/sample.reml` / diagnostics=[] / run_id=`d8ffcb77-98f3-4b89-b10a-7c4fad72727d` / log=reports/spec-audit/ch4/logs/core_config-20251211T093350Z.md。Effect 宣言に `operation` を追加し、`ensure` の遅延診断クロージャを `| |` 形式へ修正して BNF と整合）
-- [x] `examples/core_config/dsl/telemetry_bridge.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_config/dsl/telemetry_bridge.reml` / diagnostics=[] / run_id=`7f1bb8a3-f84a-43dc-99a7-97ca218ecf90` / log=reports/spec-audit/ch4/logs/core_config-20251211T093648Z.md。Telemetry DSL プレースホルダが Parser/Typeck を通過することを確認）
-- [x] `examples/core_config/dsl/audit_bridge.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_config/dsl/audit_bridge.reml` / diagnostics=[] / run_id=`52ff17ca-1aae-45ca-a3b7-1dc5d16d230c` / log=reports/spec-audit/ch4/logs/core_config-20251211T094146Z.md。`reml.toml` の DSL entry と Stage/Capability/Effect 宣言が一致することを確認）
-- [x] `examples/cli/type_error.reml`（期待: 失敗診断 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/cli/type_error.reml` / diagnostics=`[E7006]` / run_id=`94ac002b-45a7-41b9-b0d4-28b34e5ecd1b` / log=reports/spec-audit/ch4/logs/cli-20251211T094708Z.md。Bool 以外の条件を検出するサンプル）
-- [x] `examples/cli/emit_suite.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/cli/emit_suite.reml` / diagnostics=[] / run_id=`c063a9f9-37d0-4db2-8ed2-7f2eafd2d536` / log=reports/spec-audit/ch4/logs/cli-20251211T094708Z.md。`use Core.Prelude` 追加と `flag == true` 明示で Bool 判定を通過）
-- [x] `examples/cli/trace_sample.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/cli/trace_sample.reml` / diagnostics=[] / run_id=`416b5f64-6a4f-4bd5-b1e7-83c57cc40f51` / log=reports/spec-audit/ch4/logs/cli-20251211T094708Z.md。関数本体をブロック式に修正し `let` 連鎖を通過）
-- [x] `examples/cli/add.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/cli/add.reml` / diagnostics=[] / run_id=`dbf889a6-4841-4b58-a1b9-9f453143bd3a` / log=reports/spec-audit/ch4/logs/cli-20251211T094708Z.md。`main` をブロック式に揃えて Parser/Typeck 通過を確認）
-- [x] `examples/core-collections/usage.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core-collections/usage.reml` / diagnostics=[] / run_id=`341f9325-3490-43d5-bf70-40cf9303dad1` / log=reports/spec-audit/ch4/logs/core-examples-20251211T145428Z.md。`Map` 連鎖への置換とブロック式統一で Parser/Typeck を通過）
-- [x] `examples/string_literal.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/string_literal.reml` / diagnostics=[] / run_id=`60259b9b-98e0-4f5f-a687-3bb336c16481` / log=reports/spec-audit/ch4/logs/core-examples-20251211T145428Z.md。仕様どおりの単純文字列リテラルで回帰なしを確認）
-- [x] `examples/core_io/file_copy.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_io/file_copy.reml` / diagnostics=[] / run_id=`a1e8bcf6-2f9b-48a5-93db-0942866f339f` / log=reports/spec-audit/ch4/logs/core-examples-20251211T145428Z.md。`fn copy_file` をブロック式に変更し `CopyReport` フィールドを `=` 代入に統一して Parser エラーを解消）
+- [x] `examples/core_path/security_check.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_path/security_check.reml` / run_id=`a55948c8-3a09-4a0e-8e3d-ab91f0f9eb51` / log=reports/spec-audit/ch5/logs/core_path-20251211T092454Z.md。`struct` トップレベルを `type ... = new {...}` へ是正し、`map_err(...)?` で symlink チェックの回収経路を統一）
+- [x] `examples/core_config/cli/dsl/sample.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_config/cli/dsl/sample.reml` / diagnostics=[] / run_id=`d8ffcb77-98f3-4b89-b10a-7c4fad72727d` / log=reports/spec-audit/ch5/logs/core_config-20251211T093350Z.md。Effect 宣言に `operation` を追加し、`ensure` の遅延診断クロージャを `| |` 形式へ修正して BNF と整合）
+- [x] `examples/core_config/dsl/telemetry_bridge.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_config/dsl/telemetry_bridge.reml` / diagnostics=[] / run_id=`7f1bb8a3-f84a-43dc-99a7-97ca218ecf90` / log=reports/spec-audit/ch5/logs/core_config-20251211T093648Z.md。Telemetry DSL プレースホルダが Parser/Typeck を通過することを確認）
+- [x] `examples/core_config/dsl/audit_bridge.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_config/dsl/audit_bridge.reml` / diagnostics=[] / run_id=`52ff17ca-1aae-45ca-a3b7-1dc5d16d230c` / log=reports/spec-audit/ch5/logs/core_config-20251211T094146Z.md。`reml.toml` の DSL entry と Stage/Capability/Effect 宣言が一致することを確認）
+- [x] `examples/cli/type_error.reml`（期待: 失敗診断 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/cli/type_error.reml` / diagnostics=`[E7006]` / run_id=`94ac002b-45a7-41b9-b0d4-28b34e5ecd1b` / log=reports/spec-audit/ch5/logs/cli-20251211T094708Z.md。Bool 以外の条件を検出するサンプル）
+- [x] `examples/cli/emit_suite.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/cli/emit_suite.reml` / diagnostics=[] / run_id=`c063a9f9-37d0-4db2-8ed2-7f2eafd2d536` / log=reports/spec-audit/ch5/logs/cli-20251211T094708Z.md。`use Core.Prelude` 追加と `flag == true` 明示で Bool 判定を通過）
+- [x] `examples/cli/trace_sample.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/cli/trace_sample.reml` / diagnostics=[] / run_id=`416b5f64-6a4f-4bd5-b1e7-83c57cc40f51` / log=reports/spec-audit/ch5/logs/cli-20251211T094708Z.md。関数本体をブロック式に修正し `let` 連鎖を通過）
+- [x] `examples/cli/add.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/cli/add.reml` / diagnostics=[] / run_id=`dbf889a6-4841-4b58-a1b9-9f453143bd3a` / log=reports/spec-audit/ch5/logs/cli-20251211T094708Z.md。`main` をブロック式に揃えて Parser/Typeck 通過を確認）
+- [x] `examples/core-collections/usage.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core-collections/usage.reml` / diagnostics=[] / run_id=`341f9325-3490-43d5-bf70-40cf9303dad1` / log=reports/spec-audit/ch5/logs/core-examples-20251211T145428Z.md。`Map` 連鎖への置換とブロック式統一で Parser/Typeck を通過）
+- [x] `examples/string_literal.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/string_literal.reml` / diagnostics=[] / run_id=`60259b9b-98e0-4f5f-a687-3bb336c16481` / log=reports/spec-audit/ch5/logs/core-examples-20251211T145428Z.md。仕様どおりの単純文字列リテラルで回帰なしを確認）
+- [x] `examples/core_io/file_copy.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/core_io/file_copy.reml` / diagnostics=[] / run_id=`a1e8bcf6-2f9b-48a5-93db-0942866f339f` / log=reports/spec-audit/ch5/logs/core-examples-20251211T145428Z.md。`fn copy_file` をブロック式に変更し `CopyReport` フィールドを `=` 代入に統一して Parser エラーを解消）
 
 **examples/ffi**
 - [x] `examples/ffi/macos/ffi_dispatch_async.reml`（期待: 成功 → 2025-12-12 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/ffi/macos/ffi_dispatch_async.reml` / diagnostics=[] / run_id=41f3ed0b-d401-4ca9-9a6b-4bb1786d48d1）
-- [x] `examples/ffi/macos/ffi_malloc_arm64.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/ffi/macos/ffi_malloc_arm64.reml` / diagnostics=[] / log=reports/spec-audit/ch4/logs/ffi-20251211T151355Z.md / 関数本体をブロック式へ変更し、数値リテラルの型サフィックスを外して Parser エラーを解消）
+- [x] `examples/ffi/macos/ffi_malloc_arm64.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/ffi/macos/ffi_malloc_arm64.reml` / diagnostics=[] / log=reports/spec-audit/ch5/logs/ffi-20251211T151355Z.md / 関数本体をブロック式へ変更し、数値リテラルの型サフィックスを外して Parser エラーを解消）
 - [x] `examples/ffi/macos/ffi_getpid.reml`（期待: 成功 → 2025-12-13 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/ffi/macos/ffi_getpid.reml` / diagnostics=[] / run_id=`b69f825a-1634-4cdf-b292-1e31fe117492`）
 - [ ] `examples/ffi/windows/ownership_transfer.reml`（期待: 成功）
 - [ ] `examples/ffi/windows/struct_passing.reml`（期待: 成功）
@@ -537,7 +537,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/language-impl-comparison/reml/mini_lisp_combinator.reml`（期待: 成功 → 2025-12-15 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output human examples/language-impl-comparison/reml/mini_lisp_combinator.reml` で診断 0 を確認。`if`/`match` を最新構文へ揃え、`NativeFn` / `VLambda` を `mini_lisp.reml` と同スタイルで整理）
 
 **examples/core-text / core_diagnostics**
-- [x] `examples/core-text/text_unicode.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- examples/core-text/text_unicode.reml` / diagnostics=[] / run_id=`a9eb0839-1c6c-44c4-b9fe-3d448200af09` / log=reports/spec-audit/ch4/logs/core-text-20251211T222317Z.md。DocComment 正規化と Emoji トークンを簡素化し、パイプラインをブロック式に統一）
+- [x] `examples/core-text/text_unicode.reml`（期待: 成功 → 2025-12-11 CLI=`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- examples/core-text/text_unicode.reml` / diagnostics=[] / run_id=`a9eb0839-1c6c-44c4-b9fe-3d448200af09` / log=reports/spec-audit/ch5/logs/core-text-20251211T222317Z.md。DocComment 正規化と Emoji トークンを簡素化し、パイプラインをブロック式に統一）
 - [x] `examples/core_diagnostics/pipeline_branch.reml`（期待: `effects.contract.stage_mismatch` → CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json --emit-audit-log examples/core_diagnostics/pipeline_branch.reml` / diagnostics=`effects.contract.stage_mismatch` のみ / expected=`examples/core_diagnostics/pipeline_branch.expected.{diagnostic.json,audit.jsonl}` を更新し Stage mismatch ゴールデンを再取得）
 - [x] `examples/core_diagnostics/pipeline_success.reml`（期待: 成功 → 2025-12-12 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json --emit-audit-log examples/core_diagnostics/pipeline_success.reml` / diagnostics=[] / run_id=`ee557b05-0d8b-4548-8a24-6708047792e7` / expected=`examples/core_diagnostics/pipeline_success.expected.{diagnostic.json,audit.jsonl}` を更新）
 - [x] `examples/core_diagnostics/constraint_graph/simple_chain.reml`（期待: 成功 → 2025-12-12 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --emit-telemetry constraint_graph=examples/core_diagnostics/output/simple_chain-constraint_graph.json examples/core_diagnostics/constraint_graph/simple_chain.reml` / diagnostics=[] / run_id=`4eab2043-df43-4993-af6d-18377aee56b0` / telemetry=`examples/core_diagnostics/output/simple_chain-constraint_graph.json` を再生成し DOT/SVG (`examples/core_diagnostics/output/simple_chain.{dot,svg}`) も更新）
@@ -547,7 +547,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 ## 成果物と KPI
 
 - `parser.syntax.expected_tokens` / `typeck.aborted.ast_unavailable` が Phase 4 の spec_core/practical スイートで発生しないこと（期待診断があるケースを除く）。  
-- `reports/spec-audit/ch4/spec-core-dashboard.md` における **Pass 率 70% 以上**、Phase 4 M1 exit 条件の 85% へ段階的に到達。  
+- `reports/spec-audit/ch5/spec-core-dashboard.md` における **Pass 率 70% 以上**、Phase 4 M1 exit 条件の 85% へ段階的に到達。  
 - `cargo test -p reml_e2e --test scenario -- --scenario spec-core` / `--scenario practical` を追加し、CI で `spec.chapter1.pass_rate`, `spec.chapter3.pass_rate` KPI を更新。  
 - 主要な spec_fix/impl_fix の判断を `phase4-scenario-matrix.csv` の `resolution_notes` に残し、Phase 5 以降のハンドオーバー資料として利用可能にする。
 
@@ -555,4 +555,4 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 - Parser/Typeck 修正は Phase 3 の `docs/spec/1-x` / `docs/spec/3-x` 更新と連動するため、仕様差分を検出した場合は `2-5-spec-drift-remediation.md` の手順に沿って仕様側へ反映。  
 - Core.IO / Capability の挙動差分は `3-5-core-io-path-plan.md` や `3-8-core-runtime-capability-plan.md` の残課題と共有し、必要なら Phase 3 計画へ逆流させる。  
-- Self-host フェーズ（Phase 5）へ進む前に本計画の KPI を満たし、`reports/spec-audit/ch4` を Stage 0/1/2 のリグレッションベースとして採用する。
+- Self-host フェーズ（Phase 5）へ進む前に本計画の KPI を満たし、`reports/spec-audit/ch5` を Stage 0/1/2 のリグレッションベースとして採用する。
