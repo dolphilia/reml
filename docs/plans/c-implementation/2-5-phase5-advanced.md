@@ -20,6 +20,35 @@
   6.  診断 ID とエラーメッセージの整備（桁あふれ/無効リテラル）。
   7.  テスト: 算術演算、境界値、文字列変換、リテラル解析。
 
+### 5.1.1 実装方針（C 実装）
+- **バックエンド**: 既定は `libtommath`。`gmp` は性能要件が明確になった段階で `CMake` オプションに切り替えられるようにする。
+- **API 形状**: `reml_bigint` を C 側のラッパー構造体として定義し、`mp_int` の初期化/破棄/演算/比較/符号判定を隠蔽する。
+- **リテラル種別**: `REML_LITERAL_BIGINT` を追加し、`REML_LITERAL_INT` のパース時に `i64` へ収まらない場合は `BigInt` へ昇格する。
+- **型推論**: `BigInt` は `Int` と別のプリミティブ型として扱う。数値演算は `Int`/`Float`/`BigInt` のうち **同一型の演算**のみ許可し、必要な昇格は後続の `5.9` で統一ルールを定める。
+- **オーバーフロー**:
+  - **リテラル**: `Int` へ収まらない場合は `BigInt` へ昇格。ただし期待型が明示的に `Int` の場合は `parser.number.overflow` 診断を出す。
+  - **演算**: `Int` のランタイムオーバーフローは `5.9` での統一ルール確定まで `panic`/`wrap` の方針を保留し、C 実装では診断を出せる足場だけ先行する。
+
+### 5.1.2 作業ステップ（詳細）
+- [ ] `compiler/c/cmake/FetchDependencies.cmake` に `libtommath` のビルドターゲットを追加し、`reml_core` からリンクできるようにする。
+- [ ] `compiler/c/include/reml/numeric/bigint.h` と `compiler/c/src/numeric/bigint.c` を追加し、`reml_bigint` API を定義する。
+- [ ] `Core.Numeric` との接続レイヤー（`reml_numeric_bigint_*`）を用意し、演算/比較/符号/変換関数を公開する。
+- [ ] `compiler/c/include/reml/ast/ast.h` の `reml_literal_kind` に `REML_LITERAL_BIGINT` を追加し、パーサーで昇格判定を行う。
+- [ ] `compiler/c/include/reml/typeck/type.h` に `REML_TYPE_BIGINT` を追加し、型推論と `numeric` 判定を拡張する。
+- [ ] `compiler/c/include/reml/sema/diagnostic.h` に数値リテラル関連の診断コードを追加し、`parser.number.overflow`/`parser.number.invalid` に対応する。
+- [ ] `compiler/c/src/codegen/codegen.c` で `BigInt` リテラルと演算をランタイム呼び出しへ下降させる（MVP では演算子 `+ - * / %` のみ）。
+
+### 5.1.3 診断とエラーメッセージ方針
+- **桁あふれ**: `parser.number.overflow`（`E7101`）を使用し、`Int` 期待型の文脈で `BigInt` 昇格ができない場合に発火する。
+- **無効リテラル**: `parser.number.invalid`（`E7102`）を使用し、基数/桁区切りの不正を報告する。
+- **メタデータ**: `radix`/`min`/`max`/`repr` を診断拡張として保持し、IDE で補助表示できるようにする。
+
+### 5.1.4 テスト計画（MVP）
+- **演算**: `add/sub/mul/div/rem` の正確性（正負/符号付き）、比較 (`< <= == >= >`) の境界。
+- **リテラル**: 10 進/2 進/8 進/16 進、`_` 区切り、`i64` 境界直前/直後の昇格。
+- **文字列変換**: `to_string`/`parse` の往復、先頭 `+`/`-`、空文字/不正文字の診断。
+- **型推論**: `Int`/`BigInt` の混在で明示注釈を要求するケースを追加。
+
 ## 5.2 パターンマッチングのコンパイル
 - **目標**: 効率的な決定木 (decision tree) 生成。
 - **仕様**: `docs/plans/pattern-matching-improvement/`。
