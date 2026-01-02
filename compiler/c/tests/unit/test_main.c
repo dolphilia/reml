@@ -9,9 +9,12 @@ static void test_dummy(void **state) {
   assert_true(1);
 }
 
+void test_operator_pow_and_or(void **state);
+
 int main(void) {
   const struct CMUnitTest tests[] = {
     cmocka_unit_test(test_dummy),
+    cmocka_unit_test(test_operator_pow_and_or),
   };
 
   return cmocka_run_group_tests(tests, NULL, NULL);

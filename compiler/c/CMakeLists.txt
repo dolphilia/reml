@@ -18,6 +18,7 @@ reml_make_core_dependencies()
 
 add_library(reml_core
   src/util/logger.c
+  src/parser/operator_table.c
 )
 
 target_include_directories(reml_core
@@ -65,6 +66,7 @@ reml_make_test_dependencies()
 
 add_executable(reml_unit_tests
   tests/unit/test_main.c
+  tests/unit/test_parser_operator_table.c
 )
 
 target_link_libraries(reml_unit_tests

@@ -1,0 +1,32 @@
+#ifndef REML_LEXER_TOKEN_H
+#define REML_LEXER_TOKEN_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum {
+  REML_TOKEN_INVALID = 0,
+  REML_TOKEN_CARET,
+  REML_TOKEN_LOGICAL_AND,
+  REML_TOKEN_LOGICAL_OR,
+  REML_TOKEN_PIPE_FORWARD,
+  REML_TOKEN_PLUS,
+  REML_TOKEN_MINUS,
+  REML_TOKEN_STAR,
+  REML_TOKEN_SLASH,
+  REML_TOKEN_PERCENT,
+  REML_TOKEN_DOTDOT,
+  REML_TOKEN_EQEQ,
+  REML_TOKEN_NOTEQ,
+  REML_TOKEN_LT,
+  REML_TOKEN_LE,
+  REML_TOKEN_GT,
+  REML_TOKEN_GE
+} reml_token_kind;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

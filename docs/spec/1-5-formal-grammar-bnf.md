@@ -199,7 +199,8 @@ Arg             ::= [Ident ":"] Expr
 OrExpr          ::= AndExpr { "||" AndExpr }
 AndExpr         ::= EqExpr { "&&" EqExpr }
 EqExpr          ::= RelExpr { ("==" | "!=") RelExpr }
-RelExpr         ::= AddExpr { ("<" | "<=" | ">" | ">=") AddExpr }
+RelExpr         ::= RangeExpr { ("<" | "<=" | ">" | ">=") RangeExpr }
+RangeExpr       ::= AddExpr { ".." AddExpr }
 AddExpr         ::= MulExpr { ("+" | "-") MulExpr }
 MulExpr         ::= PowExpr { ("*" | "/" | "%") PowExpr }
 PowExpr         ::= UnaryExpr { "^" UnaryExpr }
