@@ -14,7 +14,7 @@
 - `tooling/ci` : ローカル再現スクリプト、CI 用ユーティリティ
 - `compiler/ocaml/` : CI でビルドするソース、テスト資産
 - `runtime/native` : ランタイムビルド/リンク検証
-- `docs/notes/llvm-spec-status-survey.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` : CI 結果・指標の記録先
+- `docs/notes/backend/llvm-spec-status-survey.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` : CI 結果・指標の記録先
 
 ## ステータス要約（2025-10-10 時点）
 - ✅ GitHub Actions の Linux ワークフロー（`.github/workflows/bootstrap-linux.yml`）を Lint/Build/Test/Artifact の 4 ジョブ構成で運用し、`dune runtest` とランタイム検証（Valgrind/ASan）を自動化。最終ジョブで CI バンドル（`linux-ci-bundle.tar.gz`）を生成。
@@ -255,7 +255,7 @@
    - `runtime/native` のビルド手順を `clang` + `libtool` ベースで再検証し、Mach-O 向けビルドルールを追加。  
    - Phase 1-5 ランタイム連携計画と矛盾しないよう `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` に必要な TODO を明示。
 3. **ツールチェーン差分の記録**  
-   - `docs/notes/llvm-spec-status-survey.md` に macOS 向けの LLVM 入手手順、`codesign` テストの観測点を追記。  
+   - `docs/notes/backend/llvm-spec-status-survey.md` に macOS 向けの LLVM 入手手順、`codesign` テストの観測点を追記。  
    - `0-3-audit-and-metrics.md` へ macOS 計測行項目（ビルド時間、IR 検証結果、ランタイムサイズ）を追加。
 4. **移行準備リストの整備**  
    - `compiler/ocaml/README.md` に macOS 手元検証手順（Homebrew での依存導入、`opam switch create 4.14.2` 等）を記載。  

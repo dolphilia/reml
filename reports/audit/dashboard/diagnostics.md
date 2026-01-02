@@ -20,7 +20,7 @@ Phase 2-7 で導入した診断ドメイン関連 KPI を集約する。`collect
 | macos-arm64 | 0.98 | `collect-iterator-audit-metrics.py --section diagnostics --require-success --metric diagnostics.plugin_bundle_ratio --platform macos-arm64 --source reports/audit/phase2-7/diagnostics-domain-20261221.json` | macOS CI でも同じ互換テストが影響。 |
 | windows-msvc | 0.98 | `collect-iterator-audit-metrics.py --section diagnostics --require-success --metric diagnostics.plugin_bundle_ratio --platform windows-msvc --source reports/audit/phase2-7/diagnostics-domain-20261221.json` | Windows では `registry.mirror` テストを互換モードで実行。 |
 
-`ratio < 0.95` の場合は `docs/notes/dsl-plugin-roadmap.md` のバンドル署名再発行手順に従い、互換モードを廃止する。
+`ratio < 0.95` の場合は `docs/notes/dsl/dsl-plugin-roadmap.md` のバンドル署名再発行手順に従い、互換モードを廃止する。
 
 ## diagnostics.effect_stage_consistency
 
@@ -44,6 +44,6 @@ Phase 2-7 で導入した診断ドメイン関連 KPI を集約する。`collect
 |------|------|--------------------|
 | `diagnostics.domain_coverage` | 0.95 以上 | `docs/plans/bootstrap-roadmap/0-4-risk-handling.md#diagnostic-domain-metrics` |
 | `diagnostics.plugin_bundle_ratio` | 0.95 以上 | 同上 |
-| `diagnostics.effect_stage_consistency` | 1.0 | `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §5 / `docs/notes/effect-system-tracking.md` |
+| `diagnostics.effect_stage_consistency` | 1.0 | `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §5 / `docs/notes/effects/effect-system-tracking.md` |
 
 閾値を満たせない場合は Phase 2-8 仕様監査で追加検証を計画し、復旧まで CI の `--require-success` を一時ブロッキングに設定する。

@@ -10,4 +10,4 @@
 | CIN-04 | `NumericCollector` Stage 整合 | `Iter::collect_numeric` 実行 | `CollectorStageSnapshot.kind = "numeric"` で Stage mismatch なし（`iter_numeric_props` 内で暗黙検証） | ✅ | `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric iter_numeric_props` |
 
 > Responsible: Runtime/Core Numeric ワークストリーム（当面: @bootstrap-rust-team）  
-> 更新履歴: 2025-12-07 作成。新規ケース追加時は `docs/notes/core-numeric-time-gap-log.md` と同期すること。
+> 更新履歴: 2025-12-07 作成。新規ケース追加時は `docs/notes/runtime/core-numeric-time-gap-log.md` と同期すること。

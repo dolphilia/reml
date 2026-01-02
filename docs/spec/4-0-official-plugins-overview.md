@@ -4,7 +4,7 @@
 公式プラグイン章は Reml が提供する標準 Capability プラグイン群の設計指針をまとめ、システム統合や監査要件を満たしながらプラットフォーム機能を公開する方法を示します。各 Capability が Runtime Registry・診断・セキュリティポリシーと整合するように、API 構造と運用ベストプラクティスを整理しています。現在は標準ライブラリ拡張の再整理に伴い、章全体をドラフトとして再検討中です。
 
 ## ドラフト運用と移行メモ
-標準ライブラリ拡張の調査・計画（`docs/notes/stdlib-expansion-research.md` / `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md` / `docs/plans/stdlib-improvement/`）により、公式プラグインの一部は標準ライブラリへ移行する方針が示されています。現時点で把握できている変更・改訂案は以下のとおりです。
+標準ライブラリ拡張の調査・計画（`docs/notes/stdlib/stdlib-expansion-research.md` / `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md` / `docs/plans/stdlib-improvement/`）により、公式プラグインの一部は標準ライブラリへ移行する方針が示されています。現時点で把握できている変更・改訂案は以下のとおりです。
 
 - **4.2 Process**: `Core.System.Process` として標準ライブラリへ移行済み（[3-18](3-18-core-system.md)）。公式プラグインは低レベル Capability として維持する。
 - **4.4 Signal**: `Core.System.Signal` として標準ライブラリへ移行済み（[3-18](3-18-core-system.md)）。ハンドラ登録など低レベル操作は Capability 側に残す。

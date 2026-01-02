@@ -22,7 +22,7 @@
 
 ## 4. フォローアップ
 - `Formal BNF`（docs/spec/1-5-formal-grammar-bnf.md）にもネスト規則を反映済みか確認し、必要ならハイライトを更新。  
-- `docs/notes/core-parser-migration.md`（予定）へ OCaml 実装の AST 形状を記録し、Reml 実装移行時の参照資料とする。  
+- `docs/notes/parser/core-parser-migration.md`（予定）へ OCaml 実装の AST 形状を記録し、Reml 実装移行時の参照資料とする。  
 - コンパイラ IR で再エクスポートをどの段階で解決するか、Phase 2-7 Parser チームと合意を取る。
 - `docs/guides/runtime/runtime-bridges.md` にネスト再エクスポートの使用例を追記し、ホストアプリケーションが適切にモジュールを束ねられるよう調整する。
 - **タイミング**: Phase 2-5 の前半で AST 拡張を実装し、標準ライブラリ再エクスポート検証（Phase 2-5 中盤）より前に差分吸収を完了する。

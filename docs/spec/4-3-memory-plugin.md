@@ -2,7 +2,7 @@
 
 > 位置付け: 公式プラグイン（オプション）。仮想メモリや共有領域の操作は `effect {memory}` `effect {unsafe}` を多用するため、標準APIから分離し、`SecurityCapability` による導入審査を前提とする。
 >
-> ドラフト再整理メモ: 標準ライブラリ移行が確定していないため、本章はプラグイン維持を前提に再評価中（`docs/notes/stdlib-expansion-research.md` 参照）。
+> ドラフト再整理メモ: 標準ライブラリ移行が確定していないため、本章はプラグイン維持を前提に再評価中（`docs/notes/stdlib/stdlib-expansion-research.md` 参照）。
 
 ## 0. 仕様メタデータ
 

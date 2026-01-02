@@ -70,7 +70,7 @@
 - 呼び出し制御: `ffi.bindgen.enabled = true` の場合のみ実行し、`output` が未指定なら `ffi.build.config_invalid` を返す。
 
 ### フェーズD: WIT 調査ログと PoC
-1. `docs/notes/ffi-wasm-component-model-log.md` を更新し、WIT 型→Reml 型対応表の一次案を追加する。（完了）
+1. `docs/notes/ffi/ffi-wasm-component-model-log.md` を更新し、WIT 型→Reml 型対応表の一次案を追加する。（完了）
 2. Canonical ABI のメモリ境界（Shared Nothing）と FFI との差分を調査ログに追記する。（完了）
 3. `docs/guides/ffi/ffi-wit-poc.md` に PoC 手順（WIT 生成→バインディング生成→呼び出し検証）を明記する。（完了）
 

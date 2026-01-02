@@ -35,7 +35,7 @@
 - `tooling/ci`, `.github/workflows/` : Windows ランナーの CI 定義と補助スクリプト
 - `tooling/toolchains/` : Windows 診断スクリプトとログ（`check-windows-bootstrap-env.ps1`, `reports/windows-env-check.json`）
 - `docs/guides/compiler/llvm-integration-notes.md`, `docs/spec/3-9-core-async-ffi-unsafe.md` : Windows 章の更新
-- `docs/notes/llvm-spec-status-survey.md` : プラットフォーム差分・リスクの記録
+- `docs/notes/backend/llvm-spec-status-survey.md` : プラットフォーム差分・リスクの記録
 
 ## ビルド検証ログ（2025-11-03）
 
@@ -65,7 +65,7 @@ Error: Library "llvm" not found.
 **担当領域**: Windows ビルド環境構築
 
 1.1. **LLVM/MSVC バージョン選定**
-- LLVM は 2025-10-20 時点で MSYS2 LLVM 16.0.4 をベースラインとしつつ、他プラットフォームで採用している LLVM 19.x への移行可否を評価する。調査内容: MSYS2/公式バイナリの入手性、`opam` の `conf-llvm-static.19` ビルド成否、ビルド時間・ディスクコスト、ABI 差異。結果は `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` と `docs/notes/llvm-spec-status-survey.md` に追記する。
+- LLVM は 2025-10-20 時点で MSYS2 LLVM 16.0.4 をベースラインとしつつ、他プラットフォームで採用している LLVM 19.x への移行可否を評価する。調査内容: MSYS2/公式バイナリの入手性、`opam` の `conf-llvm-static.19` ビルド成否、ビルド時間・ディスクコスト、ABI 差異。結果は `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` と `docs/notes/backend/llvm-spec-status-survey.md` に追記する。
 - MSVC ツールチェーンは Visual Studio Build Tools 2022（MSVC 19.40 以上）と Windows 11/10 SDK (10.0.22621 以上) を標準とし、`vcvarsall.bat`・`reml-msvc-env` からの呼び出しフローを設計する。
 - MinGW (x86_64-w64-windows-gnu) は MSYS2 LLVM 16.0.4 / GCC 13 系の組み合わせを維持し、LLVM 19.x 採用時の置換手順と互換性確認をまとめる。
 - バージョン決定後は `0-3-audit-and-metrics.md` の Toolchain セクションと `reports/windows-env-check.json` のバージョン欄を更新する。
@@ -121,13 +121,13 @@ Error: Library "llvm" not found.
 1.4. **LLVM 19 利用性の再評価**
 - Linux/macOS で LLVM 19.x を採用している構成と依存バージョンを洗い出し、Windows で再現するための入手経路（MSYS2、LLVM 公式インストーラ、ソースビルド）を比較する。
 - `opam install llvm` が要求する `conf-llvm-static.19` のビルドログを取得し、MSVC と MinGW の両ターゲットで利用可能か検証する。
-- 調査の成否・阻害要因（欠落ライブラリ、ビルド時間、ABI 差分）と代替策を `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` と `docs/notes/llvm-spec-status-survey.md` に記録する。
+- 調査の成否・阻害要因（欠落ライブラリ、ビルド時間、ABI 差分）と代替策を `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` と `docs/notes/backend/llvm-spec-status-survey.md` に記録する。
 - LLVM 16 → 19 への移行判定チェックリストを `0-3-audit-and-metrics.md` に追加し、フェーズ移行時の意思決定材料を整備する。
 - ダウンロード済み配布物に同梱されている `libclang.lib`、`c++.lib`、`clang` 系 `.lib` のリンク可否と `LLVMConfig.cmake` 経由の検出結果を記録する。
 - 2025-11-03 再評価:
   - 19.1.1 配布物の `.lib` 群は `conf-llvm-static.19` の要件を満たすため、`LLVMConfig.cmake` の検出テストを後続タスクに設定する。
   - CLI の併用ポリシー（MSVC 19 vs MinGW 16）を `0-3-audit-and-metrics.md` の Toolchain セクションで管理し、PATH 切替前提を共有する。
-  - `docs/notes/llvm-spec-status-survey.md` に Program Files 版と ZIP 版でバンドル内容が異なる旨を追記し、配布差異を記録する。
+  - `docs/notes/backend/llvm-spec-status-survey.md` に Program Files 版と ZIP 版でバンドル内容が異なる旨を追記し、配布差異を記録する。
 - 2025-11-03 進捗:
   - ZIP 版配布物を PATH 先頭で利用できる状態に整理し、`Get-Command llc/opt/clang` で MSVC 配布物を参照していることを確認済み。
   - 次ステップでは `opam install conf-llvm-static.19` で `.lib` 検出の可否を確認し、結果を `windows-llvm-build-investigation.md` に追記する。
@@ -140,7 +140,7 @@ Error: Library "llvm" not found.
 - ✅ `reml-env-check -OutputJson reports/windows-env-check.json` を再実行し、LLVM 19.1.1 / MSVC 19.44.35219 / CMake 3.29.5 / 7-Zip 25.01 を検出できる最新診断ログを更新。
 - ✅ `opam reinstall conf-llvm-static.19 -y` で LLVM 19.1.1 ZIP 配布物の `.lib` を認識できることを確認し、`llvm-config --version` で 19.1.1 を取得。
 - ⚠️ CI ドキュメントへの PATH / `vcvars64.bat` 呼び出し手順の反映と、診断ログのアーティファクト化ルールが未整備。
-- ⚠️ `windows-llvm-build-investigation.md` および `docs/notes/llvm-spec-status-survey.md` へ最新の `conf-llvm-static` 検証結果と ZIP 配布利用ポリシーを追記する作業が残存。
+- ⚠️ `windows-llvm-build-investigation.md` および `docs/notes/backend/llvm-spec-status-survey.md` へ最新の `conf-llvm-static` 検証結果と ZIP 配布利用ポリシーを追記する作業が残存。
 
 ### 残タスク / 次ステップ
 1. CI ドキュメントへ PATH 再構成と `vcvars64.bat` 呼び出し順序を追記し、`check-windows-bootstrap-env.ps1` のログをアーティファクト化する運用を確立する。
@@ -170,14 +170,14 @@ Error: Library "llvm" not found.
 - Phase 2 FFI タスクとの連携
 
 - 2025-11-09 調査サマリ:
-  - `docs/notes/llvm-spec-status-survey.md` §2.2.2a を拡張し、呼出規約／構造体レイアウト／名前マングリング／DLL 公開手順の比較表を追加。
+  - `docs/notes/backend/llvm-spec-status-survey.md` §2.2.2a を拡張し、呼出規約／構造体レイアウト／名前マングリング／DLL 公開手順の比較表を追加。
   - Win64 Shadow Space と `byval`/`sret` 属性の適用条件を Reml 実装メモへ記録し、`examples/ffi/windows/struct_passing.reml` の期待値と照合。
   - `docs/guides/ffi/reml-ffi-handbook.md` の Win64 章更新 TODO を追記（ステップ3でのガイド同期タスク）。
 - フォローアップ:
   - LLVM IR 拡張フェーズで `win64cc` 属性と Shadow Space 予約を実装・検証（ステップ3へ引き継ぎ）。
   - GitHub Actions `windows-latest` ジョブへ ABI 定点テストを追加し、Shadow Space 未確保時の診断を自動化（`docs/guides/tooling/ci-strategy.md` 更新タスク）。
 
-**成果物**: ABI 差分レポート（`docs/notes/llvm-spec-status-survey.md` §2.2.2a 更新）、関連ガイド更新タスク
+**成果物**: ABI 差分レポート（`docs/notes/backend/llvm-spec-status-survey.md` §2.2.2a 更新）、関連ガイド更新タスク
 
 ### 3. LLVM IR 生成の拡張（19-20週目）
 **担当領域**: コード生成
@@ -189,7 +189,7 @@ Error: Library "llvm" not found.
 - 🟡 CLI/ターゲット切替テスト: `compiler/ocaml/tests/llvm-ir/target_selection/` に MSVC/MinGW の比較ゴールデン (`msvc_shadow_space.ll`, `gnu_shadow_space.ll`) と CLI スナップショット (`test_cli_target_switch.ml`) を追加するブランチを作成済み。`dune runtest codegen` で新テストが実行されることを確認する手順メモを整備し、2025-11-15 までにレビューへ提出予定。
 
 3.2. **Calling Convention の適用**
-- ✅ `docs/notes/llvm-spec-status-survey.md` §2.2.2a の Shadow Space 調査結果を反映し、`compiler/ocaml/src/llvm_gen/abi.ml` へ `Win64` 分岐（`CallingConv.win64`, `sret`, `byval align 8`）を導入する実装メモを作成。構造体引数と戻り値の lowering ルールを整理。
+- ✅ `docs/notes/backend/llvm-spec-status-survey.md` §2.2.2a の Shadow Space 調査結果を反映し、`compiler/ocaml/src/llvm_gen/abi.ml` へ `Win64` 分岐（`CallingConv.win64`, `sret`, `byval align 8`）を導入する実装メモを作成。構造体引数と戻り値の lowering ルールを整理。
 - ✅ `examples/ffi/windows/struct_passing.reml` の期待 IR と照合し、MinGW/MSVC 共通で Shadow Space 32 バイトを確保する必要があることを確認。`llvm_gen/codegen.ml` での `add_function_attribute` 追加ポイントを特定。
 - 🟡 Shadow Space FileCheck: `compiler/ocaml/tests/llvm-ir/win64_shadow_space.ll` に `CHECK: call void @llvm.frameescape` ベースの検証を追加する案を作成し、`tooling/scripts/run-win64-filecheck.ps1` で `llc -mtriple=x86_64-pc-windows-msvc` → `FileCheck` を自動化する下書きを作成。2025-11-18 までに `.ps1` 実装とテストデータを確定させる。
 
@@ -205,7 +205,7 @@ Error: Library "llvm" not found.
 
 #### フォローアップ
 1. ターゲット切替テストブランチのレビューと `compiler/ocaml/tests/llvm-ir/target_selection` ゴールデン取り込み（担当: Windows チーム、期限 2025-11-15、参照: `compiler/ocaml/tests/llvm-ir`）。
-2. Shadow Space FileCheck スクリプト (`tooling/scripts/run-win64-filecheck.ps1`) とテスト資産のコミット、`docs/notes/llvm-spec-status-survey.md` §2.2.2a への結果追記（期限 2025-11-18）。
+2. Shadow Space FileCheck スクリプト (`tooling/scripts/run-win64-filecheck.ps1`) とテスト資産のコミット、`docs/notes/backend/llvm-spec-status-survey.md` §2.2.2a への結果追記（期限 2025-11-18）。
 3. PDB スモークテスト自動化 (`tooling/toolchains/test-pdb-smoke.ps1`) を CI に統合し、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`・`docs/guides/compiler/llvm-integration-notes.md` に運用手順を追記（期限 2025-11-19、担当: CI チーム）。
 
 ### 4. ランタイム C コードの移植（20-21週目）
@@ -281,7 +281,7 @@ Error: Library "llvm" not found.
 | `examples/ffi/windows/ownership_transfer.reml` | `opam exec -- dune exec -- remlc .\examples\ffi\windows\ownership_transfer.reml --target x86_64-pc-windows-msvc --emit-ir --link-runtime --out-dir .\build\windows\ownership` | `RuntimeBridge` 経由の参照カウントと `AuditEnvelope.metadata` の整合 | 準備完了（生成物確認待ち） |
 
 #### デバッグ手順とフォローアップ
-- WinDbg でのクラッシュ調査: `lld-link /DEBUG` で生成した `.pdb` を同ディレクトリへ配置し、`windbg.exe -z .\build\windows\struct\struct_passing.exe` を実行。例外発生時は `!analyze -v` の結果を `docs/notes/llvm-spec-status-survey.md` に転記。
+- WinDbg でのクラッシュ調査: `lld-link /DEBUG` で生成した `.pdb` を同ディレクトリへ配置し、`windbg.exe -z .\build\windows\struct\struct_passing.exe` を実行。例外発生時は `!analyze -v` の結果を `docs/notes/backend/llvm-spec-status-survey.md` に転記。
 - Visual Studio デバッガーでの動的検証: `devenv /debugexe` で実行し、`compiler/ocaml/src/llvm_gen/abi.ml` の `Win64` 分岐にブレークポイントを設定して引数レイアウトを検証。
 - Application Verifier 導入手順: `appverif.exe /verify struct_passing.exe /tests Heaps Handles` をサンプルごとに実行し、ログを `%LOCALAPPDATA%\Reml\logs\appverifier\` へ収集。PowerShell 版ランタイム統合テストへ組み込み予定。
 
@@ -331,7 +331,7 @@ Error: Library "llvm" not found.
 - よくある質問（FAQ）
 
 7.2. **ABI 差分の文書化**
-- `docs/notes/llvm-spec-status-survey.md` への差分レポート追記
+- `docs/notes/backend/llvm-spec-status-survey.md` への差分レポート追記
 - Calling convention の比較表
 - 構造体レイアウトの例示
 - 名前マングリングの規則

@@ -29,10 +29,10 @@
 ## フェーズ計画
 ### Phase 0: 先行事例調査と機能精練方針
 - 対象ライブラリを決めて調査する: Haskell Parsec/Megaparsec（`makeExprParser`、`indentBlock`、rich error）、Scala FastParse（`autoWhitespace`、`Logger`）、Rust chumsky/nom/pom（zero-copy・診断集約）、Elixir NimbleParsec（コンパイル時展開）、Go pigeon など PEG/Packrat 系を優先し、構文力・診断・性能・可用性を比較する。  
-- 調査結果を `docs/notes/core-parse-combinator-survey.md` にまとめ、Core.Parse へ移植すべき具体機能と導入難易度（低: 糖衣追加 / 中: API 拡張 / 高: ランタイム変更）でタグ付けする。  
+- 調査結果を `docs/notes/parser/core-parse-combinator-survey.md` にまとめ、Core.Parse へ移植すべき具体機能と導入難易度（低: 糖衣追加 / 中: API 拡張 / 高: ランタイム変更）でタグ付けする。  
 - 取り込み候補を洗い出す: `makeExprParser` 相当の演算子優先度ビルダー、`autoWhitespace`/`Layout`（オフサイド対応）層、`logger/profile` による Packrat ヒット率・バックトラック統計、`recoverWith`/`cut` の実例パターン集、`left_recursion_guard` のガイドライン、`resumable parser` や `byte-slice` 最適化の適用可否。  
 - Phase 1〜5 へ反映する差分を決める: 優先度高は Phase 2/3 に組み込み（例: 優先度ビルダー・autoWhitespace・cut パターンのサンプル）、中は Phase 4（診断/プロファイル）で検証、低は Phase 5 のテスト/サンプル追加で段階投入する。  
-- 調査完了の定義: 比較表と採用/見送り理由を `docs/notes/core-parse-combinator-survey.md` に記載し、`README.md` から当計画書へリンクを追記する TODO を残す。既存 Phase の着手前にレビューし、必要なら仕様 `docs/spec/2-2-core-combinator.md` へ脚注案を起票する。
+- 調査完了の定義: 比較表と採用/見送り理由を `docs/notes/parser/core-parse-combinator-survey.md` に記載し、`README.md` から当計画書へリンクを追記する TODO を残す。既存 Phase の着手前にレビューし、必要なら仕様 `docs/spec/2-2-core-combinator.md` へ脚注案を起票する。
 ### Phase 1: 型と最小ランナー設計
 - `compiler/rust/runtime/src/parse/combinator.rs`（新規）に `Parser<T>` / `Reply<T>` / `ParseResult<T>` / `ParseError` / `ParserId` を定義し、`consumed` / `committed` を型で表現。  
 - `ParseState` を新設し、`Input`・位置情報（Byte/Grapheme）・`run_config`・Packrat キャッシュを保持する骨組みを実装。  
@@ -88,7 +88,7 @@
 - `docs/spec/2-2-core-combinator.md` に Rust 実装の対応範囲・未対応箇所の脚注を追加し、`2-0-parser-api-overview.md` にも実装状況を一文追記。  
 - `docs/guides/compiler/core-parse-streaming.md` / `plugin-authoring.md` へ「Rust 実装対応状況」サブセクションを追加し、`RunConfig` との連動制限や TODO を明記。  
 - `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` の PhaseF トラッカーに `basic_interpreter_combinator.reml` をチェック項目として追加し、完了時に `[x]` へ更新。  
-- 未対応の Lex/Streaming/Plugin 連携は `docs/notes/core-parse-api-evolution.md` に TODO で残し、次フェーズへのハンドオーバー項目として整理。
+- 未対応の Lex/Streaming/Plugin 連携は `docs/notes/parser/core-parse-api-evolution.md` に TODO で残し、次フェーズへのハンドオーバー項目として整理。
 
 ## 成果物と完了条件
 - `compiler/rust/runtime/src/parse/combinator.rs`（新規）＋ `mod.rs` 再エクスポートで `Core.Parse` として公開。  
@@ -96,6 +96,6 @@
 - 仕様脚注・ガイド更新済みで、欠落/未対応箇所が明示されていること。
 
 ## 追跡・リスク緩和
-- Packrat/左再帰・Streaming は段階投入。未対応箇所は `TODO:` 付きで `docs/notes/core-parse-api-evolution.md` にログし、Phase 2-7 へ逆流。  
+- Packrat/左再帰・Streaming は段階投入。未対応箇所は `TODO:` 付きで `docs/notes/parser/core-parse-api-evolution.md` にログし、Phase 2-7 へ逆流。  
 - Lex ブリッジが不十分な場合は `symbol/lexeme` に暫定実装＋ `RunConfig` 無視の旨を脚注し、後続で `Core.Parse.Lex` の導入を計画する。  
 - 期待集合生成が既存 CLI の `ExpectedToken` と食い違う場合、診断キーへの影響を `resolution_notes` に記録し、Phase4 KPI の triage スクリプトで追跡する。

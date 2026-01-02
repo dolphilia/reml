@@ -15,7 +15,7 @@
 **担当領域**: 検証基準の策定
 
 1.1. **許容差分リストの作成**
-- `docs/notes/llvm-spec-status-survey.md` の Phase 3 知見を参照
+- `docs/notes/backend/llvm-spec-status-survey.md` の Phase 3 知見を参照
 - ターゲット固有の差分を分類（ABI、デバッグ情報、最適化等）
 - 許容可能な差分の明確化（例: タイムスタンプ、絶対パス）
 - 却下すべき差分の定義（例: 機能差異、性能劣化）
@@ -202,7 +202,7 @@
 - 検証ツールの使い方ガイド
 
 7.3. **ナレッジ記録**
-- `docs/notes/llvm-spec-status-survey.md` への追記
+- `docs/notes/backend/llvm-spec-status-survey.md` への追記
 - ターゲット固有の問題と解決策
 - 将来の拡張ポイント（新規ターゲット追加時）
 - レビュー過程での知見

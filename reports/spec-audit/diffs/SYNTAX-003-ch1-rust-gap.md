@@ -29,7 +29,7 @@ cargo run --manifest-path compiler/rust/frontend/Cargo.toml \
 3. **effect handler/operation 実装**（Day 2 午後）✅  
    - `EffectExprKind` を導入し `perform` / `handle` / `operation` を統合。`OperationDecl` と `HandlerDecl` が `TypeAnnot::Resume` を共有するように `ast.rs` を拡張し、`compiler/rust/frontend/src/diagnostics/mod.rs` に `effects.resume.untyped` の Rust 版ロジックを追加。
 4. **dual-write 比較とログ**（Day 3）✅  
-   - `scripts/poc_dualwrite_compare.sh effect_handler` を追加実行し、OCaml/Rust の診断 JSON が一致することを `reports/spec-audit/ch1/effect_handler-20251118-dualwrite.md` に記録。`reports/spec-audit/ch1/effect_handler-20251118-diagnostics.json` を保存し、`docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表2025-11-17-更新` を更新。
+   - `scripts/poc_dualwrite_compare.sh effect_handler` を追加実行し、OCaml/Rust の診断 JSON が一致することを `reports/spec-audit/ch1/effect_handler-20251118-dualwrite.md` に記録。`reports/spec-audit/ch1/effect_handler-20251118-diagnostics.json` を保存し、`docs/notes/process/spec-integrity-audit-checklist.md#rust-gap-トラッキング表2025-11-17-更新` を更新。
 
 ## W39 Trace Coverage 追加
 
@@ -48,4 +48,4 @@ cargo run --manifest-path compiler/rust/frontend/Cargo.toml \
 - `reports/spec-audit/ch1/effect_handler-20251118-diagnostics.json`
 - `reports/spec-audit/ch1/effect_handler-20251118-dualwrite.md`
 - `reports/spec-audit/ch1/2025-11-17-syntax-samples.md#2025-11-18-追加サンプル`
-- `docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表2025-11-17-更新`
+- `docs/notes/process/spec-integrity-audit-checklist.md#rust-gap-トラッキング表2025-11-17-更新`

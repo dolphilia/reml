@@ -25,7 +25,7 @@
 - Phase 2-7 診断タスクと協力して、CLI/LSP のテキスト出力・自動修正インターフェイスを更新する。  
 - 仕様書の脚注に「OCaml 実装は `recover`/FixIt の整備中」と明記し、実装完了時に脚注を削除。  
 - `docs/guides/ecosystem/ai-integration.md` に FixIt 情報を活用する運用例を追記する。
-- `docs/notes/core-parse-streaming-todo.md` にストリーミング解析での `recover` 活用状況と残課題を追記し、Phase 3 へ引き継ぐ。
+- `docs/notes/parser/core-parse-streaming-todo.md` にストリーミング解析での `recover` 活用状況と残課題を追記し、Phase 3 へ引き継ぐ。
 - **タイミング**: PARSER-001/002 の反映後、Phase 2-5 中盤〜後半にかけて実装し、Phase 2-7 の CLI/LSP 刷新に先行して FixIt 支援を提供する。
 
 ## 5. 実施ステップ
@@ -67,7 +67,7 @@
 - **notes / hints の文面**: 仕様の補足文例（`docs/spec/2-5-error.md:190-238`）を下敷きに、`emit_notes=true` の場合は「同期トークン `<token>` を挿入すると構文を継続できます」といったテンプレートを `Diagnostic.Builder.add_hint`（`compiler/ocaml/src/diagnostic.ml:1243-1251`）で追加する方針を決定。notes は `Diagnostic.Builder.add_note` で一次テキストを残し、CLI テキスト出力と LSP データに同じ文章が現れるよう JSON ゴールデンの更新計画を立てた。
 - **`extensions["recover"]` の更新形**: Step1 で定義した `{ sync_tokens, hits, strategy, notes }` に加え、FixIt 生成有無を示す `has_fixits: Bool` を追加し、監査ログやメトリクスから回復が成功したかを判別できるようにする。`Diagnostic.set_extension "recover"` を適用する箇所で `Yojson.Basic` の `List.map` を使い JSON 配列へ変換するコードスケッチを用意し、`scripts/validate-diagnostic-json.sh` で `has_fixits=true` のサンプルを検証する準備を完了。
 - **テストとメトリクスへの布石**: Step3 以降で追加する `parser_recover_tests.ml` と CLI/LSP ゴールデンでは、欠落セミコロンと未閉背括弧の 2 ケースを最低ラインとし、FixIt/notes/`extensions["recover"]` 全てが出力されるかを確認する。メトリクスは `parser.recover_fixit_coverage` を `collect-iterator-audit-metrics.py`（`tooling/ci/collect-iterator-audit-metrics.py:1654-1684`）へ追加し、JSON ゴールデン（`compiler/ocaml/tests/golden/diagnostics/parser/`）に `has_fixits` を含む新ファイルを配置する段取りを設定した。
-- **フォローアップ**: Step3 では CLI/LSP/GH Actions で FixIt 出力を確認し、`docs/spec/3-6-core-diagnostics-audit.md` 更新と `docs/notes/core-parse-streaming-todo.md` への残タスク登録を行う。`recover` 拡張の JSON スキーマ更新は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の監視指標登録と同時に進め、Phase 2-7 の CLI テキスト刷新へ連結する。
+- **フォローアップ**: Step3 では CLI/LSP/GH Actions で FixIt 出力を確認し、`docs/spec/3-6-core-diagnostics-audit.md` 更新と `docs/notes/parser/core-parse-streaming-todo.md` への残タスク登録を行う。`recover` 拡張の JSON スキーマ更新は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の監視指標登録と同時に進め、Phase 2-7 の CLI テキスト刷新へ連結する。
 
 ### Step3 CLI/LSP 出力とメトリクス整備（Week 33 Day1-3）
 - `compiler/ocaml/tests/parser_recover_tests.ml`（新設）と `streaming_runner_tests.ml` を拡張し、同期トークン回復と FixIt が `ParseResult.diagnostics` に含まれることをゴールデンで検証する。  
@@ -83,13 +83,13 @@
 
 ### Step4 ドキュメント更新とレビュー共有（Week 33 Day3-4）
 - `docs/spec/2-5-error.md` / `docs/spec/3-6-core-diagnostics-audit.md` に OCaml 実装の整備状況を脚注で追記し、完了後に脚注を更新して Phase 2-7 へ周知する。  
-- `docs/plans/bootstrap-roadmap/2-5-review-log.md` に実施記録を追加し、`docs/notes/core-parse-streaming-todo.md` へストリーミング経路の残課題と回復カバレッジを登録する。  
+- `docs/plans/bootstrap-roadmap/2-5-review-log.md` に実施記録を追加し、`docs/notes/parser/core-parse-streaming-todo.md` へストリーミング経路の残課題と回復カバレッジを登録する。  
 - Phase 2-7 チームへ CLI/LSP 出力差分と自動修正インターフェイスの追随点を共有し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に必要な後続タスクを記録する。  
 - 調査: `docs/spec/0-1-project-purpose.md` §2.2（エラーメッセージ改善指標）、`docs/guides/ecosystem/ai-integration.md` FixIt 活用章、`docs/plans/bootstrap-roadmap/2-4-completion-report.md` の診断 KPI。
 
 #### Step4 実施記録（Week 33 Day4 完了）
 - **仕様脚注の更新**: `docs/spec/2-5-error.md` と `docs/spec/3-6-core-diagnostics-audit.md` に ERR-002 Step3/Step4 の整備状況を示す脚注を追加し、`parser.recover_fixit_coverage = 1.0` を維持していることを明記した。  
-- **レビュー記録と TODO 整理**: `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step4 の共有ログを追加し、`docs/notes/core-parse-streaming-todo.md` を更新して Packrat 経路・notes ローカライズ・ストリーミング重複検証の継続タスクを Phase 2-7 へ引き継いだ。  
+- **レビュー記録と TODO 整理**: `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step4 の共有ログを追加し、`docs/notes/parser/core-parse-streaming-todo.md` を更新して Packrat 経路・notes ローカライズ・ストリーミング重複検証の継続タスクを Phase 2-7 へ引き継いだ。  
 - **後続フェーズへの登録**: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §3.4 に Recover FixIt 継続整備を追記し、Packrat スナップショット整備と CLI/LSP ローカライズ対応を Phase 2-7 の作業ブレークダウンへ正式登録した。
 
 ## 残課題

@@ -16,7 +16,7 @@
 | KPI 基準値 | `diagnostics.effect_row_stage_consistency`, `type_effect_row_equivalence`, `effect_row_guard_regressions` | `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（2026-04-24 更新分） |
 | 移行ガード | `RunConfig.extensions["effects"].type_row_mode` の運用とロールバック条件 | `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration` |
 | ドキュメント更新 | 効果行統合に関する本文・索引の整合（脚注撤去後の状態） | `docs/spec/1-2-types-Inference.md`, `docs/spec/1-3-effects-safety.md`, `docs/spec/3-6-core-diagnostics-audit.md`, `docs/spec/README.md` |
-| プロジェクトノート | フォローアップログと PoC 運用メモ | `docs/notes/effect-system-tracking.md`（TYPE-002 セクション） |
+| プロジェクトノート | フォローアップログと PoC 運用メモ | `docs/notes/effects/effect-system-tracking.md`（TYPE-002 セクション） |
 
 ## 3. 移行時の Gate 条件
 Phase 2-7 で TYPE-002 実装を着手する前に、以下の条件を満たすこと：
@@ -49,7 +49,7 @@ Phase 2-7 で TYPE-002 実装を着手する前に、以下の条件を満たす
 - `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md`
 - `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`
 - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`
-- `docs/notes/effect-system-tracking.md`
+- `docs/notes/effects/effect-system-tracking.md`
 - `compiler/ocaml/docs/effect-system-design-note.md`
 
 ---

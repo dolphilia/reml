@@ -20,7 +20,7 @@
 - `docs/spec/3-0-core-library-overview.md` に新モジュールの概要が追記される。
 
 ## 標準ライブラリ拡張の優先順位（Phase 4 以降の着手順）
-`docs/notes/stdlib-expansion-research.md` の調査結果を踏まえ、Phase 4 の DSL 開発者体験（本計画）と並行・後続で進める標準ライブラリ拡張の着手順を以下に整理する。実用性・安全性・段階的導入（`docs/spec/0-1-project-purpose.md`）を最優先の判断基準とする。
+`docs/notes/stdlib/stdlib-expansion-research.md` の調査結果を踏まえ、Phase 4 の DSL 開発者体験（本計画）と並行・後続で進める標準ライブラリ拡張の着手順を以下に整理する。実用性・安全性・段階的導入（`docs/spec/0-1-project-purpose.md`）を最優先の判断基準とする。
 
 1. **P0: Core.Net / Core.Crypto**  
    - **理由**: 実用用途の根幹（API 連携・配信・認証/整合性）であり、欠落がボトルネック。  

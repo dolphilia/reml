@@ -48,5 +48,5 @@
 
 ## フォローアップ
 - Bridge signal/Runtime Bridge Registry の共有データ構造を `reml_frontend` の `diagnostic` や `streaming` モジュール API について `docs/spec/2-5-error.md` や `docs/guides/compiler/core-parse-streaming.md` に記述し、他チームとのインタフェースを明示する。  
-- 実装中に判明した監査スキーマ差分は `docs/notes/core-library-outline.md` に記録し、次のリリースノートで取りまとめる。
-- 大きな設計変更があった場合は `docs/notes/dsl-plugin-roadmap.md` に TODO を追加し、長期的な監査フローと Capability 拡張の整合を維持。
+- 実装中に判明した監査スキーマ差分は `docs/notes/stdlib/core-library-outline.md` に記録し、次のリリースノートで取りまとめる。
+- 大きな設計変更があった場合は `docs/notes/dsl/dsl-plugin-roadmap.md` に TODO を追加し、長期的な監査フローと Capability 拡張の整合を維持。

@@ -25,7 +25,7 @@
   - `.../toml_parser.reml`: `lex_pack_toml`（`ConfigTriviaProfile::toml_relaxed` + `IdentifierProfile::toml_key`）へ切替し、複数行文字列をプリセット版へ移行。  
   - `.../yaml_parser.reml`: Layout token 生成は据え置きつつ `space_id` 共有と `lexeme/symbol` 置換だけ先行。
 - 回帰登録: Phase4 マトリクスへ `CP-WS3-001` を追加し、`core-parse-lexpack-basic.reml` の期待（whitespace/comment を変えても AST/診断が同一、`label("identifier"|"number"|"string")` を保持）を固定。`tooling/examples/run_phase4_suite.py` に実行経路を追加。
-- 記録: 実装変更メモを `docs/notes/core-parse-api-evolution.md` または `docs/plans/core-parse-improvement/2-0-integration-with-regression.md` に追記。
+- 記録: 実装変更メモを `docs/notes/parser/core-parse-api-evolution.md` または `docs/plans/core-parse-improvement/2-0-integration-with-regression.md` に追記。
 
 ## 実装ステップ（優先順）
 1. **LexPack 共通入口と RunConfig 共有の整備**
@@ -38,7 +38,7 @@
    - 実施順（Step1 内の詳細手順）:
      1) `docs/spec/2-3-lexer.md` と `docs/spec/2-2-core-combinator.md` の `lex_pack`/`with_space`/`autoWhitespace` 記述を再確認し、`space_id` 採番と書き戻し順序を箇条書きで確定する。
      2) `lex_pack`/`lex_pack_toml` の返却フィールド表を作り、デフォルト値（profile/identifier_profile/layout_profile/safety）を明示。`identifier/number/string` のラベル同梱を表に含める。
-     3) `keyword_ci` 境界チェックのテスト観点をリスト化（大文字小文字揺れ、予約語拒否との共存、返却値は原文 `kw`、Expectation は `Keyword(kw)`）。必要なら `docs/notes/core-parse-api-evolution.md` にチェックリストを転記。
+     3) `keyword_ci` 境界チェックのテスト観点をリスト化（大文字小文字揺れ、予約語拒否との共存、返却値は原文 `kw`、Expectation は `Keyword(kw)`）。必要なら `docs/notes/parser/core-parse-api-evolution.md` にチェックリストを転記。
      4) RunConfig 書き戻しキーを JSON 例で示し、`extensions["lex"]` に最低限必要なフィールドセット（`space_id/profile/identifier_profile/layout_profile/safety`）を固定する。
    - Step1 実施メモ（結果）
      - `space_id` 採番と書き戻し順序（確定）:
@@ -91,7 +91,7 @@
      3) `sql_parser.reml`: `keyword_ci` + `reserved(profile, set)` へ置換し、予約語拒否ロジックをプリセットへ集約。`identifier_profile` 共有を導入し、RunConfig を書き戻す。
      4) `toml_parser.reml`: `lex_pack_toml` に切替え、ベアキーを `IdentifierProfile::toml_key` に寄せる。複数行文字列をプリセット版（`stringMultiline` 相当）へ移行。
      5) `yaml_parser.reml`: Layout token 生成は触らず、`space_id` 共有と `lexeme/symbol` 置換のみ先行。`RunConfig` への書き戻しで layout_profile を None のまま共有する。
-     6) 影響確認: 各サンプルの expected（stdout/diagnostic）が揺れる場合は Step3 で再生成予定とし、差分の理由をメモ（`docs/notes/core-parse-api-evolution.md`）に追記。
+     6) 影響確認: 各サンプルの expected（stdout/diagnostic）が揺れる場合は Step3 で再生成予定とし、差分の理由をメモ（`docs/notes/parser/core-parse-api-evolution.md`）に追記。
 3. **新規サンプルと期待ゴールデンの追加**
    - `core-parse-lexpack-basic.reml` を追加し、空白/コメント混在入力の AST/診断を `expected/spec_core/chapter2/parser_core/core-parse-lexpack-basic.{stdout,diagnostic.json}` で固定。
    - 期待条件: `label("identifier"|"number"|"string")` を保持し、`lexeme` が `with_space` と二重スキップしない（`space_id` 共有）。
@@ -99,12 +99,12 @@
      1) サンプル新規作成: `examples/spec_core/chapter2/parser_core/core-parse-lexpack-basic.reml` を追加し、`lex_pack` 入口を使って「識別子 + 数値 + `=` + `;`」をパースする最小 DSL を記述。空白・コメント（行/ブロック）の混在を許容する入力例をサンプル末尾に含める。
      2) 期待ゴールデン生成: CLI で `--output stdout` と `--output json` を取得し、`expected/spec_core/chapter2/parser_core/core-parse-lexpack-basic.stdout` と `.diagnostic.json` に保存。`label("identifier"|"number"|"string")` が humanized/JSON のいずれでも保持されることを確認する。
      3) `CP-WS3-001` と紐付け: 期待ファイルの取得コマンドと前提（`RunConfig.extensions["lex"]` の profile/safety/space_id）を `phase4-scenario-matrix.csv` `resolution_notes` にメモし、空白/コメントを変えたバリエーションでも AST/診断が揺れないことを確認する。
-     4) 影響メモ: 生成したゴールデンの取得方法（コマンド/入力ファイル名）と、`label` 維持を確認した観点を `docs/notes/core-parse-api-evolution.md` に追記する。
+     4) 影響メモ: 生成したゴールデンの取得方法（コマンド/入力ファイル名）と、`label` 維持を確認した観点を `docs/notes/parser/core-parse-api-evolution.md` に追記する。
    - 実施状況（2025-12-18 時点）:
      - 1) サンプル作成済み。成功入力 + 数値欠落の失敗入力を同居させ、LexPack 入口を使用。
      - 2) `--parse-driver --output json` で `.diagnostic.json` を再生成し、`expected_tokens` に `identifier/number/string` が含まれることを確認（サンプル冒頭コメントの `Parse.run("alpha = ;")` から失敗入力を抽出する）。
      - stdout ゴールデンも更新し、失敗ケースでは `identifier/number/string` のラベルが humanized に出ることを固定した。
-     - 3)〜4) 実施済み。`CP-WS3-001` を Phase4 マトリクスへ登録し、取得コマンドを `resolution_notes` に記録。影響メモは `docs/notes/core-parse-api-evolution.md` に追記。
+     - 3)〜4) 実施済み。`CP-WS3-001` を Phase4 マトリクスへ登録し、取得コマンドを `resolution_notes` に記録。影響メモは `docs/notes/parser/core-parse-api-evolution.md` に追記。
 4. **回帰登録と実行パイプライン接続**
    - `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv` に `CP-WS3-001` を追加し、`resolution_notes` に CLI/LSP 実行コマンドと `RunConfig.extensions["lex"]` のキーを書き残す。
    - `tooling/examples/run_phase4_suite.py` に CP-WS3-001 の経路を追加し、`CH2-PARSE-901/902` と競合しないことを一度 Phase4 スイートで確認。

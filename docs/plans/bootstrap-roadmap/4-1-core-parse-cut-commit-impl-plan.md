@@ -13,7 +13,7 @@
 - 実装: Cut 境界の明示（`cut_here()` 挿入など）で、期待集合が WS1 の指針と一致する。
 - ゴールデン: `expected/spec_core/chapter2/parser_core/` で Cut 有り版の期待集合が安定。
 - 回帰: Phase4 マトリクス `CH2-PARSE-102/103` が「Cut 有無比較ができる」状態で CI を通過。
-- 記録: 実装変更点を `docs/notes/core-parse-api-evolution.md` または `docs/plans/core-parse-improvement/2-0-integration-with-regression.md` に短く追記。
+- 記録: 実装変更点を `docs/notes/parser/core-parse-api-evolution.md` または `docs/plans/core-parse-improvement/2-0-integration-with-regression.md` に短く追記。
 
 ## 実装ステップ（優先順）
 1. **境界挿入の洗い出し（Rust Parser）**

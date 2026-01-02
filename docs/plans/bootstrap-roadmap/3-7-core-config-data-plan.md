@@ -23,11 +23,11 @@
 1.2. 効果タグ (`effect {config}`, `{audit}`, `{io}`, `{migration}`) と `Diagnostic` との連携ポイントを整理する。
     - `docs/spec/3-6-core-diagnostics-audit.md` の `config.*` 診断キーと照らし合わせ、各タグがどの `DiagnosticBuilder` で発火するかをシーケンス図に落とし込み、`reports/spec-audit/ch3/config_effects-trace.md` へ保存する。
     - `compiler/rust/frontend/src/diagnostics/` で既存の `effect` 連携を調査し、Config/Data 追加分の Hook (`emit_config_error`, `attach_audit_metadata` 等) を洗い出してタスクリストへ登録する。
-    - `effect {migration}` に紐づく監査ログ項目を `docs/spec/3-8-core-runtime-capability.md` §10 と比較し、欠落しているメタデータキーを `docs/notes/dsl-plugin-roadmap.md` へ TODO として書き出す。
+    - `effect {migration}` に紐づく監査ログ項目を `docs/spec/3-8-core-runtime-capability.md` §10 と比較し、欠落しているメタデータキーを `docs/notes/dsl/dsl-plugin-roadmap.md` へ TODO として書き出す。
 1.3. Manifest/Schema のシリアライズ形式 (TOML/JSON) とバリデーション順序を仕様と照合する。
     - `examples/` 配下の `reml.toml` / `schema.reml` サンプルを収集してリスト化し、`serde` / `toml_edit` / `serde_json` のどれを採用するか決定メモを本計画書末尾（Serialization Decision Log）として残す。
     - ロード→正規化→検証→差分出力の順序をシーケンシャルに書き出し、各フェーズで必要な型（`ManifestBuilder`, `SchemaValidator`, `ChangeSetEmitter` 等）を割り当てる。
-    - TOML/JSON 変換で許容するコメント・未使用キーの挙動を `docs/spec/3-7-core-config-data.md` へフィードバックするため、発見事項は `docs/notes/core-library-outline.md` に暫定記録する。
+    - TOML/JSON 変換で許容するコメント・未使用キーの挙動を `docs/spec/3-7-core-config-data.md` へフィードバックするため、発見事項は `docs/notes/stdlib/core-library-outline.md` に暫定記録する。
 
 #### 1.1 実施結果（Run ID: 20251203-config-api-diff）
 - `reports/spec-audit/ch3/config_data_api_diff.md` に仕様 §1〜§5 で定義された API と `compiler/rust/runtime/src/config/{mod.rs,collection_diff.rs}` の `grep -R "pub "` 結果を整理した表を追加し、Manifest/Schema/Compatibility/Migration API が全て未実装であること、唯一存在する `ChangeSet` ラッパも Core.Collections 依存で Config/Data の効果タグを欠いていることを明示した。
@@ -40,7 +40,7 @@
 - CLI で `RunConfig.extensions["config"]` に値を入れている箇所（`compiler/rust/frontend/src/bin/reml_frontend.rs:2243-2265`）は `parser.runconfig` メタデータ生成専用であり、Config/Data API とは未接続であることをログに記載。これにより `effect {config}` のみならず `config.path`/`config.source` などのキーを再利用できる下地が無い点を共有した。
 
 #### 1.3 実施結果（Run ID: 20251203-config-serialization）
-- `docs/notes/core-library-outline.md` に「Config/Data シリアライズ検討ログ（2025-12-03）」を追加し、ロード→正規化→検証→差分出力の順序と `effect` 境界、`toml_edit` 採用方針、`Diagnostic`/`AuditEnvelope` で共有する `config.*` メタデータの最小集合を記録。これを Appendix の Serialization Decision Log と同期する。
+- `docs/notes/stdlib/core-library-outline.md` に「Config/Data シリアライズ検討ログ（2025-12-03）」を追加し、ロード→正規化→検証→差分出力の順序と `effect` 境界、`toml_edit` 採用方針、`Diagnostic`/`AuditEnvelope` で共有する `config.*` メタデータの最小集合を記録。これを Appendix の Serialization Decision Log と同期する。
 - `examples/` 配下に `reml.toml` や `schema.reml` が存在しないこと、`Cargo.toml` に `toml` 関連依存が無いことを確認してログへ追記。Manifest/Schema CLI を実装する前提で `serde_json` の既存依存を活用し、`toml_edit` を優先候補に設定した。
 - Appendix の **Serialization Decision Log** にライブラリ候補・採用理由・影響範囲（CLI/LSP/Audit）を追記し、`docs/spec/3-7-core-config-data.md#1.5` へのフィードバック先・`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI との関係を整理した。
 
@@ -110,7 +110,7 @@
 4.2. Config 解析エラー (`Diagnostic.code = "config.*"`) のテンプレートとメタデータを実装し、LSP/CLI 出力を確認する。
     - `compiler/rust/frontend/src/diagnostics/messages/config.rs` を新設し、`config.missing_manifest`, `config.schema_mismatch`, `config.compat.unsupported` などのテンプレートを定義する。
     - `scripts/validate-diagnostic-json.sh` に Config セクションを追加し、`reports/spec-audit/ch3/config_diagnostics-YYYYMMDD.json` を生成して LSP/CLI 表示と突き合わせる。
-    - `docs/notes/spec-integrity-audit-checklist.md` に Config 診断のカバレッジ行を追加し、リリース判定基準へ `config_diagnostics_pass_rate >= 0.95` を設定する。
+    - `docs/notes/process/spec-integrity-audit-checklist.md` に Config 診断のカバレッジ行を追加し、リリース判定基準へ `config_diagnostics_pass_rate >= 0.95` を設定する。
 4.3. `RunConfig` との連携 API を整備し、`Core.Env`/`Core.Runtime` との接合をテストする。
     - `compiler/rust/runtime/run_config.rs` に Config/Data 由来の値を注入する `apply_manifest_overrides` を実装し、`Core.Env` のステージ情報と同期を取る。
     - `runtime/tests/run_config_integration.rs` を追加し、`reml run --config fixtures/*.toml` の挙動を再現して CLI 経由の統合テストを実施する。
@@ -125,7 +125,7 @@
 #### 4.2 実施結果（Run ID: 20251205-config-diagnostics）
 - `compiler/rust/frontend/src/diagnostic/messages/` を新設し、`config.rs` に `config.missing_manifest` / `config.schema_mismatch` / `config.compat.unsupported` のテンプレートを実装した。いずれも `DiagnosticDomain::Config`・`config.*` メタデータ・`AuditMetadata` への書き戻しを共通ヘルパ (`ConfigDiagnosticMetadata`) で扱えるようにし、`extensions["config"]` と `audit_metadata["config.*"]` の欠落を防ぐ単体テストを追加している。
 - Config 診断の証跡として `reports/spec-audit/ch3/config_diagnostics-20251203.json` を追加し、`scripts/validate-diagnostic-json.sh --section config` が `config_diagnostics` ゴールデンに含まれる `config.*` 拡張を必須チェックするよう更新した（既存の `schema_diff.*` 判定はファイル名で自動切り替え）。これにより CLI/LSP の Config 診断 JSON が監査用の最小フィールドを欠落させた場合に検出できる。
-- `docs/notes/spec-integrity-audit-checklist.md` に `config_diagnostics_pass_rate >= 0.95` の KPI 行を追加し、`--section config` が `extensions["config"]` と `audit_metadata["config.*"]` の両方を満たすことを監査手順として記録した。Phase 3 で Config/Data を組み込む際のベースラインとして Run ID を共有済み。
+- `docs/notes/process/spec-integrity-audit-checklist.md` に `config_diagnostics_pass_rate >= 0.95` の KPI 行を追加し、`--section config` が `extensions["config"]` と `audit_metadata["config.*"]` の両方を満たすことを監査手順として記録した。Phase 3 で Config/Data を組み込む際のベースラインとして Run ID を共有済み。
 
 ### 5. データ互換性・マイグレーション支援（55週目）
 **担当領域**: 将来互換
@@ -143,15 +143,15 @@
 - `reports/spec-audit/ch3/migration_plan-pilot.md` を新設し、`cargo test -p reml_runtime migration_plan::tests::plan_serialization_roundtrip --features experimental-migration` の実行ログ、`serde_json` で生成されるサンプル JSON、`ChangeSet` 連携 TODO を記録した。Phase 4 の `reml config migrate` CLI へ渡すための PoC ルートとして参照する。
 - Manifest と Capability Registry の契約整合は `reports/spec-audit/ch3/manifest_capability-20260225.md` に追記し、3.8 計画 §5.3 の Run ID（20260225-manifest-capability-contract）から本節へ遡れるようにした。
 - ✅ 20240712-conductor-contract: `compiler/rust/runtime/src/config/manifest.rs` に `run.target.capabilities` を解析して `ConductorCapabilityContract` を生成するロジックを追加し、`CapabilityRegistry::verify_conductor_contract` 経由で Stage/Capability 契約を突き合わせるテスト (`cargo test -p reml_runtime conductor_contract`) を整備。エラー時には `manifest_path` と `source_span` を `CapabilityError::ContractViolation` と監査メタデータへ転写し、[3-8 Core Runtime Capability 計画](3-8-core-runtime-capability-plan.md#3-3-verify_conductor_contract) の Run ID 参照先として `tests/conductor_contract.rs` と `reports/spec-audit/ch3/conductor_contract-20240712.md` を登録した。
-5.2. Manifest/Schema のバージョン互換チェックを追加し、移行シナリオを `docs/notes/dsl-plugin-roadmap.md` に記録する。
+5.2. Manifest/Schema のバージョン互換チェックを追加し、移行シナリオを `docs/notes/dsl/dsl-plugin-roadmap.md` に記録する。
     - `Manifest.version` と `Schema.version` を比較し、互換条件（`major` は一致、`minor` は `>=` など）を `docs/spec/3-7-core-config-data.md` に追記するための diff を準備する。
     - 互換性チェックの結果を `reports/dual-write/config_versioning/` に保存し、DSL プラグイン毎の移行ステップを `dsl-plugin-roadmap.md` に表形式で追記する。
-    - 重大な非互換が検出された場合は `docs/notes/dsl-plugin-roadmap.md` の TODO セクションへ `MIGRATION-BLOCKER-*` 番号で登録し、Phase 4 のタスクインプットにする。
+    - 重大な非互換が検出された場合は `docs/notes/dsl/dsl-plugin-roadmap.md` の TODO セクションへ `MIGRATION-BLOCKER-*` 番号で登録し、Phase 4 のタスクインプットにする。
 
 #### 5.2 実施結果（Run ID: 20250310-config-version）
 - `compiler/rust/runtime/src/config/manifest.rs` に `ensure_schema_version_compatibility` を追加し、`project.version` の SemVer 解析エラー (`config.project.version_invalid`) とスキーマ側の先行 (`config.schema.version_incompatible`) を `config.version_reason` メタデータ付きで検出できるようにした。`config/mod.rs` から再エクスポートしたため、CLI/RunConfig API は同じ関数を呼び出せる。
 - `tests/manifest.rs` へ 5 つの `schema_version_check_*` テストを追加し、`cargo test schema_version_check` のログを `reports/dual-write/config_versioning/20250310-config-version-check.md` に保存した。互換成功・major mismatch・minor 超過・Schema.version 省略・SemVer 解析失敗の各ケースをカバー。
-- 仕様 `docs/spec/3-7-core-config-data.md` と `docs/spec/3-6-core-diagnostics-audit.md`（診断コード補足）へ互換条件と新コードを追記し、`docs/notes/dsl-plugin-roadmap.md` へ移行ステップ表と `MIGRATION-BLOCKER-001` を登録して Phase4 連携の導線を確保した。
+- 仕様 `docs/spec/3-7-core-config-data.md` と `docs/spec/3-6-core-diagnostics-audit.md`（診断コード補足）へ互換条件と新コードを追記し、`docs/notes/dsl/dsl-plugin-roadmap.md` へ移行ステップ表と `MIGRATION-BLOCKER-001` を登録して Phase4 連携の導線を確保した。
 5.3. CLI 連携 (`reml config lint`, `reml config diff`) の出力仕様を整備し、サンプルを作成する。
     - `compiler/rust/cli/src/commands/config.rs` に `lint`/`diff` サブコマンドを追加し、`ChangeSet` との整合を `snap` テストで担保する。
     - `docs/guides/runtime/runtime-bridges.md` と `docs/guides/ecosystem/ai-integration.md` に CLI 出力例を掲載し、JSON/TTY 両方のサンプルを示す。
@@ -176,7 +176,7 @@
 6.3. `docs/guides/runtime/runtime-bridges.md`/`docs/guides/dsl/plugin-authoring.md` 等で設定連携の記述を更新する。
     - runtime bridge ガイドに Config/Data の流れ図を追加し、`RuntimeBridgeRegistry` が Manifest 由来の Capability を参照するステップを説明する。
     - plugin authoring ガイドで `@dsl_export` → Manifest → Schema → CLI/LSP という手順をケーススタディとしてまとめ、ステージ別注意点を列挙する。
-    - ガイド更新後は `docs/notes/dsl-plugin-roadmap.md` へ変更ログをリンクし、再編履歴 (`docs-migrations.log`) に章番号と日付を記載する。
+    - ガイド更新後は `docs/notes/dsl/dsl-plugin-roadmap.md` へ変更ログをリンクし、再編履歴 (`docs-migrations.log`) に章番号と日付を記載する。
 
 ### 7. テスト・CI 統合（56週目）
 **担当領域**: 品質保証
@@ -217,7 +217,7 @@
 ## リスクとフォローアップ
 - TOML/JSON パーサの差異で互換性チェックが不安定な場合、フォーマット別に冪等テストを追加し、必要なら構文制限を仕様側へ提案する。
 - Migration API が未成熟な場合、Phase 4 で段階的導入する前提で `docs/notes/` に TODO を残す。
-- レジストリ連携で追加機能が必要になった場合、`docs/notes/dsl-plugin-roadmap.md` に記録し、エコシステム計画 (5-x) と調整する。
+- レジストリ連携で追加機能が必要になった場合、`docs/notes/dsl/dsl-plugin-roadmap.md` に記録し、エコシステム計画 (5-x) と調整する。
 
 ## Appendix（更新指針）
 
@@ -238,7 +238,7 @@
 | CLI (`reml config lint/diff`) / サンプル (`examples/core_config`) | 3-7 §0 | 実装なし | ❌ 未着手 | CLI コマンドとゴールデンファイル不在。 |
 
 ### Appendix B. Serialization Decision Log（Run ID: 20251203-config-serialization）
-`docs/notes/core-library-outline.md#configdata-シリアライズ検討ログ2025-12-03` と同期する決定事項を抜粋する。
+`docs/notes/stdlib/core-library-outline.md#configdata-シリアライズ検討ログ2025-12-03` と同期する決定事項を抜粋する。
 
 | 項目 | 候補/決定 | 根拠 | 影響範囲 |
 | --- | --- | --- | --- |

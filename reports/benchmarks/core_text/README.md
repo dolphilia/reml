@@ -4,7 +4,7 @@
 
 ## 実行手順
 1. `cargo bench --manifest-path benchmarks/Cargo.toml text::* -- --save-baseline phase3-core-text` を実行して正規化・グラフェム・TextBuilder の 3 シナリオを測定する。
-2. `target/criterion/` に出力された `raw.csv` と `report/index.html` を確認し、MB/s・ns/char・cache hit 等の代表値を `phase3-baseline.md` へ転記する。±15% を超える回帰を検知した場合は `docs/notes/text-unicode-performance-investigation.md` に原因を記録する。
+2. `target/criterion/` に出力された `raw.csv` と `report/index.html` を確認し、MB/s・ns/char・cache hit 等の代表値を `phase3-baseline.md` へ転記する。±15% を超える回帰を検知した場合は `docs/notes/text/text-unicode-performance-investigation.md` に原因を記録する。
 3. 転記後は `git add reports/benchmarks/core_text/*.md` を実行し、当該コミットを `docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md` の §6.2 実施ログへリンクする。
 
 ## ファイル構成

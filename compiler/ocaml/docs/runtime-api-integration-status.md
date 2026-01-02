@@ -175,7 +175,7 @@ typedef struct {
 
 - **計画書**: `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md`
 - **LLVM 統合ガイド**: `docs/guides/compiler/llvm-integration-notes.md` §5
-- **仕様調査**: `docs/notes/llvm-spec-status-survey.md` §2.5
+- **仕様調査**: `docs/notes/backend/llvm-spec-status-survey.md` §2.5
 - **コンパイラ実装**: `compiler/ocaml/src/llvm_gen/codegen.ml:176-200`
 - **ABI 実装**: `compiler/ocaml/src/llvm_gen/abi.ml`, `compiler/ocaml/src/llvm_gen/llvm_attr.ml`
 

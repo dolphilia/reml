@@ -2,7 +2,7 @@
 
 ## 目的と背景
 
-- `docs/notes/pattern-matching-improvement.md` で **最優先** とされた Active Patterns を、Reml の DSL ファースト思想に適合する形で導入する。
+- `docs/notes/types/pattern-matching-improvement.md` で **最優先** とされた Active Patterns を、Reml の DSL ファースト思想に適合する形で導入する。
 - 既存の `match` ガード/エイリアス仕様（`docs/spec/1-1-syntax.md` で再構成済み）と干渉しない構文・診断ポリシーを設計し、Phase 4 回帰計画と整合する実装ガイドを用意する。
 
 ## スコープ

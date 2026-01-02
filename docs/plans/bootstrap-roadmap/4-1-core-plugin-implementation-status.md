@@ -305,4 +305,4 @@ reml plugin install --bundle <path> --policy <strict|permissive> [--output human
 - `docs/spec/4-7-core-parse-plugin.md`
 - `docs/spec/3-8-core-runtime-capability.md`
 - `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md`
-- `docs/notes/performance-optimization-research-20251221.md`
+- `docs/notes/backend/performance-optimization-research-20251221.md`

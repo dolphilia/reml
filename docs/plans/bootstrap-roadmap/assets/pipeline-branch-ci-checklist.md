@@ -16,5 +16,5 @@
 
 ## エスカレーションと記録
 - 本チェックリストの実施結果は `docs/plans/bootstrap-roadmap/pipeline_branch-stage-mismatch-plan.md#7-テスト・ci-反映` に Run ID・担当者・残課題として追記する。
-- 監査ログや CLI の再現ログは `reports/spec-audit/ch3/` 配下に日付フォルダを作成し、`docs/notes/runtime-capability-stage-log.md` からリンクする。
+- 監査ログや CLI の再現ログは `reports/spec-audit/ch3/` 配下に日付フォルダを作成し、`docs/notes/runtime/runtime-capability-stage-log.md` からリンクする。
 - `collect-iterator-audit-metrics` の `--scenario pipeline_branch` が失敗した場合、`docs/plans/bootstrap-roadmap/0-4-risk-handling.md` の `runtime-capability` 節へ即時記録し、`3-8-core-runtime-capability-plan.md` §7.3 の CI 指標で回 regression を追跡する。

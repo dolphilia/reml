@@ -312,7 +312,7 @@ llc-18 _build/ir/add.ll -o _build/ir/add.s
 - `brew install llvm@15` でバージョン固定
 - `brew extract` による特定バージョンの固定化
 - `brew unlink`/`brew link` による明示的なパス設定
-- `docs/notes/llvm-spec-status-survey.md` にバージョン管理戦略を記録
+- `docs/notes/backend/llvm-spec-status-survey.md` にバージョン管理戦略を記録
 
 ### 2. Mach-O vs ELF の違い
 
@@ -348,7 +348,7 @@ llc-18 input.ll -o output.s
 **対応**:
 - パス設定スクリプト（`tooling/ci/macos/setup-env.sh`）の作成
 - `llc` の `-mtriple` オプションで macOS ターゲットを明示
-- `docs/notes/llvm-spec-status-survey.md` に差分を記録
+- `docs/notes/backend/llvm-spec-status-survey.md` に差分を記録
 
 ### 4. Xcode Command Line Tools
 
@@ -368,7 +368,7 @@ clang --version
 
 **対応**:
 - GitHub Actions ワークフローに `xcode-select --install` チェックを追加
-- バージョン情報を `docs/notes/llvm-spec-status-survey.md` に記録
+- バージョン情報を `docs/notes/backend/llvm-spec-status-survey.md` に記録
 
 ---
 
@@ -509,7 +509,7 @@ clang --version
 **対策**:
 - `brew install llvm@15` でバージョン固定
 - `brew link --force llvm@15` で明示的なリンク
-- `docs/notes/llvm-spec-status-survey.md` にバージョン管理戦略を記録
+- `docs/notes/backend/llvm-spec-status-survey.md` にバージョン管理戦略を記録
 
 ### 3. Mach-O ランタイムのリンクエラー
 

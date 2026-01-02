@@ -2,7 +2,7 @@
 
 ステータス: ドラフト（初版）
 
-`docs/notes/stdlib-improvement-proposal.md` を起点に、DSL のライフサイクル（テスト・CLI・整形・ドキュメント・IDE 支援）を標準ライブラリで支えるための計画群を整理する。
+`docs/notes/stdlib/stdlib-improvement-proposal.md` を起点に、DSL のライフサイクル（テスト・CLI・整形・ドキュメント・IDE 支援）を標準ライブラリで支えるための計画群を整理する。
 `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` を再開する前に、標準ライブラリ側の欠落を補い、回帰の対象と計測指標を拡張する。
 
 - 設計指針: `docs/spec/0-1-project-purpose.md`

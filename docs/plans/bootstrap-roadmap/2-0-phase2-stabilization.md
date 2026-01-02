@@ -10,14 +10,14 @@ Phase 2 は OCaml 実装を用いて Reml 言語仕様の全体を検証し、MV
 ## 2.0.2 スコープ境界
 - **含む**: 型クラス/辞書渡し、代数的効果タグの静的検証、`RuntimeBridge` との Stage 整合、FFI 所有権契約の正式化、診断メタデータの出力。
 - **含まない**: セルフホスト化、Reml 実装での再構築、JIT ターゲット・クロスコンパイル最適化。これらは Phase 3 以降で実施。
-- **前提条件**: Phase 1 の成果物、`docs/guides/compiler/llvm-integration-notes.md` の Phase 2 要件、`docs/notes/llvm-spec-status-survey.md` で列挙された未決領域リスト。
+- **前提条件**: Phase 1 の成果物、`docs/guides/compiler/llvm-integration-notes.md` の Phase 2 要件、`docs/notes/backend/llvm-spec-status-survey.md` で列挙された未決領域リスト。
 
 ## 2.0.2a 作業ディレクトリ
 - `compiler/ocaml/src` : 型クラス・効果タグ対応の実装
 - `runtime/native` : FFI 所有権更新や追加 Capability 対応
 - `tooling/cli` / `tooling/ci` : 診断・監査パイプラインを CLI/CI に組み込む
 - `docs/spec/` 各章 : 仕様変更に伴うリンク・表の更新
-- `docs/notes/` : 型クラス評価やリスク登録 (`docs/notes/llvm-spec-status-survey.md`, `docs/notes/dsl-plugin-roadmap.md` など)
+- `docs/notes/` : 型クラス評価やリスク登録 (`docs/notes/backend/llvm-spec-status-survey.md`, `docs/notes/dsl/dsl-plugin-roadmap.md` など)
 
 ## 2.0.3 成果物とマイルストーン
 | マイルストーン | 内容 | 検証方法 | 期限目安 |

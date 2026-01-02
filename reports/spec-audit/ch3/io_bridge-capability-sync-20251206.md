@@ -39,4 +39,4 @@
 
 ## フォローアップ
 - `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#5.5` に Run ID `20251206-core-io-capability-matrix` を追記。
-- `docs/notes/runtime-capability-stage-log.md#2025-12-06-coreio-capability-マトリクスrun-id-20251206-core-io-capability-matrix` で本レポートを参照できるようにした。
+- `docs/notes/runtime/runtime-capability-stage-log.md#2025-12-06-coreio-capability-マトリクスrun-id-20251206-core-io-capability-matrix` で本レポートを参照できるようにした。

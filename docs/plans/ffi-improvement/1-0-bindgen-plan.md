@@ -89,7 +89,7 @@
 ## 依存関係
 - `docs/spec/3-9-core-async-ffi-unsafe.md`
 - `docs/spec/3-6-core-diagnostics-audit.md`
-- `docs/notes/ffi-improvement-survey.md`
+- `docs/notes/ffi/ffi-improvement-survey.md`
 
 ## リスクと対策
 - **型変換の不足**: 対応外の型は `ffi.unknown_type` として明示し、

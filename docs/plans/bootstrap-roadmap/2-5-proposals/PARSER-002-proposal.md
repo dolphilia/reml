@@ -23,7 +23,7 @@
 ## 3. 影響範囲と検証
 - **コード**: `compiler/ocaml/src/parser_driver.ml`, `parser_diag_state.ml`, `parser_expectation.ml`、新設 `compiler/ocaml/src/parser_run_config.{ml,mli}`（予定）、`core_parse_lex`（LEXER-002）など。  
 - **ツール/クライアント**: `compiler/ocaml/src/main.ml`（CLI）、`tooling/lsp/` 系のパーサ呼び出し、`tooling/ci/collect-iterator-audit-metrics.py`、`scripts/validate-diagnostic-json.sh`。  
-- **ドキュメント**: `docs/spec/2-1-parser-type.md`・`docs/spec/2-6-execution-strategy.md` に移行脚注を追加/更新し、`docs/plans/bootstrap-roadmap/2-5-review-log.md`・`docs/notes/core-parser-migration.md`（未作成なら新規）へ進捗を記録する。Phase 2-8 で作成した `reports/spec-audit/diffs/SYNTAX-003-ch1-rust-gap.md` を参照し、effect handler/operation の受理状況と RunConfig 共有の関係を脚注で追跡する。[^syntax003-gap]  
+- **ドキュメント**: `docs/spec/2-1-parser-type.md`・`docs/spec/2-6-execution-strategy.md` に移行脚注を追加/更新し、`docs/plans/bootstrap-roadmap/2-5-review-log.md`・`docs/notes/parser/core-parser-migration.md`（未作成なら新規）へ進捗を記録する。Phase 2-8 で作成した `reports/spec-audit/diffs/SYNTAX-003-ch1-rust-gap.md` を参照し、effect handler/operation の受理状況と RunConfig 共有の関係を脚注で追跡する。[^syntax003-gap]  
 - **テスト/メトリクス**: `compiler/ocaml/tests/run_config_tests.ml`（新設）、既存パーサー/診断テストの RunConfig 差し替え、`0-3-audit-and-metrics.md` への RunConfig 指標登録、`reports/diagnostic-format-regression.md` に RunConfig 切替シナリオを追加。  
 - **検証手段**: `dune runtest parser`、`scripts/validate-diagnostic-json.sh`、`tooling/ci/collect-iterator-audit-metrics.py --track parser.runconfig_*`、CLI/LSP 経路の手動確認と JSON フィクスチャ比較。
 
@@ -32,7 +32,7 @@
 - RunConfig シム導入後は CLI フラグ・LSP 設定ファイル・ガイド類（`docs/guides/compiler/core-parse-streaming.md`, `docs/guides/dsl/plugin-authoring.md`）を更新し、ユーザーが仕様準拠の設定を選択できるようにする。  
 - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と連携して RunConfig/lex/stream 設定のダッシュボード化と監査指標整備を Phase 2-7 へ接続する。  
 - `TYPE-001` 値制限・`EFFECT-003` 複数 Capability 実装が RunConfig 経由で設定を取得できるかレビューし、必要なデータ共有（例: `extensions["effects"]` / `["runtime"]`）を追加する。  
-- RunConfig 導入状況を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に段階記録し、Phase 3 での Reml 実装移植作業に備えて `docs/notes/core-parser-migration.md` へまとめる。
+- RunConfig 導入状況を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に段階記録し、Phase 3 での Reml 実装移植作業に備えて `docs/notes/parser/core-parser-migration.md` へまとめる。
 
 ## 5. 実施ステップ（Week32〜Week33）
 ### Step 0: 仕様・実装調査（Week32 Day1）
@@ -109,12 +109,12 @@
 > 2025-11-20 更新: Step 3 完了。`parser_run_config` に `Config`/`Lex`/`Recover`/`Stream` サブモジュールを追加し、`extensions["lex"]` は `profile` 未指定時に `ConfigTriviaProfile::strict_json` を返すシムを提供、`ParserId` は将来の Packrat 向けに `int option` として保持するよう整備した。`extensions["recover"]` の `sync_tokens`/`notes` は `Parser_diag_state.create` へ伝播するようになり、`recover.notes=false` でも診断警告を抑制できる。`extensions["stream"]` は checkpoint/resume ヒントを `Run_config.Stream.t` で保持し、未設定時は空のプレースホルダで扱う。`compiler/ocaml/src/dune` に `parser_run_config` を追加し `dune build` を通過することを確認。
 
 ### Step 4: クライアント・測定基盤の対応（Week32 Day4）
-- CLI オプション (`Cli.Options`) から RunConfig を構築するヘルパを追加し、`--require-eof` / `--packrat` / `--left-recursion` / `--trace` / `--no-merge-warnings` など Phase 2 で予定していたフラグを再確認して実装する。未実装のフラグは TODO として `docs/notes/core-parser-migration.md` に記録する。  
+- CLI オプション (`Cli.Options`) から RunConfig を構築するヘルパを追加し、`--require-eof` / `--packrat` / `--left-recursion` / `--trace` / `--no-merge-warnings` など Phase 2 で予定していたフラグを再確認して実装する。未実装のフラグは TODO として `docs/notes/parser/core-parser-migration.md` に記録する。  
 - LSP トランスポート層で RunConfig を生成する処理を追加し、既存の設定ファイル（`tooling/lsp/config/*.json`）を `extensions["lex"]` 等に反映させる。  
 - `compiler/ocaml/tests/` のテストヘルパを更新し、RunConfig を明示的に渡す API（`Test_support.with_run_config` 等）を用意する。  
 - `reports/diagnostic-format-regression.md` に RunConfig 切替シナリオを追加し、CLI/LSP の JSON が設定値に追従することを比較できるようにする。
 
-> 2025-11-21 更新: Step 4 完了。`compiler/ocaml/src/cli/options.ml` に `Cli.Options.to_run_config` を追加し、`--require-eof` / `--packrat` / `--left-recursion` / `--no-merge-warnings` を経由して RunConfig を構築できるようにした。CLI 既定値は仕様に合わせて `require_eof=false` へ更新し、従来挙動は `--require-eof` で復元できる。LSP 向けには `tooling/lsp/run_config_loader.ml` と `tooling/lsp/config/default.json` を作成し、`extensions["lex"|"recover"|"stream"]` を設定ファイルから再現するロードパスを定義した。テスト支援ライブラリに `compiler/ocaml/tests/support/test_support.ml` を追加し、`Test_support.parse_string` / `Test_support.with_run_config` を `test_parser.ml`・`test_type_inference.ml` へ展開。RunConfig 移行時の未完タスクは `docs/notes/core-parser-migration.md` に TODO として記録した。
+> 2025-11-21 更新: Step 4 完了。`compiler/ocaml/src/cli/options.ml` に `Cli.Options.to_run_config` を追加し、`--require-eof` / `--packrat` / `--left-recursion` / `--no-merge-warnings` を経由して RunConfig を構築できるようにした。CLI 既定値は仕様に合わせて `require_eof=false` へ更新し、従来挙動は `--require-eof` で復元できる。LSP 向けには `tooling/lsp/run_config_loader.ml` と `tooling/lsp/config/default.json` を作成し、`extensions["lex"|"recover"|"stream"]` を設定ファイルから再現するロードパスを定義した。テスト支援ライブラリに `compiler/ocaml/tests/support/test_support.ml` を追加し、`Test_support.parse_string` / `Test_support.with_run_config` を `test_parser.ml`・`test_type_inference.ml` へ展開。RunConfig 移行時の未完タスクは `docs/notes/parser/core-parser-migration.md` に TODO として記録した。
 
 ### Step 5: テスト・検証・メトリクス定着（Week32 Day4-5）
 - `compiler/ocaml/tests/run_config_tests.ml` を作成し、`require_eof`・`merge_warnings` の挙動、`trace` ON/OFF の `SpanTrace` 収集、`extensions["lex"]` による空白共有、`legacy_result=true` での互換性をパラメトリックテストで確認する。  
@@ -127,9 +127,9 @@
 ### Step 6: 共有とレビュー記録（Week32 Day5）
 - 実装結果を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記録し、完了条件（RunConfig フィールド実装、メトリクス更新、CLI/LSP 連携）を明確にする。  
 - `docs/spec/2-1-parser-type.md`・`docs/spec/2-6-execution-strategy.md`・`docs/guides/compiler/core-parse-streaming.md` に移行脚注と利用例を追記し、仕様との整合を示す。  
-- `docs/notes/core-parser-migration.md`（新設予定）に RunConfig 移行ステップと今後の課題（Packrat 実装、ストリーミング連携）を整理し、Phase 3 の self-host 作業へ渡す。
+- `docs/notes/parser/core-parser-migration.md`（新設予定）に RunConfig 移行ステップと今後の課題（Packrat 実装、ストリーミング連携）を整理し、Phase 3 の self-host 作業へ渡す。
 
-> 2025-11-24 更新: Step 6 完了。`docs/plans/bootstrap-roadmap/2-5-review-log.md` に Day6 エントリを追加し、RunConfig 共有手順と残課題を整理した。`docs/spec/2-1-parser-type.md` と `docs/spec/2-6-execution-strategy.md` に CLI/LSP 共有脚注と利用例を追記し、`docs/guides/compiler/core-parse-streaming.md` §9 へ RunConfig 連携ワークフローを掲載。`docs/notes/core-parser-migration.md` で Step1〜6 の完了状況とフォローアップ先（`PARSER-003`/`LEXER-002`/`EXEC-001`）を一覧化した。
+> 2025-11-24 更新: Step 6 完了。`docs/plans/bootstrap-roadmap/2-5-review-log.md` に Day6 エントリを追加し、RunConfig 共有手順と残課題を整理した。`docs/spec/2-1-parser-type.md` と `docs/spec/2-6-execution-strategy.md` に CLI/LSP 共有脚注と利用例を追記し、`docs/guides/compiler/core-parse-streaming.md` §9 へ RunConfig 連携ワークフローを掲載。`docs/notes/parser/core-parser-migration.md` で Step1〜6 の完了状況とフォローアップ先（`PARSER-003`/`LEXER-002`/`EXEC-001`）を一覧化した。
 
 ## 6. 依存関係と連携
 - **PARSER-001**: `ParseResult` シムを導入済み。RunConfig を渡すために `parser_driver` API 変更が前提。  

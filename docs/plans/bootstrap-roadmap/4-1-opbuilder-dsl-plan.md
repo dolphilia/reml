@@ -23,7 +23,7 @@
 - OpBuilder DSL の正式仕様（サンプル/BNF/テンプレートコード、`docs/spec/2-4`）。
 - Rust Parser/Typeck/Runtime が DSL の AST を生成し、`core.parse.opbuilder.level_conflict` / `core.parse.opbuilder.fixity_missing` などの診断を返せる実装。
 - `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml` など DSL を用いた `.reml` と `expected/` ゴールデンの整備、`phase4-scenario-matrix.csv` の `CH2-OP-401` を `ok` へ更新。
-- `reports/spec-audit/ch4/spec-core-dashboard.md` で DSL シナリオが `pass` になったログ、および `docs/notes/examples-regression-log.md` への記録。
+- `reports/spec-audit/ch4/spec-core-dashboard.md` で DSL シナリオが `pass` になったログ、および `docs/notes/process/examples-regression-log.md` への記録。
 
 ## 作業ステップ
 
@@ -74,14 +74,14 @@
    - `diagnostic_keys` / `scenario_notes` に DSL 仕様の anchor (`docs/spec/2-4-op-builder.md§A-2`) を追記。
 3. `reports/spec-audit/ch4/spec-core-dashboard.md`
    - フェーズF ログに DSL シナリオの pass/diagnostics を記録。
-4. `docs/notes/examples-regression-log.md`
+4. `docs/notes/process/examples-regression-log.md`
    - OpBuilder DSL 復元の判断・CLI コマンド・ログ ID を追記。
 
 ### フェーズE: ハンドオーバーと継続運用
 
 1. `docs/plans/rust-migration/1-3-dual-write-runbook.md` に OpBuilder DSL チェック項目を追加。
 2. `docs/plans/bootstrap-roadmap/4-4-field-regression-and-readiness-plan.md` に OpBuilder フォローアップ（Self-host で DSL を用いたパイプライン作成）を記載。
-3. `docs/notes/opbuilder-dsl-decisions.md`（新規）で仕様変更理由、今後の拡張（`foldl`/`foldr` 以外の fixity など）をメモ。
+3. `docs/notes/dsl/opbuilder-dsl-decisions.md`（新規）で仕様変更理由、今後の拡張（`foldl`/`foldr` 以外の fixity など）をメモ。
 
 ## タイムライン（目安）
 
@@ -100,7 +100,7 @@
 | DSL と `precedence` API の文書が重複し読者が混乱 | 仕様理解に時間がかかる | §2.4 に比較表と移行ガイドを載せ、`precedence` API を内部実装・DSL を宣言的ラッパと位置付ける |
 | Parser/Typeck 実装が複雑化 | 回帰（`parser.syntax.expected_tokens` など）が再発 | `spec_core::op_builder` テストを追加し、固定文字列/AST をスナップショットで保護。CI に `cargo test -p reml_frontend spec_core::op_builder_*` を追加 |
 | 他プラットフォーム（OCaml 等）との乖離 | ドキュメントと実装がずれる | `docs/plans/rust-migration/1-3-dual-write-runbook.md` に DSL チェックを組み込み、OCaml 側へも TODO を起票 |
-| DSL の将来拡張が塞がる | Stage 5 以降の拡張余地が減少 | `docs/notes/opbuilder-dsl-decisions.md` で設計判断を管理し、必要に応じて `spec_fix` として Phase5 backlog へ送る |
+| DSL の将来拡張が塞がる | Stage 5 以降の拡張余地が減少 | `docs/notes/dsl/opbuilder-dsl-decisions.md` で設計判断を管理し、必要に応じて `spec_fix` として Phase5 backlog へ送る |
 
 ## 参照
 

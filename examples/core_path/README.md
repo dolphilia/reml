@@ -12,4 +12,4 @@ Path 抽象とセキュリティヘルパ (`validate_path`, `sandbox_path`, `is_
 cargo run --bin reml -- examples/core_path/security_check.reml
 ```
 
-このサンプルの進捗は `docs/notes/core-io-path-gap-log.md` と `docs/notes/runtime-bridges-roadmap.md` にも記録されます。
+このサンプルの進捗は `docs/notes/stdlib/core-io-path-gap-log.md` と `docs/notes/runtime/runtime-bridges-roadmap.md` にも記録されます。

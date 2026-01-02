@@ -62,7 +62,7 @@
    - ✅ 2025-11-06: `compiler/rust/frontend/Cargo.toml` と `src/lib.rs` を起点に `span.rs`・`token.rs`・`error.rs`・`diagnostic/mod.rs`・`lexer/mod.rs`・`parser/mod.rs`・`streaming/mod.rs` を追加し、`Span(u32,u32)` や `Recoverability` 分類など共通基礎型を定義した。スケルトン Lexer は識別子／整数リテラル／未知トークンまでを扱い、未知入力時に回復可能診断を返す挙動を確認済み。依存候補の比較結果は `docs/plans/rust-migration/appendix/frontend-crate-evaluation.md` に整理し、`logos`（lexing）と `chumsky`（parsing）を PoC 優先候補として記録した。
 
 4. **パーサ生成戦略と状態管理の設計**  
-   - ✅ 2025-11-28: `docs/notes/core-parser-migration.md#p1-w1-rust-parser-戦略と状態管理（2025-11-28）` に `logos`＋`chumsky` を第一候補（`pomelo` をフォールバック）とする決定と PoC ストーリー、`ParserSession`/`StreamingState` の責務整理を記録した。`lalrpop` はエラー回復と生成物サイズの懸念で除外。  
+   - ✅ 2025-11-28: `docs/notes/parser/core-parser-migration.md#p1-w1-rust-parser-戦略と状態管理（2025-11-28）` に `logos`＋`chumsky` を第一候補（`pomelo` をフォールバック）とする決定と PoC ストーリー、`ParserSession`/`StreamingState` の責務整理を記録した。`lalrpop` はエラー回復と生成物サイズの懸念で除外。  
    - `Core_parse` の state machine・入力ストリーム・エラー復旧フックを分解し、Rust の `ParserDriver`（仮）へ移す責務を定義済み。`ReplyFlags`（`consumed`/`committed`/`far_error`）と `PackratEntry` のキー仕様（`ParserId`＋`Range<u32>`）を固め、`parser.stream.*` のメトリクス更新を `StreamingState` で一元化する設計を確定。  
    - PoC ゴール：`parser::driver::tests::basic_roundtrip` で AST/診断差分ゼロを確認し、`tests/streaming_metrics.rs` で `packrat_hits` カウンタの増減を検証する。CLI フック（`remlc --frontend rust --emit parse-debug`）案は `1-3-dual-write-runbook.md` の手順と整合した草案を共有済み。  
    - ✅ 2025-11-28: `scripts/poc_dualwrite_compare.sh` を `cargo test` 後に再実行し、4 ケース（`empty_uses` / `multiple_functions` / `addition` / `missing_paren`）で AST・診断件数が OCaml ベースラインと一致することを確認。`missing_paren` の診断メッセージも OCaml と同値に揃え、期待トークン一覧は `recover.expected_tokens` ノートへ格納した。
@@ -70,7 +70,7 @@
 5. **Packrat / span_trace 再現の設計**  
    - `Core_parse_streaming` の packrat キャッシュと `span_trace` 収集ロジックを調査し、Rust で利用するデータ構造（`IndexMap`/`HashMap` と寿命管理）を決定する。  
    - メトリクス項目（`parser.stream.*`）と連携するカウンタをどこで更新するか設計ノートに明記する。  
-   - ✅ 2025-12-05: `docs/notes/core-parser-migration.md#p1-w1-packrat--span_trace-キャッシュ再現設計2025-12-05` に Packrat キャッシュと `span_trace` の Rust 再現方針を記録。`IndexMap<(ParserId, Range<u32>)>`＋`SmallVec` ベースの `PackratEntry`、`RwLock` で包んだ `VecDeque` トレース、および `parser.stream.packrat_*` / `parser.stream.span_trace_*` の更新ポイントと予算超過時の制御手順を整理した。  
+   - ✅ 2025-12-05: `docs/notes/parser/core-parser-migration.md#p1-w1-packrat--span_trace-キャッシュ再現設計2025-12-05` に Packrat キャッシュと `span_trace` の Rust 再現方針を記録。`IndexMap<(ParserId, Range<u32>)>`＋`SmallVec` ベースの `PackratEntry`、`RwLock` で包んだ `VecDeque` トレース、および `parser.stream.packrat_*` / `parser.stream.span_trace_*` の更新ポイントと予算超過時の制御手順を整理した。  
    - ✅ 2025-12-06: `compiler/rust/frontend/src/streaming/mod.rs` に Packrat キャッシュ／`span_trace` 実装を追加し、`ParserDriver::parse` から `StreamingState` を呼び出して `packrat_stats`・`span_trace` を収集。CLI PoC（`poc_frontend`）は `parse_result.packrat_stats` / `parse_result.span_trace` を JSON 出力し、`tests/streaming_metrics.rs` と `tooling/ci/collect-iterator-audit-metrics.py` で統合経路を確認済み。
    - ✅ 2025-12-07: 成功パスでも `StreamingState` を参照するよう `module_parser` を改修し、Packrat キャッシュが実際に再参照される状態を確認。`poc_frontend` に `--emit-parse-debug <path>` を追加し、OCaml 版の `remlc --emit parse-debug` 相当の JSON (`run_config`/`parse_result`/`stream_meta`) を生成して dual-write レポート／CI に `packrat_stats` を配布できるようにした。
 
@@ -129,14 +129,14 @@
   - 2025-11-17 時点で `ModuleHeader`/`UseDecl` の AST 整備・`TraceEvent::{ModuleHeaderAccepted,UseDeclAccepted}` の埋め込みに加え、ブロック/`match` 構文を Rust Frontend が解析できるようになり、`use_nested.reml` が診断 0 件で通過する。`reports/spec-audit/ch1/use_nested-20251117-diagnostics.json` / `use_nested-20251117-trace.md` をベースラインとし、`rust-gap SYNTAX-002` は `Closed` 扱い。  
 - 差分メモ連携:
   - `reports/spec-audit/diffs/SYNTAX-002-ch1-rust-gap.md` を作成し、症状/再現手順/期待値/現状/対応ステータス（`In Progress` → `Closed`）を記録する。  
-  - `docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-002` 行に `owner: Rust Parser WG`, `due: Phase 2-8 W37`, `evidence: reports/spec-audit/ch1/use_nested-YYYYMMDD-diagnostics.json`, `diff-log: reports/spec-audit/diffs/SYNTAX-002-ch1-rust-gap.md` を追記する。
+  - `docs/notes/process/spec-integrity-audit-checklist.md` の `SYNTAX-002` 行に `owner: Rust Parser WG`, `due: Phase 2-8 W37`, `evidence: reports/spec-audit/ch1/use_nested-YYYYMMDD-diagnostics.json`, `diff-log: reports/spec-audit/diffs/SYNTAX-002-ch1-rust-gap.md` を追記する。
 
 #### Phase 2-8 追補（W38）: module_parser 再実装グリッド
 
 - `module_parser.rs` を `ModuleStage::{Header,UseList,DeclList}` 単位に再構成し、各ステージで `TraceEvent::ModuleStageEntered { stage }`・`TraceEvent::ModuleDeclAccepted { kind }` を `trace_id = syntax:module-stage::<stage>` へ固定。証跡は `reports/spec-audit/ch1/use_nested-20251119-trace.md`、`block_scope-20251119-trace.md`、`effect_handler-20251119-trace.md` に保存する。  
 - `tests/parser.rs` へ `module_header_accepts_use_nested` など 6 本の統合テストを追加し、`cargo test --manifest-path compiler/rust/frontend/Cargo.toml parser::module -- --nocapture` のログを `reports/spec-audit/ch1/module_parser-20251119-parser-tests.md` に収集。テストは `examples/docs-examples/spec/1-1-syntax/*.reml` を直接読む `FixtureSample` を利用し、dual-write 結果は `reports/spec-audit/ch1/module_parser-20251119-dualwrite.md` で確認する。  
 - `scripts/poc_dualwrite_compare.sh use_nested` / `effect_handler` の出力を `reports/spec-audit/ch1/2025-11-17-syntax-samples.md#2025-11-19-module_parser-再実装ログ` に転記し、`docs/plans/rust-migration/3-0-ci-and-dual-write-strategy.md#3010-ci-ブロッカーとゲート` に `Module Parser Acceptance`／`Rollback Hook` を追加。  
-- `docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-002/module_parser` 行を `Closed (P2-8 W38)` に更新し、今後の P3 監査では `reports/spec-audit/ch1/module_parser-20251119-parser-tests.md`、`use_nested-20251119-diagnostics.json`、`effect_handler-20251119-diagnostics.json` を参照する。  
+- `docs/notes/process/spec-integrity-audit-checklist.md` の `SYNTAX-002/module_parser` 行を `Closed (P2-8 W38)` に更新し、今後の P3 監査では `reports/spec-audit/ch1/module_parser-20251119-parser-tests.md`、`use_nested-20251119-diagnostics.json`、`effect_handler-20251119-diagnostics.json` を参照する。  
 
 #### Phase 2-8 追補（W37 後半）: ExprParser / effect handler 受理
 
@@ -148,7 +148,7 @@
   - `scripts/poc_dualwrite_compare.sh effect_handler` を実行し、OCaml/Rust の診断 JSON と監査メタデータが一致することを `reports/spec-audit/ch1/effect_handler-20251118-dualwrite.md` に記録。  
 - 成果物:
   - `reports/spec-audit/ch1/effect_handler-20251118-diagnostics.json` / `effect_handler-20251118-trace.md` / `block_scope-20251118-diagnostics.json`。  
-  - `reports/spec-audit/diffs/SYNTAX-003-ch1-rust-gap.md` に症状・再現手順・対応ステータスを記録。`docs/migrations.log` へ ExprParser 追補を追記し、`docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-003` 行を `Closed (P2-8)` に更新。  
+  - `reports/spec-audit/diffs/SYNTAX-003-ch1-rust-gap.md` に症状・再現手順・対応ステータスを記録。`docs/migrations.log` へ ExprParser 追補を追記し、`docs/notes/process/spec-integrity-audit-checklist.md` の `SYNTAX-003` 行を `Closed (P2-8)` に更新。  
 - レビュー: `docs/plans/rust-migration/1-2-diagnostic-compatibility.md#effect-handler-acceptance` に診断差分メモを追加し、`docs/plans/rust-migration/overview.md` の Phase 1 完了条件へ effect handler 受理を追記する。
 
 ### W3 具体的な進め方（型推論コア移植）✅ 完了

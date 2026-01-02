@@ -9,6 +9,6 @@ Reml リポジトリで再配布している主要サードパーティデータ
 | Unicode EastAsianWidth | `EastAsianWidth-15.1.0.txt` | Unicode 15.1.0 | `tests/data/unicode/UCD/` | 同上 / https://www.unicode.org/Public/15.1.0/ucd/EastAsianWidth.txt | `width_map` 実装と `unicode_width_mapping` テストの幅クラス定義 |
 
 - 取得日: 2027-03-30 (UTC)
-- 作業ログ: `docs/notes/unicode-upgrade-log.md` にバージョンとコミット ID を記録済み。
+- 作業ログ: `docs/notes/text/unicode-upgrade-log.md` にバージョンとコミット ID を記録済み。
 - 追加で Unicode データを導入する場合は、上表に行を追加し、本ファイルと `docs/THIRD_PARTY_NOTICES.md` の双方を更新すること。
 

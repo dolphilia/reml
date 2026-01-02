@@ -1,7 +1,7 @@
 # Phase 4: Inline ASM / LLVM IR 本格実装計画
 
 ## 背景と決定事項
-- `docs/notes/native-escape-hatches-research.md` で示した通り、`Core.Ffi` だけでは SIMD/低レベル最適化/埋め込み用途に不足があり、Inline ASM と LLVM IR 直書きの本格実装が必要。
+- `docs/notes/ffi/native-escape-hatches-research.md` で示した通り、`Core.Ffi` だけでは SIMD/低レベル最適化/埋め込み用途に不足があり、Inline ASM と LLVM IR 直書きの本格実装が必要。
 - `docs/plans/bootstrap-roadmap/4-1-native-escape-hatches-plan.md` では研究プロトタイプに限定していたが、Phase 4 での実用回帰の早期検証を優先し **本格実装へ前倒し**する。
 - 研究ノート/仕様の「PoC 解析のみ」方針は **本格実装**へ更新する（本計画の完了後に `docs/notes` / `docs/spec` を同期更新する）。
 - Rust 実装は `native-unstable` のガードと監査ログは用意済みだが、構文・型検証・LLVM IR 生成が未実装であるため、仕様 → フロントエンド → バックエンド → 監査の順に拡張する。
@@ -153,11 +153,11 @@
 | `!{native}` の乱用 | 安全性の崩壊 | `native.inline_asm.used` / `native.llvm_ir.used` を必須監査キー化し、Capability でゲート |
 
 ## TODO（調査メモ付き）
-- Inline ASM の constraint 仕様は `docs/notes/native-escape-hatches-research.md` と `docs/guides/compiler/llvm-integration-notes.md` の差分を確認して決定する。
+- Inline ASM の constraint 仕様は `docs/notes/ffi/native-escape-hatches-research.md` と `docs/guides/compiler/llvm-integration-notes.md` の差分を確認して決定する。
 - LLVM IR 直書きのテンプレート構文は `compiler/rust/backend/llvm/src/codegen.rs` の IR 生成方針と整合させる。
 
 ## 参照
-- `docs/notes/native-escape-hatches-research.md`
+- `docs/notes/ffi/native-escape-hatches-research.md`
 - `docs/spec/0-1-project-purpose.md`
 - `docs/spec/1-1-syntax.md`
 - `docs/spec/1-3-effects-safety.md`

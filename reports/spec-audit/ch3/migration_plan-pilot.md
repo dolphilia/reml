@@ -63,4 +63,4 @@ cargo test -p reml_runtime \
 ## 4. KPI / TODO
 - `collect-iterator-audit-metrics.py --section config` に `migration_effect_presence` を追加し、`MIGRATION_EFFECT_TAG` を含む診断/監査ログをカウントする。（次期スプリント）
 - `reml config migrate` CLI（3-7 §5.3）のドラフト実装時に、本ログの Run ID を参照して `effect.stage.required = StageId::Beta` を必須チェックへ追加する。
-- `docs/notes/dsl-plugin-roadmap.md` へ MigrationPlan のエスカレーション基準（`MigrationStep.breaking = true` のレビュー手順）を記す。
+- `docs/notes/dsl/dsl-plugin-roadmap.md` へ MigrationPlan のエスカレーション基準（`MigrationStep.breaking = true` のレビュー手順）を記す。

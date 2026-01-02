@@ -88,7 +88,7 @@
 
 - **最適化パイプライン差異による IR 不一致**  
   - *リスク*: LLVM パス順序の違いで IR 差分が拡大し、ゴールデン比較が不安定。  
-  - *対応*: OCaml 実装と同じ順序をデフォルトとし、Rust 側固有のパス追加は Feature flag (`-Zrust-backend-extra-pass`) で opt-in。デフォルト差分は `docs/notes/llvm-spec-status-survey.md` に記録。
+  - *対応*: OCaml 実装と同じ順序をデフォルトとし、Rust 側固有のパス追加は Feature flag (`-Zrust-backend-extra-pass`) で opt-in。デフォルト差分は `docs/notes/backend/llvm-spec-status-survey.md` に記録。
 
 ## 2.0.9 関連ドキュメント更新
 - 本章の進捗に応じて `docs/plans/rust-migration/README.md` と `docs/plans/README.md` に P2 セクションを追記すること。  
@@ -151,7 +151,7 @@
   3. `verify`/`opt -verify`/`llc` の出力を `reports/diagnostic-format-regression.md` の診断 ID と照合する手順と、`Diagnostic.extensions["backend"]` や `audit.log("llvm.verify", ...)` に差分を記録する方針を明記し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の監査プロセスにつなげた。
 
 - **実績と次の展望**
-  - W1 では OCaml 側構成の完全な棚卸しにより Rust ゴールの土台を固めたため、今後は `compiler/rust/backend/llvm/` の初期実装でこのチェックリストを反映する。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と `docs/notes/dsl-plugin-roadmap.md` に補足する差分記録は、P2 後半での監査に備えたエビデンスとして残す。
+  - W1 では OCaml 側構成の完全な棚卸しにより Rust ゴールの土台を固めたため、今後は `compiler/rust/backend/llvm/` の初期実装でこのチェックリストを反映する。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と `docs/notes/dsl/dsl-plugin-roadmap.md` に補足する差分記録は、P2 後半での監査に備えたエビデンスとして残す。
   - 暫定の差異監査結果とリンクは `docs-migrations.log` の W2 章にまとめ、該当箇所が `docs/guides/compiler/llvm-integration-notes.md` や `docs/spec/3-8-core-runtime-capability.md` に影響する場合は脚注を追加して整合性を維持する。
 
 ### W3：LLVM IR 実装と差分検証
@@ -167,7 +167,7 @@
 - **検証とメトリクス**
   - `opt -verify` や `llc` 実行で `target.config.*`, `effects.contract.stage_mismatch` などの診断が出ないことを GitHub Actions `llvm-backend-verify` ジョブで監視し、ログを `reports/backend-verify/` に保存。5 連続成功後は P3 CI にハンドオーバー。
   - W3 で収集した `DataLayout`/`CallingConvention`/`diagnostic` の差分は `docs/plans/rust-migration/appendix/llvm-backend-inventory.md` に追記し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の脚注欄から参照できるようにする。
-  - `collect-iterator-audit-metrics.py` を通じて `runtime.refcount.*`・`backend.verify.*` のパスを収集し、`docs/notes/dsl-plugin-roadmap.md` に記載された監査チェックポイントと同期させる。
+  - `collect-iterator-audit-metrics.py` を通じて `runtime.refcount.*`・`backend.verify.*` のパスを収集し、`docs/notes/dsl/dsl-plugin-roadmap.md` に記載された監査チェックポイントと同期させる。
   - 差分メトリクスのサンプル出力は `reports/backend-ir-diff/w3-demo-log.json` に JSON 形式で残し、W3 以降の差分監査資料として共有する。
 
 - **成果物**：`compiler/rust/backend/llvm/` のコードジェン + ラッパ層が dual-run 差分で合格し、`opt -verify`/`llc` ログが `reports/diagnostic-format-regression.md` に定義された診断 ID と一致する。Windows ビルド手順書と `docs-migrations.log` の W3 エントリを P3 チームに渡すことで `3-0-ci-and-dual-write-strategy.md` の `llvm-backend-verify` ジョブの呼び出しを開始できる。

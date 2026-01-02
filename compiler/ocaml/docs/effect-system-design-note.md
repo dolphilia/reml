@@ -248,7 +248,7 @@ Effect_analysis.collect_from_fn_body
 - **Parser (`parser.mly` / `ast.ml`)**
   - 効果注釈から `EffectTag.t` を構築し `EffectSet` へ格納。
   - `allows_effects` 属性を検出し `stage_requirement` の初期値を推定（`Exact Experimental` など）。
-  - 2026-03-12 時点で SYNTAX-003 S1（Phase 2-5）の PoC 設計を完了。`perform` / `do` / `handle` を式構文へ追加する挿入位置と優先順位、`effect_path` ヘルパ、`parser_run_config.experimental_effects` の導入方針を確定し、詳細は `compiler/ocaml/docs/parser_design.md` §3.3.1 と `docs/notes/effect-system-tracking.md` に記録した。
+  - 2026-03-12 時点で SYNTAX-003 S1（Phase 2-5）の PoC 設計を完了。`perform` / `do` / `handle` を式構文へ追加する挿入位置と優先順位、`effect_path` ヘルパ、`parser_run_config.experimental_effects` の導入方針を確定し、詳細は `compiler/ocaml/docs/parser_design.md` §3.3.1 と `docs/notes/effects/effect-system-tracking.md` に記録した。
 - **Typer (`type_inference.ml`, `type_inference_effect.ml`)**
   - 効果プロファイル正規化と Stage 判定 (`Type_inference_effect.resolve_function_profile`) は完了し、Typer 起点の `stage_trace` を診断・監査の両経路へ反映済み。
   - `Constraint_solver.EffectConstraintTable` に診断ペイロードを保持し、残余効果診断 (`effects.contract.residual_leak`) と Stage ミスマッチ (`effects.contract.stage_mismatch`) を生成。辞書/モノモルフィゼーション両経路の CLI ゴールデンを共有化。

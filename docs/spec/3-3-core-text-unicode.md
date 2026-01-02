@@ -128,7 +128,7 @@ type IndexCache = {
 - `GraphemeSeq::stats` は `cache_generation`/`cache_version`/`unicode_version`（`UNICODE_VERSION` を `major.minor.patch` へ整形した文字列）を報告し、`version_mismatch_evictions` とともに `text.grapheme_stats` へ出力する。  
 - `IndexCache` は `Vec<u32>` のみを保持し、元 `Vec<u8>` と共有しないため `unsafe` を必要としない。`GraphemeSeq::stats` では `cache_hits`（`generation`/`version` が一致した場合）と `cache_miss`（再計算時）をカウントし、`collector.effect.text_cache_hits` への転写を許可する。
 
-キャッシュ仕様の詳細は `docs/notes/core-library-outline.md#runtimecachespeccoretext-キャッシュモデル` および `docs/notes/text-unicode-ownership.md` を参照する。
+キャッシュ仕様の詳細は `docs/notes/stdlib/core-library-outline.md#runtimecachespeccoretext-キャッシュモデル` および `docs/notes/text/text-unicode-ownership.md` を参照する。
 
 ### 4.2 部分一致と検索
 

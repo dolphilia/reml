@@ -73,7 +73,7 @@ Phase P2 の目的は、OCaml 実装と等価な LLVM バックエンドを Rust
 | --- | --- | --- |
 | LLVM バージョン非互換 | Windows (MSYS2 16 vs 公式 19.1.1) の差分で `llc` 出力が揃わない | `windows-llvm-build-investigation.md` の fallback 手順を Rust README に組み込み、CI で両方を smoke 実行 |
 | Capability Stage のミスマッチ | ランタイム/Adapter の Stage 情報が Rust 実装と乖離し `effects.contract.stage_mismatch` が多発 | `docs/spec/3-8` の Stage テーブルをソース化し、`CapabilityRegistry` 実装を単一 crate に集約 |
-| Adapter API の肥大化 | FS/Network/Time/Random/Process を同フェーズで仕上げられない | MVP API を `Result<T, AdapterError>` + Stage フラグに限定し、追加機能は `docs/notes/dsl-plugin-roadmap.md` に TODO 登録 |
+| Adapter API の肥大化 | FS/Network/Time/Random/Process を同フェーズで仕上げられない | MVP API を `Result<T, AdapterError>` + Stage フラグに限定し、追加機能は `docs/notes/dsl/dsl-plugin-roadmap.md` に TODO 登録 |
 
 ## 2.3.9 Exit Criteria
 - 2.3.5〜2.3.8 に記載した条件が満たされ、`reports/diagnostic-format-regression.md` が Rust バックエンドの監査キー一致を記録。

@@ -2,7 +2,7 @@
 
 ## 背景と狙い
 式文法など多くの言語文法は左再帰を含むが、一般的な PEG/コンビネーターは左再帰を素直には扱えない。
-調査メモ `docs/notes/core-parse-improvement-survey.md` でも「左再帰ガード」の可能性に言及している。
+調査メモ `docs/notes/parser/core-parse-improvement-survey.md` でも「左再帰ガード」の可能性に言及している。
 
 Reml では `chainl1` などの典型回避策に加え、OpBuilder/優先度ビルダー（`docs/spec/2-4-op-builder.md`）との整合も重要となる。
 

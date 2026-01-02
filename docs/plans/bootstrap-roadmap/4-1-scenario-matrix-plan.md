@@ -54,7 +54,7 @@
 
 - `examples/spec_core/README.md` を新設し、`chapter1/let_binding/`・`chapter1/effect_handlers/` に BNF 規則名を含むファイル（`bnf-valdecl-let-simple-ok.reml` など）と `expected/spec_core/...` のゴールデンを配置。`phase4-scenario-matrix.csv` の `CH1-LET-*` 行をこれらの ID へ差し替えて BNF ベースの命名規約を固定した。
 - `examples/practical/core_io/file_copy/canonical.reml`, `examples/practical/core_path/security_check/relative_denied.reml`, `examples/practical/core_config/audit_bridge/audit_bridge.reml` を追加し、既存の `expected/practical/*` JSON / stdout / audit ログを新パスへ更新。関連仕様（`docs/spec/3-5-core-io-path.md`, `docs/spec/3-0-core-library-overview.md`）とガイド（`docs/guides/runtime/runtime-bridges.md`, `docs/guides/dsl/plugin-authoring.md`）の参照先も Practical 配下に揃えた。
-- `examples/README.md`・`examples/practical/README.md` に Phase 4 の `spec_core`/`practical` 階層を追記し、`docs/notes/examples-regression-log.md` へ Practical 反映ログを残した。旧 `examples/core_io/*` などの参照は「実務ケースは `practical/` へ移行した」旨の注記を追加。
+- `examples/README.md`・`examples/practical/README.md` に Phase 4 の `spec_core`/`practical` 階層を追記し、`docs/notes/process/examples-regression-log.md` へ Practical 反映ログを残した。旧 `examples/core_io/*` などの参照は「実務ケースは `practical/` へ移行した」旨の注記を追加。
 - `phase4-scenario-matrix.csv` へ `runtime_bridge` 列を追加し、`CH3-PLG-310` など Capability を要求する行に `audit_bridge` を登録。IO/Path/Plugin 系の `input_path` を Practical パスへ統一し、`expected/practical/core_io/file_copy/canonical.audit.jsonl` などのゴールデンと 1:1 対応させた。
 - `examples/language-impl-comparison/`（比較サンプル）も Phase4 マトリクスで追跡できるよう、`tooling/examples/run_phase4_suite.py` に `--suite language_impl_comparison` を追加。`CH2-PARSE-501`（`basic_interpreter_combinator.reml`）を 1 件目として回帰実行できる状態にした（レポート出力: `reports/spec-audit/ch4/language-impl-comparison-dashboard.md`）。
 
@@ -117,6 +117,6 @@
 - `docs-migrations.log` に Phase 4 資産追加の履歴を残し、Phase 5 `phase5-readiness.md` で参照できるようにする。
 
 ## リスクとフォローアップ
-- **シナリオ不足**: Chapter 1 の境界例が不足する場合は `docs/notes/core-library-outline.md` を参照し、追加ケースを `phase4-scenario-matrix.csv` に `priority=high` として登録。リードタイムが足りない場合は `run_examples.sh --suite spec-core` をスキップできるガードを `4-2` タスクと調整する。
+- **シナリオ不足**: Chapter 1 の境界例が不足する場合は `docs/notes/stdlib/core-library-outline.md` を参照し、追加ケースを `phase4-scenario-matrix.csv` に `priority=high` として登録。リードタイムが足りない場合は `run_examples.sh --suite spec-core` をスキップできるガードを `4-2` タスクと調整する。
 - **分類不一致**: `category` や `spec.chapter` が統一されていない場合は `scripts/validate_phase4_matrix.py`（仮）で lint を走らせ、`docs/plans/bootstrap-roadmap/0-4-risk-handling.md` の「表記崩れ」リスクとして報告。
 - **リンク切れ**: `examples/` リネーム時には `README.md` / `SUMMARY.md` / `phase4-scenario-matrix.csv` を同時更新し、`docs/plans/bootstrap-roadmap/0-2-roadmap-structure.md` の「相互参照維持」要件を満たす。

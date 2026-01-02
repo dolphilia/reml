@@ -519,7 +519,7 @@ type compilation_unit = {
 - `parser.conflicts` は現状 31 件から増加しない想定。`HANDLE`・`PERFORM`・`DO` は既存の先頭トークンと衝突しないため、実装時は `menhir --explain` の差分確認のみで済む。衝突が増加した場合は `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記録する運用を設定した。
 - フラグ連携: `parser_run_config` へ `experimental_effects: bool` を追加し、`-Zalgebraic-effects` 無効時は構文レベルで拒否して `effects.syntax.experimental_disabled` 診断を返す。Typer／Runtime の Stage 判定と同じキーで監査を突合する。
 - 未対応扱いとした項目: `resume` の複数呼び出し検査、ハンドラリテラルへの属性付与、`perform`/`do` の混在制約。Phase 2-7 で `Type_inference_effect`・診断と一括評価する。
-- 詳細なトラッキングと引き継ぎ TODO は `docs/notes/effect-system-tracking.md` に集約し、PoC ステージと `-Zalgebraic-effects` フラグ運用を同期する。
+- 詳細なトラッキングと引き継ぎ TODO は `docs/notes/effects/effect-system-tracking.md` に集約し、PoC ステージと `-Zalgebraic-effects` フラグ運用を同期する。
 
 ### 3.4 Unicode 対応
 - 識別子は Unicode XID 準拠で解析

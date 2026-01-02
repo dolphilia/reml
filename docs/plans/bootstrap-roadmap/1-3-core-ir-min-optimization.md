@@ -41,7 +41,7 @@ Phase 3 Week 12-16: [1-4-llvm-targeting.md](1-4-llvm-targeting.md)（LLVM IR 生
 - `compiler/ocaml/src/ir`（想定）: IR 型定義、Desugar/Optimization パス
 - `compiler/ocaml/tests/ir` : IR ゴールデン出力、最適化パスの回帰テスト
 - `compiler/ocaml/docs` : IR 設計、最適化方針、既知の制約をまとめる
-- `docs/notes/llvm-spec-status-survey.md` : Core IR と LLVM の整合性およびベンチ結果を追記
+- `docs/notes/backend/llvm-spec-status-survey.md` : Core IR と LLVM の整合性およびベンチ結果を追記
 
 ## 作業ブレークダウン
 

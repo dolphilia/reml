@@ -40,7 +40,7 @@
 > 実施ログ（2027-04-02）  
 > - `compiler/rust/runtime/src/io/text_stream.rs` にスライディングウィンドウ型の UTF-8 デコーダと BOM ポリシー適用ヘルパを追加し、`InvalidSequenceStrategy::Replace` が逐次的に `�` を挿入する実装へ移行した。`UnicodeError` には `IoError` ソースを保持させ、`IoErrorKind::UnexpectedEof` を `phase="io.decode.eof"` へ強制することで TA-05 の要件を満たしている。  
 > - Text/IO 効果連携として `EffectSet` に `unicode` ビットを導入し、`text::take_text_effects_snapshot()` で観測できるよう `merge_text_effects`/`record_text_unicode_event` を追加した。`compiler/rust/runtime/tests/text_stream.rs` ではチャンク境界・`Replace` 分割・`EffectLabels` の 3 ケースを追加し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml text_stream` で回帰確認済み。  
-> - `compiler/rust/runtime/examples/io/text_stream_decode.rs` に `--chunk-size`/`--replace`/`effects` 出力を実装し、`tests/data/unicode/streaming/sample_input.txt` を使った JSON には `EffectSnapshot` を同梱。CLI では `take_text_effects_snapshot` で単回実行の効果を収集し、`docs/plans/bootstrap-roadmap/checklists/text-api-error-scenarios.md` TA-05/06 / `docs/notes/text-unicode-gap-log.md` に反映した。
+> - `compiler/rust/runtime/examples/io/text_stream_decode.rs` に `--chunk-size`/`--replace`/`effects` 出力を実装し、`tests/data/unicode/streaming/sample_input.txt` を使った JSON には `EffectSnapshot` を同梱。CLI では `take_text_effects_snapshot` で単回実行の効果を収集し、`docs/plans/bootstrap-roadmap/checklists/text-api-error-scenarios.md` TA-05/06 / `docs/notes/text/text-unicode-gap-log.md` に反映した。
 
 ### C. Grapheme キャッシュと監査パイプライン統合
 1. キャッシュ管理  
@@ -49,13 +49,13 @@
    - `log_grapheme_stats` 実行時に `effects::record_audit_event_with_metadata(stats)` を呼び、`CollectorAuditTrail` へ `text.grapheme_stats.*` を直接埋め込む。`compiler/rust/frontend/src/diagnostic/unicode.rs` ではメタデータ挿入の重複を避けるため、ランタイムから受け取った統計を優先。
 3. テスト・スクリプト  
    - `compiler/rust/runtime/tests/text_internal_cache.rs` の UC-01〜03 を `#[ignore]` から段階的に有効化し、生成する `reports/spec-audit/ch1/core_text_grapheme_stats.json` を `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --require-success` で検証。  
-   - `docs/spec/3-3-core-text-unicode.md` §4.1 / `docs/notes/text-unicode-ownership.md` にキャッシュ世代と監査ログの相互関係を脚注追加。`docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` をアップデート。
+   - `docs/spec/3-3-core-text-unicode.md` §4.1 / `docs/notes/text/text-unicode-ownership.md` にキャッシュ世代と監査ログの相互関係を脚注追加。`docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` をアップデート。
 
 > 実施ログ（2024-04-15）  
 > - `compiler/rust/runtime/src/text/grapheme.rs` に `IndexCacheGeneration` / `IndexCacheVersion` を導入し、`unicode_segmentation::UNICODE_VERSION` と `CACHE_VERSION` の不一致を検出して `version_mismatch_evictions` を計測。`GraphemeStats` へ `cache_generation`/`cache_version`/`unicode_version` を追加し、`reports/spec-audit/ch1/core_text_grapheme_stats.json`・`text_grapheme_stats.audit.jsonl` 双方に保存した【F:../../compiler/rust/runtime/src/text/grapheme.rs†L383-L441】【F:../../reports/spec-audit/ch1/core_text_grapheme_stats.json†L1-L34】。  
 > - `log_grapheme_stats` では `effects::record_audit_event_with_metadata` を通じて `collector.effect.audit` と `text.grapheme_stats.*` を `CollectorAuditTrail` へ直接転写。`compiler/rust/frontend/src/diagnostic/unicode.rs` は既にメタデータが存在する場合に再計測しないよう更新し、監査ログと CLI/LSP 拡張の重複を排除した【F:../../compiler/rust/runtime/src/text/effects.rs†L1-L114】【F:../../compiler/rust/runtime/src/prelude/collectors/mod.rs†L420-L760】。  
 > - `compiler/rust/runtime/tests/text_internal_cache.rs` の UC-01/02/03 を常時実行へ切り替え、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml UC_` で 3 ケースが緑化することを確認。実行結果から `reports/spec-audit/ch1/core_text_grapheme_stats.json` / `text_grapheme_stats.audit.jsonl` を再生成し、`tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --text-source reports/spec-audit/ch1/core_text_grapheme_stats.json --require-success --check script_mix` がローカルでゼロ終了することを確認した【F:../../compiler/rust/runtime/tests/text_internal_cache.rs†L1-L190】【F:../../tooling/ci/collect-iterator-audit-metrics.py†L6260-L6780】。  
-> - `docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` を更新し、再現手順の `--ignored` フラグを撤廃して `Status=Green (2024-04-15)` を登録。`docs/spec/3-3-core-text-unicode.md` および `docs/notes/text-unicode-ownership.md` に `unicode_version`/`version_mismatch_evictions` の仕様と監査メタデータの出力形式を追記した。
+> - `docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` を更新し、再現手順の `--ignored` フラグを撤廃して `Status=Green (2024-04-15)` を登録。`docs/spec/3-3-core-text-unicode.md` および `docs/notes/text/text-unicode-ownership.md` に `unicode_version`/`version_mismatch_evictions` の仕様と監査メタデータの出力形式を追記した。
 
 ## 成果物と受付条件
 - EffectSet/Collector が `transfer` ビットと `text.mem.*` KPI を自動集計できること (`reports/text-mem-metrics.json` の閾値更新)。

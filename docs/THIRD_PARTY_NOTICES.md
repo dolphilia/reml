@@ -25,7 +25,7 @@
 - **ライセンス**: [Unicode License Agreement – Data Files and Software](https://www.unicode.org/copyright.html)
 - **用途**: Core.Text / Core.Unicode 実装の準拠テスト（`cargo test unicode_conformance --features unicode_full`, `unicode_width_mapping`, `text_normalization_metrics`）
 - **備考**:
-  - 取得・更新ログは `docs/notes/unicode-upgrade-log.md` に記録。
+  - 取得・更新ログは `docs/notes/text/unicode-upgrade-log.md` に記録。
   - `THIRD_PARTY_LICENSES.md` に概要表を掲載。詳細を更新した場合は本節と両方に反映する。
 
 ---

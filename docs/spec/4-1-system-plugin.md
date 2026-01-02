@@ -2,7 +2,7 @@
 
 > 位置付け: 公式プラグイン（オプション）。標準API（Chapter 3）には同梱せず、必要なプロジェクトが `CapabilityRegistry` へ明示的に登録することで利用する。`0-1-project-purpose.md` が定める安全性・段階的習得の原則を守るため、プラットフォーム依存かつ `unsafe` 効果を伴う API 群を別章に分離した。
 >
-> ドラフト再整理メモ: 標準ライブラリ拡張の方針に合わせて、本章は低レベル Capability と標準ライブラリの境界を再検討中（`docs/notes/stdlib-expansion-research.md` / `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md` 参照）。
+> ドラフト再整理メモ: 標準ライブラリ拡張の方針に合わせて、本章は低レベル Capability と標準ライブラリの境界を再検討中（`docs/notes/stdlib/stdlib-expansion-research.md` / `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md` 参照）。
 
 ## 0. 仕様メタデータ
 

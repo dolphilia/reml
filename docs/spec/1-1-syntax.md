@@ -246,7 +246,7 @@ conductor config_orchestrator {
   ```
 
   * 発生した効果は潜在効果集合に追加され、`@pure` や `@dsl_export` の検査対象となる。
-  * 残余効果集合 `Σ_before` / `Σ_after` の記録と PoC 指標 ( `syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`) は Phase 2-5 `EFFECT-002` の Step4 仕様に従い、詳細は [1-3 §I.2](1-3-effects-safety.md#i2-効果発生と潜在効果集合) と `docs/notes/effect-system-tracking.md` を参照。[^effects-sigma-poc-phase25]
+  * 残余効果集合 `Σ_before` / `Σ_after` の記録と PoC 指標 ( `syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`) は Phase 2-5 `EFFECT-002` の Step4 仕様に従い、詳細は [1-3 §I.2](1-3-effects-safety.md#i2-効果発生と潜在効果集合) と `docs/notes/effects/effect-system-tracking.md` を参照。[^effects-sigma-poc-phase25]
 
 * **ハンドラ構文 (`handle ... with`)**
   効果をローカルに捕捉し、任意の挙動を与える。
@@ -465,7 +465,7 @@ conductor docs_pipeline {
     Phase 2-5 `SYNTAX-003 S0` の整理として、効果構文は `-Zalgebraic-effects` フラグを有効化した PoC 提供に限定される。正式実装は Phase 2-7 以降で `parser.mly`・型推論・効果解析を統合予定。Stage 契約やロードマップの詳細は `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-003-proposal.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の `SYNTAX-003` 項を参照。
 
 [^effects-sigma-poc-phase25]:
-    Phase 2-5 `EFFECT-002 Step4`（2026-04-18 完了）で効果構文 PoC の `Σ` 記録フォーマットと CI 指標 (`syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`) を定義し、`docs/notes/effect-system-tracking.md` および `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にハンドオーバー条件を整理した。正式実装は Phase 2-7 で Stage 昇格後に反映する。
+    Phase 2-5 `EFFECT-002 Step4`（2026-04-18 完了）で効果構文 PoC の `Σ` 記録フォーマットと CI 指標 (`syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`) を定義し、`docs/notes/effects/effect-system-tracking.md` および `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にハンドオーバー条件を整理した。正式実装は Phase 2-7 で Stage 昇格後に反映する。
 
 ### B.8.5 Capability 検証契約と `with_capabilities`
 

@@ -1,7 +1,7 @@
 # Grapheme 分割 PoC (unicode-segmentation + unicode-width)
 
 - **実施日**: 2025-11-25
-- **目的**: docs/notes/text-unicode-segmentation-comparison.md で推奨した候補 A（`unicode-segmentation` + `unicode-width`）を runtime に取り込み、`segment_graphemes` と表示幅計測の観測ポイントを確認する。
+- **目的**: docs/notes/text/text-unicode-segmentation-comparison.md で推奨した候補 A（`unicode-segmentation` + `unicode-width`）を runtime に取り込み、`segment_graphemes` と表示幅計測の観測ポイントを確認する。
 - **実装箇所**: `compiler/rust/runtime/src/text/grapheme.rs`（新規）、`compiler/rust/runtime/Cargo.toml`（依存登録）
 
 ## 入力ケース
@@ -35,6 +35,6 @@
 3. `Str::iter_graphemes` 相当の Iterator ラッパ、`effect {unicode}` タグ、および `log_grapheme_stats` 出力への配線は今後のタスク。PoC では `GraphemeSeq::stats()` を介して観測できるようにした。
 
 ## フォローアップ
-1. `unicode-width` の emoji 幅差分を `docs/notes/text-case-width-gap.md` へ追記し、Narrow/Wide/Locale モードの要件を整理する。
+1. `unicode-width` の emoji 幅差分を `docs/notes/text/text-case-width-gap.md` へ追記し、Narrow/Wide/Locale モードの要件を整理する。
 2. `segment_graphemes` の戻り値を `Result<GraphemeSeq, UnicodeError>` とし、`effect {unicode}` 設計（docs/spec/3-3-core-text-unicode.md §4）と整合させる。
 3. `tooling/ci/collect-iterator-audit-metrics.py --section text` 向けの `cache_hits/cache_miss` メトリクスを追加し、UAX #29 conformance テストを `tests/data/unicode/` に取り込む。

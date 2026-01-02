@@ -8,7 +8,7 @@
 ## スコープ
 - **含む**: 型推論エンジン、型注釈の取り込み、一般化/インスタンス化、型別名・レコード・列挙の最小サポート、エラー生成。
 - **含まない**: 型クラス、効果タグ、サブタイピング、所有権解析。これらは Phase 2 以降の課題とする。
-- **前提**: Parser 実装が TypedAST 用の構造を提供していること、`docs/notes/llvm-spec-status-survey.md` の M1 計測対象が把握されていること。
+- **前提**: Parser 実装が TypedAST 用の構造を提供していること、`docs/notes/backend/llvm-spec-status-survey.md` の M1 計測対象が把握されていること。
 
 ## 進捗状況（2025-10-06 時点）
 - ✅ Week 1: `types.ml`・`type_env.ml`・`constraint.ml` を整備し、型表現・型環境・制約生成/単一化の最小セットを実装済み。
@@ -20,7 +20,7 @@
 - `compiler/ocaml/src/typer`（想定）: 型表現・制約生成・Unifier 実装
 - `compiler/ocaml/tests/typer` : 型推論スナップショットと回帰テスト
 - `compiler/ocaml/docs` : 型推論設計メモや計測結果の記録
-- `docs/notes/core-library-outline.md`, `docs/notes/llvm-spec-status-survey.md` : 仕様差分・性能指標のログ
+- `docs/notes/stdlib/core-library-outline.md`, `docs/notes/backend/llvm-spec-status-survey.md` : 仕様差分・性能指標のログ
 
 ## 作業ブレークダウン
 

@@ -13,7 +13,7 @@
 ### After
 - Chapter 1 に「Phase 2 時点では ASCII + `_` の暫定実装。Unicode XID は Phase 2-7 `lexer-unicode` タスクで導入予定」と脚注を追加し、仕様読者に現状を伝える。  
 - `lexer.mll` の Unicode TODO を Phase 2-7 と連携した実装計画に更新し、XID テーブル生成や正規化チェックの導入計画を記録する。  
-- `docs/notes/dsl-plugin-roadmap.md` に Unicode 化のチェック項目を追記し、DSL/プラグイン移行時に同じ制約を共有する。
+- `docs/notes/dsl/dsl-plugin-roadmap.md` に Unicode 化のチェック項目を追記し、DSL/プラグイン移行時に同じ制約を共有する。
 
 ## 3. 影響範囲と検証
 - **テスト**: Unicode 識別子を含むサンプルを `compiler/ocaml/tests/unicode_ident_tests.ml`（新設）に追加し、ASCII 実装ではスキップ、Unicode 実装後に有効化する。  
@@ -89,7 +89,7 @@
 3. Phase 2-7 連携  
    - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に「Unicode 識別子プロファイル移行（SYNTAX-001 / LEXER-001）」セクションを追加し、XID テーブル整備・CI ゲート化・脚注撤去を Phase 2-7 の正式タスクとして登録。  
 4. フォローアップ  
-   - CLI/LSP ゴールデンの ASCII 制限文言撤去、`REML_ENABLE_UNICODE_TESTS=1` 常時実行、`docs/notes/dsl-plugin-roadmap.md` チェックリスト更新を Phase 2-7 の成果物として紐付けた。
+   - CLI/LSP ゴールデンの ASCII 制限文言撤去、`REML_ENABLE_UNICODE_TESTS=1` 常時実行、`docs/notes/dsl/dsl-plugin-roadmap.md` チェックリスト更新を Phase 2-7 の成果物として紐付けた。
 
 ### Phase 2-7（Unicode 実装準備）
 
@@ -109,8 +109,8 @@
 
 #### Step 6: CLI/LSP・監査整合の検証（着手週 TBD・Tooling/Docs）
 - **目的**: Unicode 識別子導入後の CLI/LSP 表示と監査ログの整合を保証する。  
-- **作業**: CLI でのエラー表示改善案を適用し、`Diagnostic.extensions` に識別子正規化の補助情報を追加。LSP/VS Code 拡張の補完・ハイライトに `--lex-profile=unicode` を連動させ、`docs/guides/dsl/plugin-authoring.md`・`docs/notes/dsl-plugin-roadmap.md` の TODO を消化する。  
-- **調査**: `collect-iterator-audit-metrics.py --require-success` の Unicode プロファイル指標、`docs/spec/3-8-core-runtime-capability.md` Stage 表との整合性、`docs/notes/dsl-plugin-roadmap.md` §7 のチェックリストを追跡。  
+- **作業**: CLI でのエラー表示改善案を適用し、`Diagnostic.extensions` に識別子正規化の補助情報を追加。LSP/VS Code 拡張の補完・ハイライトに `--lex-profile=unicode` を連動させ、`docs/guides/dsl/plugin-authoring.md`・`docs/notes/dsl/dsl-plugin-roadmap.md` の TODO を消化する。  
+- **調査**: `collect-iterator-audit-metrics.py --require-success` の Unicode プロファイル指標、`docs/spec/3-8-core-runtime-capability.md` Stage 表との整合性、`docs/notes/dsl/dsl-plugin-roadmap.md` §7 のチェックリストを追跡。  
 - **成果物**: CLI/LSP フィクスチャ更新、監査ログサンプル、レビュー記録。
 
 ##### Step6 実施記録（2026-12-05）
@@ -119,7 +119,7 @@
 2. ドキュメント更新  
    - `docs/spec/1-1-syntax.md`, `1-5-formal-grammar-bnf.md`, `2-3-lexer.md`, `0-2-glossary.md`, `docs/spec/README.md` から ASCII 暫定脚注を撤去し、`RunConfig.extensions["lex"].identifier_profile` の互換切替手順を追記。  
 3. ガイド・ロードマップ同期  
-   - `docs/guides/dsl/plugin-authoring.md` と `docs/notes/dsl-plugin-roadmap.md` を Unicode 既定前提へ改訂し、ASCII フォールバック時の監査要件とハンドオーバー先（ID22/ID23）を明示した。
+   - `docs/guides/dsl/plugin-authoring.md` と `docs/notes/dsl/dsl-plugin-roadmap.md` を Unicode 既定前提へ改訂し、ASCII フォールバック時の監査要件とハンドオーバー先（ID22/ID23）を明示した。
 
 ## 5. フォローアップ
 - Phase 2-7 `lexer-unicode` サブタスクで Step5/6 の実装と検証を完了し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の Unicode セクションを更新する。  

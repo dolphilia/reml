@@ -163,4 +163,4 @@ CI 全体の運用は `docs/guides/tooling/ci-strategy.md` のマトリクスと
 
 ---
 
-クロスコンパイルはプロジェクト規模・ターゲット数に応じて段階的に導入することを推奨します。まずは CLI/Toolchain の自動検証を整備し、次に CI マトリクスとレジストリ運用を拡張してください。詳細な背景や設計判断は `docs/notes/cross-compilation-spec-intro.md` を参照してください。
+クロスコンパイルはプロジェクト規模・ターゲット数に応じて段階的に導入することを推奨します。まずは CLI/Toolchain の自動検証を整備し、次に CI マトリクスとレジストリ運用を拡張してください。詳細な背景や設計判断は `docs/notes/backend/cross-compilation-spec-intro.md` を参照してください。

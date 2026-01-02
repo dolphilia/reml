@@ -1,7 +1,7 @@
 # WS4: Error Recovery（複数エラー・IDE 向け）計画
 
 ## 背景と狙い
-調査メモ `docs/notes/core-parse-improvement-survey.md` は Chumsky の強力な回復（`recover_with`）を挙げ、IDE の解析エンジン向けには「失敗したら止まる」だけでは不足すると示唆している。
+調査メモ `docs/notes/parser/core-parse-improvement-survey.md` は Chumsky の強力な回復（`recover_with`）を挙げ、IDE の解析エンジン向けには「失敗したら止まる」だけでは不足すると示唆している。
 
 Reml の回帰計画（Phase4）でも、診断品質を継続監視するには「単発エラー」だけでなく **複数エラーの収集** が必要になる。
 

@@ -1,7 +1,7 @@
 # Phase4: Core.Net 実装計画（HTTP/TCP/UDP/URL）
 
 ## 背景と決定事項
-- `docs/notes/stdlib-expansion-research.md` の **P0** として `Core.Net` を最優先拡張に指定した。
+- `docs/notes/stdlib/stdlib-expansion-research.md` の **P0** として `Core.Net` を最優先拡張に指定した。
 - `docs/spec/0-1-project-purpose.md` の「安全性」「実用性能」「段階的導入」を満たすため、最小APIから段階的に拡張する。
 - `Core.Async` と `Core.Io` との整合が必須であり、`effect {net}` を `io` / `io.async` に包含させる設計を採る。
 
@@ -142,7 +142,7 @@ val build : UrlParts -> Result<Url, UrlError>
 - ドラフト作成時点では未着手。各フェーズ完了時に日付を追記する。
 
 ## 参照
-- `docs/notes/stdlib-expansion-research.md`
+- `docs/notes/stdlib/stdlib-expansion-research.md`
 - `docs/spec/0-1-project-purpose.md`
 - `docs/spec/3-5-core-io-path.md`
 - `docs/spec/3-6-core-diagnostics-audit.md`

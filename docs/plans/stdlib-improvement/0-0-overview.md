@@ -2,7 +2,7 @@
 
 ## 背景
 - `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` を進める途中で、DSL 開発のライフサイクルを支える標準モジュールが不足していると判断した。
-- `docs/notes/stdlib-improvement-proposal.md` で、テスト/CLI/整形/ドキュメント/LSP といった周辺領域のギャップが整理されている。
+- `docs/notes/stdlib/stdlib-improvement-proposal.md` で、テスト/CLI/整形/ドキュメント/LSP といった周辺領域のギャップが整理されている。
 - Reml の価値観（`docs/spec/0-1-project-purpose.md`）に照らし、DSL ファーストを満たすには **実装前に仕様とツール支援の枠組み** を揃える必要がある。
 
 ## 目的
@@ -20,6 +20,6 @@
 - Phase 4 回帰で測定するべき追加指標とシナリオが明文化されている。
 
 ## 参照資料
-- メモ: `docs/notes/stdlib-improvement-proposal.md`
+- メモ: `docs/notes/stdlib/stdlib-improvement-proposal.md`
 - 仕様: `docs/spec/3-0-core-library-overview.md`, `docs/spec/3-3-core-text-unicode.md`, `docs/spec/3-5-core-io-path.md`, `docs/spec/3-6-core-diagnostics-audit.md`, `docs/spec/3-8-core-runtime-capability.md`
 - 関連計画: `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md`

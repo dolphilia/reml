@@ -17,4 +17,4 @@
 | `block_scope.reml` | `syntax:expr::block`, `syntax:expr::let`, `syntax:expr::var` | ブロック内の let/var でも `ExprEnter/ExprLeave` が発火することを確認。 |
 
 - `trace_ids` は診断 JSON（`diagnostics[*].extensions.trace_ids[]`）へ 1 診断あたり最大 4 個まで記録され、`reports/spec-audit/diffs/SYNTAX-003-ch1-rust-gap.md` から本ログにリンク済み。
-- `Trace coverage >= 4` の閾値は handle / perform / resume / block を必須とし、`docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表` (`SYNTAX-003`) に証跡を添付した。
+- `Trace coverage >= 4` の閾値は handle / perform / resume / block を必須とし、`docs/notes/process/spec-integrity-audit-checklist.md#rust-gap-トラッキング表` (`SYNTAX-003`) に証跡を添付した。

@@ -1,7 +1,7 @@
 # FFI 強化計画の概要
 
 ## 背景と目的
-- `docs/notes/ffi-improvement-survey.md` で、Reml の FFI が低レベル `extern "C"` に偏り、
+- `docs/notes/ffi/ffi-improvement-survey.md` で、Reml の FFI が低レベル `extern "C"` に偏り、
   大規模ライブラリ対応や安全性確保に課題があることを整理した。
 - Reml の設計指針（`docs/spec/0-1-project-purpose.md`）に沿って、
   **実用性・安全性・DSL ファースト**を満たす FFI 体験を構築する。

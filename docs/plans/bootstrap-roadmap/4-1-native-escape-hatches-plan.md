@@ -1,7 +1,7 @@
 # Phase4: Native Escape Hatches 実装計画
 
 ## 背景と決定事項
-- `docs/notes/native-escape-hatches-research.md` で示した通り、`Core.Ffi` だけでは SIMD/低レベル最適化/埋め込み用途にギャップがある。
+- `docs/notes/ffi/native-escape-hatches-research.md` で示した通り、`Core.Ffi` だけでは SIMD/低レベル最適化/埋め込み用途にギャップがある。
 - `docs/spec/0-1-project-purpose.md` の「実用に耐える性能」「エコシステム統合」達成には、Rust 実装でのネイティブ拡張の足場が必要。
 - Phase 4 の実用シナリオ回帰に接続できる最小スコープを定義し、過度に危険な機能（全面的な asm/syscall）を段階導入で扱う。
 - Inline ASM / LLVM IR の本格実装は `docs/plans/bootstrap-roadmap/4-2-native-escape-hatches-asm-llvm-implementation-plan.md` に分離し、Phase 4 での前倒し実装へ移行した。
@@ -41,7 +41,7 @@
    - メタデータ: `AuditEnvelope.metadata` に `intrinsic.name` / `intrinsic.signature` / `embed.abi.version` を追加。
    - 監査粒度: 関数単位・モジュール単位の記録範囲を明記する。
 4. `docs/spec/3-8-core-runtime-capability.md` に `native.intrinsic` / `native.embed` の Capability を追加する。
-   - Stage: 初期値は `Experimental` とし、昇格条件を `docs/notes/dsl-plugin-roadmap.md` に合わせて追記。
+   - Stage: 初期値は `Experimental` とし、昇格条件を `docs/notes/dsl/dsl-plugin-roadmap.md` に合わせて追記。
    - 監査キー連動: Capability と監査キーの対応表を追加する。
    - ブリッジ整合: `RuntimeBridgeAuditSpec` の key 体系と同一になるよう表記を統一する。
 
@@ -106,7 +106,7 @@
    - 参照更新: シナリオ ID とログ保存先を `reports/spec-audit/ch4` の README に追記。
 
 ### フェーズE: 研究プロトタイプ（ASM / LLVM IR）
-1. `docs/notes/native-escape-hatches-research.md` の「Inline ASM」「LLVM IR」節を更新し、Rust 実装でのガード条件（feature flag / `@cfg`）を明記する。
+1. `docs/notes/ffi/native-escape-hatches-research.md` の「Inline ASM」「LLVM IR」節を更新し、Rust 実装でのガード条件（feature flag / `@cfg`）を明記する。
    - 位置づけ: Phase 4 では「設計 + ガード付き PoC」に限定することを明記。
    - ガード: `feature = "native-unstable"` と `@cfg(target)` の併用要件を追記。
    - 監査: `native.intrinsic.unstable_used` を追加するか検討し、必要なら TODO を残す。
@@ -160,7 +160,7 @@
 - [x] `reports/spec-audit/ch4` のログ保存ルールを更新
 
 ### フェーズE: 研究プロトタイプ（ASM / LLVM IR）
-- [x] `docs/notes/native-escape-hatches-research.md` にガード条件と位置づけを追記
+- [x] `docs/notes/ffi/native-escape-hatches-research.md` にガード条件と位置づけを追記
 - [x] `feature = "native-unstable"` のプロトタイプを追加
 - [x] `examples/native/unstable` を隔離し README で実行不能を明記
 - [x] `native.intrinsic.unstable_used` の扱いを検討し TODO を残す
@@ -195,7 +195,7 @@
 - 2026-02-XX: フェーズF の回帰接続ドキュメント更新を反映
 
 ## 参照
-- `docs/notes/native-escape-hatches-research.md`
+- `docs/notes/ffi/native-escape-hatches-research.md`
 - `docs/spec/0-1-project-purpose.md`
 - `docs/spec/1-1-syntax.md`
 - `docs/spec/1-3-effects-safety.md`

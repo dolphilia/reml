@@ -2,7 +2,7 @@
 
 ## 目的
 - Phase 2 マイルストーン M1 に向け、辞書渡し方式を主実装としつつモノモルフィゼーションを PoC 規模で比較し、採用方針を決定する。
-- [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) の型クラス仕様と `docs/notes/llvm-spec-status-survey.md` に整理された懸案を検証し、Phase 3 以降のセルフホスト化に備える。
+- [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) の型クラス仕様と `docs/notes/backend/llvm-spec-status-survey.md` に整理された懸案を検証し、Phase 3 以降のセルフホスト化に備える。
 
 ## スコープ
 - **含む**: 辞書生成・渡しの実装、代表型クラス (`Eq`, `Ord`, `Collector`) の性能測定、PoC モノモルフィゼーションの評価、メトリクス記録。
@@ -14,7 +14,7 @@
 - `compiler/ocaml/src/typer` : 型クラス辞書渡しの実装および PoC モジュール
 - `compiler/ocaml/src/codegen` : LLVM への辞書引数連携
 - `compiler/ocaml/tests` : 型クラス関連の回帰テスト
-- `docs/notes/dsl-plugin-roadmap.md`, `docs/notes/llvm-spec-status-survey.md` : 評価結果・リスクのログ
+- `docs/notes/dsl/dsl-plugin-roadmap.md`, `docs/notes/backend/llvm-spec-status-survey.md` : 評価結果・リスクのログ
 - `docs/spec/1-2-types-Inference.md` : 仕様差分が発生した際の更新対象
 
 ## 全体進捗状況（2025-10-27時点 / 最終更新）
@@ -53,7 +53,7 @@
   - ✅ 完了: 評価基準定義
   - ✅ 完了: 制約事項の記録と Phase 3 計画策定
   - 🚧 延期: 実際の計測実行（Phase 3で実施、while/forループ実装後）
-  - 📝 詳細: `docs/notes/typeclass-benchmark-status.md`
+  - 📝 詳細: `docs/notes/types/typeclass-benchmark-status.md`
 
 - **セクション5: 診断システム強化** (Week 21-22): **90%完了** (2025-10-27更新)
   - 目的: 型クラスエラーの診断品質向上
@@ -297,7 +297,7 @@
 
 **PoC 対象範囲ロック**:
 - 既存辞書渡し経路と比較可能なベンチとして、`tests/integration/test_user_impl_e2e.reml` で登場する impl 群と Phase 1 ゴールデンテスト内の `Eq`/`Ord` 使用箇所に限定。
-- トレイトメソッドは `eq`, `compare`, `collect` の各 1 関数に絞り、デフォルトメソッドや関連型は対象外（Phase 3 の設計検討事項として `docs/notes/llvm-spec-status-survey.md` に TODO 登録予定）。
+- トレイトメソッドは `eq`, `compare`, `collect` の各 1 関数に絞り、デフォルトメソッドや関連型は対象外（Phase 3 の設計検討事項として `docs/notes/backend/llvm-spec-status-survey.md` に TODO 登録予定）。
 - 生成物は `core_ir` 段階で辞書を介さない具象関数を追加する方式とし、LLVM コード生成は既存関数 Lowering を再利用（新 ABI 設計は発生させない）。
 
 **入出力契約（PoC パス）**:
@@ -326,7 +326,7 @@
 - **二重生成パイプライン**: CLI で `--typeclass-mode=both` を指定した場合、辞書渡し IR とモノモルフィック IR を個別に出力（`out_dir/dictionary/*.ll`, `out_dir/monomorph/*.ll`）。`verify_llvm_ir.sh` を改修して双方を検証。
 - **出力ディレクトリ分割実装**: `main.ml` で `TypeclassBoth` を検知した際に `opts.out_dir` 配下へ `dictionary/`・`monomorph/` を生成し、`emit_ir` と `emit_bc` の出力先をモードに応じて振り分ける。補助ヘルパー `Cli.File_util.ensure_directory`（新設）で idempotent にディレクトリを確保し、ログには切り替え先を明示する。
 - **計測スクリプト**: `scripts/benchmark_monomorph_poc.sh`（仮称）を作成し、`remlc --emit-ir` を 2 回（dictionary/monomorph）呼び出して IR サイズ、`llc` 生成オブジェクトのサイズ、`time` コマンドの実行時間を収集。結果は `tooling/ci/docker/metrics.json` の schema に合わせて追記。
-- **インライン展開率測定**: `opt -passes='inline'` のレポートを取得し、`docs/notes/llvm-spec-status-survey.md` に inline 成功/失敗のメトリクスを記録。PoC では `Eq`/`Ord` の比較関数のみ対象。
+- **インライン展開率測定**: `opt -passes='inline'` のレポートを取得し、`docs/notes/backend/llvm-spec-status-survey.md` に inline 成功/失敗のメトリクスを記録。PoC では `Eq`/`Ord` の比較関数のみ対象。
 - **比較レポート**: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` にリンクする形で、辞書渡しと PoC の差分表を追加予定（Phase 2 Week 21 の成果物）。
 
 3.3. **単体テスト実装**
@@ -339,7 +339,7 @@
 
 **完了条件**:
 - `Monomorphize_poc` パスが `--typeclass-mode=monomorph|both` で有効化され、`Eq`/`Ord`/`Collector` の PoC 対象型に対して辞書無しの具象関数が生成される。
-- CLI/スクリプトで辞書渡し版と PoC 版の IR/バイナリを並列生成し、`docs/notes/llvm-spec-status-survey.md` と `0-3-audit-and-metrics.md` へ差分を記録。
+- CLI/スクリプトで辞書渡し版と PoC 版の IR/バイナリを並列生成し、`docs/notes/backend/llvm-spec-status-survey.md` と `0-3-audit-and-metrics.md` へ差分を記録。
 - 新設テストが CI へ組み込まれ、辞書渡し経路に回帰がない（既存 182 件 + 追加テストすべて成功）。
 
 ### 4. 性能・コードサイズ計測（20-21週目）
@@ -404,7 +404,7 @@
 
 6.3. **Phase 3 への引き継ぎ**
 - セルフホスト型チェッカへの移植計画
-- 残存課題の `docs/notes/llvm-spec-status-survey.md` への記録
+- 残存課題の `docs/notes/backend/llvm-spec-status-survey.md` への記録
 - プラグイン型クラスの設計検討事項
 - メトリクスの CI レポート化
 
@@ -481,7 +481,7 @@
    - メモリ使用量計測（macOS: `time -l`、Linux: `/usr/bin/time -v`）
    - 比較レポート生成（Markdown形式）
 
-3. **評価基準定義** (`docs/notes/typeclass-performance-evaluation.md`):
+3. **評価基準定義** (`docs/notes/types/typeclass-performance-evaluation.md`):
    - 実行時間オーバーヘッド: 辞書渡しが<10%
    - コードサイズ増加率: モノモルフィゼーションが<30%
    - コンパイル時間: モノモルフィゼーションが辞書渡しの<2倍
@@ -516,7 +516,7 @@
 - ベンチマーク設計完了
 - 自動計測スクリプト完成
 - 評価基準定義完了
-- 制約事項記録（`docs/notes/typeclass-benchmark-status.md`）
+- 制約事項記録（`docs/notes/types/typeclass-benchmark-status.md`）
 
 **次のアクション（Phase 3）** 🚧:
 
@@ -558,7 +558,7 @@
 **残タスク / 次のステップ**:
 1. Core IR の辞書経路とモノモルフィック経路の共存テストを拡充し、`tests/test_monomorphize_poc.ml` に `DictMethodCall` 非存在の検査と辞書経路との差分レポート生成を追加する。
 2. `compiler/ocaml/tests` にモノモルフィック専用の IR/実行ゴールデンテストを追加し、辞書渡し経路との結果一致を CI で担保する。
-3. `docs/notes/llvm-spec-status-survey.md` と `0-3-audit-and-metrics.md` へ比較結果のログ出力フォーマットを定義し、計測スクリプト（Section 4）に接続する。
+3. `docs/notes/backend/llvm-spec-status-survey.md` と `0-3-audit-and-metrics.md` へ比較結果のログ出力フォーマットを定義し、計測スクリプト（Section 4）に接続する。
 4. CLI 分割実装に伴う CI アーティファクト収集設定を更新し、GitHub Actions 上で `dictionary/`・`monomorph/` 両成果物がアーカイブされることを確認する。
 
 ### 2025-10-17 更新（Week 20 / Core IR Callsite 置換）✅
@@ -592,10 +592,10 @@
 1. `compiler/ocaml/src/type_inference.ml:774` 付近の `For` 推論で `Iterator` 制約（暫定名称 `Core.Iter.Iterator<T>`）を生成し、要素型を型パラメータ `T` として推論する。配列や `Iter<T>` リテラルは `Constraint_solver` が暗黙辞書 `DictImplicit ("Iterator", [source_ty; item_ty])` を返す。【参照: docs/spec/3-1-core-prelude-iteration.md§3】
 2. `compiler/ocaml/src/constraint_solver.ml` に `solve_iterator` を追加し、配列／スライス／`Iter<T>`／`Option<T>` の既定イテレーション契約を登録する。辞書構築時に `has_next` / `next` / `size_hint` シグネチャを整備し、`DictConstruct` のメタデータへ Stage 情報 (`effects.contract.stage_mismatch`) を転記できるようにする。【参照: docs/spec/1-2-types-Inference.md§4, docs/spec/3-6-core-diagnostics-audit.md§5】
 3. `compiler/ocaml/src/core_ir/desugar.ml` では `classify_for_source` を段階的に廃止し、型推論から渡される辞書パラメータ (`__dict_Iterator_*`) を参照して `DictMethodCall` を生成する。辞書未解決時は `for` ループ自体を型エラーとして報告し、ヒューリスティック経路は Phase 2 内で削除する。
-4. Stage / Capability 検査については、`Iterator` 辞書の生成時に `CapabilityId` を付与し、`RuntimeBridge` へ伝搬する。`docs/notes/loop-implementation-plan.md` で記録した監査連携タスク（`DictMethodCall` に `effect.stage.*` を付与）をこの作業と束ね、Phase 2 Week 22 の診断タスクと整合させる。
+4. Stage / Capability 検査については、`Iterator` 辞書の生成時に `CapabilityId` を付与し、`RuntimeBridge` へ伝搬する。`docs/notes/backend/loop-implementation-plan.md` で記録した監査連携タスク（`DictMethodCall` に `effect.stage.*` を付与）をこの作業と束ね、Phase 2 Week 22 の診断タスクと整合させる。
 
 **フォローアップ** 🚧:
-- `docs/notes/loop-implementation-plan.md` の該当チェック項目を更新し、辞書導線とテスト計画を反映する。
+- `docs/notes/backend/loop-implementation-plan.md` の該当チェック項目を更新し、辞書導線とテスト計画を反映する。
 - `compiler/ocaml/tests/test_type_errors.ml` に「`Iterator` 未実装の型を `for` に渡すと制約エラーになる」テストを追加するタスクを Section 5 の診断強化へ紐付ける。
 - Stage 監査ログの設計（`effect.stage.iterator_mismatch`）を `docs/spec/3-6-core-diagnostics-audit.md` のキーセットに追記するか確認し、必要なら別タスクとして登録する。
 
@@ -613,7 +613,7 @@
 2. **ヒューリスティック撤廃と Core IR 整備**  
    - `desugar_for_loop` 内の `determine_for_source_kind` を `IteratorDictInfo.kind` ベースに置き換え、辞書未解決時は `typeclass.iterator.unsatisfied` を再発行して脱糖を中止する。  
    - 配列最適化は `IteratorDictInfo.kind = ArrayLike` の場合のみ許可し、旧 `classify_for_source` 経路を完全削除する。  
-   - `docs/notes/loop-implementation-plan.md` セクション「型クラス統合計画」に、辞書経路のみを通過する新しいフローチャートと診断シーケンスを追記する。
+   - `docs/notes/backend/loop-implementation-plan.md` セクション「型クラス統合計画」に、辞書経路のみを通過する新しいフローチャートと診断シーケンスを追記する。
 3. **Stage / Capability 監査フック**  
    - `core_ir/ir.ml` の `DictMethodCall` に `audit : iterator_audit option` フィールドを追加し、`effect_tag`, `required_stage`, `capability_id`, `method_name` を保持。  
    - `desugar_for_loop` で `IteratorDictInfo.stage_requirement` を参照して `has_next` / `next` それぞれに `EffectMarker` を生成し、`effect.stage.iterator.required` / `effect.stage.iterator.actual` を `EffectMarker.effect_expr` として紐付ける。  
@@ -626,12 +626,12 @@
 **完了条件**:
 - `dune runtest compiler/ocaml/tests` が新規スナップショットを含めて成功し、既存テストに回帰がない。  
 - `--emit-typed-ast` 出力へ `iterator_info` が表示され、CLI ドキュメントにメタデータの説明を追加済み。  
-- `docs/notes/loop-implementation-plan.md` の該当チェックボックスが「レビュー待ち」へ更新され、監査ログの手動確認手順が記述されている。
+- `docs/notes/backend/loop-implementation-plan.md` の該当チェックボックスが「レビュー待ち」へ更新され、監査ログの手動確認手順が記述されている。
 
 **リスクと対策**:
 - `DictMethodCall` 型の変更で `core_ir/monomorphize_poc.ml` や `llvm_gen/codegen.ml` が破綻する可能性があるため、`audit` は `option` で追加し既存コードは `None` を前提に段階移行する。  
 - Stage 要件が仕様側で未確定の場合は暫定的に `StageAtLeast "beta"` を採用し、確定後に `docs/spec/3-8-core-runtime-capability.md` と脚注を更新するタスクを Section 7 へ追記する。  
-- 監査フック導入直後は CI メトリクス連携が未整備なため、`docs/notes/loop-implementation-plan.md` に暫定の手動確認手順を明記し、Phase 2 Week 22 の診断タスクで自動化する。
+- 監査フック導入直後は CI メトリクス連携が未整備なため、`docs/notes/backend/loop-implementation-plan.md` に暫定の手動確認手順を明記し、Phase 2 Week 22 の診断タスクで自動化する。
 
 ### 2025-10-25 更新（Iterator 監査実装進捗）✅
 
@@ -681,7 +681,7 @@
 ### 2025-10-18 更新（Week 21 / セクション4 ベンチ前提のビルド安定化）✅
 
 **作業サマリー** ✅:
-- `docs/notes/loop-implementation-plan.md` に従い、`loop_carried` 拡張で要求される `LoopSourcePreheader` / `LoopSourceLatch` 情報を `compiler/ocaml/tests/test_cfg.ml` の `test_while_loop_cfg` に反映。ループ実装時の φ ノード生成条件をテストで固定化した。
+- `docs/notes/backend/loop-implementation-plan.md` に従い、`loop_carried` 拡張で要求される `LoopSourcePreheader` / `LoopSourceLatch` 情報を `compiler/ocaml/tests/test_cfg.ml` の `test_while_loop_cfg` に反映。ループ実装時の φ ノード生成条件をテストで固定化した。
 - LLVM IR 検証失敗時に `warning 21 [nonreturning-statement]` が発生して `dune build` が停止する既知課題を解消するため、`compiler/ocaml/src/main.ml` の `exit 1` 呼び出しを `ignore (Stdlib.exit 1)` へ置換し、警告を無害化した。
 
 **検証結果** ✅:
@@ -693,20 +693,20 @@
 - `compiler/ocaml/src/main.ml` の LLVM 検証分岐で `warning 21` を抑止し、セクション4のベンチ実行前準備としてビルドを安定化。
 
 **フォローアップ** 🚧:
-1. `docs/notes/loop-implementation-plan.md` で整理した `LoopSourceContinue` / continue ラベル生成の対応は Phase 3 のループ実装タスクで継続する。
+1. `docs/notes/backend/loop-implementation-plan.md` で整理した `LoopSourceContinue` / continue ラベル生成の対応は Phase 3 のループ実装タスクで継続する。
 2. `dune build` 実行時に表示される LLVM リンク時の重複ライブラリ警告について、`compiler/ocaml/docs/technical-debt.md` の H2（Windows ABI 検証）と合わせてツールチェーン設定を再確認するタスクを追加予定。
 3. ループ構文が利用可能になり次第、Section 4 のベンチマークスクリプトを再度実行し、辞書渡し vs モノモルフィゼーションの定量比較を実施する。
 
 ### 2025-10-19 更新（Week 21 / ループ配列長スタブ解消）✅
 
 **作業サマリー** ✅:
-- `docs/notes/loop-implementation-plan.md` のフォローアップとして、`for` ループの配列ソース初期化時に `PrimArrayLength` を挿入し、従来の `0` リテラルスタブを排除した。
+- `docs/notes/backend/loop-implementation-plan.md` のフォローアップとして、`for` ループの配列ソース初期化時に `PrimArrayLength` を挿入し、従来の `0` リテラルスタブを排除した。
 - LLVM バックエンドで FAT pointer `{ ptr, len }` から長さを抽出する処理を実装し、`TSlice` の静的長は即値で返すよう分岐。文字列型 (`TCString`) も同じ経路で長さを取得できるようにした。
 
 **成果物** ✅:
 - `compiler/ocaml/src/core_ir/ir.ml`・`ir_printer.ml`・`desugar.ml` に `PrimArrayLength` を追加し、配列長取得を Core IR レベルで定義。
 - `compiler/ocaml/src/llvm_gen/codegen.ml` に配列長取得のコード生成を追加し、FAT pointer 系の第2フィールドを抽出する処理と固定長スライス対応を実装。
-- `docs/notes/loop-implementation-plan.md` の該当チェックリストを更新し、スタブ除去完了を記録。
+- `docs/notes/backend/loop-implementation-plan.md` の該当チェックリストを更新し、スタブ除去完了を記録。
 
 **フォローアップ** 🚧:
 1. `Iterator<T>` 判定を型クラス解決へ移行するタスクを継続し、`classify_for_source` のヒューリスティック依存を段階的に解消する。
@@ -722,7 +722,7 @@
 **決定事項** ✅:
 - `core_ir/pipeline.ml` で Desugar 後に PoC パスを挿入し、`--typeclass-mode` フラグで辞書渡し/モノモルフィック/併用を切り替える。
 - インスタンス情報は `type_inference.ml` → `type_env.ml` で保持し、`core_ir/desugar.ml` から `ResolvedTraitInstance` として取得する。
-- IR 比較・メトリクス収集は `scripts/benchmark_monomorph_poc.sh`（新規）と `verify_llvm_ir.sh` の拡張で自動化し、結果は `0-3-audit-and-metrics.md` / `docs/notes/llvm-spec-status-survey.md` に記録する。
+- IR 比較・メトリクス収集は `scripts/benchmark_monomorph_poc.sh`（新規）と `verify_llvm_ir.sh` の拡張で自動化し、結果は `0-3-audit-and-metrics.md` / `docs/notes/backend/llvm-spec-status-survey.md` に記録する。
 
 **実施内容**:
 - Section 3 を詳細化し、PoC パスの入出力契約、モジュール追加、テスト/ベンチ計画、完了条件をドキュメント化。
@@ -1567,7 +1567,7 @@ type constraint_error_reason =
 
 ## 成果物と検証
 - 辞書渡し方式で [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) のサンプルが全て通過すること。
-- PoC モノモルフィゼーションの出力を LLVM IR で比較し、差分とコストを `docs/notes/llvm-spec-status-survey.md` に追記。
+- PoC モノモルフィゼーションの出力を LLVM IR で比較し、差分とコストを `docs/notes/backend/llvm-spec-status-survey.md` に追記。
 - メトリクスが `0-3-audit-and-metrics.md` に記録され、CI でレポート化される。
 
 ## リスクとフォローアップ

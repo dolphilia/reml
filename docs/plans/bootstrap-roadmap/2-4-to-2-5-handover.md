@@ -32,7 +32,7 @@
 1. `docs/plans/bootstrap-roadmap/2-4-completion-report.md` と `2-4-diagnostics-audit-pipeline.md` の現状整理を確認し、差分リストの初期入力を共有する。
 2. `scripts/validate-diagnostic-json.sh` をローカルで実行し、差分補正対象の診断サンプルがスキーマ検証を通過するか確認する。
 3. `reports/diagnostic-format-regression.md` に従い、Phase 2-5 で更新予定のフォーマットに対するレビュー観点を洗い出す。
-4. 技術的負債リスト（ID 22/23）と 2-7 計画書で扱うタスクとの差分を把握し、仕様差分補正に直接関係する項目を `docs/notes/spec-integrity-audit-checklist.md`（2-8 で作成予定）へメモしておく。
+4. 技術的負債リスト（ID 22/23）と 2-7 計画書で扱うタスクとの差分を把握し、仕様差分補正に直接関係する項目を `docs/notes/process/spec-integrity-audit-checklist.md`（2-8 で作成予定）へメモしておく。
 
 ## 5. 参考リンク
 - `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`

@@ -1,7 +1,7 @@
 # Phase4: DSL Composability Standard 計画
 
 ## 背景と決定事項
-- `docs/notes/dsl-enhancement-proposal.md` の提案「3.6 DSL Composability Standard」を Phase 4 の実装計画へ落とし込む。
+- `docs/notes/dsl/dsl-enhancement-proposal.md` の提案「3.6 DSL Composability Standard」を Phase 4 の実装計画へ落とし込む。
 - `conductor` を DSL 協働の司令塔として扱い、解析・実行・診断・LSP を一貫した契約で束ねる（[docs/spec/1-1-syntax.md](../../spec/1-1-syntax.md) B.8.3）。
 - ストリーミング時のバックプレッシャ協調は [docs/guides/compiler/core-parse-streaming.md](../../guides/core-parse-streaming.md) 4.1 を準拠し、親子 DSL で同一ポリシーを共有する。
 
@@ -169,7 +169,7 @@ conductor docs_pipeline {
 | 並列実行の競合 | 監査/診断の順序が不安定 | `ExecutionPlan` に優先度と `resource_limit` を明示し、監査ログに DSL ID を記録する |
 
 ## 参照
-- `docs/notes/dsl-enhancement-proposal.md`
+- `docs/notes/dsl/dsl-enhancement-proposal.md`
 - `docs/spec/0-1-project-purpose.md`
 - `docs/spec/1-1-syntax.md`
 - `docs/spec/2-2-core-combinator.md`

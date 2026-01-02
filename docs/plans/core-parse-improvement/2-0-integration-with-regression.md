@@ -5,7 +5,7 @@
 
 ## 現状整理
 - Phase4 は「仕様コア回帰（spec_core）」を軸にしており、Core.Parse はその基盤にあたる
-- `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan-v2.md` には Core.Parse の拡張計画が存在するが、本ディレクトリは `docs/notes/core-parse-improvement-survey.md` を起点に **Cut/Label/Lex/Zero-copy/Recovery** を改めて前面化する
+- `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan-v2.md` には Core.Parse の拡張計画が存在するが、本ディレクトリは `docs/notes/parser/core-parse-improvement-survey.md` を起点に **Cut/Label/Lex/Zero-copy/Recovery** を改めて前面化する
 
 ## 接合点
 - **仕様差分**: `docs/spec/2-x` に追記・修正が入る場合、Phase4 の「期待診断」「成功条件」が変わる  

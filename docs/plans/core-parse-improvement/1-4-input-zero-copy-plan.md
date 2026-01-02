@@ -1,7 +1,7 @@
 # WS5: Input/Zero-copy（入力抽象と性能）計画
 
 ## 背景と狙い
-調査メモ `docs/notes/core-parse-improvement-survey.md` は、Nom の zero-copy 設計に触れ、`Text` の部分文字列生成コストが懸念される点を指摘している。
+調査メモ `docs/notes/parser/core-parse-improvement-survey.md` は、Nom の zero-copy 設計に触れ、`Text` の部分文字列生成コストが懸念される点を指摘している。
 一方、Reml 仕様は既に `Input` を「参照共有の不変ビュー（ゼロコピー）」として定義している（`docs/spec/2-1-parser-type.md`）。
 
 本ワークストリームは、仕様の前提を満たす入力モデルが **実装と運用に降りているか**を確認し、性能指針（`docs/spec/0-1-project-purpose.md`）に沿った形へ整備する。
@@ -81,8 +81,8 @@
   - UTF-8 → 列（グラフェム）変換が都度走っていないか（境界キャッシュの有無）
   - Packrat のキーが「入力ビュー」を保持して過剰にメモリを抱え込まないか
 - 記録方法
-  - 結果を `docs/notes/core-parse-api-evolution.md` に “監査メモ” として短く追記し、どの不変条件が満たされている/いないかを明記する
-  - 監査メモ（初回）: `docs/notes/core-parse-api-evolution.md` の `2025-12-18: WS5 Step1 Input/Zero-copy 実装監査メモ（Rust runtime）`
+  - 結果を `docs/notes/parser/core-parse-api-evolution.md` に “監査メモ” として短く追記し、どの不変条件が満たされている/いないかを明記する
+  - 監査メモ（初回）: `docs/notes/parser/core-parse-api-evolution.md` の `2025-12-18: WS5 Step1 Input/Zero-copy 実装監査メモ（Rust runtime）`
 
 ### Step 2: パフォーマンス指標の定義（回帰可能な形へ落とす）
 実測の数値は環境差があるため、初期は「退行検出できる形（オーダー異常）」を優先する。

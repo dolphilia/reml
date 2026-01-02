@@ -3,7 +3,7 @@
 ステータス: 承認済み（2025-12-17）
 
 `Core.Parse` を **実用的かつ開発者体験の高い基盤**へ引き上げるための、専用計画群を集約するディレクトリです。
-本計画は `docs/notes/core-parse-improvement-survey.md` を出発点に、`docs/plans/bootstrap-roadmap/` の Phase 4 系回帰（spec_core）を前提として、Core.Parse の改善作業を追跡可能な粒度へ分割します。
+本計画は `docs/notes/parser/core-parse-improvement-survey.md` を出発点に、`docs/plans/bootstrap-roadmap/` の Phase 4 系回帰（spec_core）を前提として、Core.Parse の改善作業を追跡可能な粒度へ分割します。
 
 - 設計指針: `docs/spec/0-1-project-purpose.md`（性能・安全性・分かりやすいエラー）を最優先
 - 参照仕様: `docs/spec/2-0-parser-api-overview.md`, `docs/spec/2-1-parser-type.md`, `docs/spec/2-2-core-combinator.md`, `docs/spec/2-3-lexer.md`, `docs/spec/2-5-error.md`, `docs/spec/2-7-core-parse-streaming.md`

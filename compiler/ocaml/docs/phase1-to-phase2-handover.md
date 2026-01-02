@@ -356,7 +356,7 @@
 
 ### 技術ガイド
 - `docs/guides/compiler/llvm-integration-notes.md` - LLVM 統合ガイド
-- `docs/notes/llvm-spec-status-survey.md` - LLVM 仕様調査ノート
+- `docs/notes/backend/llvm-spec-status-survey.md` - LLVM 仕様調査ノート
 
 ### Phase 1 報告書
 - `compiler/ocaml/docs/phase1-completion-report.md`

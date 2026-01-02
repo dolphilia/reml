@@ -1,0 +1,185 @@
+# 型クラスベンチマーク実装状況レポート
+
+**日時**: 2025-10-13
+**Phase**: Phase 2 Week 20-21
+**作成者**: ベンチマーク基盤整備タスク
+
+## 実施内容サマリー
+
+Phase 2 Week 20-21の「セクション4: 性能・コードサイズ計測」タスクにおいて、ベンチマーク基盤の整備を完了しました。しかし、実際の計測実行時に現在の型クラス実装の制約により、完全な計測を実施することができませんでした。
+
+## 完了した作業
+
+### 1. ベンチマーク設計 ✅
+- **マイクロベンチマーク** (`benchmarks/micro_typeclass.reml`): 型クラスメソッド10^6回呼び出し
+- **マクロベンチマーク** (`benchmarks/macro_typeclass.reml`): コレクション操作シナリオ
+- **シンプルベンチマーク** (`benchmarks/simple_bench.reml`): 基本動作確認用
+
+### 2. 自動計測スクリプト ✅
+- ファイル: `compiler/ocaml/scripts/benchmark_typeclass.sh`
+- 機能:
+  - 辞書渡し版とモノモルフィック版の両方をコンパイル
+  - 実行時間計測（3回平均）
+  - コードサイズ計測（バイナリ・LLVM IR行数）
+  - メモリ使用量計測
+  - Markdown形式の比較レポート生成
+
+### 3. 評価基準定義 ✅
+- 実行時間オーバーヘッド: <10%
+- コードサイズ増加率: <30%
+- コンパイル時間: <2倍
+- 詳細な評価テンプレート作成
+
+### 4. ドキュメント整備 ✅
+- READMEへのベンチマークセクション追加
+- 評価レポートテンプレート作成
+- 計画書への進捗記録
+
+## 発見した制約事項
+
+### Phase 2時点での実装制約
+
+計測実行を試みた結果、以下の制約が判明しました：
+
+#### 1. **構文サポートの制限**
+- **ミュータブル変数** (`mut`)が未サポート
+- **while/forループ**が未サポート
+- **配列アクセス構文** (`arr[i]`)が未サポート
+- **引数なし関数呼び出し** (`func()`の`()`が不要)
+
+**影響**: 10^6回の反復呼び出しベンチマークが実装不可能
+
+#### 2. **型クラス機能の制限**
+- **動作確認済み**: 基本的なEq/Ord比較(`x == y`, `x < y`)
+- **成功例**: `tests/integration/test_user_impl_e2e.reml`がコンパイル可能
+- **複雑なケース**: ネストした制御フローでセグメンテーションフォルト発生
+
+#### 3. **実行時ランタイムの制約**
+- ランタイム連携は基本機能のみ実装済み
+- 文字列・コレクション操作の完全サポートは Phase 3 予定
+
+## 実行可能な検証内容
+
+### 現時点で可能な検証 ✅
+
+1. **基本的な型クラス機能の動作確認**
+   ```bash
+   _build/default/src/main.exe \
+     tests/integration/test_user_impl_e2e.reml \
+     --emit-ir --out-dir /tmp/test
+   ```
+   - 成功: LLVM IR生成まで完了
+   - 確認済み: Eq/Ord型クラスの基本動作
+
+2. **コードサイズ比較（静的解析）**
+   - LLVM IR の行数比較
+   - 生成された関数定義の数
+   - 辞書構造体のサイズ
+
+3. **コンパイル時間の計測**
+   - 型推論フェーズの時間
+   - LLVM IR生成時間
+
+### 現時点で不可能な検証 🚧
+
+1. **実行時性能計測**
+   - 理由: ループ構文未サポート
+   - 対策: Phase 3でwhile/for実装後に再計測
+
+2. **大規模ベンチマーク**
+   - 理由: 配列操作・複雑制御フロー未サポート
+   - 対策: Phase 3でコレクションAPI実装後に再実施
+
+3. **実行時メモリ使用量**
+   - 理由: 実行可能バイナリ生成の制約
+   - 対策: Phase 3でランタイム完成後に計測
+
+## 今後の計画
+
+### Phase 2 後半（Week 22-24）
+
+1. **静的解析による比較**
+   - LLVM IRの構造解析
+   - 生成コードの定性的比較
+   - 辞書渡し vs PoC の設計評価
+
+2. **ドキュメントベースの評価**
+   - 実装複雑性の比較
+   - 保守性・拡張性の定性評価
+   - Phase 3への推奨事項
+
+### Phase 3（Week 25以降）
+
+1. **完全な性能計測**
+   - while/for ループ実装後にベンチマーク再実行
+   - 10^6回反復の実行時間計測
+   - 3回平均・標準偏差の記録
+
+2. **詳細な評価**
+   - 評価基準に基づく定量判定
+   - 採用方針の最終決定
+   - Phase 4へ向けた最適化計画
+
+## 成果物の活用方法
+
+### ベンチマークスクリプトの今後の使用
+
+作成したベンチマーク基盤は Phase 3 で以下のように活用できます：
+
+```bash
+# Phase 3で実装完了後に実行
+./compiler/ocaml/scripts/benchmark_typeclass.sh
+
+# 結果は自動的に以下に出力される
+# - benchmark_results/comparison_report.md
+# - benchmark_results/dictionary/*.ll
+# - benchmark_results/monomorph/*.ll
+```
+
+### 評価レポートの更新
+
+`docs/notes/types/typeclass-performance-evaluation.md`のテンプレートに計測結果を記入：
+1. 実行時間比較テーブル
+2. コードサイズ比較テーブル
+3. 評価基準との照合
+4. 採用方針の決定
+
+## 結論
+
+**Phase 2 Week 20-21の成果**:
+- ✅ ベンチマーク基盤の完全整備
+- ✅ 計測手順の自動化
+- ✅ 評価基準の明確化
+- 🚧 実際の計測は Phase 3 で実施
+
+**推奨事項**:
+1. Phase 3で while/for ループを優先実装
+2. ベンチマークスクリプトの検証は Phase 3 Week 1-2 で実施
+3. 型クラス実装の安定化を Phase 2 で完了させる
+
+**Phase 3 への引き継ぎ**:
+
+---
+
+## 2025-10-27 追記 — Phase 2 暫定運用方針
+
+- While/for 未実装期間は、`benchmarks/micro_typeclass.reml` に辞書メソッド呼び出しを直列で 10^5 回生成するユーティリティ関数を追加し、`benchmark_typeclass.sh --static-only`（新設予定フラグ）で LLVM IR 行数と辞書構造体サイズを計測する。
+- 計測結果は `benchmark_results/static_comparison.json` へ出力し、`docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md` で参照する週次メモ（`iterator-audit-metrics.json` と同様のフォーマット）として扱う。
+- 実行ベンチ再開条件:
+  1. `loop-implementation-plan.md` の TODO にある Core IR ブロック生成が完了し、`dune runtest compiler/ocaml/tests/test_loops.ml`（追加予定）が成功する。
+  2. `benchmark_typeclass.sh` 実行ログに `RUN_EXECUTION_BENCH=1` が記録される。
+  3. `0-3-audit-and-metrics.md` に Phase 2 → Phase 3 のメトリクス移行記録を追記済みである。
+- ベンチマーク基盤はすぐに使用可能
+- while/for 実装後、即座に計測実行
+- 評価結果に基づく最適化判断
+
+## 参考資料
+
+- ベンチマークスクリプト: `compiler/ocaml/scripts/benchmark_typeclass.sh`
+- 評価レポート: `docs/notes/types/typeclass-performance-evaluation.md`
+- 計画書: `docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md`
+- 既存動作テスト: `tests/integration/test_user_impl_e2e.reml`
+
+## 更新履歴
+
+- **2025-10-13**: 初版作成（ベンチマーク基盤整備完了、制約事項記録）

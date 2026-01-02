@@ -23,7 +23,7 @@
 **担当領域**: ランタイムインタフェース定義
 
 1.1. **必須API仕様策定**
-- 最小ランタイム（`docs/guides/compiler/llvm-integration-notes.md` §5.4 / `docs/notes/llvm-spec-status-survey.md` §2.5）と同一の関数セットを採用
+- 最小ランタイム（`docs/guides/compiler/llvm-integration-notes.md` §5.4 / `docs/notes/backend/llvm-spec-status-survey.md` §2.5）と同一の関数セットを採用
   - メモリ管理: `void* mem_alloc(size_t size)`, `void mem_free(void* ptr)`
   - 参照カウント: `void inc_ref(void* ptr)`, `void dec_ref(void* ptr)`
   - エラー処理: `void panic(const char* msg)`
@@ -36,7 +36,7 @@
 - **型付き属性との連携**: `sret`/`byval` 属性は `compiler/ocaml/src/llvm_gen/llvm_attr.ml` + C スタブ経由で生成される。mem_alloc が返すポインタは 8 バイト境界に調整済みであり、ABI 規約に準拠する。
 
 1.2. **データ構造定義**
-- ヒープオブジェクトヘッダ: `{ uint32_t refcount; uint32_t type_tag; }`（RC ベース、型タグは `docs/notes/llvm-spec-status-survey.md` の分類に合わせる）
+- ヒープオブジェクトヘッダ: `{ uint32_t refcount; uint32_t type_tag; }`（RC ベース、型タグは `docs/notes/backend/llvm-spec-status-survey.md` の分類に合わせる）
 - 型タグの割り当て規則と `panic` 診断コードとの対応表
 - アラインメント要件（8バイト境界）
 
@@ -102,7 +102,7 @@
 
 4.3. **終了処理**
 - `panic` からの異常終了コード（`exit(1)`）
-- 追加フックが必要な場合は Phase 2 の TODO として `docs/notes/llvm-spec-status-survey.md` に記録
+- 追加フックが必要な場合は Phase 2 の TODO として `docs/notes/backend/llvm-spec-status-survey.md` に記録
 
 **成果物**: `runtime/panic.c`, パニックテスト
 
@@ -195,7 +195,7 @@
 - `ubuntu:22.04`（または互換性のある LTS リリース）をベースに、System V ABI 準拠の `x86_64-unknown-linux-gnu` ツールチェーンを事前構築
 - `opam`, `dune`, `llvm-18`, `clang`, `gcc`, `make`, `valgrind`, `libunwind` をインストールし、Phase 1 のビルド・テストが容器内で完結するようにする
 - `tooling/ci/docker/bootstrap-runtime.Dockerfile` を作成し、ベースイメージのタグ・インストール手順・検証コマンドをコメントとして明記
-- パッケージバージョンと導入理由を `docs/notes/llvm-spec-status-survey.md` に追記し、LLVM 依存のドリフトを監視する
+- パッケージバージョンと導入理由を `docs/notes/backend/llvm-spec-status-survey.md` に追記し、LLVM 依存のドリフトを監視する
 
 9.2. **ビルドと配布の自動化**
 - `scripts/docker/build-runtime-container.sh` を追加し、`docker buildx` と `podman` の両方でビルドできるようエントリポイントを統一
@@ -221,7 +221,7 @@
 
 **依存関係と準備**
 - `docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md` で定義したターゲット設定と DataLayout を前提とし、`compiler/ocaml/src/llvm_gen/target_config.ml` の出力と整合させる。
-- `docs/notes/cross-compilation-spec-update-plan.md` の Phase A/B に沿って `RunConfigTarget`・`TargetCapability` を維持し、ツールチェーン側のメタデータと突き合わせる。
+- `docs/notes/backend/cross-compilation-spec-update-plan.md` の Phase A/B に沿って `RunConfigTarget`・`TargetCapability` を維持し、ツールチェーン側のメタデータと突き合わせる。
 - `compiler/ocaml/docs/technical-debt.md` の High 優先度項目（型マッピング TODO、CFG 線形化）を並行解消し、クロスビルド検証での偽陽性を避ける。
 
 **完了基準**
@@ -240,7 +240,7 @@
 | Zig cc バンドル | `zig` 提供のクロスコンパイル機能（libc, ld 一体） | 単一バイナリで依存が少ない、sysroot 準備不要 | Clang front-end と警告挙動が異なる、Zig リリースサイクルに依存 | 🟠 中（リリース差分検証が必要） |
 | crosstool-ng ビルド | 独自にビルドした GCC/glibc toolchain | フルコントロール、glibc/ld のバリエーションを細かく調整可能 | 構築時間・学習コストが高い、LLVM 主体のフローと二重化 | 🔴 高（メンテナンス負荷が大きい） |
 
-> **採用方針**: Phase 1 の LLVM ベースパイプラインを最優先するため、`clang --target=x86_64-unknown-linux-gnu` + Debian sysroot 構成を標準ツールチェーンとして採用する。Zig cc・crosstool-ng はバックアップ案として保持し、問題発生時に検討する。選定理由と比較結果は `docs/notes/llvm-spec-status-survey.md` に追記する。
+> **採用方針**: Phase 1 の LLVM ベースパイプラインを最優先するため、`clang --target=x86_64-unknown-linux-gnu` + Debian sysroot 構成を標準ツールチェーンとして採用する。Zig cc・crosstool-ng はバックアップ案として保持し、問題発生時に検討する。選定理由と比較結果は `docs/notes/backend/llvm-spec-status-survey.md` に追記する。
 
 10.2. **ツールチェーン構築スクリプト**
 - `scripts/toolchain/prepare-linux-x86_64.sh` を作成し、Homebrew 経由（オンライン）、アーカイブ展開（オフライン）、事前キャッシュ利用の 3 モードに対応させる。引数で `--brew`, `--archive`, `--cache` を切り替え、再実行時は idempotent になるよう `STAMP` ファイルを配置する。
@@ -264,12 +264,12 @@
 10.5. **CI・ドキュメント連携**
 - `.github/workflows/bootstrap-linux.yml` に `macos-latest` クロスビルドジョブを追加し、`toolchains` キャッシュ（`actions/cache`）と `run-linux-remote.sh --ci` を組み合わせた smoke テストを行う。CI 落下時は `cache: restore-keys` を利用して差分診断を高速化する。
 - `compiler/ocaml/README.md` の「直近の準備チェックリスト」にクロスツールチェーン導入手順とリモート実行フロー（および代替エミュレーション手段）を追記し、フェーズ進捗レポートには `Runtime Cross Build Status: GREEN/AMBER/RED` を追加する。
-- クロスビルド手順を `docs/guides/compiler/llvm-integration-notes.md` §6 と `docs/notes/cross-compilation-spec-update-plan.md` に反映し、Docker ベースの運用（§9）との役割分担を明文化する。ローカル実行と CI 実行の差異は表形式で整理する。
+- クロスビルド手順を `docs/guides/compiler/llvm-integration-notes.md` §6 と `docs/notes/backend/cross-compilation-spec-update-plan.md` に反映し、Docker ベースの運用（§9）との役割分担を明文化する。ローカル実行と CI 実行の差異は表形式で整理する。
 - 失敗時のトリアージフロー（ツールチェーン破損、sysroot ドリフト、リモートホスト障害／代替エミュレータ不整合）を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に登録し、`Severity` と `Mitigation` を記入する。トリアージ担当は Phase 1 チーム（macOS）と Phase 1-7 Linux 検証チームで二重化する。
 
 10.6. **クロス環境監査と継続的メンテナンス**
 - 月次で `scripts/toolchain/audit-linux-x86_64.sh` を実行し、`clang --version`・`ld.lld --version`・`readelf -V`・glibc バージョンを収集して `tooling/toolchains/audit.log` に追記する。結果は `0-3-audit-and-metrics.md` にサマリを記録する。
-- ツールチェーン更新時は `docs/notes/llvm-spec-status-survey.md` のクロスコンパイルセクションに差分を追記し、`docs/notes/cross-compilation-spec-intro.md` にリンクする。互換性が崩れた場合は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` で `Severity: High` として管理する。
+- ツールチェーン更新時は `docs/notes/backend/llvm-spec-status-survey.md` のクロスコンパイルセクションに差分を追記し、`docs/notes/backend/cross-compilation-spec-intro.md` にリンクする。互換性が崩れた場合は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` で `Severity: High` として管理する。
 - `tooling/toolchains/versions.toml` を基準に Renovate/Dependabot で月次チェックを行い、更新候補が出た場合は `docs/plans/bootstrap-roadmap/IMPLEMENTATION-GUIDE.md` の週次レビュー項目に追加する。
 - クロスビルド計測値（ビルド時間、ELF サイズ、リモート実行時間／往復遅延）は Phase 3 のセルフホスト移行指標として `docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md` に転記し、教訓を次フェーズへフィードバックする。
 
@@ -281,7 +281,7 @@
 - macOS 環境で `scripts/toolchain/prepare-linux-x86_64.sh` → `scripts/cross/run-linux-remote.sh` を実行し、クロス生成バイナリが Linux x86_64 検証ノード上で期待通り動作する（必要に応じて `run-linux-qemu.sh` などのローカル代替手段も使用可）。
 
 ## リスクとフォローアップ
-- macOS 等で開発時にクロスビルドが必要になるため、Docker イメージまたは cross toolchain の利用手順を `docs/notes/llvm-spec-status-survey.md` に共有。
+- macOS 等で開発時にクロスビルドが必要になるため、Docker イメージまたは cross toolchain の利用手順を `docs/notes/backend/llvm-spec-status-survey.md` に共有。
 - RC のオーバーヘッドが大きい場合に備え、計測値を Phase 3 のメモリ管理戦略検討へフィードバック。
 - ランタイム API が今後拡張されることを想定し、ヘッダにバージョンフィールドと互換性ポリシーを記載しておく。
 - Docker ベースイメージの脆弱性や LLVM バージョン差異を検知するため、月次で `docker scout cves`（もしくは `trivy`）を実行し、重大度 High 以上は `0-4-risk-handling.md` に登録してホットフィックスイメージを発行する。

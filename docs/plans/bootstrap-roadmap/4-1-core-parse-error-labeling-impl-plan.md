@@ -14,7 +14,7 @@
 - 実装: `label` 付きパーサが失敗した際、`Expectation::Rule(name)` が `expected_summary.alternatives` に含まれ、`context` にも積まれる（Token だけの表示に退行しない）。
 - ゴールデン: `expected/spec_core/chapter2/parser_core/core-parse-label-vs-token-with-label.diagnostic.json`（Rule を含む）と `...no-label.diagnostic.json`（Token 中心）を CLI 出力と一致させる。
 - 回帰: `phase4-scenario-matrix.csv` に `CP-WS2-001`（with-label/no-label のペア）を登録し、`resolution_notes` に実行コマンドと期待条件を記録。
-- 記録: 実装変更点を `docs/notes/core-parse-api-evolution.md` または `docs/plans/core-parse-improvement/2-0-integration-with-regression.md` に短く追記。
+- 記録: 実装変更点を `docs/notes/parser/core-parse-api-evolution.md` または `docs/plans/core-parse-improvement/2-0-integration-with-regression.md` に短く追記。
 
 ## 実装ステップ
 1. **期待集合整形の確認と修正**

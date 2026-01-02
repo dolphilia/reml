@@ -30,7 +30,7 @@
 
 ### フェーズ C: ドキュメント更新
 5. `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` の §5.2（実施結果）へ今回の Run ID、更新ファイル、残課題（例: Stage 要件カタログとの比較必要性）を追記。必要なら脚注で `reports/spec-audit/ch3/...` を参照する。
-6. 変更概要と検証結果を `docs/notes/runtime-capability-stage-log.md` など既存の Stage 監査ログに TODO として記載するか、別途 Issue 管理へ転記する。
+6. 変更概要と検証結果を `docs/notes/runtime/runtime-capability-stage-log.md` など既存の Stage 監査ログに TODO として記載するか、別途 Issue 管理へ転記する。
 
 ## 5. リスクとフォローアップ
 - Stage mismatch の再現には `Console` Capability の Stage 設定（beta 要求）が前提であり、ランタイム環境によっては `at_least:stable` が発行されず診断が再現しない恐れがある。`CapabilityRegistry` の初期化や CLI オプションを変更するスクリプトが存在する場合は Run 前に確認する。
@@ -42,7 +42,7 @@
 ### Run ID: 31bed62e-f04e-4810-acc2-ce5138088068
 - `tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` を実行したところ `pipeline_branch` が意図通り `exit_code=1` で停止するためスクリプトが途中で止まることを再確認。`pipeline_success` 側は同スクリプトで更新しつつ、`cargo run --quiet --bin reml_frontend -- --output json --emit-audit-log examples/core_diagnostics/pipeline_branch.reml` を単体で走らせ、標準出力/標準エラーを `tmp/` 経由でキャプチャして `examples/core_diagnostics/pipeline_branch.expected.{diagnostic.json,audit.jsonl}` を手動で整形した。
 - 上記 Run の `CliDiagnosticEnvelope` / `AuditEnvelope` をまとめた `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` を作成し、`pipeline_branch` の再現手順・コマンド・stage trace をワンパッケージで参照できるようにした。
-- `scripts/validate-diagnostic-json.sh reports/spec-audit/ch3/capability_stage-mismatch-20251206.json --effect-tag runtime` を実行し、`capability.id=console` / `effect.stage.required=at_least:beta` / `effect.stage.actual=at_least:stable` / `effects.contract.stage_trace` が CLI/Audit の両方に残っていることを確認した。検証ログと Run ID は `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#5.2-実施結果` と `docs/notes/runtime-capability-stage-log.md#2025-12-06-core-diagnostics-stage-mismatch` にリンク済み。
+- `scripts/validate-diagnostic-json.sh reports/spec-audit/ch3/capability_stage-mismatch-20251206.json --effect-tag runtime` を実行し、`capability.id=console` / `effect.stage.required=at_least:beta` / `effect.stage.actual=at_least:stable` / `effects.contract.stage_trace` が CLI/Audit の両方に残っていることを確認した。検証ログと Run ID は `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#5.2-実施結果` と `docs/notes/runtime/runtime-capability-stage-log.md#2025-12-06-core-diagnostics-stage-mismatch` にリンク済み。
 
 ### Run ID: 3961ffb6-ed62-499c-ad04-e1bff4bd3274
 - `tooling/examples/run_examples.sh --suite core_diagnostics --with-audit` を実行し、`core_diagnostics/pipeline_branch.reml` が `effects.contract.stage_mismatch` を発火して `exit_code=1` でもスイート全体が継続することを確認。スクリプトは `core_diagnostics/pipeline_branch.reml` のみ `allowed failure` として扱い、その他の例でエラーが発生した場合は即時失敗する。
@@ -55,9 +55,9 @@
 
 ### Run ID: ec456a62-42bc-4cf6-9fed-5858fdc9fc83
 - `tooling/examples/run_examples.sh --suite core_diagnostics --with-audit` を実行し、`pipeline_success`（run_id=`06c6a78e-be71-4323-a6fd-23e74515bf34`）と `pipeline_branch`（run_id=`ec456a62-42bc-4cf6-9fed-5858fdc9fc83`）の両方が最新 Runtime で再現できることを確認した。`pipeline_branch` は許容された失敗として `effects.contract.stage_mismatch` 1 件のみを出力し、`pipeline.outcome=success` と `pipeline.exit_code=failure` の組み合わせが audit NDJSON に揃っている。
-- 本 Run の CLI/Audit 出力は既存ゴールデンと差分が無かったためファイル更新は不要だが、`docs/notes/runtime-capability-stage-log.md#2025-12-06-core-diagnostics-stage-mismatch` に run_id を追記し、5.5 節の Runbook（Capability マトリクス）変更後も Stage ミスマッチ再現手順が維持されていることを明示した。
+- 本 Run の CLI/Audit 出力は既存ゴールデンと差分が無かったためファイル更新は不要だが、`docs/notes/runtime/runtime-capability-stage-log.md#2025-12-06-core-diagnostics-stage-mismatch` に run_id を追記し、5.5 節の Runbook（Capability マトリクス）変更後も Stage ミスマッチ再現手順が維持されていることを明示した。
 
 ## 7. テスト・CI 反映
 1. `docs/plans/bootstrap-roadmap/assets/pipeline-branch-ci-checklist.md` を新設し、CLI 単体実行・`core_diagnostics` スイート・JSON バリデーション・監査メトリクス・CI 連携の 5 ステップを表形式でまとめた。`tooling/examples/run_examples.sh --suite core_diagnostics --with-audit --update-golden` が `allowed failure` を抱えたまま完走すること、`scripts/validate-diagnostic-json.sh --effect-tag runtime` のログと `collect-iterator-audit-metrics.py --section core_diagnostics --scenario pipeline_branch` の結果を `reports/spec-audit/ch3/pipeline_branch-metrics-YYYYMMDD.json` として保存することを必須条件にしている。
-2. CI 向けには `.github/workflows/core-diagnostics.yml`（Phase 3 で追加予定）に `pipeline_branch` ステップを分離し、失敗時に `scripts/ci/post_failure_runtime_capability.sh` を呼んで `docs/plans/bootstrap-roadmap/0-4-risk-handling.md#runtime-capability` と `docs/notes/runtime-capability-stage-log.md` へ Run ID を書き戻す手順を定義した。CI の成果物には `reports/spec-audit/ch3/capability_stage-mismatch-YYYYMMDD.json`・`...-metrics-YYYYMMDD.json` をまとめ、3.8 計画 §7 で新設した `runtime.capability_ci_pass_rate` KPI の補助資料として扱う。
+2. CI 向けには `.github/workflows/core-diagnostics.yml`（Phase 3 で追加予定）に `pipeline_branch` ステップを分離し、失敗時に `scripts/ci/post_failure_runtime_capability.sh` を呼んで `docs/plans/bootstrap-roadmap/0-4-risk-handling.md#runtime-capability` と `docs/notes/runtime/runtime-capability-stage-log.md` へ Run ID を書き戻す手順を定義した。CI の成果物には `reports/spec-audit/ch3/capability_stage-mismatch-YYYYMMDD.json`・`...-metrics-YYYYMMDD.json` をまとめ、3.8 計画 §7 で新設した `runtime.capability_ci_pass_rate` KPI の補助資料として扱う。
 3. 本節の更新に合わせて `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#7-テスト・ci-統合` と相互参照を追加し、Runtime Capability 計画（7.2/7.3）から `core_diagnostics` スイートの allowed failure と `pipeline_branch` 専用メトリクスの扱いを共有した。Stage mismatch を再現する唯一のサンプルである点を `docs/spec/3-6-core-diagnostics-audit.md`／`docs/guides/runtime/runtime-bridges.md`／`docs/guides/ecosystem/ai-integration.md` へ伝播させる。

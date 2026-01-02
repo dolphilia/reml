@@ -14,7 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CLI = REPO_ROOT / "compiler/rust/runtime/target/debug/reml_capability"
 DEFAULT_SPEC = REPO_ROOT / "docs/spec/3-8-core-runtime-capability.md"
 DEFAULT_README = REPO_ROOT / "docs/plans/bootstrap-roadmap/README.md"
-DEFAULT_LOG = REPO_ROOT / "docs/notes/runtime-capability-stage-log.md"
+DEFAULT_LOG = REPO_ROOT / "docs/notes/runtime/runtime-capability-stage-log.md"
 GENERATOR = REPO_ROOT / "scripts/capability/generate_md.py"
 DEFAULT_JSON_DIR = REPO_ROOT / "reports/spec-audit/ch3"
 

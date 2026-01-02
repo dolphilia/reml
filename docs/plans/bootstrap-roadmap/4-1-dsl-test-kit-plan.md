@@ -1,7 +1,7 @@
 # Phase4: DSL Test Kit 計画（Core.Test.Dsl）
 
 ## 背景と決定事項
-- `docs/notes/dsl-enhancement-proposal.md` の提案「3.1 DSL Test Kit (`Core.Test.Dsl`)」を Phase 4 の実装・回帰計画へ落とし込む。
+- `docs/notes/dsl/dsl-enhancement-proposal.md` の提案「3.1 DSL Test Kit (`Core.Test.Dsl`)」を Phase 4 の実装・回帰計画へ落とし込む。
 - `Core.Test` の現行 API では DSL の AST 構造検証やエラー位置検証が冗長で、試作速度と回帰の再現性に課題がある。
 - `docs/spec/0-1-project-purpose.md` の安全性・診断明瞭性の原則を維持しつつ、テスト記述量を削減する。
 
@@ -114,7 +114,7 @@ test_parser(my_parser) {
 | ゴールデン差分の増加 | レビュー負担増 | 更新手順と差分レビュー基準を `docs/guides/tooling/testing.md` に明記 |
 
 ## 参照
-- `docs/notes/dsl-enhancement-proposal.md`
+- `docs/notes/dsl/dsl-enhancement-proposal.md`
 - `docs/spec/0-1-project-purpose.md`
 - `docs/spec/2-5-error.md`
 - `docs/spec/3-11-core-test.md`

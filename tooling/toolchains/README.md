@@ -46,6 +46,6 @@
 
 ## 関連資料
 - `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md`
-- `docs/notes/llvm-spec-status-survey.md`
+- `docs/notes/backend/llvm-spec-status-survey.md`
 - `scripts/toolchain/prepare-linux-x86_64.sh`
 - `scripts/cross/run-linux-qemu.sh`

@@ -207,11 +207,11 @@
 6.3. `docs/guides/ecosystem/ai-integration.md`/`docs/guides/runtime/runtime-bridges.md` の診断・監査セクションを更新する。
     - 6.3.a AI ガイドでは診断 JSON の解釈手順と `effect.stage.*` の注意点を解説する段落を追加する。
     - 6.3.b Runtime Bridges ガイドでは `AuditEnvelope` の `bridge.stage.*` 例を載せ、プラグイン開発者が参照できるようにする。
-    - 6.3.c 更新後に `docs/notes/dsl-plugin-roadmap.md` へ交差参照を追記し、プラグイン昇格審査と診断監査が同じ証跡を共有することを明記する。
+    - 6.3.c 更新後に `docs/notes/dsl/dsl-plugin-roadmap.md` へ交差参照を追記し、プラグイン昇格審査と診断監査が同じ証跡を共有することを明記する。
 
 #### 6.3 実施結果（Run ID: 20290730-guide-bridge-ai）
 - `docs/guides/ecosystem/ai-integration.md` §5.4 に `structured_hints`・`fixits`・`audit_metadata` の読み取り手順を新設し、AI 連携時に Stage/Audit 情報へアクセスする方法を `schema_version="3.0.0-alpha"` とともに説明した。
-- `docs/guides/runtime/runtime-bridges.md` §1.2 に `bridge_stage_verified` の NDJSON 例を挿入し、`bridge.stage.*` と `pipeline.*` が同一 `AuditEnvelope` に含まれる形をサンプル化。`docs/notes/dsl-plugin-roadmap.md` では AI ガイドと Runtime Bridge ガイドの該当節を指す交差参照を追加し、プラグイン審査で共有する証跡セットを揃えた。
+- `docs/guides/runtime/runtime-bridges.md` §1.2 に `bridge_stage_verified` の NDJSON 例を挿入し、`bridge.stage.*` と `pipeline.*` が同一 `AuditEnvelope` に含まれる形をサンプル化。`docs/notes/dsl/dsl-plugin-roadmap.md` では AI ガイドと Runtime Bridge ガイドの該当節を指す交差参照を追加し、プラグイン審査で共有する証跡セットを揃えた。
 
 #### 6.1 実施結果（Run ID: 20290730-doc-golden）
 - `docs/spec/3-6-core-diagnostics-audit.md` §9 を再構成し、`examples/core_diagnostics/pipeline_branch.reml` のコード片と `CliDiagnosticEnvelope`／`AuditEvent` の JSON 抜粋を掲載した。`pipeline_branch.expected.diagnostic.json` と `pipeline_success.expected.audit.jsonl` を引用し、`pipeline.*` キーや `run_config` の必須項目を明文化した。
@@ -225,7 +225,7 @@
 #### 6.3 実施結果（Run ID: 20290730-guide-link）
 - `docs/guides/ecosystem/ai-integration.md` §5.3 を新設し、`effects.stage.*` や `pipeline.*` の読み方と `examples/core_diagnostics/*.expected.*` への参照を追加。AI 連携が Stage/Audit 情報をどのように解析すべきかを文章化した。
 - `docs/guides/runtime/runtime-bridges.md` に Core Diagnostics ゴールデンへの参照を追加し、Runtime Bridge 実装が `pipeline_started` / `pipeline_completed` を監査ログへ出力する際のベースラインを定義した。
-- `docs/notes/dsl-plugin-roadmap.md` に CLI/Audit ゴールデンの参照を追加し、プラグイン昇格審査で診断・監査ログの証跡として利用することを推奨した。
+- `docs/notes/dsl/dsl-plugin-roadmap.md` に CLI/Audit ゴールデンの参照を追加し、プラグイン昇格審査で診断・監査ログの証跡として利用することを推奨した。
 
 ### 7. テスト・CI 統合（53週目）
 **担当領域**: 品質保証
@@ -290,7 +290,7 @@
 ## リスクとフォローアップ
 - 監査ログの肥大化が懸念される場合、サンプリングやローテーションを Phase 4 の運用計画に追加する。
 - Telemetry 出力が TypeChecker パフォーマンスに影響する場合、デバッグフラグで制御する仕組みを整備する。
-- プライバシー要件が未定義な場合、`docs/notes/dsl-plugin-roadmap.md` に TODO を追記し、法務レビューを手配する。
+- プライバシー要件が未定義な場合、`docs/notes/dsl/dsl-plugin-roadmap.md` に TODO を追記し、法務レビューを手配する。
 
 ## 参考資料
 - [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md)

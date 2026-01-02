@@ -71,7 +71,7 @@
 - `python3 tooling/ci/render-collector-audit-fixtures.py --snapshots compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap --output reports/spec-audit/ch1/core_iter_collectors.json --audit-output reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` で `prelude.collector` スナップショットを診断 JSON（7 ケース）と audit JSONL へ変換し、Stage/Effect/Marker 情報を `AuditEnvelope.metadata.collector.*` に転写した。
 - `python3 tooling/ci/collect-iterator-audit-metrics.py --section collectors --module iter --case wbs-31b-f2 --source reports/spec-audit/ch1/core_iter_collectors.json --audit-source reports/spec-audit/ch1/core_iter_collectors.audit.jsonl --output reports/iterator-collector-metrics.json` を実行し、`collector.stage.audit_pass_rate=1.0`・`collector.effect.mem=2/7`・`collector.effect.mut=4/7`・`collector.effect.mem_reservation=4`・`collector.effect.reserve=2`・`collector.error.duplicate_key=2`・`collector.error.invalid_encoding=1` を採取。`reports/iterator-collector-summary.md` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI に同じ数値を貼り付けた。
 - `scripts/validate-diagnostic-json.sh --pattern collector` で `Diagnostic.extensions["prelude.collector.*"]` が `reports/diagnostic-format-regression.md` に差分なしで保存され、`cargo xtask prelude-audit --wbs '3.1b F2'` で `Collector` トレイトおよび `List/Vec/Map/Set/String/Table` API の `rust_status=implemented` を検査したログと結び付いている。
-- `../../../docs/notes/core-library-outline.md#collector-f2-監査ログ` と `../../../docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#collector-f2-監査ログ` にこの `Collector F2` ログのクロスリファレンスを張り、監査ログ（コマンド履歴＋KPI）を M1 レビューで再利用できる形でまとめてある。
+- `../../../docs/notes/stdlib/core-library-outline.md#collector-f2-監査ログ` と `../../../docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#collector-f2-監査ログ` にこの `Collector F2` ログのクロスリファレンスを張り、監査ログ（コマンド履歴＋KPI）を M1 レビューで再利用できる形でまとめてある。
 
 ### <a id="collector-f3-監査ログ"></a>Collector F3 監査ログ（WBS 3.1b, W37 後半）
 
@@ -79,7 +79,7 @@
 | --- | --- | --- |
 | `python3 tooling/ci/collect-iterator-audit-metrics.py --section collectors --module iter --case wbs-31b-f2 --source reports/spec-audit/ch1/core_iter_collectors.json --audit-source reports/spec-audit/ch1/core_iter_collectors.audit.jsonl --output reports/iterator-collector-metrics.json --require-success` | ✅ | `collector.stage.audit_pass_rate=1.0`、`collector.effect.mem=2/7`、`collector.effect.mut=4/7`、`collector.error.duplicate_key=2`、`collector.error.invalid_encoding=1` を `reports/iterator-collector-metrics.json` に保存し、`reports/iterator-collector-summary.md` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI を更新。 |
 | `scripts/validate-diagnostic-json.sh --pattern collector` | ✅ | 監査ログ生成後に Diagnostic JSON を再比較し、`reports/diagnostic-format-regression.md` に差分なしで吸収されたことを確認。`reports/spec-audit/ch1/core_iter_collectors.json` と `core_iter_collectors.audit.jsonl` のヘッダをリスト化。 |
-- `reports/iterator-collector-summary.md` の `collect_vec_mem_reservation`/`collect_map_duplicate`/`collect_string_invalid` では `collector.effect.mem_reservation` や `collector.error.key` の推移を JSON で参照でき、`docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#31b-実装指針` と突き合わせた。`docs/notes/core-library-outline.md#collector-f3-監査ログ` にも同じリンク列を記録済み。
+- `reports/iterator-collector-summary.md` の `collect_vec_mem_reservation`/`collect_map_duplicate`/`collect_string_invalid` では `collector.effect.mem_reservation` や `collector.error.key` の推移を JSON で参照でき、`docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#31b-実装指針` と突き合わせた。`docs/notes/stdlib/core-library-outline.md#collector-f3-監査ログ` にも同じリンク列を記録済み。
 
 ### <a id="iter-terminators-h1"></a>Iter Terminators H1（WBS 3.1c-H1, 2027-03-06）
 
@@ -146,7 +146,7 @@
 | `unfold_fibonacci_pipeline` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__unfold_fibonacci_pipeline.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.unfold` | `Iter::unfold` の `@pure` 生成器が `ListCollector` へ往復し `iterator.unfold.depth=8` を維持することを証跡化。【F:docs/spec/3-1-core-prelude-iteration.md†L176-L200】 |
 | `try_unfold_error_passthrough` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__try_unfold_error_passthrough.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.try_unfold` | `Result<Option<(T, State)>, E>` の `Err(E)` が `EffectLabels::debug=true` と共に監査ログへ記録される経路を固定。【F:docs/spec/3-1-core-prelude-iteration.md†L200-L221】 |
 
-- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` では `module = "Iter"` に `unfold`/`try_unfold` エントリ（`rust_status=implemented`, `wbs = "3.1c F1-4"`, `last_updated = "2025-12-22 / WBS 3.1c-F1-4/5"`）を登録し、`docs/notes/core-library-outline.md#iter-f1-生成-api-監査ログ` と `#iter-generators-f1-4-設計メモwbs-31c-f1-4` で `collect-iterator-audit` コマンドと KPI を共有する。Phase 3 M1 判定では本節と計画書の双方を根拠資料として参照する。
+- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` では `module = "Iter"` に `unfold`/`try_unfold` エントリ（`rust_status=implemented`, `wbs = "3.1c F1-4"`, `last_updated = "2025-12-22 / WBS 3.1c-F1-4/5"`）を登録し、`docs/notes/stdlib/core-library-outline.md#iter-f1-生成-api-監査ログ` と `#iter-generators-f1-4-設計メモwbs-31c-f1-4` で `collect-iterator-audit` コマンドと KPI を共有する。Phase 3 M1 判定では本節と計画書の双方を根拠資料として参照する。
 
 | ファイル | リンク | 存在 | 備考 |
 |---------|--------|------|------|
@@ -386,7 +386,7 @@
 | `scripts/validate-diagnostic-json.sh --pattern iterator.map --pattern iterator.filter reports/spec-audit/ch1/iterator.map-filter.diagnostics.json` | ✅ | map/filter 用診断 JSON が schema v2.0.0-draft に適合することを確認。 |
 
 - KPI: `reports/iterator-map-filter-metrics.json` の `adapter_metrics` には `iterator.map.latency_ns = 16750`、`iterator.filter.latency_ns = 2875`、`iterator.filter.predicate_calls = 4` を保存。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `iterator.map.latency` / `iterator.filter.predicate_count` と同期済み。
-- 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` §5、`docs/notes/core-library-outline.md#iter-g1-map-filter`、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（`Iter.map`/`Iter.filter` 行）。
+- 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` §5、`docs/notes/stdlib/core-library-outline.md#iter-g1-map-filter`、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（`Iter.map`/`Iter.filter` 行）。
 
 ### <a id="iter-adapters"></a>Iter Adapter G2 flat_map / zip ログ（WBS 3.1c-G2）
 
@@ -398,7 +398,7 @@
 | `cargo xtask prelude-audit --section iter --filter adapter --strict --baseline docs/spec/3-1-core-prelude-iteration.md --wbs 3.1c-G2` | ✅ | `Iter.flat_map`/`Iter.zip` を含む adapter セクション 12 件を `rust_status=implemented` で通過させ、`reports/spec-audit/ch1/core_iter_adapters.json` の `iterator.adapter.coverage = 1.0` を更新。 |
 
 - KPI: `reports/iterator-flatmap-metrics.json` と `reports/iterator-zip-metrics.json` を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `iterator.flat_map.mem_reservation` / `iterator.zip.shorter_error_rate` に転記。`reports/diagnostic-format-regression.md#iterator.zip_mismatch` と `reports/iterator-stage-summary.md#iter-adapters` に同じ Run-ID（WBS 3.1c-G2）を追記した。
-- 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G2、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` §6、`docs/notes/core-library-outline.md#iter-g2-flat-zip`、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（`Iter.flat_map` / `Iter.zip` 行）、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#iterator-adapter-esc`。
+- 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G2、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` §6、`docs/notes/stdlib/core-library-outline.md#iter-g2-flat-zip`、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（`Iter.flat_map` / `Iter.zip` 行）、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#iterator-adapter-esc`。
 
 ### <a id="iter-buffered"></a>Iter Adapter G3 buffered/backpressure ログ（WBS 3.1c-G3）
 
@@ -410,7 +410,7 @@
 | `scripts/validate-diagnostic-json.sh --pattern iterator.buffered reports/spec-audit/ch1/core_iter_adapters.json` | ✅ | `EffectLabels.mem_bytes` / `iterator.backpressure.*` の拡張が schema v2.0.0-draft と整合していることを確認。 |
 
 - KPI: `reports/iterator-buffered-metrics.json` と `reports/benchmarks/iter_buffered-2027-02-22.json` を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `iterator.mem.window` に転記し、`iterator.mem.window.bytes = 2` / `iterator.mem.window.backpressure = 0.33` / `delta_pct = +0.038` を記録。`reports/iterator-stage-summary.md#iter-buffered` と `reports/spec-audit/ch1/iter.json` の KPI に同じ Run-ID (`2027-02-22-iter-adapter-g3`) を付与した。
-- 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G3、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` §5、`docs/notes/core-library-outline.md#iter-g3-buffered-backpressure`、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（`Iter.buffered` 行）、`docs/plans/rust-migration/3-2-benchmark-baseline.md` §3.2.4。
+- 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G3、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` §5、`docs/notes/stdlib/core-library-outline.md#iter-g3-buffered-backpressure`、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（`Iter.buffered` 行）、`docs/plans/rust-migration/3-2-benchmark-baseline.md` §3.2.4。
 
 ### <a id="iter-adapters-g4"></a>Iter Adapter G4 KPI / 文書同期ログ（WBS 3.1c-G4）
 
@@ -421,4 +421,4 @@
 | `scripts/validate-diagnostic-json.sh --pattern iterator.map --pattern iterator.zip reports/spec-audit/ch1/core_iter_adapters.json` | ✅ | Adapter 診断 JSON が schema v2.0.0-draft の `audit_id`/`stage.required`/`effects.*` を完全に保持していることを確認。 |
 
 - KPI: `reports/iterator-adapter-metrics.json` に `iterator.adapter.coverage = 1.0`、`diagnostic.audit_presence_rate = 1.0`、`iterator.stage.audit_pass_rate = 1.0` を記録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表と `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（`meta.last_updated = "2027-02-24 / WBS 3.1c-G4"`）へ反映した。
-- 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G4、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#iter-adapter`、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md`、`docs/notes/core-library-outline.md#iter-adapter`、`docs-migrations.log`（2027-02-24-iter-adapter-g4）。
+- 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G4、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#iter-adapter`、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md`、`docs/notes/stdlib/core-library-outline.md#iter-adapter`、`docs-migrations.log`（2027-02-24-iter-adapter-g4）。

@@ -18,12 +18,12 @@
 
 1.1. CapabilityRegistry 構造と CapabilityHandle バリアントの一覧を作成し、既存実装との差分を洗い出す。
     - 1.1.a `docs/spec/3-8-core-runtime-capability.md` §1〜§1.3 と `compiler/rust/runtime/src/` 以下の `rg "Capability"` 結果を突き合わせ、型ごとの実装状況を `docs/plans/bootstrap-roadmap/assets/capability-handle-inventory.csv`（新規）へ整理する。列には `Gc/Io/Async/...` と `定義済み/未実装/不要` のステータスを記し、Run ID を脚注として残す。
-    - 1.1.b `compiler/rust/runtime/tests/` で既に PoC が存在する Capability を棚卸しし、利用できるテストデータやモックを `docs/notes/runtime-capability-stage-log.md#capability-handle-inventory` にリンクする。
+    - 1.1.b `compiler/rust/runtime/tests/` で既に PoC が存在する Capability を棚卸しし、利用できるテストデータやモックを `docs/notes/runtime/runtime-capability-stage-log.md#capability-handle-inventory` にリンクする。
     - 1.1.c 差分一覧を `docs/plans/rust-migration/2-1-runtime-integration.md` と共有し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md#core-runtime-capability` へ KPI（例: `capability.handle_coverage`）と Run ID を追記する。
 
 #### 1.1 実施結果（Run ID: 20291221-core-runtime-capability）
 - `docs/plans/bootstrap-roadmap/assets/capability-handle-inventory.csv` で GC/IO/Async/Audit など 14 種類の Capability を列挙し、Rust 側の入口／テスト／実装状態（未実装・Stage 検証のみ等）を整理した。唯一 Stage 検証が存在するのは `compiler/rust/runtime/src/io/adapters.rs#L27-L233` の Fs/Watcher アダプタであり、その他のハンドルが未実装であることを表で可視化した。
-- `docs/notes/runtime-capability-stage-log.md` に `## Capability Handle Inventory (20291221)` を追加し、棚卸し表と `fs_adapter_ensures_capabilities` などの PoC テストをリンクした。Stage ログから直接 CSV を参照できる導線を確保している。
+- `docs/notes/runtime/runtime-capability-stage-log.md` に `## Capability Handle Inventory (20291221)` を追加し、棚卸し表と `fs_adapter_ensures_capabilities` などの PoC テストをリンクした。Stage ログから直接 CSV を参照できる導線を確保している。
 - `docs/plans/rust-migration/2-1-runtime-integration.md` の Capability Registry 要件節へ本 CSV を参照する脚注を追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` には新 KPI `capability.handle_coverage` と Run ID を登録した。KPI 更新時は `python3 tooling/ci/collect-iterator-audit-metrics.py --section runtime --dry-run` のログを参照する運用とした。
 1.2. Stage/Effect 情報の保持形式と `CapabilityDescriptor` のフィールドを設計し、Diagnostics/Audit との連携要件を整理する。
     - 1.2.a `StageId`/`StageRequirement`/`CapabilityDescriptor` のフィールドを `docs/spec/1-3-effects-safety.md#capability-stage-contract` と本章 §1.2 から抽出し、`docs/plans/bootstrap-roadmap/assets/capability-stage-field-gap.csv` に「仕様の必須列」「Rust 実装の現状」「対応する診断キー」を表形式で記録する。
@@ -116,14 +116,14 @@
 4.3. `describe_all` 等の補助関数を実装し、ドキュメント生成や CLI (`reml capability list`) で再利用する。
     - 4.3.a `CapabilityRegistry::describe_all` を `Iterator<Item = CapabilityDescriptor>` で返す API として実装し、`reml capability list` CLI（`compiler/rust/runtime/bin/reml_capability.rs`）から利用する。
     - 4.3.b `docs/plans/bootstrap-roadmap/README.md` と `docs/spec/3-8-core-runtime-capability.md` の Capability 表を `scripts/capability/generate_md.py`（新設）で自動生成し、`describe_all` の出力を Markdown へ変換する。
-    - 4.3.c `tooling/runtime/capability_list.py` で CLI 出力 → Markdown 変換 → `docs/spec/3-8` 反映を自動化し、作業ログを `docs/notes/runtime-capability-stage-log.md#capability-list-update` に残す。
+    - 4.3.c `tooling/runtime/capability_list.py` で CLI 出力 → Markdown 変換 → `docs/spec/3-8` 反映を自動化し、作業ログを `docs/notes/runtime/runtime-capability-stage-log.md#capability-list-update` に残す。
 
 #### 4.3 実施結果（Run ID: 20290705-capability-list-cli）
 - `CapabilityRegistry::describe_all()` を `CapabilityDescriptorList` で返すように拡張し、`IntoIterator` 実装と `len`/`iter` を提供した。これにより CLI や将来の API で iterator として扱える。
 - `reml_capability` バイナリを追加し、`reml_capability list --format json|markdown` で Registry 内容を CLI から確認できるようにした。JSON 出力は `schema_version = "3.0.0-alpha"` を含み、Markdown 出力は表形式で Stage/EffectScope/Provider/Manifest を掲載する。
-- `scripts/capability/generate_md.py` と `tooling/runtime/capability_list.py` を追加。後者は CLI → JSON 保存（`reports/spec-audit/ch3/capability_list-YYYYMMDD.json`）→ Markdown 生成 → `docs/spec/3-8-core-runtime-capability.md` / `docs/plans/bootstrap-roadmap/README.md` 反映 → `docs/notes/runtime-capability-stage-log.md#capability-list-update` へのログ追記を自動化する。
+- `scripts/capability/generate_md.py` と `tooling/runtime/capability_list.py` を追加。後者は CLI → JSON 保存（`reports/spec-audit/ch3/capability_list-YYYYMMDD.json`）→ Markdown 生成 → `docs/spec/3-8-core-runtime-capability.md` / `docs/plans/bootstrap-roadmap/README.md` 反映 → `docs/notes/runtime/runtime-capability-stage-log.md#capability-list-update` へのログ追記を自動化する。
 - 上記スクリプトを実行し、2 つのドキュメントには `<!-- capability-table:start -->` / `<!-- capability-table:end -->` マーカー内へ自動生成テーブルを挿入した。README には Snapshot セクションを新設し、更新手順を明記した。
-- `docs/notes/runtime-capability-stage-log.md#Capability List Update` へ「CLI パス / JSON 保存先 / 更新ドキュメント」を記録し、今後の再実行時に参照できる履歴を確保した。
+- `docs/notes/runtime/runtime-capability-stage-log.md#Capability List Update` へ「CLI パス / JSON 保存先 / 更新ドキュメント」を記録し、今後の再実行時に参照できる履歴を確保した。
 
 ### 5. 依存モジュールとの統合（58週目）
 **担当領域**: Chapter 3 連携
@@ -138,7 +138,7 @@
     - 5.2.c `scripts/validate-diagnostic-json.sh --effect-tag runtime` を追加し、Capability 情報欠落を CI で検知できるようにする。
 #### 5.2 実施結果（Run ID: 80b0d934-6b51-4718-9fc4-dcff8c57b849）
 - `tooling/examples/run_examples.sh --suite core_diagnostics --with-audit --update-golden` を実行し、`pipeline_success`/`pipeline_branch` の期待値を同一コマンドで更新した。`pipeline_branch` は `allowed failure` として `exit_code=1` をログに残しつつ継続する。
-- 生成された `examples/core_diagnostics/pipeline_branch.expected.{diagnostic.json,audit.jsonl}` を基に `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` を再生成し、`capability.id=console` / `effect.stage.required=at_least:beta` / `effect.stage.actual=at_least:stable` / `bridge.stage.trace[*]` の一貫性を確認した。Run 情報は `docs/notes/runtime-capability-stage-log.md#2025-12-06-core-diagnostics-stage-mismatch` へも転載。
+- 生成された `examples/core_diagnostics/pipeline_branch.expected.{diagnostic.json,audit.jsonl}` を基に `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` を再生成し、`capability.id=console` / `effect.stage.required=at_least:beta` / `effect.stage.actual=at_least:stable` / `bridge.stage.trace[*]` の一貫性を確認した。Run 情報は `docs/notes/runtime/runtime-capability-stage-log.md#2025-12-06-core-diagnostics-stage-mismatch` へも転載。
 - `scripts/validate-diagnostic-json.sh reports/spec-audit/ch3/capability_stage-mismatch-20251206.json --effect-tag runtime` を再実行して `capability.*` / `effect.stage.*` / `effects.contract.stage_trace` の必須キーを検証し、CLI/Audit 双方で欠落が無いことを確認した。
 5.3. Config Manifest (3-7) との連携を確認し、マニフェストに記載された Capability 要件が契約検証へ渡ることを確かめる。
     - 5.3.a `reml_runtime::config::manifest` で `run.target.capabilities` を読み込み、`ConductorCapabilityRequirement` に変換するロジックを追加する。
@@ -157,8 +157,8 @@
 - `compiler/rust/runtime/src/collections/mutable/ref.rs` に `OnceCell` ベースの Stage ガードを実装し、`EffectfulRef::try_new` / `RefHandle::try_new` から `CapabilityRegistry::verify_capability_stage("core.collections.ref", StageRequirement::Exact(StageId::Stable))` を呼び出すよう更新した。Capability 違反は `BorrowError::CapabilityDenied` にマッピングし、FFI では `RefHandle::new` をラップする `try_new` を追加。
 - `python3 tooling/ci/collect-iterator-audit-metrics.py --suite collectors --scenario ref_internal_mutation --output reports/spec-audit/ch3/collections_ref-20251206.json --require-success --require-cell` を実行し、`collector.effect.cell_rc` KPI で `cell_mutations_total=1` / `rc_ops_total=2` を記録（既知の `collector.table.csv_import` 閾値未実装により終了コードは 1、詳細は `reports/spec-audit/ch3/collections_ref-20251206.md` 参照）。
 - ドキュメント連携: `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md#3.2.3` に Stage ガード整備と KPI 更新手順を追記し、`docs/guides/runtime/runtime-bridges.md` では `RefHandle::try_new` と Capability 検証フローを補足した。
-5.5. Core.IO / Path で定義した Capability (`io.fs.*`, `fs.permissions.*`, `fs.symlink.*`, `fs.watcher.*`, `security.fs.policy`) 用の Runbook を整備する。`docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` を Capability Registry の基準票とし、`File::open`/`watch` 実装から `verify_capability_stage` を呼び出すフックを追加する。CI では `python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario capability_matrix --matrix docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md --output reports/spec-audit/ch3/core_io_capabilities.json --require-success` を Phase3 `core-io-path` ジョブへ組み込み、`docs/notes/runtime-capability-stage-log.md` に `io.fs.*` 系 Stage 結果を追記する。`RuntimeBridgeRegistry` 経由で Watcher を提供する場合は `describe_bridge("native.fs.watch")` の Stage 情報を `CapabilityDescriptor` へ転写し、Stage mismatch が発生した際は `effects.contract.stage_mismatch` 診断と `AuditEnvelope.metadata["io.watch.*"]` を同時に確認する。  
- 　加えて、クロスプラットフォームで挙動が分かれる Watcher 付帯 Capability（`watcher.fschange`/`watcher.recursive`/`watcher.resource_limits`）を `IoErrorKind::UnsupportedPlatform` で可視化し、`metadata.io.platform` / `metadata.io.feature` を `watcher_audit` シナリオの必須キーとして扱う。Runbook では `docs/notes/runtime-capability-stage-log.md#2025-12-21-coreio-watcher-クロスプラットフォーム-capability` を参照し、非対応 OS 向けの `reports/spec-audit/ch3/io_watcher-unsupported_platform.md` の更新手順も記載する。
+5.5. Core.IO / Path で定義した Capability (`io.fs.*`, `fs.permissions.*`, `fs.symlink.*`, `fs.watcher.*`, `security.fs.policy`) 用の Runbook を整備する。`docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` を Capability Registry の基準票とし、`File::open`/`watch` 実装から `verify_capability_stage` を呼び出すフックを追加する。CI では `python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario capability_matrix --matrix docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md --output reports/spec-audit/ch3/core_io_capabilities.json --require-success` を Phase3 `core-io-path` ジョブへ組み込み、`docs/notes/runtime/runtime-capability-stage-log.md` に `io.fs.*` 系 Stage 結果を追記する。`RuntimeBridgeRegistry` 経由で Watcher を提供する場合は `describe_bridge("native.fs.watch")` の Stage 情報を `CapabilityDescriptor` へ転写し、Stage mismatch が発生した際は `effects.contract.stage_mismatch` 診断と `AuditEnvelope.metadata["io.watch.*"]` を同時に確認する。  
+ 　加えて、クロスプラットフォームで挙動が分かれる Watcher 付帯 Capability（`watcher.fschange`/`watcher.recursive`/`watcher.resource_limits`）を `IoErrorKind::UnsupportedPlatform` で可視化し、`metadata.io.platform` / `metadata.io.feature` を `watcher_audit` シナリオの必須キーとして扱う。Runbook では `docs/notes/runtime/runtime-capability-stage-log.md#2025-12-21-coreio-watcher-クロスプラットフォーム-capability` を参照し、非対応 OS 向けの `reports/spec-audit/ch3/io_watcher-unsupported_platform.md` の更新手順も記載する。
 
     - 5.5.a `core-io-capability-map.md` に `stage`/`provider`/`effect_scope` 列を追加し、`collect-iterator-audit-metrics.py` が直接読み取れる CSV を整備する。
     - 5.5.b `compiler/rust/runtime/src/io/fs.rs` や `path/watch.rs` に Stage チェック挿入ポイントを追加し、`cargo test -p reml_runtime core_io_capability_matrix` で検証する。
@@ -168,7 +168,7 @@
 - `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` に `<!-- capability-matrix:start -->` ブロックを追加し、`Capability ID`/`Stage`/`Provider`/`Effect Scope`/`Hook`/`Status`/`Notes` を機械可読化。`watcher.fschange` / `watcher.recursive` には `platform:*` ステージを明示し、OS 依存の `IoErrorKind::UnsupportedPlatform` を Runbook から辿れるようにした。
 - `tooling/ci/collect-iterator-audit-metrics.py` に `--matrix` 引数・`capability_matrix` シナリオを追加し、上記表を検証して `core_io.capability_matrix_pass_rate` を算出。生成結果は `reports/spec-audit/ch3/core_io_capabilities.json`（pass_rate=1.0, total=13）として保存し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に KPI を登録した。
 - `tests/capabilities/core_io_registry.json` と `cargo test -p reml_runtime core_io_capability_matrix` を更新し、`fs.symlink.modify` / `fs.watcher.*` / `watcher.resource_limits` まで Stage 要件を網羅。CI の `core-io-path` ラインで `core_io_capability_matrix` テストを実行する方針を共有した。
-- `reports/spec-audit/ch3/io_bridge-capability-sync-20251206.md` を作成し、Watcher Stage trace（`metadata.io.watch.*`）と Capability Registry/RuntimeBridgeRegistry の整合確認手順を記録。`docs/notes/runtime-capability-stage-log.md#2025-12-06-coreio-capability-マトリクスrun-id-20251206-core-io-capability-matrix` に Run ID と指針を追記した。
+- `reports/spec-audit/ch3/io_bridge-capability-sync-20251206.md` を作成し、Watcher Stage trace（`metadata.io.watch.*`）と Capability Registry/RuntimeBridgeRegistry の整合確認手順を記録。`docs/notes/runtime/runtime-capability-stage-log.md#2025-12-06-coreio-capability-マトリクスrun-id-20251206-core-io-capability-matrix` に Run ID と指針を追記した。
 - `runtime::bridge` モジュールに Rust 版 `RuntimeBridgeRegistry` を実装し、`FsAdapter::ensure_*` など Stage 検証 API が Stage プローブを記録するように更新。`cargo test -p reml_runtime stage_records_are_accessible_after_fs_operations -- --nocapture` を `BRIDGE_STAGE_RECORDS_PATH=<path>` と併用すると `reports/spec-audit/ch3/runtime_bridge-stage-records-20251206.json` のようなスナップショットを生成でき、io_bridge-capability-sync レポートから Rust 実装の Bridge 記録を直接参照できるようになった。
 
 > メモ（2027-03-31）: `core.text.audit` Capability を仮登録し、`StageRequirement::Exact(StageId::Stable)` で `effect {audit}` を要求する API（`log_grapheme_stats` 等）を守る体制を整備した。`compiler/rust/runtime/tests/capability_text_audit.rs` の `cargo test capability_text_audit` で検証ルートを固定し、`docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md#43-diagnostics-io-連携42-43週目` から参照している。
@@ -179,12 +179,12 @@
 6.1. 仕様書内の Capability テーブル・シーケンス図を実装に合わせて更新する。
     - 6.1.a `docs/spec/3-8-core-runtime-capability.md` のテーブルを 4.3.b のスクリプトから再生成し、Stage/EffectScope/Provider を自動反映する。
     - 6.1.b `docs/spec/3-0-core-library-overview.md` と `docs/spec/1-0-language-core-overview.md` の Capability 概要に Stage API 追加内容を反映する。
-    - 6.1.c `docs/notes/runtime-capability-stage-log.md` に Run ID と図版（Mermaid → PNG/SVG）を添付し、更新履歴を残す。
+    - 6.1.c `docs/notes/runtime/runtime-capability-stage-log.md` に Run ID と図版（Mermaid → PNG/SVG）を添付し、更新履歴を残す。
 
 #### 6.1 実施結果（Run ID: 20251230-capability-doc-sync）
 - `reml_capability list --format json > reports/spec-audit/ch3/capability_list-20251205.json` を再取得し、`python3 scripts/capability/generate_md.py --json ... --output docs/spec/3-8-core-runtime-capability.md` で 3.8 章の表を更新した。
 - Chapter 0/1 の概要（`docs/spec/3-0-core-library-overview.md`、`docs/spec/1-0-language-core-overview.md`）へ `capability_stage-mismatch-20251206.json` を参照する段落を追記し、Stage mismatch サンプルの導線を確保した。
-- `docs/notes/runtime-capability-stage-log.md` に Run ID とともに `docs/plans/bootstrap-roadmap/assets/capability-stage-flow.svg` を追加し、Mermaid 図 (`capability-stage-flow.mmd`) のエクスポート手順を記録した。
+- `docs/notes/runtime/runtime-capability-stage-log.md` に Run ID とともに `docs/plans/bootstrap-roadmap/assets/capability-stage-flow.svg` を追加し、Mermaid 図 (`capability-stage-flow.mmd`) のエクスポート手順を記録した。
 6.2. `3-0-phase3-self-host.md`/`README.md` に Capability Registry 実装ステータスと利用ガイドを追記する。
     - 6.2.a `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#完成条件` に Capability Registry 完了チェックと `collect-iterator-audit-metrics --section runtime` の結果を参照する脚注を追加する。
     - 6.2.b `README.md` の章索引に 3.8 章のステータスバッジ（例: ✅ Stage API 実装済み）を追加し、参照リンクを更新する。
@@ -194,14 +194,14 @@
 - `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` に `### 3.0.3c Capability Registry 完成条件` を追加し、`tooling/examples/run_examples.sh --suite core_diagnostics --with-audit --update-golden` と `collect-iterator-audit-metrics.py --section runtime --matrix docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` を Phase 3 の判定基準へ組み込んだ。
 - README の「Core.Runtime & Capability 進捗」節で `reml_capability describe` の使い方と `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` の参照先を案内し、Stage 監査サンプルを一覧化した。
 - `docs/plans/bootstrap-roadmap/0-2-roadmap-structure.md` に `## 0.2.5 Capability Registry マイルストーン` を追加し、Capability テーブル更新と KPI 取得ルートを文書体系へ位置付けた。
-6.3. `docs/notes/dsl-plugin-roadmap.md` に Stage/Capability の適用例を追加し、プラグイン開発者向けに共有する。
+6.3. `docs/notes/dsl/dsl-plugin-roadmap.md` に Stage/Capability の適用例を追加し、プラグイン開発者向けに共有する。
     - 6.3.a DSL プラグイン別の Capability 要求表を `docs/plans/bootstrap-roadmap/assets/plugin-capability-matrix.csv` として作成し、`4-7-core-parse-plugin.md` から参照する。
-    - 6.3.b `docs/notes/dsl-plugin-roadmap.md#effect-handling-matrix` に Stage 要件のサンプル（`verify_conductor_contract` 実行例）を追記する。
+    - 6.3.b `docs/notes/dsl/dsl-plugin-roadmap.md#effect-handling-matrix` に Stage 要件のサンプル（`verify_conductor_contract` 実行例）を追記する。
     - 6.3.c `docs/guides/dsl/plugin-authoring.md` に `reml capability describe <plugin-id>` の利用方法と Plan 3.8 への依存を追記する。
 
 #### 6.3 実施結果（Run ID: 20251230-plugin-capability）
 - `docs/plans/bootstrap-roadmap/assets/plugin-capability-matrix.csv` を作成し、`plugin.dsl.template` / `plugin.dsl.observability` / `plugin.native-ui` の Capability/Stage 依存を CSV で一覧化した。
-- `docs/notes/dsl-plugin-roadmap.md` に `### 5.2 Capability 要求マトリクス` を追加し、上記 CSV と `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json`・`runtime_bridge-stage-records-20251206.json` を使った検証方法を共有した。
+- `docs/notes/dsl/dsl-plugin-roadmap.md` に `### 5.2 Capability 要求マトリクス` を追加し、上記 CSV と `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json`・`runtime_bridge-stage-records-20251206.json` を使った検証方法を共有した。
 - `docs/guides/dsl/plugin-authoring.md` の §2.2 に `reml_capability describe` / `scripts/capability/generate_md.py` の利用例と Stage mismatch チェック手順を追記し、Plan 3.8 の成果物をガイドへ組み込んだ。
 
 ### 7. テスト・CI 統合（59週目）
@@ -214,7 +214,7 @@
 
 #### 7.1 実施結果（Run ID: 20251210-runtime-capability-ci-checklist）
 - `docs/plans/bootstrap-roadmap/assets/runtime-capability-ci-checklist.md` を新設し、単体テスト/KPI/ログ出力の導線を 7.1 の手順順に表形式でまとめた。`cargo test -p reml_runtime capability_registry -- --nocapture` を CI 必須ジョブ化するためのメモ、`insta` スナップショット (`tests/snapshots/capability_registry__*.snap`) のレビュー要領、`cargo nextest run -p reml_runtime --run-ignored capability_registry_load` を使った 1,000 件登録テスト、`tests/fixtures/capabilities/*.json` の共通フィクスチャ整備など、要求事項を 1 ページで参照できる。
-- 失敗時の記録先を `reports/spec-audit/ch3/runtime_capability-unit-YYYYMMDD.md` / `runtime_capability-load-YYYYMMDD.log` に固定し、`docs/plans/bootstrap-roadmap/0-4-risk-handling.md#runtime-capability` と `docs/notes/runtime-capability-stage-log.md` から同じ Run ID を逆参照できるようにした。単体テストで得た差分をそのまま 3.8 計画に書き戻す運用を確立した形である。
+- 失敗時の記録先を `reports/spec-audit/ch3/runtime_capability-unit-YYYYMMDD.md` / `runtime_capability-load-YYYYMMDD.log` に固定し、`docs/plans/bootstrap-roadmap/0-4-risk-handling.md#runtime-capability` と `docs/notes/runtime/runtime-capability-stage-log.md` から同じ Run ID を逆参照できるようにした。単体テストで得た差分をそのまま 3.8 計画に書き戻す運用を確立した形である。
 - `docs/plans/bootstrap-roadmap/pipeline_branch-stage-mismatch-plan.md#7-テスト・ci-反映` からも本チェックリストをリンクし、Core.Diagnostics の Stage mismatch サンプルと Runtime Capability 単体テストのノウハウが交差するよう整合を取った。
 7.2. 統合テストで TypeChecker/Runtime/Config からの Capability チェックが期待通り動くことを確認する。
     - 7.2.a `tooling/examples/run_examples.sh --suite core_runtime_capability --with-audit` を新設し、`examples/core_runtime_capability/*.reml` から診断+監査ゴールデンを生成する。

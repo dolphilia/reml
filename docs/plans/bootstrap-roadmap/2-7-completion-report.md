@@ -28,9 +28,9 @@
 ## 3. 未完了タスク（Phase 2-8 へ移管）
 | ID/テーマ | 内容 | 追跡先 | 備考 |
 |-----------|------|--------|------|
-| SYNTAX-003 / EFFECT-002 H-O3〜H-O5 | 効果構文 Stage 監査の最終レビュー、互換モード終了可否の判断 | `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §8.2〜§8.3, `docs/notes/effect-system-tracking.md` | Stage 監査ログと CLI/LSP の整合を Phase 2-8 で確認する。 |
-| Plugin 互換モード廃止 | `diagnostics.plugin_bundle_ratio` を 1.0 に引き上げるため、互換モードテスト（`bundle.strict=false`）を更新 | `reports/audit/dashboard/diagnostics.md`, `docs/notes/dsl-plugin-roadmap.md` | Phase 2-8 で互換モード削除と署名再発行を実施。 |
-| Spec 差分最終統合 | 差分リストと監査ログを Phase 2-8 仕様監査に統合 | `docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md`, `docs/plans/bootstrap-roadmap/2-7-to-2-8-handover.md` | 監査用 TODO ノート（`docs/notes/spec-integrity-audit-checklist.md`）の開設が必要。 |
+| SYNTAX-003 / EFFECT-002 H-O3〜H-O5 | 効果構文 Stage 監査の最終レビュー、互換モード終了可否の判断 | `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §8.2〜§8.3, `docs/notes/effects/effect-system-tracking.md` | Stage 監査ログと CLI/LSP の整合を Phase 2-8 で確認する。 |
+| Plugin 互換モード廃止 | `diagnostics.plugin_bundle_ratio` を 1.0 に引き上げるため、互換モードテスト（`bundle.strict=false`）を更新 | `reports/audit/dashboard/diagnostics.md`, `docs/notes/dsl/dsl-plugin-roadmap.md` | Phase 2-8 で互換モード削除と署名再発行を実施。 |
+| Spec 差分最終統合 | 差分リストと監査ログを Phase 2-8 仕様監査に統合 | `docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md`, `docs/plans/bootstrap-roadmap/2-7-to-2-8-handover.md` | 監査用 TODO ノート（`docs/notes/process/spec-integrity-audit-checklist.md`）の開設が必要。 |
 
 ## 4. メトリクス
 | 指標 | 値 | 備考 |

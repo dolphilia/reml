@@ -11,6 +11,6 @@
 | UC-03 | 200KB、Streaming decode | `TextBuilder` → `GraphemeSeq::from_builder` | `cache_miss == 0` （builder 共有）、`collector.effect.text_cache_hits > 0` | `cargo test --manifest-path compiler/rust/runtime/Cargo.toml UC_03` | Green (2024-04-15) | `effect {audit}` ログ (`text.grapheme_stats`) と整合させる。 |
 
 ## メモ
-- 結果は `reports/spec-audit/ch1/core_text_grapheme_stats.json` と `docs/notes/text-unicode-performance-investigation.md` に転記する。`cache_hits`, `cache_miss`, `version_mismatch_evictions`, `avg_generation` を最低限保存する。
-- キャッシュ仕様が変わった場合はこのファイルのケース表を更新し、`docs/notes/text-unicode-ownership.md` および `docs/notes/core-library-outline.md#runtimecachespeccoretext-キャッシュモデル` へ参照を追加する。
-- `log_grapheme_stats` に `cache_hits`/`cache_miss` が未出力の場合は `docs/notes/text-unicode-known-issues.md` の `TUI-003` を更新し、`phase3-core-text` CI で回転を止める。
+- 結果は `reports/spec-audit/ch1/core_text_grapheme_stats.json` と `docs/notes/text/text-unicode-performance-investigation.md` に転記する。`cache_hits`, `cache_miss`, `version_mismatch_evictions`, `avg_generation` を最低限保存する。
+- キャッシュ仕様が変わった場合はこのファイルのケース表を更新し、`docs/notes/text/text-unicode-ownership.md` および `docs/notes/stdlib/core-library-outline.md#runtimecachespeccoretext-キャッシュモデル` へ参照を追加する。
+- `log_grapheme_stats` に `cache_hits`/`cache_miss` が未出力の場合は `docs/notes/text/text-unicode-known-issues.md` の `TUI-003` を更新し、`phase3-core-text` CI で回転を止める。

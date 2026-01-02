@@ -13,7 +13,7 @@
   - `RunConfig` 連携（ターゲットプロファイル、環境 Capability）、`target.config.*` 診断との協調。
   - CI / CLI から利用する `adapter` API の公開設計（Feature フラグ・Stage ポリシー含む）。
 - **除外**
-  - DSL プラグインや拡張 Capability 導入。該当項目は Chapter 4・`docs/notes/dsl-plugin-roadmap.md` で扱う。
+  - DSL プラグインや拡張 Capability 導入。該当項目は Chapter 4・`docs/notes/dsl/dsl-plugin-roadmap.md` で扱う。
   - ハードウェア固有（GPU, GPIO 等）の詳細実装。必要に応じて後続フェーズで計画する。
   - パフォーマンス最適化（P4 スコープ）。
 - **前提**
@@ -102,7 +102,7 @@
 
 - **WASI / Embedded との整合不足**  
   - *リスク*: 将来ターゲットでアダプタが動作しない。  
-  - *対応*: `adapter` API を最小インタフェースに限定し、未対応ターゲットは `UnsupportedCapability` として `Diagnostic` を発行。詳細調査は `docs/notes/cross-compilation-spec-intro.md` と連携。
+  - *対応*: `adapter` API を最小インタフェースに限定し、未対応ターゲットは `UnsupportedCapability` として `Diagnostic` を発行。詳細調査は `docs/notes/backend/cross-compilation-spec-intro.md` と連携。
 
 ## 2.2.9 P1 W4.5 ハンドオーバー
 - `reports/dual-write/front-end/P1_W4.5_frontend_handover/diag/streaming/20280410-w4-diag-streaming-r21/` から `runconfig.extensions.stream.*` / `flow.backpressure.max_lag_bytes` / `expected_tokens.*` を抽出し、アダプタ API の Streaming Flow 設定（`AdapterStreamConfig`）へ取り込む。`appendix/w4-diagnostic-case-matrix.md#W4.5-ハンドオーバーメモ` で `Pending(W4.5)` とされた項目は P2 着手前に補完必須。

@@ -24,7 +24,7 @@
 ## 4. フォローアップ
 - Phase 2-7 `diagnostic-domain` タスクと連携して、`DiagnosticDomain` 拡張の実装スケジュールを決定。  
 - ドメインを拡張した後、`docs/spec/3-6-core-diagnostics-audit.md` に脚注を追記し、OCaml 実装が追従したタイミングで脚注を削除。  
-- `docs/notes/dsl-plugin-roadmap.md` にプラグイン診断のドメイン整理項目を追加しておく。
+- `docs/notes/dsl/dsl-plugin-roadmap.md` にプラグイン診断のドメイン整理項目を追加しておく。
 - `docs/plans/bootstrap-roadmap/2-5-review-log.md` にレビュー結果と残課題（`Other(Str)` の表現方針など）を記載し、Phase 2-8 以降での追跡と承認判断に備える。
 - **タイミング**: Phase 2-5 の中盤でスキーマ・実装調整に着手し、Phase 2-7 の診断ダッシュボード更新が始まる前までに適用する。
 
@@ -100,12 +100,12 @@
 5. **ドキュメント・脚注・ハンドオフ更新（Week32 Day1）**  
    - `docs/spec/3-6-core-diagnostics-audit.md` と `docs/spec/0-2-glossary.md` に新ドメインの定義脚注を追加し、OCaml 実装の反映日時を `Phase 2-5` フッタに記録。  
    - `docs/plans/bootstrap-roadmap/2-5-review-log.md` へ Step1〜4 の作業ログと検証結果を追記し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に Stage/Plugin ドメイン連携 TODO（CI 監査ダッシュボード改修）を登録。  
-   - `docs/spec/3-8-core-runtime-capability.md` / `docs/notes/dsl-plugin-roadmap.md` / `docs/guides/runtime/runtime-bridges.md` の参照セクションに `DiagnosticDomain` 変更を周知する脚注を挿入し、RunConfig/lex シムや複数 Capability 計画との依存関係を明文化する。
+   - `docs/spec/3-8-core-runtime-capability.md` / `docs/notes/dsl/dsl-plugin-roadmap.md` / `docs/guides/runtime/runtime-bridges.md` の参照セクションに `DiagnosticDomain` 変更を周知する脚注を挿入し、RunConfig/lex シムや複数 Capability 計画との依存関係を明文化する。
 
    #### Step5 実施結果（2025-11-30 更新）
    - ✅ `docs/spec/3-6-core-diagnostics-audit.md` に `Diagnostic.domain` 拡張メモと脚注 `[^diag003-phase25-domain]` を追加し、OCaml 実装の語彙整合を記録。  
    - ✅ `docs/spec/0-2-glossary.md` へ新語彙一覧と脚注 `[^diag003-phase25-glossary]` を追記し、読者が `Effect` / `Target` / `Plugin` / `Lsp` / `Other(Str)` を参照できるようにした。  
-   - ✅ `docs/spec/3-8-core-runtime-capability.md`, `docs/guides/runtime/runtime-bridges.md`, `docs/notes/dsl-plugin-roadmap.md` に脚注を挿入し、RunConfig/Capability/Plugin 計画と診断ドメイン拡張の依存関係を共有。  
+   - ✅ `docs/spec/3-8-core-runtime-capability.md`, `docs/guides/runtime/runtime-bridges.md`, `docs/notes/dsl/dsl-plugin-roadmap.md` に脚注を挿入し、RunConfig/Capability/Plugin 計画と診断ドメイン拡張の依存関係を共有。  
    - ✅ `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step5 のサマリ・検証記録を追加し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ CI ダッシュボード改修 TODO を登録。  
    - ℹ️ フォローアップ: EFFECT-003 で複数 Capability を扱うサンプルの収集が完了した段階で脚注の有効性を再確認し、`diagnostics.domain_coverage` グラフ設計のレビューを行う。
 

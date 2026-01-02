@@ -2,7 +2,7 @@
 
 ## 目的
 - Phase 1 マイルストーン M3 において LLVM IR を確実に生成し、x86_64 Linux (System V ABI) を既定ターゲットとしてコンパイルできるようにする。
-- `docs/guides/compiler/llvm-integration-notes.md` §5 の ABI 要件と `docs/notes/llvm-spec-status-survey.md` のギャップを解消し、後続フェーズでのマルチターゲット化に備える。
+- `docs/guides/compiler/llvm-integration-notes.md` §5 の ABI 要件と `docs/notes/backend/llvm-spec-status-survey.md` のギャップを解消し、後続フェーズでのマルチターゲット化に備える。
 
 ## スコープ
 - **含む**: LLVM IR ビルダーの実装、データレイアウト (`e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64`) 設定、関数シグネチャ/ABI マッピング、x86_64 Linux 用ランタイムシンボルとのリンケージ。
@@ -14,7 +14,7 @@
 - `compiler/ocaml/tests/codegen` : IR ゴールデンテスト、`opt`/`llc` 検証結果
 - `runtime/native` : ランタイム関数のシンボル確認、ABI 整合
 - `tooling/ci` / `.github/workflows/` : LLVM ツールチェーンを利用するビルド/テストフロー
-- `docs/notes/llvm-spec-status-survey.md` : ターゲット差分やデータレイアウト情報の記録
+- `docs/notes/backend/llvm-spec-status-survey.md` : ターゲット差分やデータレイアウト情報の記録
 
 ## 作業ブレークダウン
 
@@ -195,7 +195,7 @@
 
 ## リスクとフォローアップ
 - LLVM バージョン差異により API が変化する可能性があるため、`0-3-audit-and-metrics.md` にバージョン固定と検証手順を追記。
-- クロスコンパイルを macOS 上で実行する場合の依存解決が複雑なため、Docker/Podman のベースイメージ構成を `docs/notes/llvm-spec-status-survey.md` に共有。
+- クロスコンパイルを macOS 上で実行する場合の依存解決が複雑なため、Docker/Podman のベースイメージ構成を `docs/notes/backend/llvm-spec-status-survey.md` に共有。
 - 生成 IR とランタイム ABI の不整合が検出された場合は、`0-4-risk-handling.md` に即時登録し、Phase 2 の Windows 対応タスクで流用できるようにする。
 
 ## 参考資料

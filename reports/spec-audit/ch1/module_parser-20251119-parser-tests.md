@@ -3,7 +3,7 @@
 - Date: 2025-11-19 10:42 JST
 - CI_RUN_ID: `rust-frontend-w37-20251119.1`
 - Commit: `f9e10ae676bca22ed8a41e96d79f667310274990`
-- Source docs: `docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md#rust-frontend-パーサ拡張のステップ`, `docs/plans/rust-migration/3-0-ci-and-dual-write-strategy.md`, `docs/notes/spec-integrity-audit-checklist.md`
+- Source docs: `docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md#rust-frontend-パーサ拡張のステップ`, `docs/plans/rust-migration/3-0-ci-and-dual-write-strategy.md`, `docs/notes/process/spec-integrity-audit-checklist.md`
 
 ## 実行ログ
 

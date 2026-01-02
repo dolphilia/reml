@@ -9,7 +9,7 @@
 | 1.x | Phase 1 ブートストラップ計画 | OCaml 実装の最小パイプライン構築と性能ベースライン | `docs/guides/compiler/llvm-integration-notes.md`, [1-1-syntax.md](../../spec/1-1-syntax.md) |
 | 2.x | Phase 2 仕様安定化計画 | 型システム・効果タグ・診断の安定化 | [1-2-types-Inference.md](../../spec/1-2-types-Inference.md), [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
 | 3.x | Phase 3 Self-Host 計画 | Reml 実装への移行と互換性維持 | [2-7-core-parse-streaming.md](../../spec/2-7-core-parse-streaming.md), [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) |
-| 4.x | Phase 4 移行完了計画 | リリース体制、ツールチェーン移行、エコシステム支援 | [5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md), `docs/notes/llvm-spec-status-survey.md` |
+| 4.x | Phase 4 移行完了計画 | リリース体制、ツールチェーン移行、エコシステム支援 | [5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md), `docs/notes/backend/llvm-spec-status-survey.md` |
 
 各系列のドキュメントは、仕様書と同様に章番号をタイトルに付与し、関連する仕様章からの相互参照を明記する。新しい文書を追加する場合は、上表へ行を追加し、README/概要のリンクを更新する。
 
@@ -27,7 +27,7 @@
 
 ## 0.2.4 成果物トラッキング
 - **測定基盤**: `0-3-audit-and-metrics.md`（本計画書内で後述）にて、性能・診断・互換性・Stage 達成状況を表形式で管理する。
-- **レビュー体制**: 各フェーズの出口は Parser/Type/Runtime の担当レビュアが承認し、承認記録は `0-3` のレビュー欄と `docs/notes/llvm-spec-status-survey.md` の更新ログに反映する。
+- **レビュー体制**: 各フェーズの出口は Parser/Type/Runtime の担当レビュアが承認し、承認記録は `0-3` のレビュー欄と `docs/notes/backend/llvm-spec-status-survey.md` の更新ログに反映する。
 - **リスク管理**: 未解消リスクは各フェーズ文書（`1-x`〜`4-x` 系列）章末の「残存リスク」節に残し、フォローアップを `0-4-risk-handling.md` でまとめる。
 
 ---
@@ -35,6 +35,6 @@
 本構成により、計画書は仕様書と常に相互参照される生きた文書として保守される。以降の章では、各フェーズの実行計画と測定フレームワークを詳細に定義する。
 
 ## 0.2.5 Capability Registry マイルストーン
-- Phase 3 (`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#303c-capability-registry-完成条件`) では `reml_capability list --format json` を `scripts/capability/generate_md.py` に渡し、`docs/spec/3-8-core-runtime-capability.md` / `docs/plans/bootstrap-roadmap/README.md` のテーブルを同時更新する。更新ログは `docs/notes/runtime-capability-stage-log.md` に Run ID 付きで保存する。
+- Phase 3 (`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#303c-capability-registry-完成条件`) では `reml_capability list --format json` を `scripts/capability/generate_md.py` に渡し、`docs/spec/3-8-core-runtime-capability.md` / `docs/plans/bootstrap-roadmap/README.md` のテーブルを同時更新する。更新ログは `docs/notes/runtime/runtime-capability-stage-log.md` に Run ID 付きで保存する。
 - CI では `python3 tooling/ci/collect-iterator-audit-metrics.py --section runtime --require-success --matrix docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md --report reports/spec-audit/ch3/core_io_capabilities.json` を実行し、`runtime.capability_validation` / `core_io.capability_matrix_pass_rate` を `0-3-audit-and-metrics.md` の KPI に追記する。
 - Stage mismatch サンプル (`examples/core_diagnostics/pipeline_branch.reml`) と監査ログ (`reports/spec-audit/ch3/capability_stage-mismatch-20251206.json`) を REAME/仕様/計画から横断参照できるよう保ち、Capability Registry の復旧計画 (`docs/plans/bootstrap-roadmap/pipeline_branch-stage-mismatch-plan.md`) を更新するたびに本節へリンクを追加する。

@@ -11,7 +11,7 @@
 - `docs/spec/1-1-syntax/examples/use_nested_rustcap.reml` — Rust Frontend 制限を回避したフォールバック。ダミー関数→`use`→宣言の順で並べ、戻り値型を省略。診断 0 件で完了 (`reports/spec-audit/ch1/use_nested_rustcap-20251117-diagnostics.json`)。
 - `docs/spec/1-1-syntax/examples/effect_handler.reml` — 効果構文の PoC。2025-11-18 の再実行で `ExprParser`／effect handler 実装が揃い、`reports/spec-audit/ch1/effect_handler-20251118-diagnostics.json` に診断 0 件の結果を保存。旧ログ `effect_handler-20251117-diagnostics.json` はギャップ再現用として保管。
 
-`reports/spec-audit/summary.md` にコマンド・タイムスタンプを追記し、`docs/notes/spec-integrity-audit-checklist.md` で `rust-gap` 状態を更新する。
+`reports/spec-audit/summary.md` にコマンド・タイムスタンプを追記し、`docs/notes/process/spec-integrity-audit-checklist.md` で `rust-gap` 状態を更新する。
 
 ## 2025-11-18 追加サンプル
 

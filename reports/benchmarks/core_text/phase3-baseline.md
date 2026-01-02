@@ -12,4 +12,4 @@
 - `criterion` の `report/new/raw.csv` から `mean`, `std`, `throughput` を抽出し、小数第 2 位で丸めて記録する。
 - `cache hit %` は `text::grapheme/segment_cached` のスループットに加えて `reports/spec-audit/ch1/core_text_grapheme_stats.json` の `cache_hits`/`cache_miss` を参照する。
 - `effect.mem_bytes` は `TextBuilder` ベンチ後に `reml_runtime::text::take_text_effects_snapshot()` を呼び、`collector.effect.mem_bytes` をログへ追記する（将来の自動化対象）。
-- 目標外の値を検出した場合、`docs/notes/text-unicode-performance-investigation.md` に追記し、本ファイルからリンクする。
+- 目標外の値を検出した場合、`docs/notes/text/text-unicode-performance-investigation.md` に追記し、本ファイルからリンクする。

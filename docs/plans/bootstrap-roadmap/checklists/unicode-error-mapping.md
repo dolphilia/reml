@@ -19,4 +19,4 @@
 
 ## TODO
 - [ ] `UnicodeErrorKind::WidthMappingMissing` の新設要否を検討し、ケース追加。
-- [ ] Diagnostics での `help` メッセージ案を `docs/notes/text-unicode-known-issues.md` に追記。
+- [ ] Diagnostics での `help` メッセージ案を `docs/notes/text/text-unicode-known-issues.md` に追記。

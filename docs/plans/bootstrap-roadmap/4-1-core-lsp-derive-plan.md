@@ -1,7 +1,7 @@
 # Phase4: Auto-LSP Derivation 計画（Core.Lsp.Derive）
 
 ## 背景と決定事項
-- `docs/notes/dsl-enhancement-proposal.md` の提案「3.2 Auto-LSP Derivation (`Core.Lsp.Derive`)」を Phase 4 の実装計画へ落とし込む。
+- `docs/notes/dsl/dsl-enhancement-proposal.md` の提案「3.2 Auto-LSP Derivation (`Core.Lsp.Derive`)」を Phase 4 の実装計画へ落とし込む。
 - 既存の `Core.Lsp` は診断エンコード中心で、補完/アウトライン/ハイライトは DSL 側で手動実装が必要になっている。
 - `docs/spec/0-1-project-purpose.md` の「分かりやすいエラーメッセージ」「エコシステム統合とDSLファースト」を満たすため、LSP導出を最小コアとして標準化する。
 
@@ -149,7 +149,7 @@ conductor my_dsl_server {
 | CLI 出力形式の乱立 | 回帰サンプル管理が複雑化 | `OutputFormat::LspDerive` を追加し、`reports/spec-audit/ch4/logs/` で統一管理 |
 
 ## 参照
-- `docs/notes/dsl-enhancement-proposal.md`
+- `docs/notes/dsl/dsl-enhancement-proposal.md`
 - `docs/spec/0-1-project-purpose.md`
 - `docs/spec/2-2-core-combinator.md`
 - `docs/spec/3-14-core-lsp.md`

@@ -2,7 +2,7 @@
 
 ## 背景
 - `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` を進めている途中で、回帰の土台となる `Core.Parse` の **診断品質** と **実装・運用の実用性**（DSL 開発の書きやすさ、復旧、性能）が不足しうると判断した。
-- 調査メモ `docs/notes/core-parse-improvement-survey.md` は、既存の優れたパーサーコンビネーター（Parsec/Megaparsec/nom/chumsky/Angstrom/FastParse）から Reml が取り込むべき要素を整理している。
+- 調査メモ `docs/notes/parser/core-parse-improvement-survey.md` は、既存の優れたパーサーコンビネーター（Parsec/Megaparsec/nom/chumsky/Angstrom/FastParse）から Reml が取り込むべき要素を整理している。
 
 本計画は上記メモを具体タスクへ落とし込み、Core.Parse の強化を **回帰計画の前提整備（Phase4 の信頼性向上）** として実施するための正式計画である。
 
@@ -27,7 +27,7 @@
 - `Input` のゼロコピー前提が仕様と実装に整合し、部分文字列生成がホットパスにならない
 
 ## 参照
-- 調査メモ: `docs/notes/core-parse-improvement-survey.md`
+- 調査メモ: `docs/notes/parser/core-parse-improvement-survey.md`
 - パーサ仕様: `docs/spec/2-0-parser-api-overview.md`, `docs/spec/2-1-parser-type.md`, `docs/spec/2-2-core-combinator.md`, `docs/spec/2-5-error.md`
 - 字句ヘルパ: `docs/spec/2-3-lexer.md`
 - ストリーミング: `docs/spec/2-7-core-parse-streaming.md`, `docs/guides/compiler/core-parse-streaming.md`

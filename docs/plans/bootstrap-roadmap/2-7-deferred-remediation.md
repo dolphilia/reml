@@ -214,7 +214,7 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 - `tooling/lsp/jsonrpc_server.ml` で `structured_hints` の `command`/`data` 変換エラーを `extensions.lsp.compat_error` に記録。
 
 3.4. **Recover FixIt 継続整備**
-- `Parser_expectation.Packrat` に `recover` スナップショットを保持するハンドルを追加し、Packrat 経路でも `parser.recover_fixit_coverage = 1.0` を維持する。検証手順と残課題は `docs/notes/core-parse-streaming-todo.md` に追記済み。
+- `Parser_expectation.Packrat` に `recover` スナップショットを保持するハンドルを追加し、Packrat 経路でも `parser.recover_fixit_coverage = 1.0` を維持する。検証手順と残課題は `docs/notes/parser/core-parse-streaming-todo.md` に追記済み。
 - `Diagnostic.Builder.add_note` が生成する `recover` notes をローカライズ可能なテンプレートへ移行し、CLI/LSP のテキスト刷新と連動して多言語化を完了させる。`docs/spec/2-5-error.md`・`docs/spec/3-6-core-diagnostics-audit.md` の脚注と整合させる。
 - ストリーミング Pending → resume 循環で FixIt が重複発火しないことを監査ログ (`StreamOutcome.Pending.extensions.recover`) と `collect-iterator-audit-metrics.py` の新指標で確認する。必要に応じて CI に検証ステップを追加する。
 
@@ -353,7 +353,7 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 
 7.3. **ドキュメントとクライアント整備**
 - `docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md` の暫定脚注を撤去し、Unicode 識別子仕様への更新内容を `docs/spec/0-2-glossary.md` と `docs/spec/README.md` に波及させる。
-- CLI/LSP のエラーメッセージから ASCII 制限文言を除去し、Unicode 識別子が正しく表示されることを `compiler/ocaml/tests/golden/diagnostics` と `tooling/lsp/tests/client_compat` で検証する。`docs/guides/dsl/plugin-authoring.md` と `docs/notes/dsl-plugin-roadmap.md` のチェックリストを更新する。
+- CLI/LSP のエラーメッセージから ASCII 制限文言を除去し、Unicode 識別子が正しく表示されることを `compiler/ocaml/tests/golden/diagnostics` と `tooling/lsp/tests/client_compat` で検証する。`docs/guides/dsl/plugin-authoring.md` と `docs/notes/dsl/dsl-plugin-roadmap.md` のチェックリストを更新する。
 - `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md` Step5/6 の進捗を反映し、完了後は Phase 2-8 へ脚注撤去タスクを引き継ぐ。
 
 **成果物**: Unicode プロファイル既定の lexer/parser、更新済みテスト・CI 指標、仕様およびガイドの脚注整理
@@ -372,7 +372,7 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 - **タスクブレークダウン**:
   - CLI/RunConfig: `compiler/ocaml/src/cli/options.ml` に `-Zalgebraic-effects`（別名 `--experimental-effects`）を追加し、`Options.to_run_config` で `Parser_run_config.set_experimental_effects` を呼び出す。`compiler/ocaml/src/main.ml` では `Parser_run_config` に伝播した値を `Parser_driver.run` へ渡し、`Parser_flags.set_experimental_effects_enabled` の初期化シーケンスが CLI 実行毎にリセットされることを確認する。ヘルプ出力と `docs/guides/tooling/cli-workflow.md` にフラグ説明を追加し、Stage Override メッセージと文言を揃える。
   - Tooling/LSP/CI: `tooling/lsp/tests/client_compat` の初期化経路（`diagnostic_transport.ml` ほか）で RunConfig を拡張し、`experimental_effects` を LSP セッションへ伝搬する。`tooling/ci/collect-iterator-audit-metrics.py` と `scripts/validate-diagnostic-json.sh` は効果ゴールデン生成時にフラグを既定有効とし、PoC ゴールデン再生成用の補助スクリプト（`scripts/update-effect-poc.sh` 仮称）を整備する。
-  - 文書/脚注: Stage 昇格後に脚注 `[^effects-syntax-poc-phase25]` を撤去できるよう、`docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/3-8-core-runtime-capability.md`・`docs/spec/README.md` に解除チェックリストを追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と同期する。`docs/guides/dsl/plugin-authoring.md`・`docs/notes/dsl-plugin-roadmap.md` にフラグ依存の記述を追加し、外部連携ドキュメントの整合を取る。
+  - 文書/脚注: Stage 昇格後に脚注 `[^effects-syntax-poc-phase25]` を撤去できるよう、`docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/3-8-core-runtime-capability.md`・`docs/spec/README.md` に解除チェックリストを追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と同期する。`docs/guides/dsl/plugin-authoring.md`・`docs/notes/dsl/dsl-plugin-roadmap.md` にフラグ依存の記述を追加し、外部連携ドキュメントの整合を取る。
   - プラグイン／監査: `effects.syntax.constructs.*` メトリクスへフラグ状態を記録し、`RuntimeBridge` 監査と `reports/diagnostic-format-regression.md` の差分レビューで Experimental モードの挙動を追跡できるようにする。
 - **検証観点**:
   - CLI: `dune exec bin/remlc -- --help` にフラグ説明が表示され、`-Zalgebraic-effects` 有効／無効の双方で `compiler/ocaml/tests/effect_syntax_tests.ml` と `compiler/ocaml/tests/effect_handler_poc_tests.ml` が通過する。
@@ -380,13 +380,13 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
   - ドキュメント: 脚注撤去後に `docs/spec/README.md`・`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の索引・差分リストに残存リンクがないことを確認する。
 - **リスクとフォローアップ**:
   - フラグ整合が崩れた場合は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` の `EFFECT-POC-Stage` を `Escalated` に更新し、Phase 2-7 Sprint C レビューで是正策を確認する。
-  - フラグ名称に変更が生じた際は CLI/LSP/ドキュメントの文言を同時更新し、影響範囲を `docs/notes/effect-system-tracking.md`（H-O3 トラッキング）へ追記する。
-- **進捗 (2026-12-07)**: CLI (`compiler/ocaml/src/cli/options.ml`) に `experimental_effects` を制御するフラグが未導入であること、`Options.to_run_config` が `Parser_run_config.set_experimental_effects` を呼び出していないこと、LSP/CI 側でも PoC フラグが共有されていないことを確認。差分と対応順序（CLI → LSP → CI → ドキュメント）を `docs/notes/effect-system-tracking.md` 2026-12-07 更新分へ記録した。
+  - フラグ名称に変更が生じた際は CLI/LSP/ドキュメントの文言を同時更新し、影響範囲を `docs/notes/effects/effect-system-tracking.md`（H-O3 トラッキング）へ追記する。
+- **進捗 (2026-12-07)**: CLI (`compiler/ocaml/src/cli/options.ml`) に `experimental_effects` を制御するフラグが未導入であること、`Options.to_run_config` が `Parser_run_config.set_experimental_effects` を呼び出していないこと、LSP/CI 側でも PoC フラグが共有されていないことを確認。差分と対応順序（CLI → LSP → CI → ドキュメント）を `docs/notes/effects/effect-system-tracking.md` 2026-12-07 更新分へ記録した。
 
 8.3. **ハンドオーバーとレビュー**
-- `docs/notes/effect-system-tracking.md` の「Phase 2-5 S4 引き継ぎパッケージ」に沿って、PoC 到達条件と残課題を確認。チェックリスト H-O1〜H-O5 が完了した時点で `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` に更新メモを残す。
+- `docs/notes/effects/effect-system-tracking.md` の「Phase 2-5 S4 引き継ぎパッケージ」に沿って、PoC 到達条件と残課題を確認。チェックリスト H-O1〜H-O5 が完了した時点で `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` に更新メモを残す。
 - 週次レビューで効果構文の Stage 遷移を報告し、`syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` の推移を `0-3-audit-and-metrics.md` へ記録する。脚注撤去可否は Phase 2-7 終盤のレビューで判断する。
-- **進捗 (2026-12-12)**: H-O1/H-O2 を完了としてクローズし、週次レビューで `collect-iterator-audit-metrics.py --section effects --require-success` の値が `syntax.effect_construct_acceptance = 1.0` / `effects.syntax_poison_rate = 0.0` で安定していることを確認した。H-O3（フラグ伝播）、H-O4（Stage 監査連携）、H-O5（脚注撤去条件）は未達のため、継続タスクとして backlog に残す。レビュー結果は `docs/notes/effect-system-tracking.md#2026-12-12-h-o1〜h-o5-進捗レビュー` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` 2026-12-12 記録に同期済み。脚注撤去は H-O3/H-O4 の完了後に再審議する。
+- **進捗 (2026-12-12)**: H-O1/H-O2 を完了としてクローズし、週次レビューで `collect-iterator-audit-metrics.py --section effects --require-success` の値が `syntax.effect_construct_acceptance = 1.0` / `effects.syntax_poison_rate = 0.0` で安定していることを確認した。H-O3（フラグ伝播）、H-O4（Stage 監査連携）、H-O5（脚注撤去条件）は未達のため、継続タスクとして backlog に残す。レビュー結果は `docs/notes/effects/effect-system-tracking.md#2026-12-12-h-o1〜h-o5-進捗レビュー` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` 2026-12-12 記録に同期済み。脚注撤去は H-O3/H-O4 の完了後に再審議する。
 
 **成果物**: 効果構文 PoC 実装、CI メトリクス 100% 化、フラグ運用指針、脚注撤去条件の整理
 
@@ -423,7 +423,7 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 - `dune runtest compiler/ocaml/tests/test_type_inference.ml --force` で `type_effect_row_equivalence_*` シリーズが全て成功し、CI 集計で 1.0 を報告する。  
 - `collect-iterator-audit-metrics.py --require-success --section effects` が Linux/macOS/Windows すべてで成功し、`effect_row_guard_regressions = 0` のまま `ty-integrated` へ切り替えが完了する。  
   - dual-write → `ty-integrated` への移行後、`effects.type_row.integration_blocked` 診断が発生しないことを CLI/LSP/監査のゴールデンで確認し、互換モードが必要な場合は `--type-row-mode=metadata-only` で旧挙動へ戻せる。  
-- `docs/spec/1-2-types-Inference.md` / `1-3-effects-safety.md` / `3-6-core-diagnostics-audit.md` の効果行脚注を削除し、`docs/notes/effect-system-tracking.md` と本書に完了メモ（解除日・KPI 値・レビュー承認者）を記録する。
+- `docs/spec/1-2-types-Inference.md` / `1-3-effects-safety.md` / `3-6-core-diagnostics-audit.md` の効果行脚注を削除し、`docs/notes/effects/effect-system-tracking.md` と本書に完了メモ（解除日・KPI 値・レビュー承認者）を記録する。
 
 **ハンドオーバー**
 - Step5（Phase 2-5 TYPE-002）で作成するハンドオーバーノートを参照し、dual-write 期間の監査ログとテストログを保管。  
@@ -464,7 +464,7 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 - 効果構文の Stage 遷移: `syntax.effect_construct_acceptance` が 1.0 未満、または CLI/LSP で `-Zalgebraic-effects` の挙動が不一致になった場合は Phase 2-7 のクリティカルリスクとして即時エスカレーションする。Stage 遷移が遅延する場合、Phase 2-8 の仕様凍結に影響するため優先度を再評価する。
 
 ### <a id="iterator-adapter-esc"></a>Iter Adapter ESC テンプレート
-- **flat_map メモリ逸脱**: `reports/iterator-flatmap-metrics.json` の `adapter_metrics.flat_map_vec.effects.mem_reservation_bytes` が Phase 3 ベースライン（3 byte）を超過、または `EffectLabels.mem=false` になった場合は `collect-iterator-audit-metrics.py --section iterator --case flat_map --output … --require-success` の再実行で Run-ID を採取し、`docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a / `docs/notes/core-library-outline.md#iter-g2-flat-zip` に逸脱理由と暫定措置を追記する。CI では `cargo test core_iter_adapters -- --include-ignored flat_map_vec` を追加実行し、`prelude_api_inventory.toml` の `Iter.flat_map` 行に `rust_status=pending` を一時設定して管理する。
+- **flat_map メモリ逸脱**: `reports/iterator-flatmap-metrics.json` の `adapter_metrics.flat_map_vec.effects.mem_reservation_bytes` が Phase 3 ベースライン（3 byte）を超過、または `EffectLabels.mem=false` になった場合は `collect-iterator-audit-metrics.py --section iterator --case flat_map --output … --require-success` の再実行で Run-ID を採取し、`docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a / `docs/notes/stdlib/core-library-outline.md#iter-g2-flat-zip` に逸脱理由と暫定措置を追記する。CI では `cargo test core_iter_adapters -- --include-ignored flat_map_vec` を追加実行し、`prelude_api_inventory.toml` の `Iter.flat_map` 行に `rust_status=pending` を一時設定して管理する。
 - **zip 長さ差診断欠落**: `reports/iterator-zip-metrics.json` の `adapter_metrics.zip_mismatch.iterator.error.zip_shorter` が 0 または `iterator.stage.audit_pass_rate < 1.0` の場合は `scripts/validate-diagnostic-json.sh --pattern iterator.zip reports/spec-audit/ch1/core_iter_adapters.json` を即時実行し、`reports/diagnostic-format-regression.md#iterator.zip_mismatch` に差分を貼り付けて triage。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `iterator.zip.shorter_error_rate` を `ESCALATED` へマークし、修正完了まで `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#iter-adapter` に状態を共有する。
 
 ## 参考資料

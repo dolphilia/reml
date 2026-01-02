@@ -25,7 +25,7 @@
 - `PARSER-002`（RunConfig 導入）と連動し、字句設定を `RunConfig` から読み込む順序を調整する。  
 - `docs/guides/compiler/core-parse-streaming.md` のサンプルを OCaml 実装で動かせるよう、Lex API を呼び出す例を追加する。  
 - Unicode プロファイル（LEXER-001）の対応と並行して、字句 API のテストを整備する。
-- `docs/notes/core-parse-streaming-todo.md` に Lex API 抽出の進捗を追記し、Streaming PoC（EXEC-001）との依存関係を明確化する。
+- `docs/notes/parser/core-parse-streaming-todo.md` に Lex API 抽出の進捗を追記し、Streaming PoC（EXEC-001）との依存関係を明確化する。
 - **タイミング**: Phase 2-5 の中盤で RunConfig シムと並行して着手し、EXEC-001 ストリーミング PoC を開始するまでに Lex API 抽出を完了させる。
 
 ## 5. 実装ステップと調査
@@ -33,18 +33,18 @@
 ### Step 0: 仕様・現行実装ギャップ調査（Week33 Day1）
 - `docs/spec/2-3-lexer.md` のコア API（§B〜§L）と `docs/spec/2-1-parser-type.md` §D を読み込み、必要なインターフェースを一覧化して `compiler/ocaml/src/lexer.mll`・`parser_driver.ml` との乖離を洗い出す[^lex-spec-core]。
 - `parser_run_config.Lex.Trivia_profile` と `ConfigTriviaProfile` の差分、`RunConfig.extensions["lex"]` の現状利用ポイントを表にまとめ、`docs/plans/bootstrap-roadmap/2-5-review-log.md` へ LEXER-002 の Day1 エントリとして記録する[^runconfig-lex]。
-- `docs/notes/core-parse-streaming-todo.md` に調査メモを残し、`PARSER-002`/`PARSER-003`/`EXEC-001` との依存関係（共有 `ParserId`・`RunConfig` 伝播・Streaming API）を整理する。
+- `docs/notes/parser/core-parse-streaming-todo.md` に調査メモを残し、`PARSER-002`/`PARSER-003`/`EXEC-001` との依存関係（共有 `ParserId`・`RunConfig` 伝播・Streaming API）を整理する。
 
 #### 調査サマリ（2025-11-25）
 - `docs/spec/2-3-lexer.md` が定義する `Core.Parse.Lex` API（`lexeme` / `symbol` / `config_trivia` 等）に対応する公開モジュールは現行実装に存在せず、`parser_driver` は `Lexer.token` を直接呼び出している（`compiler/ocaml/src/parser_driver.ml`）。これにより `RunConfig.extensions["lex"]` や `ParserId` 連携が遮断されている。
 - `parser_run_config.Lex.Trivia_profile` は `ConfigTriviaProfile` と同等のフィールドを保持するものの、実際の字句処理へ渡されておらず、`space_id` や `profile` が `lexer.mll` で参照されない。`config_trivia` / `config_lexeme` / `config_symbol` に相当するユーティリティも未実装である。
 - `lexer.mll` は ASCII ベースの空白・コメント・識別子判定に留まっており、仕様で必須とされる `shebang` 読み飛ばし・`hash_inline` コメント・`doc_comment` 収集・Unicode XID 対応が欠落している。
-- 仕様との差分一覧と `RunConfig.extensions["lex"]` の現状利用調査を [`docs/plans/bootstrap-roadmap/2-5-review-log.md`](../2-5-review-log.md) の「LEXER-002 Day1」へ記録し、Streaming/RunConfig 計画との依存関係メモを `docs/notes/core-parse-streaming-todo.md` に追加した。
+- 仕様との差分一覧と `RunConfig.extensions["lex"]` の現状利用調査を [`docs/plans/bootstrap-roadmap/2-5-review-log.md`](../2-5-review-log.md) の「LEXER-002 Day1」へ記録し、Streaming/RunConfig 計画との依存関係メモを `docs/notes/parser/core-parse-streaming-todo.md` に追加した。
 
 ### Step 1: Core.Parse.Lex ベースモジュール設計（2025-11-26 完了）
 - **公開シグネチャ草案**: `core_parse_lex.mli` の骨子を整理し、`module Trivia_profile`（`Parser_run_config.Lex.Trivia_profile` との alias）、`module Pack`、`module Api` の 3 層で `ConfigTriviaProfile`／`lexeme`／`symbol` 等を公開する構成を決定した[^lex-profile-struct][^lex-pack-design][^lex-api-alignment]。`Pack.t` は `space`（`Lexing.lexbuf -> unit`）、`lexeme`/`symbol` クロージャ、`profile`、`space_id` を保持する record とし、構文からの利用を最小 API で賄えるようにする。
 - **RunConfig round-trip 方針**: `Bridge.effective_profile : Parser_run_config.t -> Trivia_profile.t` と `Bridge.attach_space : Parser_run_config.t -> space_id:int -> Parser_run_config.t` を導入し、`RunConfig.extensions["lex"]` に `profile` と `space_id` を安定的に読み書きするフローを設計した。未指定時は `strict_json` を採用し、`space_id` は `Extensions.Parser_id` 経由で格納する[^runconfig-roundtrip]。
-- **ParserId / 診断設計**: `Parser_diag_state` の ID 生成器を流用し `Pack.space_id` を払い出す方針と、`doc_comment` を `Diagnostic.notes["comment.doc"]` に流し込むための拡張ポイント（`Pack.doc_channel` 追加余地）を定義。Streaming PoC から `space_id` を検証できるよう、`docs/notes/core-parse-streaming-todo.md` に依存関係メモを追記した。
+- **ParserId / 診断設計**: `Parser_diag_state` の ID 生成器を流用し `Pack.space_id` を払い出す方針と、`doc_comment` を `Diagnostic.notes["comment.doc"]` に流し込むための拡張ポイント（`Pack.doc_channel` 追加余地）を定義。Streaming PoC から `space_id` を検証できるよう、`docs/notes/parser/core-parse-streaming-todo.md` に依存関係メモを追記した。
 - **テストとメトリクス準備**: `core_parse_lex_tests.ml` でプロフィールごとの挙動をゴールデン化し、`lexer.shared_profile_pass_rate` を `0-3-audit-and-metrics.md` に登録する試験計画を確定。測定は `RunConfig.Lex.effective_trivia` との round-trip を確認しつつ行う想定とした。
 
 ### Step 2: ConfigTriviaProfile と RunConfig 橋渡し（Week33 Day2）
@@ -70,10 +70,10 @@
 ### Step 5: テスト・メトリクス・性能確認（Week33 Day4-5 → 2025-11-30 完了）
 - `compiler/ocaml/tests/core_parse_lex_tests.ml` を新設し、`strict_json` / `json_relaxed` / `toml_relaxed` 各プロフィールでの `lexeme` / `symbol` / `config_trivia` 動作をゴールデンで検証する。Packrat 向けの `ParserId` 安定性は `parser.runconfig_extension_pass_rate` と組み合わせて監視する。
 - `tooling/ci/collect-iterator-audit-metrics.py` に `lexer.shared_profile_pass_rate` 指標を追加し、`0-3-audit-and-metrics.md`・`2-5-review-log.md` へ測定方法を明記する[^metrics-lex]。
-- 大規模入力（10MB クラス）の字句性能を `scripts/benchmark-parse-throughput.sh` または既存マイクロベンチで測定し、`docs/notes/lexer-performance-study.md`（必要なら新規）に比較データを残す。
+- 大規模入力（10MB クラス）の字句性能を `scripts/benchmark-parse-throughput.sh` または既存マイクロベンチで測定し、`docs/notes/parser/lexer-performance-study.md`（必要なら新規）に比較データを残す。
 - 2025-11-30 実施: `compiler/ocaml/tests/core_parse_lex_tests.ml` にシナリオテストを追加し、`config_trivia` が `Lexer.current_trivia_profile` を更新すること、`json_relaxed` で shebang を許容できること、`toml_relaxed` で `#` コメントを共有できること、`Api.symbol` がトリビアを消費しミスマッチ時に例外を送出することを確認した。
 - 2025-11-30 実施: `tooling/ci/collect-iterator-audit-metrics.py` へ `lexer.shared_profile_pass_rate` を実装し、`run_config` と診断 (`audit_metadata` / `extensions.runconfig.extensions.lex`) でプロフィール一致を検証できるようにした。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に指標を追記し、CI 集計手順を更新。
-- 2025-11-30 実施: `docs/notes/lexer-performance-study.md` を作成し、`scripts/benchmark-parse-throughput.sh` を用いた測定手順と `remlc` 未構築により計測を後続へ持ち越した旨を記録。`remlc` 準備完了後に 3 プロファイルで再計測する TODO を登録した。
+- 2025-11-30 実施: `docs/notes/parser/lexer-performance-study.md` を作成し、`scripts/benchmark-parse-throughput.sh` を用いた測定手順と `remlc` 未構築により計測を後続へ持ち越した旨を記録。`remlc` 準備完了後に 3 プロファイルで再計測する TODO を登録した。
 
 ### Step 6: ドキュメント反映とレビュー記録（Week33 Day5）
 - `docs/spec/2-3-lexer.md` と `docs/spec/2-6-execution-strategy.md` に OCaml 実装の進捗脚注を追加し、`RunConfig` 経由で Lex API を共有できる状態になったことを明記する。`docs/guides/compiler/core-parse-streaming.md` のサンプルコードも新 API に合わせて更新する。

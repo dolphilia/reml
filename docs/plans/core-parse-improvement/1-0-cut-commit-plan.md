@@ -1,7 +1,7 @@
 # WS1: Cut/Commit（バックトラック制御）計画
 
 ## 背景と狙い
-調査メモ `docs/notes/core-parse-improvement-survey.md` が強調する通り、パーサーコンビネーターの実用性（エラー位置・性能）には **バックトラック制御**が不可欠である。
+調査メモ `docs/notes/parser/core-parse-improvement-survey.md` が強調する通り、パーサーコンビネーターの実用性（エラー位置・性能）には **バックトラック制御**が不可欠である。
 
 - Parsec: `try` を明示した時だけバックトラック
 - FastParse: `Cut` を頻繁に用い、分岐点を確定する
@@ -31,7 +31,7 @@ Reml は `docs/spec/2-1-parser-type.md` で `Reply{consumed, committed}` と `cu
   - [x] `docs/spec/2-1-parser-type.md` / `docs/spec/2-6-execution-strategy.md` を読み合わせし、`committed` が消費と独立であること・cut 通過後に期待集合を再初期化することを明示
   - [x] 追加追記は最小（2-1 に cut/committed 独立の注記、2-6 に期待再初期化＋ゼロ幅 cut の明記。2-2 は再追記不要）
 - [x] Step 2: API 表面（糖衣）を「迷いが減る形」で整える
-  - [x] 決定ログを `docs/notes/core-parse-api-evolution.md` に記録（`commit(p)` は derived、`p.commit()` は追加しない等）
+  - [x] 決定ログを `docs/notes/parser/core-parse-api-evolution.md` に記録（`commit(p)` は derived、`p.commit()` は追加しない等）
 - [x] Step 3: サンプルと回帰（Cut の効果を “見える化” して固定）
   - [x] Cut 有り（現行）: `core-parse-cut-branch-mislead` / `core-parse-cut-unclosed-paren` をゴールデン化
   - [x] 比較対象（Cut 無し相当）: `*-no-cut` の入力と期待（誤誘導版）を追加
@@ -197,7 +197,7 @@ lookahead(Lex.string("-")).then(Lex.string("-").then(cut_here())).then(value) //
   - メソッド糖衣は `p.cut()` を正とし、`p.commit()` は追加しない（表面積と用語の揺れを増やさない）。
     - `cut_here()` はゼロ幅コミットとして継続し、`commit_here()` 等の別名は導入しない。
 - 決定の記録
-  - 採否理由を `docs/notes/core-parse-api-evolution.md` に短く残し、後続 WS（Label/Recovery）と衝突しないようにする
+  - 採否理由を `docs/notes/parser/core-parse-api-evolution.md` に短く残し、後続 WS（Label/Recovery）と衝突しないようにする
 
 ### Step 3: サンプルと回帰（Cut の効果を “見える化” して固定）
 Cut の効果は「期待集合」「エラー位置」「分岐の抑制」に現れるため、いずれも固定できるシナリオを作る。

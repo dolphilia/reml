@@ -1,7 +1,7 @@
 # 0.0 パターンマッチ強化計画 概要
 
 ## 背景
-- `docs/notes/pattern-matching-improvement.md` で整理した課題（Active Patterns 不在、Or/Slice/Range パターン不足等）が Phase 4 の仕様・実装回収を阻害しつつある。
+- `docs/notes/types/pattern-matching-improvement.md` で整理した課題（Active Patterns 不在、Or/Slice/Range パターン不足等）が Phase 4 の仕様・実装回収を阻害しつつある。
 - `docs/plans/bootstrap-roadmap/4-1-spec-core-regression-plan.md` を進める際、パターンマッチ周辺の仕様不足がテスト整備や網羅性確認を遅延させている。
 - Reml の価値観（`docs/spec/0-1-project-purpose.md`）に基づき、DSL ファーストで安全な記述を強化するために専用の計画群を分離する。
 
@@ -33,6 +33,6 @@
 - **スケジュール干渉**: Phase 4 既存タスクとの競合 → 変更は `spec_fix` / `impl_fix` ラベルで明示し、`docs/plans/bootstrap-roadmap/` に事前通知する。また、新設される診断キーや構文ルールは必ず `phase4-scenario-matrix.csv` に新規シナリオ行として登録し、`4-1-spec-core-regression-plan.md` のトラッカーで監視する。
 
 ## 参照資料
-- 主要メモ: `docs/notes/pattern-matching-improvement.md`
+- 主要メモ: `docs/notes/types/pattern-matching-improvement.md`
 - 仕様: `docs/spec/1-1-syntax.md`, `docs/spec/1-5-formal-grammar-bnf.md`, `docs/spec/1-2-types-Inference.md`
 - ガイド: `docs/guides/compiler/core-parse-streaming.md`（Parse 系との整合確認）

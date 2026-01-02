@@ -14,4 +14,4 @@ Core.Text / Unicode 実装に伴って更新すべき文書を列挙し、`READM
 
 ## 運用ルール
 - チェック完了時に `リンク確認` 列へ `Y` を記載し、コミット ID を備考へ残す。
-- 追跡対象が増えた場合は ID を採番し、このファイルと `docs/notes/docs-update-log.md` の双方に反映する。
+- 追跡対象が増えた場合は ID を採番し、このファイルと `docs/notes/process/docs-update-log.md` の双方に反映する。

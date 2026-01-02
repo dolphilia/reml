@@ -13,7 +13,7 @@
    - パーサー技法（手続き型 vs. `Core.Parse` コンビネーター）
 3. **比較観点の抽出**: 他言語実装が示す強み・Reml 実装で課題が現れている箇所を洗い出し、仕様で補強すべき論点を観点ごとに列挙する。
 4. **マトリクス更新案作成**: 観点ごとに「参考実装/根拠」「Reml 現状」「改善着眼点」「関連章」を整理し、旧マトリクスとのギャップを評価する。
-5. **整合チェック**: `examples/language-impl-comparison/README.md` や関連ノート（`docs/notes/reml-language-influences-analysis.md` 等）との記述整合を確認し、必要なリンク更新を検討する。
+5. **整合チェック**: `examples/language-impl-comparison/README.md` や関連ノート（`docs/notes/language/reml-language-influences-analysis.md` 等）との記述整合を確認し、必要なリンク更新を検討する。
 
 ## 調査メモ指針
 - 各観点で引用するコードは `reml/` ディレクトリをベースに、必要に応じて他言語実装の差異を脚注で補足する。

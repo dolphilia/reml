@@ -1,7 +1,7 @@
 # Phase4: Error Recovery Combinators 計画
 
 ## 背景と目的
-- `docs/notes/dsl-enhancement-proposal.md` の「3.7 Error Recovery Combinators」を Phase 4 の実装計画へ落とし込む。
+- `docs/notes/dsl/dsl-enhancement-proposal.md` の「3.7 Error Recovery Combinators」を Phase 4 の実装計画へ落とし込む。
 - `docs/spec/0-1-project-purpose.md` の「分かりやすいエラーメッセージ」を満たすため、DSL 作者が安全に回復ポイントを組める最小ヘルパを整備する。
 - 既存の `recover`/糖衣（`recover_with_default` など）を前提に、**同期点指定・パニック回復・欠落トークン補挿**の体験を簡潔にする。
 
@@ -94,7 +94,7 @@ let block =
 - `core.parse.recover.branch` の Typeck 診断に `extensions["recover"]`（`sync`/`context`）が出力される。
 
 ## 参照
-- `docs/notes/dsl-enhancement-proposal.md`
+- `docs/notes/dsl/dsl-enhancement-proposal.md`
 - `docs/spec/0-1-project-purpose.md`
 - `docs/spec/2-2-core-combinator.md`
 - `docs/spec/2-5-error.md`

@@ -15,5 +15,5 @@
 ## 運用メモ
 
 - `InvalidParameter` 系の診断は `Diagnostic.extensions["numeric.histogram"]` に `bucket_index` / `bucket_label` / `violated_rule` を記録する。3-7 §4.8 `update_stats` → `Diagnostic.code` の要件を満たすため、コードは `data.stats.invalid_bucket` を優先し、個別エラーコード（`core.numeric.statistics.*`）は `extensions["numeric.error_code"]` で補完する。
-- `NumericalInstability` は `value`, `bucket_index`, `source = "histogram"` を `metadata.numeric.*` に出力し、`docs/notes/core-numeric-time-gap-log.md` で再現データを追跡する。
+- `NumericalInstability` は `value`, `bucket_index`, `source = "histogram"` を `metadata.numeric.*` に出力し、`docs/notes/runtime/core-numeric-time-gap-log.md` で再現データを追跡する。
 - `Out of range` の扱いは `ColumnStats` 側の前処理（`min`/`max` 推定）とリンクするため、`docs/spec/3-7-core-config-data.md` §4.8 の `update_stats` 実装メモにも同じ ID を追記する。

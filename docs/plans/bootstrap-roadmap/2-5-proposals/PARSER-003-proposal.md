@@ -31,7 +31,7 @@ end
 - **回帰テスト**: 既存の `parser` 単体テストに加えて、コンビネーター経由で同等の構文木が生成されるかを検証するゴールデンを追加。  
 - **Packrat/左再帰**: 2-6 の契約に基づき、`rule` と `ParserId` を利用したメモ化が機能するかを `compiler/ocaml/tests/packrat_tests.ml`（新設）で確認。  
 - **ドキュメント**: `docs/spec/2-2-core-combinator.md` へ OCaml 実装の進捗脚注を追加し、フェーズ移行時に差分を追跡する。
-- **API レビュー**: `docs/notes/core-parse-api-evolution.md`（新設予定）にコンビネーター抽出時の公開 API をモジュール署名付きで記録し、Phase 3 の self-host 設計レビューに備える。
+- **API レビュー**: `docs/notes/parser/core-parse-api-evolution.md`（新設予定）にコンビネーター抽出時の公開 API をモジュール署名付きで記録し、Phase 3 の self-host 設計レビューに備える。
 
 ## 4. フォローアップ
 - `PARSER-001` シム実装と連動し、`Reply` / `ParseResult` がコンビネーター層を経由するよう統合。  
@@ -44,20 +44,20 @@ end
 1. **Menhir 資産の棚卸しと仕様マッピング（Week31 Day1-2）**  
    - **調査**: `compiler/ocaml/src/parser.mly` と `parser_expectation.{ml,mli}` の規則・診断経路を洗い出し、`docs/spec/2-2-core-combinator.md` で定義された 15 個のコアコンビネーターと対応付けるマトリクスを作成する[^spec-core-comb]。  
    - **記録**: マッピング結果と既存の LR 規則で欠落しているメタデータ（`rule` 名称、`ParserId`、`recover` 同期点）を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Day エントリとして追記し、後続ステップの前提情報を共有する[^review-log].  
-   - **成果物**: `docs/notes/core-parser-migration.md` に「Menhir → Core_parse 対応表」を追加し、Phase 3 の self-host 作業でも参照できる状態にする。
+   - **成果物**: `docs/notes/parser/core-parser-migration.md` に「Menhir → Core_parse 対応表」を追加し、Phase 3 の self-host 作業でも参照できる状態にする。
 
 ### Step1 実施記録（2025-11-01）
-- `docs/notes/core-parser-migration.md` に Menhir 規則と 15 コアコンビネーターの対応表を追加し、`ok`/`choice`/`map` など既存構文で近似できる箇所と `rule`/`label`/`cut`/`recover` のギャップを整理した。  
+- `docs/notes/parser/core-parser-migration.md` に Menhir 規則と 15 コアコンビネーターの対応表を追加し、`ok`/`choice`/`map` など既存構文で近似できる箇所と `rule`/`label`/`cut`/`recover` のギャップを整理した。  
 - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step1 ログを追加し、`committed` 未更新・`ParserId` 未割当・`recover` フック未使用を Phase 2-5 のリスクとして記録した。  
 - 次ステップでは `Core_parse` シグネチャ案に `ParserId` 生成・`committed` 操作・`recover` 同期トークン挿入用 API を盛り込み、`parser_driver` のフック増設方針を具体化する。
 
 2. **`Core_parse` シグネチャと ID 付与戦略の設計（Week31 Day3-4）**  
    - **調査**: `docs/spec/2-2-core-combinator.md` §A〜§C と `docs/spec/2-6-execution-strategy.md` の Packrat/ストリーミング契約、`docs/guides/compiler/core-parse-streaming.md` の API 期待値を確認し、`ParserId`・`Reply`・`recover` のメタデータ要件を整理する[^spec-exec][^guide-stream].  
    - **設計**: `compiler/ocaml/src/core_parse_combinator.mli`（新設）に公開する最小シグネチャ案を作成し、`rule`・`label`・`cut` など committed/consumed フラグの扱いを `Reply` 型に写像する。`PARSER-002` で導入した `Run_config` と `extensions` のフック点を洗い直し、コンビネーター側から `RunConfig.extensions["lex"]`/`["recover"]` を参照するフックを定義する。  
-   - **承認**: モジュール署名案を `docs/notes/core-parse-api-evolution.md`（新設予定）に掲載し、Phase 2-5 レビューで承認を得る。
+   - **承認**: モジュール署名案を `docs/notes/parser/core-parse-api-evolution.md`（新設予定）に掲載し、Phase 2-5 レビューで承認を得る。
 
 ### Step2 実施記録（2025-12-04）
-- `docs/notes/core-parse-api-evolution.md` を新設し、`Core_parse` の公開シグネチャ案と補助モジュール構成（`Id`/`State`/`Reply`/`Registry`）を整理した。`Parser<T> = State.t -> Reply.'a t * State.t` の形に揃え、`rule`・`label`・`cut`・`recover` が `Reply` の `consumed`/`committed` ビットへ反映されることを明示した[^core-parse-api-note]。  
+- `docs/notes/parser/core-parse-api-evolution.md` を新設し、`Core_parse` の公開シグネチャ案と補助モジュール構成（`Id`/`State`/`Reply`/`Registry`）を整理した。`Parser<T> = State.t -> Reply.'a t * State.t` の形に揃え、`rule`・`label`・`cut`・`recover` が `Reply` の `consumed`/`committed` ビットへ反映されることを明示した[^core-parse-api-note]。  
 - シグネチャ抜粋:
   ```ocaml
   module Core_parse : sig
@@ -103,8 +103,8 @@ end
 - 既知の制限として、`label`/`cut`/`attempt` は現在プレースホルダ実装（状態フラグのみ更新）であり、Packrat メモ化や `recover` 拡張は未導入。これらは Step4 以降で `Parser_diag_state`・`RunConfig` 拡張と統合する必要がある。
 
 ### Step4 実施記録（2025-12-12）
-- Packrat キャッシュの抽象化案を `docs/notes/core-parse-api-evolution.md` に追記し、`Cache_key = (Id.fingerprint, byte_offset)` と `Core_parse.State` にキャッシュコンテキストを保持する API 骨子を整理した。PoC が `attempt` で消費フラグを巻き戻すのみで Packrat を持たない現状（compiler/ocaml/src/core_parse.ml:5）を確認し、`RunConfig.packrat` と `Extensions` 名称空間を利用した切替ロジックを Step5 実装対象として明示した。  
-- `parser_expectation.collect` と `Parser_diag_state.record_recovery` を再確認し、`Recover_config.sync_tokens` を `Core_parse.recover` に渡すデータフローを `docs/notes/core-parser-migration.md` へ整理。診断側の同期トークン差分が `recover` 成功時に記録されることを保証するため、`RunConfig.extensions["recover"]` の優先順位と CLI/LSP 表示影響を確認した（compiler/ocaml/src/parser_diag_state.ml:8, compiler/ocaml/src/parser_expectation.ml:1）。  
+- Packrat キャッシュの抽象化案を `docs/notes/parser/core-parse-api-evolution.md` に追記し、`Cache_key = (Id.fingerprint, byte_offset)` と `Core_parse.State` にキャッシュコンテキストを保持する API 骨子を整理した。PoC が `attempt` で消費フラグを巻き戻すのみで Packrat を持たない現状（compiler/ocaml/src/core_parse.ml:5）を確認し、`RunConfig.packrat` と `Extensions` 名称空間を利用した切替ロジックを Step5 実装対象として明示した。  
+- `parser_expectation.collect` と `Parser_diag_state.record_recovery` を再確認し、`Recover_config.sync_tokens` を `Core_parse.recover` に渡すデータフローを `docs/notes/parser/core-parser-migration.md` へ整理。診断側の同期トークン差分が `recover` 成功時に記録されることを保証するため、`RunConfig.extensions["recover"]` の優先順位と CLI/LSP 表示影響を確認した（compiler/ocaml/src/parser_diag_state.ml:8, compiler/ocaml/src/parser_expectation.ml:1）。  
 - `RunConfig.Effects` モジュールの Capability 情報（compiler/ocaml/src/parser_run_config.ml:320）と `Diagnostic` 監査拡張を突合し、Packrat ヒット時でも `effect.capabilities[*]` と Stage 情報を保持する方針をノートへ追加。`effect-stage` メタデータを Parser 側で欠落させないための TODO を `docs/plans/bootstrap-roadmap/2-5-review-log.md` の Step4 エントリへ連携した。  
 - CI 計測では Packrat/回復系の指標が未整備であるため、`tooling/ci/collect-iterator-audit-metrics.py` に `parser.packrat_cache_hit_ratio` / `parser.recover_sync_success_rate` を追加するタスクと、`0-3-audit-and-metrics.md` への新規 KPI 追記をフォローアップとして設定。実装完了までは PoC 状態であることを Step5 のゴール条件に明記した。
 
@@ -121,12 +121,12 @@ end
 
 6. **ドキュメントとロードマップの同期（Week33 Day5）**  
     - **更新**: `docs/spec/2-2-core-combinator.md` に OCaml 実装の進捗脚注を追加し、`docs/guides/dsl/plugin-authoring.md` / `docs/guides/compiler/core-parse-streaming.md` にコンビネーター利用例と RunConfig 連携の手順を追記する。  
-    - **索引整備**: `README.md`・`docs/plans/bootstrap-roadmap/2-5-proposals/README.md` を更新して新モジュール導線を掲載し、`docs/notes/core-parse-api-evolution.md` に API 変更履歴を記録する。  
+    - **索引整備**: `README.md`・`docs/plans/bootstrap-roadmap/2-5-proposals/README.md` を更新して新モジュール導線を掲載し、`docs/notes/parser/core-parse-api-evolution.md` に API 変更履歴を記録する。  
     - **引き継ぎ**: Phase 2-7 以降へ渡す TODO（テレメトリ統合、Menhir 置換判断）を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に整理し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` の最終日にまとめる。
 
 ### Step6 実施記録（2025-12-24）
 - `docs/spec/2-2-core-combinator.md` に `Core_parse` 進捗脚注を追加し、`rule`/`label`/`cut` と Packrat 指標が仕様で参照できるよう更新。`docs/guides/dsl/plugin-authoring.md` と `docs/guides/compiler/core-parse-streaming.md` には RunConfig 共有手順とコンビネーター利用例を追記した。  
-- リポジトリ索引 `README.md` と `docs/plans/bootstrap-roadmap/2-5-proposals/README.md` を更新し、PARSER-003 の Step6 完了状況を追記。`docs/notes/core-parse-api-evolution.md` へ Step6 セクションを追加し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に 2025-12-24 ログを登録した。  
+- リポジトリ索引 `README.md` と `docs/plans/bootstrap-roadmap/2-5-proposals/README.md` を更新し、PARSER-003 の Step6 完了状況を追記。`docs/notes/parser/core-parse-api-evolution.md` へ Step6 セクションを追加し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に 2025-12-24 ログを登録した。  
 - テレメトリ統合と Menhir 置換判断は保留のため、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ TODO を転記し、Phase 2-7 で Packrat 指標の監査強化・ダッシュボード統合を検討する。
 
 ## 残課題
@@ -137,4 +137,4 @@ end
 [^review-log]: `docs/plans/bootstrap-roadmap/2-5-review-log.md`。Day エントリに作業ログ・検証結果を追記する運用。
 [^spec-exec]: `docs/spec/2-6-execution-strategy.md`。Packrat メモ化、ストリーミング実行時の契約、`reply.committed` の規則を規定。
 [^guide-stream]: `docs/guides/compiler/core-parse-streaming.md`。RunConfig 連携とストリーミング利用時の `Core.Parse` API 期待値を整理。
-[^core-parse-api-note]: `docs/notes/core-parse-api-evolution.md` Phase 2-5 Step2 Core_parse シグネチャ草案。
+[^core-parse-api-note]: `docs/notes/parser/core-parse-api-evolution.md` Phase 2-5 Step2 Core_parse シグネチャ草案。

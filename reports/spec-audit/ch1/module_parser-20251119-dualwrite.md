@@ -29,6 +29,6 @@ scripts/poc_dualwrite_compare.sh effect_handler \
 - `docs/plans/rust-migration/3-0-ci-and-dual-write-strategy.md` へ `Module Parser Acceptance` チェックを追記済み。
 
 ## 次アクション
-- `docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-002/module_parser` 行を `In Review (P2-8 W38)` に設定。
+- `docs/notes/process/spec-integrity-audit-checklist.md` の `SYNTAX-002/module_parser` 行を `In Review (P2-8 W38)` に設定。
 - `reports/spec-audit/ch1/2025-11-17-syntax-samples.md` へ 2025-11-19 分のログ概要を追加。
 - `compiler/rust/frontend/tests/parser.rs` のケースを CI に組み込み、`cargo test ... parser::module` を Phase 2-8 の差分ゲートに昇格させる。

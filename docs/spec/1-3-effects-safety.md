@@ -296,7 +296,7 @@ fn popcount(x: i64) -> i64 = Core.Native.ctpop_fallback(x)
     Phase 2-5 EFFECT-003 複数 Capability 解析計画 Step4（2025-12-06 完了）で OCaml 実装が `Diagnostic.extensions["effects"]` と `AuditEnvelope.metadata` を配列対応へ拡張した。計画書: `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-003-proposal.md`、レビュー記録: `docs/plans/bootstrap-roadmap/2-5-review-log.md`「EFFECT-003 Week33 Day2」参照。
 
 [^effects-sigma-poc-phase25]:
-    Phase 2-5 `EFFECT-002 Step4`（2026-04-18 完了）で `extensions.effects.sigma.*` と `audit.metadata["effect.syntax.constructs.*"]` の出力形式、および CI 指標 `syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` の算出基準を PoC として確定した。引き継ぎ条件は `docs/notes/effect-system-tracking.md` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に記録されている。
+    Phase 2-5 `EFFECT-002 Step4`（2026-04-18 完了）で `extensions.effects.sigma.*` と `audit.metadata["effect.syntax.constructs.*"]` の出力形式、および CI 指標 `syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` の算出基準を PoC として確定した。引き継ぎ条件は `docs/notes/effects/effect-system-tracking.md` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に記録されている。
 
 ### I.2 効果発生と潜在効果集合
 
@@ -309,7 +309,7 @@ fn popcount(x: i64) -> i64 = Core.Native.ctpop_fallback(x)
   ```
 
  ここで `Σ_residual` はハンドラ本体（`return` 節を含む）が発生させた効果タグ集合。`Σ_after = ∅` の場合、ハンドラ式は純粋値として扱える。
-  `Σ_before` と `Σ_after` の記録・検証は Phase 2-5 時点では PoC として運用されており、診断出力 `extensions.effects.sigma.*` および CI 指標 `syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` の算出基準は [`EFFECT-002` Step4](../plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md#4-診断・ci-計測整備week33-day1-2) と `docs/notes/effect-system-tracking.md` に従う。[^effects-sigma-poc-phase25]
+  `Σ_before` と `Σ_after` の記録・検証は Phase 2-5 時点では PoC として運用されており、診断出力 `extensions.effects.sigma.*` および CI 指標 `syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` の算出基準は [`EFFECT-002` Step4](../plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md#4-診断・ci-計測整備week33-day1-2) と `docs/notes/effects/effect-system-tracking.md` に従う。[^effects-sigma-poc-phase25]
 
 ### I.3 `@handles` と契約検査
 

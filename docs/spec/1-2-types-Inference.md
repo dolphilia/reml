@@ -156,7 +156,7 @@ impl Add<i64, i64, i64> for i64 { fn add(a,b) = a + b }
 
 > **実装メモ（Phase 2-5）**: OCaml 実装では `Value_restriction.evaluate` が `typed_expr` と効果解析の結果を受け取り、`Generalizable` / `Monomorphic` を判定する。`RunConfig.extensions["effects"].value_restriction_mode` は既定で `"strict"` を指定し、CLI では `--value-restriction={strict|legacy}`（互換目的で `--legacy-value-restriction` を併用）によりモードを切り替える。【P:docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md†L52-L154】【R:docs/plans/bootstrap-roadmap/2-5-review-log.md†L4-L74】  
 > - Strict モードでは `mut` / `io` / `ffi` / `unsafe` / `panic` タグ、未許可 Capability、Stage 不一致が検出された時点で単相へフォールバックし、`effects.contract.value_restriction` 診断に `value_restriction.mode/status/evidence[]` を付与する。  
-> - Legacy モードは移行期間限定で一般化を許容するが、CI 指標 `type_inference.value_restriction_legacy_usage` で発生件数を監視し、Phase 2-7 `execution-config` / `effect-metrics` が縮退スケジュールと監視運用を担当する。【R:docs/plans/bootstrap-roadmap/2-5-review-log.md†L76-L118】【N:docs/notes/type-inference-roadmap.md†L1-L74】
+> - Legacy モードは移行期間限定で一般化を許容するが、CI 指標 `type_inference.value_restriction_legacy_usage` で発生件数を監視し、Phase 2-7 `execution-config` / `effect-metrics` が縮退スケジュールと監視運用を担当する。【R:docs/plans/bootstrap-roadmap/2-5-review-log.md†L76-L118】【N:docs/notes/types/type-inference-roadmap.md†L1-L74】
 
 ### C.4 アノテーション
 

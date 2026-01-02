@@ -2,7 +2,7 @@
 
 ## 背景
 - Reml の JIT 実行は **調査段階**であり、実装は未着手。
-- `docs/notes/a-jit.md` と `docs/notes/performance-optimization-research-20251221.md` に TODO が散在しているため、Phase 5 以降のロードマップへ統合する。
+- `docs/notes/backend/a-jit.md` と `docs/notes/backend/performance-optimization-research-20251221.md` に TODO が散在しているため、Phase 5 以降のロードマップへ統合する。
 
 ## 目的
 1. Reml における JIT 実行の **必要性・対象範囲**を整理する。
@@ -66,6 +66,6 @@
 - [ ] CI ベンチマーク条件の整理
 
 ## 参照
-- `docs/notes/a-jit.md`
-- `docs/notes/performance-optimization-research-20251221.md`
-- `docs/notes/llvm-spec-status-survey.md`
+- `docs/notes/backend/a-jit.md`
+- `docs/notes/backend/performance-optimization-research-20251221.md`
+- `docs/notes/backend/llvm-spec-status-survey.md`

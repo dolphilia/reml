@@ -1,7 +1,7 @@
 # Phase4: CST サポートとロスレスパース計画（Core.Parse.Cst）
 
 ## 背景と決定事項
-- `docs/notes/dsl-enhancement-proposal.md` の提案「3.3 CST Support & Lossless Parsing」を Phase 4 の実装・回帰計画へ具体化する。
+- `docs/notes/dsl/dsl-enhancement-proposal.md` の提案「3.3 CST Support & Lossless Parsing」を Phase 4 の実装・回帰計画へ具体化する。
 - `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan-v2.md` の `autoWhitespace` 完了を前提に、空白・コメント（Trivia）を CST へ保持する。
 - `docs/spec/0-1-project-purpose.md` の性能・安全性・診断明瞭性を維持し、既存 AST パスを破壊しない形で opt-in を提供する。
 
@@ -17,7 +17,7 @@
 ## 成果物
 - 仕様追記: `docs/spec/2-2-core-combinator.md`, `docs/spec/2-0-parser-api-overview.md`
 - Pretty 連携: `docs/spec/3-13-core-text-pretty.md`, `docs/guides/dsl/formatter-authoring.md`
-- 実装メモ: `docs/notes/core-parse-cst-design.md`（CST 付着ルールと実装判断の根拠）
+- 実装メモ: `docs/notes/parser/core-parse-cst-design.md`（CST 付着ルールと実装判断の根拠）
 - 回帰資産: `examples/`, `expected/`, `docs/plans/bootstrap-roadmap/assets/phase4-scenario-matrix.csv`
 
 ## 仕様ドラフト（最小構成）
@@ -58,7 +58,7 @@ match result.value {
 ### フェーズA: 仕様整理と用語統一
 1. `docs/spec/2-2-core-combinator.md` に CST/Trivia の基本構造、`run_with_cst` の契約を追記する。
 2. `docs/spec/2-0-parser-api-overview.md` に `RunConfig.extensions["parse"].cst` の設定方針（opt-in、デフォルト OFF）を追加する。
-3. `docs/notes/core-parse-cst-design.md` に付着ルールと `autoWhitespace` 連携の判断根拠を記録する。
+3. `docs/notes/parser/core-parse-cst-design.md` に付着ルールと `autoWhitespace` 連携の判断根拠を記録する。
 
 ### フェーズB: Rust 実装の追加
 1. `compiler/rust/runtime/src/parse/cst.rs` を新設し、`CstNode` / `CstChild` / `Trivia` / `CstOutput` を定義する。
@@ -86,7 +86,7 @@ match result.value {
 ### フェーズA: 仕様整理と用語統一
 - [x] `docs/spec/2-2-core-combinator.md` に CST/Trivia と `run_with_cst` 契約を追記した
 - [x] `docs/spec/2-0-parser-api-overview.md` に `RunConfig.extensions["parse"].cst` 方針を追記した
-- [x] `docs/notes/core-parse-cst-design.md` に付着ルールと判断根拠を記録した
+- [x] `docs/notes/parser/core-parse-cst-design.md` に付着ルールと判断根拠を記録した
 
 ### フェーズB: Rust 実装の追加
 - [x] `compiler/rust/runtime/src/parse/cst.rs` を追加し CST 型を定義した
@@ -135,12 +135,12 @@ match result.value {
 ## リスクと緩和策
 | リスク | 影響 | 緩和策 |
 | --- | --- | --- |
-| Trivia 付着ルールの曖昧化 | フォーマッタが揺れる | 付着ルールを `docs/notes/core-parse-cst-design.md` に固定し、変更時はログを残す |
+| Trivia 付着ルールの曖昧化 | フォーマッタが揺れる | 付着ルールを `docs/notes/parser/core-parse-cst-design.md` に固定し、変更時はログを残す |
 | CST 収集の性能劣化 | パース性能低下 | `RunConfig` で opt-in とし、既定は OFF を維持 |
 | Formatter との二重責務 | AST/CST 両方の導線が複雑化 | `CstOutput` の標準経路を明記し、AST-only ルートは互換維持 |
 
 ## 参照
-- `docs/notes/dsl-enhancement-proposal.md`
+- `docs/notes/dsl/dsl-enhancement-proposal.md`
 - `docs/spec/0-1-project-purpose.md`
 - `docs/spec/2-2-core-combinator.md`
 - `docs/spec/2-0-parser-api-overview.md`

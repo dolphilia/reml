@@ -18,14 +18,14 @@
 1.1. `Bytes`/`Str`/`String`/`GraphemeSeq`/`TextBuilder` の API 一覧と効果タグを抜き出し、既存実装との差分を洗い出す。  
 実施ステップ:  
 - `docs/spec/3-3-core-text-unicode.md` と `compiler/rust/runtime/src/text/` 以下を比較し、API 名・引数・戻り値・効果タグ・関連する `Result` 型を CSV で整理する（`docs/plans/bootstrap-roadmap/assets/text-unicode-api-diff.csv` を更新）。  
-- `rg "pub struct"` などで Rust 実装の公開 API を抽出し、`docs/plans/rust-migration/unified-porting-principles.md` の「振る舞いの同一性 > 設計の同一性」の順にソートして差分調査ログを `docs/notes/text-unicode-gap-log.md` に追記する。  
+- `rg "pub struct"` などで Rust 実装の公開 API を抽出し、`docs/plans/rust-migration/unified-porting-principles.md` の「振る舞いの同一性 > 設計の同一性」の順にソートして差分調査ログを `docs/notes/text/text-unicode-gap-log.md` に追記する。  
 - 差分ごとに「Rust 実装で欠落」「仕様が古い」「要議論」のタグを付与し、`docs/plans/bootstrap-roadmap/README.md` の Phase 3 トラッキング表へリンクを登録する。
 
 1.2. 文字列所有権モデル (コピー時の `effect {mem}`) を確認し、`Vec<u8>` の再利用方針を決める。  
 実施ステップ:  
 - `Bytes`→`Str`→`String` の変換ごとに発生するアロケーションと `effect {mem}` を本文に記述し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Phase 3 指標へメモリ KPI を追加する。  
 - `Bytes::from_vec` `String::into_bytes` などのゼロコピー経路を列挙し、`Vec<u8>` を移譲するパスで `effect {mem}` を打刻しない条件を `docs/spec/0-1-project-purpose.md` の性能指標と照合する。  
-- `TextBuilder`/`GraphemeSeq` が `Vec<u8>` を共有する場合の `unsafe` 有無を決定し、`docs/notes/text-unicode-ownership.md` に参照カウント方針と `Result` のエラー遷移を図示する。
+- `TextBuilder`/`GraphemeSeq` が `Vec<u8>` を共有する場合の `unsafe` 有無を決定し、`docs/notes/text/text-unicode-ownership.md` に参照カウント方針と `Result` のエラー遷移を図示する。
 
 #### 1.2.1 所有権遷移と `effect {mem}` 判定
 `Bytes`/`Str`/`String`/`TextBuilder`/`GraphemeSeq` が利用している所有権パスを洗い出し、`effect {mem}` の記録条件を以下の表に整理した。Rust 実装のコード参照を併記し、ゼロコピー経路であるかどうかを明示する。
@@ -48,7 +48,7 @@
 #### 1.2.2 `Vec<u8>` 再利用ポリシー
 - `Bytes::from_vec` および `String::into_bytes` は所有権をムーブするため、`Vec<u8>` を二重で解放しないよう `Arc` などの追加レイヤは導入しない。`EffectSet` 側では `mem_bytes` を更新せず `collector.effect.transfer=true`（新ビット）を記録してゼロコピーを識別する。  
 - `TextBuilder::finish` は内部 `Vec` を `Bytes::from_vec` に渡すだけであり、新規アロケーションなしで `String` へ渡る。`finish` の前段で `reserve`/`push_*` が `mem_bytes` を記録し、`finish` 呼び出し時は `effect {mem}` の追加打刻を禁止することで二重計上を防ぐ。  
-- `Bytes::into_utf8` → `Str::owned` は `String` を一度生成してから `Str`（`Cow::Owned`）へ包むため、`Vec` の再利用を維持しつつ `Str` が `'static` を要求する場合のみバッファを複製する方針を `docs/notes/text-unicode-ownership.md` に明記した。
+- `Bytes::into_utf8` → `Str::owned` は `String` を一度生成してから `Str`（`Cow::Owned`）へ包むため、`Vec` の再利用を維持しつつ `Str` が `'static` を要求する場合のみバッファを複製する方針を `docs/notes/text/text-unicode-ownership.md` に明記した。
 
 #### 1.2.3 TextBuilder / GraphemeSeq の共有戦略
 `TextBuilder` は `Vec<u8>` を直接保持し、`finish` 時も `Bytes::from_vec` を経由するだけで `unsafe` を使っていない【F:../../compiler/rust/runtime/src/text/builder.rs†L3-L38】。一方 `GraphemeSeq` は `Cow<'a, str>` で元文字列を参照しつつ、インデックスと統計情報を `Vec` にコピーしている【F:../../compiler/rust/runtime/src/text/grapheme.rs†L35-L134】。したがって共有戦略は次のとおりとする。
@@ -60,19 +60,19 @@
 #### 1.2.4 KPI と監査ログへの反映
 - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `text.mem.zero_copy_ratio`（ゼロコピー経路の割合）と `text.mem.copy_penalty_bytes`（コピー経路で記録した `mem_bytes` の平均値）を追加し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section text --scenario bytes_clone --text-mem-source reports/text-mem-metrics.json` を CI で実行する。  
 - `CollectorAuditTrail` に `collector.effect.transfer` と `collector.effect.text_mem_bytes` を追加して `AuditEnvelope.metadata` に出力し、`scripts/validate-diagnostic-json.sh --suite text --pattern collector.effect.transfer` を新設する。  
-- これらの連携手順は `docs/notes/text-unicode-ownership.md` へ反映済みで、`TextBuilder`/`GraphemeSeq` の参照モデルと TODO を同メモで追跡する。
+- これらの連携手順は `docs/notes/text/text-unicode-ownership.md` へ反映済みで、`TextBuilder`/`GraphemeSeq` の参照モデルと TODO を同メモで追跡する。
 
 1.3. 内部キャッシュ (コードポイント/グラフェムインデックス) の設計とテスト戦略を定義する。  
 実施ステップ:  
-- `GraphemeSeq` 用の `IndexCache`（コードポイント→書記素クラスタ開始位置）を `RuntimeCacheSpec`（`docs/notes/core-library-outline.md`）と整合させ、キャッシュ無効化条件を図示する。  
+- `GraphemeSeq` 用の `IndexCache`（コードポイント→書記素クラスタ開始位置）を `RuntimeCacheSpec`（`docs/notes/stdlib/core-library-outline.md`）と整合させ、キャッシュ無効化条件を図示する。  
 - キャッシュ命中率を収集するため `log_grapheme_stats` に `cache_hits`/`cache_miss` を追加し、`tooling/ci/collect-iterator-audit-metrics.py --section text` で KPI 化する。  
 - `cargo test --manifest-path compiler/rust/runtime/Cargo.toml UC_` 系のケースを追加し、大規模入力・キャッシュ無効化・多言語ケースを検証し、テストケースごとに `docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` を更新する。
 
 > 進行ログ（Phase3 W41）  
-> - `docs/notes/core-library-outline.md#runtimecachespeccoretext-キャッシュモデル` に `RuntimeCacheSpec` を追加し、`IndexCache` の世代管理と `Unicode::VERSION` 不一致時の無効化条件を図示した。  
+> - `docs/notes/stdlib/core-library-outline.md#runtimecachespeccoretext-キャッシュモデル` に `RuntimeCacheSpec` を追加し、`IndexCache` の世代管理と `Unicode::VERSION` 不一致時の無効化条件を図示した。  
 > - `docs/spec/3-3-core-text-unicode.md` §4.1.1 / §5 へ `cache_hits`/`cache_miss`/`generation` を含む `log_grapheme_stats` 仕様を追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に KPI `text.grapheme.cache_hit` を登録した。  
 > - `docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` に UC-01〜03 の手順 (`cargo test --manifest-path compiler/rust/runtime/Cargo.toml UC_0X`, `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats`) を明文化し、`reports/spec-audit/ch1/core_text_grapheme_stats.json` への転記要件を定義した。  
-> - KPI 収集スクリプト `python3 tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --text-source reports/spec-audit/ch1/core_text_grapheme_stats.json --output reports/text-grapheme-metrics.json --require-success` を Phase3 `phase3-core-text` ジョブへ組み込み、ローカルでも同コマンドが成功することを確認（`docs/notes/text-unicode-known-issues.md` TUI-003 を参照）。
+> - KPI 収集スクリプト `python3 tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --text-source reports/spec-audit/ch1/core_text_grapheme_stats.json --output reports/text-grapheme-metrics.json --require-success` を Phase3 `phase3-core-text` ジョブへ組み込み、ローカルでも同コマンドが成功することを確認（`docs/notes/text/text-unicode-known-issues.md` TUI-003 を参照）。
 
 ### 2. 文字列三層モデル実装（41-42週目）
 **担当領域**: 基盤 API
@@ -100,17 +100,17 @@
 > - `IndexCacheGeneration` / `IndexCacheVersion` を `compiler/rust/runtime/src/text/grapheme.rs` に追加し、`unicode_segmentation::UNICODE_VERSION` と `CACHE_VERSION` の不一致を検出して `version_mismatch_evictions` をログ化。`text.grapheme_stats` へ `cache_generation`/`cache_version`/`unicode_version` を出力することで `reports/spec-audit/ch1/core_text_grapheme_stats.json` と `text_grapheme_stats.audit.jsonl` の再解析が容易になった。  
 > - `effects::record_audit_event_with_metadata` を導入し、`log_grapheme_stats` が `CollectorAuditTrail` へ `text.grapheme_stats.*` を直接埋め込むよう更新。Diagnostics 側では既にメタデータを受け取っている場合は再計測を省略する分岐を追加した。  
 > - `compiler/rust/runtime/tests/text_internal_cache.rs` の UC-01〜03 を常時実行へ移行し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml UC_` → `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --text-source reports/spec-audit/ch1/core_text_grapheme_stats.json --require-success --check script_mix` の流れで KPI を判定。`docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` を `Status=Green` に更新した。  
-> - `examples/core-text/expected/text_unicode.grapheme_stats.golden` に `cache_generation`/`cache_version`/`unicode_version`/`version_mismatch_evictions` を追記し、`docs/spec/3-3-core-text-unicode.md` と `docs/notes/text-unicode-ownership.md` に同項目の仕様を明文化した。
+> - `examples/core-text/expected/text_unicode.grapheme_stats.golden` に `cache_generation`/`cache_version`/`unicode_version`/`version_mismatch_evictions` を追記し、`docs/spec/3-3-core-text-unicode.md` と `docs/notes/text/text-unicode-ownership.md` に同項目の仕様を明文化した。
 
 #### 2.1.2 効果タグと所有権ポリシーの整理
-- `docs/notes/text-unicode-ownership.md` を 1.2 節と同期し、`Bytes::from_slice`/`Str::to_bytes`/`String::from_str` などコピー経路で `EffectSet::record_mem_bytes(len)` を呼び出すべき箇所を表形式で列挙した。  
+- `docs/notes/text/text-unicode-ownership.md` を 1.2 節と同期し、`Bytes::from_slice`/`Str::to_bytes`/`String::from_str` などコピー経路で `EffectSet::record_mem_bytes(len)` を呼び出すべき箇所を表形式で列挙した。  
 - `Bytes`・`String` のゼロコピー移譲 (`from_vec`/`into_bytes`) は `collector.effect.transfer=true` を記録し、`effect {mem}` を増やさないルールを決定。TextBuilder が積算した `mem_bytes` を `finish` で二重加算しない点も同メモへ反映した。  
 - `EffectSet` の `MEM_BIT` を Core.Text でも共有するため、`EffectSet` に専用の `mark_transfer` を追加する案と既存 `collector.effect.transfer` フィールドで表現する案を比較し、Phase3 では後者（既存フィールド流用）を採用することを決定。
 
 #### 2.1.3 `UnicodeError`／`Result` 経路の棚卸し
 - `compiler/rust/runtime/src/text/error.rs`【F:../../compiler/rust/runtime/src/text/error.rs†L1-L57】の `UnicodeErrorKind` を再確認し、2.1 スコープで必要な `InvalidUtf8` / `InvalidRange` / `UnsupportedScalar` の戻り値をテーブル化。`OutOfMemory` や `DecodePolicy` は 2.3 以降で拡張する。  
 - `docs/plans/bootstrap-roadmap/checklists/text-api-error-scenarios.md` に TA-01〜TA-04 をリンクし、`Bytes::from_vec` / `String::clone` / `TextBuilder::push_grapheme` / `prepare_identifier` の導線が揃っていることを確認。担当列は `@core-text` に暫定割当、`状況=Pending` のまま残し再測タイミングを Week42 に設定した。  
-- Parser との連携を見据え、`UnicodeError::phase` を `unicode` 固定から `Decode`/`Encode`/`Builder` など呼び出し元で上書きできる API（`with_phase`) に統一した。`docs/notes/text-unicode-diagnostic-bridge.md` に `Span` とのマッピング案を追記済み。
+- Parser との連携を見据え、`UnicodeError::phase` を `unicode` 固定から `Decode`/`Encode`/`Builder` など呼び出し元で上書きできる API（`with_phase`) に統一した。`docs/notes/text/text-unicode-diagnostic-bridge.md` に `Span` とのマッピング案を追記済み。
 
 #### 2.1.4 KPI・検証ルート整備
 - `0-3-audit-and-metrics.md` に登録済みの `text.mem.zero_copy_ratio` / `text.mem.copy_penalty_bytes` を本タスクの出口条件に設定。`reports/text-mem-metrics.json` をサンプル入力 (`Bytes::from_slice`, `Bytes::from_vec`, `Str::to_bytes`, `String::into_bytes`) で作成し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section text --scenario bytes_clone --text-mem-source reports/text-mem-metrics.json --require-success` の実行ログを `reports/spec-audit/ch1/core_text_mem-20270329.md` へ保存した。  
@@ -126,17 +126,17 @@
 #### 2.1.6 Core.Path 文字列ユーティリティ連携（2025-11-30）
 - `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §4.3 の実装に合わせ、`compiler/rust/runtime/src/path/string_utils.rs` で `PathStyle` ベースの `normalize_path_str` / `join_paths_str` / `relative_to` / `is_absolute_str` が `Core.Text::Str` を返すようになった。Text 側では `record_text_mem_copy` を呼び出しており、Unicode サイドの効果計測と重複しないことを確認した。  
 - `tests/path_string_utils.rs` と `tests/data/core_path/unicode_cases.json` を Core.Text 計画の参照ケースとして登録し、`reports/spec-audit/ch3/path_unicode-20251130.md` に `cargo test --manifest-path compiler/rust/runtime/Cargo.toml path_string_utils` の実行ログを保存した。`PathStyle::Native` がプラットフォームに応じて POSIX/Windows を選択することも同テストで検証済み。  
-- README の Phase3 ハイライトへ Text ↔ Path 連携を追記し、Text 側の TODO として `UnicodeError` 伝播（今後 `PathErrorKind::InvalidEncoding` ←→ `UnicodeErrorKind::InvalidUtf8` マッピング）を `docs/notes/core-io-path-gap-log.md` に記録した。
+- README の Phase3 ハイライトへ Text ↔ Path 連携を追記し、Text 側の TODO として `UnicodeError` 伝播（今後 `PathErrorKind::InvalidEncoding` ←→ `UnicodeErrorKind::InvalidUtf8` マッピング）を `docs/notes/stdlib/core-io-path-gap-log.md` に記録した。
 
 2.2. `Grapheme`/`GraphemeSeq` を実装し、`segment_graphemes` の性能と正確性を検証する。  
 実施ステップ:  
-- `unicode-segmentation` など参照ライブラリのアルゴリズムを調査し、採用案を `docs/notes/text-unicode-segmentation-comparison.md` に記録してから実装を着手する。  
+- `unicode-segmentation` など参照ライブラリのアルゴリズムを調査し、採用案を `docs/notes/text/text-unicode-segmentation-comparison.md` に記録してから実装を着手する。  
 - `segment_graphemes` の双方向イテレータ・ランダムアクセス API を揃え、UAX #29 の公式テストデータを `tests/data/unicode/UAX29/` に配置して `cargo test unicode_conformance --features unicode_full` を追加する。  
 - Grapheme ごとの `display_width`/`script` 情報を `Grapheme` 型へ格納し、`log_grapheme_stats` で多言語混在ケースの割合を出力して `reports/spec-audit/ch1/core_text_grapheme_stats.json` に保存する。
 
 #### 2.2.1 実施ログ（2027-03-30）
 - `compiler/rust/runtime/src/text/grapheme.rs` に `ScriptCategory`・`TextDirection`・`ScriptStats` を導入し、`Grapheme` が `script_mix_ratio`/`rtl_ratio`/`primary_script` を計測できるようにした。`GraphemeSeq` は `IntoIterator`（`DoubleEndedIterator`）と `byte_offset_at`/`grapheme_at_byte_offset` を公開し、Diagnostics が書記素境界をランダムアクセス可能になった。
-- UAX #29 rev.40 の GraphemeBreakTest データを `tests/data/unicode/UAX29/GraphemeBreakTest-15.1.0.txt` として同梱し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml unicode_conformance --features unicode_full` で互換性をチェックする回帰テストを新設。投入履歴を `docs/notes/unicode-upgrade-log.md` に記録した。
+- UAX #29 rev.40 の GraphemeBreakTest データを `tests/data/unicode/UAX29/GraphemeBreakTest-15.1.0.txt` として同梱し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml unicode_conformance --features unicode_full` で互換性をチェックする回帰テストを新設。投入履歴を `docs/notes/text/unicode-upgrade-log.md` に記録した。
 - `text_internal_cache` テストを再実行し、`reports/spec-audit/ch1/core_text_grapheme_stats.json` に `primary_script`・`script_mix_ratio`・`rtl_ratio` を追記。KPI `text.grapheme.script_mix_ratio` を `0-3-audit-and-metrics.md` へ登録し、UC-02 ケースで 0.56/0.43 を達成したことをログ化した。
 - `tooling/ci/collect-iterator-audit-metrics.py` に `--check script_mix` オプションを追加し、CI で UC-02 の `script_mix_ratio >= 0.55` / `rtl_ratio >= 0.4` を自動ゲートできるようにした。
 
@@ -176,12 +176,12 @@
 
 3.1. NFC/NFD/NFKC/NFKD 正規化 API を実装し、ICU 互換テストベクトルで検証する。  
 実施ステップ:  
-- Unicode コンソーシアム提供のテストデータ (`NormalizationTest.txt`) を `tests/data/unicode/UAX15/` に同期し、バージョン番号を `docs/notes/unicode-upgrade-log.md` に記録する。  
+- Unicode コンソーシアム提供のテストデータ (`NormalizationTest.txt`) を `tests/data/unicode/UAX15/` に同期し、バージョン番号を `docs/notes/text/unicode-upgrade-log.md` に記録する。  
 - 正規化 API ごとに `Result<Text, UnicodeError>` の戻り値を固定し、`cargo test unicode_conformance --features unicode_full` で大規模データを検証するジョブを CI に追加する。  
 - 正規化過程で `effect {mem}` が発生する箇所にメトリクスを埋め込み、`0-3-audit-and-metrics.md` へ「正規化コスト (MB/s)」を新規 KPI として追記する。
 
 #### 3.1.1 実施ログ（2025-11-26）
-- `tests/data/unicode/UAX15/NormalizationTest-15.1.0.txt` を追加し、`docs/notes/unicode-upgrade-log.md#履歴` に同期。`docs/plans/bootstrap-roadmap/checklists/unicode-conformance-checklist.md` ではデータソースと実行手順（`cargo test --manifest-path compiler/rust/runtime/Cargo.toml unicode_conformance --features unicode_full`）を更新し、Nightly で全ベクタを検証する体制を整えた。  
+- `tests/data/unicode/UAX15/NormalizationTest-15.1.0.txt` を追加し、`docs/notes/text/unicode-upgrade-log.md#履歴` に同期。`docs/plans/bootstrap-roadmap/checklists/unicode-conformance-checklist.md` ではデータソースと実行手順（`cargo test --manifest-path compiler/rust/runtime/Cargo.toml unicode_conformance --features unicode_full`）を更新し、Nightly で全ベクタを検証する体制を整えた。  
 - `compiler/rust/runtime/tests/normalization_conformance.rs` を実装し、UAX #15 に記載された c1〜c5 の等式（NFC/NFD/NFKC/NFKD）をすべて検証できるようにした。テストは 1 行ごとに 20 件の変換を行い、失敗時は行番号と違反した式を報告する（`unicode_conformance_normalization`）。  
 - `compiler/rust/runtime/src/text/normalize.rs` の `normalize` API を `effects::record_mem_copy(len)` 付きで再実装し、既に正規化済みの入力はゼロコピーで即返却、未正規化の入力はフォーム別イテレータで変換した上で `effect {mem}` を打刻するようにした。  
 - 新しいメトリクス `text.normalize.mb_per_s` を `reports/text-normalization-metrics.json` に記録する前提で `0-3-audit-and-metrics.md` を更新し、`cargo run --manifest-path compiler/rust/runtime/Cargo.toml --example text_normalization_metrics -- --output reports/text-normalization-metrics.json` → `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario normalization_conformance --text-normalization-source reports/text-normalization-metrics.json --require-success` の流れを Phase3 `phase3-core-text` ジョブに組み込む計画を追記した。
@@ -189,18 +189,18 @@
 3.2. ケース変換 (`to_upper`/`to_lower`) と幅変換 (`width_map`) を実装し、ロケール依存エラー (`UnicodeErrorKind::UnsupportedLocale`) をハンドリングする。  
 実施ステップ:  
 - ロケール付き API の入力 (`LocaleId`) 検証ルールを `docs/spec/3-3-core-text-unicode.md` と `docs/spec/3-5-core-io-path.md` の記述で統一し、サポートロケール表を `docs/plans/bootstrap-roadmap/assets/text-locale-support.csv` に整備する。  
-- ケース変換・幅変換のアルゴリズム差分（ICU との互換度）を `docs/notes/text-case-width-gap.md` にまとめ、逸脱がある箇所は `UnicodeErrorKind::UnsupportedLocale` または `UnsupportedWidth` で確実に通知する。  
+- ケース変換・幅変換のアルゴリズム差分（ICU との互換度）を `docs/notes/text/text-case-width-gap.md` にまとめ、逸脱がある箇所は `UnicodeErrorKind::UnsupportedLocale` または `UnsupportedWidth` で確実に通知する。  
 - 変換結果を Parser/Diagnostics が使用するテキストと突き合わせるため、`compiler/rust/parser/tests/unicode_identifier.rs` にケース変換→識別子検証の統合テストを追加し、`scripts/validate-diagnostic-json.sh --pattern unicode.case` で CI ゲートに組み込む。
 
 #### 3.2.1 ロケール検証とケース変換実装（2027-03-29）
 - Core.Text に `LocaleId` と `LocaleScope` を実装し、BCP47 形式のロケール入力を `LocaleId::parse` で正規化できるようにした。`LocaleSupportStatus` と fallback 情報を `compiler/rust/runtime/src/text/locale.rs` へ常駐させ、`ensure_locale_supported` が `UnicodeErrorKind::UnsupportedLocale` を返す経路を統一した。【F:../../compiler/rust/runtime/src/text/locale.rs†L1-L181】
 - `to_upper`/`to_lower` を `compiler/rust/runtime/src/text/case.rs` へ追加し、`width_map` と同じ `EffectSet` で `effect {mem}` を記録。`tr-TR` 用に i/İ・ı/I の特別大小文字を実装し、`LocaleId::parse("tr-TR")` → `to_upper` のテストを `compiler/rust/runtime/tests/unicode_case_width.rs` に追加した。【F:../../compiler/rust/runtime/src/text/case.rs†L1-L96】【F:../../compiler/rust/runtime/tests/unicode_case_width.rs†L1-L20】
-- `docs/plans/bootstrap-roadmap/assets/text-locale-support.csv` の `tr-TR` を `Supported` へ更新し、`az-Latn` 行を追加。`docs/notes/text-case-width-gap.md` では `tr-TR` を `Closed`、`az-Latn` を `Planned` と記録して Parser/Diagnostics 連携の TODO を明示した。
+- `docs/plans/bootstrap-roadmap/assets/text-locale-support.csv` の `tr-TR` を `Supported` へ更新し、`az-Latn` 行を追加。`docs/notes/text/text-case-width-gap.md` では `tr-TR` を `Closed`、`az-Latn` を `Planned` と記録して Parser/Diagnostics 連携の TODO を明示した。
 
 #### 3.2.2 幅変換の双方向化と統計（2027-03-29）
 - `compiler/rust/runtime/src/text/width.rs` を刷新し、ASCII/半角カナ/句読点の双方向マッピングと `KANA_TABLE` を導入。`WidthMode::{Narrow,Wide,EmojiCompat}` ごとに `Cow<str>` で変換有無を判断し、変換発生時は `stats.corrections_applied` と `effect {mem}` を記録するようにした。【F:../../compiler/rust/runtime/src/text/width.rs†L1-L416】
 - Emoji 補正 (`👨‍👩‍👧‍👦`/`🇯🇵`) は `EMOJI_CORRECTIONS` で追跡し、`WidthMode::EmojiCompat` で 4 カラム幅を強制。`compiler/rust/runtime/tests/unicode_case_width.rs` と `width.rs` 内のユニットテストで ASCII/KANA ラウンドトリップと統計値を検証した。【F:../../compiler/rust/runtime/tests/unicode_case_width.rs†L22-L32】【F:../../compiler/rust/runtime/src/text/width.rs†L329-L416】
-- `docs/notes/text-case-width-gap.md` の `ja-JP` 行を `Closed` に更新し、Emoji/Grapheme の調整は今後も `width_corrections.csv` で追跡する旨を追記。`az-Latn` など `Planned` ロケールは `UnsupportedLocale` で警告し、`unicode.locale.requested` KPI の検証対象に追加した。
+- `docs/notes/text/text-case-width-gap.md` の `ja-JP` 行を `Closed` に更新し、Emoji/Grapheme の調整は今後も `width_corrections.csv` で追跡する旨を追記。`az-Latn` など `Planned` ロケールは `UnsupportedLocale` で警告し、`unicode.locale.requested` KPI の検証対象に追加した。
 
 #### 3.2.3 Parser 連携テストと UnsupportedLocale 診断（2027-03-30）
 - `compiler/rust/runtime/src/text/identifier.rs` を追加し、`prepare_identifier`/`prepare_identifier_with_locale` が NFC 要求・Bidi 制御拒否・`LocaleScope::Case` のサポートチェックを行うよう実装。`UnicodeErrorKind::InvalidIdentifier` を `UnicodeErrorKind` に追加し、`diagnostics.rs` のコード割り当てを更新した。【F:../../compiler/rust/runtime/src/text/identifier.rs†L1-L93】
@@ -208,7 +208,7 @@
 - `compiler/rust/frontend/tests/lexer_unicode_identifier.rs` を新設し、(1) NFC でない識別子、(2) Bidi 制御文字を含む識別子、(3) `lex.identifier_locale = az-Latn` による `UnsupportedLocale` の 3 ケースをカバー。`docs/plans/bootstrap-roadmap/checklists/unicode-error-mapping.md`・`text-api-error-scenarios.md` の `InvalidIdentifier`/TA-04 を `Green` に更新した。
 
 #### 3.2.4 East Asian Width 補正と検証（2027-03-30）
-- Emoji/Regional 指標の幅を CSV で管理するため `compiler/rust/runtime/src/text/data/width_corrections.csv` を追加し、`once_cell::sync::Lazy` で読み込んだ値を `WidthMode::EmojiCompat` の補正に利用。`width_map` が `UnicodeWidthStr::width_cjk` ベースで `WidthCorrection` を参照するよう再設計し、`docs/notes/text-case-width-gap.md` の Emoji 行を `Closed` に更新した。【F:../../compiler/rust/runtime/src/text/width.rs†L1-L220】
+- Emoji/Regional 指標の幅を CSV で管理するため `compiler/rust/runtime/src/text/data/width_corrections.csv` を追加し、`once_cell::sync::Lazy` で読み込んだ値を `WidthMode::EmojiCompat` の補正に利用。`width_map` が `UnicodeWidthStr::width_cjk` ベースで `WidthCorrection` を参照するよう再設計し、`docs/notes/text/text-case-width-gap.md` の Emoji 行を `Closed` に更新した。【F:../../compiler/rust/runtime/src/text/width.rs†L1-L220】
 - Python `unicodedata.east_asian_width` から生成した `tests/data/unicode/UCD/EastAsianWidth-15.1.0.txt` をバンドルし、`compiler/rust/runtime/tests/unicode_width_mapping.rs` で W/F/A クラスをフルスキャンするテストを追加。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml unicode_width_mapping` を `UCNF-Width` の検証手段に採用し、`docs/plans/bootstrap-roadmap/checklists/unicode-conformance-checklist.md` を更新した。
 
 3.3. `prepare_identifier` を Parser 仕様 (2-3) と結合するテストを実装し、`UnicodeError` → `ParseError` 変換を確認する。  
@@ -220,7 +220,7 @@
 > 実施ログ（2027-03-29）  
 > - `compiler/rust/frontend/tests/lexer_unicode_identifier.rs` を 12 ケース（成功 6 / 失敗 6）で更新し、`prepare_identifier` が `UnicodeErrorKind::{InvalidIdentifier,UnsupportedLocale}` を返す経路と、`TokenKind::Unknown` へのフォールバックが一致することを確認。  
 > - `reports/spec-audit/ch1/lexer_unicode_identifier-20270329.json` を作成し、各ケースの `unicode.error.kind`・`unicode.error.offset`・`parse.expected` の実測値と `lex.identifier_locale` 設定を記録。`docs/plans/bootstrap-roadmap/checklists/unicode-error-mapping.md` / `text-api-error-scenarios.md` へ参照リンクを追記した。  
-> - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に KPI `unicode.diagnostic.display_span` を新設し、`scripts/validate-diagnostic-json.sh --pattern unicode.error.kind` および本レポートで `Span`/列情報を検証する手順を登録。`docs/notes/text-unicode-diagnostic-bridge.md` では `ParseError` への写像ルールを更新し、`display_width` は Diagnostics 実装タスクに残課題として引き継いだ。
+> - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に KPI `unicode.diagnostic.display_span` を新設し、`scripts/validate-diagnostic-json.sh --pattern unicode.error.kind` および本レポートで `Span`/列情報を検証する手順を登録。`docs/notes/text/text-unicode-diagnostic-bridge.md` では `ParseError` への写像ルールを更新し、`display_width` は Diagnostics 実装タスクに残課題として引き継いだ。
 
 ### 4. Diagnostics / IO 連携（42-43週目）
 **担当領域**: 統合
@@ -239,7 +239,7 @@
 #### 4.1.4 Diagnostic/ParseError スキーマ統合
 - `FrontendDiagnostic` が保持する `Span`/`AuditEnvelope`/`ExpectedToken` 情報【F:../../compiler/rust/frontend/src/diagnostic/mod.rs†L14-L129】と、`ParseError` 構造体が保持する `Span`/`ExpectedToken` 群【F:../../compiler/rust/frontend/src/parser/api.rs†L104-L152】の項目を 1:1 で棚卸しし、欠落項目（`context`, `notes`, `unicode_error` 等）を `diagnostic-schema.md`（今後追加予定）にまとめる。  
 - `Span` は `start`/`end` の半開区間で表現されているため【F:../../compiler/rust/frontend/src/span.rs†L7-L45】、`UnicodeError::offset`（バイト位置）から `Span` へ写像する際に `len` を確定するルール（例: 単一書記素→`offset..offset+cluster_len`）を `unicode-error-mapping.md` の列として管理する。  
-- `AuditEnvelope`（`metadata` と `capability` を持つラッパ）【F:../../compiler/rust/frontend/src/diagnostic/mod.rs†L22-L57】に `unicode.*` 名前空間のキー（`unicode.error.kind`, `unicode.error.offset`, `unicode.error.phase`）を予約し、Parser で `ParseError` を Diagnostic に変換する際に埋め込む。Diagnostic JSON 出力では `audit_metadata` に同じキーを複写し、`AuditEnvelope.change_set` と一貫したフォーマットを維持する。詳細は `docs/notes/text-unicode-diagnostic-bridge.md` を参照。
+- `AuditEnvelope`（`metadata` と `capability` を持つラッパ）【F:../../compiler/rust/frontend/src/diagnostic/mod.rs†L22-L57】に `unicode.*` 名前空間のキー（`unicode.error.kind`, `unicode.error.offset`, `unicode.error.phase`）を予約し、Parser で `ParseError` を Diagnostic に変換する際に埋め込む。Diagnostic JSON 出力では `audit_metadata` に同じキーを複写し、`AuditEnvelope.change_set` と一貫したフォーマットを維持する。詳細は `docs/notes/text/text-unicode-diagnostic-bridge.md` を参照。
 
 #### 4.1.5 データ構造の導入方針
 - `ParseError` に `unicode: Option<UnicodeError>` と `span_trace: Vec<Span>` を追加し、`UnicodeError` から得た `offset`・`kind` を直接保持できるようにする。`state.record_diagnostics`（`parser/api.rs`）と `DiagnosticBuilder` の双方に `Span`/`AuditEnvelope` の参照を渡し、差分が発生した場合は `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` へフォローアップを記録する。  
@@ -285,14 +285,14 @@
 5.2. `README.md`/`3-0-phase3-self-host.md` に Core.Text 完了状況とハイライトを追記し、利用者向け注意点を記載する。  
 実施ステップ:  
 - `README.md` の Phase 3 セクションに「Core.Text 三層モデル完了」のバッジとハイレベルサマリを追加し、`3-0-phase3-self-host.md` のマイルストーン表へ完了週と成果物へのリンクを記載する。  
-- Unicode 依存の注意事項（サポート Unicode バージョン、正規化/ケース変換の制約）を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` のリスク表と同期し、ユーザーが参照できる FAQ を `docs/notes/text-unicode-known-issues.md` にまとめる。  
+- Unicode 依存の注意事項（サポート Unicode バージョン、正規化/ケース変換の制約）を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` のリスク表と同期し、ユーザーが参照できる FAQ を `docs/notes/text/text-unicode-known-issues.md` にまとめる。  
 - `docs/plans/bootstrap-roadmap/SUMMARY.md` の Phase 3 節を更新して `Core.Text` 関連ドキュメントへのクロスリンクを整理する。
 
 5.3. `docs/guides/compiler/core-parse-streaming.md`/`docs/guides/ecosystem/ai-integration.md` 等、Unicode 処理に関係するガイドを更新する。  
 実施ステップ:  
 - ストリーミングパーサガイドに `decode_stream`/`TextBuilder` の利用例を追加し、`AI integration` ガイドでは入力正規化の注意点を脚注として追記する。  
 - ガイド更新時に `README.md` と `docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md` のリンクを見直し、相互参照が切れていないか `rg "../"` で検証する。  
-- 更新結果を `docs/notes/docs-update-log.md` に記載し、レビュー観点（エンコード別注意点）を `docs/plans/bootstrap-roadmap/checklists/doc-sync-text.md` で追跡する。
+- 更新結果を `docs/notes/process/docs-update-log.md` に記載し、レビュー観点（エンコード別注意点）を `docs/plans/bootstrap-roadmap/checklists/doc-sync-text.md` で追跡する。
 
 #### 5.1 実施ログ（2027-03-30）
 - `examples/core-text/text_unicode.reml` を追加し、Bytes→Str→String 正規化・`GraphemeSeq`・`TextBuilder`・`log_grapheme_stats`・`decode_stream` の各 API を 1 つのファイルに集約。`expected/text_unicode.{tokens,grapheme_stats,stream_decode}.golden` を生成して、Phase 3 後続タスクが CLI 未整備でも期待挙動を参照できるようにした。  
@@ -301,8 +301,8 @@
 
 #### 5.2 実施ログ（2027-03-30）
 - ルート `README.md`・`docs/plans/bootstrap-roadmap/README.md`・`3-0-phase3-self-host.md` に Core.Text 三層モデル完了の記述とハイライトを追加し、`examples/core-text` への導線を整備。  
-- `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に `R-041 Unicode Data Drift` を登録し、`docs/notes/text-unicode-known-issues.md` (TUI-004) へユーザー向け FAQ を追記した。  
-- `docs/plans/bootstrap-roadmap/checklists/doc-sync-text.md` を更新し、DOC-01〜04 のリンク確認と完了状況を `Y / Done` でマーク。更新結果は `docs/notes/docs-update-log.md` に記録。
+- `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に `R-041 Unicode Data Drift` を登録し、`docs/notes/text/text-unicode-known-issues.md` (TUI-004) へユーザー向け FAQ を追記した。  
+- `docs/plans/bootstrap-roadmap/checklists/doc-sync-text.md` を更新し、DOC-01〜04 のリンク確認と完了状況を `Y / Done` でマーク。更新結果は `docs/notes/process/docs-update-log.md` に記録。
 
 #### 5.3 実施ログ（2027-03-30）
 - `docs/guides/compiler/core-parse-streaming.md` に §10「decode_stream と TextBuilder の連携」を追加し、`TextDecodeOptions` や `log_grapheme_stats` を Streaming Runner から呼び出す手順・CI コマンドを共有。  
@@ -321,18 +321,18 @@
 > 実施ログ（2027-03-31）  
 > - `third_party/unicode/` から UAX #29 / UAX #15 / EastAsianWidth データを `tests/data/unicode/` 配下へ移設し、`tests/data/unicode/README.md` と `THIRD_PARTY_LICENSES.md` に取得元・ライセンスを整理。`docs/THIRD_PARTY_NOTICES.md` の記述も同期した。  
 > - `compiler/rust/runtime/Cargo.toml` に `unicode_full` フィーチャを追加し、`grapheme_conformance` / `normalization_conformance` テストを `unicode_conformance_*` へ改名。`#[cfg_attr(not(feature = "unicode_full"), ignore)]` で通常ビルド負荷を抑えつつ `cargo test unicode_conformance --features unicode_full` で両テストをまとめて実行できるようにした。  
-> - `reports/spec-audit/ch1/unicode_conformance_failures.md` を新設し、2027-03-31 時点のテスト結果（両方 100% 合格）と再現手順を記録。`docs/plans/bootstrap-roadmap/checklists/unicode-conformance-checklist.md`・`0-3-audit-and-metrics.md`・`docs/notes/unicode-upgrade-log.md` を新パス／コマンドで更新した。
+> - `reports/spec-audit/ch1/unicode_conformance_failures.md` を新設し、2027-03-31 時点のテスト結果（両方 100% 合格）と再現手順を記録。`docs/plans/bootstrap-roadmap/checklists/unicode-conformance-checklist.md`・`0-3-audit-and-metrics.md`・`docs/notes/text/unicode-upgrade-log.md` を新パス／コマンドで更新した。
 
 6.2. ベンチマーク (正規化・セグメンテーション・TextBuilder) を追加し、Rust 実装の Phase 2 ベンチマーク比 ±15% 以内を目指す。OCaml 実装は設計比較材料として参照するのみとする。  
 実施ステップ:  
 - `benchmarks/text/normalization.rs`・`benchmarks/text/grapheme.rs`・`benchmarks/text/builder.rs` を追加し、`criterion` による計測を `cargo bench text::*` で実行する。  
 - 測定指標（MB/s、ns/char、キャッシュ命中率）を `reports/benchmarks/core_text/*.md` にまとめ、`0-3-audit-and-metrics.md` の性能表へ転載する。  
-- ベンチ結果が目標を外れた場合のフォローアップ（アルゴリズム変更、SIMD 導入等）を `docs/notes/text-unicode-performance-investigation.md` に記録し、リスク登録する。
+- ベンチ結果が目標を外れた場合のフォローアップ（アルゴリズム変更、SIMD 導入等）を `docs/notes/text/text-unicode-performance-investigation.md` に記録し、リスク登録する。
 
 > 実施ログ（2027-03-31）  
 > - `benchmarks/Cargo.toml` を作成して `criterion` 依存を追加し、`text/normalization.rs` / `text/grapheme.rs` / `text/builder.rs` で Core.Text API を直接計測できるようにした。テストデータは `benchmarks/text/data/multilingual.txt` に集約し、`cargo bench --manifest-path benchmarks/Cargo.toml text::* -- --save-baseline phase3-core-text` を共通コマンドとして定義。  
 > - グラフェムベンチでは `clear_grapheme_cache_for_tests` を利用して cold / cached それぞれの指標を分離し、TextBuilder ベンチでは `take_text_effects_snapshot()` を組み合わせて `effect.mem_bytes` を観測可能にした。  
-> - 計測結果の記録先として `reports/benchmarks/core_text/README.md` と `phase3-baseline.md` を追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表へ `text.bench.*` 指標を登録。ベンチ回帰時の調査ノートは `docs/notes/text-unicode-performance-investigation.md` にリンクする方針を追記した。
+> - 計測結果の記録先として `reports/benchmarks/core_text/README.md` と `phase3-baseline.md` を追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表へ `text.bench.*` 指標を登録。ベンチ回帰時の調査ノートは `docs/notes/text/text-unicode-performance-investigation.md` にリンクする方針を追記した。
 
 6.3. CI に文字列結合の回帰テストを組み込み、大規模入力でのメモリ/性能指標を `0-3-audit-and-metrics.md` に記録する。  
 実施ステップ:  
@@ -346,7 +346,7 @@
 - ドキュメントとサンプルが更新され、三層モデルの利用法が明確であること。
 
 ## リスクとフォローアップ
-- ICU への依存部分でライセンス・バージョン差異が発生した場合は `docs/notes/llvm-spec-status-survey.md` に記録し、Phase 4 の運用計画で処理する。
+- ICU への依存部分でライセンス・バージョン差異が発生した場合は `docs/notes/backend/llvm-spec-status-survey.md` に記録し、Phase 4 の運用計画で処理する。
 - 文字幅計算や Grapheme 分割で性能劣化がみられた場合、キャッシュ戦略やネイティブ実装の検討をフォローアップとする。
 - ストリーミング decode で大容量入力が処理できない場合、Phase 3-5 (IO & Path) でバッファリング戦略を再評価する。
 

@@ -2,7 +2,7 @@
 
 ## セッションメタデータ
 - **実行目的**: `update-alternatives` の設定結果を確認し、不要になった `libllvm19` を削除してディスク使用量とライブラリ競合リスクを軽減する。
-- **関連タスク**: `docs/notes/linux-ci-local-setup-2025.md` セクション 2（必要パッケージの導入）フォローアップ。
+- **関連タスク**: `docs/notes/backend/linux-ci-local-setup-2025.md` セクション 2（必要パッケージの導入）フォローアップ。
 
 ## コマンドと結果概要
 1. `update-alternatives --display clang`

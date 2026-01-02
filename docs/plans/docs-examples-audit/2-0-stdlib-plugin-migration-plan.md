@@ -4,7 +4,7 @@
 
 ## 背景
 - 公式プラグイン章は標準ライブラリ拡張の再整理に伴いドラフト再検討中（`docs/spec/4-0-official-plugins-overview.md`）。
-- `docs/notes/stdlib-expansion-research.md` と `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md` が `Core.System` への昇格を明示。
+- `docs/notes/stdlib/stdlib-expansion-research.md` と `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md` が `Core.System` への昇格を明示。
 - 仕様と実装の同期は `docs/plans/rust-migration/4-2-documentation-sync.md` のフローに従う。
 
 ## 目的
@@ -52,7 +52,7 @@
 - `docs/guides/runtime/portability.md`: `Core.Process` 記述を `Core.System.Process` へ修正。
 
 ### 影響調査対象（必要に応じて）
-- `docs/notes/stdlib-expansion-research.md`: 「移行済み」反映の注記追加。
+- `docs/notes/stdlib/stdlib-expansion-research.md`: 「移行済み」反映の注記追加。
 - `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md`: Phase 4 の優先順位表に「移行済み」注記を追加。
 
 ## 作業ステップ

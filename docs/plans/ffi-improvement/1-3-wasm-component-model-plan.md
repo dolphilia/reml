@@ -29,7 +29,7 @@
 4. PoC が必要になった場合の検証手順（WIT 生成→バインディング生成→呼び出し検証）を `docs/guides/ffi/ffi-wit-poc.md` に追加する。
 
 ## 依存関係
-- `docs/notes/ffi-improvement-survey.md`
+- `docs/notes/ffi/ffi-improvement-survey.md`
 - `docs/spec/3-9-core-async-ffi-unsafe.md`
 
 ## リスクと対策

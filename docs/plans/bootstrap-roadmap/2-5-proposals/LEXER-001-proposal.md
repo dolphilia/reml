@@ -3,7 +3,7 @@
 ## 1. 背景と症状
 - Chapter 2 の字句仕様では `identifier(profile=DefaultId)` を含む Unicode プロファイルを前提としているが（docs/spec/2-3-lexer.md:92-170）、実装は ASCII ベースの識別子のみをサポートし、`identifier(profile=...)` が利用できない（compiler/ocaml/src/lexer.mll:46-52）。  
 - DSL プラグインや Capability 名で Unicode 別名を使用するケースが仕様上許容されているが、OCaml 実装では拒否されるため差分レビューが困難。  
-- `docs/notes/dsl-plugin-roadmap.md` では Unicode プロファイルを導入する計画があるため、差分補正フェーズで現状の制約とロードマップを明記する必要がある。
+- `docs/notes/dsl/dsl-plugin-roadmap.md` では Unicode プロファイルを導入する計画があるため、差分補正フェーズで現状の制約とロードマップを明記する必要がある。
 
 ## 2. Before / After
 ### Before
@@ -12,13 +12,13 @@
 
 ### After
 - Chapter 2 に ASCII 限定であることを脚注で明示し、Phase 2-7 `lexer-unicode` タスクで Unicode プロファイルを導入する計画を整理。  
-- `docs/notes/dsl-plugin-roadmap.md` に `identifier` プロファイル差分と対応予定を追加し、DSL/プラグインチームと共有。  
+- `docs/notes/dsl/dsl-plugin-roadmap.md` に `identifier` プロファイル差分と対応予定を追加し、DSL/プラグインチームと共有。  
 - 実装側は `Core.Parse.Lex` 抽出（LEXER-002）と連携して、Unicode 対応時の API 表面を定義する。
 
 ## 3. 影響範囲と検証
 - **テスト**: Unicode 識別子の字句解析テストを追加し、Phase 2-7 完了時に有効化。ASCII 限定の間はスキップして回帰指標を維持する。  
 - **メトリクス**: `0-3-audit-and-metrics.md` に `lexer.identifier_profile_unicode` を追加し、導入時に PASS へ更新。  
-- **ドキュメント**: `docs/notes/dsl-plugin-roadmap.md` に「Unicode プロファイル導入準備」セクションと依存タスクを追記。
+- **ドキュメント**: `docs/notes/dsl/dsl-plugin-roadmap.md` に「Unicode プロファイル導入準備」セクションと依存タスクを追記。
 - **用語集**: `docs/spec/0-2-glossary.md` に `Unicode identifier profile` の暫定定義を追加し、仕様読者が ASCII 制限期間中の扱いを把握できるようにする。
 
 ## 4. 実装ステップと調査項目
@@ -50,12 +50,12 @@
 
 #### Step 3: DSL/プラグインチーム連携（週32, DSL チーム）
 - **目的**: DSL プラグインの別名ポリシーに Unicode プロファイル差分を反映し、Phase 2-7 までの運用ルールを確立する。  
-- **作業**: `docs/notes/dsl-plugin-roadmap.md` に「Unicode プロファイル導入準備」節を追加し、Capability 名の別名運用と互換モード利用時の制約を整理する。`docs/guides/dsl/plugin-authoring.md` へ脚注リンクを付与し、プラグイン作者への周知経路を確保する。  
+- **作業**: `docs/notes/dsl/dsl-plugin-roadmap.md` に「Unicode プロファイル導入準備」節を追加し、Capability 名の別名運用と互換モード利用時の制約を整理する。`docs/guides/dsl/plugin-authoring.md` へ脚注リンクを付与し、プラグイン作者への周知経路を確保する。  
 - **調査**: `docs/spec/3-8-core-runtime-capability.md` の Stage 契約と `docs/guides/runtime/runtime-bridges.md` のブリッジ要件を参照し、Capability ID が ASCII に固定されている箇所を洗い出す。
 - **成果物**: DSL ノートの更新、Stage/Capability 関連 TODO の登録、`compiler/ocaml/docs/technical-debt.md`（ID22/23）との整合メモ。
 
 ##### Step3 実施記録（2026-03-04）
-- `docs/notes/dsl-plugin-roadmap.md` §7 に ASCII 限定ポリシー・Stage 連携・Phase 2-7 フォローアップを整理し、`lexer.identifier_profile_unicode` 指標更新と CLI/LSP 周知タスクの TODO を登録。[^lexer001-phase25]
+- `docs/notes/dsl/dsl-plugin-roadmap.md` §7 に ASCII 限定ポリシー・Stage 連携・Phase 2-7 フォローアップを整理し、`lexer.identifier_profile_unicode` 指標更新と CLI/LSP 周知タスクの TODO を登録。[^lexer001-phase25]
 - `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の `LEXER-001` 行へ Step3 完了脚注を追記し、Phase 2-7 での Unicode 実装着手条件を共有。  
 - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step3 完了メモを追加し、DSL/プラグインチーム向け ASCII 運用ルールと Capability Stage 影響範囲を記録。
 
@@ -69,7 +69,7 @@
 - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `lexer.identifier_profile_unicode` 行を更新し、`parser.runconfig.lex.profile` と `AuditEnvelope.metadata["parser.runconfig.lex.profile"]` の一致を指標条件として明文化。Phase 2-7 で `--lex-profile=unicode` を必須化する際の PASS 判定を記載した。  
 - `tooling/ci/collect-iterator-audit-metrics.py` に `lexer.identifier_profile_unicode` メトリクスを追加し、ASCII/Unicode/その他の件数内訳と `--lex-profile` スイッチ仕様（`ascii|unicode`）を JSON 出力へ記録するプレースホルダ実装を導入。`pass_rate` は `null` に設定し、Phase 2-5 では監視のみ／Phase 2-7 で 1.0 へ昇格させる運用を想定。  
 - レビュー記録（`docs/plans/bootstrap-roadmap/2-5-review-log.md`）に Step4 メモを追記し、CI で Unicode テストをスキップする際は `--lex-profile=ascii` を指定し、Unicode 切替リハーサル時は `--lex-profile=unicode` を明示する手順を整理。  
-- `docs/notes/dsl-plugin-roadmap.md` §7 に `--lex-profile=ascii|unicode` スイッチ運用とメトリクス確認手順を追記し、プラグインチームへ ASCII → Unicode 切替ロードマップを共有。  
+- `docs/notes/dsl/dsl-plugin-roadmap.md` §7 に `--lex-profile=ascii|unicode` スイッチ運用とメトリクス確認手順を追記し、プラグインチームへ ASCII → Unicode 切替ロードマップを共有。  
 - 差分計画書（`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`）へ Step4 更新脚注を追加し、Phase 2-7 `lexer-unicode` タスクで `expected_pass_fraction=1.0` を満たすことをフォローアップとして登録。
 
 ### Phase 2-7（Unicode 実装と移行）

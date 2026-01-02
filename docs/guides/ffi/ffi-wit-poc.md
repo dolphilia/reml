@@ -19,7 +19,7 @@ WASM Component Model / WIT の PoC を行う際の最小手順を整理する。
 1. WIT 定義を作成し、対象 API の型として `string` / `record` / `variant` / `list` / `option` / `result` / `resource` を含める。
 2. 外部ツールで WIT から Reml 側のバインディング草案を生成し、生成結果を `Core.Ffi.Dsl` のラッパで包む。
 3. Reml 側で呼び出し検証を実施し、境界データの整合と所有権移譲の挙動を確認する。
-4. 調査ログへ観測結果を整理し、`docs/notes/ffi-wasm-component-model-log.md` に反映する。
+4. 調査ログへ観測結果を整理し、`docs/notes/ffi/ffi-wasm-component-model-log.md` に反映する。
 
 ## 検証観点
 - `string` と `list<u8>` の境界コピーが期待通りに行われるか。
@@ -33,7 +33,7 @@ WASM Component Model / WIT の PoC を行う際の最小手順を整理する。
 
 ## 成果物
 - WIT 定義と生成物のスナップショット（調査ログ用）。
-- PoC 実施時の観察結果（`docs/notes/ffi-wasm-component-model-log.md` へ反映）。
+- PoC 実施時の観察結果（`docs/notes/ffi/ffi-wasm-component-model-log.md` へ反映）。
 - WIT 生成、バインディング生成、呼び出し検証の手順メモ。
 
 ## PoC 実施記録（追記欄）

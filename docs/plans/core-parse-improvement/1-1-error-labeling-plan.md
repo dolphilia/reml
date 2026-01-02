@@ -1,7 +1,7 @@
 # WS2: Error Labeling（文脈・期待集合）計画
 
 ## 背景と狙い
-調査メモ `docs/notes/core-parse-improvement-survey.md` が推奨する通り、Megaparsec の `<?>` に相当する **ラベル付け**は、DSL 利用者にとって「どこを直せばよいか」を即座に理解できる診断へ直結する。
+調査メモ `docs/notes/parser/core-parse-improvement-survey.md` が推奨する通り、Megaparsec の `<?>` に相当する **ラベル付け**は、DSL 利用者にとって「どこを直せばよいか」を即座に理解できる診断へ直結する。
 
 Reml 仕様でも `docs/spec/2-1-parser-type.md` に `label("x", p)` があり、`ParseError.context` へ文脈を保持する契約がある。
 本ワークストリームは、これを「使いどころが明確な API/慣習」に落とし込む。

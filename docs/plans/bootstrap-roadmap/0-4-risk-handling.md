@@ -1,6 +1,6 @@
 # 0.4 リスク管理とフォローアップ
 
-本章はブートストラップ計画におけるリスク登録、フォローアップ、移行期間中の意思決定手順を定義する。[0-1-project-purpose.md](../../spec/0-1-project-purpose.md) の判断フレームワークと `docs/notes/llvm-spec-status-survey.md` の未決課題を参照し、リスクが可視化された状態でフェーズを進める。
+本章はブートストラップ計画におけるリスク登録、フォローアップ、移行期間中の意思決定手順を定義する。[0-1-project-purpose.md](../../spec/0-1-project-purpose.md) の判断フレームワークと `docs/notes/backend/llvm-spec-status-survey.md` の未決課題を参照し、リスクが可視化された状態でフェーズを進める。
 
 ## 0.4.1 リスク登録カテゴリ
 | カテゴリ | 説明 | 例 | 対応フェーズ |
@@ -100,12 +100,12 @@
 - タイトル: 効果構文 Stage 昇格遅延（EFFECT-POC-Stage）
 - カテゴリ: 技術的負債
 - 詳細: 効果構文 PoC は `Σ_before`/`Σ_after` 記録と KPI (`syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`) を Step4/Step5 で仕様化したが、OCaml 実装は `effect.syntax.constructs` の算出と残余効果の控除を未実装のまま Phase 2-7 へ移管している。Stage 昇格が遅延すると Chapter 1 の脚注撤去と Phase 3 self-host 移行の前提条件に影響する。
-- 対応案: Phase 2-7 `EFFECT-003` / `Type_inference_effect` タスクで `TEffectPerform`/`THandle` の残余効果計算と `collect-iterator-audit-metrics.py` 指標を実装し、CI で `syntax.effect_construct_acceptance = 1.0` / `effects.syntax_poison_rate = 0.0` を達成した上で脚注を撤去する。進捗は `docs/notes/effect-system-tracking.md` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` (H-O1〜H-O5) で追跡する。
+- 対応案: Phase 2-7 `EFFECT-003` / `Type_inference_effect` タスクで `TEffectPerform`/`THandle` の残余効果計算と `collect-iterator-audit-metrics.py` 指標を実装し、CI で `syntax.effect_construct_acceptance = 1.0` / `effects.syntax_poison_rate = 0.0` を達成した上で脚注を撤去する。進捗は `docs/notes/effects/effect-system-tracking.md` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` (H-O1〜H-O5) で追跡する。
 - 期限: 2026-09-30
 - 状態: Resolved (2026-12-18)
 - 解決メモ: Phase 2-7 Sprint C で Core IR・Runtime まで効果行が伝播し、`type_row_mode` の既定値を `"ty-integrated"` へ切り替え済み。Linux/Windows/macOS の CI で `collect-iterator-audit-metrics.py --require-success --section effects` を恒常運用し、`effect_row_guard_regressions = 0` を確認した。
 - 関連フェーズ: Phase 2 (2-7)
-- 参照: `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-5-review-log.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/notes/effect-system-tracking.md`
+- 参照: `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-5-review-log.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/notes/effects/effect-system-tracking.md`
 - 担当: Phase 2-7 Effects チーム（SYNTAX-003 / EFFECT-002）
 - 登録日: 2026-04-24
 - タイトル: 効果行統合遅延による型・監査不整合（TYPE-002-ROW-INTEGRATION）
@@ -115,7 +115,7 @@
 - 期限: 2026-10-31
 - 状態: Open
 - 関連フェーズ: Phase 2 (2-7)
-- 参照: `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-5-to-2-7-type-002-handover.md`, `docs/plans/bootstrap-roadmap/2-5-review-log.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/notes/effect-system-tracking.md`, `compiler/ocaml/docs/effect-system-design-note.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md#0-3-7b-効果行統合メトリクス運用2026-12-18-更新`
+- 参照: `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-5-to-2-7-type-002-handover.md`, `docs/plans/bootstrap-roadmap/2-5-review-log.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/notes/effects/effect-system-tracking.md`, `compiler/ocaml/docs/effect-system-design-note.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md#0-3-7b-効果行統合メトリクス運用2026-12-18-更新`
 - 担当: Phase 2-7 Type チーム（TYPE-002）
 
 <a id="diagnostic-domain-metrics"></a>
@@ -125,7 +125,7 @@
 - タイトル: 診断ドメイン KPI の閾値逸脱
 - カテゴリ: 技術的負債
 - 詳細: Phase 2-7 で導入した `diagnostics.domain_coverage`・`diagnostics.plugin_bundle_ratio`・`diagnostics.effect_stage_consistency` は Phase 2-8 の仕様監査で必須となる。いずれかが閾値（0.95 または 1.0）を下回ると、Plugin/LSP/Capability の差分抽出が不完全となり、`docs/spec/3-6-core-diagnostics-audit.md` と CLI/LSP ゴールデンの同期が崩れるリスクがある。
-- 対応案: `collect-iterator-audit-metrics.py --section diagnostics --require-success` を CI で常時動作させ、逸脱が検出された場合は `reports/audit/dashboard/diagnostics.md` の比率を確認した上で互換モードテストを停止し、`docs/notes/dsl-plugin-roadmap.md` と連携してバンドル署名の再発行と Stage 診断の再測定を行う。
+- 対応案: `collect-iterator-audit-metrics.py --section diagnostics --require-success` を CI で常時動作させ、逸脱が検出された場合は `reports/audit/dashboard/diagnostics.md` の比率を確認した上で互換モードテストを停止し、`docs/notes/dsl/dsl-plugin-roadmap.md` と連携してバンドル署名の再発行と Stage 診断の再測定を行う。
 - 期限: 2027-03-31
 - 状態: Monitoring
 - 関連フェーズ: Phase 2 (2-7, 2-8)
@@ -147,7 +147,7 @@
 - タイトル: Unicode Data Drift（R-041）
 - カテゴリ: 互換性
 - 詳細: Core.Text/Unicode のサンプル（`examples/core-text/text_unicode.reml`）と `docs/spec/3-3-core-text-unicode.md` のコード例が更新されないまま Unicode データを入れ替えると、AI 連携や Streaming decode で CLI/LSP と異なる正規化結果が生成される。`expected/text_unicode.*.golden` や `reports/spec-audit/ch1/core_text_examples-YYYYMMDD.md` が古い場合、`text.grapheme.cache_hit` KPI と `Unicode::VERSION` が乖離し、`InvalidUtf8` や幅計算の差分が検知できなくなる。
-- 対応案: Unicode バージョン更新時は必ず `cargo run --manifest-path compiler/rust/runtime/Cargo.toml --bin text_stream_decode -- --input tests/data/unicode/streaming/sample_input.txt --output examples/core-text/expected/text_unicode.stream_decode.golden` を再実行し、`examples/core-text/expected/text_unicode.{tokens,grapheme_stats}.golden` を同じコミットで更新する。CI では `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --source examples/core-text/expected/text_unicode.grapheme_stats.golden --require-success` を追加し、逸脱時は `docs/notes/text-unicode-known-issues.md` (TUI-004) に記録する。
+- 対応案: Unicode バージョン更新時は必ず `cargo run --manifest-path compiler/rust/runtime/Cargo.toml --bin text_stream_decode -- --input tests/data/unicode/streaming/sample_input.txt --output examples/core-text/expected/text_unicode.stream_decode.golden` を再実行し、`examples/core-text/expected/text_unicode.{tokens,grapheme_stats}.golden` を同じコミットで更新する。CI では `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --source examples/core-text/expected/text_unicode.grapheme_stats.golden --require-success` を追加し、逸脱時は `docs/notes/text/text-unicode-known-issues.md` (TUI-004) に記録する。
 - 期限: 2027-06-30
 - 状態: Monitoring
 - 関連フェーズ: Phase 3 (3-3)
@@ -166,11 +166,11 @@
 - タイトル: Homebrew 版 LLVM の頻繁な更新による再現性低下
 - カテゴリ: 互換性
 - 詳細: Phase 1-8 で使用予定の `brew install llvm@15` が頻繁に更新され、CI とローカル環境で異なるビルド番号が導入される懸念がある。`llvm-config` の出力差異が出た場合、IR 検証に失敗する可能性がある。
-- 対応案: `brew extract` によるフォーミュラ固定、もしくは GitHub Actions 内でのバイナリアーカイブ展開を採用する。決定後は `docs/notes/llvm-spec-status-survey.md` に手順を記録し、`bootstrap-macos.yml` に反映する。
+- 対応案: `brew extract` によるフォーミュラ固定、もしくは GitHub Actions 内でのバイナリアーカイブ展開を採用する。決定後は `docs/notes/backend/llvm-spec-status-survey.md` に手順を記録し、`bootstrap-macos.yml` に反映する。
 - 期限: 2025-10-26
 - 状態: Open
 - 関連フェーズ: Phase 1 (1-8)
-- 参照: `docs/plans/bootstrap-roadmap/1-8-macos-prebuild-support.md` §3, `docs/notes/llvm-spec-status-survey.md`
+- 参照: `docs/plans/bootstrap-roadmap/1-8-macos-prebuild-support.md` §3, `docs/notes/backend/llvm-spec-status-survey.md`
 - 登録日: 2025-10-12
 - タイトル: GitHub Actions macOS ランナーの起動待ち時間長期化
 - カテゴリ: スケジュール

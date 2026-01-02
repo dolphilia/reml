@@ -19,7 +19,7 @@
 実施ステップ:
 - `docs/spec/3-4-core-numeric-time.md` を章ごとに読み込み、API 名・戻り値・効果タグを抽出して `docs/plans/bootstrap-roadmap/assets/core-numeric-time-api-diff.csv` に整理する。
 - `rg "pub (struct|enum|trait|fn)" compiler/rust/runtime/src -g "*numeric*" -g "*time*"` で Rust 側エクスポートを列挙し、CSV に `Rust実装位置` と `状態 (PoC/Implemented/Missing)` 列を追加する。
-- 差分を `docs/notes/core-numeric-time-gap-log.md` に記録し、優先度・担当見込み・参照ファイルを backlog として登録する。
+- 差分を `docs/notes/runtime/core-numeric-time-gap-log.md` に記録し、優先度・担当見込み・参照ファイルを backlog として登録する。
 
 1.2. 効果タグ (`effect {time}`, `{audit}`, `{unicode}`) と Capability 要件を整理し、検証用テストを計画する。  
 実施ステップ:
@@ -49,21 +49,21 @@
 #### 1.3.2 MetricPoint → AuditSink 連携バックログ
 - 仕様 `docs/spec/3-4-core-numeric-time.md` §4 と `docs/spec/3-6-core-diagnostics-audit.md` §4 を突き合わせ、`MetricPoint`/`IntoMetricValue`/`emit_metric` が `effect {audit}` を記録した上で `AuditSink` (`AuditEnvelope.metadata.metric_point.*`) に連携する経路を確立する必要がある。
 - KPI と監査ログの観測位置は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Phase3 指標へ `numeric.metrics.emit_success_rate` / `numeric.metrics.audit_ingest_latency_ns` を追加する形で追跡する。
-- `README.md#core-numeric--time-進捗` と `docs/notes/core-numeric-time-gap-log.md`（2025-12-01「監査連携」行）にタスクを登録済み。対応内容: `MetricPoint` 実装、`collect-iterator-audit-metrics.py --section numeric_time --scenario emit_metric` の CI 化、Phase3 Self-Host (`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` M4 行) からの参照更新。
+- `README.md#core-numeric--time-進捗` と `docs/notes/runtime/core-numeric-time-gap-log.md`（2025-12-01「監査連携」行）にタスクを登録済み。対応内容: `MetricPoint` 実装、`collect-iterator-audit-metrics.py --section numeric_time --scenario emit_metric` の CI 化、Phase3 Self-Host (`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` M4 行) からの参照更新。
 
 #### 1.3.3 StatisticsError → Diagnostic 連携バックログ
 - `docs/spec/3-4-core-numeric-time.md` §2（統計・データ品質）と `docs/spec/3-7-core-config-data.md` §2 のサンプルでは `StatisticsError`/`NumericError` が `Diagnostic` に昇格し、`column`/`aggregation`/`audit_id` メタデータを必須とする。現状 Rust 実装には `StatisticsErrorKind` も `IntoDiagnostic` も存在せず、Config 章・Diagnostics 章とリンクしていない。
 - 今後実装する `compiler/rust/runtime/src/numeric/error.rs` → `Core.Diagnostics` ブリッジでは、`EffectSet`/`CollectorEffectMarkers` の記録順序と `AuditEnvelope.metadata.numeric.*` のフィールド設計をまとめる必要がある。
-- `docs/notes/core-numeric-time-gap-log.md`（2025-12-01「診断連携」行）でバックログを管理し、`README.md#core-numeric--time-進捗` および `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` M4 行から参照できるようにした。`scripts/validate-diagnostic-json.sh --suite numeric` の追加もこのタスクに含まれる。
+- `docs/notes/runtime/core-numeric-time-gap-log.md`（2025-12-01「診断連携」行）でバックログを管理し、`README.md#core-numeric--time-進捗` および `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` M4 行から参照できるようにした。`scripts/validate-diagnostic-json.sh --suite numeric` の追加もこのタスクに含まれる。
 
 #### 1.3.4 Timestamp → IO 連携バックログ
 - 時間 API (`docs/spec/3-4-core-numeric-time.md` §3) は `Core.IO` (`docs/spec/3-5-core-io-path.md`) と `Core.Runtime` Capability (`time.now`, `time.sleep`, `timezone.resolve`) に依存する。Rust 実装では `compiler/rust/runtime/src/io/` の `Env` アダプタと `runtime/src/registry.rs` を跨ぐ Stage 検証が未定義で、`Timestamp`/`Duration`/`Timezone` が `effect {time}` や `CapabilityStage::{Exact,AtLeast}` を記録できていない。
-- `docs/notes/core-numeric-time-gap-log.md`（2025-12-01「IO 連携」行）で `Core.Time` ↔ `Core.IO` の作業と `timezone`/`Env::platform()` 参照を追跡する。`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` の `M4: Numeric / IO & Path` 行へ依存図リンクを張り、IO 章と Time 章の更新が同期できるよう README と本計画書の両方で参照ポイントを明示した。
+- `docs/notes/runtime/core-numeric-time-gap-log.md`（2025-12-01「IO 連携」行）で `Core.Time` ↔ `Core.IO` の作業と `timezone`/`Env::platform()` 参照を追跡する。`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` の `M4: Numeric / IO & Path` 行へ依存図リンクを張り、IO 章と Time 章の更新が同期できるよう README と本計画書の両方で参照ポイントを明示した。
 - `tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario clock_accuracy`（新設予定）と `reports/spec-audit/ch3/time_clock-*.json` を使い、`Timestamp → IO` 経路の KPI (`time.syscall.latency_ns`, `time.timezone.lookup_success_rate`) を `0-3-audit-and-metrics.md` に登録する。
 
 > 進行ログ（Phase3 W44）  
 > - `docs/plans/bootstrap-roadmap/assets/core-numeric-time-dependency-map.drawio` を追加し、`Core.Collections/Core.Iter/Core.Diagnostics/Core.Runtime/Core.IO` と `Core.Numeric/Core.Time` の依存関係・仕様参照・実装パスを一覧化した。README（`README.md#core-numeric--time-進捗`）と Phase3 Self-Host (`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` M4 行) から参照できるようリンク付け済み。  
-> - `MetricPoint → AuditSink`、`StatisticsError → Diagnostic`、`Timestamp → IO` の 3 経路について `docs/notes/core-numeric-time-gap-log.md` に 2025-12-01 付けでバックログを登録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と README から追跡できるよう整理した。  
+> - `MetricPoint → AuditSink`、`StatisticsError → Diagnostic`、`Timestamp → IO` の 3 経路について `docs/notes/runtime/core-numeric-time-gap-log.md` に 2025-12-01 付けでバックログを登録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と README から追跡できるよう整理した。  
 > - `README.md#core-numeric--time-進捗` セクションを新設し、本計画書 §1.3 の進捗と依存図を Phase3 全体のロードマップへ共有（`Core.Collections`/`Core.Text` セクションと同一フォーマット）した。
 
 > 進行ログ（Phase3 W47, §1）  
@@ -82,7 +82,7 @@
 
 > 進行ログ（Phase3 W44, 2.1）  
 > - `core_numeric` feature を追加し、`compiler/rust/runtime/src/numeric/mod.rs` に `Numeric`/`OrderedFloat`/`Floating`/`IterNumericExt`・`lerp`/`mean`/`variance`/`percentile` を PoC 実装。`Iter.try_fold` ベースで Welford 法を採用し、`percentile` は nearest-rank + 線形補間を利用。  
-> - `docs/plans/bootstrap-roadmap/assets/core-numeric-time-api-diff.csv` と `docs/notes/core-numeric-time-gap-log.md` を更新し、`Numeric` 制約テスト計画（`compiler/rust/frontend/tests/type_numeric.rs`）を `docs/plans/rust-migration/1-1-ast-and-ir-alignment.md` に追記。  
+> - `docs/plans/bootstrap-roadmap/assets/core-numeric-time-api-diff.csv` と `docs/notes/runtime/core-numeric-time-gap-log.md` を更新し、`Numeric` 制約テスト計画（`compiler/rust/frontend/tests/type_numeric.rs`）を `docs/plans/rust-migration/1-1-ast-and-ir-alignment.md` に追記。  
 > - `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric` を実行して `numeric::tests::*` を追加検証。`reports/spec-audit/ch3/numeric_basic-*` の自動化は別途スクリプト化する。
 
 2.2. `HistogramBucket`/`HistogramBucketState` の実装と検証を行い、不正パラメータ時の `StatisticsError` 処理を整備する。  
@@ -95,18 +95,18 @@
 > - `docs/plans/bootstrap-roadmap/assets/histogram-error-matrix.md` を新設し、`H-01`〜`H-07` の検証ルールを `StatisticsErrorKind`/診断コードにマッピング。`Core.Config` §4.8 との整合を表で追跡できるようにした。  
 > - `compiler/rust/runtime/src/numeric/error.rs` と `compiler/rust/runtime/src/numeric/histogram.rs` を追加し、`StatisticsError`→`GuardDiagnostic` 変換・`HistogramBucket`/`HistogramBucketState`・`histogram` 本体・単体テストを PoC 実装。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric` で検証済み。  
 > - `tests/data/numeric/histogram/{success_basic,error_overlap}.json` を追加し、`scripts/validate-diagnostic-json.sh --pattern numeric.histogram` で `diagnostic-v2` スキーマとメタデータ拡張（`numeric.statistics.*`, `effects.*`）をバリデートできるようにした。  
-> - `docs/plans/bootstrap-roadmap/assets/core-numeric-time-api-diff.csv` の `HistogramBucketState`/`histogram`/`StatisticsError*` 行を `PoC` へ更新し、`README.md#core-numeric--time-進捗` と `docs/notes/core-numeric-time-gap-log.md` に進行状況をリンクさせた。
+> - `docs/plans/bootstrap-roadmap/assets/core-numeric-time-api-diff.csv` の `HistogramBucketState`/`histogram`/`StatisticsError*` 行を `PoC` へ更新し、`README.md#core-numeric--time-進捗` と `docs/notes/runtime/core-numeric-time-gap-log.md` に進行状況をリンクさせた。
 
 2.3. 統計関数の数値安定性を確認し、再現性のあるベンチマークを追加する。  
 実施ステップ:
-- `docs/notes/core-numeric-stability.md` を作成し、`Kahan summation`・`Welford` 法・`Horvitz-Thompson` (回帰) の採用理由と代替案を明記する。
+- `docs/notes/runtime/core-numeric-stability.md` を作成し、`Kahan summation`・`Welford` 法・`Horvitz-Thompson` (回帰) の採用理由と代替案を明記する。
 - `compiler/rust/runtime/benches/bench_numeric_statistics.rs` を `criterion` で実装し、`reports/benchmarks/numeric-phase3/*.json` に結果を記録して `docs/plans/rust-migration/3-2-benchmark-baseline.md` と同期する。
-- `StatisticsErrorKind::NumericalInstability` を返した際の診断例を `docs/notes/core-numeric-time-gap-log.md` に残し、再現入力を `tests/data/numeric/instability/*.json` へ追加する。
+- `StatisticsErrorKind::NumericalInstability` を返した際の診断例を `docs/notes/runtime/core-numeric-time-gap-log.md` に残し、再現入力を `tests/data/numeric/instability/*.json` へ追加する。
 
 > 進行ログ（Phase3 W45, 2.3）  
-> - `docs/notes/core-numeric-stability.md` を新設し、`Numeric`/`Iter` における Kahan summation・Welford 法の採用理由、および将来の Horvitz-Thompson 適用方針を整理した。仕様 §2.3 の「数値的不安定性検出」要件を満たすための根拠・TODO を記録。  
+> - `docs/notes/runtime/core-numeric-stability.md` を新設し、`Numeric`/`Iter` における Kahan summation・Welford 法の採用理由、および将来の Horvitz-Thompson 適用方針を整理した。仕様 §2.3 の「数値的不安定性検出」要件を満たすための根拠・TODO を記録。  
 > - `compiler/rust/runtime/benches/bench_numeric_statistics.rs` を追加し、`cargo bench --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric --bench bench_numeric_statistics -- --noplot` で実行。`reports/benchmarks/numeric-phase3/phase3-baseline-2025-12-04.json` に平均/分散/百分位の初回ベースラインを保存し、`docs/plans/rust-migration/3-2-benchmark-baseline.md` へスイート行を追記した。  
-> - `tests/data/numeric/instability/histogram_non_finite.json` を登録し、`StatisticsErrorKind::NumericalInstability` (`rule = H-05`) を再現する診断サンプルを `docs/notes/core-numeric-time-gap-log.md` へリンク。JSON には `numeric.statistics.kind = numerical_instability` と `sample_value = NaN` を含み、監査メタデータの確認指針を記載した。
+> - `tests/data/numeric/instability/histogram_non_finite.json` を登録し、`StatisticsErrorKind::NumericalInstability` (`rule = H-05`) を再現する診断サンプルを `docs/notes/runtime/core-numeric-time-gap-log.md` へリンク。JSON には `numeric.statistics.kind = numerical_instability` と `sample_value = NaN` を含み、監査メタデータの確認指針を記載した。
 
 ### 2.4. 精度制御・多倍長型・金融 API のフォローアップ（48週目以降）
 **担当領域**: 非浮動小数点サポート拡張
@@ -121,7 +121,7 @@ Rust 実装は `Numeric`/`IterNumericExt` を用意したものの、`mean`/`var
 2. **多倍長型の Iter 連携**
    - `Decimal`/`BigInt`/`BigRational` で `IterNumericExt::mean` 等を利用できるよう、`Floating` を前提とする演算を `Decimal`（`rust_decimal`）、`BigRational`（`num_rational`）の演算へ切り替えるプランを `docs/plans/bootstrap-roadmap/assets/core-numeric-time-effects-matrix.md` に追記する。
    - `take_numeric_effects_snapshot()` が Decimal/Ratio でも `effect {mem}` を記録できるよう `numeric/effects.rs` を拡張し、`compiler/rust/runtime/tests/iter_numeric_props.rs` に Decimal 版 property テストを追加する。
-   - `docs/notes/core-numeric-time-gap-log.md` 2025-11-27「精度/金融」エントリを更新し、`IterNumericExt` の適用範囲と KPI (`numeric.precision.round_trip_diff`) を明文化する。
+   - `docs/notes/runtime/core-numeric-time-gap-log.md` 2025-11-27「精度/金融」エントリを更新し、`IterNumericExt` の適用範囲と KPI (`numeric.precision.round_trip_diff`) を明文化する。
 
 3. **金融 API（仕様 §6.2）**
    - `compiler/rust/runtime/src/numeric/finance.rs` を新設し、`currency_add`/`compound_interest`/`net_present_value` を `Decimal` ベースで実装する。`CurrencyCode` 検証は `docs/spec/3-7-core-config-data.md` の通貨表に合わせ、`README.md#core-numeric--time-進捗` へ相互参照を追加する。
@@ -129,7 +129,7 @@ Rust 実装は `Numeric`/`IterNumericExt` を用意したものの、`mean`/`var
    - `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features "core-numeric decimal"` と `cargo bench --bench bench_numeric_finance`（新設）を追加し、`reports/benchmarks/numeric-time/` へ金融ユースケースのベースラインを記録する。
 
 > 進行ログ（フォローアップ登録）  
-> - `docs/notes/core-numeric-time-gap-log.md` 2025-11-27 エントリ（精度/金融）を本節のタスクと結び付け、`numeric/precision.rs`・`numeric/finance.rs`・`tests/data/numeric/precision/*.json` を成果物として登録した。  
+> - `docs/notes/runtime/core-numeric-time-gap-log.md` 2025-11-27 エントリ（精度/金融）を本節のタスクと結び付け、`numeric/precision.rs`・`numeric/finance.rs`・`tests/data/numeric/precision/*.json` を成果物として登録した。  
 > - `docs/plans/bootstrap-roadmap/3-4-core-numeric-time-gap-plan.md` の `N-4`/`N-5` に個別タスクを追記し、`README.md#core-numeric--time-進捗` に decimal/Precision/金融 API の進行を共有する予定。
 > - 2025-12-13: `compiler/rust/runtime/src/numeric/precision.rs` を追加し、`Precision` 列挙・`with_precision`・`round_to`・`truncate_to` を実装。`NumericError`/`NumericErrorKind` を新設し、診断メタデータ `numeric.precision.*` を `tests/data/numeric/precision/*.json` で検証。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric` で precision/rounding の単体テスト (`numeric::precision::tests::*`) を実行済み。  
 > - 2025-12-13: `Floating` トレイトを `Clone`/`PartialOrd` ベースへ再設計し、`Decimal`/`f64` 双方で `mean`/`variance`/`percentile` が動作するよう更新。`effects::record_mem_copy` を `median`/`percentile` へ追加し、`iter_numeric_props.rs` に Decimal ケース (`decimal_median_records_mem_effect`) を挿入。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric` で `IterNumericExt` の Decimal ルートを再検証。
@@ -158,7 +158,7 @@ Rust 実装は `Numeric`/`IterNumericExt` を用意したものの、`mean`/`var
 > 進行ログ（Phase3 W45, 3.2）  
 - `compiler/rust/runtime/src/numeric/error.rs` で `StatisticsError` のメタデータ領域を拡張し、`column`/`aggregation`/`audit_id` と Config/Data 由来の `data.stats.*` キーを `extensions`/`audit_metadata` 両方に書き込むよう修正。`encode_sample_value` を導入し、`NaN`/`Infinity` など非有限値を JSON 文字列表現として保持できるようにした。`#[cfg(test)]` の単体テストで `data.stats.invalid_bucket` コードや `numeric.statistics.sample_value = "NaN"` が出力されることを固定。  
 - `scripts/validate-diagnostic-json.sh --suite numeric` を追加し、`tests/data/numeric/` と `tests/expected/numeric_*.json` を `diagnostic-v2` スキーマで一括検証できるようにした。`numeric.histogram` パターンの個別指定に加えて、統計エラーのサンプルを CI から直接チェックできる。  
-- `docs/plans/bootstrap-roadmap/assets/core-numeric-time-api-diff.csv` の `StatisticsError` 行と `docs/notes/core-numeric-time-gap-log.md`（2025-12-01 診断連携）を更新し、Config/Data 章へのブリッジが Phase3 §3.2 と連動したこと、`README.md#core-numeric--time-進捗` でバックログ扱いだった項目が進捗中に変わったことを共有した。
+- `docs/plans/bootstrap-roadmap/assets/core-numeric-time-api-diff.csv` の `StatisticsError` 行と `docs/notes/runtime/core-numeric-time-gap-log.md`（2025-12-01 診断連携）を更新し、Config/Data 章へのブリッジが Phase3 §3.2 と連動したこと、`README.md#core-numeric--time-進捗` でバックログ扱いだった項目が進捗中に変わったことを共有した。
 
 3.3. `rolling_average`/`z_score` 等の遅延計算が `Iter` と安全に連携することを確認する。  
 実施ステップ:
@@ -169,7 +169,7 @@ Rust 実装は `Numeric`/`IterNumericExt` を用意したものの、`mean`/`var
 > 進行ログ（Phase3 W45, 3.3）  
 - `numeric/iter.rs` を新設し、`rolling_average`（VecDeque ベースの遅延計算）と `z_score` を実装。`numeric/effects.rs` で `effect {mem}` を記録しつつ、`Iter::scan` + `filter_map` で `Iter` 互換の API を提供した。  
 - `NumericCollector` と `Iter::collect_numeric` を追加し、Stage/Audit 情報を `CollectorAuditTrail` へ記録できるようにした。`CollectorKind` に `numeric` を拡張し、Capability ID `core.numeric.collector` を割り当てた。  
-- `compiler/rust/runtime/tests/iter_numeric_props.rs` では固定乱数シーケンスを用いた擬似 property テストでロール平均/ Z スコアを検証し、`take_numeric_effects_snapshot()` によるメモリ効果の記録も固定。`docs/plans/bootstrap-roadmap/checklists/core-iter-numeric.md` にテストケース一覧と再実行コマンドを登録し、`docs/notes/core-numeric-time-gap-log.md`/`core-numeric-time-api-diff.csv` と同期した。
+- `compiler/rust/runtime/tests/iter_numeric_props.rs` では固定乱数シーケンスを用いた擬似 property テストでロール平均/ Z スコアを検証し、`take_numeric_effects_snapshot()` によるメモリ効果の記録も固定。`docs/plans/bootstrap-roadmap/checklists/core-iter-numeric.md` にテストケース一覧と再実行コマンドを登録し、`docs/notes/runtime/core-numeric-time-gap-log.md`/`core-numeric-time-api-diff.csv` と同期した。
 
 ### 4. 時間・期間 API 実装（45-46週目）
 **担当領域**: 時刻処理
@@ -189,7 +189,7 @@ Rust 実装は `Numeric`/`IterNumericExt` を用意したものの、`mean`/`var
 4.2. `TimeError`/`TimeFormat`/`Timezone` API を実装し、OS 依存情報を `Capability`/`Env` と連携するテストを作成する。  
 実施ステップ:
 - `compiler/rust/runtime/src/time/error.rs` に `TimeErrorKind` と `IntoDiagnostic` 実装を追加し、`Env::platform()` の情報を `metadata.time.platform` に記録する。
-- タイムゾーン解決 (`timezone`, `local`) を `runtime/src/capabilities/timezone.rs` 経由にまとめ、`docs/notes/runtime-capability-stage-log.md` に OS ごとの差分を保存する。
+- タイムゾーン解決 (`timezone`, `local`) を `runtime/src/capabilities/timezone.rs` 経由にまとめ、`docs/notes/runtime/runtime-capability-stage-log.md` に OS ごとの差分を保存する。
 - `tests/data/time/timezone_cases.json` を用意し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario timezone_lookup --tz-source tests/data/time/timezone_cases.json` で Linux/macOS/Windows の挙動を比較する。
 
 > 進行ログ（Phase3 W46, 4.2）  
@@ -197,7 +197,7 @@ Rust 実装は `Numeric`/`IterNumericExt` を用意したものの、`mean`/`var
 > - `compiler/rust/runtime/src/time/timezone.rs` を新設し、`Timezone` 構造体と `utc`/`local`/`timezone`/`convert_timezone` を PoC 実装。`time` クレートの `OffsetDateTime::now_local()` 経由でローカル offset を取得し、Capability `core.time.timezone.{local,lookup}` を検証する経路を組み込んだ。  
 > - `TimeFormat` 列挙を `serde(tag="kind")` で定義し、4.3 フォーマット作業の前提となる API を確定。`tests/data/time/timezone_cases.json` と `compiler/rust/runtime/src/time/mod.rs` の単体テストで固定 offset／変換ケースを共有。  
 > - `tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario timezone_lookup --tz-source tests/data/time/timezone_cases.json` が動作するよう `numeric_time` セクション／CLI オプションを追加。`clock_accuracy` シナリオも同セクションから収集できるよう `--time-source` を導入し、0-3 指標表に `time.timezone.lookup_consistency` を登録した。  
-> - Capability Stage 連携メモ `docs/notes/runtime-capability-stage-log.md` を作成し、`time.timezone.local`/`time.timezone.lookup` の Stage 要件と監査メタデータのフローを記録した。
+> - Capability Stage 連携メモ `docs/notes/runtime/runtime-capability-stage-log.md` を作成し、`time.timezone.local`/`time.timezone.lookup` の Stage 要件と監査メタデータのフローを記録した。
 > - Core.IO に `time_env_snapshot()` を追加し、`TimeError` の `with_env_snapshot` で `time.env.{timezone,locale}` を診断・監査メタデータへ出力。`reports/spec-audit/ch3/time_env-bridge.md` に取得フローと CLI 検証ログを残した。【F:../../compiler/rust/runtime/src/io/env.rs†L1-L43】【F:../../compiler/rust/runtime/src/time/error.rs†L1-L200】【F:../../reports/spec-audit/ch3/time_env-bridge.md†L1-L7】
 > - 代表的な IANA 名（`Asia/Tokyo`/`Europe/London`/`America/New_York`）を `timezone()` で受理できるよう静的オフセットテーブルを導入し、`tests/data/time/timezone_iana.json` と `time::tests::timezone_cases_from_dataset` で検証。`reports/spec-audit/ch3/time_timezone-iana.md` に結果を整理し、`collect-iterator-audit-metrics.py --tz-source tests/data/time/timezone_iana.json` を追加指定する手順を共有した。【F:../../compiler/rust/runtime/src/time/timezone.rs†L1-L220】【F:../../tests/data/time/timezone_iana.json†L1-L11】【F:../../reports/spec-audit/ch3/time_timezone-iana.md†L1-L5】
 
@@ -239,18 +239,18 @@ Rust 実装は `Numeric`/`IterNumericExt` を用意したものの、`mean`/`var
 > 進行ログ（Phase3 W46, 5.2）  
 > - `compiler/rust/runtime/src/diagnostics/audit_bridge.rs` を新設し、`attach_audit` / `with_metric_tags` / `metric_audit_metadata` を追加。`MetricPoint` 生成側（`metric_point.rs`）も同ヘルパを利用するよう更新し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml diagnostics` で `metric_point`/`audit_bridge` 両方の単体テストを通過させた。  
 > - `reports/audit/metric_point/emit_metric.audit.jsonl` を作成し、`metric_point` ケースを `AuditEnvelope` 形式で保存。`tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario emit_metric` の基準ログとして `0-3-audit-and-metrics.md` と共有した。  
-> - `scripts/validate-diagnostic-json.sh` に `--pattern metrics.emit` を追加し、監査ログ (`reports/audit/metric_point/*.audit.jsonl`) および `tests/data/metrics/metric_point_cases.json` を `diagnostic-v2`/`audit-schema` で一括検証できるようにした。README・0-3 KPI 表・ギャップログ（`docs/notes/core-numeric-time-gap-log.md`）へも本施策をリンク。  
+> - `scripts/validate-diagnostic-json.sh` に `--pattern metrics.emit` を追加し、監査ログ (`reports/audit/metric_point/*.audit.jsonl`) および `tests/data/metrics/metric_point_cases.json` を `diagnostic-v2`/`audit-schema` で一括検証できるようにした。README・0-3 KPI 表・ギャップログ（`docs/notes/runtime/core-numeric-time-gap-log.md`）へも本施策をリンク。  
 
 5.3. CLI/ランタイム (3-8) との契約を確認し、Capability Stage 検証のフックを追加する。  
 実施ステップ:
-- `docs/spec/3-8-core-runtime-capability.md` に沿って `emit_metric` 呼び出し前に `RuntimeBridgeRegistry::verify_capability_stage("metrics.emit")` を行う設計を `docs/notes/runtime-metrics-capability.md` にまとめる。
+- `docs/spec/3-8-core-runtime-capability.md` に沿って `emit_metric` 呼び出し前に `RuntimeBridgeRegistry::verify_capability_stage("metrics.emit")` を行う設計を `docs/notes/runtime/runtime-metrics-capability.md` にまとめる。
 - CLI (`remlc metrics emit`) と Runtime ブリッジに Stage mismatch 用の診断 (`effects.contract.stage_mismatch`) を追加し、`reports/dual-write/metrics-stage-mismatch.json` を作成する。
 - `compiler/rust/runtime/tests/metrics_capability.rs` と `tooling/lsp/tests/metrics_stage.json` を追加し、ステージ検証が Linux/macOS/Windows で一致するかを CI で確認する。
 
 > 進行ログ（Phase3 W46, 5.3）  
 > - `emit_metric` が `CapabilityRegistry::verify_capability_stage("metrics.emit", StageRequirement::Exact(StageId::Stable))` を必ず通過するよう変更。失敗時は `effects.contract.stage_mismatch` 診断を返し、`metric_point.*` と Stage 要件を含む監査メタデータを付与する（`compiler/rust/runtime/src/diagnostics/{metric_point.rs,audit_bridge.rs}`）。  
 > - `CapabilityError` に `actual_stage` を追加して Stage mismatch の詳細を診断へ渡し、`compiler/rust/runtime/tests/metrics_capability.rs` で Stable 成功 / Beta 失敗の両ケースを固定化。  
-> - LSP/CLI 向けに `tooling/lsp/tests/client_compat/fixtures/metrics-stage.json`・`tests/client_compat/tests/client_compat.test.ts` を更新し、`reports/dual-write/metrics-stage-mismatch.json` を Stage mismatch 再現ログとして記録。あわせて `docs/notes/runtime-metrics-capability.md` と `docs/notes/runtime-capability-stage-log.md` に設計・観測手順を追記した。
+> - LSP/CLI 向けに `tooling/lsp/tests/client_compat/fixtures/metrics-stage.json`・`tests/client_compat/tests/client_compat.test.ts` を更新し、`reports/dual-write/metrics-stage-mismatch.json` を Stage mismatch 再現ログとして記録。あわせて `docs/notes/runtime/runtime-metrics-capability.md` と `docs/notes/runtime/runtime-capability-stage-log.md` に設計・観測手順を追記した。
 
 > 進行ログ（Phase3 W48, 5.1–5.2）  
 > - Feature ゲートを再編し、`compiler/rust/runtime/Cargo.toml` へ `metrics` を新設。`core_numeric`/`core_time` が自動的に `metrics` を有効化し、`compiler/rust/runtime/src/lib.rs` で `diagnostics` と `time` モジュールを `metrics` 基準で公開するよう更新した。  
@@ -276,7 +276,7 @@ Rust 実装は `Numeric`/`IterNumericExt` を用意したものの、`mean`/`var
 6.3. `docs/guides/runtime/runtime-bridges.md`/`docs/guides/ecosystem/ai-integration.md` 等でメトリクス活用例を更新する。  
 実施ステップ:
 - `docs/guides/runtime/runtime-bridges.md` に `MetricPoint`/`emit_metric` を使ったブリッジ実装例を追加し、`docs/guides/ecosystem/ai-integration.md` には AI ワークロード監視のケーススタディを記載する。
-- `docs/notes/dsl-plugin-roadmap.md` にメトリクス/時間 API を利用するプラグイン要件を追記し、Capability Stage との整合を脚注に記す。
+- `docs/notes/dsl/dsl-plugin-roadmap.md` にメトリクス/時間 API を利用するプラグイン要件を追記し、Capability Stage との整合を脚注に記す。
 - ガイド更新後に `scripts/check-links.sh docs/guides` を実行してリンク切れを検証する。
 
 ### 7. テスト・ベンチマーク統合（47週目）

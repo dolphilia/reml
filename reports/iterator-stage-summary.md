@@ -34,7 +34,7 @@
   - `scripts/validate-diagnostic-json.sh --pattern iterator.flat_map --pattern iterator.zip reports/spec-audit/ch1/core_iter_adapters.json`
 - KPI: `iterator.flat_map.mem_reservation = 3 byte`（`EffectLabels.mem=true`）、`iterator.zip.shorter_error_rate = 1.0`（`iterator.error.zip_shorter = 1/1`）。いずれも Stage 要件 (`Exact(beta)` / `Exact(stable)`) を満たし、`iterator.stage.audit_pass_rate = 1.0` を維持。
 - Snapshots: `compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap`（`flat_map_vec` / `zip_mismatch`）。
-- 連携資料: `reports/spec-audit/ch0/links.md#iter-adapters`, `reports/iterator-flatmap-metrics.json`, `reports/iterator-zip-metrics.json`, `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a, `docs/notes/core-library-outline.md#iter-g2-flat-zip`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#iterator-adapter-esc`.
+- 連携資料: `reports/spec-audit/ch0/links.md#iter-adapters`, `reports/iterator-flatmap-metrics.json`, `reports/iterator-zip-metrics.json`, `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a, `docs/notes/stdlib/core-library-outline.md#iter-g2-flat-zip`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#iterator-adapter-esc`.
 
 #### <a id="iter-buffered"></a>Iter Adapter G3 (buffered/backpressure)
 - 実行コマンド:
@@ -44,7 +44,7 @@
   - `scripts/validate-diagnostic-json.sh --pattern iterator.buffered reports/spec-audit/ch1/core_iter_adapters.json`
 - KPI: `iterator.mem.window.bytes = 2`、`iterator.mem.window.backpressure = 0.33`（`reports/iterator-buffered-metrics.json`）、`windows_per_sec = 1.89e6` / `delta_pct = +0.038`（`reports/benchmarks/iter_buffered-2027-02-22.json`）。`StageRequirement = Exact("experimental")` を満たし、`iterator.stage.audit_pass_rate = 1.0` を維持。
 - Snapshots: `compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap`（`buffered_window`） / `reports/spec-audit/ch1/iterator.buffered.diagnostics.json`。
-- 連携資料: `reports/spec-audit/ch0/links.md#iter-buffered`, `reports/iterator-buffered-metrics.json`, `reports/benchmarks/iter_buffered-2027-02-22.json`, `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a, `docs/notes/core-library-outline.md#iter-g3-buffered-backpressure`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#iterator-adapter-esc`.
+- 連携資料: `reports/spec-audit/ch0/links.md#iter-buffered`, `reports/iterator-buffered-metrics.json`, `reports/benchmarks/iter_buffered-2027-02-22.json`, `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a, `docs/notes/stdlib/core-library-outline.md#iter-g3-buffered-backpressure`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#iterator-adapter-esc`.
 
 #### <a id="iter-adapters-g4"></a>Iter Adapter G4 (KPI/文書同期)
 - 実行コマンド:
@@ -52,4 +52,4 @@
   - `python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case adapters --source reports/spec-audit/ch1/core_iter_adapters.json --output reports/iterator-adapter-metrics.json --require-success`
   - `scripts/validate-diagnostic-json.sh --pattern iterator.map --pattern iterator.zip reports/spec-audit/ch1/core_iter_adapters.json`
 - KPI: `iterator.adapter.coverage = 1.0`（adapter 12 API）、`diagnostic.audit_presence_rate = 1.0`、`iterator.stage.audit_pass_rate = 1.0` を `reports/iterator-adapter-metrics.json` に保存し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `iterator.adapter.coverage` 行として追加。`prelude_api_inventory.toml` の `meta.last_updated = "2027-02-24 / WBS 3.1c-G4"` に同期した。
-- 連携資料: `reports/spec-audit/ch0/links.md#iter-adapters-g4`, `reports/spec-audit/ch1/core_iter_adapters.json`, `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a, `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#iter-adapter`, `docs/notes/core-library-outline.md#iter-adapter`, `docs-migrations.log`（2027-02-24-iter-adapter-g4）。
+- 連携資料: `reports/spec-audit/ch0/links.md#iter-adapters-g4`, `reports/spec-audit/ch1/core_iter_adapters.json`, `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a, `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#iter-adapter`, `docs/notes/stdlib/core-library-outline.md#iter-adapter`, `docs-migrations.log`（2027-02-24-iter-adapter-g4）。

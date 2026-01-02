@@ -24,7 +24,7 @@
   - `reports/spec-audit/ch4/logs/ffi-build-*.md`
   - `reports/spec-audit/ch4/logs/ffi-dsl-*.md`
   - `reports/spec-audit/ch4/logs/ffi-bindgen-*.md`
-- WIT 調査は `docs/notes/ffi-wasm-component-model-log.md` と `docs/guides/ffi/ffi-wit-poc.md` の更新内容を対象とし、PoC 実施後に外部ツール名と生成物パスを追記する。
+- WIT 調査は `docs/notes/ffi/ffi-wasm-component-model-log.md` と `docs/guides/ffi/ffi-wit-poc.md` の更新内容を対象とし、PoC 実施後に外部ツール名と生成物パスを追記する。
 
 ## 標準ライブラリ回帰接続（Phase 4 追加）
 
@@ -248,13 +248,13 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 3. **検証とフォローアップ**（5.8 週）  
    - shim 経由で `core_prelude` が利用可能になったら、`tests/core_iter_*` の snapshot を更新し `reports/spec-audit/ch4/spec-core-dashboard.md` に `FFI/Core Prelude` の pass 率を新設。  
-   - `capability` shim の将来廃止に備え、`reml_runtime` モジュールを直接依存として使う長期方針を `docs/notes/core-library-outline.md` へ TODO 記録し、Phase 5 で `reml_core_prelude` を共通 crate 化する提案を追記する。
+   - `capability` shim の将来廃止に備え、`reml_runtime` モジュールを直接依存として使う長期方針を `docs/notes/stdlib/core-library-outline.md` へ TODO 記録し、Phase 5 で `reml_core_prelude` を共通 crate 化する提案を追記する。
 
 #### ✅ 5.7 週 実施ログ（FFI/Core Prelude capability shim）
 
 - `compiler/rust/runtime/ffi/src/lib.rs:16-74` と `src/capability.rs` を棚卸しし、`#[cfg(feature = "core_prelude")]` で読み込む `collections`/`config`/`prelude` 群が `crate::capability::{contract,registry}` を参照する前提になっていることを確認。`docs/spec/3-1-core-prelude-iteration.md§3` と `docs/spec/3-6-core-diagnostics-audit.md§1` の Stage 契約を根拠に、rustc 上で `cargo check -p reml_runtime_ffi --features core_prelude` を実行して shim が依存関係を満たすことを再検証した（log: `compiler/rust/runtime/ffi` 直下、2026-02-17 13:20JST）。
 - Phase4 KPI に FFI 回路を組み込むため `phase4-scenario-matrix.csv` へ `FFI-CORE-PRELUDE-001` を追加し、`category=FFI` / `spec_chapter=chapter3.prelude` / `stage_requirement=StageRequirement::AtLeast(Beta)` として `core_iter_effects` スナップショットを追跡。`docs/plans/bootstrap-roadmap/assets/README.md` に `FFI` 行を追加し、同時に `docs/spec/0-2-glossary.md` へ「FFI/Core Prelude 回帰カテゴリー」を登録した。`resolution_notes` には `cargo check -p reml_runtime_ffi --features core_prelude` と `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_effects` の組み合わせを記録し、以降の再実行ログを集約できるようにした。
-- dual-write ランブック `docs/plans/rust-migration/1-3-dual-write-runbook.md` の前提条件へ「FFI/Core Prelude ハーネス確認」を追加し、`core_iter_*` テストを実行する前に `reml_runtime_ffi` capability shim を `cargo check` で保証する手順を明文化。`reports/spec-audit/ch4/spec-core-dashboard.md` に `FFI/Core Prelude` KPI セクションを新設して、`FFI-CORE-PRELUDE-001` の pass 率と参照コマンドをレポートに残す。長期的には `docs/notes/core-library-outline.md` の TODO に shim 廃止計画を追記し、Phase 5 で `reml_runtime` との直接依存へ移行することを記録した。
+- dual-write ランブック `docs/plans/rust-migration/1-3-dual-write-runbook.md` の前提条件へ「FFI/Core Prelude ハーネス確認」を追加し、`core_iter_*` テストを実行する前に `reml_runtime_ffi` capability shim を `cargo check` で保証する手順を明文化。`reports/spec-audit/ch4/spec-core-dashboard.md` に `FFI/Core Prelude` KPI セクションを新設して、`FFI-CORE-PRELUDE-001` の pass 率と参照コマンドをレポートに残す。長期的には `docs/notes/stdlib/core-library-outline.md` の TODO に shim 廃止計画を追記し、Phase 5 で `reml_runtime` との直接依存へ移行することを記録した。
 
 ### フェーズE: spec_core サンプル実行保証（新規）
 
@@ -270,7 +270,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 3. **コード・コンパイラ修正フロー**（6.0 週以降継続）  
    - Example Fix の場合は `.reml` と `expected/` を修正し、`docs/spec/1-5-formal-grammar-bnf.md` の該当規則への相互参照を確認。修正内容は `docs/plans/bootstrap-roadmap/4-1-missing-examples-plan.md` の完了ログへ追記し、再発防止策として `examples/spec_core/README.md` にスタイルガイドを追加する。  
-   - Compiler Fix の場合は本計画のフェーズ A〜D を参照し、対象コンポーネント（Parser/Typeck/Runtime/FFI）別に Issue を起票。再現手順・Affected Scenario ID・想定診断を `docs/notes/examples-regression-log.md` に追記する。  
+   - Compiler Fix の場合は本計画のフェーズ A〜D を参照し、対象コンポーネント（Parser/Typeck/Runtime/FFI）別に Issue を起票。再現手順・Affected Scenario ID・想定診断を `docs/notes/process/examples-regression-log.md` に追記する。  
    - Spec Fix は `docs/spec/1-x`〜`3-x` の該当章へ脚注または本文追記し、`phase4-scenario-matrix.csv` の `spec_anchor` を更新する。必要に応じて `docs/spec/0-2-glossary.md` に用語を追記し、解釈のブレを防ぐ。
 
 4. **フォローアップとハンドオーバー**（継続）  
@@ -316,7 +316,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 
 ### フェーズF: 全 `.reml` 逐次実行・完全是正（新規）
 
-`examples/` 配下にあるすべての `.reml` を 1 ファイルずつ愚直に実行し、期待した成功/失敗へ確実に到達させるフェーズ。効率よりも完遂を優先し、実行ログと仕様照合結果を `phase4-scenario-matrix.csv`・`reports/spec-audit/ch4/*.md`・`docs/notes/examples-regression-log.md` に逐次反映する。
+`examples/` 配下にあるすべての `.reml` を 1 ファイルずつ愚直に実行し、期待した成功/失敗へ確実に到達させるフェーズ。効率よりも完遂を優先し、実行ログと仕様照合結果を `phase4-scenario-matrix.csv`・`reports/spec-audit/ch4/*.md`・`docs/notes/process/examples-regression-log.md` に逐次反映する。
 
 #### フェーズF 実施手順
 
@@ -451,7 +451,7 @@ Rust Frontend の `spec_core` テストは `reml_runtime_ffi` を dev-dep とし
 - [x] `examples/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.reml`（期待: 失敗診断 → 2025-12-17 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.reml` で `parser.syntax.expected_tokens` を再取得 / expected=`expected/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead.diagnostic.json`。比較対象（Cut 無し相当）=`examples/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead-no-cut.reml` / expected=`expected/spec_core/chapter2/parser_core/core-parse-cut-branch-mislead-no-cut.diagnostic.json`）
 - [x] `examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren.reml`（期待: 失敗診断 → 2025-12-17 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren.reml` で `parser.syntax.expected_tokens` を再取得 / expected=`expected/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren.diagnostic.json`。比較対象（Cut 無し相当）=`examples/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren-no-cut.reml` / expected=`expected/spec_core/chapter2/parser_core/core-parse-cut-unclosed-paren-no-cut.diagnostic.json`）
 - [x] `examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml`（期待: 失敗診断 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/parser_core/core-parse-recover-diagnostic.reml` で `core.parse.recover.branch` の単一診断を再取得 / log=reports/spec-audit/ch4/logs/spec_core-20251210T081000Z.md）
-- [x] `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`（期待: 失敗診断 → DSL 復元後の 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml` で `core.parse.opbuilder.level_conflict` を取得。最新の再実行: CLI=同左 / diagnostics=`core.parse.opbuilder.level_conflict` / log=reports/spec-audit/ch4/logs/spec_core-20251210T130034Z.md。仕様/実装整合は `docs/notes/opbuilder-dsl-decisions.md` に記録済み）
+- [x] `examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml`（期待: 失敗診断 → DSL 復元後の 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/op_builder/core-opbuilder-level-conflict-error.reml` で `core.parse.opbuilder.level_conflict` を取得。最新の再実行: CLI=同左 / diagnostics=`core.parse.opbuilder.level_conflict` / log=reports/spec-audit/ch4/logs/spec_core-20251210T130034Z.md。仕様/実装整合は `docs/notes/dsl/opbuilder-dsl-decisions.md` に記録済み）
 - [x] `examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml`（期待: 成功 → 2025-12-10 CLI=`cargo run --quiet --manifest-path compiler/rust/frontend/Cargo.toml --bin reml_frontend -- --output json examples/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.reml` で diagnostics=[] / stdout=`expected/spec_core/chapter2/streaming/core-parse-runstream-demandhint-ok.stdout` / 同ログ参照）
 - [ ] `CH2-PARSE-901` autoWhitespace/Layout 回帰: `examples/spec_core/chapter2/parser_core/core-parse-autowhitespace-layout.reml` と stdout ゴールデンを追加（RunConfig.lex に layout_profile が無い場合も cfg.profile へフォールバックする構成）。PhaseF で CLI/LSP/Streaming を実行し、layout_token が期待どおり扱われるか確認する。
 - [ ] `CH2-PARSE-902` ParserProfile JSON: `examples/spec_core/chapter2/parser_core/core-parse-profile-output.reml` を追加し、`extensions["parse"].profile_output` で `expected/spec_core/chapter2/parser_core/core-parse-or-commit.profile.json` を best-effort 出力する経路を用意。PhaseF で CLI 実行し、profile 集計・書き出し失敗非影響を確認する。

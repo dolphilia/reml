@@ -19,7 +19,7 @@
 
 ### 前提
 - Xcode Command Line Tools (`xcode-select --install`) を導入済みであること。
-- Homebrew で `llvm@19`, `lld`, `cmake`, `pkg-config`, `bindgen`（将来の FFI 拡張）をインストール。`docs/notes/llvm-spec-status-survey.md` に記載された LLVM のバージョンと整合するようバイナリを固定します。
+- Homebrew で `llvm@19`, `lld`, `cmake`, `pkg-config`, `bindgen`（将来の FFI 拡張）をインストール。`docs/notes/backend/llvm-spec-status-survey.md` に記載された LLVM のバージョンと整合するようバイナリを固定します。
 - `rustup` が導入済みで `stable` をデフォルトに設定していること（`rustup default stable` / `rustup show` で確認）。
 - `docs/plans/rust-migration/2-1-runtime-integration.md` や `2-2-adapter-layer-guidelines.md` で想定されている Capabilities/FFI API を理解し、フェーズ P2 に向けた検証基盤の一部として位置づける。
 
@@ -40,7 +40,7 @@ llvm-config --version
 opt --version
 ```
 
-`llvm-config --version` や `opt --version` の結果は `reports/backend-verify/macOS/toolchain.json` などのバージョン記録に転記し、`docs/notes/llvm-spec-status-survey.md` と `docs-migrations.log` へ追記しておくとフェーズ間の整合性が保てます。
+`llvm-config --version` や `opt --version` の結果は `reports/backend-verify/macOS/toolchain.json` などのバージョン記録に転記し、`docs/notes/backend/llvm-spec-status-survey.md` と `docs-migrations.log` へ追記しておくとフェーズ間の整合性が保てます。
 
 ### ビルド手順
 1. フロントエンド

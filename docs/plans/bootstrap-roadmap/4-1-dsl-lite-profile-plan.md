@@ -1,7 +1,7 @@
 # Phase4: Reml Lite プロファイルとテンプレート計画
 
 ## 背景と決定事項
-- `docs/notes/dsl-enhancement-proposal.md` の提案「3.4 "Reml Lite" プロファイルとテンプレート」を具体化する。
+- `docs/notes/dsl/dsl-enhancement-proposal.md` の提案「3.4 "Reml Lite" プロファイルとテンプレート」を具体化する。
 - `reml new --template` は `docs/spec/5-1-package-manager-cli.md` と `docs/spec/5-4-community-content.md` に既に言及があるが、Lite 向けの仕様とテンプレート定義は未整備。
 - 0-1 §1.2 の安全性方針を崩さず、学習コストを下げるための入口として設計する。
 
@@ -434,7 +434,7 @@ tooling/templates/lite/
 - 監査ログを省略する Lite 既定では `*.audit.jsonl` を必須としない。
 
 ## 参照
-- `docs/notes/dsl-enhancement-proposal.md`
+- `docs/notes/dsl/dsl-enhancement-proposal.md`
 - `docs/spec/0-1-project-purpose.md`
 - `docs/spec/5-1-package-manager-cli.md`
 - `docs/spec/5-4-community-content.md`

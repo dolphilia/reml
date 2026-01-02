@@ -1,7 +1,7 @@
 # Phase4: DSL パラダイムキット計画（Core.Dsl.*）
 
 ## 背景と決定事項
-- `docs/notes/dsl-paradigm-support-research.md` の「2. 提案するパラダイムキット」を Phase 4 の計画へ落とし込む。
+- `docs/notes/dsl/dsl-paradigm-support-research.md` の「2. 提案するパラダイムキット」を Phase 4 の計画へ落とし込む。
 - DSL 作者が意味論実装（ディスパッチ、GC、アクター、VM）に注力しすぎる課題を解消し、Reml の DSL ファースト方針と整合させる。
 - `docs/spec/0-1-project-purpose.md` の安全性・性能・段階的習得の原則を優先し、キットは最小構成から段階的に拡張する。
 
@@ -112,7 +112,7 @@ Gc.with_scope(|scope| {
 | VM 抽象が過剰 | 実装の肥大化 | `VMCore` を最小実装に絞り、最適化や JIT を Phase 5 以降へ延期 |
 
 ## 参照
-- `docs/notes/dsl-paradigm-support-research.md`
+- `docs/notes/dsl/dsl-paradigm-support-research.md`
 - `docs/spec/0-1-project-purpose.md`
 - `docs/spec/3-0-core-library-overview.md`
 - `docs/spec/3-6-core-diagnostics-audit.md`

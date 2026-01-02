@@ -35,8 +35,8 @@ let is_generalizable ~effects expr_ty =
 - **Step0 — 現状棚卸しと再現ケース整理（Week32 Day1）**  
   - `compiler/ocaml/src/type_inference.ml:596-663` の `generalize` 実装と `infer_decl`（compiler/ocaml/src/type_inference.ml:2236, compiler/ocaml/src/type_inference.ml:2284）で `let`／`var` が常時一般化されている経路を洗い出し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に再現ログを追加する。  
   - `compiler/ocaml/tests/test_type_inference.ml`・`compiler/ocaml/tests/test_cli_diagnostics.ml` の多相化依存ケースを抽出し、現行出力と仕様差分を比較。再現用スニペットを `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分リストへ脚注として共有する。  
-  - `docs/spec/1-2-types-Inference.md:120-188` と `docs/spec/1-3-effects-safety.md` の「確定的な値」定義をチェックリストに落とし込み、`docs/notes/type-inference-roadmap.md` で値制限復元の前提を整理する。
-  - **2025-10-31 更新**: 上記棚卸しを完了し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に「TYPE-001 Day1 値制限棚卸し」を追加。`dune exec remlc -- tmp/value_restriction_var.reml --emit-tast` で `var` 束縛が多相化される再現ログを取得し、差分リストに脚注 `[^type001-step0-review]` を登録。`docs/notes/type-inference-roadmap.md` を新設して確定値・効果タグのチェックリストを共有済み。
+  - `docs/spec/1-2-types-Inference.md:120-188` と `docs/spec/1-3-effects-safety.md` の「確定的な値」定義をチェックリストに落とし込み、`docs/notes/types/type-inference-roadmap.md` で値制限復元の前提を整理する。
+  - **2025-10-31 更新**: 上記棚卸しを完了し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に「TYPE-001 Day1 値制限棚卸し」を追加。`dune exec remlc -- tmp/value_restriction_var.reml --emit-tast` で `var` 束縛が多相化される再現ログを取得し、差分リストに脚注 `[^type001-step0-review]` を登録。`docs/notes/types/type-inference-roadmap.md` を新設して確定値・効果タグのチェックリストを共有済み。
 - **Step1 — 値制限判定ユーティリティ設計（Week32 Day2）**  
   - `Effect_analysis.collect_expr`（compiler/ocaml/src/type_inference.ml:240-308）と `Typed_ast` ノードの構成を調査し、純粋式・値式に分類できるパターンを列挙。`Typed_ast` に補助関数が無ければ値判定用ヘルパを追加する設計案をまとめる。  
   - `docs/spec/1-5-formal-grammar-bnf.md` を参照し、λ式・構造体/列挙リテラル・定数畳み込みなど一般化対象となる式の網羅表を作成。  
@@ -51,7 +51,7 @@ let is_generalizable ~effects expr_ty =
   - `scripts/validate-diagnostic-json.sh` に値制限違反診断の検証を組み込み、`reports/diagnostic-format-regression.md` と `docs/plans/bootstrap-roadmap/2-5-review-log.md`（Day4 エントリ）へ結果を記録する。
 - **Step4 — ドキュメント整備とフォローアップ連携（Week33 Day1／2025-11-08 完了）**  
   - `docs/spec/1-2-types-Inference.md` §C.3 と `docs/spec/1-3-effects-safety.md` に OCaml 実装の判定手順と RunConfig 連携を脚注で補足し、`docs/plans/bootstrap-roadmap/2-5-proposals/README.md` の TYPE-001 項を更新する。  
-  - `docs/notes/type-inference-roadmap.md` に Stage・Capability 依存の値制限方針と Phase 2-7 への残課題を追記。  
+  - `docs/notes/types/type-inference-roadmap.md` に Stage・Capability 依存の値制限方針と Phase 2-7 への残課題を追記。  
   - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に最終レビュー記録を追加し、Phase 2-7 `execution-config` / `effect-metrics` サブチームへ移管する TODO を登録する。
 
 ### Step1 実施記録（2025-11-01）
@@ -132,7 +132,7 @@ let is_generalizable ~effects expr_ty =
 #### 4. 次工程への共有事項
 
 - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Day4 エントリを追記し、テスト雛形・メトリクス実装・診断バリデータ更新の確認手順を記録した。  
-- `docs/spec/1-2-types-Inference.md` / `docs/spec/1-3-effects-safety.md` へ追加する脚注案（値制限と効果タグの橋渡し）を Step4 文書整備項に紐付け、`docs/notes/type-inference-roadmap.md` へ残課題（Legacy モード削減計画、Stage 差分監査）を転記した。
+- `docs/spec/1-2-types-Inference.md` / `docs/spec/1-3-effects-safety.md` へ追加する脚注案（値制限と効果タグの橋渡し）を Step4 文書整備項に紐付け、`docs/notes/types/type-inference-roadmap.md` へ残課題（Legacy モード削減計画、Stage 差分監査）を転記した。
 
 ### Step4 実施記録（2025-11-08）
 
@@ -142,7 +142,7 @@ let is_generalizable ~effects expr_ty =
 - `docs/spec/2-1-parser-type.md` の RunConfig セクションへ `extensions["effects"]` の予約キーと CLI スイッチ（`--value-restriction={strict|legacy}`／`--legacy-value-restriction` の互換経路）を掲載し、`docs/spec/2-6-execution-strategy.md` ではパーサーと Typer の橋渡し要件を脚注として整理した。【S:docs/spec/2-1-parser-type.md†L118-L166】【S:docs/spec/2-6-execution-strategy.md†L38-L116】
 
 #### 2. ノートとレビュー記録
-- `docs/notes/type-inference-roadmap.md` に Stage/Capability 依存ルールと Phase 2-7 で縮退予定の Legacy モード整理を追記し、TODO リストを更新した。【N:docs/notes/type-inference-roadmap.md†L33-L74】
+- `docs/notes/types/type-inference-roadmap.md` に Stage/Capability 依存ルールと Phase 2-7 で縮退予定の Legacy モード整理を追記し、TODO リストを更新した。【N:docs/notes/types/type-inference-roadmap.md†L33-L74】
 - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step4 エントリを追加し、仕様反映・CLI スイッチ・Phase 2-7 への移管タスクを記録。`execution-config`（RunConfig CLI）と `effect-metrics`（CI 指標）へそれぞれフォローアップを割り当てた。【R:docs/plans/bootstrap-roadmap/2-5-review-log.md†L22-L38】
 
 #### 3. カタログ・差分計画の更新
@@ -156,8 +156,8 @@ let is_generalizable ~effects expr_ty =
 ## 5. フォローアップ
 - EFFECT-001 で追加する効果タグ検出ロジックと同時レビューとし、タグ不足による誤判定を避ける。  
 - Phase 2-7 `execution-config` タスクへ「値制限メトリクス収集」の連携を追加し、`RunConfig` 差分や CLI 表示と同期する。  
-- Phase 3 で予定されている Reml 実装移植時に、同じ値制限ロジックを導入するため `docs/notes/core-parser-migration.md`（予定）にも計画の要点を共有する。
-- `docs/notes/type-inference-roadmap.md` に値制限再導入の段階計画と既知の互換性リスクを記録し、PoC から正式導入までのレビュー履歴を残す。
+- Phase 3 で予定されている Reml 実装移植時に、同じ値制限ロジックを導入するため `docs/notes/parser/core-parser-migration.md`（予定）にも計画の要点を共有する。
+- `docs/notes/types/type-inference-roadmap.md` に値制限再導入の段階計画と既知の互換性リスクを記録し、PoC から正式導入までのレビュー履歴を残す。
 - **タイミング**: EFFECT-001 のタグ拡張完了直後に Phase 2-5 中盤で実装へ着手し、Phase 2-5 終盤までに値制限違反ゼロを確認する。
 
 ## 6. 残課題

@@ -230,7 +230,7 @@ Phase 2-7 では代数的効果構文（`perform` / `handle`）が PoC ステー
 - **LSP/CI**: `tooling/lsp/config/*.json` や CI の補助スクリプトでは `experimentalEffects`（camelCase）キーに `true` を設定する。`tooling/lsp/run_config_loader` が CLI と同じ RunConfig 設定を生成するため、LSP セッションからも PoC を再現できる。
 - **監査ログ**: 効果フラグを有効化した状態で CLI を実行すると、`extensions.effects.experimental` や `audit.metadata.effect.syntax.constructs.*` が出力され、`collect-iterator-audit-metrics.py --section effects --require-success` が PoC KPI を検証する。
 
-脚注 `[^effects-syntax-poc-phase25]` が撤去されるまでは、本番ビルドでフラグを既定有効にせず、PoC を必要とするタスクのみ opt-in 運用とする。フラグ名の変更が決定された場合は CLI/LSP/CI/ドキュメントの全経路を同時更新し、`docs/notes/effect-system-tracking.md` の H-O3 チェックリストを参照して整合性を確認する。
+脚注 `[^effects-syntax-poc-phase25]` が撤去されるまでは、本番ビルドでフラグを既定有効にせず、PoC を必要とするタスクのみ opt-in 運用とする。フラグ名の変更が決定された場合は CLI/LSP/CI/ドキュメントの全経路を同時更新し、`docs/notes/effects/effect-system-tracking.md` の H-O3 チェックリストを参照して整合性を確認する。
 
 ---
 

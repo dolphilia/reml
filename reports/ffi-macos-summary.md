@@ -74,7 +74,7 @@ Command got signal SEGV. (修正前ログ)
 | 構造体戻り値 | `extern` returning `{f64, f64}` | 成功（IR プリセット） | 同上、`darwin_struct_return.ll` |
 
 ### 3.1 Darwin 固有差分（可変長／構造体戻り）調査メモ
-- `arm64-apple-darwin` では可変長関数呼び出し時に整数 8 本・SIMD 8 本の Register Save Area を呼出側が確保し、`va_list` が `__gr_offs`／`__vr_offs` を用いてレジスタ退避領域を巡回する。Reml のスタブ生成では Darwin ケースのみ Register Save Area のアドレス計算を取り込む必要がある（`docs/notes/llvm-spec-status-survey.md` §2.2.2a）。
+- `arm64-apple-darwin` では可変長関数呼び出し時に整数 8 本・SIMD 8 本の Register Save Area を呼出側が確保し、`va_list` が `__gr_offs`／`__vr_offs` を用いてレジスタ退避領域を巡回する。Reml のスタブ生成では Darwin ケースのみ Register Save Area のアドレス計算を取り込む必要がある（`docs/notes/backend/llvm-spec-status-survey.md` §2.2.2a）。
 - 構造体戻り値は 16B 以下または HFA/HVA（要素数≦4）の場合に `x0-x3`／`v0-v3` で直接返却し、それ以外は `x8` に渡したポインタへ書き込む `sret align 16` が必須。LLVM 側では `Abi.classify_struct_return` の Darwin 対応を `tests/test_ffi_lowering.ml` の追加ケースで監視する。
 - 以上の差分に合わせ、`ffi_stub_builder` と `llvm_gen/codegen` の Darwin 分岐を対象に Register Save Area と `sret align 16` の検証ケースを追加する作業を別タスクとして起票予定。本サマリーでは `ffi_bridge.audit_pass_rate` 監査指標への影響を継続観測する。
 - 2025-10-20: `llvm_gen/codegen.ml` の `emit_stub_function` で `register_save_area` を参照し、Darwin macOS arm64 向けに GPR 64B / Vector 128B の RSA をスタックへ割り当て。生成 IR は `tests/test_ffi_lowering.ml` と LLVM ゴールデン (`basic_arithmetic.ll.golden` ほか) に反映し、`darwin_gpr_register_save_area` / `darwin_vector_register_save_area` シンボルの存在を回帰検証。
@@ -119,7 +119,7 @@ Command got signal SEGV. (修正前ログ)
 - [x] `extern_metadata` / `extern_decl` の重複フィールドを解消（`extern_block_target` へ改名済み）
 - [x] `effects-residual.jsonl.golden` を含む監査ゴールデンを更新
 - [x] **LLVM IRゴールデンテスト (basic_arithmetic, control_flow, function_calls) を更新**（2025-10-20）
-- [x] Darwin 向け可変長/構造体戻りの ABI 差分調査を完了し、`docs/notes/llvm-spec-status-survey.md` §2.2 を更新（2025-10-21、`§2.2.2a` 追加）
+- [x] Darwin 向け可変長/構造体戻りの ABI 差分調査を完了し、`docs/notes/backend/llvm-spec-status-survey.md` §2.2 を更新（2025-10-21、`§2.2.2a` 追加）
 - [x] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、`arm64-apple-darwin` 向けに `reml_ffi_acquire_borrowed_result` / `reml_ffi_acquire_transferred_result` の挙動を検証する。`bridge.return.ownership = borrowed/transferred` と新設した `null_results` カウンタが [docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6、[docs/spec/3-6-core-diagnostics-audit.md](../docs/spec/3-6-core-diagnostics-audit.md) §5.1 に沿って出力されることを `tests/test_ffi_lowering.ml` と `runtime/native/tests/test_ffi_bridge.c` で確認。
 - [x] CLI (`remlc --emit-ir`) を arm64-apple-darwin 向けに再実行し、`tmp/cli-callconv-out/macos/` へ IR/Audit を収集（`--verify-ir` 併用でも成功）
 

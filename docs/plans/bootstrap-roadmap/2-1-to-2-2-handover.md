@@ -21,7 +21,7 @@
 | 辞書診断強化 | `AmbiguousImpl` 発生時に `Diagnostic.extensions.typeclass.candidates` を埋め、UX を向上 | Phase 2-2 中盤 |
 | while/for 実装 | Core IR ブロック生成リファクタリング案を確定し、Phase 3 でループベンチを復旧 | Phase 3 着手前レビュー |
 
-詳細は `docs/notes/loop-implementation-plan.md` と `docs/notes/typeclass-benchmark-status.md` の TODO セクションを参照。
+詳細は `docs/notes/backend/loop-implementation-plan.md` と `docs/notes/types/typeclass-benchmark-status.md` の TODO セクションを参照。
 
 ## 4. 参照ログ・アーティファクト
 - 静的比較: `compiler/ocaml/scripts/benchmark_typeclass.sh --static-only` 実行 → `compiler/ocaml/benchmark_results/static_comparison.json`（次回実行時は CI アーティファクトとして保存）。

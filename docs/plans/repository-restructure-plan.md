@@ -28,7 +28,7 @@
 ### 2.2 文書間の依存関係
 - 仕様書からの参照はすべて相対パス（例: `[1-1-syntax.md]`）で、`docs/guides/`・`docs/notes/`・`docs/plans/` からも同一形式でリンク。
 - README / AGENTS / CLAUDE が「ルートに仕様書がある」ことを前提に説明しており、移設時に必ず改訂が必要。
-- `docs/notes/guides-to-spec-integration-plan.md` 等、過去の移行計画書が残っており、再編時に更新またはアーカイブ整備が求められる。
+- `docs/notes/process/guides-to-spec-integration-plan.md` 等、過去の移行計画書が残っており、再編時に更新またはアーカイブ整備が求められる。
 
 ### 2.3 実装フェーズとのギャップ
 - `docs/plans/bootstrap-roadmap/` では OCaml 製ブートストラップ→セルフホストのロードマップが定義済みだが、ソース配置先やビルド体制の受け皿が未整備。
@@ -127,7 +127,7 @@ docs/spec/
 ### Phase 2: ガイド・ノート・計画書の整理 (2〜3日)
 - `docs/guides/`・`docs/notes/`・`docs/plans/` を `docs/` 配下に移設。
 - テーマごとにサブディレクトリ分割（例: `docs/notes/algebraic-effects/` へ統合）。
-- `docs/notes/guides-to-spec-integration-plan.md` など旧計画書は「アーカイブ」として付箋を追記し、新構成の参照先を明示。
+- `docs/notes/process/guides-to-spec-integration-plan.md` など旧計画書は「アーカイブ」として付箋を追記し、新構成の参照先を明示。
 
 ### Phase 3: サンプル・メタ文書対応 (1〜2日)
 - `examples/` を `examples/` に改称し、内部 README のパス更新。
