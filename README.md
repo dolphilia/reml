@@ -5,21 +5,18 @@ Reml (Readable & Expressive Meta Language) はパーサーコンビネーター�
 ## サンプル
 
 ```reml
-module Examples.Practical.CoreText.Pretty.LayoutWidthBasic
+module Spec.Core.Chapter1.Match.BindingAsOk
 
-use Core.Text.Pretty
+use Core.Prelude
 
-fn main() -> Str {
-  let doc = Pretty.group(
-    Pretty.concat(
-      Pretty.text("let"),
-      Pretty.nest(2, Pretty.concat(Pretty.softline(), Pretty.text("x = 1")))
-    )
-  )
-  let wide = Pretty.render(doc, 10)
-  let narrow = Pretty.render(doc, 5)
-  "width=10:\n" + wide + "\nwidth=5:\n" + narrow
+fn describe(value: Option<Int>) -> Str {
+  match value with
+    | Some(v) as whole -> "v=" + v.to_string()
+    | None -> "none"
 }
+
+fn main() -> Str = describe(Some(42))
+
 ```
 
 ## 目的
