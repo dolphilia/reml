@@ -123,6 +123,7 @@ add_executable(reml_unit_tests
   tests/unit/test_lexer_basic.c
   tests/unit/test_parser_basic.c
   tests/unit/test_sema.c
+  tests/unit/test_bigint_runtime.c
 )
 
 target_link_libraries(reml_unit_tests
