@@ -52,6 +52,20 @@
 - **ライブラリ**: `log.c`
 - **ラッパー**: ログマクロを抽象化し、CLI フラグ (`-v`, `-vv`) で詳細レベルを制御するための `src/util/logger.h` を作成する。
 
+## 検証ログ
+- **実行日**: 2026-01-02
+- **環境**: macOS (AppleClang 17.0.0.17000404)
+- **コマンド**:
+  - `rm -rf compiler/c/build`
+  - `cmake -S compiler/c -B compiler/c/build`
+  - `cmake --build compiler/c/build`
+  - `ctest --test-dir compiler/c/build --output-on-failure`
+- **結果**: ビルド成功、`ctest` 5/5 パス。
+- **警告**:
+  - `argparse` の `OPT_INTEGER` で `-Wmissing-field-initializers` 警告が出る。
+  - `cmocka` のサンプルビルドで `-fstack-clash-protection` が未使用警告になる。
+  - `cmocka` の `cmake_minimum_required` で将来の互換性警告が出る。
+
 ## チェックリスト
 - [x] ディレクトリ構造が作成された。
 - [x] 厳格な警告フラグを設定した `CMakeLists.txt` が構成された。
