@@ -73,13 +73,13 @@
 - **診断と監査のセットアップ手順を文書化**: `3-6-core-diagnostics-audit.md` に CLI/LSP/監査ログの三点セット構築手順と推奨 `AuditPolicy` プリセットを追加し、熟練者の運用コストを削減する。[^7]
 - **Capability ベースの計測テンプレート**: `3-8-core-runtime-capability.md` に `MetricsCapability`/`AuditCapability` を組み合わせたプロファイル収集フローと `Stage` 運用のサンプルマニフェストを追加する。[^8]
 
-### 4.3 プラグイン仕様（Chapter 4）
-- **効果診断拡張の必須実装チェックリスト**: `4-1-system-plugin.md` を起点に、公式プラグインは `Diagnostic.extensions["effects"]` と `audited_syscall` を必ず実装する旨を記載し、`CapabilitySecurity` との整合チェック手順を追補する。[^8][^10]
+### 4.3 プラグイン仕様（Chapter 5）
+- **効果診断拡張の必須実装チェックリスト**: `5-1-system-plugin.md` を起点に、公式プラグインは `Diagnostic.extensions["effects"]` と `audited_syscall` を必ず実装する旨を記載し、`CapabilitySecurity` との整合チェック手順を追補する。[^8][^10]
 - **ラッパーAPIの宣言的パターン提示**: プロセス・メモリ等の各プラグイン章に `Result` ベースのラッパー例と `Effect` 宣言の雛形を追加し、命令的ライブラリを扱う際の共通テンプレートを提供する。[^10]
 - **テスト/監査テンプレートを付録化**: 監査のモックと `AuditSink` 連携方法を共有付録へまとめ、プラグイン開発者が同一の検証セットを利用できるようにする。[^7]
 
-### 4.4 エコシステムとガイド（Chapter 5 / guides）
-- **IDE/LSP での「型エラー読み解き」体験を強化**: `5-3-developer-toolchain.md` に LSP ダイアログ例と `PublishDiagnostics` のガイド付きスクリーンショットを追記し、初学者が UI で確認すべきポイントを明示する。[^9]
+### 4.4 エコシステムとガイド（Chapter 4 / guides）
+- **IDE/LSP での「型エラー読み解き」体験を強化**: `4-3-developer-toolchain.md` に LSP ダイアログ例と `PublishDiagnostics` のガイド付きスクリーンショットを追記し、初学者が UI で確認すべきポイントを明示する。[^9]
 - **新規ガイド `docs/guides/fp-transition.md`（仮）を追加**: 既存の `docs/guides/dsl/dsl-first-guide.md` と連携し、命令的思考→関数的思考へのステップ、`Iter` チェーンのリファクタ例、`Effect` 設計の FAQ を掲載する。本文完成後は README のガイド一覧にリンクを追記する。[^2][^5]
 - **学習リファレンスの索引整備**: README と `0-2-glossary.md` に新規用語（例: 「評価戦略デバッグ」「効果ステージ」）を追加し、関連章ヘの相互参照を更新する。[^2][^3][^7]
 
@@ -96,5 +96,5 @@
 [^6]: 3-2-core-collections.md:1-160。
 [^7]: 3-6-core-diagnostics-audit.md:1-160。
 [^8]: 3-8-core-runtime-capability.md:1-180。
-[^9]: 5-3-developer-toolchain.md:1-160。
-[^10]: 4-1-system-plugin.md:1-160。
+[^9]: 4-3-developer-toolchain.md:1-160。
+[^10]: 5-1-system-plugin.md:1-160。

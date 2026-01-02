@@ -1,4 +1,4 @@
-# 4.1 System Capability プラグイン — Syscall Interface & Platform Bindings
+# 5.1 System Capability プラグイン — Syscall Interface & Platform Bindings
 
 > 位置付け: 公式プラグイン（オプション）。標準API（Chapter 3）には同梱せず、必要なプロジェクトが `CapabilityRegistry` へ明示的に登録することで利用する。`0-1-project-purpose.md` が定める安全性・段階的習得の原則を守るため、プラットフォーム依存かつ `unsafe` 効果を伴う API 群を別章に分離した。
 >
@@ -11,8 +11,8 @@
 | ステータス | ドラフト（再検討中） |
 | プラグインID | `core.system` |
 | 効果タグ | `effect {syscall}`, `effect {unsafe}`, `effect {audit}`, `effect {security}`, `effect {memory}` |
-| 依存モジュール | `Core.Runtime`, `Core.IO`, `Core.Diagnostics`, `Core.Memory`（[4-3](4-3-memory-plugin.md)） |
-| 相互参照 | [3.18 Core System](3-18-core-system.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-5 Core IO & Path](3-5-core-io-path.md), [4-4 Signal Capability プラグイン](4-4-signal-plugin.md) |
+| 依存モジュール | `Core.Runtime`, `Core.IO`, `Core.Diagnostics`, `Core.Memory`（[5-3](5-3-memory-plugin.md)） |
+| 相互参照 | [3.18 Core System](3-18-core-system.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-5 Core IO & Path](3-5-core-io-path.md), [5-4 Signal Capability プラグイン](5-4-signal-plugin.md) |
 
 ## 0.5 改訂案（標準ライブラリとの境界整理）
 
@@ -79,7 +79,7 @@ pub type PlatformSyscalls = {
 
 - `PlatformSyscalls` は OS ごとに Option で提供し、Capability 登録時に該当プラットフォームのみ有効化する。
 - ラッパ関数は `Ptr<T>`, `MutPtr<T>` を用い `Core.Unsafe.Ptr` と整合する。
-- 将来的に `LinuxSyscalls::sys_mmap` は [4-3 Memory Capability プラグイン](4-3-memory-plugin.md) から再利用される。
+- 将来的に `LinuxSyscalls::sys_mmap` は [5-3 Memory Capability プラグイン](5-3-memory-plugin.md) から再利用される。
 
 ## 3. SyscallDescriptor と監査連携
 
@@ -191,10 +191,10 @@ fn enforce_syscall_policy(desc: SyscallDescriptor, policy: SyscallPolicy) -> Res
 
 ## 7. 今後の拡張
 
-- `SyscallCapability` に `subscribe_signals` や `register_eventfd` 等を追加し、[4-4 Signal Capability プラグイン](4-4-signal-plugin.md) との連携を整理。
+- `SyscallCapability` に `subscribe_signals` や `register_eventfd` 等を追加し、[5-4 Signal Capability プラグイン](5-4-signal-plugin.md) との連携を整理。
 - `PlatformSyscalls` をテンプレート生成（`@cfg`）によりカスタマイズ可能にする。
 - `SyscallPolicy` を `SecurityPolicy` の一部としてシリアライズし、CLI から構成可能にする。
 
 ---
 
-*この章はドラフトであり、公式プラグインとしての配布・審査プロセスは今後 `Chapter 5` のエコシステム仕様と連携して更新される。*
+*この章はドラフトであり、公式プラグインとしての配布・審査プロセスは今後 `Chapter 4` のエコシステム仕様と連携して更新される。*

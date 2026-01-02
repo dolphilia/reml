@@ -31,7 +31,7 @@
 ## 5. 実施ステップ
 1. **現状棚卸しと仕様語彙の再整理（Week31 Day1）**  
    - `compiler/ocaml/src/diagnostic.ml` / `diagnostic_serialization.ml` / `cli/json_formatter.ml` / `tooling/lsp/lsp_transport.ml` を横断し、`error_domain` 列挙のハードコード箇所と分岐網羅率を洗い出す。  
-   - `docs/spec/3-6-core-diagnostics-audit.md:160-215` と `docs/spec/3-8-core-runtime-capability.md:210-260`、`docs/spec/4-7-core-parse-plugin.md:120-188` を再確認し、`Effect` / `Target` / `Plugin` / `Lsp` / `Other` の定義根拠と関連メタデータ（例: `effect.stage.required`, `bridge.stage.reload`, `plugin.bundle.signature`）を表形式で整理する。  
+   - `docs/spec/3-6-core-diagnostics-audit.md:160-215` と `docs/spec/3-8-core-runtime-capability.md:210-260`、`docs/spec/5-7-core-parse-plugin.md:120-188` を再確認し、`Effect` / `Target` / `Plugin` / `Lsp` / `Other` の定義根拠と関連メタデータ（例: `effect.stage.required`, `bridge.stage.reload`, `plugin.bundle.signature`）を表形式で整理する。  
    - `rg "error_domain"`、`rg "DiagnosticDomain"`、`rg "extensions\[\"effects\"\]"` を用いて利用箇所を列挙し、Phase 2-7 の RunConfig/lex シム計画（PARSER-002 / LEXER-002 / EFFECT-003）とのインターフェイスを棚卸しする。
 
    #### Step1 棚卸し結果（2025-11-26 更新）
@@ -55,7 +55,7 @@
    | 基本 12 項目（`Syntax` / `Parser` / `Type` / `Effect` / `Runtime` / `Config` / `Manifest` / `Target` / `Security` / `Plugin` / `Cli` / `Lsp` / `Other(Str)`） | `docs/spec/3-6-core-diagnostics-audit.md:178-191` | `Other(Str)` は snake_case 推奨。実装は `Manifest` / `Effect` / `Plugin` / `Lsp` を未提供。 |
    | `Effect` ドメイン | `docs/spec/3-6-core-diagnostics-audit.md:324-343`<br>`docs/spec/3-8-core-runtime-capability.md:132-285` | `extensions["effects"]` に `stage.*` / `iterator.*` を必須出力、`AuditEnvelope.metadata["effect.stage.required"]` 等と同期。 |
    | `Target` / `Manifest` | `docs/spec/3-6-core-diagnostics-audit.md:963-999`<br>`docs/spec/3-8-core-runtime-capability.md:254-285` | `extensions["target"]` に `profile_id` / `triple` / `capabilities` を記録し、監査ログ `event.domain = "target"` と整合。 |
-   | `Plugin` | `docs/spec/4-7-core-parse-plugin.md:120-188` | `AuditEnvelope.metadata["plugin.signature.*"]` と `extensions["plugin"].bundle_id` が必須。 |
+   | `Plugin` | `docs/spec/5-7-core-parse-plugin.md:120-188` | `AuditEnvelope.metadata["plugin.signature.*"]` と `extensions["plugin"].bundle_id` が必須。 |
    | `Regex` | `docs/spec/2-2-core-combinator.md:274`<br>`docs/spec/2-6-execution-strategy.md:259`<br>`docs/spec/3-3-core-text-unicode.md:428` | `extensions["regex"].unicode_profile` や RunConfig `extensions["regex"]` と連携。 |
    | `Text` | `docs/spec/3-3-core-text-unicode.md:93` | Unicode 正規化フェーズで `DiagnosticDomain::Text` を利用。 |
    | `Template` | `docs/spec/3-6-core-diagnostics-audit.md:905-939` | テンプレート DSL 用の `extensions["template"]` を定義済み。 |

@@ -93,6 +93,6 @@
 - `docs/spec/3-18-core-system.md`
 - `docs/spec/3-8-core-runtime-capability.md`
 - `docs/spec/3-10-core-env.md`
-- `docs/spec/4-0-official-plugins-overview.md`
+- `docs/spec/5-0-official-plugins-overview.md`
 - `docs/plans/docs-examples-audit/2-0-stdlib-plugin-migration-plan.md`
 - `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md`

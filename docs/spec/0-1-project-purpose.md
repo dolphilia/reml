@@ -58,7 +58,7 @@ Reml の設計では、以下の価値観を重視します。優先度順に整
 - **具体的な基準**:
   - Stage の厳密性: `StageRequirement::{Exact, AtLeast}` に基づき、`verify_capability_stage` と `RuntimeBridgeRegistry` の検証結果が [3-6 診断と監査](3-6-core-diagnostics-audit.md) の `effects.contract.stage_mismatch` / `bridge.stage.*` 診断へ即時反映されること。
   - 監査ログの整合: `AuditEnvelope.metadata` に `effect.stage.required`・`bridge.reload` など共通キーを記録し、`RuntimeBridgeAuditSpec`（[3-8-core-runtime-capability.md](3-8-core-runtime-capability.md) §10）と同一のエビデンスでレビューできること。
-  - DSL プラグイン連携: [4-7-core-parse-plugin.md](4-7-core-parse-plugin.md) の署名検証・Bundle 契約が `Capability Stage` 下限と衝突しないよう `../notes/dsl-plugin-roadmap.md` のチェックリストで昇格条件を共有する。
+  - DSL プラグイン連携: [5-7-core-parse-plugin.md](5-7-core-parse-plugin.md) の署名検証・Bundle 契約が `Capability Stage` 下限と衝突しないよう `../notes/dsl-plugin-roadmap.md` のチェックリストで昇格条件を共有する。
   - 実行ストリームとの同居: `DemandHint` や `FlowController` を利用するストリーミング実行（[2-7-core-parse-streaming.md](2-7-core-parse-streaming.md)）でも同一 Stage ポリシーを適用し、バックプレッシャー制御と Capability 監査が競合しないこと。
 
 ### 目指すべき原則（中優先）

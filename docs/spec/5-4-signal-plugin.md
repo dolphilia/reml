@@ -1,4 +1,4 @@
-# 4.4 Signal Capability プラグイン — Inter-Process Signals & Handlers
+# 5.4 Signal Capability プラグイン — Inter-Process Signals & Handlers
 
 > 位置付け: 公式プラグイン（オプション）。OS シグナルは `unsafe` 操作とプロセス制御を伴うため、標準 API は [3-18 Core System](3-18-core-system.md) へ移行し、本章は低レベルのハンドラ登録と Capability 審査を扱う。
 >
@@ -11,7 +11,7 @@
 | ステータス | ドラフト（低レベル維持） |
 | プラグインID | `core.signal` |
 | 効果タグ | `effect {signal}`, `effect {process}`, `effect {unsafe}`, `effect {audit}`, `effect {security}`, `effect {io.blocking}` |
-| 依存モジュール | `Core.Runtime`, `Core.System`, [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-2 Process Capability プラグイン](4-2-process-plugin.md), `Core.Diagnostics`, `Core.Unsafe.Ptr` |
+| 依存モジュール | `Core.Runtime`, `Core.System`, [5-1 System Capability プラグイン](5-1-system-plugin.md), [5-2 Process Capability プラグイン](5-2-process-plugin.md), `Core.Diagnostics`, `Core.Unsafe.Ptr` |
 | 相互参照 | [3.18 Core System](3-18-core-system.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
 
 ## 0.5 標準ライブラリ移行の確定
@@ -94,4 +94,4 @@ fn wait_for_child() -> Result<SignalInfo, SignalError> {
 
 ---
 
-*本章はドラフトであり、公式プラグインとしての配布・審査プロセスは `Chapter 5` のエコシステム仕様と連携して更新される。*
+*本章はドラフトであり、公式プラグインとしての配布・審査プロセスは `Chapter 4` のエコシステム仕様と連携して更新される。*

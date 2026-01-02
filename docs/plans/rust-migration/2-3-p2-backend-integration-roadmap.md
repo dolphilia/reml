@@ -15,7 +15,7 @@ Phase P2 の目的は、OCaml 実装と等価な LLVM バックエンドを Rust
 
 ## 2.3.3 スコープ
 - **含む**: LLVM バックエンド実装とゴールデン比較、FFI/Runtime 統合、アダプタ API、監査/診断メタデータ、Windows 3 ターゲット（GNU/MSVC, macOS, Linux）の検証、dual-write 自動化（`scripts/poc_dualwrite_compare.sh` 拡張）。
-- **含まない**: OCaml 実装側の大規模刷新、DSL プラグイン Capability の昇格審査（Chapter 4 以降）、CI マトリクス最適化（Phase 3 スコープ）、Self-host 実行判定（Phase 4）。
+- **含まない**: OCaml 実装側の大規模刷新、DSL プラグイン Capability の昇格審査（Chapter 5 以降）、CI マトリクス最適化（Phase 3 スコープ）、Self-host 実行判定（Phase 4）。
 - **前提**: P1 計画 (`docs/plans/rust-migration/1-0-front-end-transition.md` ほか) の完了条件が満たされ、MIR まで Rust 側で生成できる。P0 (`0-1-baseline-and-diff-assets.md`) の比較治具が稼働しており、`p1-spec-compliance-gap.md`・`p1-rust-frontend-gap-report.md` で列挙された差分がクローズ済み。
 
 ## 2.3.4 成果物一覧

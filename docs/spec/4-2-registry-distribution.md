@@ -1,4 +1,4 @@
-# 5.2 Registry & Distribution
+# 4.2 Registry & Distribution
 
 > 目的：Reml パッケージレジストリおよび配布モデル（分散・中央ハイブリッド）の仕様を定義し、`reml publish` コマンドや依存解決の基盤を整備する。
 
@@ -8,7 +8,7 @@
 | --- | --- |
 | ステータス | 執筆中（Working Draft） |
 | 参照文書 | [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md) §2, §4.2, §5.2 |
-| 関連章 | [3-6-core-diagnostics-audit.md](3-6-core-diagnostics-audit.md), [3-7-core-config-data.md](3-7-core-config-data.md), [3-8-core-runtime-capability.md](3-8-core-runtime-capability.md), [5-1-package-manager-cli.md](5-1-package-manager-cli.md) |
+| 関連章 | [3-6-core-diagnostics-audit.md](3-6-core-diagnostics-audit.md), [3-7-core-config-data.md](3-7-core-config-data.md), [3-8-core-runtime-capability.md](3-8-core-runtime-capability.md), [4-1-package-manager-cli.md](4-1-package-manager-cli.md) |
 
 ## 1. レジストリアーキテクチャ
 

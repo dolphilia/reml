@@ -8,7 +8,7 @@
 
 ## スコープ
 - **含む**: CapabilityRegistry 構造、CapabilityHandle バリアント、登録・取得・検証 API、Stage 要件検証、Descriptor 表示、監査連携、ドキュメント更新。
-- **含まない**: 各 Capability の個別実装詳細 (Async runtime 等)。それらは Phase 3 の別タスクや Chapter 4 プラグインで扱う。
+- **含まない**: 各 Capability の個別実装詳細 (Async runtime 等)。それらは Phase 3 の別タスクや Chapter 5 プラグインで扱う。
 - **前提**: `Core.Diagnostics`/`Core.Config`/`Core.Runtime` 基盤が整備済みであり、Phase 2 の効果システムタスクが完了していること。
 
 ## 作業ブレークダウン
@@ -195,7 +195,7 @@
 - README の「Core.Runtime & Capability 進捗」節で `reml_capability describe` の使い方と `reports/spec-audit/ch3/capability_stage-mismatch-20251206.json` の参照先を案内し、Stage 監査サンプルを一覧化した。
 - `docs/plans/bootstrap-roadmap/0-2-roadmap-structure.md` に `## 0.2.5 Capability Registry マイルストーン` を追加し、Capability テーブル更新と KPI 取得ルートを文書体系へ位置付けた。
 6.3. `docs/notes/dsl/dsl-plugin-roadmap.md` に Stage/Capability の適用例を追加し、プラグイン開発者向けに共有する。
-    - 6.3.a DSL プラグイン別の Capability 要求表を `docs/plans/bootstrap-roadmap/assets/plugin-capability-matrix.csv` として作成し、`4-7-core-parse-plugin.md` から参照する。
+    - 6.3.a DSL プラグイン別の Capability 要求表を `docs/plans/bootstrap-roadmap/assets/plugin-capability-matrix.csv` として作成し、`5-7-core-parse-plugin.md` から参照する。
     - 6.3.b `docs/notes/dsl/dsl-plugin-roadmap.md#effect-handling-matrix` に Stage 要件のサンプル（`verify_conductor_contract` 実行例）を追記する。
     - 6.3.c `docs/guides/dsl/plugin-authoring.md` に `reml capability describe <plugin-id>` の利用方法と Plan 3.8 への依存を追記する。
 

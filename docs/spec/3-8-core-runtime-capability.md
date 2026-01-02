@@ -82,7 +82,7 @@ pub enum CapabilityHandle =
   | Security(SecurityCapability)
 ```
 
-各 Capability の概要は以下の通りで、OS／プラットフォーム依存コンポーネントは公式プラグイン仕様（Chapter 4）に詳細を委ねる。表は `reml_capability list --format json` の結果を `scripts/capability/generate_md.py` で生成し、Stage/効果スコープ/Provider/Manifest 情報を常に最新化できるようにしている。
+各 Capability の概要は以下の通りで、OS／プラットフォーム依存コンポーネントは公式プラグイン仕様（Chapter 5）に詳細を委ねる。表は `reml_capability list --format json` の結果を `scripts/capability/generate_md.py` で生成し、Stage/効果スコープ/Provider/Manifest 情報を常に最新化できるようにしている。
 
 <!-- capability-table:start -->
 | Capability | Stage | Effect Scope | Provider | Manifest Path |
@@ -255,7 +255,7 @@ $ reml_frontend --capability describe io.fs.read --output json
 pub type CapabilitySet = Set<CapabilityId>
 ```
 
-- `CapabilitySet` は DSL プラグインやランタイムブリッジが公開する Capability ID の集合を表し、Chapter 4（とくに [4-7](4-7-core-parse-plugin.md)）の登録 API と共有する共通表現である。
+- `CapabilitySet` は DSL プラグインやランタイムブリッジが公開する Capability ID の集合を表し、Chapter 5（とくに [5-7](5-7-core-parse-plugin.md)）の登録 API と共有する共通表現である。
 
 ### 1.3 プラットフォーム情報と能力 {#platform-info}
 
@@ -829,7 +829,7 @@ pub type PluginCapability = {
 }
 ```
 
-- `PluginId`, `PluginMetadata`, `ParserPlugin`, `ParserPluginCapability`, `PluginBundleManifest`, `PluginSignature`, `VerificationPolicy`, `PluginError` は [4-7 Core.Parse.Plugin](4-7-core-parse-plugin.md) で定義される。
+- `PluginId`, `PluginMetadata`, `ParserPlugin`, `ParserPluginCapability`, `PluginBundleManifest`, `PluginSignature`, `VerificationPolicy`, `PluginError` は [5-7 Core.Parse.Plugin](5-7-core-parse-plugin.md) で定義される。
 - `register_plugin` / `register_bundle` は DSL プラグインの Capability 情報を Registry に公開し、戻り値として登録された Capability ID の集合（`CapabilitySet`）を返す。これにより `CapabilityDescriptor.provider = Plugin` として参照可能になる。
 - `revoke_plugin` はアンインストール時の監査イベント `plugin.revoke` を必須化し、`CapabilityRegistry::describe` における `provider` を更新する。
 - `verify_signature` は [3-6 §1.3](3-6-core-diagnostics-audit.md#signature-verification) の監査モジュールと連携して署名検証結果をログ化し、`VerificationPolicy` に応じた警告/エラーを生成する。

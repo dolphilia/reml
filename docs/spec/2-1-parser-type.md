@@ -295,7 +295,7 @@ type ParseResultWithRest<T> = {
 
 ## I. プラグイン連携の位置付け
 
-Reml コアの `Core.Parse` はプラグイン登録 API を持ちません。DSL 拡張や capability 管理が必要な場合は、オプションモジュール `Core.Parse.Plugin`（[4-7](4-7-core-parse-plugin.md) 参照）を読み込み、そこで提供される `register_plugin`/`register_capability` 等を介して機能を注入してください。運用指針やテンプレートは `../guides/DSL-plugin.md` を参照にします。これにより、コア API は小さく安定したまま、プロジェクト固有の拡張点を opt-in で追加できます。
+Reml コアの `Core.Parse` はプラグイン登録 API を持ちません。DSL 拡張や capability 管理が必要な場合は、オプションモジュール `Core.Parse.Plugin`（[5-7](5-7-core-parse-plugin.md) 参照）を読み込み、そこで提供される `register_plugin`/`register_capability` 等を介して機能を注入してください。運用指針やテンプレートは `../guides/DSL-plugin.md` を参照にします。これにより、コア API は小さく安定したまま、プロジェクト固有の拡張点を opt-in で追加できます。
 
 ---
 

@@ -480,7 +480,7 @@
 | 9.2 FFI テスト | sec_9_2 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_9_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 | 9.3 Unsafe テスト | sec_9_3 | examples/docs-examples/spec/3-9-core-async-ffi-unsafe/sec_9_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
-### docs/spec/4-1-system-plugin.md
+### docs/spec/5-1-system-plugin.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1. SyscallCapability API | sec_1 | examples/docs-examples/spec/4-1-system-plugin/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
@@ -490,7 +490,7 @@
 | 4. システムエラーと変換 | sec_4 | examples/docs-examples/spec/4-1-system-plugin/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 | 5. セキュリティポリシーとの統合 | sec_5 | examples/docs-examples/spec/4-1-system-plugin/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | done |
 
-### docs/spec/4-2-process-plugin.md
+### docs/spec/5-2-process-plugin.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1. ProcessCapability API | sec_1 | examples/docs-examples/spec/4-2-process-plugin/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
@@ -500,7 +500,7 @@
 | 4. スレッド API | sec_4 | examples/docs-examples/spec/4-2-process-plugin/sec_4.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
 | 5. エラー構造 | sec_5 | examples/docs-examples/spec/4-2-process-plugin/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
 
-### docs/spec/4-3-memory-plugin.md
+### docs/spec/5-3-memory-plugin.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1. MemoryCapability API | sec_1 | examples/docs-examples/spec/4-3-memory-plugin/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
@@ -511,7 +511,7 @@
 | 5. 監査テンプレート | sec_5 | examples/docs-examples/spec/4-3-memory-plugin/sec_5.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
 | 6. 高レベルユーティリティ | sec_6 | examples/docs-examples/spec/4-3-memory-plugin/sec_6.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
 
-### docs/spec/4-4-signal-plugin.md
+### docs/spec/5-4-signal-plugin.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1. SignalCapability API | sec_1 | examples/docs-examples/spec/4-4-signal-plugin/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
@@ -520,21 +520,21 @@
 | 4.1 グレースフルシャットダウン | sec_4_1 | examples/docs-examples/spec/4-4-signal-plugin/sec_4_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
 | 4.2 シグナル待ち | sec_4_2 | examples/docs-examples/spec/4-4-signal-plugin/sec_4_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
 
-### docs/spec/4-5-hardware-plugin.md
+### docs/spec/5-5-hardware-plugin.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1. HardwareCapability API | sec_1 | examples/docs-examples/spec/4-5-hardware-plugin/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
 | 2. 型定義 | sec_2 | examples/docs-examples/spec/4-5-hardware-plugin/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
 | 3. エラーと監査 | sec_3 | examples/docs-examples/spec/4-5-hardware-plugin/sec_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
 
-### docs/spec/4-6-realtime-plugin.md
+### docs/spec/5-6-realtime-plugin.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1. RealTimeCapability API | sec_1 | examples/docs-examples/spec/4-6-realtime-plugin/sec_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
 | 2. 型定義 | sec_2 | examples/docs-examples/spec/4-6-realtime-plugin/sec_2.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
 | 3. エラーと監査 | sec_3 | examples/docs-examples/spec/4-6-realtime-plugin/sec_3.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |
 
-### docs/spec/4-7-core-parse-plugin.md
+### docs/spec/5-7-core-parse-plugin.md
 | 節 | コード名 | .reml パス | category | 方針 | diag_code | 修正状況 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1.1 ID・バージョン・互換性 | sec_1_1 | examples/docs-examples/spec/4-7-core-parse-plugin/sec_1_1.reml | syntax | Rust Frontend 未対応の可能性。仕様優先で簡略サンプル/宣言順調整/関数ラップを検討。必要なら rustcap を併記。 | - | todo |

@@ -18,7 +18,7 @@
 - コアドキュメント: `README.md`、[0-0-overview.md](../../spec/0-0-overview.md)、[0-1-project-purpose.md](../../spec/0-1-project-purpose.md)
 - ガイド類: `docs/guides/compiler/llvm-integration-notes.md`、`docs/guides/dsl/plugin-authoring.md`、`docs/guides/runtime/runtime-bridges.md`
 - 標準ライブラリ仕様: [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md)、[3-10-core-env.md](../../spec/3-10-core-env.md)
-- エコシステム: [5-1-package-manager-cli.md](../../spec/5-1-package-manager-cli.md)、[5-2-registry-distribution.md](../../spec/5-2-registry-distribution.md)、[5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md)
+- エコシステム: [4-1-package-manager-cli.md](../../spec/4-1-package-manager-cli.md)、[4-2-registry-distribution.md](../../spec/4-2-registry-distribution.md)、[4-3-developer-toolchain.md](../../spec/4-3-developer-toolchain.md)
 
 1.2. **変更内容の分類**
 - **Critical**: 既存ドキュメントを Rust セルフホスト版前提へ更新し、OCaml 実装は歴史資料扱いであることを明記（ターゲット情報の更新を含む）
@@ -122,7 +122,7 @@
 4.4. **仕様書への反映**
 - [1-1-syntax.md](../../spec/1-1-syntax.md) への `@cfg` 構文最終確認
 - [3-10-core-env.md](../../spec/3-10-core-env.md) へのターゲット検出機能追記
-- [5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md) へのターゲット別ツール情報
+- [4-3-developer-toolchain.md](../../spec/4-3-developer-toolchain.md) へのターゲット別ツール情報
 - サンプルコードの追加・更新
 
 **成果物**: ターゲット情報文書、更新済み仕様書

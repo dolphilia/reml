@@ -59,15 +59,15 @@
 
 ### 3.6 DSL プラグイン & Capability (`docs/guides/dsl/DSL-plugin.md:1`)
 - **現状**: `ParserPlugin` 構造、署名検証、CLI プロトコルを定義。`docs/notes/dsl/dsl-plugin-roadmap.md` と連携。
-- **収容先**: Chapter 4 に「4.7 Core.Parse.Plugin 仕様」節を追加し、CLI フローは付録化。
+- **収容先**: Chapter 5 に「5.7 Core.Parse.Plugin 仕様」節を追加し、CLI フローは付録化。
 - **主な作業**:
-  - ✅ プラグインメタデータ、`register_plugin`/`register_bundle` API を [4-7-core-parse-plugin.md](../spec/4-7-core-parse-plugin.md) に仕様化し、Bundle 識別子・エラーモデルまで定義。
-  - ✅ 署名検証ワークフローを Stage/Capability 監査と接続（`4-7` §3、`3-8-core-runtime-capability.md` §1.2 と連動）。
+  - ✅ プラグインメタデータ、`register_plugin`/`register_bundle` API を [5-7-core-parse-plugin.md](../spec/5-7-core-parse-plugin.md) に仕様化し、Bundle 識別子・エラーモデルまで定義。
+  - ✅ 署名検証ワークフローを Stage/Capability 監査と接続（`5-7` §3、`3-8-core-runtime-capability.md` §1.2 と連動）。
   - ✅ ガイド側には導入手順・ベストプラクティスを残し、仕様へのリンクを追記（`docs/guides/dsl/DSL-plugin.md`、`docs/notes/dsl/dsl-plugin-roadmap.md`）。
-- **検証ポイント**: ✅ `4-0-official-plugins-overview.md` と `README.md`、`0-0-overview.md` のリンク構成を更新済み。
+- **検証ポイント**: ✅ `5-0-official-plugins-overview.md` と `README.md`、`0-0-overview.md` のリンク構成を更新済み。
 
 ## 4. 横断作業
-- ✅ README (`README.md`)、概説 (`0-0-overview.md`, `0-1-project-purpose.md`) に統合ハイライト節を追加し、2-7/3-7/3-8/3-9/4-7 への導線を明示。
+- ✅ README (`README.md`)、概説 (`0-0-overview.md`, `0-1-project-purpose.md`) に統合ハイライト節を追加し、2-7/3-7/3-8/3-9/5-7 への導線を明示。
 - ✅ 用語集 (`0-2-glossary.md`) に DemandHint／FlowController／RuntimeBridge／StageRequirement を追記し、Capability Stage の説明を診断メタデータと連携させた。
 - ✅ `3-6-core-diagnostics-audit.md` に Runtime Bridge 診断セクション（§8）を新設し、`3-8-core-runtime-capability.md` の Capability 表へ `RuntimeCapability::ExternalBridge` を追加。
 - ✅ `docs/notes/dsl/dsl-plugin-roadmap.md` に統合ステータス節を設け、ガイド→仕様移管の完了と監査チェックリストの参照先を明記。
@@ -76,7 +76,7 @@
 1. Core.Parse.Streaming と Core.Unsafe.Ptr を先行統合（Parser/Unsafe API の基盤整備）。
 2. Nest.Data リファレンスを 3-7 に組み込み、データ品質仕様を確定。
 3. Runtime Bridges と FFI 契約を 3-8/3-9 に編入し、ランタイム全体の整合性を確認。
-4. DSL プラグイン仕様を Chapter 4 へ導入し、関連ガイド・ノートのリンクを更新。
+4. DSL プラグイン仕様を Chapter 5 へ導入し、関連ガイド・ノートのリンクを更新。
 5. 横断作業（README・用語集・参照リンク）を一括で更新し、整合テストを実施。
 
 ## 6. レビューとフォローアップ

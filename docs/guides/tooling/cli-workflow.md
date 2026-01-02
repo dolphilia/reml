@@ -29,7 +29,7 @@ reml plugin verify --bundle plugins/bundle.json --policy strict
 reml plugin verify --bundle plugins/bundle.json --policy permissive --output json
 ```
 
-- `--bundle` は [4-7-core-parse-plugin.md](../spec/4-7-core-parse-plugin.md) の Bundle JSON 形式に従う。
+- `--bundle` は [5-7-core-parse-plugin.md](../spec/5-7-core-parse-plugin.md) の Bundle JSON 形式に従う。
 - `--policy strict` は署名必須、`permissive` は警告のみで継続する。
 
 `--output json` の出力例:

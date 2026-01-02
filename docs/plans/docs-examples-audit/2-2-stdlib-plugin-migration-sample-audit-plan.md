@@ -14,7 +14,7 @@
 - Rust テストの参照先・命名が新仕様と一致していることを確認する。
 
 ## 対象範囲
-- ドキュメント: `docs/spec/3-18-core-system.md`, `docs/spec/3-10-core-env.md`, `docs/spec/4-2-process-plugin.md`, `docs/spec/4-4-signal-plugin.md`
+- ドキュメント: `docs/spec/3-18-core-system.md`, `docs/spec/3-10-core-env.md`, `docs/spec/5-2-process-plugin.md`, `docs/spec/5-4-signal-plugin.md`
 - 在庫表: `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md`
 - サンプル: `examples/docs-examples/spec/`, `examples/practical/`, `examples/language-impl-comparison/`
 - Rust テスト: `compiler/rust/runtime/tests/core_system_api.rs`
@@ -29,7 +29,7 @@
 - `examples/practical/core_env/envcfg/env_merge_by_profile.reml` は `Core.System.Env` へ更新済み。
 - `examples/language-impl-comparison/reml/config_manifest_lifecycle.reml` は `Core.System.Env` へ更新済み。
 - `docs/spec/3-18-core-system.md` の `reml` コードブロックは棚卸し表に登録し、`examples/docs-examples/spec/3-18-core-system/` を作成済み。
-- `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` には `docs/spec/4-2-process-plugin.md` / `4-4-signal-plugin.md` の `migration:core.system.*` タグが付与済み。
+- `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` には `docs/spec/5-2-process-plugin.md` / `5-4-signal-plugin.md` の `migration:core.system.*` タグが付与済み。
 
 ### 2. Rust テストの影響
 - `compiler/rust/runtime/tests/core_system_api.rs` は `Core.System.Env` と `Core.Env` の互換性確認を含む。

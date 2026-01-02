@@ -1,4 +1,4 @@
-# 4.3 Memory Capability プラグイン — Virtual Memory & Shared Regions
+# 5.3 Memory Capability プラグイン — Virtual Memory & Shared Regions
 
 > 位置付け: 公式プラグイン（オプション）。仮想メモリや共有領域の操作は `effect {memory}` `effect {unsafe}` を多用するため、標準APIから分離し、`SecurityCapability` による導入審査を前提とする。
 >
@@ -11,7 +11,7 @@
 | ステータス | ドラフト（再検討中） |
 | プラグインID | `core.memory` |
 | 効果タグ | `effect {memory}`, `effect {syscall}`, `effect {unsafe}`, `effect {process}`, `effect {security}` |
-| 依存モジュール | `Core.Runtime`, [4-1 System Capability プラグイン](4-1-system-plugin.md), [3-18 Core System](3-18-core-system.md), `Core.Diagnostics`, `Core.Unsafe.Ptr`, `Core.IO` |
+| 依存モジュール | `Core.Runtime`, [5-1 System Capability プラグイン](5-1-system-plugin.md), [3-18 Core System](3-18-core-system.md), `Core.Diagnostics`, `Core.Unsafe.Ptr`, `Core.IO` |
 | 相互参照 | [3.18 Core System](3-18-core-system.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-5 Core IO & Path](3-5-core-io-path.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
 
 ## 0.5 改訂案（標準ライブラリとの境界）
@@ -117,7 +117,7 @@ fn log_mmap(request: MmapRequest, result: Result<MappedMemory, MemoryError>, aud
 
 - `request` の `protection`・`flags`・`file` を JSON で保存。
 - `result` が成功した場合は `ptr` と `len` を記録。失敗した場合は `MemoryError` 詳細を記録。
-- `AuditContext`（3.6）と組み合わせることで [4-1 System Capability プラグイン](4-1-system-plugin.md) の `SyscallCapability.audited_syscall` をラップできる。
+- `AuditContext`（3.6）と組み合わせることで [5-1 System Capability プラグイン](5-1-system-plugin.md) の `SyscallCapability.audited_syscall` をラップできる。
 
 ## 6. 高レベルユーティリティ
 
@@ -145,4 +145,4 @@ fn remap(memory: &mut MappedMemory, new_len: usize) -> Result<(), MemoryError>  
 
 ---
 
-*本章はドラフトであり、公式プラグインとしての配布・審査プロセスは `Chapter 5` のエコシステム仕様と連携して今後更新される。*
+*本章はドラフトであり、公式プラグインとしての配布・審査プロセスは `Chapter 4` のエコシステム仕様と連携して今後更新される。*

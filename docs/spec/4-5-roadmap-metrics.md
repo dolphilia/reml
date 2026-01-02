@@ -1,4 +1,4 @@
-# 5.5 Roadmap & Metrics
+# 4.5 Roadmap & Metrics
 
 > 目的：Reml エコシステム構築の短期・中期・長期ロードマップを定義し、その進捗を可視化する指標体系とレポーティング手順を明文化する。
 
@@ -8,7 +8,7 @@
 | --- | --- |
 | ステータス | 執筆中（Working Draft） |
 | 参照文書 | [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md) §4, §5, §6 |
-| 関連章 | [3-18-core-system.md](3-18-core-system.md), [4-1-system-plugin.md](4-1-system-plugin.md), [4-3-memory-plugin.md](4-3-memory-plugin.md), [5-6-risk-governance.md](5-6-risk-governance.md) |
+| 関連章 | [3-18-core-system.md](3-18-core-system.md), [5-1-system-plugin.md](5-1-system-plugin.md), [5-3-memory-plugin.md](5-3-memory-plugin.md), [4-6-risk-governance.md](4-6-risk-governance.md) |
 
 ## 1. ロードマップ概要
 
@@ -23,7 +23,7 @@
 ### 1.2 マイルストーン表現
 - 各フェーズは `Milestone` と `Deliverable` の 2 層で管理し、Gantt 形式で依存関係を可視化する。
 - マイルストーンは `TRK-<phase>-<number>` の ID を持ち、`roadmap.yml`（将来追加）で記述する。例：`TRK-P1-02`（ビルドパイプライン完成）。
-- 依存解決で遅延が発生した場合は [5-6](5-6-risk-governance.md) のリスクマネジメント手順に従い緩和策を適用する。
+- 依存解決で遅延が発生した場合は [4-6](4-6-risk-governance.md) のリスクマネジメント手順に従い緩和策を適用する。
 
 ## 2. 技術指標
 
@@ -54,14 +54,14 @@
 | チュートリアル完了者 | CLI から完了報告を送ったユーザー数 | 500/期 |
 
 ### 3.2 コンテンツ消費
-- ブログ閲覧数、ニュースレター開封率、動画再生数をトラッキングし、コンテンツ戦略（[5-4](5-4-community-content.md)）を改善する。
+- ブログ閲覧数、ニュースレター開封率、動画再生数をトラッキングし、コンテンツ戦略（[4-4](4-4-community-content.md)）を改善する。
 - イベント満足度アンケートは 5 段階評価で平均 4.2 以上を目指す。
 
 ## 4. リスクマネジメント連携
 
 ### 4.1 リスクマトリクス
 - 各マイルストーンに対して `可能性 (Low/Medium/High)` と `影響 (Low/Medium/High)` を評価し、`risk-register.csv`（追加予定）で追跡する。
-- 高リスク領域（High/High）は [5-6](5-6-risk-governance.md) に従ってエスカレーションし、アクションオーナーと期日を設定する。
+- 高リスク領域（High/High）は [4-6](4-6-risk-governance.md) に従ってエスカレーションし、アクションオーナーと期日を設定する。
 
 ### 4.2 緩和策トラッキング
 - 緩和策は `MIT-<id>` を付与し、実施状況を `roadmap.yml` の `mitigations` セクションで管理する。

@@ -1,4 +1,4 @@
-# 4.7 Core.Parse.Plugin — DSL 拡張プラグイン契約
+# 5.7 Core.Parse.Plugin — DSL 拡張プラグイン契約
 
 > 位置付け: 公式プラグイン（オプション）。`Core.Parse` の拡張点を opt-in で公開し、DSL をプロジェクト単位で拡張するための契約を定義する。標準ライブラリ（Chapter 3）と同等の互換性・監査要件を持ちつつ、外部提供物（プラグイン/バンドル）が Capability Registry（[3-8](3-8-core-runtime-capability.md)）へ安全に接続できることを目的とする。
 >

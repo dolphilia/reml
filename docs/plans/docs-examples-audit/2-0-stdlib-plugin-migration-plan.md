@@ -1,9 +1,9 @@
 # 2.0 標準ライブラリ移行に伴う仕様改訂計画（公式プラグイン整理）
 
-`docs/spec/4-0-official-plugins-overview.md` の移行方針に基づき、公式プラグインから標準ライブラリへ移行する領域を整理し、仕様書の改訂タスクを定義する計画書。
+`docs/spec/5-0-official-plugins-overview.md` の移行方針に基づき、公式プラグインから標準ライブラリへ移行する領域を整理し、仕様書の改訂タスクを定義する計画書。
 
 ## 背景
-- 公式プラグイン章は標準ライブラリ拡張の再整理に伴いドラフト再検討中（`docs/spec/4-0-official-plugins-overview.md`）。
+- 公式プラグイン章は標準ライブラリ拡張の再整理に伴いドラフト再検討中（`docs/spec/5-0-official-plugins-overview.md`）。
 - `docs/notes/stdlib/stdlib-expansion-research.md` と `docs/plans/bootstrap-roadmap/4-1-stdlib-improvement-implementation-plan.md` が `Core.System` への昇格を明示。
 - 仕様と実装の同期は `docs/plans/rust-migration/4-2-documentation-sync.md` のフローに従う。
 
@@ -13,9 +13,9 @@
 - ドキュメント内の Reml コード例・監査ログが移行後の API を参照するように更新する。
 
 ## 調査結果（要約）
-- 移行対象: `4-2 Process`、`4-4 Signal`、`Core.Env`（3-10）を `Core.System` に統合。
-- 残留対象: `4-1 System`（低レベル syscall）、`4-3 Memory`、`4-5 Hardware`、`4-6 Realtime` は公式プラグインとして維持。
-- 依存更新: `4-3/4-5/4-6` は `core.process` 依存を `Core.System.Process` 参照へ置換が必要。
+- 移行対象: `5-2 Process`、`5-4 Signal`、`Core.Env`（3-10）を `Core.System` に統合。
+- 残留対象: `5-1 System`（低レベル syscall）、`5-3 Memory`、`5-5 Hardware`、`5-6 Realtime` は公式プラグインとして維持。
+- 依存更新: `5-3/5-5/5-6` は `core.process` 依存を `Core.System.Process` 参照へ置換が必要。
 - ランタイム能力定義: `3-8 Core Runtime & Capability Registry` は低レベル Capability 定義として維持し、標準ライブラリ API とのブリッジ説明を追加する必要がある。
 
 ## 決定事項（採用）
@@ -38,17 +38,17 @@
 - `docs/spec/3-0-core-library-overview.md`: `Core.System` 追加と章ガイド更新。
 - `docs/spec/3-8-core-runtime-capability.md`: `ProcessCapability`/`SignalCapability` と標準 API の橋渡し指針を追記。
 - `docs/spec/3-10-core-env.md`: `Core.System.Env` への統合方針と互換エイリアスの記述更新。
-- `docs/spec/4-0-official-plugins-overview.md`: 移行済み/移行対象の明確化、章構成の調整。
-- `docs/spec/4-2-process-plugin.md`: 「標準ライブラリへ移行済み/移行中」へ明記し、低レベル Capability の残留範囲を明文化。
-- `docs/spec/4-4-signal-plugin.md`: 同上。安全 API の標準ライブラリ側移行を明示。
-- `docs/spec/4-1-system-plugin.md`: `Core.System` との橋渡し方針を更新。
-- `docs/spec/4-3-memory-plugin.md`: 依存先を `Core.System.Process` に更新。
-- `docs/spec/4-5-hardware-plugin.md`: 依存先を `Core.System.Process` に更新。
-- `docs/spec/4-6-realtime-plugin.md`: 依存先を `Core.System.Process` に更新。
+- `docs/spec/5-0-official-plugins-overview.md`: 移行済み/移行対象の明確化、章構成の調整。
+- `docs/spec/5-2-process-plugin.md`: 「標準ライブラリへ移行済み/移行中」へ明記し、低レベル Capability の残留範囲を明文化。
+- `docs/spec/5-4-signal-plugin.md`: 同上。安全 API の標準ライブラリ側移行を明示。
+- `docs/spec/5-1-system-plugin.md`: `Core.System` との橋渡し方針を更新。
+- `docs/spec/5-3-memory-plugin.md`: 依存先を `Core.System.Process` に更新。
+- `docs/spec/5-5-hardware-plugin.md`: 依存先を `Core.System.Process` に更新。
+- `docs/spec/5-6-realtime-plugin.md`: 依存先を `Core.System.Process` に更新。
 - `docs/spec/README.md`: Chapter 4 の一覧・説明を更新。
-- `docs/spec/5-4-community-content.md`: 参照章の更新（Process/Signal の移行先を反映）。
-- `docs/spec/5-5-roadmap-metrics.md`: 参照章の更新。
-- `docs/spec/5-6-risk-governance.md`: 参照章の更新。
+- `docs/spec/4-4-community-content.md`: 参照章の更新（Process/Signal の移行先を反映）。
+- `docs/spec/4-5-roadmap-metrics.md`: 参照章の更新。
+- `docs/spec/4-6-risk-governance.md`: 参照章の更新。
 - `docs/guides/runtime/portability.md`: `Core.Process` 記述を `Core.System.Process` へ修正。
 
 ### 影響調査対象（必要に応じて）
@@ -67,13 +67,13 @@
 3. `docs/spec/3-10-core-env.md` を `Core.System.Env` の説明に更新する。
 4. `docs/spec/3-8-core-runtime-capability.md` に標準 API のブリッジ説明を追記する。
 
-### フェーズC: Chapter 4 の整理
-1. `docs/spec/4-0-official-plugins-overview.md` を更新し、移行済み領域を明示する。
-2. `docs/spec/4-2-process-plugin.md` / `docs/spec/4-4-signal-plugin.md` を「低レベル Capability のみ」へ位置付け直す。
-3. `docs/spec/4-1-system-plugin.md` と `4-3/4-5/4-6` の相互参照を更新する。
+### フェーズC: Chapter 5 の整理
+1. `docs/spec/5-0-official-plugins-overview.md` を更新し、移行済み領域を明示する。
+2. `docs/spec/5-2-process-plugin.md` / `docs/spec/5-4-signal-plugin.md` を「低レベル Capability のみ」へ位置付け直す。
+3. `docs/spec/5-1-system-plugin.md` と `5-3/5-5/5-6` の相互参照を更新する。
 
 ### フェーズD: 参照整合と README 更新
-1. `docs/spec/README.md` と Chapter 5 の参照章を更新する。
+1. `docs/spec/README.md` と Chapter 4 の参照章を更新する。
 2. `docs/guides/runtime/portability.md` の `Core.Process` 表記を `Core.System.Process` に改める。
 3. 参照リンク切れ・命名揺れを `docs/plans/rust-migration/4-2-documentation-sync.md` のチェックリストに従って確認する。
 
@@ -101,17 +101,17 @@
 - [x] `docs/spec/3-8-core-runtime-capability.md` に SignalDetail との橋渡し記述を追記
 - [x] `docs/spec/3-0-core-library-overview.md` に `Core.System` 章を追記
 - [x] `docs/spec/3-10-core-env.md` の `Core.System.Env` 統合方針を反映
-- [x] `docs/spec/4-0-official-plugins-overview.md` の移行済み領域を明記
-- [x] `docs/spec/4-2-process-plugin.md` / `docs/spec/4-4-signal-plugin.md` の位置付け更新
-- [x] `docs/spec/4-1-system-plugin.md` / `4-3/4-5/4-6` の参照更新
-- [x] `docs/spec/README.md` / `docs/spec/5-4-community-content.md` / `docs/spec/5-5-roadmap-metrics.md` / `docs/spec/5-6-risk-governance.md` の参照更新
+- [x] `docs/spec/5-0-official-plugins-overview.md` の移行済み領域を明記
+- [x] `docs/spec/5-2-process-plugin.md` / `docs/spec/5-4-signal-plugin.md` の位置付け更新
+- [x] `docs/spec/5-1-system-plugin.md` / `5-3/5-5/5-6` の参照更新
+- [x] `docs/spec/README.md` / `docs/spec/4-4-community-content.md` / `docs/spec/4-5-roadmap-metrics.md` / `docs/spec/4-6-risk-governance.md` の参照更新
 - [x] `docs/guides/runtime/portability.md` の `Core.Process` 表記を `Core.System.Process` へ更新
 - [x] `docs/plans/docs-examples-audit/1-1-spec-code-block-inventory.md` の移行対象タグ付け
 - [ ] `examples/docs-examples/spec/` の `.reml` 更新と監査ログ再採取
 
 ## リスクと対応
 - **仕様重複**: `Core.Env` と `Core.System.Env` が二重記載になるリスク。統合方針を早期確定し、旧名は互換エイリアスとして明記。
-- **参照破綻**: Chapter 4 依存リンクの不整合。更新対象リストに基づく一括確認を必須化。
+- **参照破綻**: Chapter 5 依存リンクの不整合。更新対象リストに基づく一括確認を必須化。
 - **サンプル不整合**: 旧 API のサンプルが残留するリスク。`docs-examples-audit` の棚卸しで優先修正。
 
 ## TODO

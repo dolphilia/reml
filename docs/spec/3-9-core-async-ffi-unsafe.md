@@ -865,7 +865,7 @@ fn release_foreign_ptr<T>(ptr: ForeignPtr<T>) -> Result<(), FfiError>           
 fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Result<(), FfiError>   // `effect {unsafe, memory}`
 ```
 
-- `ForeignPtr<T>` は `Ptr<T>` を内包し、必要に応じて `NonNullPtr<T>` へ昇格して利用する。`layout` には [4-3 Memory Capability プラグイン](4-3-memory-plugin.md) で定義する `Layout` 情報を格納する。
+- `ForeignPtr<T>` は `Ptr<T>` を内包し、必要に応じて `NonNullPtr<T>` へ昇格して利用する。`layout` には [5-3 Memory Capability プラグイン](5-3-memory-plugin.md) で定義する `Layout` 情報を格納する。
 - `ForeignBuffer` は `Span<u8>` と所有権メタデータを保持し、`Ownership::Borrowed` の場合は解放禁止とする。
 - `call_ffi` は `unsafe` を要求し、境界で `AuditEnvelope` を付与することが推奨される。`transfer_buffer` では Capability Registry を通じて `MemoryCapability` の監査フックを呼び出す。
 - Reml → C へ値を移譲する際は RC カウンタを `inc_ref` で増加させ、ホスト側が保有を終了するときに `reml_release_*`（将来提供予定のラッパ）または `ForeignPtr.release` を呼び出す契約とする。違反時は `UnsafeErrorKind::MemoryLeak` を `FfiErrorKind::CallFailed` へ昇格し、監査ログ `ffi.call.status = "leak"` を記録する。

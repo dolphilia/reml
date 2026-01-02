@@ -1,4 +1,4 @@
-# 5.3 Developer Toolchain
+# 4.3 Developer Toolchain
 
 > 目的：IDE/LSP、フォーマッタ、リンター、デバッガー、プロファイラーなど Reml 開発者ツールチェーンの仕様を統合し、言語仕様・標準ライブラリとの結節点を明確化する。
 
@@ -8,7 +8,7 @@
 | --- | --- |
 | ステータス | 執筆中（Working Draft） |
 | 参照文書 | [guides/lsp-integration.md](../guides/lsp-integration.md), [guides/config-cli.md](../guides/config-cli.md), [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md) §4.1, §4.2 |
-| 関連章 | [3-6-core-diagnostics-audit.md](3-6-core-diagnostics-audit.md), [3-7-core-config-data.md](3-7-core-config-data.md), [3-8-core-runtime-capability.md](3-8-core-runtime-capability.md), [5-1-package-manager-cli.md](5-1-package-manager-cli.md) |
+| 関連章 | [3-6-core-diagnostics-audit.md](3-6-core-diagnostics-audit.md), [3-7-core-config-data.md](3-7-core-config-data.md), [3-8-core-runtime-capability.md](3-8-core-runtime-capability.md), [4-1-package-manager-cli.md](4-1-package-manager-cli.md) |
 
 ## 1. LSP 実装ロードマップ
 

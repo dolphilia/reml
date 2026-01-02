@@ -2,7 +2,7 @@
 
 ## 背景と決定事項
 - `docs/notes/dsl/dsl-enhancement-proposal.md` の提案「3.4 "Reml Lite" プロファイルとテンプレート」を具体化する。
-- `reml new --template` は `docs/spec/5-1-package-manager-cli.md` と `docs/spec/5-4-community-content.md` に既に言及があるが、Lite 向けの仕様とテンプレート定義は未整備。
+- `reml new --template` は `docs/spec/4-1-package-manager-cli.md` と `docs/spec/4-4-community-content.md` に既に言及があるが、Lite 向けの仕様とテンプレート定義は未整備。
 - 0-1 §1.2 の安全性方針を崩さず、学習コストを下げるための入口として設計する。
 
 ## 目的
@@ -267,15 +267,15 @@ feature_guard = ["json5", "bare_keys", "trailing_comma"]
 - `AuditEnvelope.metadata` に `event.kind` など最低限のパイプライン情報を残す方針を維持する。
 
 ### フェーズD: 仕様・ガイドの更新計画
-1. `docs/spec/5-1-package-manager-cli.md` に Lite テンプレートを追記する。
-2. `docs/spec/5-4-community-content.md` に Lite テンプレートの紹介と用途を追記する。
+1. `docs/spec/4-1-package-manager-cli.md` に Lite テンプレートを追記する。
+2. `docs/spec/4-4-community-content.md` に Lite テンプレートの紹介と用途を追記する。
 3. `docs/guides/ecosystem/manifest-authoring.md` に Lite テンプレートの最小マニフェスト例を追加する。
 
 #### 仕様・ガイド更新の詳細（案）
 
 **更新対象と目的**
-- `docs/spec/5-1-package-manager-cli.md`: `reml new --template lite` の目的、既定ポリシー、README への移行導線を明記する。
-- `docs/spec/5-4-community-content.md`: テンプレート一覧に Lite を追加し、学習/試作向けであることを明示する。
+- `docs/spec/4-1-package-manager-cli.md`: `reml new --template lite` の目的、既定ポリシー、README への移行導線を明記する。
+- `docs/spec/4-4-community-content.md`: テンプレート一覧に Lite を追加し、学習/試作向けであることを明示する。
 - `docs/guides/ecosystem/manifest-authoring.md`: Lite 向け最小 `reml.toml` 例と `project.stage` の扱いを補足する。
 
 **追記内容の要点（共通）**
@@ -294,12 +294,12 @@ feature_guard = ["json5", "bare_keys", "trailing_comma"]
 
 **追記案の具体テキスト（草案）**
 
-`docs/spec/5-1-package-manager-cli.md` 追記候補（`3.1 reml new` セクション）:
+`docs/spec/4-1-package-manager-cli.md` 追記候補（`3.1 reml new` セクション）:
 ```
 - `--template lite`: 学習/試作向けの最小構成テンプレートを生成する。監査/Capability は既定で簡略化されるが、`README.md` に標準プロファイルへの移行手順を含める。
 ```
 
-`docs/spec/5-4-community-content.md` 追記候補（テンプレート一覧）:
+`docs/spec/4-4-community-content.md` 追記候補（テンプレート一覧）:
 ```
 - `lite`: 学習・試作向けの最小テンプレート。`Core.Parse` と `Core.Test` の最小例を含み、監査と Capability は最小設定で開始する。
 ```
@@ -436,8 +436,8 @@ tooling/templates/lite/
 ## 参照
 - `docs/notes/dsl/dsl-enhancement-proposal.md`
 - `docs/spec/0-1-project-purpose.md`
-- `docs/spec/5-1-package-manager-cli.md`
-- `docs/spec/5-4-community-content.md`
+- `docs/spec/4-1-package-manager-cli.md`
+- `docs/spec/4-4-community-content.md`
 - `docs/spec/3-6-core-diagnostics-audit.md`
 - `docs/spec/3-8-core-runtime-capability.md`
 - `docs/guides/ecosystem/manifest-authoring.md`
@@ -480,8 +480,8 @@ tooling/templates/lite/
 - フェーズE: 回帰/サンプル接続の判断と配置方針
 
 **完了（仕様/ガイド反映）**
-- `docs/spec/5-1-package-manager-cli.md` に Lite テンプレート追記（README 移行導線を含む）
-- `docs/spec/5-4-community-content.md` に Lite テンプレート説明を反映
+- `docs/spec/4-1-package-manager-cli.md` に Lite テンプレート追記（README 移行導線を含む）
+- `docs/spec/4-4-community-content.md` に Lite テンプレート説明を反映
 - `docs/guides/ecosystem/manifest-authoring.md` に Lite 最小例と移行補足を追記
 - `docs/guides/dsl/dsl-gallery.md` に Lite テンプレートの既定値を反映
 

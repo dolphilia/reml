@@ -5,7 +5,7 @@
 - Phase 4 で必要な最小導線（登録・監査）を先行し、Bundle/実行基盤/WASM 連携へ繋げる。
 
 ## 計画の前提
-- 仕様: `docs/spec/4-7-core-parse-plugin.md`, `docs/spec/3-8-core-runtime-capability.md`
+- 仕様: `docs/spec/5-7-core-parse-plugin.md`, `docs/spec/3-8-core-runtime-capability.md`
 - 既存基盤: `CapabilityRegistry` / `ManifestCapabilities` / `AuditEnvelope`
 - 方針: 安全性と監査可能性を優先し、実装は段階的に公開する。
 
@@ -56,12 +56,12 @@
 
 ### E. ドキュメント整備（Bundle/CLI）
 - [x] Bundle JSON 形式の仕様追記  
-  - `docs/spec/4-7-core-parse-plugin.md`
+  - `docs/spec/5-7-core-parse-plugin.md`
 - [x] `reml plugin install --bundle` のガイド追記  
   - `docs/guides/dsl/plugin-authoring.md`
   - `docs/guides/tooling/cli-workflow.md`
 - [x] `--output json` の例とスキーマ参照を追加  
-  - `docs/spec/4-7-core-parse-plugin.md`
+  - `docs/spec/5-7-core-parse-plugin.md`
   - `docs/guides/tooling/cli-workflow.md`
   - `docs/schemas/plugin-bundle-registration.schema.json`
 
@@ -170,7 +170,7 @@
 
 #### G.1 目的とスコープ
 - [x] Phase 4 で必要な **最小導線**（`install`/`verify` と Capability の可視化）を固め、運用ログと監査キーを揃える
-- [x] 仕様/ガイド（`docs/spec/4-7-core-parse-plugin.md`, `docs/guides/tooling/cli-workflow.md`）と整合する CLI 挙動を確定する
+- [x] 仕様/ガイド（`docs/spec/5-7-core-parse-plugin.md`, `docs/guides/tooling/cli-workflow.md`）と整合する CLI 挙動を確定する
 
 #### G.2 CLI 仕様（MVP）
 - [x] `reml plugin install --bundle <path> --policy <strict|permissive> [--output human|json]`
@@ -237,7 +237,7 @@
 ## 実行経路と PluginLoader の接続設計（案）
 
 ### 1. 入力と責務
-- **入力**: `bundle.json`（`docs/spec/4-7-core-parse-plugin.md` の形式）
+- **入力**: `bundle.json`（`docs/spec/5-7-core-parse-plugin.md` の形式）
 - **責務**: バンドル読み込み → 署名/ハッシュ検証 → Manifest 読み込み → Capability 登録 → 監査ログ出力
 
 ### 2. 主要コンポーネント
@@ -261,7 +261,7 @@ reml plugin install --bundle <path> --policy <strict|permissive> [--output human
 ```
 
 - **必須**: `--bundle`  
-  - Bundle JSON のパス。`docs/spec/4-7-core-parse-plugin.md` の形式に従う。
+  - Bundle JSON のパス。`docs/spec/5-7-core-parse-plugin.md` の形式に従う。
 - **任意**: `--policy`  
   - 既定値は `strict`。`permissive` は警告のみで続行。
 - **任意**: `--output`  
@@ -302,7 +302,7 @@ reml plugin install --bundle <path> --policy <strict|permissive> [--output human
 - `docs/plans/bootstrap-roadmap/assets/capability-handle-inventory.csv`
 
 ## 参照先
-- `docs/spec/4-7-core-parse-plugin.md`
+- `docs/spec/5-7-core-parse-plugin.md`
 - `docs/spec/3-8-core-runtime-capability.md`
 - `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md`
 - `docs/notes/backend/performance-optimization-research-20251221.md`

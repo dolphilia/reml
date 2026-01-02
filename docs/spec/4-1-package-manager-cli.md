@@ -1,4 +1,4 @@
-# 5.1 Package Manager & CLI
+# 4.1 Package Manager & CLI
 
 > 目的：Reml エコシステムの基盤となる公式 CLI (`reml`) およびパッケージマネージャーの仕様を定義し、Chapter 1-3 で規定された言語・標準 API・ランタイム機能と統合する。
 
@@ -7,7 +7,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | ステータス | 執筆中（Working Draft） |
-| 参照文書 | [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md), [5-0-ecosystem-integration-plan.md](5-0-ecosystem-integration-plan.md) |
+| 参照文書 | [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md), [4-0-ecosystem-integration-plan.md](4-0-ecosystem-integration-plan.md) |
 | 主要関連章 | [1-1-syntax.md](1-1-syntax.md), [1-2-types-Inference.md](1-2-types-Inference.md), [1-3-effects-safety.md](1-3-effects-safety.md), [3-6-core-diagnostics-audit.md](3-6-core-diagnostics-audit.md), [3-7-core-config-data.md](3-7-core-config-data.md), [3-8-core-runtime-capability.md](3-8-core-runtime-capability.md) |
 
 ## 1. CLI アーキテクチャ
@@ -22,15 +22,15 @@
 | コマンド | 主要責務 | 関連章 |
 | --- | --- | --- |
 | `new` | プロジェクト雛形生成、初期マニフェスト作成 | [3-7](3-7-core-config-data.md) |
-| `add` | 依存追加とロックファイル更新、バージョン解決 | [5-2](5-2-registry-distribution.md) |
+| `add` | 依存追加とロックファイル更新、バージョン解決 | [4-2](4-2-registry-distribution.md) |
 | `build` | 解析→型推論→効果検査→コード生成を実行し、成果物とメタデータを生成 | [1-1](1-1-syntax.md), [1-2](1-2-types-Inference.md), [1-3](1-3-effects-safety.md), [2-6](2-6-execution-strategy.md) |
 | `test` | テストランナー呼び出し、ターゲット互換性検証、結果集計 | `3-10-core-test-support.md`（計画中） |
 | `fmt` | フォーマット適用、差分出力、終了コード管理 | [3-3](3-3-core-text-unicode.md), [3-6](3-6-core-diagnostics-audit.md) |
 | `check` | リンター実行、静的解析、CI 統合 | [3-6](3-6-core-diagnostics-audit.md) |
-| `publish` | レジストリ連携、成果物署名、互換性チェック | [5-2](5-2-registry-distribution.md) |
-| `registry` | レジストリの設定・同期・ステータス確認 | [5-2](5-2-registry-distribution.md) |
+| `publish` | レジストリ連携、成果物署名、互換性チェック | [4-2](4-2-registry-distribution.md) |
+| `registry` | レジストリの設定・同期・ステータス確認 | [4-2](4-2-registry-distribution.md) |
 | `target` | `TargetProfile` の管理、検証、キャッシュ制御 | [3-8](3-8-core-runtime-capability.md) |
-| `toolchain` | ランタイム/標準ライブラリ配布の取得・整合性確認 | [5-3](5-3-developer-toolchain.md) |
+| `toolchain` | ランタイム/標準ライブラリ配布の取得・整合性確認 | [4-3](4-3-developer-toolchain.md) |
 
 すべてのサブコマンドは共通の初期化ルーチンで `RunContext` を構築し、`reml.toml` の整合性を確認した後に個別ロジックへ進む。初期化の失敗は `cli.init.failed` として一貫化し、フェイズ `Init` で終了する。
 
@@ -121,7 +121,7 @@
 - 処理：
   1. `build` フェーズを再実行または既存成果物を検証。
   2. `RunArtifactMetadata` から `targets` 配列を収集し、`hash` と `signature` を検証。
-  3. レジストリ（[5-2](5-2-registry-distribution.md)）へメタデータを送信し、応答の `publish_receipt` を保存。
+  3. レジストリ（[4-2](4-2-registry-distribution.md)）へメタデータを送信し、応答の `publish_receipt` を保存。
 - 出力：成功時は `cli.publish.success` を出力し、`summary.stats.targets_uploaded` にアップロード済みターゲットを列挙。失敗時は HTTP ステータスを `extensions["registry"]` に含める。
 
 ### 3.7 `reml target`
@@ -132,7 +132,7 @@
 - `sync` は環境変数とローカル設定を比較し、差分を `target.config.mismatch` として報告。`--write-cache` で `~/.reml/targets/cache.json` を更新。
 
 ### 3.8 `reml toolchain`
-- `list` / `install` / `update` / `prune` / `verify` の詳細は [5-3](5-3-developer-toolchain.md) を参照し、CLI 側では `toolchain-manifest.toml` の変化を検出して `summary.stats.bytes_downloaded` などを更新する。
+- `list` / `install` / `update` / `prune` / `verify` の詳細は [4-3](4-3-developer-toolchain.md) を参照し、CLI 側では `toolchain-manifest.toml` の変化を検出して `summary.stats.bytes_downloaded` などを更新する。
 
 ### 3.9 `reml registry`
 - `reml registry list`：利用可能なレジストリを表示し、`default`, `auth`, `mirror` 情報を提供。

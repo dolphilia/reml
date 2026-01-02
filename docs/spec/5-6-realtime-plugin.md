@@ -1,4 +1,4 @@
-# 4.6 RealTime Capability プラグイン — Scheduling & High-Precision Timers
+# 5.6 RealTime Capability プラグイン — Scheduling & High-Precision Timers
 
 > 位置付け: 公式プラグイン（オプション）。リアルタイムスケジューリングや精密タイマーは OS 権限を要求し `effect {realtime}` を含むため、標準APIから切り離して運用審査を前提とする。
 >
@@ -11,7 +11,7 @@
 | ステータス | ドラフト（再検討中） |
 | プラグインID | `core.realtime` |
 | 効果タグ | `effect {realtime}`, `effect {thread}`, `effect {memory}`, `effect {io.timer}`, `effect {security}`, `effect {audit}` |
-| 依存モジュール | `Core.Runtime`, [3-18 Core System](3-18-core-system.md), [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-3 Memory Capability プラグイン](4-3-memory-plugin.md), `Core.Diagnostics`, `Core.Numeric & Time` |
+| 依存モジュール | `Core.Runtime`, [3-18 Core System](3-18-core-system.md), [5-1 System Capability プラグイン](5-1-system-plugin.md), [5-3 Memory Capability プラグイン](5-3-memory-plugin.md), `Core.Diagnostics`, `Core.Numeric & Time` |
 | 相互参照 | [3.18 Core System](3-18-core-system.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-5 Core IO & Path](3-5-core-io-path.md) |
 
 ## 0.5 改訂案（標準ライブラリとの境界）
@@ -32,7 +32,7 @@ pub type RealTimeCapability = {
 }
 ```
 
-- `lock_memory` / `unlock_memory` は `mlock` / `munlock` 相当であり、[4-3 Memory Capability プラグイン](4-3-memory-plugin.md) と連携する。
+- `lock_memory` / `unlock_memory` は `mlock` / `munlock` 相当であり、[5-3 Memory Capability プラグイン](5-3-memory-plugin.md) と連携する。
 - `sleep_precise` はナノ秒精度のスリープ。戻り値に実際に経過した時間を返す。
 - `create_timer` はリアルタイムタイマーを登録し、`TimerHandler` はバックグラウンドスレッドで実行される。
 
@@ -89,4 +89,4 @@ pub enum RealTimeErrorKind = Unsupported | PermissionDenied | InvalidPolicy | Ti
 
 ---
 
-*本章はドラフトであり、公式プラグインとしての配布・審査プロセスは `Chapter 5` のエコシステム仕様と連携して今後更新される。*
+*本章はドラフトであり、公式プラグインとしての配布・審査プロセスは `Chapter 4` のエコシステム仕様と連携して今後更新される。*

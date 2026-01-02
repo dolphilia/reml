@@ -19,7 +19,7 @@
 
 ## 3. エコシステム・ツールチェーンの影響源
 
-- **Cargo / npm / pip / Go modules**（`docs/spec/5-0-ecosystem-overview.md`, `docs/notes/backend/cross-compilation-spec-intro.md`）
+- **Cargo / npm / pip / Go modules**（`docs/spec/4-0-ecosystem-overview.md`, `docs/notes/backend/cross-compilation-spec-intro.md`）
   - 統合CLI、中央レジストリ、ターゲットプロファイル管理、競争的エコシステム設計などを比較研究し Reml CLI/レジストリ設計指針を抽出。
   - クロスコンパイルやツールチェーン分離は Rustup/Clang/Go の運用を参照。
 

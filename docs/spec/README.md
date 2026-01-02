@@ -47,24 +47,24 @@
 - [3-17-core-net.md](3-17-core-net.md)
 - [3-18-core-system.md](3-18-core-system.md)
 
-## 4.x 公式プラグイン仕様（Draft / 再検討中）
-- [4-0-official-plugins-overview.md](4-0-official-plugins-overview.md)
-- [4-1-system-plugin.md](4-1-system-plugin.md)
-- [4-2-process-plugin.md](4-2-process-plugin.md)
-- [4-3-memory-plugin.md](4-3-memory-plugin.md)
-- [4-4-signal-plugin.md](4-4-signal-plugin.md)
-- [4-5-hardware-plugin.md](4-5-hardware-plugin.md)
-- [4-6-realtime-plugin.md](4-6-realtime-plugin.md)
-- [4-7-core-parse-plugin.md](4-7-core-parse-plugin.md)
+## 4.x エコシステム仕様（Draft）
+- [4-0-ecosystem-overview.md](4-0-ecosystem-overview.md)
+- [4-1-package-manager-cli.md](4-1-package-manager-cli.md)
+- [4-2-registry-distribution.md](4-2-registry-distribution.md)
+- [4-3-developer-toolchain.md](4-3-developer-toolchain.md)
+- [4-4-community-content.md](4-4-community-content.md)
+- [4-5-roadmap-metrics.md](4-5-roadmap-metrics.md)
+- [4-6-risk-governance.md](4-6-risk-governance.md)
 
-## 5.x エコシステム仕様（Draft）
-- [5-0-ecosystem-overview.md](5-0-ecosystem-overview.md)
-- [5-1-package-manager-cli.md](5-1-package-manager-cli.md)
-- [5-2-registry-distribution.md](5-2-registry-distribution.md)
-- [5-3-developer-toolchain.md](5-3-developer-toolchain.md)
-- [5-4-community-content.md](5-4-community-content.md)
-- [5-5-roadmap-metrics.md](5-5-roadmap-metrics.md)
-- [5-6-risk-governance.md](5-6-risk-governance.md)
+## 5.x 公式プラグイン仕様（Draft / 再検討中）
+- [5-0-official-plugins-overview.md](5-0-official-plugins-overview.md)
+- [5-1-system-plugin.md](5-1-system-plugin.md)
+- [5-2-process-plugin.md](5-2-process-plugin.md)
+- [5-3-memory-plugin.md](5-3-memory-plugin.md)
+- [5-4-signal-plugin.md](5-4-signal-plugin.md)
+- [5-5-hardware-plugin.md](5-5-hardware-plugin.md)
+- [5-6-realtime-plugin.md](5-6-realtime-plugin.md)
+- [5-7-core-parse-plugin.md](5-7-core-parse-plugin.md)
 
 ---
 更新の際は章番号・ファイル名を維持し、相互リンクを `docs/spec/` 配下で完結させてください。

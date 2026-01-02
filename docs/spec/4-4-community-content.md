@@ -1,4 +1,4 @@
-# 5.4 Community & Content
+# 4.4 Community & Content
 
 > 目的：公式サイト、チュートリアル、イベント運営、コンテンツ戦略など Reml コミュニティエコシステムを持続的に育成するための指針を定義する。
 
@@ -8,7 +8,7 @@
 | --- | --- |
 | ステータス | 執筆中（Working Draft） |
 | 参照文書 | [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md) §3.3, §4.1, §4.2 |
-| 関連章 | [3-18-core-system.md](3-18-core-system.md), [4-1-system-plugin.md](4-1-system-plugin.md), [guides/community-handbook.md](../guides/community-handbook.md) |
+| 関連章 | [3-18-core-system.md](3-18-core-system.md), [5-1-system-plugin.md](5-1-system-plugin.md), [guides/community-handbook.md](../guides/community-handbook.md) |
 
 ## 1. 公式サイト & ドキュメント
 
@@ -97,7 +97,7 @@
 - イベント参加者満足度（アンケート）
 
 ### 6.3 公開ロードマップとの連動
-- [5-5](5-5-roadmap-metrics.md) の指標と連携し、四半期レビューで進捗を可視化する。
+- [4-5](4-5-roadmap-metrics.md) の指標と連携し、四半期レビューで進捗を可視化する。
 - KPI は「目標値」「実績」「差分」「対策」の 4 列でダッシュボード化する。
 
 ## 7. 今後の作業

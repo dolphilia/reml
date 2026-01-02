@@ -1,6 +1,6 @@
-# 5.6 Risk & Governance
+# 4.6 Risk & Governance
 
-> 目的：Reml エコシステムにおける技術・市場・リソースリスクとその軽減戦略、運営ガバナンスモデルを仕様化する。`reml-ecosystem-analysis.md` §5.4 の指針を基に、Chapter 5 の各施策と整合する枠組みを提示する。
+> 目的：Reml エコシステムにおける技術・市場・リソースリスクとその軽減戦略、運営ガバナンスモデルを仕様化する。`reml-ecosystem-analysis.md` §5.4 の指針を基に、Chapter 4 の各施策と整合する枠組みを提示する。
 
 ## 0. 仕様メタデータ
 
@@ -8,18 +8,18 @@
 | --- | --- |
 | ステータス | 執筆中（Working Draft） |
 | 参照文書 | [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md) §5.4, §6 |
-| 関連章 | [3-18-core-system.md](3-18-core-system.md), [4-1-system-plugin.md](4-1-system-plugin.md), [4-5-hardware-plugin.md](4-5-hardware-plugin.md), [5-5-roadmap-metrics.md](5-5-roadmap-metrics.md) |
+| 関連章 | [3-18-core-system.md](3-18-core-system.md), [5-1-system-plugin.md](5-1-system-plugin.md), [5-5-hardware-plugin.md](5-5-hardware-plugin.md), [4-5-roadmap-metrics.md](4-5-roadmap-metrics.md) |
 
 ## 1. リスク分類
 
 ### 1.1 技術リスク
-- **性能回帰**：CLI・ランタイムの線形性能が維持できない場合、ユーザー体験が悪化する。`reml build` ベンチマークと [5-5](5-5-roadmap-metrics.md) の KPI を連携させ、閾値違反時に即時対応する。
+- **性能回帰**：CLI・ランタイムの線形性能が維持できない場合、ユーザー体験が悪化する。`reml build` ベンチマークと [4-5](4-5-roadmap-metrics.md) の KPI を連携させ、閾値違反時に即時対応する。
 - **互換性破綻**：`TargetProfile`, `DslCapabilityProfile` の更新が後方互換性を損なう恐れ。互換性ポリシーを RFC で事前審議し、`allow-abi-drift` 等の緩和策を提供する。
 - **セキュリティ脆弱性**：レジストリ/CLI が攻撃に晒されるリスク。署名/監査ログ義務化とセキュリティレビューを標準化する。
 
 ### 1.2 市場リスク
 - **採用障壁**：競合言語や DSL プラットフォームと比較して導入コストが高い場合、コミュニティ成長が停滞する。`../guides/dsl-gallery.md` のテンプレート拡充と学習コスト削減で対応する。
-- **ブランド認知不足**：情報発信が不足するとエコシステムが閑散化。Chapter 5 全体でニュースレターやイベントを計画的に実施する。
+- **ブランド認知不足**：情報発信が不足するとエコシステムが閑散化。Chapter 4 全体でニュースレターやイベントを計画的に実施する。
 
 ### 1.3 リソースリスク
 - **開発体制の不足**：コアメンバーが限定される場合、メンテナンス負荷が集中する。ワーキンググループ制度で分担し、バス係数を向上させる。
@@ -76,7 +76,7 @@
 - 半年ごとにガバナンスモデルを点検し、TWG 編成や委任内容を調整する。
 
 ### 5.2 KPI 連動
-- [5-5](5-5-roadmap-metrics.md) の KPI と連動させ、目標未達が続く領域はリスクレベルを自動的に引き上げる。
+- [4-5](4-5-roadmap-metrics.md) の KPI と連動させ、目標未達が続く領域はリスクレベルを自動的に引き上げる。
 - 重大インシデント発生後は `Postmortem` を公開し、原因と対策を共有する。
 
 ## 6. 今後の作業

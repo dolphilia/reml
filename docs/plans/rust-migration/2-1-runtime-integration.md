@@ -15,7 +15,7 @@
   - `AuditContext`/`SecurityCapability` と連携した FFI 呼び出しラッパの導入、`effect` タグ検証 (`--effects-debug` ログ)。
 - **除外**
   - ランタイム内部実装（C コード）の刷新。必要なら `runtime/native/` 側で別途計画を立てる。
-  - DSL プラグインや外部 Capability の Stage 昇格判断（Chapter 4 に委譲）。
+  - DSL プラグインや外部 Capability の Stage 昇格判断（Chapter 5 に委譲）。
   - CI/監査メトリクスのダッシュボード構築（P3 スコープ）。
 - **前提**
   - `runtime/native/` の API が Phase 1-5 時点で整備されており、ヘッダ `reml_runtime.h` `reml_os.h` `reml_platform.h` が最新。

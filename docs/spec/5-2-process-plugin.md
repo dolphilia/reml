@@ -1,4 +1,4 @@
-# 4.2 Process Capability プラグイン — Native Process & Thread Control
+# 5.2 Process Capability プラグイン — Native Process & Thread Control
 
 > 位置付け: 公式プラグイン（オプション）。プロセス生成やスレッド制御は `effect {process}` / `effect {thread}` を伴い安全性リスクが高いため、標準 API は [3-18 Core System](3-18-core-system.md) に移行し、本章は低レベル Capability と監査審査の運用に特化する。
 >
@@ -11,8 +11,8 @@
 | ステータス | ドラフト（低レベル維持） |
 | プラグインID | `core.process` |
 | 効果タグ | `effect {process}`, `effect {thread}`, `effect {io.blocking}`, `effect {signal}`, `effect {hardware}`, `effect {security}` |
-| 依存モジュール | `Core.Runtime`, `Core.System`, [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-3 Memory Capability プラグイン](4-3-memory-plugin.md), `Core.Diagnostics`, `Core.Config` |
-| 相互参照 | [3.18 Core System](3-18-core-system.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [4-4 Signal Capability プラグイン](4-4-signal-plugin.md) |
+| 依存モジュール | `Core.Runtime`, `Core.System`, [5-1 System Capability プラグイン](5-1-system-plugin.md), [5-3 Memory Capability プラグイン](5-3-memory-plugin.md), `Core.Diagnostics`, `Core.Config` |
+| 相互参照 | [3.18 Core System](3-18-core-system.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [5-4 Signal Capability プラグイン](5-4-signal-plugin.md) |
 
 ## 0.5 標準ライブラリ移行の確定
 
@@ -85,7 +85,7 @@ fn wait_with_options(proc_handle: ProcessHandle, options: WaitOptions) -> Result
 ```
 
 - タイムアウト発生時は `ProcessErrorKind::TimedOut` を返す。
-- `collect_output = true` の場合は `Pipe` を指定した標準出力/標準エラーをバッファし、`effect {memory}`（[4-3](4-3-memory-plugin.md)）を追加で要求する。
+- `collect_output = true` の場合は `Pipe` を指定した標準出力/標準エラーをバッファし、`effect {memory}`（[5-3](5-3-memory-plugin.md)）を追加で要求する。
 
 ## 4. スレッド API
 
@@ -103,7 +103,7 @@ pub enum ThreadPriority = Low | Normal | High | Realtime
 ```
 
 - `create_thread` は `detached = true` の場合に `join_thread` を呼び出せない旨を明示する。
-- `set_thread_affinity` は [4-1 System Capability プラグイン](4-1-system-plugin.md) の `SyscallCapability` を用いて `sched_setaffinity` や `SetThreadAffinityMask` を内部的に呼び出す。
+- `set_thread_affinity` は [5-1 System Capability プラグイン](5-1-system-plugin.md) の `SyscallCapability` を用いて `sched_setaffinity` や `SetThreadAffinityMask` を内部的に呼び出す。
 
 ## 5. エラー構造
 
@@ -138,7 +138,7 @@ pub enum ThreadErrorKind = CreationFailed | JoinFailed | InvalidAffinity | Unsup
 - プロセスグループ／ジョブ制御 API (`setpgid`, `tcsetpgrp`) の追加。
 - `ThreadCapability` の独立化と `Core.Async` との統合ポイント整理。
 - プロセス監査のテンプレート (`audited_process`) を追加し、`security_audit` との連携を図る。
-- [4-3 Memory Capability プラグイン](4-3-memory-plugin.md) で提供する共有メモリ API との統合ガイドを作成する。
+- [5-3 Memory Capability プラグイン](5-3-memory-plugin.md) で提供する共有メモリ API との統合ガイドを作成する。
 
 ---
 

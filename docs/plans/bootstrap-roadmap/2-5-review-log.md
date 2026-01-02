@@ -1416,7 +1416,7 @@ S5（検証とドキュメント更新）の結果共有。
 ### 2. 仕様差分と語彙整理
 - Chapter 3 の `DiagnosticDomain` は 12 項目 + `Other(Str)` を定義し、`Effect` / `Target` / `Plugin` などに対応する `extensions`・監査キーを必須としている（`docs/spec/3-6-core-diagnostics-audit.md:178-191,324-343,905-999`）。  
 - `Effect` ドメインは Stage/Capability 監査と直結し、`extensions["effects"].stage.*` と `AuditEnvelope.metadata["effect.stage.required"]` 等を出力する契約がある（`docs/spec/3-8-core-runtime-capability.md:132-285`）。  
-- `Plugin` / `Target` / `Regex` / `Template` などは各章で専用メタデータを定義しており、RunConfig/lex シム計画（PARSER-002 / LEXER-002 / EFFECT-003）で共有するキーを統一する必要がある（`docs/spec/4-7-core-parse-plugin.md:120-188`、`docs/spec/2-2-core-combinator.md:274`、`docs/spec/2-6-execution-strategy.md:259`、`docs/spec/3-3-core-text-unicode.md:93,428`）。
+- `Plugin` / `Target` / `Regex` / `Template` などは各章で専用メタデータを定義しており、RunConfig/lex シム計画（PARSER-002 / LEXER-002 / EFFECT-003）で共有するキーを統一する必要がある（`docs/spec/5-7-core-parse-plugin.md:120-188`、`docs/spec/2-2-core-combinator.md:274`、`docs/spec/2-6-execution-strategy.md:259`、`docs/spec/3-3-core-text-unicode.md:93,428`）。
 
 ### 3. TODO / 引き継ぎ
 1. `Diagnostic.error_domain` を仕様語彙へ拡張し、`Other of string` を含む OCaml 列挙を定義する（DIAG-003 Step2）。  

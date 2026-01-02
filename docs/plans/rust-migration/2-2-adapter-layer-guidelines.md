@@ -13,7 +13,7 @@
   - `RunConfig` 連携（ターゲットプロファイル、環境 Capability）、`target.config.*` 診断との協調。
   - CI / CLI から利用する `adapter` API の公開設計（Feature フラグ・Stage ポリシー含む）。
 - **除外**
-  - DSL プラグインや拡張 Capability 導入。該当項目は Chapter 4・`docs/notes/dsl/dsl-plugin-roadmap.md` で扱う。
+  - DSL プラグインや拡張 Capability 導入。該当項目は Chapter 5・`docs/notes/dsl/dsl-plugin-roadmap.md` で扱う。
   - ハードウェア固有（GPU, GPIO 等）の詳細実装。必要に応じて後続フェーズで計画する。
   - パフォーマンス最適化（P4 スコープ）。
 - **前提**
@@ -118,7 +118,7 @@
 ## 2.2.11 次フェーズ連携
 - P3 CI 統合計画（`3-0-ci-and-dual-write-strategy.md`）でアダプタ API を活用し、dual-write テストや監査メトリクス収集の基盤を提供する。  
 - P4 リスク登録 (`4-0-risk-register.md`) ではアダプタ層の未対応ターゲット・依存クレート更新リスクを追跡する。  
-- DSL プラグイン／Capability 拡張（Chapter 4）の準備として、アダプタ API の公開仕様を `docs/guides/dsl/plugin-authoring.md` 等へ展開する。
+- DSL プラグイン／Capability 拡張（Chapter 5）の準備として、アダプタ API の公開仕様を `docs/guides/dsl/plugin-authoring.md` 等へ展開する。
 
 ---
 **参照**: `docs/guides/runtime/portability.md`, `docs/spec/3-10-core-env.md`, `docs/guides/runtime/runtime-bridges.md`, `runtime/native/include/reml_os.h`, `docs/plans/rust-migration/0-2-windows-toolchain-audit.md`, `docs/plans/rust-migration/2-0-llvm-backend-plan.md`, `docs/plans/rust-migration/2-1-runtime-integration.md`
