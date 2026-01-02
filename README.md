@@ -39,7 +39,7 @@ cargo fmt --manifest-path compiler/rust/frontend/Cargo.toml
 cargo clippy --manifest-path compiler/rust/frontend/Cargo.toml
 ```
 
-> macOS で LLVM バックエンドを含むビルドやツールチェーンの詳細は `compiler/rust/README.md` を参照してください。
+> macOS の LLVM バックエンドを含むビルドやツールチェーンの詳細は `compiler/rust/README.md` を参照してください。
 
 ## ドキュメント
 
@@ -71,4 +71,8 @@ cargo clippy --manifest-path compiler/rust/frontend/Cargo.toml
 
 ## ライセンスとクレジット
 
-Reml のライセンス整備は進行中です。再配布しているデータのライセンスは `THIRD_PARTY_LICENSES.md` と `docs/THIRD_PARTY_NOTICES.md` を参照してください。各仕様書・計画書のライセンス欄に補足がある場合は併せて確認してください。
+Reml のライセンス整備は進行中です。
+
+再配布しているデータのライセンスは `THIRD_PARTY_LICENSES.md` と `docs/THIRD_PARTY_NOTICES.md` を参照してください。
+
+各仕様書・計画書のライセンス欄に補足がある場合は併せて確認してください。
