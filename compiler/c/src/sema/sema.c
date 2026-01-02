@@ -1,5 +1,6 @@
 #include "reml/sema/sema.h"
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -249,6 +250,86 @@ static bool reml_literal_equal(reml_literal left, reml_literal right) {
     return false;
   }
   return reml_string_view_equal(left.text, right.text);
+}
+
+static reml_enum_variant *reml_enum_variant_find(UT_array *variants, reml_string_view name) {
+  if (!variants) {
+    return NULL;
+  }
+  for (reml_enum_variant *it = (reml_enum_variant *)utarray_front(variants); it != NULL;
+       it = (reml_enum_variant *)utarray_next(variants, it)) {
+    if (reml_string_view_equal(it->name, name)) {
+      return it;
+    }
+  }
+  return NULL;
+}
+
+static reml_enum_variant *reml_enum_variant_add(reml_type_ctx *ctx, reml_type *enum_type,
+                                                 reml_string_view name, size_t field_count) {
+  if (!enum_type || enum_type->kind != REML_TYPE_ENUM) {
+    return NULL;
+  }
+  if (!enum_type->data.enum_type.variants) {
+    UT_icd variant_icd = {sizeof(reml_enum_variant), NULL, NULL, NULL};
+    utarray_new(enum_type->data.enum_type.variants, &variant_icd);
+  }
+  reml_enum_variant variant;
+  variant.name = name;
+  variant.tag = (int32_t)utarray_len(enum_type->data.enum_type.variants);
+  variant.fields = NULL;
+  if (field_count > 0) {
+    UT_icd field_icd = {sizeof(reml_type *), NULL, NULL, NULL};
+    utarray_new(variant.fields, &field_icd);
+    for (size_t i = 0; i < field_count; ++i) {
+      reml_type *field_type = reml_type_make_var(ctx);
+      utarray_push_back(variant.fields, &field_type);
+    }
+  }
+  utarray_push_back(enum_type->data.enum_type.variants, &variant);
+  return reml_enum_variant_find(enum_type->data.enum_type.variants, name);
+}
+
+static size_t reml_enum_variant_count(reml_type *enum_type) {
+  if (!enum_type || enum_type->kind != REML_TYPE_ENUM || !enum_type->data.enum_type.variants) {
+    return 0;
+  }
+  return utarray_len(enum_type->data.enum_type.variants);
+}
+
+static char *reml_strip_numeric_literal(reml_string_view view) {
+  char *buffer = (char *)malloc(view.length + 1);
+  if (!buffer) {
+    return NULL;
+  }
+  size_t out = 0;
+  for (size_t i = 0; i < view.length; ++i) {
+    if (view.data[i] != '_') {
+      buffer[out++] = view.data[i];
+    }
+  }
+  buffer[out] = '\0';
+  return buffer;
+}
+
+static bool reml_parse_int_literal(reml_literal literal, int64_t *out_value) {
+  if (!out_value) {
+    return false;
+  }
+  char *text = reml_strip_numeric_literal(literal.text);
+  if (!text) {
+    return false;
+  }
+  errno = 0;
+  char *end = NULL;
+  long long value = strtoll(text, &end, 0);
+  bool ok = (errno == 0 && end != NULL && *end == '\0');
+  free(text);
+  if (!ok) {
+    return false;
+  }
+  *out_value = (int64_t)value;
+  return true;
 }
 
 static bool reml_type_is_bool(reml_type *type) {
@@ -636,16 +717,20 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
   UT_icd literal_icd = {sizeof(reml_literal), NULL, NULL, NULL};
   UT_array *seen_literals = NULL;
   utarray_new(seen_literals, &literal_icd);
+  UT_icd tag_icd = {sizeof(int32_t), NULL, NULL, NULL};
+  UT_array *seen_tags = NULL;
+  utarray_new(seen_tags, &tag_icd);
 
   if (expr->data.match_expr.arms) {
     for (reml_match_arm *it = (reml_match_arm *)utarray_front(expr->data.match_expr.arms);
          it != NULL; it = (reml_match_arm *)utarray_next(expr->data.match_expr.arms, it)) {
+      bool has_guard = it->guard != NULL;
       if (has_catch_all) {
         reml_report_diag(sema, REML_DIAG_PATTERN_UNREACHABLE_ARM, it->pattern->span,
                          "unreachable match arm");
-      } else if (reml_pattern_is_catch_all(it->pattern)) {
+      } else if (reml_pattern_is_catch_all(it->pattern) && !has_guard) {
         has_catch_all = true;
-      } else if (it->pattern && it->pattern->kind == REML_PATTERN_LITERAL) {
+      } else if (it->pattern && it->pattern->kind == REML_PATTERN_LITERAL && !has_guard) {
         bool bool_value = false;
         if (reml_pattern_is_bool_literal(it->pattern, &bool_value)) {
           if (bool_seen[bool_value ? 1 : 0]) {
@@ -658,10 +743,32 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
           reml_report_diag(sema, REML_DIAG_PATTERN_UNREACHABLE_ARM, it->pattern->span,
                            "unreachable match arm");
         }
+      } else if (it->pattern && it->pattern->kind == REML_PATTERN_CONSTRUCTOR && !has_guard) {
+        int32_t tag = it->pattern->data.ctor.tag;
+        bool seen = false;
+        for (int32_t *it_tag = (int32_t *)utarray_front(seen_tags); it_tag != NULL;
+             it_tag = (int32_t *)utarray_next(seen_tags, it_tag)) {
+          if (*it_tag == tag) {
+            seen = true;
+            break;
+          }
+        }
+        if (seen) {
+          reml_report_diag(sema, REML_DIAG_PATTERN_UNREACHABLE_ARM, it->pattern->span,
+                           "unreachable match arm");
+        } else {
+          utarray_push_back(seen_tags, &tag);
+        }
       }
       reml_symbol_table_enter(sema->symbols);
       reml_effect_set arm_effect = REML_EFFECT_NONE;
       reml_check_pattern(sema, it->pattern, scrutinee, &arm_effect, true);
+      if (it->guard) {
+        reml_effect_set guard_effect = REML_EFFECT_NONE;
+        reml_type *guard_type = reml_infer_expr(sema, it->guard, &guard_effect);
+        reml_expect_type(sema, guard_type, reml_type_bool(&sema->types), it->guard->span);
+        arm_effect = reml_effect_union(arm_effect, guard_effect);
+      }
       reml_type *arm_type = reml_infer_expr(sema, it->body, &arm_effect);
       if (!result) {
         result = arm_type;
@@ -679,12 +786,22 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
     exhaustive = bool_seen[0] && bool_seen[1];
   }
   if (!exhaustive) {
+    scrutinee = reml_type_prune(scrutinee);
+    if (scrutinee && scrutinee->kind == REML_TYPE_ENUM) {
+      exhaustive = reml_enum_variant_count(scrutinee) > 0 &&
+                   reml_enum_variant_count(scrutinee) == utarray_len(seen_tags);
+    }
+  }
+  if (!exhaustive) {
     reml_report_diag(sema, REML_DIAG_PATTERN_EXHAUSTIVENESS_MISSING, expr->span,
                      "non-exhaustive match expression");
   }
 
   if (seen_literals) {
     utarray_free(seen_literals);
+  }
+  if (seen_tags) {
+    utarray_free(seen_tags);
   }
   *effect = reml_effect_union(*effect, scrutinee_effect);
   return result ? result : reml_type_error(&sema->types);
@@ -831,9 +948,83 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
       pattern->type = literal_type;
       return;
     }
+    case REML_PATTERN_RANGE: {
+      reml_type *start_type = reml_infer_literal(sema, pattern->data.range.start);
+      reml_type *end_type = reml_infer_literal(sema, pattern->data.range.end);
+      if (!reml_expect_type(sema, start_type, expected, pattern->span) ||
+          !reml_expect_type(sema, end_type, expected, pattern->span)) {
+        pattern->type = reml_type_error(&sema->types);
+        return;
+      }
+      start_type = reml_type_prune(start_type);
+      end_type = reml_type_prune(end_type);
+      if (start_type->kind != REML_TYPE_INT || end_type->kind != REML_TYPE_INT) {
+        reml_report_diag(sema, REML_DIAG_PATTERN_RANGE_TYPE_MISMATCH, pattern->span,
+                         "range pattern expects integer bounds");
+        pattern->type = reml_type_error(&sema->types);
+        return;
+      }
+      int64_t start_value = 0;
+      int64_t end_value = 0;
+      if (reml_parse_int_literal(pattern->data.range.start, &start_value) &&
+          reml_parse_int_literal(pattern->data.range.end, &end_value)) {
+        bool inverted = pattern->data.range.inclusive ? (start_value > end_value)
+                                                      : (start_value >= end_value);
+        if (inverted) {
+          reml_report_diag(sema, REML_DIAG_PATTERN_RANGE_INVERTED, pattern->span,
+                           "range bound is inverted");
+        }
+      }
+      pattern->type = expected;
+      return;
+    }
+    case REML_PATTERN_CONSTRUCTOR: {
+      reml_type *target = reml_type_prune(expected);
+      if (target && target->kind == REML_TYPE_VAR) {
+        reml_type *enum_type = reml_type_make_enum(&sema->types);
+        reml_expect_type(sema, target, enum_type, pattern->span);
+        target = reml_type_prune(target);
+      }
+      if (!target || target->kind != REML_TYPE_ENUM) {
+        reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, pattern->span,
+                         "constructor pattern expects enum type");
+        pattern->type = reml_type_error(&sema->types);
+        return;
+      }
+      size_t field_count =
+          pattern->data.ctor.items ? utarray_len(pattern->data.ctor.items) : 0;
+      reml_enum_variant *variant =
+          reml_enum_variant_find(target->data.enum_type.variants, pattern->data.ctor.name);
+      if (!variant) {
+        variant = reml_enum_variant_add(&sema->types, target, pattern->data.ctor.name, field_count);
+      }
+      if (!variant) {
+        pattern->type = reml_type_error(&sema->types);
+        return;
+      }
+      size_t variant_fields = variant->fields ? utarray_len(variant->fields) : 0;
+      if (variant_fields != field_count) {
+        reml_report_diag(sema, REML_DIAG_PATTERN_CONSTRUCTOR_ARITY, pattern->span,
+                         "constructor arity mismatch");
+        pattern->type = reml_type_error(&sema->types);
+        return;
+      }
+      pattern->data.ctor.tag = variant->tag;
+      if (pattern->data.ctor.items && variant->fields) {
+        size_t index = 0;
+        for (reml_pattern **it = (reml_pattern **)utarray_front(pattern->data.ctor.items);
+             it != NULL;
+             it = (reml_pattern **)utarray_next(pattern->data.ctor.items, it)) {
+          reml_type **field_type = (reml_type **)utarray_eltptr(variant->fields, index);
+          reml_check_pattern(sema, *it, field_type ? *field_type : expected, effect, allow_define);
+          index++;
+        }
+      }
+      pattern->type = expected;
+      return;
+    }
     case REML_PATTERN_TUPLE:
     case REML_PATTERN_RECORD:
-    case REML_PATTERN_CONSTRUCTOR:
       reml_report_diag(sema, REML_DIAG_UNSUPPORTED_FEATURE, pattern->span,
                        "pattern kind not supported in phase 3");
       pattern->type = reml_type_error(&sema->types);

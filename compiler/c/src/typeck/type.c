@@ -179,6 +179,9 @@ bool reml_type_unify(reml_type_ctx *ctx, reml_type *left, reml_type *right) {
   }
 
   if (left->kind == right->kind) {
+    if (left->kind == REML_TYPE_ENUM) {
+      return left == right;
+    }
     if (left->kind == REML_TYPE_TUPLE || left->kind == REML_TYPE_FUNCTION) {
       return reml_type_unify_composite(ctx, left, right);
     }
@@ -218,4 +221,14 @@ reml_type *reml_type_string(reml_type_ctx *ctx) {
 
 reml_type *reml_type_unit(reml_type_ctx *ctx) {
   return ctx ? ctx->prim_unit : NULL;
+}
+
+reml_type *reml_type_make_enum(reml_type_ctx *ctx) {
+  reml_type *type = reml_type_new(ctx, REML_TYPE_ENUM);
+  if (!type) {
+    return NULL;
+  }
+  UT_icd variant_icd = {sizeof(reml_enum_variant), NULL, NULL, NULL};
+  utarray_new(type->data.enum_type.variants, &variant_icd);
+  return type;
 }

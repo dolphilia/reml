@@ -68,6 +68,7 @@ static void reml_free_match_arms(UT_array *arms) {
   for (reml_match_arm *it = (reml_match_arm *)utarray_front(arms); it != NULL;
        it = (reml_match_arm *)utarray_next(arms, it)) {
     reml_pattern_free(it->pattern);
+    reml_expr_free(it->guard);
     reml_expr_free(it->body);
   }
   utarray_free(arms);
@@ -233,6 +234,25 @@ static reml_pattern *reml_parse_pattern_primary(reml_parser *parser) {
     reml_literal literal;
     if (!reml_literal_from_token(parser, token, &literal)) {
       return NULL;
+    }
+    if (parser->current.kind == REML_TOKEN_DOTDOT ||
+        parser->current.kind == REML_TOKEN_DOTDOTEQ) {
+      bool inclusive = parser->current.kind == REML_TOKEN_DOTDOTEQ;
+      reml_parser_advance(parser);
+      reml_token end_token = parser->current;
+      if (!(end_token.kind == REML_TOKEN_INT || end_token.kind == REML_TOKEN_FLOAT ||
+            end_token.kind == REML_TOKEN_STRING || end_token.kind == REML_TOKEN_CHAR ||
+            end_token.kind == REML_TOKEN_KW_TRUE || end_token.kind == REML_TOKEN_KW_FALSE)) {
+        reml_parser_set_error(parser, "expected range bound literal", end_token.span);
+        return NULL;
+      }
+      reml_parser_advance(parser);
+      reml_literal end_literal;
+      if (!reml_literal_from_token(parser, end_token, &end_literal)) {
+        return NULL;
+      }
+      reml_span span = reml_span_combine(token.span, end_token.span);
+      return reml_pattern_make_range(span, literal, end_literal, inclusive);
     }
     return reml_pattern_make_literal(token.span, literal);
   }
@@ -508,8 +528,20 @@ static reml_expr *reml_parse_primary(reml_parser *parser) {
           reml_expr_free(scrutinee);
           return NULL;
         }
+        reml_expr *guard = NULL;
+        if (parser->current.kind == REML_TOKEN_KW_WHEN) {
+          reml_parser_advance(parser);
+          guard = reml_parse_expression_prec(parser, 0);
+          if (!guard) {
+            reml_pattern_free(pattern);
+            reml_free_match_arms(arms);
+            reml_expr_free(scrutinee);
+            return NULL;
+          }
+        }
         if (!reml_parser_expect(parser, REML_TOKEN_ARROW, "expected '->'")) {
           reml_pattern_free(pattern);
+          reml_expr_free(guard);
           reml_free_match_arms(arms);
           reml_expr_free(scrutinee);
           return NULL;
@@ -517,12 +549,14 @@ static reml_expr *reml_parse_primary(reml_parser *parser) {
         reml_expr *body = reml_parse_expression_prec(parser, 0);
         if (!body) {
           reml_pattern_free(pattern);
+          reml_expr_free(guard);
           reml_free_match_arms(arms);
           reml_expr_free(scrutinee);
           return NULL;
         }
         reml_match_arm arm;
         arm.pattern = pattern;
+        arm.guard = guard;
         arm.body = body;
         utarray_push_back(arms, &arm);
         parsed_arm = true;

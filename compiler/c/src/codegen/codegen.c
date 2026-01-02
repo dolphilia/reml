@@ -44,6 +44,7 @@ static bool reml_type_is_bigint(reml_type *type);
 static bool reml_type_is_float(reml_type *type);
 static bool reml_type_is_bool(reml_type *type);
 static bool reml_type_is_unit(reml_type *type);
+static bool reml_type_is_enum(reml_type *type);
 
 static void reml_codegen_report(reml_codegen *codegen, reml_diagnostic_code code, reml_span span,
                                 const char *message) {
@@ -194,6 +195,8 @@ static LLVMTypeRef reml_codegen_lower_type(reml_codegen *codegen, reml_type *typ
       return LLVMInt1TypeInContext(codegen->context);
     case REML_TYPE_UNIT:
       return LLVMVoidTypeInContext(codegen->context);
+    case REML_TYPE_ENUM:
+      return LLVMInt32TypeInContext(codegen->context);
     default:
       return NULL;
   }
@@ -656,6 +659,52 @@ static LLVMValueRef reml_codegen_emit_pattern_check(reml_codegen *codegen, reml_
       return LLVMBuildICmp(codegen->builder, LLVMIntEQ, cmp, zero, "match.cmp");
     }
   }
+  if (pattern->kind == REML_PATTERN_RANGE) {
+    if (!reml_type_is_int(type)) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "range pattern expects integer scrutinee");
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    int64_t start_value = 0;
+    int64_t end_value = 0;
+    reml_numeric_parse_result start_status =
+        reml_parse_int_literal(pattern->data.range.start, &start_value);
+    reml_numeric_parse_result end_status =
+        reml_parse_int_literal(pattern->data.range.end, &end_value);
+    if (start_status != REML_NUMERIC_OK || end_status != REML_NUMERIC_OK) {
+      reml_codegen_report(codegen, REML_DIAG_NUMERIC_INVALID, pattern->span,
+                          "invalid range bound literal");
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    LLVMValueRef start_const = LLVMConstInt(LLVMInt64TypeInContext(codegen->context),
+                                            (unsigned long long)start_value, 1);
+    LLVMValueRef end_const = LLVMConstInt(LLVMInt64TypeInContext(codegen->context),
+                                          (unsigned long long)end_value, 1);
+    LLVMValueRef ge =
+        LLVMBuildICmp(codegen->builder, LLVMIntSGE, scrutinee, start_const, "range.ge");
+    LLVMIntPredicate end_pred = pattern->data.range.inclusive ? LLVMIntSLE : LLVMIntSLT;
+    LLVMValueRef le =
+        LLVMBuildICmp(codegen->builder, end_pred, scrutinee, end_const, "range.le");
+    return LLVMBuildAnd(codegen->builder, ge, le, "range.and");
+  }
+  if (pattern->kind == REML_PATTERN_CONSTRUCTOR) {
+    if (!reml_type_is_enum(type)) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "constructor pattern expects enum scrutinee");
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    size_t field_count =
+        pattern->data.ctor.items ? utarray_len(pattern->data.ctor.items) : 0;
+    if (field_count > 0) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "constructor payload matching is not supported");
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    LLVMValueRef tag_const =
+        LLVMConstInt(LLVMInt32TypeInContext(codegen->context),
+                     (unsigned long long)pattern->data.ctor.tag, 1);
+    return LLVMBuildICmp(codegen->builder, LLVMIntEQ, scrutinee, tag_const, "match.tag");
+  }
 
   reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
                       "unsupported pattern in codegen");
@@ -699,8 +748,17 @@ static void reml_codegen_bind_pattern(reml_codegen *codegen, reml_codegen_scope_
     return;
   }
   if (pattern->kind == REML_PATTERN_CONSTRUCTOR) {
+    size_t field_count =
+        pattern->data.ctor.items ? utarray_len(pattern->data.ctor.items) : 0;
+    if (field_count == 0) {
+      return;
+    }
     reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
-                        "constructor patterns are not supported in codegen");
+                        "constructor payload matching is not supported in codegen");
+    return;
+  }
+  if (pattern->kind == REML_PATTERN_RANGE) {
+    return;
   }
 }
 
@@ -727,6 +785,11 @@ static bool reml_type_is_bool(reml_type *type) {
 static bool reml_type_is_unit(reml_type *type) {
   type = type ? reml_type_prune(type) : NULL;
   return type && type->kind == REML_TYPE_UNIT;
+}
+
+static bool reml_type_is_enum(reml_type *type) {
+  type = type ? reml_type_prune(type) : NULL;
+  return type && type->kind == REML_TYPE_ENUM;
 }
 
 static reml_codegen_value reml_codegen_emit_unary(reml_codegen *codegen,
@@ -1152,9 +1215,11 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
   bool any_non_terminated = false;
   LLVMBasicBlockRef current_bb = LLVMGetInsertBlock(codegen->builder);
   bool use_switch = false;
+  bool has_guard = false;
 
   if (expr->data.match_expr.arms && (reml_type_is_bool(scrutinee.type) ||
-                                     reml_type_is_int(scrutinee.type))) {
+                                     reml_type_is_int(scrutinee.type) ||
+                                     reml_type_is_enum(scrutinee.type))) {
     UT_icd case_icd = {sizeof(reml_codegen_switch_case), NULL, NULL, NULL};
     UT_array *cases = NULL;
     utarray_new(cases, &case_icd);
@@ -1168,6 +1233,11 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
     bool valid = true;
     for (reml_match_arm *it = (reml_match_arm *)utarray_front(expr->data.match_expr.arms);
          it != NULL; it = (reml_match_arm *)utarray_next(expr->data.match_expr.arms, it)) {
+      if (it->guard) {
+        has_guard = true;
+        valid = false;
+        break;
+      }
       bool catch_all = reml_pattern_is_catch_all(it->pattern);
       bool is_last = index + 1 == arm_count;
       if (catch_all) {
@@ -1197,6 +1267,75 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
           break;
         }
         utarray_push_back(seen_values, &value);
+        reml_codegen_switch_case entry = {.arm = it, .value = literal_value};
+        utarray_push_back(cases, &entry);
+      } else if (it->pattern && it->pattern->kind == REML_PATTERN_RANGE &&
+                 reml_type_is_int(scrutinee.type)) {
+        int64_t start_value = 0;
+        int64_t end_value = 0;
+        reml_numeric_parse_result start_status =
+            reml_parse_int_literal(it->pattern->data.range.start, &start_value);
+        reml_numeric_parse_result end_status =
+            reml_parse_int_literal(it->pattern->data.range.end, &end_value);
+        if (start_status != REML_NUMERIC_OK || end_status != REML_NUMERIC_OK) {
+          valid = false;
+          break;
+        }
+        bool inclusive = it->pattern->data.range.inclusive;
+        int64_t last_value = inclusive ? end_value : end_value - 1;
+        int64_t count = last_value - start_value + 1;
+        if (count <= 0 || count > 8) {
+          valid = false;
+          break;
+        }
+        for (int64_t value = start_value; value <= last_value; ++value) {
+          bool seen = false;
+          for (int64_t *it_val = (int64_t *)utarray_front(seen_values); it_val != NULL;
+               it_val = (int64_t *)utarray_next(seen_values, it_val)) {
+            if (*it_val == value) {
+              seen = true;
+              break;
+            }
+          }
+          if (seen) {
+            valid = false;
+            break;
+          }
+          utarray_push_back(seen_values, &value);
+          LLVMValueRef literal_value =
+              LLVMConstInt(LLVMInt64TypeInContext(codegen->context),
+                           (unsigned long long)value, 1);
+          reml_codegen_switch_case entry = {.arm = it, .value = literal_value};
+          utarray_push_back(cases, &entry);
+        }
+        if (!valid) {
+          break;
+        }
+      } else if (it->pattern && it->pattern->kind == REML_PATTERN_CONSTRUCTOR &&
+                 reml_type_is_enum(scrutinee.type)) {
+        size_t field_count =
+            it->pattern->data.ctor.items ? utarray_len(it->pattern->data.ctor.items) : 0;
+        if (field_count > 0) {
+          valid = false;
+          break;
+        }
+        int64_t value = it->pattern->data.ctor.tag;
+        bool seen = false;
+        for (int64_t *it_val = (int64_t *)utarray_front(seen_values); it_val != NULL;
+             it_val = (int64_t *)utarray_next(seen_values, it_val)) {
+          if (*it_val == value) {
+            seen = true;
+            break;
+          }
+        }
+        if (seen) {
+          valid = false;
+          break;
+        }
+        utarray_push_back(seen_values, &value);
+        LLVMValueRef literal_value =
+            LLVMConstInt(LLVMInt32TypeInContext(codegen->context),
+                         (unsigned long long)value, 1);
         reml_codegen_switch_case entry = {.arm = it, .value = literal_value};
         utarray_push_back(cases, &entry);
       } else {
@@ -1272,6 +1411,14 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
         }
       } else {
         bool exhaustive = reml_type_is_bool(scrutinee.type) && utarray_len(cases) == 2;
+        if (!exhaustive && reml_type_is_enum(scrutinee.type)) {
+          reml_type *enum_type = reml_type_prune(scrutinee.type);
+          size_t variant_count =
+              enum_type && enum_type->data.enum_type.variants
+                  ? utarray_len(enum_type->data.enum_type.variants)
+                  : 0;
+          exhaustive = variant_count > 0 && utarray_len(cases) == variant_count;
+        }
         if (!exhaustive) {
           reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
                               "non-exhaustive match expression");
@@ -1305,54 +1452,83 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
       for (reml_match_arm *it = (reml_match_arm *)utarray_front(expr->data.match_expr.arms);
            it != NULL && current_bb != NULL; it = (reml_match_arm *)utarray_next(
                                                    expr->data.match_expr.arms, it)) {
-        bool catch_all = reml_pattern_is_catch_all(it->pattern);
-        LLVMBasicBlockRef arm_bb =
-            LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function, "match.arm");
-        LLVMBasicBlockRef next_bb = NULL;
+      bool catch_all = reml_pattern_is_catch_all(it->pattern);
+      bool has_guard = it->guard != NULL;
+      LLVMBasicBlockRef arm_bb =
+          LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function, "match.arm");
+      LLVMBasicBlockRef next_bb = NULL;
 
-        if (catch_all) {
-          LLVMBuildBr(codegen->builder, arm_bb);
-          has_fallthrough = false;
-        } else {
+      if (catch_all) {
+        if (has_guard) {
           next_bb = LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function,
                                                   "match.next");
-          LLVMValueRef cond = reml_codegen_emit_pattern_check(codegen, it->pattern,
-                                                              scrutinee.value, scrutinee.type);
+        }
+        LLVMBuildBr(codegen->builder, arm_bb);
+        if (!has_guard) {
+          has_fallthrough = false;
+        }
+      } else {
+        next_bb = LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function,
+                                                "match.next");
+        LLVMValueRef cond = reml_codegen_emit_pattern_check(codegen, it->pattern,
+                                                            scrutinee.value, scrutinee.type);
           if (!cond) {
             cond = LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
           }
           LLVMBuildCondBr(codegen->builder, cond, arm_bb, next_bb);
         }
 
-        LLVMPositionBuilderAtEnd(codegen->builder, arm_bb);
-        reml_codegen_scope_stack_push(scopes);
-        reml_codegen_bind_pattern(codegen, scopes, it->pattern, scrutinee.value, scrutinee.type);
-        reml_codegen_value body = reml_codegen_emit_expr(codegen, scopes, it->body);
-        reml_codegen_scope_stack_pop(scopes);
+      LLVMPositionBuilderAtEnd(codegen->builder, arm_bb);
+      reml_codegen_scope_stack_push(scopes);
+      reml_codegen_bind_pattern(codegen, scopes, it->pattern, scrutinee.value, scrutinee.type);
+
+      reml_codegen_value body = {0};
+      LLVMBasicBlockRef body_bb = arm_bb;
+      if (has_guard) {
+        reml_codegen_value guard = reml_codegen_emit_expr(codegen, scopes, it->guard);
+        if (guard.terminated || !guard.value) {
+          reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, it->guard->span,
+                              "missing match guard value");
+          LLVMBuildBr(codegen->builder, next_bb);
+          reml_codegen_scope_stack_pop(scopes);
+          LLVMPositionBuilderAtEnd(codegen->builder, next_bb);
+          current_bb = next_bb;
+          continue;
+        }
+        LLVMBasicBlockRef guard_bb = LLVMAppendBasicBlockInContext(
+            codegen->context, codegen->current_function, "match.guard");
+        LLVMBuildCondBr(codegen->builder, guard.value, guard_bb, next_bb);
+        LLVMPositionBuilderAtEnd(codegen->builder, guard_bb);
+        body_bb = guard_bb;
+        body = reml_codegen_emit_expr(codegen, scopes, it->body);
+      } else {
+        body = reml_codegen_emit_expr(codegen, scopes, it->body);
+      }
+      reml_codegen_scope_stack_pop(scopes);
 
         if (!body.terminated) {
           LLVMBuildBr(codegen->builder, merge_bb);
           any_non_terminated = true;
-          if (!is_unit) {
-            if (!body.value) {
-              reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, it->body->span,
-                                  "missing match arm value");
-            } else if (incoming) {
-              reml_codegen_phi_incoming entry = {.value = body.value, .block = arm_bb};
-              utarray_push_back(incoming, &entry);
-            }
+        if (!is_unit) {
+          if (!body.value) {
+            reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, it->body->span,
+                                "missing match arm value");
+          } else if (incoming) {
+            reml_codegen_phi_incoming entry = {.value = body.value, .block = body_bb};
+            utarray_push_back(incoming, &entry);
           }
         }
-
-        if (catch_all) {
-          current_bb = NULL;
-          break;
-        }
-
-        LLVMPositionBuilderAtEnd(codegen->builder, next_bb);
-        current_bb = next_bb;
       }
+
+      if (catch_all && !has_guard) {
+        current_bb = NULL;
+        break;
+      }
+
+      LLVMPositionBuilderAtEnd(codegen->builder, next_bb);
+      current_bb = next_bb;
     }
+  }
 
     if (current_bb != NULL) {
       if (has_fallthrough) {

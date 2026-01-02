@@ -6,6 +6,8 @@
 
 #include <utarray.h>
 
+#include "reml/util/string_view.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -19,6 +21,7 @@ typedef enum {
   REML_TYPE_CHAR,
   REML_TYPE_STRING,
   REML_TYPE_UNIT,
+  REML_TYPE_ENUM,
   REML_TYPE_TUPLE,
   REML_TYPE_FUNCTION,
   REML_TYPE_VAR
@@ -26,9 +29,18 @@ typedef enum {
 
 typedef struct reml_type reml_type;
 
+typedef struct {
+  reml_string_view name;
+  UT_array *fields;
+  int32_t tag;
+} reml_enum_variant;
+
 struct reml_type {
   reml_type_kind kind;
   union {
+    struct {
+      UT_array *variants;
+    } enum_type;
     struct {
       UT_array *items;
     } tuple;
@@ -72,6 +84,7 @@ reml_type *reml_type_bool(reml_type_ctx *ctx);
 reml_type *reml_type_char(reml_type_ctx *ctx);
 reml_type *reml_type_string(reml_type_ctx *ctx);
 reml_type *reml_type_unit(reml_type_ctx *ctx);
+reml_type *reml_type_make_enum(reml_type_ctx *ctx);
 
 #ifdef __cplusplus
 }

@@ -43,6 +43,13 @@ static void reml_ast_write_pattern(FILE *out, const reml_pattern *pattern) {
       reml_write_view(out, pattern->data.literal.text);
       fputs(")", out);
       return;
+    case REML_PATTERN_RANGE:
+      fputs("(prange ", out);
+      reml_write_view(out, pattern->data.range.start.text);
+      fputs(pattern->data.range.inclusive ? " ..= " : " .. ", out);
+      reml_write_view(out, pattern->data.range.end.text);
+      fputs(")", out);
+      return;
     case REML_PATTERN_TUPLE:
       fputs("(ptuple", out);
       if (pattern->data.items) {
@@ -198,6 +205,11 @@ void reml_ast_write_expr(FILE *out, const reml_expr *expr) {
              it = (reml_match_arm *)utarray_next(expr->data.match_expr.arms, it)) {
           fputs(" (arm ", out);
           reml_ast_write_pattern(out, it->pattern);
+          if (it->guard) {
+            fputs(" (guard ", out);
+            reml_ast_write_expr(out, it->guard);
+            fputs(")", out);
+          }
           fputs(" ", out);
           reml_ast_write_expr(out, it->body);
           fputs(")", out);

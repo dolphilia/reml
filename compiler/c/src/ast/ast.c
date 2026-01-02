@@ -151,6 +151,19 @@ reml_pattern *reml_pattern_make_constructor(reml_span span, reml_string_view nam
   }
   pattern->data.ctor.name = name;
   pattern->data.ctor.items = items;
+  pattern->data.ctor.tag = -1;
+  return pattern;
+}
+
+reml_pattern *reml_pattern_make_range(reml_span span, reml_literal start, reml_literal end,
+                                      bool inclusive) {
+  reml_pattern *pattern = reml_pattern_alloc(REML_PATTERN_RANGE, span);
+  if (!pattern) {
+    return NULL;
+  }
+  pattern->data.range.start = start;
+  pattern->data.range.end = end;
+  pattern->data.range.inclusive = inclusive;
   return pattern;
 }
 
@@ -244,6 +257,7 @@ void reml_expr_free(reml_expr *expr) {
              it != NULL;
              it = (reml_match_arm *)utarray_next(expr->data.match_expr.arms, it)) {
           reml_pattern_free(it->pattern);
+          reml_expr_free(it->guard);
           reml_expr_free(it->body);
         }
         utarray_free(expr->data.match_expr.arms);

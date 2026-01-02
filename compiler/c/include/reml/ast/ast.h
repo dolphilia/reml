@@ -91,7 +91,14 @@ typedef struct {
 typedef struct {
   reml_string_view name;
   UT_array *items;
+  int32_t tag;
 } reml_pattern_constructor;
+
+typedef struct {
+  reml_literal start;
+  reml_literal end;
+  bool inclusive;
+} reml_pattern_range;
 
 struct reml_pattern {
   reml_pattern_kind kind;
@@ -104,11 +111,13 @@ struct reml_pattern {
     UT_array *items;
     UT_array *fields;
     reml_pattern_constructor ctor;
+    reml_pattern_range range;
   } data;
 };
 
 typedef struct {
   reml_pattern *pattern;
+  reml_expr *guard;
   reml_expr *body;
 } reml_match_arm;
 
@@ -173,6 +182,8 @@ reml_pattern *reml_pattern_make_literal(reml_span span, reml_literal literal);
 reml_pattern *reml_pattern_make_tuple(reml_span span, UT_array *items);
 reml_pattern *reml_pattern_make_record(reml_span span, UT_array *fields);
 reml_pattern *reml_pattern_make_constructor(reml_span span, reml_string_view name, UT_array *items);
+reml_pattern *reml_pattern_make_range(reml_span span, reml_literal start, reml_literal end,
+                                      bool inclusive);
 
 reml_stmt *reml_stmt_make_expr(reml_span span, reml_expr *expr);
 reml_stmt *reml_stmt_make_return(reml_span span, reml_expr *expr);

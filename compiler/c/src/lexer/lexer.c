@@ -185,6 +185,9 @@ static reml_token_kind reml_keyword_kind(const reml_string_view *view) {
   if (view->length == 5 && strncmp(view->data, "while", 5) == 0) {
     return REML_TOKEN_KW_WHILE;
   }
+  if (view->length == 4 && strncmp(view->data, "when", 4) == 0) {
+    return REML_TOKEN_KW_WHEN;
+  }
   if (view->length == 4 && strncmp(view->data, "then", 4) == 0) {
     return REML_TOKEN_KW_THEN;
   }
@@ -448,6 +451,11 @@ reml_token reml_lexer_next(reml_lexer *lexer) {
     case '.':
       if (reml_peek_byte(lexer) == '.') {
         reml_advance_bytes(lexer, 1);
+        if (reml_peek_byte(lexer) == '=') {
+          reml_advance_bytes(lexer, 1);
+          return reml_make_token(REML_TOKEN_DOTDOTEQ, lexer, start_offset, start_line,
+                                 start_column, lexer->index, lexer->line, lexer->column);
+        }
         return reml_make_token(REML_TOKEN_DOTDOT, lexer, start_offset, start_line, start_column,
                                lexer->index, lexer->line, lexer->column);
       }
@@ -565,6 +573,8 @@ const char *reml_token_kind_name(reml_token_kind kind) {
       return "KW_IF";
     case REML_TOKEN_KW_WHILE:
       return "KW_WHILE";
+    case REML_TOKEN_KW_WHEN:
+      return "KW_WHEN";
     case REML_TOKEN_KW_THEN:
       return "KW_THEN";
     case REML_TOKEN_KW_ELSE:
@@ -607,6 +617,8 @@ const char *reml_token_kind_name(reml_token_kind kind) {
       return "COLONEQ";
     case REML_TOKEN_DOT:
       return "DOT";
+    case REML_TOKEN_DOTDOTEQ:
+      return "DOTDOTEQ";
     case REML_TOKEN_QUESTION:
       return "QUESTION";
     case REML_TOKEN_ARROW:
