@@ -23,6 +23,61 @@ static const char *reml_token_symbol(reml_token_kind kind) {
   }
 }
 
+static void reml_ast_write_pattern(FILE *out, const reml_pattern *pattern) {
+  if (!pattern) {
+    fputs("(pattern null)", out);
+    return;
+  }
+
+  switch (pattern->kind) {
+    case REML_PATTERN_WILDCARD:
+      fputs("(_)", out);
+      return;
+    case REML_PATTERN_IDENT:
+      fputs("(pident ", out);
+      reml_write_view(out, pattern->data.ident);
+      fputs(")", out);
+      return;
+    case REML_PATTERN_LITERAL:
+      fputs("(plit ", out);
+      reml_write_view(out, pattern->data.literal.text);
+      fputs(")", out);
+      return;
+    case REML_PATTERN_TUPLE:
+      fputs("(ptuple", out);
+      if (pattern->data.items) {
+        for (reml_pattern **it = (reml_pattern **)utarray_front(pattern->data.items); it != NULL;
+             it = (reml_pattern **)utarray_next(pattern->data.items, it)) {
+          fputs(" ", out);
+          reml_ast_write_pattern(out, *it);
+        }
+      }
+      fputs(")", out);
+      return;
+    case REML_PATTERN_RECORD:
+      fputs("(precord", out);
+      if (pattern->data.fields) {
+        for (reml_pattern_field *it =
+                 (reml_pattern_field *)utarray_front(pattern->data.fields);
+             it != NULL;
+             it = (reml_pattern_field *)utarray_next(pattern->data.fields, it)) {
+          fputs(" (field ", out);
+          reml_write_view(out, it->name);
+          if (it->pattern) {
+            fputs(" ", out);
+            reml_ast_write_pattern(out, it->pattern);
+          }
+          fputs(")", out);
+        }
+      }
+      fputs(")", out);
+      return;
+    default:
+      fputs("(pattern ?)", out);
+      return;
+  }
+}
+
 void reml_ast_write_expr(FILE *out, const reml_expr *expr) {
   if (!expr) {
     fputs("(null)", out);
@@ -82,6 +137,49 @@ void reml_ast_write_expr(FILE *out, const reml_expr *expr) {
       reml_ast_write_expr(out, expr->data.binary.right);
       fputs(")", out);
       return;
+    case REML_EXPR_BLOCK:
+      fputs("(block", out);
+      if (expr->data.block.statements) {
+        for (reml_stmt **it = (reml_stmt **)utarray_front(expr->data.block.statements); it != NULL;
+             it = (reml_stmt **)utarray_next(expr->data.block.statements, it)) {
+          fputs(" ", out);
+          reml_ast_write_stmt(out, *it);
+        }
+      }
+      if (expr->data.block.tail) {
+        fputs(" (tail ", out);
+        reml_ast_write_expr(out, expr->data.block.tail);
+        fputs(")", out);
+      }
+      fputs(")", out);
+      return;
+    case REML_EXPR_IF:
+      fputs("(if ", out);
+      reml_ast_write_expr(out, expr->data.if_expr.condition);
+      fputs(" ", out);
+      reml_ast_write_expr(out, expr->data.if_expr.then_branch);
+      if (expr->data.if_expr.else_branch) {
+        fputs(" ", out);
+        reml_ast_write_expr(out, expr->data.if_expr.else_branch);
+      }
+      fputs(")", out);
+      return;
+    case REML_EXPR_MATCH:
+      fputs("(match ", out);
+      reml_ast_write_expr(out, expr->data.match_expr.scrutinee);
+      if (expr->data.match_expr.arms) {
+        for (reml_match_arm *it = (reml_match_arm *)utarray_front(expr->data.match_expr.arms);
+             it != NULL;
+             it = (reml_match_arm *)utarray_next(expr->data.match_expr.arms, it)) {
+          fputs(" (arm ", out);
+          reml_ast_write_pattern(out, it->pattern);
+          fputs(" ", out);
+          reml_ast_write_expr(out, it->body);
+          fputs(")", out);
+        }
+      }
+      fputs(")", out);
+      return;
     default:
       fputs("(expr ?)", out);
       return;
@@ -103,6 +201,13 @@ void reml_ast_write_stmt(FILE *out, const reml_stmt *stmt) {
     case REML_STMT_RETURN:
       fputs("(return ", out);
       reml_ast_write_expr(out, stmt->data.expr);
+      fputs(")", out);
+      return;
+    case REML_STMT_VAL_DECL:
+      fputs("(let ", out);
+      reml_ast_write_pattern(out, stmt->data.val_decl.pattern);
+      fputs(" ", out);
+      reml_ast_write_expr(out, stmt->data.val_decl.value);
       fputs(")", out);
       return;
     default:

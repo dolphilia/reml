@@ -42,4 +42,21 @@ static void test_parser_basic_return_expression(void **state) {
 
 void test_parser_basic(void **state) {
   test_parser_basic_return_expression(state);
+  {
+    const char *source = "let x = 1; match x with | 1 -> 2 | _ -> 3;";
+    reml_parser parser;
+    reml_parser_init(&parser, source, strlen(source));
+
+    reml_compilation_unit *unit = reml_parse_compilation_unit(&parser);
+    assert_non_null(unit);
+
+    char *rendered = render_unit(unit);
+    assert_non_null(rendered);
+    assert_string_equal(
+        rendered,
+        "(unit (let (pident x) (int 1)) (expr (match (ident x) (arm (plit 1) (int 2)) (arm (_) (int 3)))))");
+
+    free(rendered);
+    reml_compilation_unit_free(unit);
+  }
 }
