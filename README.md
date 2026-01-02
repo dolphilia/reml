@@ -5,11 +5,21 @@ Reml (Readable & Expressive Meta Language) はパーサーコンビネーター�
 ## サンプル
 
 ```reml
-module sample.config
+module Examples.Practical.CoreText.Pretty.LayoutWidthBasic
 
-@dsl_export(category="config", capabilities=["Core.Config.Manifest"], version="0.1")
-pub fn config_dsl() -> Parser<AppConfig> =
-  root_object(|builder| builder)
+use Core.Text.Pretty
+
+fn main() -> Str {
+  let doc = Pretty.group(
+    Pretty.concat(
+      Pretty.text("let"),
+      Pretty.nest(2, Pretty.concat(Pretty.softline(), Pretty.text("x = 1")))
+    )
+  )
+  let wide = Pretty.render(doc, 10)
+  let narrow = Pretty.render(doc, 5)
+  "width=10:\n" + wide + "\nwidth=5:\n" + narrow
+}
 ```
 
 ## 目的
