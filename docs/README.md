@@ -9,7 +9,7 @@
 | 0.x | 導入資料・プロジェクト方針 | [0-0-overview.md](spec/0-0-overview.md), [0-1-project-purpose.md](spec/0-1-project-purpose.md), [0-2-glossary.md](spec/0-2-glossary.md), [0-3-code-style-guide.md](spec/0-3-code-style-guide.md) |
 | 1.x | 言語コア仕様 | [1-0-language-core-overview.md](spec/1-0-language-core-overview.md) 〜 [1-5-formal-grammar-bnf.md](spec/1-5-formal-grammar-bnf.md) |
 | 2.x | 標準パーサー API | [2-0-parser-api-overview.md](spec/2-0-parser-api-overview.md) 〜 [2-7-core-parse-streaming.md](spec/2-7-core-parse-streaming.md) |
-| 3.x | 標準ライブラリ | [3-0-core-library-overview.md](spec/3-0-core-library-overview.md) 〜 [3-15-core-doc.md](spec/3-15-core-doc.md) |
+| 3.x | 標準ライブラリ | [3-0-core-library-overview.md](spec/3-0-core-library-overview.md) 〜 [3-18-core-system.md](spec/3-18-core-system.md) |
 | 4.x | 公式プラグイン仕様（Draft） | [4-0-official-plugins-overview.md](spec/4-0-official-plugins-overview.md) 〜 [4-7-core-parse-plugin.md](spec/4-7-core-parse-plugin.md) |
 | 5.x | エコシステム仕様（Draft） | [5-0-ecosystem-overview.md](spec/5-0-ecosystem-overview.md) 〜 [5-6-risk-governance.md](spec/5-6-risk-governance.md) |
 
@@ -19,19 +19,23 @@
 
 ガイドは用途別に以下のカテゴリへ分類しています。詳細は [`docs/guides/README.md`](guides/README.md) を参照してください。
 
-- **開発ワークフロー & ツールチェーン**: [cli-workflow.md](guides/cli-workflow.md), [ci-strategy.md](guides/ci-strategy.md), [lsp-integration.md](guides/lsp-integration.md), ほか
-- **DSL / プラグイン運用**: [DSL-plugin.md](guides/DSL-plugin.md), [plugin-authoring.md](guides/plugin-authoring.md), [dsl-first-guide.md](guides/dsl-first-guide.md), ほか
-- **エコシステム & コミュニティ**: [ai-integration.md](guides/ai-integration.md), [manifest-authoring.md](guides/manifest-authoring.md), [community-handbook.md](guides/community-handbook.md), ほか
-- **ランタイム / システム連携**: [runtime-bridges.md](guides/runtime-bridges.md), [reml-ffi-handbook.md](guides/reml-ffi-handbook.md), [system-programming-primer.md](guides/system-programming-primer.md), ほか
+- **開発ワークフロー & ツールチェーン**: [tooling/cli-workflow.md](guides/tooling/cli-workflow.md), [tooling/ci-strategy.md](guides/tooling/ci-strategy.md), [tooling/diagnostic-format.md](guides/tooling/diagnostic-format.md), ほか
+- **LSP 連携**: [lsp/lsp-integration.md](guides/lsp/lsp-integration.md), [lsp/lsp-authoring.md](guides/lsp/lsp-authoring.md), ほか
+- **コンパイラ / 解析**: [compiler/core-parse-streaming.md](guides/compiler/core-parse-streaming.md), [compiler/llvm-integration-notes.md](guides/compiler/llvm-integration-notes.md), ほか
+- **DSL / プラグイン運用**: [dsl/DSL-plugin.md](guides/dsl/DSL-plugin.md), [dsl/plugin-authoring.md](guides/dsl/plugin-authoring.md), [dsl/dsl-first-guide.md](guides/dsl/dsl-first-guide.md), ほか
+- **エコシステム & コミュニティ**: [ecosystem/ai-integration.md](guides/ecosystem/ai-integration.md), [ecosystem/manifest-authoring.md](guides/ecosystem/manifest-authoring.md), [ecosystem/community-handbook.md](guides/ecosystem/community-handbook.md), ほか
+- **ランタイム / システム連携**: [runtime/runtime-bridges.md](guides/runtime/runtime-bridges.md), [runtime/system-programming-primer.md](guides/runtime/system-programming-primer.md), [runtime/portability.md](guides/runtime/portability.md), ほか
+- **FFI / 低レベル**: [ffi/reml-ffi-handbook.md](guides/ffi/reml-ffi-handbook.md), [ffi/reml-bindgen-guide.md](guides/ffi/reml-bindgen-guide.md), [ffi/ffi-build-integration-guide.md](guides/ffi/ffi-build-integration-guide.md), ほか
 
 ## 3. 調査ノート (`docs/notes/`)
 
 調査メモや将来計画は [`docs/notes/README.md`](notes/README.md) でカテゴリごとに整理しています。主なドキュメント:
 
-- 言語・標準ライブラリ: [core-library-outline.md](notes/core-library-outline.md), [core-library-scope.md](notes/core-library-scope.md)
-- クロスコンパイル・LLVM: [cross-compilation-spec-intro.md](notes/cross-compilation-spec-intro.md), [llvm-spec-status-survey.md](notes/llvm-spec-status-survey.md)
-- プラグイン・DSL: [dsl-plugin-roadmap.md](notes/dsl-plugin-roadmap.md), [guides-to-spec-integration-plan.md](notes/guides-to-spec-integration-plan.md)
-- 設計検討・影響分析: [reml-design-goals-and-appendix.md](notes/reml-design-goals-and-appendix.md), [reml-influence-study.md](notes/reml-influence-study.md)
+- 言語設計: [reml-design-goals-and-appendix.md](notes/language/reml-design-goals-and-appendix.md), [reml-influence-study.md](notes/language/reml-influence-study.md)
+- パーサー: [core-parse-api-evolution.md](notes/parser/core-parse-api-evolution.md), [core-parse-cst-design.md](notes/parser/core-parse-cst-design.md)
+- 標準ライブラリ: [core-library-outline.md](notes/stdlib/core-library-outline.md), [core-io-path-gap-log.md](notes/stdlib/core-io-path-gap-log.md)
+- バックエンド・クロスコンパイル: [cross-compilation-spec-intro.md](notes/backend/cross-compilation-spec-intro.md), [llvm-spec-status-survey.md](notes/backend/llvm-spec-status-survey.md)
+- プロセス・運用: [guides-to-spec-integration-plan.md](notes/process/guides-to-spec-integration-plan.md), [spec-integrity-audit-checklist.md](notes/process/spec-integrity-audit-checklist.md)
 
 ## 4. 計画書 (`docs/plans/`)
 
