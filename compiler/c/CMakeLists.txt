@@ -25,6 +25,9 @@ add_library(reml_core
   src/parser/parser.c
   src/parser/operator_table.c
   src/manifest/manifest.c
+  src/typeck/type.c
+  src/sema/diagnostic.c
+  src/sema/sema.c
 )
 
 target_include_directories(reml_core
@@ -78,6 +81,7 @@ add_executable(reml_unit_tests
   tests/unit/test_parser_operator_table.c
   tests/unit/test_lexer_basic.c
   tests/unit/test_parser_basic.c
+  tests/unit/test_sema.c
 )
 
 target_link_libraries(reml_unit_tests

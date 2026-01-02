@@ -2,6 +2,7 @@
 #define REML_AST_AST_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include <utarray.h>
 
@@ -69,6 +70,10 @@ typedef enum {
 } reml_pattern_kind;
 
 typedef struct reml_pattern reml_pattern;
+typedef struct reml_type reml_type;
+
+typedef uint32_t reml_symbol_id;
+#define REML_SYMBOL_ID_INVALID 0u
 
 typedef struct {
   reml_string_view name;
@@ -78,6 +83,8 @@ typedef struct {
 struct reml_pattern {
   reml_pattern_kind kind;
   reml_span span;
+  reml_symbol_id symbol_id;
+  reml_type *type;
   union {
     reml_string_view ident;
     reml_literal literal;
@@ -99,6 +106,8 @@ typedef struct {
 struct reml_expr {
   reml_expr_kind kind;
   reml_span span;
+  reml_symbol_id symbol_id;
+  reml_type *type;
   union {
     reml_literal literal;
     reml_string_view ident;
