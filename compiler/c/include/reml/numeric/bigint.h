@@ -26,6 +26,7 @@ bool reml_bigint_sub(reml_bigint *out, const reml_bigint *left, const reml_bigin
 bool reml_bigint_mul(reml_bigint *out, const reml_bigint *left, const reml_bigint *right);
 bool reml_bigint_div(reml_bigint *out, const reml_bigint *left, const reml_bigint *right);
 bool reml_bigint_rem(reml_bigint *out, const reml_bigint *left, const reml_bigint *right);
+bool reml_bigint_neg(reml_bigint *out, const reml_bigint *value);
 
 int reml_bigint_cmp(const reml_bigint *left, const reml_bigint *right);
 bool reml_bigint_is_zero(const reml_bigint *value);

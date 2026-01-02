@@ -79,6 +79,13 @@ bool reml_bigint_rem(reml_bigint *out, const reml_bigint *left, const reml_bigin
   return mp_mod(&left->value, &right->value, &out->value) == MP_OKAY;
 }
 
+bool reml_bigint_neg(reml_bigint *out, const reml_bigint *value) {
+  if (!out || !value) {
+    return false;
+  }
+  return mp_neg(&value->value, &out->value) == MP_OKAY;
+}
+
 int reml_bigint_cmp(const reml_bigint *left, const reml_bigint *right) {
   if (!left || !right) {
     return 0;

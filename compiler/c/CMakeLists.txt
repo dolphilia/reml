@@ -28,6 +28,7 @@ add_library(reml_core
   src/parser/operator_table.c
   src/manifest/manifest.c
   src/numeric/bigint.c
+  src/numeric/core_numeric.c
   src/typeck/type.c
   src/sema/diagnostic.c
   src/sema/sema.c

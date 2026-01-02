@@ -170,6 +170,8 @@ static LLVMTypeRef reml_codegen_lower_type(reml_codegen *codegen, reml_type *typ
   switch (type->kind) {
     case REML_TYPE_INT:
       return LLVMInt64TypeInContext(codegen->context);
+    case REML_TYPE_BIGINT:
+      return LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0);
     case REML_TYPE_FLOAT:
       return LLVMDoubleTypeInContext(codegen->context);
     case REML_TYPE_BOOL:
@@ -194,6 +196,39 @@ static LLVMValueRef reml_codegen_create_entry_alloca(reml_codegen *codegen, LLVM
     LLVMPositionBuilderAtEnd(codegen->alloca_builder, entry);
   }
   return LLVMBuildAlloca(codegen->alloca_builder, type, name);
+}
+
+static LLVMValueRef reml_codegen_get_runtime_fn(reml_codegen *codegen, const char *name,
+                                                LLVMTypeRef fn_type) {
+  LLVMValueRef fn = LLVMGetNamedFunction(codegen->module, name);
+  if (!fn) {
+    fn = LLVMAddFunction(codegen->module, name, fn_type);
+  }
+  return fn;
+}
+
+static LLVMTypeRef reml_codegen_bigint_type(reml_codegen *codegen) {
+  return LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0);
+}
+
+static LLVMValueRef reml_codegen_call_bigint_binary(reml_codegen *codegen, const char *name,
+                                                    LLVMValueRef left, LLVMValueRef right) {
+  LLVMTypeRef bigint_ptr = reml_codegen_bigint_type(codegen);
+  LLVMTypeRef params[2] = {bigint_ptr, bigint_ptr};
+  LLVMTypeRef fn_type = LLVMFunctionType(bigint_ptr, params, 2, 0);
+  LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, name, fn_type);
+  LLVMValueRef args[2] = {left, right};
+  return LLVMBuildCall2(codegen->builder, fn_type, fn, args, 2, "bigint.op");
+}
+
+static LLVMValueRef reml_codegen_call_bigint_cmp(reml_codegen *codegen, const char *name,
+                                                 LLVMValueRef left, LLVMValueRef right) {
+  LLVMTypeRef bigint_ptr = reml_codegen_bigint_type(codegen);
+  LLVMTypeRef params[2] = {bigint_ptr, bigint_ptr};
+  LLVMTypeRef fn_type = LLVMFunctionType(LLVMInt32TypeInContext(codegen->context), params, 2, 0);
+  LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, name, fn_type);
+  LLVMValueRef args[2] = {left, right};
+  return LLVMBuildCall2(codegen->builder, fn_type, fn, args, 2, "bigint.cmp");
 }
 
 typedef enum {
@@ -386,10 +421,27 @@ static reml_codegen_value reml_codegen_emit_literal(reml_codegen *codegen, reml_
                                              (unsigned long long)value, 1);
       return reml_codegen_make_value(llvm_value, expr->type, false);
     }
-    case REML_LITERAL_BIGINT:
-      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
-                          "bigint literal requires runtime support");
-      return reml_codegen_make_value(NULL, expr->type, false);
+    case REML_LITERAL_BIGINT: {
+      char *text = reml_strip_numeric_literal(literal.text);
+      if (!text) {
+        reml_codegen_report(codegen, REML_DIAG_NUMERIC_INVALID, expr->span,
+                            "invalid bigint literal");
+        return reml_codegen_make_value(NULL, expr->type, false);
+      }
+      LLVMValueRef literal_ptr = LLVMBuildGlobalStringPtr(codegen->builder, text, "bigint.lit");
+      free(text);
+
+      LLVMTypeRef bigint_ptr = reml_codegen_bigint_type(codegen);
+      LLVMTypeRef params[2] = {LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0),
+                               LLVMInt32TypeInContext(codegen->context)};
+      LLVMTypeRef fn_type = LLVMFunctionType(bigint_ptr, params, 2, 0);
+      LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, "reml_numeric_bigint_from_str",
+                                                    fn_type);
+      LLVMValueRef args[2] = {literal_ptr, LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0,
+                                                       1)};
+      LLVMValueRef value = LLVMBuildCall2(codegen->builder, fn_type, fn, args, 2, "bigint.lit");
+      return reml_codegen_make_value(value, expr->type, false);
+    }
     case REML_LITERAL_FLOAT: {
       double value = 0.0;
       if (!reml_parse_float_literal(literal, &value)) {
@@ -433,6 +485,11 @@ static bool reml_type_is_int(reml_type *type) {
   return type && type->kind == REML_TYPE_INT;
 }
 
+static bool reml_type_is_bigint(reml_type *type) {
+  type = type ? reml_type_prune(type) : NULL;
+  return type && type->kind == REML_TYPE_BIGINT;
+}
+
 static bool reml_type_is_float(reml_type *type) {
   type = type ? reml_type_prune(type) : NULL;
   return type && type->kind == REML_TYPE_FLOAT;
@@ -469,6 +526,15 @@ static reml_codegen_value reml_codegen_emit_unary(reml_codegen *codegen,
       LLVMValueRef value = LLVMBuildNeg(codegen->builder, operand.value, "neg");
       return reml_codegen_make_value(value, expr->type, false);
     }
+    if (reml_type_is_bigint(expr->type)) {
+      LLVMTypeRef bigint_ptr = reml_codegen_bigint_type(codegen);
+      LLVMTypeRef params[1] = {bigint_ptr};
+      LLVMTypeRef fn_type = LLVMFunctionType(bigint_ptr, params, 1, 0);
+      LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, "reml_numeric_bigint_neg", fn_type);
+      LLVMValueRef args[1] = {operand.value};
+      LLVMValueRef value = LLVMBuildCall2(codegen->builder, fn_type, fn, args, 1, "bigint.neg");
+      return reml_codegen_make_value(value, expr->type, false);
+    }
   }
   if (expr->data.unary.op == REML_TOKEN_BANG) {
     if (reml_type_is_bool(operand.type)) {
@@ -500,6 +566,7 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
 
   bool is_float = reml_type_is_float(left.type);
   bool is_int = reml_type_is_int(left.type);
+  bool is_bigint = reml_type_is_bigint(left.type);
   bool is_bool = reml_type_is_bool(left.type);
 
   switch (expr->data.binary.op) {
@@ -512,6 +579,11 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
         return reml_codegen_make_value(
             LLVMBuildAdd(codegen->builder, left.value, right.value, "add"), expr->type, false);
       }
+      if (is_bigint) {
+        LLVMValueRef value = reml_codegen_call_bigint_binary(codegen, "reml_numeric_bigint_add",
+                                                             left.value, right.value);
+        return reml_codegen_make_value(value, expr->type, false);
+      }
       break;
     case REML_TOKEN_MINUS:
       if (is_float) {
@@ -521,6 +593,11 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
       if (is_int) {
         return reml_codegen_make_value(
             LLVMBuildSub(codegen->builder, left.value, right.value, "sub"), expr->type, false);
+      }
+      if (is_bigint) {
+        LLVMValueRef value = reml_codegen_call_bigint_binary(codegen, "reml_numeric_bigint_sub",
+                                                             left.value, right.value);
+        return reml_codegen_make_value(value, expr->type, false);
       }
       break;
     case REML_TOKEN_STAR:
@@ -532,6 +609,11 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
         return reml_codegen_make_value(
             LLVMBuildMul(codegen->builder, left.value, right.value, "mul"), expr->type, false);
       }
+      if (is_bigint) {
+        LLVMValueRef value = reml_codegen_call_bigint_binary(codegen, "reml_numeric_bigint_mul",
+                                                             left.value, right.value);
+        return reml_codegen_make_value(value, expr->type, false);
+      }
       break;
     case REML_TOKEN_SLASH:
       if (is_float) {
@@ -542,6 +624,11 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
         return reml_codegen_make_value(
             LLVMBuildSDiv(codegen->builder, left.value, right.value, "div"), expr->type, false);
       }
+      if (is_bigint) {
+        LLVMValueRef value = reml_codegen_call_bigint_binary(codegen, "reml_numeric_bigint_div",
+                                                             left.value, right.value);
+        return reml_codegen_make_value(value, expr->type, false);
+      }
       break;
     case REML_TOKEN_PERCENT:
       if (is_float) {
@@ -551,6 +638,11 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
       if (is_int) {
         return reml_codegen_make_value(
             LLVMBuildSRem(codegen->builder, left.value, right.value, "rem"), expr->type, false);
+      }
+      if (is_bigint) {
+        LLVMValueRef value = reml_codegen_call_bigint_binary(codegen, "reml_numeric_bigint_rem",
+                                                             left.value, right.value);
+        return reml_codegen_make_value(value, expr->type, false);
       }
       break;
     case REML_TOKEN_CARET:
@@ -570,6 +662,13 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
             LLVMBuildICmp(codegen->builder, LLVMIntSLT, left.value, right.value, "cmp"),
             expr->type, false);
       }
+      if (is_bigint) {
+        LLVMValueRef cmp = reml_codegen_call_bigint_cmp(codegen, "reml_numeric_bigint_cmp",
+                                                        left.value, right.value);
+        LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
+        return reml_codegen_make_value(
+            LLVMBuildICmp(codegen->builder, LLVMIntSLT, cmp, zero, "cmp"), expr->type, false);
+      }
       break;
     case REML_TOKEN_LE:
       if (is_float) {
@@ -581,6 +680,13 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
         return reml_codegen_make_value(
             LLVMBuildICmp(codegen->builder, LLVMIntSLE, left.value, right.value, "cmp"),
             expr->type, false);
+      }
+      if (is_bigint) {
+        LLVMValueRef cmp = reml_codegen_call_bigint_cmp(codegen, "reml_numeric_bigint_cmp",
+                                                        left.value, right.value);
+        LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
+        return reml_codegen_make_value(
+            LLVMBuildICmp(codegen->builder, LLVMIntSLE, cmp, zero, "cmp"), expr->type, false);
       }
       break;
     case REML_TOKEN_GT:
@@ -594,6 +700,13 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
             LLVMBuildICmp(codegen->builder, LLVMIntSGT, left.value, right.value, "cmp"),
             expr->type, false);
       }
+      if (is_bigint) {
+        LLVMValueRef cmp = reml_codegen_call_bigint_cmp(codegen, "reml_numeric_bigint_cmp",
+                                                        left.value, right.value);
+        LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
+        return reml_codegen_make_value(
+            LLVMBuildICmp(codegen->builder, LLVMIntSGT, cmp, zero, "cmp"), expr->type, false);
+      }
       break;
     case REML_TOKEN_GE:
       if (is_float) {
@@ -606,12 +719,26 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
             LLVMBuildICmp(codegen->builder, LLVMIntSGE, left.value, right.value, "cmp"),
             expr->type, false);
       }
+      if (is_bigint) {
+        LLVMValueRef cmp = reml_codegen_call_bigint_cmp(codegen, "reml_numeric_bigint_cmp",
+                                                        left.value, right.value);
+        LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
+        return reml_codegen_make_value(
+            LLVMBuildICmp(codegen->builder, LLVMIntSGE, cmp, zero, "cmp"), expr->type, false);
+      }
       break;
     case REML_TOKEN_EQEQ:
       if (is_float) {
         return reml_codegen_make_value(
             LLVMBuildFCmp(codegen->builder, LLVMRealOEQ, left.value, right.value, "cmp"),
             expr->type, false);
+      }
+      if (is_bigint) {
+        LLVMValueRef cmp = reml_codegen_call_bigint_cmp(codegen, "reml_numeric_bigint_cmp",
+                                                        left.value, right.value);
+        LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
+        return reml_codegen_make_value(
+            LLVMBuildICmp(codegen->builder, LLVMIntEQ, cmp, zero, "cmp"), expr->type, false);
       }
       return reml_codegen_make_value(
           LLVMBuildICmp(codegen->builder, LLVMIntEQ, left.value, right.value, "cmp"),
@@ -621,6 +748,13 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
         return reml_codegen_make_value(
             LLVMBuildFCmp(codegen->builder, LLVMRealONE, left.value, right.value, "cmp"),
             expr->type, false);
+      }
+      if (is_bigint) {
+        LLVMValueRef cmp = reml_codegen_call_bigint_cmp(codegen, "reml_numeric_bigint_cmp",
+                                                        left.value, right.value);
+        LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
+        return reml_codegen_make_value(
+            LLVMBuildICmp(codegen->builder, LLVMIntNE, cmp, zero, "cmp"), expr->type, false);
       }
       return reml_codegen_make_value(
           LLVMBuildICmp(codegen->builder, LLVMIntNE, left.value, right.value, "cmp"),
