@@ -32,11 +32,11 @@
 ### 5.1.2 作業ステップ（詳細）
 - [x] `compiler/c/cmake/FetchDependencies.cmake` に `libtommath` のビルドターゲットを追加し、`reml_core` からリンクできるようにする。
 - [x] `compiler/c/include/reml/numeric/bigint.h` と `compiler/c/src/numeric/bigint.c` を追加し、`reml_bigint` API を定義する。
-- [ ] `Core.Numeric` との接続レイヤー（`reml_numeric_bigint_*`）を用意し、演算/比較/符号/変換関数を公開する。
+- [x] `Core.Numeric` との接続レイヤー（`reml_numeric_bigint_*`）を用意し、演算/比較/符号/変換関数を公開する。
 - [x] `compiler/c/include/reml/ast/ast.h` の `reml_literal_kind` に `REML_LITERAL_BIGINT` を追加し、パーサーで昇格判定を行う。
 - [x] `compiler/c/include/reml/typeck/type.h` に `REML_TYPE_BIGINT` を追加し、型推論と `numeric` 判定を拡張する。
 - [x] `compiler/c/include/reml/sema/diagnostic.h` に数値リテラル関連の診断コードを追加し、`parser.number.overflow`/`parser.number.invalid` に対応する。
-- [ ] `compiler/c/src/codegen/codegen.c` で `BigInt` リテラルと演算をランタイム呼び出しへ下降させる（MVP では演算子 `+ - * / %` のみ）。現状は `bigint` リテラルを未対応として診断する。
+- [x] `compiler/c/src/codegen/codegen.c` で `BigInt` リテラルと演算をランタイム呼び出しへ下降させる（MVP では演算子 `+ - * / %` のみ）。
 
 ### 5.1.3 診断とエラーメッセージ方針
 - **桁あふれ**: `parser.number.overflow`（`E7101`）を使用し、`Int` 期待型の文脈で `BigInt` 昇格ができない場合に発火する。
@@ -52,8 +52,8 @@
 ### 5.1.5 進捗メモ（2026-01-02）
 - `libtommath` を `reml_tommath` として静的リンクする経路を追加済み。
 - `BigInt` リテラルの昇格判定と AST/型の追加を完了。
-- `bigint` API ラッパーを追加済み（演算/比較/変換）。`Core.Numeric` 接続は未着手。
-- コード生成は `bigint` 未対応の診断で停止（ランタイム下降は未実装）。
+- `bigint` API ラッパーを追加済み（演算/比較/変換）。`Core.Numeric` 接続を実装済み。
+- `bigint` リテラル/演算/比較をランタイム呼び出しへ降下済み。
 
 ## 5.2 パターンマッチングのコンパイル
 - **目標**: 効率的な決定木 (decision tree) 生成。
