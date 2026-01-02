@@ -4,11 +4,11 @@
 
 ## フェーズ 1: プロジェクトのブートストラップ
 **目標**: ビルド環境の確立と "Hello World"。
-- [ ] `compiler/c` ディレクトリの初期化。
-- [ ] コンパイラフラグ（C11, C++17, Sanitizers）を設定した `CMakeLists.txt` のセットアップ。
-- [ ] `main.c`（CLI引数解析）の実装。
-- [ ] macOS/Linux/Windows ビルド用の CI/CD スタブ（Github Actions）のセットアップ。
-- [ ] `ctest` がダミーテストを実行できることを確認。
+- [x] `compiler/c` ディレクトリの初期化。
+- [x] コンパイラフラグ（C11, C++17, Sanitizers）を設定した `CMakeLists.txt` のセットアップ。
+- [x] `main.c`（CLI引数解析）の実装。
+- [x] macOS/Linux/Windows ビルド用の CI/CD スタブ（Github Actions）のセットアップ。
+- [x] `ctest` がダミーテストを実行できることを確認。
 
 ## フェーズ 2: フロントエンドの基礎 (Lexer & Parser)
 **目標**: Reml 構文を抽象構文木 (AST) に解析する。
