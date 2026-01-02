@@ -16,7 +16,6 @@ fn describe(value: Option<Int>) -> Str {
 }
 
 fn main() -> Str = describe(Some(42))
-
 ```
 
 ## 目的
