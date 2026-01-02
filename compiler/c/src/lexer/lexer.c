@@ -182,6 +182,9 @@ static reml_token_kind reml_keyword_kind(const reml_string_view *view) {
   if (view->length == 2 && strncmp(view->data, "if", 2) == 0) {
     return REML_TOKEN_KW_IF;
   }
+  if (view->length == 5 && strncmp(view->data, "while", 5) == 0) {
+    return REML_TOKEN_KW_WHILE;
+  }
   if (view->length == 4 && strncmp(view->data, "then", 4) == 0) {
     return REML_TOKEN_KW_THEN;
   }
@@ -560,6 +563,8 @@ const char *reml_token_kind_name(reml_token_kind kind) {
       return "KW_FALSE";
     case REML_TOKEN_KW_IF:
       return "KW_IF";
+    case REML_TOKEN_KW_WHILE:
+      return "KW_WHILE";
     case REML_TOKEN_KW_THEN:
       return "KW_THEN";
     case REML_TOKEN_KW_ELSE:

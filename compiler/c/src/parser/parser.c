@@ -337,6 +337,31 @@ static reml_expr *reml_parse_primary(reml_parser *parser) {
       }
       return reml_expr_make_if(span, condition, then_branch, else_branch);
     }
+    case REML_TOKEN_KW_WHILE: {
+      reml_parser_advance(parser);
+      reml_expr *condition = reml_parse_expression_prec(parser, 0);
+      if (!condition) {
+        return NULL;
+      }
+      if (parser->current.kind != REML_TOKEN_LBRACE) {
+        reml_parser_set_error(parser, "expected block after while", parser->current.span);
+        reml_expr_free(condition);
+        return NULL;
+      }
+      reml_expr *body = reml_parse_primary(parser);
+      if (!body) {
+        reml_expr_free(condition);
+        return NULL;
+      }
+      if (body->kind != REML_EXPR_BLOCK) {
+        reml_parser_set_error(parser, "expected block after while", body->span);
+        reml_expr_free(condition);
+        reml_expr_free(body);
+        return NULL;
+      }
+      reml_span span = reml_span_combine(condition->span, body->span);
+      return reml_expr_make_while(span, condition, body);
+    }
     case REML_TOKEN_KW_MATCH: {
       reml_parser_advance(parser);
       reml_expr *scrutinee = reml_parse_expression_prec(parser, 0);

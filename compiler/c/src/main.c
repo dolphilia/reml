@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -100,6 +101,41 @@ static void print_diagnostics(const char *stage, const reml_diagnostic_list *lis
   }
 }
 
+static char *derive_object_path(const char *bin_path) {
+  size_t len = strlen(bin_path);
+  char *path = (char *)malloc(len + 3);
+  if (!path) {
+    return NULL;
+  }
+  memcpy(path, bin_path, len);
+  path[len] = '\0';
+  strcat(path, ".o");
+  return path;
+}
+
+static bool run_linker(const char *obj_path, const char *bin_path) {
+  if (!obj_path || !bin_path) {
+    return false;
+  }
+  const char *cc_cmd = getenv("CC");
+  if (!cc_cmd || cc_cmd[0] == '\0') {
+#ifdef __APPLE__
+    cc_cmd = "xcrun --sdk macosx clang";
+#else
+    cc_cmd = "cc";
+#endif
+  }
+  size_t cmd_len = strlen(cc_cmd) + strlen(obj_path) + strlen(bin_path) + 8;
+  char *command = (char *)malloc(cmd_len + 16);
+  if (!command) {
+    return false;
+  }
+  snprintf(command, cmd_len + 16, "%s \"%s\" -o \"%s\"", cc_cmd, obj_path, bin_path);
+  int result = system(command);
+  free(command);
+  return result == 0;
+}
+
 static int command_internal_codegen(int argc, const char **argv) {
   if (argc < 1) {
     fprintf(stderr, "missing file path\n");
@@ -109,6 +145,9 @@ static int command_internal_codegen(int argc, const char **argv) {
   const char *input_path = argv[0];
   const char *ir_path = NULL;
   const char *obj_path = NULL;
+  const char *bin_path = NULL;
+  char *derived_obj_path = NULL;
+  bool remove_obj = false;
 
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "--emit-ir") == 0 || strcmp(argv[i], "--emit-llvm") == 0) {
@@ -127,12 +166,30 @@ static int command_internal_codegen(int argc, const char **argv) {
       obj_path = argv[++i];
       continue;
     }
+    if (strcmp(argv[i], "--emit-bin") == 0 || strcmp(argv[i], "--emit-exe") == 0) {
+      if (i + 1 >= argc) {
+        fprintf(stderr, "missing path after %s\n", argv[i]);
+        return 1;
+      }
+      bin_path = argv[++i];
+      continue;
+    }
     fprintf(stderr, "unknown option: %s\n", argv[i]);
     return 1;
   }
 
   if (!ir_path && !obj_path) {
     obj_path = "out.o";
+  }
+
+  if (bin_path && !obj_path) {
+    derived_obj_path = derive_object_path(bin_path);
+    if (!derived_obj_path) {
+      fprintf(stderr, "failed to allocate object path\n");
+      return 1;
+    }
+    obj_path = derived_obj_path;
+    remove_obj = true;
   }
 
   size_t length = 0;
@@ -201,6 +258,20 @@ static int command_internal_codegen(int argc, const char **argv) {
     reml_sema_deinit(&sema);
     reml_compilation_unit_free(unit);
     free(content);
+    free(derived_obj_path);
+    return 1;
+  }
+
+  if (bin_path && !run_linker(obj_path, bin_path)) {
+    fprintf(stderr, "linker error: failed to produce executable\n");
+    reml_codegen_deinit(&codegen);
+    reml_sema_deinit(&sema);
+    reml_compilation_unit_free(unit);
+    free(content);
+    if (remove_obj && obj_path) {
+      remove(obj_path);
+    }
+    free(derived_obj_path);
     return 1;
   }
 
@@ -208,6 +279,10 @@ static int command_internal_codegen(int argc, const char **argv) {
   reml_sema_deinit(&sema);
   reml_compilation_unit_free(unit);
   free(content);
+  if (remove_obj && obj_path) {
+    remove(obj_path);
+  }
+  free(derived_obj_path);
   return 0;
 }
 

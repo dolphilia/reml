@@ -552,6 +552,21 @@ static reml_type *reml_infer_if(reml_sema *sema, reml_expr *expr, reml_effect_se
   return result_type;
 }
 
+static reml_type *reml_infer_while(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
+  reml_effect_set cond_effect = REML_EFFECT_NONE;
+  reml_type *cond_type = reml_infer_expr(sema, expr->data.while_expr.condition, &cond_effect);
+  reml_expect_type(sema, cond_type, reml_type_bool(&sema->types),
+                   expr->data.while_expr.condition->span);
+
+  reml_effect_set body_effect = REML_EFFECT_NONE;
+  reml_type *body_type = reml_infer_expr(sema, expr->data.while_expr.body, &body_effect);
+  reml_expect_type(sema, body_type, reml_type_unit(&sema->types), expr->data.while_expr.body->span);
+
+  *effect = reml_effect_union(*effect, cond_effect);
+  *effect = reml_effect_union(*effect, body_effect);
+  return reml_type_unit(&sema->types);
+}
+
 static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
   reml_effect_set scrutinee_effect = REML_EFFECT_NONE;
   reml_type *scrutinee = reml_infer_expr(sema, expr->data.match_expr.scrutinee, &scrutinee_effect);
@@ -611,6 +626,9 @@ static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_
       break;
     case REML_EXPR_IF:
       result = reml_infer_if(sema, expr, &local_effect);
+      break;
+    case REML_EXPR_WHILE:
+      result = reml_infer_while(sema, expr, &local_effect);
       break;
     case REML_EXPR_MATCH:
       result = reml_infer_match(sema, expr, &local_effect);

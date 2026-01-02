@@ -164,6 +164,13 @@ void reml_ast_write_expr(FILE *out, const reml_expr *expr) {
       }
       fputs(")", out);
       return;
+    case REML_EXPR_WHILE:
+      fputs("(while ", out);
+      reml_ast_write_expr(out, expr->data.while_expr.condition);
+      fputs(" ", out);
+      reml_ast_write_expr(out, expr->data.while_expr.body);
+      fputs(")", out);
+      return;
     case REML_EXPR_MATCH:
       fputs("(match ", out);
       reml_ast_write_expr(out, expr->data.match_expr.scrutinee);

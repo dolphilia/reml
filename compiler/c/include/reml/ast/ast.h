@@ -34,6 +34,7 @@ typedef enum {
   REML_EXPR_BINARY,
   REML_EXPR_BLOCK,
   REML_EXPR_IF,
+  REML_EXPR_WHILE,
   REML_EXPR_MATCH
 } reml_expr_kind;
 
@@ -60,6 +61,11 @@ typedef struct {
   reml_expr *then_branch;
   reml_expr *else_branch;
 } reml_if_expr;
+
+typedef struct {
+  reml_expr *condition;
+  reml_expr *body;
+} reml_while_expr;
 
 typedef enum {
   REML_PATTERN_WILDCARD,
@@ -115,6 +121,7 @@ struct reml_expr {
     reml_binary_expr binary;
     reml_block_expr block;
     reml_if_expr if_expr;
+    reml_while_expr while_expr;
     reml_match_expr match_expr;
   } data;
 };
@@ -149,6 +156,7 @@ reml_expr *reml_expr_make_binary(reml_span span, reml_token_kind op, reml_expr *
 reml_expr *reml_expr_make_block(reml_span span, reml_block_expr block);
 reml_expr *reml_expr_make_if(reml_span span, reml_expr *condition, reml_expr *then_branch,
                              reml_expr *else_branch);
+reml_expr *reml_expr_make_while(reml_span span, reml_expr *condition, reml_expr *body);
 reml_expr *reml_expr_make_match(reml_span span, reml_expr *scrutinee, UT_array *arms);
 
 reml_pattern *reml_pattern_make_wildcard(reml_span span);

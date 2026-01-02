@@ -73,6 +73,16 @@ reml_expr *reml_expr_make_if(reml_span span, reml_expr *condition, reml_expr *th
   return expr;
 }
 
+reml_expr *reml_expr_make_while(reml_span span, reml_expr *condition, reml_expr *body) {
+  reml_expr *expr = reml_expr_alloc(REML_EXPR_WHILE, span);
+  if (!expr) {
+    return NULL;
+  }
+  expr->data.while_expr.condition = condition;
+  expr->data.while_expr.body = body;
+  return expr;
+}
+
 reml_expr *reml_expr_make_match(reml_span span, reml_expr *scrutinee, UT_array *arms) {
   reml_expr *expr = reml_expr_alloc(REML_EXPR_MATCH, span);
   if (!expr) {
@@ -211,6 +221,10 @@ void reml_expr_free(reml_expr *expr) {
       reml_expr_free(expr->data.if_expr.condition);
       reml_expr_free(expr->data.if_expr.then_branch);
       reml_expr_free(expr->data.if_expr.else_branch);
+      break;
+    case REML_EXPR_WHILE:
+      reml_expr_free(expr->data.while_expr.condition);
+      reml_expr_free(expr->data.while_expr.body);
       break;
     case REML_EXPR_MATCH:
       reml_expr_free(expr->data.match_expr.scrutinee);

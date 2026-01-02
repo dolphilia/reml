@@ -8,7 +8,7 @@
   - リテラル（`Int`, `Float`, `Bool`）と基本算術。
   - 変数定義と参照（ローカルのみ）。
   - 関数定義・呼び出し（第一級関数やクロージャは対象外）。
-  - `if/else`（ループは構文未導入のため保留）。
+  - `if/else` と `while`。
 - **非対象**: 文字列、ADT、参照型、効果、例外、GC、並列実行。
 - **ゴール**: `hello_world.reml` がネイティブ実行できる最小パスを確立する。
 
@@ -68,8 +68,8 @@
 
 ## 4.4.1 実装メモ (現状)
 - `compiler/c/src/codegen/codegen.c` で LLVM C API による IR 生成と `.o` 出力を実装。
-- `reml internal codegen <file> --emit-ir <path> --emit-obj <path>` を追加。
-- `reml_main` と `main` ラッパーを IR 上で生成（リンク工程は未実装）。
+- `reml internal codegen <file> --emit-ir <path> --emit-obj <path> --emit-bin <path>` を追加。
+- `reml_main` と `main` ラッパーを IR 上で生成し、システムリンカで実行ファイルを生成。
 
 ## 4.5 JIT サポート（オプション/後期）
 - **目標**: `reml run` または REPL での即時実行。
@@ -87,18 +87,18 @@
   - `tests/unit/test_codegen.c`:
     - 最小 AST から IR を生成し、`LLVMVerifyModule` で検証。
   - `LLVM IR` 出力の正当性を目視確認。
-  - 統合テストはリンク工程の追加後に実装。
+  - `tests/integration/codegen_hello.py` で `hello_world.reml` を実行。
 
 ## 4.7 完了条件
 - `Int`/`Float` の演算が LLVM IR に落とされる。
-- `if/else` が BasicBlock を構成できる。
+- `if/else` と `while` が BasicBlock を構成できる。
 - `hello_world.reml` がネイティブ実行できる。
 - 失敗時に診断が JSON で出力される。
 
 ## チェックリスト
 - [x] LLVM が CMake で正常にリンクされた。
 - [x] `codegen` モジュールが算術演算に対して有効な IR を生成する。
-- [x] 制御フロー (if/else) が正しい BasicBlocks を生成する。
+- [x] 制御フロー (if/else/while) が正しい BasicBlocks を生成する。
 - [x] オブジェクトファイルを出力できる。
-- [ ] `main.c` からバイナリをリンクして実行できる。
+- [x] `main.c` からバイナリをリンクして実行できる。
 - [x] `LLVMVerifyModule` の検証をパスする。

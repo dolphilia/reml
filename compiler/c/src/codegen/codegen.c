@@ -482,8 +482,9 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
     return reml_codegen_make_value(NULL, expr->type, false);
   }
 
-  bool is_float = reml_type_is_float(expr->type);
-  bool is_int = reml_type_is_int(expr->type);
+  bool is_float = reml_type_is_float(left.type);
+  bool is_int = reml_type_is_int(left.type);
+  bool is_bool = reml_type_is_bool(left.type);
 
   switch (expr->data.binary.op) {
     case REML_TOKEN_PLUS:
@@ -609,13 +610,13 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
           LLVMBuildICmp(codegen->builder, LLVMIntNE, left.value, right.value, "cmp"),
           expr->type, false);
     case REML_TOKEN_LOGICAL_AND:
-      if (reml_type_is_bool(expr->type)) {
+      if (is_bool) {
         return reml_codegen_make_value(
             LLVMBuildAnd(codegen->builder, left.value, right.value, "and"), expr->type, false);
       }
       break;
     case REML_TOKEN_LOGICAL_OR:
-      if (reml_type_is_bool(expr->type)) {
+      if (is_bool) {
         return reml_codegen_make_value(
             LLVMBuildOr(codegen->builder, left.value, right.value, "or"), expr->type, false);
       }
@@ -706,6 +707,39 @@ static reml_codegen_value reml_codegen_emit_if(reml_codegen *codegen,
   return reml_codegen_make_value(phi, expr->type, false);
 }
 
+static reml_codegen_value reml_codegen_emit_while(reml_codegen *codegen,
+                                                  reml_codegen_scope_stack *scopes,
+                                                  reml_expr *expr) {
+  LLVMBasicBlockRef cond_bb =
+      LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function, "while.cond");
+  LLVMBasicBlockRef body_bb =
+      LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function, "while.body");
+  LLVMBasicBlockRef exit_bb =
+      LLVMAppendBasicBlockInContext(codegen->context, codegen->current_function, "while.exit");
+
+  LLVMBuildBr(codegen->builder, cond_bb);
+
+  LLVMPositionBuilderAtEnd(codegen->builder, cond_bb);
+  reml_codegen_value cond = reml_codegen_emit_expr(codegen, scopes, expr->data.while_expr.condition);
+  if (cond.terminated || !cond.value) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                        "missing while condition value");
+    LLVMBuildBr(codegen->builder, exit_bb);
+    LLVMPositionBuilderAtEnd(codegen->builder, exit_bb);
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+  LLVMBuildCondBr(codegen->builder, cond.value, body_bb, exit_bb);
+
+  LLVMPositionBuilderAtEnd(codegen->builder, body_bb);
+  reml_codegen_value body = reml_codegen_emit_expr(codegen, scopes, expr->data.while_expr.body);
+  if (!body.terminated) {
+    LLVMBuildBr(codegen->builder, cond_bb);
+  }
+
+  LLVMPositionBuilderAtEnd(codegen->builder, exit_bb);
+  return reml_codegen_make_value(NULL, expr->type, false);
+}
+
 static reml_codegen_value reml_codegen_emit_expr(reml_codegen *codegen,
                                                  reml_codegen_scope_stack *scopes,
                                                  reml_expr *expr) {
@@ -725,6 +759,8 @@ static reml_codegen_value reml_codegen_emit_expr(reml_codegen *codegen,
       return reml_codegen_emit_block(codegen, scopes, &expr->data.block, expr->type);
     case REML_EXPR_IF:
       return reml_codegen_emit_if(codegen, scopes, expr);
+    case REML_EXPR_WHILE:
+      return reml_codegen_emit_while(codegen, scopes, expr);
     case REML_EXPR_MATCH:
       reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
                           "match expression not supported in codegen");

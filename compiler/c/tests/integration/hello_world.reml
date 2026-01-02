@@ -1,0 +1,2 @@
+let message = 40 + 2;
+return message;

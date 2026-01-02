@@ -59,4 +59,20 @@ void test_parser_basic(void **state) {
     free(rendered);
     reml_compilation_unit_free(unit);
   }
+  {
+    const char *source = "while true { let x = 1; };";
+    reml_parser parser;
+    reml_parser_init(&parser, source, strlen(source));
+
+    reml_compilation_unit *unit = reml_parse_compilation_unit(&parser);
+    assert_non_null(unit);
+
+    char *rendered = render_unit(unit);
+    assert_non_null(rendered);
+    assert_string_equal(rendered,
+                        "(unit (expr (while (bool true) (block (let (pident x) (int 1))))))");
+
+    free(rendered);
+    reml_compilation_unit_free(unit);
+  }
 }

@@ -142,4 +142,15 @@ if(REML_ENABLE_LLVM)
   )
 
   add_test(NAME reml_codegen_tests COMMAND reml_codegen_tests)
+
+  find_package(Python3 COMPONENTS Interpreter)
+  if(Python3_Interpreter_FOUND)
+    add_test(
+      NAME reml_codegen_hello_world
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/codegen_hello.py
+              $<TARGET_FILE:reml>
+              ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/hello_world.reml
+              ${CMAKE_CURRENT_BINARY_DIR}
+    )
+  endif()
 endif()
