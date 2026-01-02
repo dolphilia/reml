@@ -123,6 +123,6 @@ opam exec -- dune exec -- \
 
 # 関連項目
 
-`docs/guides/tooling/cli-workflow.md`,  
-`docs/guides/tooling/trace-output.md`,  
-`docs/guides/tooling/diagnostic-format.md`
+`../toolingcli-workflow.md`,  
+`../toolingtrace-output.md`,  
+`../toolingdiagnostic-format.md`

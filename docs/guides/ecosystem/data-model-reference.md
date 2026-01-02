@@ -1,7 +1,7 @@
 # データモデル運用ガイド（Nest.Data）
 
 > 目的：`Core.Data` / `Nest.Data` モジュールで利用するスキーマ・制約・品質指標を運用面から整理し、CLI・ランタイム・監査ログと共通の手順で扱えるようにする。
-> 仕様参照：公式 API・JSON スキーマは [3-7 Core Config & Data](../spec/3-7-core-config-data.md#4-data-モデリング-api再整理) に統合済み。本ガイドは現場運用や CI 手順の補足に重点を置く。
+> 仕様参照：公式 API・JSON スキーマは [3-7 Core Config & Data](../../spec/3-7-core-config-data.md#4-data-モデリング-api再整理) に統合済み。本ガイドは現場運用や CI 手順の補足に重点を置く。
 
 ## 1. 基本構造
 
@@ -42,7 +42,7 @@ let hardenedSchema = userSchema.with(|s| {
 ```
 
 - `ConstraintContext.profile` は `prod` / `staging` 等の識別子。閾値を `Profile::overrides()` で差し替え可能。
-- `Diagnostic` には `domain = "schema"` とエラーコード（`E7001` など）を付与し、`docs/guides/lsp/lsp-integration.md` の CodeAction と整合させる。
+- `Diagnostic` には `domain = "schema"` とエラーコード（`E7001` など）を付与し、`../lsp/lsp-integration.md` の CodeAction と整合させる。
 - JSON 直列化時には `diagnostics[].locale` と `message_key` / `locale_args` を含め、CLI・LSP いずれからも同じ翻訳カタログを再
   利用できるようにする。
 
@@ -67,7 +67,7 @@ if !report.diagnostics.is_empty() {
 }
 ```
 
-- `ValidationReport.stats` は列名→`ColumnStats` のマップ。`docs/guides/runtime/runtime-bridges.md` の `RuntimeMetrics` と同じ JSON キー (`latency_ms` 等) を使用する。
+- `ValidationReport.stats` は列名→`ColumnStats` のマップ。`../runtime/runtime-bridges.md` の `RuntimeMetrics` と同じ JSON キー (`latency_ms` 等) を使用する。
 - `audit_id` が付与されると `reml-data validate` の JSON でも同じ値が出力され、CI で突合できる。
 - `severity_hint` はデータ品質に対する推奨アクション（`Retry`, `Rollback`, `Escalate` 等）を伝達し、運用ダッシュボードでの優先度付けに利用できる。
 
@@ -117,8 +117,8 @@ reml-data stats collect --schema schemas/user.ks --provider warehouse --format j
 | `reml.data.quality` | `reml-data quality run` | `audit_id`, `profile`, `findings`, `severity_max`, `stats` |
 | `reml.data.quality.rule` | `register_quality_rule`, `reml-data quality rules list` | `rule_id`, `scope`, `severity`, `owner` |
 
-- 監査ログは `docs/guides/runtime/runtime-bridges.md` に記載の JSON 構造（`event`, `audit_id`, `change_set`）を踏襲。
-- IDE との連携では `docs/guides/lsp/lsp-integration.md` の `data` フィールドに `domain = "schema"` を埋め込み、差分レビュー画面へリンクする。
+- 監査ログは `../runtime/runtime-bridges.md` に記載の JSON 構造（`event`, `audit_id`, `change_set`）を踏襲。
+- IDE との連携では `../lsp/lsp-integration.md` の `data` フィールドに `domain = "schema"` を埋め込み、差分レビュー画面へリンクする。
 
 ## 6. QualityReport スキーマ {#quality-report-schema}
 
@@ -220,7 +220,7 @@ reml-data stats collect --schema schemas/user.ks --provider warehouse --format j
 
 ## 8. 参考リンク
 
-- [3.7 Core Config & Data](../spec/3-7-core-config-data.md)
-- [ランタイム連携ガイド](docs/guides/runtime/runtime-bridges.md)
-- [LSP / IDE 連携ガイド](docs/guides/lsp/lsp-integration.md)
-- [設定 CLI ワークフロー](docs/guides/tooling/config-cli.md)
+- [3.7 Core Config & Data](../../spec/3-7-core-config-data.md)
+- [ランタイム連携ガイド](../runtime/runtime-bridges.md)
+- [LSP / IDE 連携ガイド](../lsp/lsp-integration.md)
+- [設定 CLI ワークフロー](../tooling/config-cli.md)

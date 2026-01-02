@@ -9,7 +9,7 @@
 | ステータス | ドラフト（Phase 4 対象） |
 | 効果タグ | `effect {io}` |
 | 依存モジュール | `Core.Text`, `Core.Diagnostics` |
-| 相互参照 | [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), Guides: [doc-authoring](../guides/doc-authoring.md) |
+| 相互参照 | [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), Guides: [doc-authoring](../guides/dsl/doc-authoring.md) |
 
 ## 1. 基本概念
 

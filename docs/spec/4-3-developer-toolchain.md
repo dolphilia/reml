@@ -7,7 +7,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | ステータス | 執筆中（Working Draft） |
-| 参照文書 | [guides/lsp-integration.md](../guides/lsp-integration.md), [guides/config-cli.md](../guides/config-cli.md), [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md) §4.1, §4.2 |
+| 参照文書 | [guides/lsp-integration.md](../guides/lsp/lsp-integration.md), [guides/config-cli.md](../guides/tooling/config-cli.md), [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md) §4.1, §4.2 |
 | 関連章 | [3-6-core-diagnostics-audit.md](3-6-core-diagnostics-audit.md), [3-7-core-config-data.md](3-7-core-config-data.md), [3-8-core-runtime-capability.md](3-8-core-runtime-capability.md), [4-1-package-manager-cli.md](4-1-package-manager-cli.md) |
 
 ## 1. LSP 実装ロードマップ
@@ -102,7 +102,7 @@
 
 ### 6.1 計測モデル
 - `reml profile` はサンプリング（既定）と計測（instrumentation）の 2 モードを提供する。
-- サンプリング間隔は 1ms〜10ms の範囲で指定でき、計測対象 DSL の `PerformanceHint`（[guides/dsl-performance-playbook.md](../guides/dsl-performance-playbook.md)）を尊重する。
+- サンプリング間隔は 1ms〜10ms の範囲で指定でき、計測対象 DSL の `PerformanceHint`（[guides/dsl-performance-playbook.md](../guides/dsl/dsl-performance-playbook.md)）を尊重する。
 
 ### 6.2 ホットスポット可視化
 - 出力は `profile.json`（火炎グラフ互換）と `profile.html`（Phase 2 で追加）を生成する。
@@ -119,7 +119,7 @@
 - すべての AI 出力は人間による確認が前提であり、`--auto-apply` は提供しない。CI では `--summary-only` モードを推奨する。
 
 ## 8. 今後の作業
-- LSP の JSON-RPC トランスクリプト例とテストケースを追補し、`../guides/lsp-integration.md` と同期させる。
+- LSP の JSON-RPC トランスクリプト例とテストケースを追補し、`../guides/lsp/lsp-integration.md` と同期させる。
 - `Core.Test` API のドラフトを Chapter 3 に追加し、本章のテストランナー節と往復参照する。
 - プロファイラーの HTML レポート仕様および AI ツールの利用制限フローを付録として整理する。
 

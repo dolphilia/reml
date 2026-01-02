@@ -8,7 +8,7 @@
 | --- | --- |
 | ステータス | 執筆中（Working Draft） |
 | 参照文書 | [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md) §3.3, §4.1, §4.2 |
-| 関連章 | [3-18-core-system.md](3-18-core-system.md), [5-1-system-plugin.md](5-1-system-plugin.md), [guides/community-handbook.md](../guides/community-handbook.md) |
+| 関連章 | [3-18-core-system.md](3-18-core-system.md), [5-1-system-plugin.md](5-1-system-plugin.md), [guides/community-handbook.md](../guides/ecosystem/community-handbook.md) |
 
 ## 1. 公式サイト & ドキュメント
 
@@ -38,7 +38,7 @@
 - テンプレート例: `lite`（学習/試作用。`Core.Parse` と `Core.Test` の最小構成を含み、`project.stage = "lite"`、`config.compatibility.json = json-relaxed`、`capabilities = []` を既定とし、監査ログは省略される）。
 
 ### 2.3 フィードバック収集
-- チュートリアル完了後に `reml feedback submit`（計画中）で匿名メトリクスを収集し、`../guides/community-handbook.md` のプライバシーポリシーに基づき保存期間を 90 日とする。
+- チュートリアル完了後に `reml feedback submit`（計画中）で匿名メトリクスを収集し、`../guides/ecosystem/community-handbook.md` のプライバシーポリシーに基づき保存期間を 90 日とする。
 
 ## 3. コミュニティプラットフォーム
 
@@ -101,7 +101,7 @@
 - KPI は「目標値」「実績」「差分」「対策」の 4 列でダッシュボード化する。
 
 ## 7. 今後の作業
-- `../guides/community-handbook.md` に本章で定義した運営プロセスを反映し、実務手順を明示する。
+- `../guides/ecosystem/community-handbook.md` に本章で定義した運営プロセスを反映し、実務手順を明示する。
 - 翻訳ガイドライン、イベント計画テンプレート、スポンサーシップ資料を付録として整理する。
 - フィードバック収集ツール（CLI/サイトフォーム）の実装状況を追跡し、Phase 2 で自動集計を導入する。
 

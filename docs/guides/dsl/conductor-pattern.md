@@ -58,12 +58,12 @@ conductor pipeline_app {
 
 ### 2.2 チャネル設計
 
-- `Channel`/`Codec` の契約と失敗モードは [Core.Async 仕様 1.4 節](../spec/3-9-core-async-ffi-unsafe.md#14-2-channel-契約) に従う。このガイドでは、そのパラメータを実運用へ最適化する手順に集中する。
+- `Channel`/`Codec` の契約と失敗モードは [Core.Async 仕様 1.4 節](../../spec/3-9-core-async-ffi-unsafe.md#14-2-channel-契約) に従う。このガイドでは、そのパラメータを実運用へ最適化する手順に集中する。
 - `buffer_size` と `OverflowPolicy` は仕様で定義された上限を守りつつ、期待スループットに合わせてプロファイルし、`merge_channels` の前後でメトリクスを観測する。
 
 ### 2.3 実行ポリシー
 
-- `ExecutionPlan` の契約は [Core.Async 仕様 1.4.3 節](../spec/3-9-core-async-ffi-unsafe.md#14-3-executionplan-の整合性) に従い、ガイドでは DAG 分析や `RetryPolicy` のチューニング手順を提示する。
+- `ExecutionPlan` の契約は [Core.Async 仕様 1.4.3 節](../../spec/3-9-core-async-ffi-unsafe.md#14-3-executionplan-の整合性) に従い、ガイドでは DAG 分析や `RetryPolicy` のチューニング手順を提示する。
 - `ErrorPolicy.isolate_with_circuit_breaker` や `RetryPolicy` の数値は、本番ワークロードの負荷テストで決め、`async.plan.invalid` 診断が出ないか CI で検証する。
 
 ### 2.4 監視
@@ -154,7 +154,7 @@ conductor docs_pipeline {
 
 ## 5. 参考
 
-- [1-1 構文仕様 B.8節](../spec/1-1-syntax.md)
-- [3-9 Core Async / FFI / Unsafe 1.4節](../spec/3-9-core-async-ffi-unsafe.md)
-- [3-6 Core Diagnostics & Audit 6章](../spec/3-6-core-diagnostics-audit.md)
-- [notes/dsl-plugin-roadmap.md](../notes/dsl-plugin-roadmap.md)
+- [1-1 構文仕様 B.8節](../../spec/1-1-syntax.md)
+- [3-9 Core Async / FFI / Unsafe 1.4節](../../spec/3-9-core-async-ffi-unsafe.md)
+- [3-6 Core Diagnostics & Audit 6章](../../spec/3-6-core-diagnostics-audit.md)
+- [notes/dsl-plugin-roadmap.md](../../notes/dsl/dsl-plugin-roadmap.md)

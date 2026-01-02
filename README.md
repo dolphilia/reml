@@ -2,7 +2,7 @@
 
 Reml (Readable & Expressive Meta Language) はパーサーコンビネーターと静的保証に重点を置いたプログラミング言語です。
 
-## サンプル
+## Reml の特徴
 
 ```reml
 module Spec.Core.Chapter1.Match.BindingAsOk
@@ -18,9 +18,9 @@ fn describe(value: Option<Int>) -> Str {
 fn main() -> Str = describe(Some(42))
 ```
 
-## 目的
+## リポジトリの役割
 
-Reml 言語の実装とエコシステム、各種ドキュメントの整備を進めています。
+このリポジトリでは Reml 言語の実装やエコシステム、各種ドキュメントの整備を進めています。
 
 - 言語仕様の策定と更新（`docs/spec/`）
 - 言語実装の開発（`compiler/rust/`、`runtime/`、`tooling/`）
@@ -52,17 +52,17 @@ cargo clippy --manifest-path compiler/rust/frontend/Cargo.toml
 
 ## ディレクトリ構成
 
-- `compiler/`: コンパイラ実装（Rust が主、OCaml は参照）
-- `runtime/`: ランタイムライブラリ
-- `tooling/`: LSP サーバー、CLI、CI 支援などの周辺ツール
-- `docs/`: 仕様、ガイド、ノート、計画書、スキーマ
-- `examples/`: Reml サンプルコードと検証ケース
-- `tests/`: 統合テスト
-- `reports/`: 監査ログやメトリクスレポート
+- [compiler/](compiler/): コンパイラ実装（Rust が主、OCaml は参照）
+- [runtime/](runtime/): ランタイムライブラリ
+- [tooling/](tooling/): LSP サーバー、CLI、CI 支援などの周辺ツール
+- [docs/](docs/): 仕様、ガイド、ノート、計画書、スキーマ
+- [examples/](examples/): Reml サンプルコードと検証ケース
+- [tests/](tests/): 統合テスト
+- [reports/](reports/): 監査ログやメトリクスレポート
 
-## 例と実行
+## サンプルの実行
 
-- サンプルの整理: `examples/README.md`
+- [examples/README.md](examples/README.md): サンプルについて
 - スイート実行:
   - `tooling/examples/run_examples.sh --suite spec_core`
   - `tooling/examples/run_examples.sh --suite practical`

@@ -6,7 +6,7 @@
 1. `Core.Lsp` の型で位置情報と診断を構築
 2. JSON-RPC メッセージをエンコードして送信
 
-参照: [3-14 Core Lsp](../spec/3-14-core-lsp.md)
+参照: [3-14 Core Lsp](../../spec/3-14-core-lsp.md)
 
 ## 2. 最小例
 

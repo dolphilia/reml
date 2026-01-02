@@ -168,9 +168,9 @@ remlc input.reml --format=json 2>&1 | jq '.diagnostics[0].message'
 
 ## 関連仕様書
 
-- [3-6-core-diagnostics-audit.md](../spec/3-6-core-diagnostics-audit.md) - 診断システムの仕様
-- [2-5-error.md](../spec/2-5-error.md) - エラー設計
-- [1-6-developer-experience.md](../plans/bootstrap-roadmap/1-6-developer-experience.md) - 開発者体験整備計画
+- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) - 診断システムの仕様
+- [2-5-error.md](../../spec/2-5-error.md) - エラー設計
+- [1-6-developer-experience.md](../../plans/bootstrap-roadmap/1-6-developer-experience.md) - 開発者体験整備計画
 
 ## 実装
 

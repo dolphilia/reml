@@ -9,7 +9,7 @@
 | ステータス | 正式仕様 |
 | 効果タグ | `effect {io}`, `effect {mut}`, `effect {mem}`, `effect {io.blocking}`, `effect {io.async}`, `effect {security}` |
 | 依存モジュール | `Core.Prelude`, `Core.Text`, `Core.Collections`, `Core.Diagnostics`, `Core.Numeric & Time` |
-| 相互参照 | [2.6 実行戦略](2-6-execution-strategy.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), Guides: [ランタイム連携](../guides/runtime-bridges.md) |
+| 相互参照 | [2.6 実行戦略](2-6-execution-strategy.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), Guides: [ランタイム連携](../guides/runtime/runtime-bridges.md) |
 
 ## 1. IO モジュール構成
 
@@ -269,7 +269,7 @@ fn with_io_pool<T>(pool: IoPool, operation: () -> Result<T, IoError>) -> Result<
 fn parallel_file_ops<T>(operations: List<() -> Result<T, IoError>>, pool: IoPool) -> Result<List<T>, IoError>
 ```
 
-> 関連: [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [2.6 実行戦略](2-6-execution-strategy.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [guides/runtime-bridges.md](../guides/runtime-bridges.md)
+> 関連: [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [2.6 実行戦略](2-6-execution-strategy.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [guides/runtime-bridges.md](../guides/runtime/runtime-bridges.md)
 
 ## 9. Resource Limit ユーティリティ (`Core.Resource`)
 

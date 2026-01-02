@@ -1,6 +1,6 @@
 # Reml FFI ハンドブック（ドラフト）
 
-> 目的：Reml と外部ランタイム（C/C++/Rust/システムライブラリ等）との安全な接続方法を明文化し、[LLVM連携ノート](docs/guides/compiler/llvm-integration-notes.md)・`1-3-effects-safety.md`・`docs/guides/runtime/runtime-bridges.md` に分散している知識を一本化する。
+> 目的：Reml と外部ランタイム（C/C++/Rust/システムライブラリ等）との安全な接続方法を明文化し、[LLVM連携ノート](../compiler/llvm-integration-notes.md)・`1-3-effects-safety.md`・`../runtime/runtime-bridges.md` に分散している知識を一本化する。
 
 ## 1. 適用範囲と位置付け
 - 既定ターゲット：System V AMD64 / Windows x64。将来 ARM64 / WASM を追加予定。
@@ -9,16 +9,16 @@
 
 ## 2. ABI・データレイアウトの要約
 
-> 公式仕様: [3-9 §2.1](../spec/3-9-core-async-ffi-unsafe.md#21-abi-とデータレイアウト) を参照。ここでは実務での確認手順とツール連携のみをまとめる。
+> 公式仕様: [3-9 §2.1](../../spec/3-9-core-async-ffi-unsafe.md#21-abi-とデータレイアウト) を参照。ここでは実務での確認手順とツール連携のみをまとめる。
 
-- `remlc --emit-header`（将来実装予定）で生成した C ヘッダと [guides/llvm-integration-notes.md](docs/guides/compiler/llvm-integration-notes.md#ターゲット-abi--データレイアウト) の定義を突き合わせ、構造体・列挙体が `repr(C)` の制約を満たしているか `llvm-readobj --sd` で検証する。
+- `remlc --emit-header`（将来実装予定）で生成した C ヘッダと [guides/llvm-integration-notes.md](../compiler/llvm-integration-notes.md#ターゲット-abi--データレイアウト) の定義を突き合わせ、構造体・列挙体が `repr(C)` の制約を満たしているか `llvm-readobj --sd` で検証する。
 - 文字列／スライスは 3-9 §2.1 の `{ ptr, len }` レイアウトを前提にする。ゼロコピーを要求する場合は、RC カウンタの増減を呼び出しコードで確認し、`audit.log("ffi.call", ...)` に `status = "success"` を出力できることを CI でチェックする。
 - 例外は境界を越えて伝播しない。C++ 例外を扱う場合はガードレイヤで捕捉・エラーマッピングし、`FfiErrorKind::CallFailed` に変換する実装メモをここへ残す。
-- ARM64 / WASM など未正式対応ターゲットに関する調査結果は `docs/notes/` に記録し、仕様が更新されたら本ガイドからリンクのみを残す。
+- ARM64 / WASM など未正式対応ターゲットに関する調査結果は `do../../notes/` に記録し、仕様が更新されたら本ガイドからリンクのみを残す。
 
 ## 3. 効果タグと `unsafe` 境界
 
-> 公式仕様: [3-9 §2.2–2.3](../spec/3-9-core-async-ffi-unsafe.md#22-効果タグと-unsafe-境界) を参照。ここではラッパ実装時の現場メモを補足する。
+> 公式仕様: [3-9 §2.2–2.3](../../spec/3-9-core-async-ffi-unsafe.md#22-効果タグと-unsafe-境界) を参照。ここではラッパ実装時の現場メモを補足する。
 
 - `effect` 宣言は仕様で定義された最小集合（`{ffi, unsafe}`）を基準に、I/O 性質に応じて `io.blocking` / `io.async` / `io.timer` を追加する。ガイドでは `@no_blocking` 等の属性を付与する場所（ラッパ関数 or Capability 宣言）をコードレビューで確認するチェックリストを共有する。
 - `ForeignCall` 効果でスタブ化する場合は Stage を `Experimental` から始め、`reml capability stage promote` 実行ログをリポジトリに残す。仕様のステージ要件に従い、`audit.log` で `status = "stubbed"` を確認する手順を CI ワークフローに追加する。
@@ -34,7 +34,7 @@
 
 ## 5. 所有権とライフタイム契約
 
-> 公式仕様: [3-9 §2.6](../spec/3-9-core-async-ffi-unsafe.md#26-メモリ管理と所有権境界)。ここでは多言語バインディングのチェックリストを共有する。
+> 公式仕様: [3-9 §2.6](../../spec/3-9-core-async-ffi-unsafe.md#26-メモリ管理と所有権境界)。ここでは多言語バインディングのチェックリストを共有する。
 
 1. **Reml → C**: 値を渡す前に `inc_ref` を呼び、ホスト側で `reml_release_*`（暫定）または `ForeignPtr.release` を必ず呼ぶ。CI では `ffi-smoke` テストで `status = "leak"` が出ないことを監査ログから確認する。
 2. **C / C++ → Reml**: 受け取ったポインタは `wrap_foreign_ptr` で `Ownership::Borrowed` に設定し、呼び出しスコープを抜ける前に `release_foreign_ptr` を呼ぶか、`Ownership::Transferred` として解放関数を登録する。
@@ -45,7 +45,7 @@
 
 ## 6. 監査・可観測性
 
-> 公式仕様: [3-9 §2.7](../spec/3-9-core-async-ffi-unsafe.md#27-監査テンプレートと可観測性)、[3-6 §5.1](../spec/3-6-core-diagnostics-audit.md#ffi-呼び出し監査テンプレート)。
+> 公式仕様: [3-9 §2.7](../../spec/3-9-core-async-ffi-unsafe.md#27-監査テンプレートと可観測性)、[3-6 §5.1](../../spec/3-6-core-diagnostics-audit.md#ffi-呼び出し監査テンプレート)。
 
 - 監査ログは `AuditEnvelope.metadata["ffi"]` にテンプレートを格納する。ガイドでは `audit.log("ffi.call", template)` を呼び出すヘルパ関数例と、CI で `status` が期待値になっているかを検証する `jq` スニペットを掲載する。
 - 実験的なサンドボックス構成（`call_with_capability` + `sandbox`）では、`capability_stage` が `Experimental` のまま本番で使われていないかメトリクスを監視する。ダッシュボード例は `monitoring/ffi-dashboard.json` を参照。
@@ -53,9 +53,9 @@
 
 ## 7. テストと検証
 
-> 公式仕様: [3-9 §2.6–2.7](../spec/3-9-core-async-ffi-unsafe.md#26-メモリ管理と所有権境界) の CI 要件を参照。ここでは追加で行っている検証のメモを残す。
+> 公式仕様: [3-9 §2.6–2.7](../../spec/3-9-core-async-ffi-unsafe.md#26-メモリ管理と所有権境界) の CI 要件を参照。ここでは追加で行っている検証のメモを残す。
 
-- **ABI チェック**: `ctest/ffi-smoke.c` と `ctest/struct-layout.c` を継続利用。結果が仕様の表と一致したかを `tests/ffi/README.md` に記録し、差分が発生した場合は `docs/notes/` に原因調査メモを残す。
+- **ABI チェック**: `ctest/ffi-smoke.c` と `ctest/struct-layout.c` を継続利用。結果が仕様の表と一致したかを `tests/ffi/README.md` に記録し、差分が発生した場合は `do../../notes/` に原因調査メモを残す。
 - **サニタイザ運用**: `asan`/`ubsan` を有効化したビルド手順を `scripts/ffi-sanitized-build.sh` にまとめる。False Positive が発生した場合の抑制パターンを併記する。
 - **多言語バインディング検証**: Rust ラッパや Python C-API の PoC は `examples/ffi/` 配下で管理し、仕様更新時に再実行する。期待する監査ログ（`status = "success"` など）が出力されるか `jq` ベースのスモークテストで確認する。
 
@@ -67,7 +67,7 @@
 
 ## 9. unsafe ポインタ運用ガイド
 
-> 目的：FFI 境界で露出するポインタ操作を Reml 本体の安全方針（[1-3-effects-safety.md](../spec/1-3-effects-safety.md#unsafe-ptr-spec)）と整合させ、実装とレビューの共通基準を提供する。
+> 目的：FFI 境界で露出するポインタ操作を Reml 本体の安全方針（[1-3-effects-safety.md](../../spec/1-3-effects-safety.md#unsafe-ptr-spec)）と整合させ、実装とレビューの共通基準を提供する。
 
 ### 9.1 ポインタ型マッピング
 
@@ -85,7 +85,7 @@ FFI 宣言ではこの対応表を基にシグネチャを決定し、`extern "C
 
 低レベルポインタは `Span<T>` / `Buffer` / `StructView` 等の安全ラッパからのみ取得できるようにし、公開 API は可能な限りこれらラッパ型を返す。
 `Span<T>` は長さを保持するため、境界チェック付きの `read_exact`/`write_exact` を提供し、内部で `Ptr<T>` へ降格する箇所を局所化する。
-`StructView` は `byte_offset` を利用してフィールドにアクセスする構造体ビューであり、ABI 互換性は [LLVM連携ノート](docs/guides/compiler/llvm-integration-notes.md) の方針に従う。
+`StructView` は `byte_offset` を利用してフィールドにアクセスする構造体ビューであり、ABI 互換性は [LLVM連携ノート](../compiler/llvm-integration-notes.md) の方針に従う。
 
 ### 9.3 寿命とリファレンスカウント
 
@@ -95,14 +95,14 @@ Rust など所有権モデルが存在する側では `ManuallyDrop` や `Box::i
 
 ### 9.4 メモリレイアウトと整列制約
 
-ポインタのキャストや `copy_nonoverlapping` を行う前に、構造体が自然境界を満たすか `repr(C)` 互換かを [LLVM連携ノート](docs/guides/compiler/llvm-integration-notes.md) で確認する。
+ポインタのキャストや `copy_nonoverlapping` を行う前に、構造体が自然境界を満たすか `repr(C)` 互換かを [LLVM連携ノート](../compiler/llvm-integration-notes.md) で確認する。
 アラインメント違反が懸念される場合は `read_unaligned`/`write_unaligned` を使用し、パフォーマンス影響を `benchmark/ffi/` のマイクロベンチで検証する。
 Swift や Zig のように追加メタデータが付与される言語では、呼び出し側で `withUnsafePointer` や `ptrFromInt` を利用して Reml の整列に合わせる。
 
 ### 9.5 チェックリストとサンプル
 
 1. **FFI バインディング**: `ctest/ffi-smoke.c` に `Ptr<T>`/`MutPtr<T>` の往復テストを追加し、NULL/非NULL の両ケースを検証する。
-2. **GPU/IO ハンドラ**: `docs/guides/runtime/runtime-bridges.md` の GPU チェックリストに従い、`effect {runtime, gpu, unsafe}` を宣言した例を `examples/gpu/` に配置する。
+2. **GPU/IO ハンドラ**: `../runtime/runtime-bridges.md` の GPU チェックリストに従い、`effect {runtime, gpu, unsafe}` を宣言した例を `examples/gpu/` に配置する。
 3. **テストベンチ用スタブ**: `tests/ffi/mock_host.reml` で `FnPtr` コールバックを使ったスタブを用意し、`audit` ログが記録されることを確認する。
 
 これらのサンプルは `Core.Unsafe.Ptr` の API ドキュメントと連携させ、CI でリグレッションテストを行う。
@@ -175,7 +175,7 @@ match handle {
 }
 ```
 
-`CapabilityHandle::descriptor()` は監査用 `stage`/`effect_scope` を再利用できるので、`AuditEnvelope` を組み立てるときに再評価を避けられます。`handle.as_gc()` や `handle.as_security()` のようなヘルパも用意されており、`docs/guides/runtime/runtime-bridges.md#1.3` で紹介した Bridge の運用手順と合わせて型安全な分岐条件を記録してください。
+`CapabilityHandle::descriptor()` は監査用 `stage`/`effect_scope` を再利用できるので、`AuditEnvelope` を組み立てるときに再評価を避けられます。`handle.as_gc()` や `handle.as_security()` のようなヘルパも用意されており、`../runtime/runtime-bridges.md#1.3` で紹介した Bridge の運用手順と合わせて型安全な分岐条件を記録してください。
 
 ## 12. 今後の拡張ロードマップ
 

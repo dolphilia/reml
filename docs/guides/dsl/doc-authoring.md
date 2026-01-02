@@ -7,7 +7,7 @@
 2. `Doc.extract` で抽出
 3. `Doc.render_markdown` / `Doc.render_html` で出力
 
-参照: [3-15 Core Doc](../spec/3-15-core-doc.md)
+参照: [3-15 Core Doc](../../spec/3-15-core-doc.md)
 
 ## 2. 最小例
 

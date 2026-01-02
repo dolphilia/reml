@@ -9,7 +9,7 @@
 | ステータス | ドラフト（Phase 4 対象） |
 | 効果タグ | `effect {io}` |
 | 依存モジュール | `Core.IO`, `Core.Diagnostics`, `Core.Text` |
-| 相互参照 | [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [2-7 Core Parse Streaming](2-7-core-parse-streaming.md), [2-2 Core Combinator](2-2-core-combinator.md), Guides: [lsp-authoring](../guides/lsp-authoring.md) |
+| 相互参照 | [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [2-7 Core Parse Streaming](2-7-core-parse-streaming.md), [2-2 Core Combinator](2-2-core-combinator.md), Guides: [lsp-authoring](../guides/lsp/lsp-authoring.md) |
 
 ## 1. 基本型
 

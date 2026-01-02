@@ -172,7 +172,7 @@ fn verify_capability_security(cap_handle: CapabilityHandle, security: Capability
 3. 不一致の場合は `CapabilityError::SecurityViolation` を生成し、`effects.contract.stage_mismatch` 診断で呼び出し元に伝播する。
 4. 診断メッセージは 0-1-project-purpose.md §1.2 の安全性基準に従い、拒否理由と必要な Capability/Stage を列挙する。
 
-この検査結果は §4 で定義する `AuditCapability` のシンクへ送信され、`Core.Diagnostics`（3.6 節）の `audit` 効果経由で共有される。IDE/LSP から参照する場合は、[notes/dsl-plugin-roadmap.md §5](../notes/dsl-plugin-roadmap.md#effect-handling-matrix) の比較表を利用してガイダンスを提示する。
+この検査結果は §4 で定義する `AuditCapability` のシンクへ送信され、`Core.Diagnostics`（3.6 節）の `audit` 効果経由で共有される。IDE/LSP から参照する場合は、[notes/dsl-plugin-roadmap.md §5](../notes/dsl/dsl-plugin-roadmap.md#effect-handling-matrix) の比較表を利用してガイダンスを提示する。
 
 - 型クラス辞書（とくに `Iterator`）は `CapabilityId::IteratorRuntime` を `StageRequirement` と共に格納し、`effect.stage.iterator.required`／`effect.stage.iterator.actual`／`effect.stage.iterator.capability`／`effect.stage.iterator.source` を `AuditEnvelope.metadata` に出力する。[`tooling/ci/collect-iterator-audit-metrics.py`](../../tooling/ci/collect-iterator-audit-metrics.py) と [`tooling/ci/sync-iterator-audit.sh`](../../tooling/ci/sync-iterator-audit.sh) がこれらメタデータを検証し、`iterator.stage.audit_pass_rate` を `0-3-audit-and-metrics.md` の記録フォーマットに整形する。【F:1-2-types-Inference.md†L90-L140】【F:3-1-core-prelude-iteration.md†L160-L220】
 - CLI/LSP 診断と AuditEnvelope は `required_capabilities` / `actual_capabilities` を配列で保持し、複数 Capability の Stage 判定を欠落なく照合する。[^effect003-phase25-capability-array]
@@ -386,18 +386,18 @@ fn apply_platform_defaults(cfg: RunConfig) -> RunConfig {
 | Capability | 説明 | 主な利用者 |
 | --- | --- | --- |
 | `RuntimeCapability::AsyncScheduler` | マルチスレッドスケジューラと Waker 実装を提供し、`Core.Async` の `spawn`/`block_on` を安定化させる。 | `Core.Async`, `RunConfig.execution`, `2-7-core-parse-streaming.md` |
-| `RuntimeCapability::AsyncBackpressure` | メールボックスやストリームの高水位制御をサポートし、`send`/`run_stream_async` が `Pending` を返せる。 | `Core.Async`, `StreamDriver`, `../guides/runtime-bridges.md` |
+| `RuntimeCapability::AsyncBackpressure` | メールボックスやストリームの高水位制御をサポートし、`send`/`run_stream_async` が `Pending` を返せる。 | `Core.Async`, `StreamDriver`, `../guides/runtime/runtime-bridges.md` |
 | `RuntimeCapability::ActorMailbox` | 固定長リングバッファ付き Mailbox と `link`/`monitor` 用の監査フックを有効化する。 | `Core.Async` §1.9, `3-6` 監査拡張 |
-| `RuntimeCapability::DistributedActor` | `TransportHandle` によるリモート mail box 統合と TLS 設定検証を提供する。 | `Core.Async` §1.9.2, `../guides/runtime-bridges.md` §11 |
+| `RuntimeCapability::DistributedActor` | `TransportHandle` によるリモート mail box 統合と TLS 設定検証を提供する。 | `Core.Async` §1.9.2, `../guides/runtime/runtime-bridges.md` §11 |
 | `RuntimeCapability::AsyncTracing` | 非同期タスクの span 追跡（`DiagnosticSpan` の継承と `async.trace.*` メトリクス）を記録する。 | `Core.Diagnostics`, LSP トレース, 監査ログ |
 | `RuntimeCapability::AsyncSupervisor` | `spawn_supervised`/`SupervisorSpec` の再起動制御と監査フックを有効化し、RestartBudget の強制と `async.supervisor.*` 診断を提供する。 | `Core.Async` §1.9.5, `Core.Diagnostics` §2.5.1 |
 | `RuntimeCapability::ExternalBridge(id)` | Runtime Bridge Registry で登録されたブリッジを Capability として公開し、`bridge.contract.*` 診断と Stage 検証を統合する。 | `RuntimeBridgeRegistry`（§10.1）, `3-6` §8 |
 
 - これら Capability は 0-1-project-purpose.md §1.1 の性能基準を満たすため、最低でも `AsyncScheduler` を安定ステージで登録することを求める。未登録の場合は `Core.Async` が逐次実行フォールバックへ切り替わり、`async.actor.capability_missing` 診断で通知される。
-- `AsyncBackpressure` が無い環境では `send` の `Pending` が `DropNew` に置き換わるため、DSL は高水位閾値を保守的に設定し、`../guides/runtime-bridges.md §11` のテーブルに従って警告を発行する。
+- `AsyncBackpressure` が無い環境では `send` の `Pending` が `DropNew` に置き換わるため、DSL は高水位閾値を保守的に設定し、`../guides/runtime/runtime-bridges.md §11` のテーブルに従って警告を発行する。
 - `DistributedActor` を利用する場合は `SecurityCapability.permissions` に `Network` を含めること。暗号化オプションが未設定なら `SecurityCapability` が `CapabilityError::SecurityViolation` を返す。
 - `AsyncTracing` が有効な環境では `DiagnosticSpan` を `CapabilityRegistry::get("tracing")` から取得し、`ActorContext.span` に継承する。メトリクス未対応環境ではトレースセクションをスキップする。
-- `CapabilityRegistry::stage_of(RuntimeCapability)` はこれらの Capability についても Stage 管理を提供し、`experimental` から `beta` へ昇格させる際は `../notes/dsl-plugin-roadmap.md` のチェックリストを満たす必要がある。
+- `CapabilityRegistry::stage_of(RuntimeCapability)` はこれらの Capability についても Stage 管理を提供し、`experimental` から `beta` へ昇格させる際は `../notes/dsl/dsl-plugin-roadmap.md` のチェックリストを満たす必要がある。
 - `RuntimeCapability::AsyncSupervisor` は登録時に `stage` を明示し、`Stage::Experimental` のまま提供する場合は `spawn_supervised`/`SupervisorSpec` 側で `@requires_capability(stage="experimental")` を必須とする。`stage >= Stage::Beta` へ昇格した後は `SupervisorSpec.health_check` と `RestartBudget` のリポートを監査に添付できることを確認してから `Stage::Stable` へ更新する。
 - `CapabilityRegistry::require(RuntimeCapability::AsyncSupervisor)` は Stage 不整合時に `CapabilityError::SecurityViolation` を返し、`Core.Async` 側で `AsyncErrorKind::RuntimeUnavailable` として再マッピングする。診断は 3-6 §2.5.1 の `async.supervisor.capability_missing` を使用し、`extensions["async.supervisor"].stage_required` / `stage_actual` を記録する。CLI は `reml capability stage promote async.supervisor` を通じて昇格ログを生成し、0-1 §1.2 の安全性レビュー資料に添付する。
 
@@ -694,7 +694,7 @@ pub type SecurityCapability = {
 }
 ```
 
-`SecurityPolicy` は [system-programming-analysis.md](system-programming-analysis.md) で提案された構造（許可システムコール、メモリ制限、ネットワーク範囲等）を採用し、`policy_digest` は監査ログやキャッシュで使用するハッシュ値を返す。
+`SecurityPolicy` は [../guides/runtime/system-programming-primer.md](../guides/runtime/system-programming-primer.md) で提案された構造（許可システムコール、メモリ制限、ネットワーク範囲等）を採用し、`policy_digest` は監査ログやキャッシュで使用するハッシュ値を返す。
 
 ---
 
@@ -810,7 +810,7 @@ pub type IoCapability = {
 | 効果タグ | `CapabilitySecurity.effect_scope ⊇ { ffi, audit, security }` | `io.blocking` / `io.async` / `io.timer` は対応 API に応じて追加 | 
 | Stage | `Stage::Stable` を推奨。`Experimental`/`Beta` の場合は `capability_stage` を監査ログに記録し CI で承認制にする | Stage 情報は 3-6 §5.1 の `capability_stage` へ連携 |
 | 監査ハンドラ | `audit_required = true` かつ `FfiCapability.audit` が監査テンプレートを転送 | `AuditCapability.emit` へフォールバックする場合もテンプレ遵守 |
-| サンドボックス | `CapabilitySecurity.sandbox` を設定し、`FfiSecurity.sandbox_calls = true` のときに CPU/メモリ制限を強制 | `../guides/reml-ffi-handbook.md` の運用セクションを参照 |
+| サンドボックス | `CapabilitySecurity.sandbox` を設定し、`FfiSecurity.sandbox_calls = true` のときに CPU/メモリ制限を強制 | `../guides/ffi/reml-ffi-handbook.md` の運用セクションを参照 |
 | シグネチャ検証 | `permissions` に `Runtime(RuntimeOperation::VerifyAbi)` を含め、`verify_abi` を必須化 | `FfiErrorKind::InvalidSignature` を `CapabilityError::SecurityViolation` に昇格 |
 | 監査照合 | `policy` で FFI 呼び出し専用ポリシーを指定し、`AuditEnvelope.metadata["ffi"]` の `effect_flags` と比較 | 逸脱時は `CapabilityError::SecurityViolation` を返す |
 
@@ -860,7 +860,7 @@ pub enum FileAccess = None | ReadOnly(List<PathPattern>) | Restricted(List<PathP
 ### 6.2 DSLプラグイン指針
 
 - DSL テンプレート／オブザーバビリティ拡張は `PluginCapability.register_plugin` で Capability Registry に自己記述メタデータを登録する。
-- プラグインの責務と配布ポリシーは [notes/dsl-plugin-roadmap.md](../notes/dsl-plugin-roadmap.md) および [AGENTS.md](AGENTS.md) を参照し、互換テストを必須化する。
+- プラグインの責務と配布ポリシーは [notes/dsl-plugin-roadmap.md](../notes/dsl/dsl-plugin-roadmap.md) および [../../AGENTS.md](../../AGENTS.md) を参照し、互換テストを必須化する。
 - `plugins` セクションで FfiCapability や AsyncCapability を要求する場合は、Conductor 側の `with_capabilities` と同一IDを使用して権限を同期させる。
 
 ## 7. DSL Capability Utility {#dsl-capability-utility}
@@ -1066,7 +1066,7 @@ fn inspect_capability_state(cap_id: CapabilityId) -> Result<CapabilityState, Deb
 
 ## 10. Runtime Bridge 契約 {#runtime-bridge-contract}
 
-> 目的：`RuntimeBridge` を通じて外部ランタイムやホットリロード機構と統合する際の公式契約を定義し、Capability Registry と同一の Stage/監査ポリシーで運用できるようにする。`../guides/runtime-bridges.md` は実運用ケーススタディと CLI 手順に限定し、本節で定義する契約を参照する。
+> 目的：`RuntimeBridge` を通じて外部ランタイムやホットリロード機構と統合する際の公式契約を定義し、Capability Registry と同一の Stage/監査ポリシーで運用できるようにする。`../guides/runtime/runtime-bridges.md` は実運用ケーススタディと CLI 手順に限定し、本節で定義する契約を参照する。
 
 ### 10.1 RuntimeBridgeRegistry とメタデータ
 
@@ -1126,7 +1126,7 @@ pub enum RuntimeBridgeError =
 ```
 
 - `audit_domain` は `Core.Diagnostics`（3-6）と共有するイベント名であり、`mandatory_events` に列挙したイベントが生成されなかった場合は `Diagnostic.code = Some("bridge.audit.missing_event")` を発生させる。
-- `rollout_checklist` は Stage 昇格レビューで確認する項目を列挙し、`../guides/runtime-bridges.md` の CLI テンプレートと同期する。チェックリストは `AuditCapability` へ転写され、`audit.log("bridge.rollout", {...})` のベースとなる。
+- `rollout_checklist` は Stage 昇格レビューで確認する項目を列挙し、`../guides/runtime/runtime-bridges.md` の CLI テンプレートと同期する。チェックリストは `AuditCapability` へ転写され、`audit.log("bridge.rollout", {...})` のベースとなる。
 
 ### 10.2 Stage ポリシーと Capability 契約
 
@@ -1198,10 +1198,10 @@ fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New
 ### 10.4 ターゲット互換性とポータビリティ
 
 - WASI 環境でブリッジを利用する場合、`target_profiles` に `"wasi-preview2"` を含め、`RuntimeBridgeDescriptor.required_capabilities` に `CapabilityId = "runtime.async"` と `StageRequirement::AtLeast(Beta)` を指定する。`Core.Env.platform_info()`（§1.3）から得た `TargetCapability::WasiPreview2` を検証し、不一致時は `RuntimeBridgeError::TargetMismatch` を返す。
-- コンテナ／サーバーレス運用では `target_profiles` にデプロイ対象のプロファイル ID（例: `"container.serverless"`）を登録し、`RuntimeBridgeAuditSpec.rollout_checklist` にローリングデプロイ時の監査項目（例: "verify target_config_errors dashboard"）を加える。`../guides/portability.md` のチェックリストと差異が無いか更新時に確認する。
+- コンテナ／サーバーレス運用では `target_profiles` にデプロイ対象のプロファイル ID（例: `"container.serverless"`）を登録し、`RuntimeBridgeAuditSpec.rollout_checklist` にローリングデプロイ時の監査項目（例: "verify target_config_errors dashboard"）を加える。`../guides/runtime/portability.md` のチェックリストと差異が無いか更新時に確認する。
 - `RunConfig.extensions["runtime"].profile` と `RuntimeBridgeDescriptor.target_profiles` が一致しない場合は `bridge.target.mismatch` 診断を即座に発行し、ホットリロードや Streaming API の起動を防止する。
 - ブリッジを通じて追加 Capability を有効化する場合は、`PlatformInfo.runtime_capabilities` に `RuntimeCapability::ExternalBridge(id)` を追加し、`describe_bridge` で返すメタデータを IDE/LSP へ共有する。
-- ガイド（`../guides/runtime-bridges.md`）は本節で定義した契約を前提とし、CLI サンプルやケーススタディを維持する。仕様とガイドで情報が乖離した場合は本節を優先し、ガイドに脚注を追加して読者を本節へ誘導すること。
+- ガイド（`../guides/runtime/runtime-bridges.md`）は本節で定義した契約を前提とし、CLI サンプルやケーススタディを維持する。仕様とガイドで情報が乖離した場合は本節を優先し、ガイドに脚注を追加して読者を本節へ誘導すること。
 
 ### 10.5 ストリーミング Signal ハンドラ
 

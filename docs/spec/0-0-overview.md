@@ -2,7 +2,7 @@
 
 ## Reml の位置付け
 
-Reml (Readable & Expressive Meta Language) は、パーサーコンビネーターを核に据えた言語設計プロジェクトです。短い記述で読みやすい構文、静的保証と高品質な診断、Unicode を前提とした国際化対応を重視し、実装者と利用者の双方が一貫したモデルで開発できることを目標にしています。詳細な設計ゴールや実装補遺は [Reml 設計ゴールと実装補遺](../notes/reml-design-goals-and-appendix.md) にまとめています。
+Reml (Readable & Expressive Meta Language) は、パーサーコンビネーターを核に据えた言語設計プロジェクトです。短い記述で読みやすい構文、静的保証と高品質な診断、Unicode を前提とした国際化対応を重視し、実装者と利用者の双方が一貫したモデルで開発できることを目標にしています。詳細な設計ゴールや実装補遺は [Reml 設計ゴールと実装補遺](../notes/language/reml-design-goals-and-appendix.md) にまとめています。
 
 ## 概要の読み方
 

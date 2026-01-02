@@ -95,7 +95,7 @@ fn unicode_error_to_diagnostic(span: Span, err: UnicodeError, phase: Str) -> Dia
 * `unicode_error_to_diagnostic` は 3.6 §2 のカタログ登録を前提に `Diagnostic.code` を設定する。既定コードは `U1001`（`InvalidUtf8`）、`U1002`（`UnsupportedScalar`）、`U1003`（`UnsupportedLocale`）。`extensions["unicode"]` には `{ form: Option<NormalizationForm>, locale: Option<Locale>, audit: err.audit }` を格納する。
 * LSP/CLI は `Diagnostic.notes` に `err.message` を埋め込み、`UnicodeError.span` が存在する場合は二次スパンとして添付する。`span` 引数とは別に `err.span` が指定されていたら**両方**表示し、Lex 側で縮約された範囲と Unicode ライブラリ内部で検出した具体位置を併記する。
 * 字句レイヤ（2.3 §E-1）で `requireNfc` や `numeric_overflow_error` を利用した場合、`unicode_error_to_parse_error` を経由して `ParseError.notes` に `NormalizationForm` や `Overflow` の範囲情報を反映させる。これにより 0-1 §1.2 の安全性要件（未定義挙動の排除）を担保しつつ、`Diagnostic` が同じテンプレートで表示される。
-* 監査ログでは `AuditEnvelope.metadata["unicode"] = { "phase": phase, "version": Unicode::VERSION }` を推奨する。`Unicode::VERSION` は現在の辞書バージョン（例："15.0"）で、`../guides/runtime-bridges.md` の監査レポートと照合できる。
+* 監査ログでは `AuditEnvelope.metadata["unicode"] = { "phase": phase, "version": Unicode::VERSION }` を推奨する。`Unicode::VERSION` は現在の辞書バージョン（例："15.0"）で、`../guides/runtime/runtime-bridges.md` の監査レポートと照合できる。
 
 ## 4. セグメンテーションと検索
 

@@ -9,7 +9,7 @@
 | ステータス | 正式仕様 |
 | 効果タグ | `effect {io.async}`, `effect {io.blocking}`, `effect {io.timer}`, `effect {ffi}`, `effect {unsafe}`, `effect {security}`, `effect {audit}` |
 | 依存モジュール | `Core.Prelude`, `Core.Iter`, `Core.IO`, `Core.Runtime`, `Core.Diagnostics` |
-| 相互参照 | [2.6 実行戦略](2-6-execution-strategy.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [guides/runtime-bridges.md](../guides/runtime-bridges.md), [guides/reml-ffi-handbook.md](../guides/reml-ffi-handbook.md), [guides/core-unsafe-ptr-api-draft.md](../guides/core-unsafe-ptr-api-draft.md) |
+| 相互参照 | [2.6 実行戦略](2-6-execution-strategy.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [guides/runtime-bridges.md](../guides/runtime/runtime-bridges.md), [guides/reml-ffi-handbook.md](../guides/ffi/reml-ffi-handbook.md), [guides/core-unsafe-ptr-api-draft.md](../guides/ffi/core-unsafe-ptr-api-draft.md) |
 
 ## 1. Core.Async の枠組み
 
@@ -494,7 +494,7 @@ fn greet(system: &ActorSystem, greeter: ActorRef<Message>, name: Text, timeout: 
 1. `ExecutionPlan::validate_capabilities`（3-9 §1.4.3）で `CapabilityRegistry::verify_conductor_contract` を呼び出し、`with_capabilities` から得た `ConductorCapabilityRequirement` が全て満たされているか静的に確認する。検証結果は `AuditEvent::CapabilityMismatch`（3-6 §1.1.1）として監査ログへ送信され、0-1-project-purpose.md §1.2 の安全性指針に沿って欠落をブロックする。
 2. ランタイム起動時は `CapabilityRegistry::verify_capability_stage("runtime.async", StageRequirement::AtLeast(StageId::Stable))` を実行し、返された `CapabilityHandle` から `SchedulerHandle::supports_mailbox()` が `true` であることを確認する。Stage 不足は `CapabilityError::StageViolation` と `async.actor.capability_missing` 診断で報告する。
 3. `ActorRuntimeCapability` は `verify_capability_stage("runtime.actor", StageRequirement::AtLeast(StageId::Experimental))` で取得し、`StageId::Experimental` の場合は公開 API に `@requires_capability(stage="experimental")` を付与する。Stage が `Beta` 以上であれば属性は任意だが、`@cfg(capability = "runtime.actor")` と同期させる。
-4. 分散を有効化する DSL は `../guides/runtime-bridges.md §11` のチェックリスト（監査・TLS・再接続ポリシー）を満たした上で、`verify_conductor_contract` の結果に基づき `RuntimeCapability::DistributedActor` の Stage を `AtLeast(StageId::Beta)` として要求する。
+4. 分散を有効化する DSL は `../guides/runtime/runtime-bridges.md §11` のチェックリスト（監査・TLS・再接続ポリシー）を満たした上で、`verify_conductor_contract` の結果に基づき `RuntimeCapability::DistributedActor` の Stage を `AtLeast(StageId::Beta)` として要求する。
 5. いずれかの検証が失敗した場合は `Diagnostic.code = Some("async.actor.capability_missing")` を返し、Stage 違反であれば `Diag.EffectDiagnostic.stage_violation(span, cap_id, err)`（3-6 §2.4.1）を利用して `extensions["effects"]` に差分を格納する。その他のエラーでも `extensions["capability"].required_stage` / `.actual_stage` を併用し、復旧手順と監査ログの突き合わせを支援する。
 
 #### 1.9.5 Supervisor パターンと再起動戦略
@@ -675,7 +675,7 @@ pub enum FfiErrorKind = LibraryNotFound
 
 ### 2.1 ABI とデータレイアウト
 
-- 既定ターゲットは System V AMD64 と Windows x64 を対象とし、将来的な ARM64 / WASM 追加は [guides/llvm-integration-notes.md](../guides/llvm-integration-notes.md#ターゲット-abi--データレイアウト) で追跡する。
+- 既定ターゲットは System V AMD64 と Windows x64 を対象とし、将来的な ARM64 / WASM 追加は [guides/llvm-integration-notes.md](../guides/compiler/llvm-integration-notes.md#ターゲット-abi--データレイアウト) で追跡する。
 - Reml からエクスポートされる複合型は `repr(C)` と等価な自然境界を保持し、未定義のパディングやフィールド再配置を禁止する。
 - FFI 境界で共有する主要レイアウトは次の表に従う。
 
@@ -1576,4 +1576,4 @@ fn test_unsafe_invariants(invariants: List<UnsafeInvariant>) -> TestResult<()> /
 - WIT 経由であっても `effect {ffi}` と監査ログの対象範囲は維持する（`unsafe` 境界の緩和は別途検討）。
 - WIT 監査キーの命名方針は `docs/spec/3-6-core-diagnostics-audit.md` の `ffi.wit.*` を参照する。
 
-> 関連: [guides/runtime-bridges.md](../guides/runtime-bridges.md), [guides/reml-ffi-handbook.md](../guides/reml-ffi-handbook.md), [guides/ffi-wit-poc.md](../guides/ffi-wit-poc.md), [notes/ffi-wasm-component-model-log.md](../notes/ffi-wasm-component-model-log.md), [2.6 実行戦略](2-6-execution-strategy.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md)
+> 関連: [guides/runtime-bridges.md](../guides/runtime/runtime-bridges.md), [guides/reml-ffi-handbook.md](../guides/ffi/reml-ffi-handbook.md), [guides/ffi-wit-poc.md](../guides/ffi/ffi-wit-poc.md), [notes/ffi-wasm-component-model-log.md](../notes/ffi/ffi-wasm-component-model-log.md), [2.6 実行戦略](2-6-execution-strategy.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md)

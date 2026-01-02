@@ -372,7 +372,7 @@ Reml コア仕様には `schema` キーワードによる設定 DSL は含まれ
 
 ### B.7 プラグイン関連構文
 
-`package` 宣言や `use plugin` ブロックといったプラグイン配布専用のメタデータ構文は、Reml コアから切り離しました。バージョン管理や Capability 指定は `reml-plugin` CLI と外部マニフェストで扱い、言語仕様としては通常の `use` とモジュールシステムのみを定義します。API 契約は [5-7-core-parse-plugin.md](5-7-core-parse-plugin.md) を参照し、運用面のベストプラクティスは `../guides/DSL-plugin.md` を参照してください。
+`package` 宣言や `use plugin` ブロックといったプラグイン配布専用のメタデータ構文は、Reml コアから切り離しました。バージョン管理や Capability 指定は `reml-plugin` CLI と外部マニフェストで扱い、言語仕様としては通常の `use` とモジュールシステムのみを定義します。API 契約は [5-7-core-parse-plugin.md](5-7-core-parse-plugin.md) を参照し、運用面のベストプラクティスは `../guides/dsl/DSL-plugin.md` を参照してください。
 
 
 ---
@@ -412,7 +412,7 @@ ConductorMonitoring ::= "monitoring" (Ident | ConductorQualifiedName) Block
 - **軽減策**: テンプレート・ジェネレータによる段階的導入、`label`/`recover` など標準エラー機構の活用、Capability/プラグイン標準での横断連携。
 - **埋め込み DSL 契約**: `conductor` に登録する埋め込み DSL は `dsl_id` を持ち、Capability/効果/スコープ引き継ぎの契約を明示する。親子 DSL の境界は診断情報に記録し、`Diagnostic.source_dsl` で発生源を追跡できるようにする。
 - **並列安全性フラグ**: 埋め込み DSL が独立区間で並列解析可能かを `EmbeddedMode::ParallelSafe` のようなフラグで宣言し、`execution` の並列戦略と整合させる。並列不可の DSL は順序保証を優先する。
-- **関連ノート**: 埋め込み DSL の標準化方針は [dsl-enhancement-proposal.md](../notes/dsl-enhancement-proposal.md) の 3.6 を参照。
+- **関連ノート**: 埋め込み DSL の標準化方針は [dsl-enhancement-proposal.md](../notes/dsl/dsl-enhancement-proposal.md) の 3.6 を参照。
 
 #### B.8.3.1 埋め込み DSL の最小契約（草案）
 
@@ -689,7 +689,7 @@ fn read_config(path: String) -> Result<Config, Error> = {
 
 * **基本方針**：Reml は**正格評価**であり、式は**左から右へ**逐次的に解釈される。
 * **関数呼び出し**：呼び出し式では、まず関数オブジェクト（`f` 部分）を評価し、続いて実引数を**記述順に左から右へ**評価する。名前付き引数を含む場合も、リストに書かれた順序で副作用が発生し、すべて完了してから関数本体が実行される。
-* **パイプ `|>`**：`lhs |> rhs` は左オペランドを評価し、得られた値を `rhs` の**第1引数（または `_` で示された位置）に挿入した関数呼び出し**として扱う。段が連結されている場合は左から右へ逐次的に評価し、途中でエラーや短絡が起きた時点で後続段は実行されない（デシュガ規則は [3.1 BNF](3-1-bnf.md) の脚注を参照）。
+* **パイプ `|>`**：`lhs |> rhs` は左オペランドを評価し、得られた値を `rhs` の**第1引数（または `_` で示された位置）に挿入した関数呼び出し**として扱う。段が連結されている場合は左から右へ逐次的に評価し、途中でエラーや短絡が起きた時点で後続段は実行されない（デシュガ規則は [1.5 形式文法](1-5-formal-grammar-bnf.md) の脚注を参照）。
 * **論理演算子 `&&` / `||`**：左オペランドを評価し、`&&` では `false`、`||` では `true` の時点で右オペランドの評価を省略（短絡）する。右オペランドが評価されるのは短絡条件に当てはまらない場合のみ。
 * **伝播演算子 `?`**：オペランド式を評価し、`Result` なら `Err`、`Option` なら `None` に遭遇した瞬間に現在の関数／ブロックから早期脱出する。成功ケースのときのみ後続の演算が続行される。
 * **その他の二項演算子**は、左オペランドの評価が終わってから右オペランドを評価する（`a + b` なら `a` → `b`）。三項条件演算子（導入予定）も同様に条件 → 真分岐 → 偽分岐の順で評価し、不要な分岐は評価しない。
@@ -1162,7 +1162,7 @@ CharLiteral    ::= *Unicode スカラ値 1 文字*
 NL             ::= 行末（B.3 の規則に従う）
 ```
 
-`conductor` ブロックの運用指針は本節 B.8 と [guides/conductor-pattern.md](../guides/conductor-pattern.md) を参照。ブロックや `unsafe` に付与する属性の評価は B.6 に記載した規則に従う。
+`conductor` ブロックの運用指針は本節 B.8 と [guides/conductor-pattern.md](../guides/dsl/conductor-pattern.md) を参照。ブロックや `unsafe` に付与する属性の評価は B.6 に記載した規則に従う。
 
 
 ---
@@ -1180,5 +1180,5 @@ NL             ::= 行末（B.3 の規則に従う）
 * [1.2 型と推論](1-2-types-Inference.md) - 型システムと推論規則
 * [1.3 効果と安全性](1-3-effects-safety.md) - 効果システムと安全性保証
 * [1.4 文字モデル](1-4-test-unicode-model.md) - Unicode処理の詳細
-* [3.1 BNF文法仕様](3-1-bnf.md) - 形式的文法定義
+* [1.5 形式文法](1-5-formal-grammar-bnf.md) - 形式的文法定義
 * [2.3 字句レイヤ](2-3-lexer.md) - 字句解析の実装詳細

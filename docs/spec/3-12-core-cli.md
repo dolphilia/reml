@@ -9,7 +9,7 @@
 | ステータス | ドラフト（Phase 4 対象） |
 | 効果タグ | `effect {io}` |
 | 依存モジュール | `Core.Prelude`, `Core.Env`, `Core.Diagnostics` |
-| 相互参照 | [3-10 Core Env](3-10-core-env.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), Guides: [cli-authoring](../guides/cli-authoring.md) |
+| 相互参照 | [3-10 Core Env](3-10-core-env.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), Guides: [cli-authoring](../guides/tooling/cli-authoring.md) |
 
 ## 1. 基本概念
 

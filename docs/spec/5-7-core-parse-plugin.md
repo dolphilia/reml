@@ -12,12 +12,12 @@
 | プラグインID | `core.parse.plugin` |
 | 効果タグ | `effect {parser}`, `effect {runtime}`, `effect {audit}`, `effect {security}` |
 | 依存モジュール | `Core.Parse`（[2-1](2-1-parser-type.md)）、`Core.Diagnostics`（[3-6](3-6-core-diagnostics-audit.md)）、`Core.Runtime.Capability`（[3-8](3-8-core-runtime-capability.md)） |
-| 相互参照 | `../guides/DSL-plugin.md`（運用ガイド）、`../notes/dsl-plugin-roadmap.md`（提供計画）、`2-2-core-combinator.md`（Capability 要求パターン） |
+| 相互参照 | `../guides/dsl/DSL-plugin.md`（運用ガイド）、`../notes/dsl/dsl-plugin-roadmap.md`（提供計画）、`2-2-core-combinator.md`（Capability 要求パターン） |
 
 ## 0.5 改訂案（標準ライブラリとの接続）
 
 - **DSL キットとの接続**: `Core.Dsl` 系（[3.16](3-16-core-dsl-paradigm-kits.md)）から利用する Capability を整理し、プラグイン導入時の互換性チェックを明文化する。
-- **運用ガイドの更新**: `../guides/DSL-plugin.md` に標準ライブラリとの境界（内蔵 DSL と外部 DSL の線引き）を追記する。
+- **運用ガイドの更新**: `../guides/dsl/DSL-plugin.md` に標準ライブラリとの境界（内蔵 DSL と外部 DSL の線引き）を追記する。
 
 ## 1. プラグインメタデータとマニフェスト
 
@@ -198,7 +198,7 @@ pub enum PluginError =
   | IO { path: Path, cause: IOError }
 ```
 
-- `StageViolation` は `Diag.EffectDiagnostic.stage_violation` を生成し、`../notes/dsl-plugin-roadmap.md` で定義された段階的採用シナリオのガードとして機能する。
+- `StageViolation` は `Diag.EffectDiagnostic.stage_violation` を生成し、`../notes/dsl/dsl-plugin-roadmap.md` で定義された段階的採用シナリオのガードとして機能する。
 - `RegistrarError` は `register_capability` などの呼び出しから得られた診断をカプセル化する。プラグイン開発者は `Diagnostic::with_plugin_context(plugin_id)` を用いて発生箇所を明示すること。
 - 署名関連の失敗は `VerificationFailed` として統一し、CLI は `plugin.signature.failure` イベントをログに残す。
 
@@ -222,4 +222,4 @@ pub enum PluginWarning =
 3. `reml-plugin status` は登録済みプラグインを列挙し、Capability Stage・署名有効期限・最終検証時刻を表示する。結果は `status.json` としてエクスポートでき、CI で `StageRequirement` の逸脱を検出する。
 4. `reml-plugin revoke <id>` は対象プラグインを無効化し、`CapabilityRegistry.plugins.revoke_plugin` を起動する。無効化イベントは `plugin.revoke` として監査ログに残る。
 
-ガイドライン・ベストプラクティス（テンプレート作成、CI 連携手順、IDE 統合など）は引き続き [guides/DSL-plugin.md](../guides/DSL-plugin.md) に掲載し、本章では API 契約と互換条件のみを定義する。
+ガイドライン・ベストプラクティス（テンプレート作成、CI 連携手順、IDE 統合など）は引き続き [guides/DSL-plugin.md](../guides/dsl/DSL-plugin.md) に掲載し、本章では API 契約と互換条件のみを定義する。

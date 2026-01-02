@@ -7,7 +7,7 @@
 2. `Cli.parse` で引数を解決
 3. `Cli.get_flag` / `Cli.get_arg` で値を取得
 
-参照: [3-12 Core Cli](../spec/3-12-core-cli.md)
+参照: [3-12 Core Cli](../../spec/3-12-core-cli.md)
 
 ## 1.1 Core.Env との分担
 - `Core.Cli` は `argv` の解析とヘルプ/診断整形を担い、環境変数やプラットフォーム情報は `Core.Env` に委譲する。

@@ -71,6 +71,6 @@ fn run_dsl_benchmark(config: BenchConfig) -> Result<BenchReport, Diagnostic> = {
 ## 5. 参考リンク
 
 - [5-1 Reml実用プロジェクト開発：DSLファーストアプローチ](../5-1-dsl-first-development.md)
-- [3-9 Core Async / FFI / Unsafe](../spec/3-9-core-async-ffi-unsafe.md)
-- [3-6 Core Diagnostics & Audit](../spec/3-6-core-diagnostics-audit.md)
-- [notes/dsl-plugin-roadmap.md](../notes/dsl-plugin-roadmap.md)
+- [3-9 Core Async / FFI / Unsafe](../../spec/3-9-core-async-ffi-unsafe.md)
+- [3-6 Core Diagnostics & Audit](../../spec/3-6-core-diagnostics-audit.md)
+- [notes/dsl-plugin-roadmap.md](../../notes/dsl/dsl-plugin-roadmap.md)

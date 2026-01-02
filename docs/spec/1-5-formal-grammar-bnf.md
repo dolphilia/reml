@@ -144,7 +144,7 @@ ConductorMonitoringSpec ::= "with" ModulePath
                           | ConductorEndpoint
 ```
 
-`conductor` ブロックにおけるセクション構成や監査要件は [1.1 構文 B.8](1-1-syntax.md#b8-dsl制御ブロック-conductor) および [guides/conductor-pattern.md](../guides/conductor-pattern.md) を参照してください。
+`conductor` ブロックにおけるセクション構成や監査要件は [1.1 構文 B.8](1-1-syntax.md#b8-dsl制御ブロック-conductor) および [guides/conductor-pattern.md](../guides/dsl/conductor-pattern.md) を参照してください。
 
 ### 2.1 OpBuilder DSL
 

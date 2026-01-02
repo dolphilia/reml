@@ -1,6 +1,6 @@
 # Core.Unsafe.Ptr 運用ガイド
 
-> 目的：仕様章 [3.9 Core Async / FFI / Unsafe](../spec/3-9-core-async-ffi-unsafe.md#3-coreunsafeptr-api) で正式化された `Core.Unsafe.Ptr` API を安全かつ効率的に活用するためのベストプラクティスをまとめる。
+> 目的：仕様章 [3.9 Core Async / FFI / Unsafe](../../spec/3-9-core-async-ffi-unsafe.md#3-coreunsafeptr-api) で正式化された `Core.Unsafe.Ptr` API を安全かつ効率的に活用するためのベストプラクティスをまとめる。
 > 仕様参照：型・関数の定義は 3.9 §3 に従う。本ガイドでは利用時のチェックリスト、監査フロー、補助的なサンプルを提供する。
 
 ## 1. 型定義

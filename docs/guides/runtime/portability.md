@@ -133,7 +133,7 @@ let shim = with_abi_adaptation(symbol, conv)?;
 
 ## 6. 診断とテレメトリ
 
-* `target.profile.missing`, `target.abi.mismatch`, `target.config.mismatch`, `target.capability.unknown` など `DiagnosticDomain::Target` の診断を `reml build --emit-metadata target.json` で収集し、CI で `docs/guides/tooling/ci-strategy.md` に従って集計します。
+* `target.profile.missing`, `target.abi.mismatch`, `target.config.mismatch`, `target.capability.unknown` など `DiagnosticDomain::Target` の診断を `reml build --emit-metadata target.json` で収集し、CI で `../toolingci-strategy.md` に従って集計します。
 * `Diagnostic.extensions["target"]` に `requested` / `detected` / `capability` 等の情報が含まれるため、構造化ログとして保存し、再現手順を短縮します。
 * `Core.Diagnostics` と連携する場合、`set_env` や FFI 呼び出し時に `AuditEvent` を発行し、監査証跡を保持します。ターゲット関連イベントは `AuditEnvelope.metadata["target"]` を添付することで `reml toolchain verify` と整合します。
 
@@ -183,8 +183,8 @@ Capability 名は `capability_name(TargetCapability::…)` の戻り値と一致
 | Hardware Capability プラグイン (5-5) | `target_arch`, `feature = "rdtsc"` | 権限不足時は `HardwareErrorKind::PermissionDenied` を返し、監査で権限不足を通知 |
 | RealTime Capability プラグイン (5-6) | `feature = "realtime"`, `target_os` | `SCHED_DEADLINE` や `mlock` が非対応の場合は `RealTimeErrorKind::Unsupported` を返却 |
 
-これらモジュールを利用する際は `CapabilitySecurity.effect_scope` と `SecurityPolicy` をターゲットごとに調整し、`docs/guides/runtime/system-programming-primer.md` で紹介する監査テンプレートと併用することを推奨する。
+これらモジュールを利用する際は `CapabilitySecurity.effect_scope` と `SecurityPolicy` をターゲットごとに調整し、`../runtimesystem-programming-primer.md` で紹介する監査テンプレートと併用することを推奨する。
 
 ---
 
-ポータビリティ対応は段階的な取り組みが推奨されます。Phase 1 の項目を満たした後は、`docs/guides/tooling/ci-strategy.md`（未作成）でマルチターゲットテスト基盤を整備し、Phase 2 以降の TODO を進めてください。
+ポータビリティ対応は段階的な取り組みが推奨されます。Phase 1 の項目を満たした後は、`../toolingci-strategy.md`（未作成）でマルチターゲットテスト基盤を整備し、Phase 2 以降の TODO を進めてください。

@@ -48,7 +48,7 @@
 - `@no_blocking` / `@async_free` 等の属性を利用して非同期セクションを保護。
 - `AuditContext` を共通テンプレートとして使用し、`syscall`, `process`, `ffi` 等のログ構造を統一。
 - `CapabilitySecurity` の `policy` 参照を活用して `SecurityPolicy` と整合させる。
-- CROSS: `docs/guides/runtime/portability.md` のチェックリストを用いてターゲット差異を洗い出す（TODO: 次版で詳細を追加）。
+- CROSS: `../runtimeportability.md` のチェックリストを用いてターゲット差異を洗い出す（TODO: 次版で詳細を追加）。
 
 ## 6. 今後の拡張予定
 - 各章の API サンプルを統合したクックブック（プロセス監視ツール、共有メモリ IPC など）を追加予定。

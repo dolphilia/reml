@@ -7,7 +7,7 @@
 
 `remlc-ocaml` は Phase 1-6 Week 15 でトレース機能と統計出力を導入し、コンパイルパイプラインの可視性を高めた。  
 本ガイドでは `--trace` および `--stats` オプションの挙動、出力フォーマット、メトリクス活用の指針をまとめる。  
-設計背景は [1-6-developer-experience.md](../plans/bootstrap-roadmap/1-6-developer-experience.md) を参照。
+設計背景は [1-6-developer-experience.md](../../plans/bootstrap-roadmap/1-6-developer-experience.md) を参照。
 
 ## CLI オプション概要
 
@@ -117,7 +117,7 @@ opam exec -- dune exec -- remlc sample.reml --metrics metrics.json
 opam exec -- dune exec -- remlc sample.reml --metrics metrics.csv --metrics-format csv
 ```
 
-JSON出力はスキーマ定義 [`docs/schemas/remlc-metrics.schema.json`](../schemas/remlc-metrics.schema.json) に準拠します。
+JSON出力はスキーマ定義 [`do../../schemas/remlc-metrics.schema.json`](../../schemas/remlc-metrics.schema.json) に準拠します。
 
 JSON には以下のフィールドが追加される。
 
@@ -136,9 +136,9 @@ JSON には以下のフィールドが追加される。
 ## 運用ガイドライン
 
 - **CI ログ収集**: `dune exec -- remlc-ocaml sample.reml --trace --stats 2> trace.log` により標準エラーをファイルへリダイレクトし、フェーズ毎の回帰を検出する。
-- **メトリクス更新**: 10MB 規模の入力に対する `--metrics` 出力を [0-3-audit-and-metrics.md](../plans/bootstrap-roadmap/0-3-audit-and-metrics.md) に追記し、性能トレンドを記録する。`scripts/benchmark-parse-throughput.sh` を使用して計測を自動化できます。
+- **メトリクス更新**: 10MB 規模の入力に対する `--metrics` 出力を [0-3-audit-and-metrics.md](../../plans/bootstrap-roadmap/0-3-audit-and-metrics.md) に追記し、性能トレンドを記録する。`scripts/benchmark-parse-throughput.sh` を使用して計測を自動化できます。
 - **診断との整合**: `--format=json` を併用する場合でも `--trace` / `--stats` は標準エラー出力を使用するため、CI 上でのログ分離（ファイル分割やプレフィックス付与）を推奨する。
-- **将来拡張**: `--verbose` レベルに応じたトレース粒度やメモリピーク値の記録は Phase 2-5 で扱う予定なため、追加要件は [1-5-to-1-6-handover.md](../plans/bootstrap-roadmap/1-5-to-1-6-handover.md) のフォローアップ欄、または後続フェーズのハンドオーバー資料に追記して共有する。
+- **将来拡張**: `--verbose` レベルに応じたトレース粒度やメモリピーク値の記録は Phase 2-5 で扱う予定なため、追加要件は [1-5-to-1-6-handover.md](../../plans/bootstrap-roadmap/1-5-to-1-6-handover.md) のフォローアップ欄、または後続フェーズのハンドオーバー資料に追記して共有する。
 
 ## 10MB入力プロファイル計測
 
@@ -165,6 +165,6 @@ JSON には以下のフィールドが追加される。
 
 ## 参考資料
 
-- [docs/plans/bootstrap-roadmap/1-6-developer-experience.md](../plans/bootstrap-roadmap/1-6-developer-experience.md)
-- [docs/guides/tooling/diagnostic-format.md](docs/guides/tooling/diagnostic-format.md)
-- [docs/spec/3-6-core-diagnostics-audit.md](../spec/3-6-core-diagnostics-audit.md)
+- [do../../plans/bootstrap-roadmap/1-6-developer-experience.md](../../plans/bootstrap-roadmap/1-6-developer-experience.md)
+- [../tooling/diagnostic-format.md](../tooling/diagnostic-format.md)
+- [do../../spec/3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md)

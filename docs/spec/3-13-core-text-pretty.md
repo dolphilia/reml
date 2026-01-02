@@ -9,7 +9,7 @@
 | ステータス | ドラフト（Phase 4 対象） |
 | 効果タグ | `effect {none}` |
 | 依存モジュール | `Core.Text`, `Core.Text.Unicode` |
-| 相互参照 | [3-3 Core Text & Unicode](3-3-core-text-unicode.md), Guides: [formatter-authoring](../guides/formatter-authoring.md) |
+| 相互参照 | [3-3 Core Text & Unicode](3-3-core-text-unicode.md), Guides: [formatter-authoring](../guides/dsl/formatter-authoring.md) |
 
 ## 1. 基本概念
 

@@ -9,7 +9,7 @@
 | ステータス | ドラフト（Phase 4 対象） |
 | 効果タグ | `effect {runtime}`, `effect {memory}`, `effect {io.async}`, `effect {audit}` |
 | 依存モジュール | `Core.Runtime`, `Core.Diagnostics`, `Core.Async` |
-| 相互参照 | [3-0 Core Library Overview](3-0-core-library-overview.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-8 Core Runtime Capability](3-8-core-runtime-capability.md), [3-9 Core Async/FFI/Unsafe](3-9-core-async-ffi-unsafe.md), Notes: [dsl-paradigm-support-research](../notes/dsl-paradigm-support-research.md) |
+| 相互参照 | [3-0 Core Library Overview](3-0-core-library-overview.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-8 Core Runtime Capability](3-8-core-runtime-capability.md), [3-9 Core Async/FFI/Unsafe](3-9-core-async-ffi-unsafe.md), Notes: [dsl-paradigm-support-research](../notes/dsl/dsl-paradigm-support-research.md) |
 
 ## 1. 位置付け
 

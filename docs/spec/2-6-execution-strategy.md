@@ -165,7 +165,7 @@ fn specialise_config(profile: BuildProfile) -> RunConfig = {
 
 * `platform_info()` と `platform_features()` を併用し、ランタイム最適化（Packrat 有効化/無効化、左再帰サポート切替など）をプラットフォームごとに調整する。
 * `default_target(profile)` は `Core.Env.infer_target_from_env()` や CLI パラメータから構築した基準値であり、ここで追加した `extra` キーは `@cfg` による宣言切替と診断に利用できる。
-* WASM や一時的な実験ターゲットでは左再帰やブロッキング I/O を制限し、`../guides/portability.md` のチェックリストに従って差異を記録する。
+* WASM や一時的な実験ターゲットでは左再帰やブロッキング I/O を制限し、`../guides/runtime/portability.md` のチェックリストに従って差異を記録する。
 
 * **空成功の繰返し**検出は必須（2.2 に準拠）。
 
@@ -302,7 +302,7 @@ fn wasm_run<T>(p: Parser<T>, bytes: Bytes, cfg: RunConfig) -> Result<T, Diagnost
 }
 ```
 
-* `target_family = "wasm"` の場合、Packrat/左再帰を既定で無効化し、`../guides/runtime-bridges.md` の WASI サンドボックス指針に従って I/O を限定する。
+* `target_family = "wasm"` の場合、Packrat/左再帰を既定で無効化し、`../guides/runtime/runtime-bridges.md` の WASI サンドボックス指針に従って I/O を限定する。
 * エラー診断は `Diagnostic.extensions["cfg"].evaluated` に `wasi` プロファイルを記録し、ホストとの差異を監査可能にする。
 
 ### H.2 ARM64 / 組み込み
@@ -335,7 +335,7 @@ fn container_profile(profile: &str) -> RunConfig = {
 }
 ```
 
-* コンテナ上での実行を想定し、プロファイルごとに Packrat/左再帰や診断の集約ポリシーを切り替える。`../guides/portability.md` のフェーズ指針に沿って追加ターゲットを段階的に導入する。
+* コンテナ上での実行を想定し、プロファイルごとに Packrat/左再帰や診断の集約ポリシーを切り替える。`../guides/runtime/portability.md` のフェーズ指針に沿って追加ターゲットを段階的に導入する。
 
 ---
 
@@ -343,7 +343,7 @@ fn container_profile(profile: &str) -> RunConfig = {
 
 * パーサ値は **不変**であり、`State` は実行ごとに分離される。共有を行う場合は拡張側でスレッド安全性を保証する。
 * 同一入力内での並列実行は推奨しないが、モジュール単位の分割統治は上位レイヤで並列化できる。
-* GC やランタイム統合に関する詳細なコールバックは `../guides/runtime-bridges.md` に委ね、コア仕様では純粋性と境界の明示のみを要求する。
+* GC やランタイム統合に関する詳細なコールバックは `../guides/runtime/runtime-bridges.md` に委ね、コア仕様では純粋性と境界の明示のみを要求する。
 
 
 ## J. パフォーマンス方針（実装規約）

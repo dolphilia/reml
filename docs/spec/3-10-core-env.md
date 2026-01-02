@@ -1,6 +1,6 @@
 # 3.10 Core Env & Platform Bridge
 
-> 目的：環境変数・一時ディレクトリ・実行中プラットフォーム情報へのアクセスを標準化し、`@cfg` と `RunConfig.extensions["target"]` の整合性を保つ。環境依存の差異を安全に露出し、ポータビリティ指針（[ポータビリティガイド](../guides/portability.md)）を仕様へ落とし込む。`Core.System.Env` を正準 API とし、`Core.Env` は互換エイリアスとして維持する。
+> 目的：環境変数・一時ディレクトリ・実行中プラットフォーム情報へのアクセスを標準化し、`@cfg` と `RunConfig.extensions["target"]` の整合性を保つ。環境依存の差異を安全に露出し、ポータビリティ指針（[ポータビリティガイド](../guides/runtime/portability.md)）を仕様へ落とし込む。`Core.System.Env` を正準 API とし、`Core.Env` は互換エイリアスとして維持する。
 
 ## 0. 仕様メタデータ
 
@@ -9,7 +9,7 @@
 | ステータス | ドラフト（Phase 1 優先タスク） |
 | 効果タグ | `effect {io}`, `effect {runtime}`, `effect {security}` |
 | 依存モジュール | `Core.Prelude`, `Core.IO`, `Core.Path`, `Core.Diagnostics`, `Core.Runtime` |
-| 相互参照 | [3-5 Core IO & Path](3-5-core-io-path.md), [3-8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-18 Core System](3-18-core-system.md), Guides: [ポータビリティガイド](../guides/portability.md) |
+| 相互参照 | [3-5 Core IO & Path](3-5-core-io-path.md), [3-8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-18 Core System](3-18-core-system.md), Guides: [ポータビリティガイド](../guides/runtime/portability.md) |
 
 ## 1. 環境変数アクセス
 

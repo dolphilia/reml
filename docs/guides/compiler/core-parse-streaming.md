@@ -1,17 +1,17 @@
 # Core.Parse.Streaming 運用ガイド
 
-> 目的：仕様章 [2.7 Core.Parse.Streaming](../spec/2-7-core-parse-streaming.md) で定義された API に基づき、実務でのチャンク処理・継続再開・監査連携の運用パターンを整理する。
+> 目的：仕様章 [2.7 Core.Parse.Streaming](../../spec/2-7-core-parse-streaming.md) で定義された API に基づき、実務でのチャンク処理・継続再開・監査連携の運用パターンを整理する。
 > 注意：ランナー API や型定義の公式仕様は 2.7 に移管済み。本ガイドでは実装・運用時の補足ノート、ベストプラクティス、チェックリストに焦点を当てる。
 
 ## Rust 実装対応状況
 
 - 4.1 フェーズ時点の Rust ランタイムはバッチ用 `Parser<T>` コンビネーターと Packrat を実装済みだが、`run_stream` / `resume` を含む Streaming Runner は未提供。CLI/LSP からは OCaml 実装のみがストリーミング経路を提供している。
-- `RunConfig.extensions["lex"]` のプロファイル共有や `Core.Parse.Plugin` 連携も未実装のため、Rust 版では字句トリビアや Capability をストリーミング経路に反映できない。Lex プロファイルや recover 同期トークンを Rust へ橋渡しする手順は `docs/notes/parser/core-parse-api-evolution.md#todo-rust-lex-streaming-plugin` に TODO として記録している。
+- `RunConfig.extensions["lex"]` のプロファイル共有や `Core.Parse.Plugin` 連携も未実装のため、Rust 版では字句トリビアや Capability をストリーミング経路に反映できない。Lex プロファイルや recover 同期トークンを Rust へ橋渡しする手順は `do../../notes/parser/core-parse-api-evolution.md#todo-rust-lex-streaming-plugin` に TODO として記録している。
 - Rust でストリーミングを試す場合は既存のバッチ Runner をチャンク単位で呼び直す暫定策しかなく、Packrat 共有やバックプレッシャ計測が欠落することに留意する。
 
 ## 1. ランナー API
 
-*仕様参照: [2-7 §A](../spec/2-7-core-parse-streaming.md#a-ランナー-api)*
+*仕様参照: [2-7 §A](../../spec/2-7-core-parse-streaming.md#a-ランナー-api)*
 
 ```reml
 fn run_stream<T>(p: Parser<T>, feeder: Feeder, cfg: StreamingConfig = {}) -> StreamOutcome<T>
@@ -30,7 +30,7 @@ type StreamOutcome<T> =
 
 ## 2. Feeder とデマンドヒント
 
-*仕様参照: [2-7 §B](../spec/2-7-core-parse-streaming.md#feeder-demandhint)*
+*仕様参照: [2-7 §B](../../spec/2-7-core-parse-streaming.md#feeder-demandhint)*
 
 ```reml
 type DemandHint = {
@@ -55,7 +55,7 @@ type FeederYield =
 
 ## 3. 継続メタデータ
 
-*仕様参照: [2-7 §C](../spec/2-7-core-parse-streaming.md#c-継続とメタデータ)*
+*仕様参照: [2-7 §C](../../spec/2-7-core-parse-streaming.md#c-継続とメタデータ)*
 
 ```reml
 type Continuation<T> = {
@@ -78,7 +78,7 @@ type ContinuationMeta = {
 
 ## 4. FlowController とバックプレッシャ
 
-*仕様参照: [2-7 §D](../spec/2-7-core-parse-streaming.md#flow-controller)*
+*仕様参照: [2-7 §D](../../spec/2-7-core-parse-streaming.md#flow-controller)*
 
 ```reml
 type FlowController = {
@@ -120,7 +120,7 @@ type BackpressureSpec = {
 
 ## 5. StreamDriver ヘルパ
 
-*仕様参照: [2-7 §E](../spec/2-7-core-parse-streaming.md#streamdriver-helper)*
+*仕様参照: [2-7 §E](../../spec/2-7-core-parse-streaming.md#streamdriver-helper)*
 
 ```reml
 type StreamDriver<T, Sink> = {
@@ -148,7 +148,7 @@ type PendingReason = "Backpressure" | "InputExhausted" | "FeederAwait" | "Feeder
 
 ## 6. インクリメンタル再パース
 
-*仕様参照: [2-7 §F](../spec/2-7-core-parse-streaming.md#f-インクリメンタル再パース)*
+*仕様参照: [2-7 §F](../../spec/2-7-core-parse-streaming.md#f-インクリメンタル再パース)*
 
 1. 編集差分（byte range + delta）を受け取ったら該当範囲を跨ぐ memo を無効化。
 2. `ParserId` 依存グラフで影響範囲を計算し、局所的に `run_stream`/`resume` を再実行。
@@ -158,7 +158,7 @@ type PendingReason = "Backpressure" | "InputExhausted" | "FeederAwait" | "Feeder
 
 ## 7. 監視とメタデータ
 
-*仕様参照: [2-7 §G](../spec/2-7-core-parse-streaming.md#g-診断・監査・runconfig-との統合)*
+*仕様参照: [2-7 §G](../../spec/2-7-core-parse-streaming.md#g-診断・監査・runconfig-との統合)*
 
 ```reml
 type StreamMeta = {
@@ -177,12 +177,12 @@ type StreamMeta = {
 
 *仕様参照: 2.7 §E, §G（監査連携）*
 
-- `docs/guides/runtime/runtime-bridges.md` にホットリロード／差分適用のワークフロー例を掲載。
+- `../runtimeruntime-bridges.md` にホットリロード／差分適用のワークフロー例を掲載。
 - 非同期実行が必要な場合は `Core.Async` 拡張を併用し、`Feeder` を `Future` ベースで実装する。
 
 ## 9. RunConfig との統合
 
-*仕様参照: [2-7 §G-2](../spec/2-7-core-parse-streaming.md#g-2-runconfig-共有キー)*
+*仕様参照: [2-7 §G-2](../../spec/2-7-core-parse-streaming.md#g-2-runconfig-共有キー)*
 
 ストリーミング実装がバッチランナーと同じ診断品質・復旧性能を維持するために、以下の情報を `RunConfig` と共有する。
 
@@ -196,9 +196,9 @@ type StreamMeta = {
 ### 9.1 CLI/LSP 設定との連携手順（Phase 2-5 Step6）
 
 1. CLI では `compiler/ocaml/src/main.ml` の `Run_config.Builder`（仮称）を利用し、`RunConfig` を構築して監査ログに `parser.runconfig.*` メタデータを残す。`parser-runconfig-packrat.json.golden` はこの経路で出力した JSON を保存したものであり、`scripts/validate-diagnostic-json.sh` を通じて仕様スキーマと突合できる。
-2. LSP は `tooling/lsp/run_config_loader.ml` で同じ構成を読み込み、`extensions["lex"|"recover"|"stream"]` をそのまま `Core.Parse.Streaming.run_stream` に渡す。`docs/spec/2-1-parser-type.md` §D の脚注 `[^runconfig-ocaml-phase25]` では `with_extension` を用いた共有例を提示している。
+2. LSP は `tooling/lsp/run_config_loader.ml` で同じ構成を読み込み、`extensions["lex"|"recover"|"stream"]` をそのまま `Core.Parse.Streaming.run_stream` に渡す。`do../../spec/2-1-parser-type.md` §D の脚注 `[^runconfig-ocaml-phase25]` では `with_extension` を用いた共有例を提示している。
 3. ストリーミング実装は `RunConfig` から `extensions["stream"].resume_hint` と `RunConfig.locale` を取り出し、`StreamOutcome::Pending` / `Completed` 双方で同じ診断ロケールとデマンドヒントを提供する。`collect-iterator-audit-metrics.py --require-success --source compiler/ocaml/tests/golden/diagnostics/parser/parser-runconfig-packrat.json.golden` を実行すると、RunConfig 拡張が CI 監視に反映されているかを確認できる。
-4. 共有設定を追加する場合は `docs/notes/parser/core-parser-migration.md` の TODO リストに追記し、`PARSER-003`（Packrat/左再帰）・`LEXER-002`（Lex シム）・`EXEC-001`（ストリーミング PoC）で再利用できるかをレビューする。
+4. 共有設定を追加する場合は `do../../notes/parser/core-parser-migration.md` の TODO リストに追記し、`PARSER-003`（Packrat/左再帰）・`LEXER-002`（Lex シム）・`EXEC-001`（ストリーミング PoC）で再利用できるかをレビューする。
 
 これらの手順により、CLI/LSP/ストリーミングが同一 RunConfig を基点に動作し、Phase 2-5 で導入した指標（`parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate`）を通じて設定の逸脱を検知できる。
 
@@ -231,11 +231,11 @@ let read_token = fn lexbuf ->
 `lex_pack` は `ConfigTriviaProfile` や `space_id` を保持し、`cfg` は `extensions["config"].trivia` を同期済みの `RunConfig`。`StreamDriver`／`run_stream` に渡す前に `cfg` を採用し、`read_token` で字句を取得することで、バッチ経路と同じトリビア設定・監査キー（`lexer.shared_profile_pass_rate` 等）をストリーミング側でも確保できる[^stream-lex-bridge-phase25].
 
 [^stream-lex-bridge-phase25]:
-    2025-11-30 更新。`Core.Parse.Lex.Bridge` が `RunConfig.extensions["lex"]` と `extensions["config"]` を同期し、`lexeme`/`symbol` が `RunConfig` 由来のプロファイルを利用できるようになった（`compiler/ocaml/src/core_parse_lex.ml:119`, `:170`）。`parser_driver.run` は `lex_pack` と更新済み `RunConfig` を組み合わせて Menhir ドライバを初期化し（`compiler/ocaml/src/parser_driver.ml:170`）、CLI/LSP も同じ `lex.profile` を注入する（`compiler/ocaml/src/main.ml:608`, `tooling/lsp/run_config_loader.ml:130`）。適用率は `lexer.shared_profile_pass_rate` として `tooling/ci/collect-iterator-audit-metrics.py:732` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md:215` に記録。
+    2025-11-30 更新。`Core.Parse.Lex.Bridge` が `RunConfig.extensions["lex"]` と `extensions["config"]` を同期し、`lexeme`/`symbol` が `RunConfig` 由来のプロファイルを利用できるようになった（`compiler/ocaml/src/core_parse_lex.ml:119`, `:170`）。`parser_driver.run` は `lex_pack` と更新済み `RunConfig` を組み合わせて Menhir ドライバを初期化し（`compiler/ocaml/src/parser_driver.ml:170`）、CLI/LSP も同じ `lex.profile` を注入する（`compiler/ocaml/src/main.ml:608`, `tooling/lsp/run_config_loader.ml:130`）。適用率は `lexer.shared_profile_pass_rate` として `tooling/ci/collect-iterator-audit-metrics.py:732` と `do../../plans/bootstrap-roadmap/0-3-audit-and-metrics.md:215` に記録。
 
 ### 9.3 Core.Parse コンビネーター共有（Phase 2-5 Step6）
 
-- `PARSER-003` Step6 で整備された `Core_parse` モジュール経由で、ストリーミング経路にも `rule`/`label`/`cut`/`recover` のメタデータが付与されるようになった。`RunConfig` と Capability を併せて渡すことで、Packrat メモ化や回復同期トークンが CLI/LSP と同じ監査指標（`parser.core_comb_rule_coverage`、`parser.recover_sync_success_rate` 等）に反映される。詳細は `docs/notes/parser/core-parse-api-evolution.md` Phase 2-5 Step6 と `docs/plans/bootstrap-roadmap/2-5-review-log.md` 2025-12-24 エントリを参照。
+- `PARSER-003` Step6 で整備された `Core_parse` モジュール経由で、ストリーミング経路にも `rule`/`label`/`cut`/`recover` のメタデータが付与されるようになった。`RunConfig` と Capability を併せて渡すことで、Packrat メモ化や回復同期トークンが CLI/LSP と同じ監査指標（`parser.core_comb_rule_coverage`、`parser.recover_sync_success_rate` 等）に反映される。詳細は `do../../notes/parser/core-parse-api-evolution.md` Phase 2-5 Step6 と `do../../plans/bootstrap-roadmap/2-5-review-log.md` 2025-12-24 エントリを参照。
 - `Core.Parse.Plugin.with_capabilities` と `RunConfig.extensions["stream"]` を併用し、Packrat/Recover の有効化状態をドライバ間で同期させる。これにより `collect-iterator-audit-metrics.py --require-success` の Packrat 指標や `parser.core.rule.*` メタデータが欠落した際も再現性のあるフィードバックが得られる。
 
 ```reml
@@ -274,9 +274,9 @@ let outcome =
 
 - **変換方針**: 既存の `Parser<T>` をそのまま `StreamDriver` / `run_stream` に渡し、`ContinuationMeta.commit_watermark` と Packrat キャッシュを共有する。`rule` で固定した `ParserId` が Stream 経路でも維持されることを前提に、`StreamEvent::Pending` に `expected_tokens` を含めて IDE での補完を可能にする。
 - **Lex/autoWhitespace の共有**: autoWhitespace/Layout や `lexeme`/`symbol` の挙動を一致させるため、`RunConfig.extensions["lex"]` と `layout_profile` をストリーミング側へ必ず注入する。`extensions["parse"].operator_table` を用いて演算子優先度を上書きしている場合も同じテーブルを共有し、バッチとストリーミングで期待集合がずれないようにする。
-- **Capability/Stage の伝播**: プラグイン経由で `Core.Parse.Plugin.with_capabilities` を利用している場合、`bridge.stage.*` / `effect.capabilities[*]` を `StreamEvent::Error` へ転写し、`RuntimeBridgeAuditSpec`（`docs/spec/3-8-core-runtime-capability.md`）の要求を満たす。署名検証や Stage チェックで失敗した場合は `Pending` を返さずエラー完了とし、復旧経路に乗せない。
+- **Capability/Stage の伝播**: プラグイン経由で `Core.Parse.Plugin.with_capabilities` を利用している場合、`bridge.stage.*` / `effect.capabilities[*]` を `StreamEvent::Error` へ転写し、`RuntimeBridgeAuditSpec`（`do../../spec/3-8-core-runtime-capability.md`）の要求を満たす。署名検証や Stage チェックで失敗した場合は `Pending` を返さずエラー完了とし、復旧経路に乗せない。
 - **観測フラグの扱い**: `RunConfig.profile` / `extensions["parse"].profile_output` が有効な場合は、バッチと同じ `ParserProfile` を `StreamOutcome` に含める。`profile_output` の書き出しは best-effort（失敗しても診断に影響しない）であり、Phase 4 シナリオ `CH2-PARSE-902` で JSON 出力経路を監視する。
-- **既知の制約**: Rust ランタイムでは Streaming Runner が未実装のため、上記方針は OCaml 実装と将来の Rust 実装の整合指針として扱う。Packrat 共有や `resume` のバックプレッシャ制御は `docs/notes/parser/core-parse-api-evolution.md#todo-rust-lex-streaming-plugin` に記録し、実装時に本節を最新の API 契約へ更新する。
+- **既知の制約**: Rust ランタイムでは Streaming Runner が未実装のため、上記方針は OCaml 実装と将来の Rust 実装の整合指針として扱う。Packrat 共有や `resume` のバックプレッシャ制御は `do../../notes/parser/core-parse-api-evolution.md#todo-rust-lex-streaming-plugin` に記録し、実装時に本節を最新の API 契約へ更新する。
 
 #### Rust 例: layout_token の利用
 
@@ -323,13 +323,13 @@ let run_config = RunConfig::default().with_extension("lex", |mut ext| {
 - 既知の制限として、チャンク処理は依然として内部でバッチランナーを再利用しており Packrat キャッシュ共有やバックプレッシャの自動制御は未実装。`Stream.resume` のエラーパスは監査ログへ転送されず、CLI メトリクス (`Cli.Stats`) との連携も Phase 2-7 のフォローアップとして残っている。[^exec001-limit]
 
 [^exec001-step4]:
-    `docs/plans/bootstrap-roadmap/2-5-review-log.md`「EXEC-001 Step4 CLI/LSP/CI 連携（2026-01-24）」を参照。CLI/LSP/CI への統合とゴールデン整備を記録。
+    `do../../plans/bootstrap-roadmap/2-5-review-log.md`「EXEC-001 Step4 CLI/LSP/CI 連携（2026-01-24）」を参照。CLI/LSP/CI への統合とゴールデン整備を記録。
 
 [^exec001-step5]:
-    `docs/plans/bootstrap-roadmap/2-5-proposals/EXEC-001-proposal.md` Step5 実施記録。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` にストリーミング指標を登録し、CI で `parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` を監視する手順を追記した。
+    `do../../plans/bootstrap-roadmap/2-5-proposals/EXEC-001-proposal.md` Step5 実施記録。`do../../plans/bootstrap-roadmap/0-3-audit-and-metrics.md` にストリーミング指標を登録し、CI で `parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` を監視する手順を追記した。
 
 [^exec001-limit]:
-    `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の `EXEC-001` 引き継ぎ項目を参照。Packrat キャッシュ共有、バックプレッシャ自動化、監査ログの Pending/Error 伝送は Phase 2-7 での改善対象。
+    `do../../plans/bootstrap-roadmap/2-7-deferred-remediation.md` の `EXEC-001` 引き継ぎ項目を参照。Packrat キャッシュ共有、バックプレッシャ自動化、監査ログの Pending/Error 伝送は Phase 2-7 での改善対象。
 
 ## 11. `decode_stream` と Grapheme 監査の連携
 
@@ -343,7 +343,7 @@ let run_config = RunConfig::default().with_extension("lex", |mut ext| {
 
 ストリーミング実装では `StreamOutcome`／`FeederYield` の分岐や、診断フック内での状態更新に `match` を多用する。ここでは、`match` の評価順序（言語仕様）と、ストリーミング運用上の注意点を最小限にまとめる。
 
-*仕様参照: [1-1 §C.4 `match` 式](../spec/1-1-syntax.md#c4-制御構文), [1-5 §4 `MatchExpr`](../spec/1-5-formal-grammar-bnf.md)*
+*仕様参照: [1-1 §C.4 `match` 式](../../spec/1-1-syntax.md#c4-制御構文), [1-5 §4 `MatchExpr`](../../spec/1-5-formal-grammar-bnf.md)*
 
 ### A.1 評価順序（重要）
 

@@ -6,7 +6,7 @@
 - DSL の解析結果や出力を **安定したスナップショット** として管理する。
 - 診断 JSON を固定し、Phase 4 の回帰と同期する。
 
-参照: [3-11 Core Test](../spec/3-11-core-test.md)
+参照: [3-11 Core Test](../../spec/3-11-core-test.md)
 
 ## 2. 最小例
 

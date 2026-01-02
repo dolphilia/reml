@@ -1,6 +1,6 @@
 # クロスコンパイル実務ガイド
 
-> 目的：Reml プロジェクトでクロスコンパイルを行う際に必要な CLI 操作、ツールチェーン管理、レジストリ連携、CI 構築の流れを一箇所で把握できるようにする。本ガイドは `docs/guides/runtime/portability.md` と `docs/guides/tooling/ci-strategy.md` を補完し、日常運用の手引きを提供する。
+> 目的：Reml プロジェクトでクロスコンパイルを行う際に必要な CLI 操作、ツールチェーン管理、レジストリ連携、CI 構築の流れを一箇所で把握できるようにする。本ガイドは `../runtimeportability.md` と `../toolingci-strategy.md` を補完し、日常運用の手引きを提供する。
 
 ## 1. クイックスタート
 
@@ -13,7 +13,7 @@
 
 ### 1.1 ターゲット別ビルド例
 
-Reml コンパイラ `remlc` は `RunConfig.extensions["target"]` に整形済みターゲット情報を渡す。クロスビルド時は以下のスニペットを基準として、`@cfg` と標準ライブラリのプラットフォーム抽象（[3-5](../spec/3-5-core-io-path.md)、[3-10](../spec/3-10-core-env.md)）を同期させる。事前に `reml target list` / `reml toolchain install <profile>` で必要なプロファイルと標準ライブラリを取得し、本ガイドの残りの節で整合性チェックを進める。
+Reml コンパイラ `remlc` は `RunConfig.extensions["target"]` に整形済みターゲット情報を渡す。クロスビルド時は以下のスニペットを基準として、`@cfg` と標準ライブラリのプラットフォーム抽象（[3-5](../../spec/3-5-core-io-path.md)、[3-10](../../spec/3-10-core-env.md)）を同期させる。事前に `reml target list` / `reml toolchain install <profile>` で必要なプロファイルと標準ライブラリを取得し、本ガイドの残りの節で整合性チェックを進める。
 
 ```bash
 # Windows 用バイナリを Linux ホストで生成
@@ -23,7 +23,7 @@ remlc --target x86_64-pc-windows-msvc src/main.reml
 remlc --target aarch64-apple-darwin src/main.reml
 ```
 
-ターゲット指定に合わせて `RunConfig.extensions["target"]` を初期化することで、`@cfg` の条件分岐や FFI 呼出規約（[3-9](../spec/3-9-core-async-ffi-unsafe.md)）が一貫した状態で評価される。CI/CD では `REML_TARGET_PROFILE`, `REML_TARGET_TRIPLE`, `REML_TARGET_CAPABILITIES`, `REML_TARGET_FEATURES`, `REML_STD_VERSION`, `REML_RUNTIME_REVISION` などの環境変数を設定し、`Core.Env.infer_target_from_env()` が期待通りに解決したか `Diagnostic.domain = Target` のメッセージで確認する。
+ターゲット指定に合わせて `RunConfig.extensions["target"]` を初期化することで、`@cfg` の条件分岐や FFI 呼出規約（[3-9](../../spec/3-9-core-async-ffi-unsafe.md)）が一貫した状態で評価される。CI/CD では `REML_TARGET_PROFILE`, `REML_TARGET_TRIPLE`, `REML_TARGET_CAPABILITIES`, `REML_TARGET_FEATURES`, `REML_STD_VERSION`, `REML_RUNTIME_REVISION` などの環境変数を設定し、`Core.Env.infer_target_from_env()` が期待通りに解決したか `Diagnostic.domain = Target` のメッセージで確認する。
 
 ## 2. ターゲットプロファイルのライフサイクル
 
@@ -144,7 +144,7 @@ jobs:
             reports/tests.json
 ```
 
-CI 全体の運用は `docs/guides/tooling/ci-strategy.md` のマトリクスと併せて調整してください。
+CI 全体の運用は `../toolingci-strategy.md` のマトリクスと併せて調整してください。
 
 ## 6. レジストリ公開チェック
 
@@ -163,4 +163,4 @@ CI 全体の運用は `docs/guides/tooling/ci-strategy.md` のマトリクスと
 
 ---
 
-クロスコンパイルはプロジェクト規模・ターゲット数に応じて段階的に導入することを推奨します。まずは CLI/Toolchain の自動検証を整備し、次に CI マトリクスとレジストリ運用を拡張してください。詳細な背景や設計判断は `docs/notes/backend/cross-compilation-spec-intro.md` を参照してください。
+クロスコンパイルはプロジェクト規模・ターゲット数に応じて段階的に導入することを推奨します。まずは CLI/Toolchain の自動検証を整備し、次に CI マトリクスとレジストリ運用を拡張してください。詳細な背景や設計判断は `do../../notes/backend/cross-compilation-spec-intro.md` を参照してください。

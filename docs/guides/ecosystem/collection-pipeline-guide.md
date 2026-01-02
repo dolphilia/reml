@@ -93,7 +93,7 @@ fn render_variable(name: Ident, filters: List<Filter>, ctx: Context)
 
 ## 6. 参考資料
 
-- [3.1 Core Prelude & Iteration](../spec/3-1-core-prelude-iteration.md)
-- [3.2 Core Collections](../spec/3-2-core-collections.md)
-- [examples/language-impl-comparison/README.md](../spec/README.md)
-- [Reml プロジェクトの目的と指針](../spec/0-1-project-purpose.md)
+- [3.1 Core Prelude & Iteration](../../spec/3-1-core-prelude-iteration.md)
+- [3.2 Core Collections](../../spec/3-2-core-collections.md)
+- [examples/language-impl-comparison/README.md](../../spec/README.md)
+- [Reml プロジェクトの目的と指針](../../spec/0-1-project-purpose.md)

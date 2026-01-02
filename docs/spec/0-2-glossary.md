@@ -115,7 +115,7 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **Capability Registry**: GC や IO などランタイム機能を Capability として登録・照会する中心レジストリ。[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md) が API と責務を定義する。
 - **Capability Handle**: 各 Capability 実装を表す不透明ハンドル。`CapabilityHandle::Io` などのバリアントで分岐し、Registry 経由で取得する。[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md#11-capabilityhandle-のバリアント) を参照。
 - **Capability Stage**: `Experimental/Beta/Stable` の成熟度を示すメタデータ。`verify_capability_stage` で下限を検証し、`AuditEnvelope.metadata` や `Diagnostic.extensions["effects"]` に要求/実際の Stage を記録する。[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md#capability-stage-contract) と [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md#24-stage-差分プリセット-effectdiagnostic) を参照。
-- **StreamSignal**: ストリーミングランナーが Runtime Bridge へ送る状態通知オブジェクト。`kind`（Pending/Resume/Error/Completed）・`demand_hint`・`backpressure`・`stage_required`/`stage_actual` を含み、`RuntimeBridgeHandle::stream_signal` を通じて Stage 監査 (`bridge.stage.backpressure`) と `effects.contract.stage_mismatch` の整合チェックに利用する。[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md#105-ストリーミング-signal-ハンドラ)、[docs/guides/runtime/runtime-bridges.md](../guides/runtime-bridges.md#105-ストリーミング-flow-signal-と-runtime-bridge-連携) を参照。
+- **StreamSignal**: ストリーミングランナーが Runtime Bridge へ送る状態通知オブジェクト。`kind`（Pending/Resume/Error/Completed）・`demand_hint`・`backpressure`・`stage_required`/`stage_actual` を含み、`RuntimeBridgeHandle::stream_signal` を通じて Stage 監査 (`bridge.stage.backpressure`) と `effects.contract.stage_mismatch` の整合チェックに利用する。[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md#105-ストリーミング-signal-ハンドラ)、[docs/guides/runtime/runtime-bridges.md](../guides/runtime/runtime-bridges.md#105-ストリーミング-flow-signal-と-runtime-bridge-連携) を参照。
 - **SecurityCapability**: Capability の署名検証、許可、隔離レベルを管理するセキュリティ用ハンドル。[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md#12-セキュリティモデル) が構造体と検証手順を示す。
 - **RuntimeCapability / TargetCapability**: 実行環境が備える命令セットやクロックなどの機能一覧。CI や `Core.Env` が環境適合性を確認するために利用し、[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md#13-プラットフォーム情報と能力) に列挙がある。
 - **SandboxProfile**: Capability 利用時に課すリソース制限を記述する共通プロファイル。`SecurityCapability` と連携して監査方針を適用する。[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md#12-セキュリティモデル) 参照。
@@ -150,7 +150,7 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 
 ## DSL・エコシステム・ツール
 - **DSL (Domain-Specific Language)**: `Core.Parse` を使って特定領域向けの言語を宣言的に構築するアプローチ。プロジェクト全体が DSL ファーストを掲げ、[0-1 プロジェクト目的](0-1-project-purpose.md#32-エコシステム統合とdslファーストアプローチ) に背景がまとめられる。
-- **Conductor パターン**: 複数の DSL を組み合わせてパイプライン化するための構文で、`conductor` ブロックとして宣言する。[1-1 構文](1-1-syntax.md#b11-dslエントリーポイント宣言) と [guides/conductor-pattern.md](../guides/conductor-pattern.md) に運用指針がある。
+- **Conductor パターン**: 複数の DSL を組み合わせてパイプライン化するための構文で、`conductor` ブロックとして宣言する。[1-1 構文](1-1-syntax.md#b11-dslエントリーポイント宣言) と [guides/conductor-pattern.md](../guides/dsl/conductor-pattern.md) に運用指針がある。
 - **`@dsl_export` 属性**: DSL を外部に公開するエントリを示し、カテゴリや必要 Capability、許容効果をメタデータとして付与する注釈。[1-1 構文](1-1-syntax.md#b11-dslエントリーポイント宣言) で要件が規定される。
 - **`RunConfig.extensions`**: パーサ実行時に LSP やランタイム設定などモジュール固有のオプションを渡すための連想配列。[2-1 パーサ型](2-1-parser-type.md#d-実行設定-runconfig-とメモ) に既定ネームスペースが整理される。
 - **`remlc`**: Reml コンパイラ CLI。ターゲットトリプル指定やツールチェーン取得のコマンドライン例が [README](README.md#ビルド--ターゲット指定例) に記載される。

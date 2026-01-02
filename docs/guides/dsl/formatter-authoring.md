@@ -6,7 +6,7 @@
 1. `Doc` を組み合わせて AST を表現
 2. `Pretty.render` で幅に応じた出力を生成
 
-参照: [3-13 Core Text Pretty](../spec/3-13-core-text-pretty.md)
+参照: [3-13 Core Text Pretty](../../spec/3-13-core-text-pretty.md)
 
 ## 2. 最小例
 

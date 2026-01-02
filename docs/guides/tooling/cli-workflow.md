@@ -3,7 +3,7 @@
 **対象**: Phase 1-6 `remlc-ocaml` CLI  
 **最終更新**: 2025-10-10
 
-本ガイドは OCaml 実装版コンパイラ `remlc-ocaml` を用いた日常開発フローを整理し、診断・トレース機能を活用したデバッグ手順をまとめる。仕様の背景は [docs/plans/bootstrap-roadmap/1-6-developer-experience.md](../plans/bootstrap-roadmap/1-6-developer-experience.md) を参照。
+本ガイドは OCaml 実装版コンパイラ `remlc-ocaml` を用いた日常開発フローを整理し、診断・トレース機能を活用したデバッグ手順をまとめる。仕様の背景は [do../../plans/bootstrap-roadmap/1-6-developer-experience.md](../../plans/bootstrap-roadmap/1-6-developer-experience.md) を参照。
 
 ---
 
@@ -29,7 +29,7 @@ reml plugin verify --bundle plugins/bundle.json --policy strict
 reml plugin verify --bundle plugins/bundle.json --policy permissive --output json
 ```
 
-- `--bundle` は [5-7-core-parse-plugin.md](../spec/5-7-core-parse-plugin.md) の Bundle JSON 形式に従う。
+- `--bundle` は [5-7-core-parse-plugin.md](../../spec/5-7-core-parse-plugin.md) の Bundle JSON 形式に従う。
 - `--policy strict` は署名必須、`permissive` は警告のみで継続する。
 
 `--output json` の出力例:
@@ -48,7 +48,7 @@ reml plugin verify --bundle plugins/bundle.json --policy permissive --output jso
 }
 ```
 
-JSON 出力は `docs/schemas/plugin-bundle-registration.schema.json` に準拠する。
+JSON 出力は `do../../schemas/plugin-bundle-registration.schema.json` に準拠する。
 
 `reml plugin verify --output json` の出力例:
 
@@ -124,7 +124,7 @@ opam exec -- dune exec -- \
 
 - `--format=text`（既定）: ソーススニペット付きの日本語メッセージ。
 - `--format=json`: CI・エディタ統合向けの JSON。  
-  詳細は [docs/guides/tooling/diagnostic-format.md](docs/guides/tooling/diagnostic-format.md) を参照。
+  詳細は [../tooling/diagnostic-format.md](../tooling/diagnostic-format.md) を参照。
 
 カラー出力は `--color=auto|always|never` で制御する。`NO_COLOR` や `FORCE_COLOR` 環境変数も考慮される。
 
@@ -154,7 +154,7 @@ opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --trace
 
 ### 3.3 コンパイル統計
 
-`--stats` でトークン数・AST ノード数・unify 呼び出しなどを収集できる。詳細は [docs/guides/tooling/trace-output.md](docs/guides/tooling/trace-output.md) を参照。
+`--stats` でトークン数・AST ノード数・unify 呼び出しなどを収集できる。詳細は [../tooling/trace-output.md](../tooling/trace-output.md) を参照。
 
 ### 3.4 メトリクスファイル出力（Phase 1-6 Week 16 追加）
 
@@ -169,7 +169,7 @@ opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --metrics metrics
 opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --metrics metrics.csv --metrics-format csv
 ```
 
-JSON出力はスキーマ定義 [`docs/schemas/remlc-metrics.schema.json`](../schemas/remlc-metrics.schema.json) に準拠します。
+JSON出力はスキーマ定義 [`do../../schemas/remlc-metrics.schema.json`](../../schemas/remlc-metrics.schema.json) に準拠します。
 これにより、CI パイプラインでの性能回帰検出やメトリクスダッシュボードへの統合が容易になります。
 
 ---
@@ -180,7 +180,7 @@ JSON出力はスキーマ定義 [`docs/schemas/remlc-metrics.schema.json`](../sc
 2. **型検査**: `--emit-tast` + `--format=json` で診断ログを CI に取り込む。
 3. **IR 検証**: `--emit-ir --verify-ir` を組み合わせて LLVM 検証を自動化。
 4. **リンク**: `--link-runtime` で実行可能バイナリを生成 (`llvm-objdump` で検証)。
-5. **トレース/統計**: パフォーマンス回帰が疑われる場合は `--trace --stats` を併用し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に測定値を記録する。
+5. **トレース/統計**: パフォーマンス回帰が疑われる場合は `--trace --stats` を併用し、`do../../plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に測定値を記録する。
 
 ---
 
@@ -211,7 +211,7 @@ JSON出力はスキーマ定義 [`docs/schemas/remlc-metrics.schema.json`](../sc
 
 - `--emit-audit --audit-store=<profile>` を指定すると CLI が `reports/audit/<target>/<YYYY>/<MM>/<DD>/<build-id>.jsonl` を生成し、`reports/audit/index.json`・`summary.md` を更新する。`profile=local` は `tooling/audit-store/local/<timestamp>/audit.jsonl` に書き出す。
 - CI プロファイルでは最新 20 件の監査ログを `reports/audit/history/<target>.jsonl.gz` として圧縮し、失敗時は `reports/audit/failed/<build-id>/` に `audit.jsonl` と `entry.json` を退避する。`history/` 生成や復元には `camlzip` が必要なため、`opam install . --deps-only --with-test` を実行して依存を揃えてから CLI をビルドする。
-- 監査成果物は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の手順に従ってレビュー時に確認する。`reports/audit/index.json` が更新された PR では `history/*.jsonl.gz` の更新と `failed/` ディレクトリの有無も併せて確認する。
+- 監査成果物は `do../../plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の手順に従ってレビュー時に確認する。`reports/audit/index.json` が更新された PR では `history/*.jsonl.gz` の更新と `failed/` ディレクトリの有無も併せて確認する。
 
 ---
 
@@ -230,7 +230,7 @@ Phase 2-7 では代数的効果構文（`perform` / `handle`）が PoC ステー
 - **LSP/CI**: `tooling/lsp/config/*.json` や CI の補助スクリプトでは `experimentalEffects`（camelCase）キーに `true` を設定する。`tooling/lsp/run_config_loader` が CLI と同じ RunConfig 設定を生成するため、LSP セッションからも PoC を再現できる。
 - **監査ログ**: 効果フラグを有効化した状態で CLI を実行すると、`extensions.effects.experimental` や `audit.metadata.effect.syntax.constructs.*` が出力され、`collect-iterator-audit-metrics.py --section effects --require-success` が PoC KPI を検証する。
 
-脚注 `[^effects-syntax-poc-phase25]` が撤去されるまでは、本番ビルドでフラグを既定有効にせず、PoC を必要とするタスクのみ opt-in 運用とする。フラグ名の変更が決定された場合は CLI/LSP/CI/ドキュメントの全経路を同時更新し、`docs/notes/effects/effect-system-tracking.md` の H-O3 チェックリストを参照して整合性を確認する。
+脚注 `[^effects-syntax-poc-phase25]` が撤去されるまでは、本番ビルドでフラグを既定有効にせず、PoC を必要とするタスクのみ opt-in 運用とする。フラグ名の変更が決定された場合は CLI/LSP/CI/ドキュメントの全経路を同時更新し、`do../../notes/effects/effect-system-tracking.md` の H-O3 チェックリストを参照して整合性を確認する。
 
 ---
 
@@ -247,7 +247,7 @@ Phase 2-7 では代数的効果構文（`perform` / `handle`）が PoC ステー
 
 ## 8. 参考資料
 
-- [docs/plans/bootstrap-roadmap/1-6-developer-experience.md](../plans/bootstrap-roadmap/1-6-developer-experience.md)
-- [docs/guides/tooling/trace-output.md](docs/guides/tooling/trace-output.md)
-- [docs/guides/tooling/diagnostic-format.md](docs/guides/tooling/diagnostic-format.md)
-- [docs/guides/compiler/llvm-integration-notes.md](docs/guides/compiler/llvm-integration-notes.md)
+- [do../../plans/bootstrap-roadmap/1-6-developer-experience.md](../../plans/bootstrap-roadmap/1-6-developer-experience.md)
+- [../tooling/trace-output.md](../tooling/trace-output.md)
+- [../tooling/diagnostic-format.md](../tooling/diagnostic-format.md)
+- [../compiler/llvm-integration-notes.md](../compiler/llvm-integration-notes.md)
