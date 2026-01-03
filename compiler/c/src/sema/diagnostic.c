@@ -19,6 +19,10 @@ void reml_diagnostics_deinit(reml_diagnostic_list *list) {
   for (reml_diagnostic *it = (reml_diagnostic *)utarray_front(list->items); it != NULL;
        it = (reml_diagnostic *)utarray_next(list->items, it)) {
     if (!it->pattern) {
+      if (it->effect) {
+        free(it->effect);
+        it->effect = NULL;
+      }
       continue;
     }
     if (it->pattern->missing_variants) {
@@ -29,6 +33,10 @@ void reml_diagnostics_deinit(reml_diagnostic_list *list) {
     }
     free(it->pattern);
     it->pattern = NULL;
+    if (it->effect) {
+      free(it->effect);
+      it->effect = NULL;
+    }
   }
   utarray_free(list->items);
   list->items = NULL;

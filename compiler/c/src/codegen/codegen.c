@@ -73,7 +73,8 @@ static void reml_codegen_report(reml_codegen *codegen, reml_diagnostic_code code
   if (!codegen) {
     return;
   }
-  reml_diagnostic diag = {.code = code, .span = span, .message = message, .pattern = NULL};
+  reml_diagnostic diag = {
+      .code = code, .span = span, .message = message, .pattern = NULL, .effect = NULL};
   reml_diagnostics_push(&codegen->diagnostics, diag);
 }
 

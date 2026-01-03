@@ -7,6 +7,51 @@ reml_effect_set reml_effect_union(reml_effect_set left, reml_effect_set right) {
   return (reml_effect_set)(left | right);
 }
 
+reml_effect_row reml_effect_row_make(reml_effect_set effects, reml_effect_row_var *tail) {
+  reml_effect_row row = {.effects = effects, .tail = tail};
+  return row;
+}
+
+reml_effect_row reml_effect_row_closed(reml_effect_set effects) {
+  return reml_effect_row_make(effects, NULL);
+}
+
+static reml_effect_row *reml_effect_row_new(reml_type_ctx *ctx, reml_effect_set effects,
+                                            reml_effect_row_var *tail) {
+  reml_effect_row *row = (reml_effect_row *)calloc(1, sizeof(reml_effect_row));
+  if (!row) {
+    return NULL;
+  }
+  row->effects = effects;
+  row->tail = tail;
+  if (ctx) {
+    if (!ctx->effect_rows) {
+      UT_icd row_icd = {sizeof(reml_effect_row *), NULL, NULL, NULL};
+      utarray_new(ctx->effect_rows, &row_icd);
+    }
+    utarray_push_back(ctx->effect_rows, &row);
+  }
+  return row;
+}
+
+reml_effect_row_var *reml_effect_row_var_make(reml_type_ctx *ctx) {
+  if (!ctx) {
+    return NULL;
+  }
+  reml_effect_row_var *var = (reml_effect_row_var *)calloc(1, sizeof(reml_effect_row_var));
+  if (!var) {
+    return NULL;
+  }
+  var->id = ctx->next_effect_row_id++;
+  var->instance = NULL;
+  if (!ctx->effect_row_vars) {
+    UT_icd var_icd = {sizeof(reml_effect_row_var *), NULL, NULL, NULL};
+    utarray_new(ctx->effect_row_vars, &var_icd);
+  }
+  utarray_push_back(ctx->effect_row_vars, &var);
+  return var;
+}
+
 static bool reml_string_view_equal(reml_string_view left, reml_string_view right) {
   if (left.length != right.length) {
     return false;
@@ -83,6 +128,124 @@ static bool reml_enum_variant_clone(reml_type_ctx *ctx, reml_type *enum_type,
   return true;
 }
 
+static reml_effect_row reml_effect_row_prune(reml_effect_row row) {
+  if (row.tail && row.tail->instance) {
+    reml_effect_row resolved = reml_effect_row_prune(*row.tail->instance);
+    row.effects = reml_effect_union(row.effects, resolved.effects);
+    row.tail = resolved.tail;
+  }
+  return row;
+}
+
+static bool reml_effect_row_occurs(reml_effect_row_var *var, reml_effect_row row) {
+  if (!var) {
+    return false;
+  }
+  row = reml_effect_row_prune(row);
+  if (!row.tail) {
+    return false;
+  }
+  if (row.tail == var) {
+    return true;
+  }
+  if (row.tail->instance) {
+    return reml_effect_row_occurs(var, *row.tail->instance);
+  }
+  return false;
+}
+
+static bool reml_effect_row_unify(reml_type_ctx *ctx, reml_effect_row left, reml_effect_row right);
+
+static bool reml_effect_row_bind(reml_type_ctx *ctx, reml_effect_row_var *var,
+                                 reml_effect_row row) {
+  if (!var) {
+    return false;
+  }
+  if (var->instance) {
+    return reml_effect_row_unify(ctx, *var->instance, row);
+  }
+  row = reml_effect_row_prune(row);
+  if (reml_effect_row_occurs(var, row)) {
+    return false;
+  }
+  reml_effect_row *instance = reml_effect_row_new(ctx, row.effects, row.tail);
+  if (!instance) {
+    return false;
+  }
+  var->instance = instance;
+  return true;
+}
+
+static bool reml_effect_row_unify(reml_type_ctx *ctx, reml_effect_row left, reml_effect_row right) {
+  left = reml_effect_row_prune(left);
+  right = reml_effect_row_prune(right);
+
+  if (!left.tail && !right.tail) {
+    return left.effects == right.effects;
+  }
+
+  reml_effect_set left_only = (reml_effect_set)(left.effects & ~right.effects);
+  reml_effect_set right_only = (reml_effect_set)(right.effects & ~left.effects);
+
+  if (left_only != REML_EFFECT_NONE && right_only != REML_EFFECT_NONE) {
+    if (!left.tail || !right.tail) {
+      return false;
+    }
+    reml_effect_row_var *shared = reml_effect_row_var_make(ctx);
+    if (!shared) {
+      return false;
+    }
+    reml_effect_row left_bind = reml_effect_row_make(right_only, shared);
+    reml_effect_row right_bind = reml_effect_row_make(left_only, shared);
+    if (!reml_effect_row_bind(ctx, left.tail, left_bind)) {
+      return false;
+    }
+    if (!reml_effect_row_bind(ctx, right.tail, right_bind)) {
+      return false;
+    }
+  } else if (left_only != REML_EFFECT_NONE) {
+    if (!right.tail) {
+      return false;
+    }
+    reml_effect_row bind = reml_effect_row_make(left_only, left.tail);
+    if (!reml_effect_row_bind(ctx, right.tail, bind)) {
+      return false;
+    }
+  } else if (right_only != REML_EFFECT_NONE) {
+    if (!left.tail) {
+      return false;
+    }
+    reml_effect_row bind = reml_effect_row_make(right_only, right.tail);
+    if (!reml_effect_row_bind(ctx, left.tail, bind)) {
+      return false;
+    }
+  }
+
+  left = reml_effect_row_prune(left);
+  right = reml_effect_row_prune(right);
+
+  if (left.effects != right.effects) {
+    return false;
+  }
+
+  if (left.tail && right.tail) {
+    if (left.tail == right.tail) {
+      return true;
+    }
+    reml_effect_row bind = reml_effect_row_make(REML_EFFECT_NONE, right.tail);
+    return reml_effect_row_bind(ctx, left.tail, bind);
+  }
+  if (left.tail) {
+    reml_effect_row bind = reml_effect_row_make(REML_EFFECT_NONE, NULL);
+    return reml_effect_row_bind(ctx, left.tail, bind);
+  }
+  if (right.tail) {
+    reml_effect_row bind = reml_effect_row_make(REML_EFFECT_NONE, NULL);
+    return reml_effect_row_bind(ctx, right.tail, bind);
+  }
+  return true;
+}
+
 static bool reml_type_unify_enum(reml_type_ctx *ctx, reml_type *left, reml_type *right) {
   if (!left || !right || left->kind != REML_TYPE_ENUM || right->kind != REML_TYPE_ENUM) {
     return false;
@@ -156,7 +319,10 @@ void reml_type_ctx_init(reml_type_ctx *ctx) {
     return;
   }
   ctx->arena = NULL;
+  ctx->effect_rows = NULL;
+  ctx->effect_row_vars = NULL;
   ctx->next_var_id = 1;
+  ctx->next_effect_row_id = 1;
   ctx->error_type = reml_type_new(ctx, REML_TYPE_ERROR);
   ctx->prim_int = reml_type_new(ctx, REML_TYPE_INT);
   ctx->prim_bigint = reml_type_new(ctx, REML_TYPE_BIGINT);
@@ -168,15 +334,35 @@ void reml_type_ctx_init(reml_type_ctx *ctx) {
 }
 
 void reml_type_ctx_deinit(reml_type_ctx *ctx) {
-  if (!ctx || !ctx->arena) {
+  if (!ctx) {
     return;
   }
-  for (reml_type **it = (reml_type **)utarray_front(ctx->arena); it != NULL;
-       it = (reml_type **)utarray_next(ctx->arena, it)) {
-    free(*it);
+  if (ctx->effect_rows) {
+    for (reml_effect_row **it = (reml_effect_row **)utarray_front(ctx->effect_rows);
+         it != NULL; it = (reml_effect_row **)utarray_next(ctx->effect_rows, it)) {
+      free(*it);
+    }
+    utarray_free(ctx->effect_rows);
+    ctx->effect_rows = NULL;
   }
-  utarray_free(ctx->arena);
-  ctx->arena = NULL;
+  if (ctx->effect_row_vars) {
+    for (reml_effect_row_var **it =
+             (reml_effect_row_var **)utarray_front(ctx->effect_row_vars);
+         it != NULL;
+         it = (reml_effect_row_var **)utarray_next(ctx->effect_row_vars, it)) {
+      free(*it);
+    }
+    utarray_free(ctx->effect_row_vars);
+    ctx->effect_row_vars = NULL;
+  }
+  if (ctx->arena) {
+    for (reml_type **it = (reml_type **)utarray_front(ctx->arena); it != NULL;
+         it = (reml_type **)utarray_next(ctx->arena, it)) {
+      free(*it);
+    }
+    utarray_free(ctx->arena);
+    ctx->arena = NULL;
+  }
 }
 
 reml_type *reml_type_make_var(reml_type_ctx *ctx) {
@@ -312,7 +498,7 @@ static bool reml_type_unify_composite(reml_type_ctx *ctx, reml_type *left, reml_
     if (left_count != right_count) {
       return false;
     }
-    if (left->data.function.effects != right->data.function.effects) {
+    if (!reml_effect_row_unify(ctx, left->data.function.effects, right->data.function.effects)) {
       return false;
     }
     for (size_t i = 0; i < left_count; ++i) {
@@ -440,7 +626,7 @@ reml_type *reml_type_make_record(reml_type_ctx *ctx, UT_array *fields) {
 }
 
 reml_type *reml_type_make_function(reml_type_ctx *ctx, UT_array *params, reml_type *result,
-                                   reml_effect_set effects) {
+                                   reml_effect_row effects) {
   reml_type *type = reml_type_new(ctx, REML_TYPE_FUNCTION);
   if (!type) {
     return NULL;

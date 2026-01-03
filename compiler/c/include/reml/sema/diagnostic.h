@@ -7,6 +7,7 @@
 
 #include <utarray.h>
 
+#include "reml/typeck/type.h"
 #include "reml/util/span.h"
 #include "reml/util/string_view.h"
 
@@ -37,6 +38,7 @@ typedef enum {
   REML_DIAG_CONSTRUCTOR_UNKNOWN,
   REML_DIAG_UNSUPPORTED_FEATURE,
   REML_DIAG_EFFECT_VIOLATION,
+  REML_DIAG_EFFECT_CONTRACT_MISMATCH,
   REML_DIAG_EFFECT_UNHANDLED,
   REML_DIAG_EFFECT_RESUME_TWICE,
   REML_DIAG_EFFECT_RESUME_OUT_OF_SCOPE,
@@ -58,10 +60,20 @@ typedef struct {
 } reml_diagnostic_pattern;
 
 typedef struct {
+  reml_effect_set expected_effects;
+  reml_effect_set actual_effects;
+  uint32_t expected_row_var;
+  uint32_t actual_row_var;
+  bool expected_open;
+  bool actual_open;
+} reml_diagnostic_effect;
+
+typedef struct {
   reml_diagnostic_code code;
   reml_span span;
   const char *message;
   reml_diagnostic_pattern *pattern;
+  reml_diagnostic_effect *effect;
 } reml_diagnostic;
 
 typedef struct {

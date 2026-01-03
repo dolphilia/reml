@@ -37,6 +37,7 @@ typedef enum {
 typedef struct {
   reml_type *type;
   UT_array *generics;
+  UT_array *effect_generics;
   UT_array *constraints;
 } reml_scheme;
 
@@ -89,6 +90,7 @@ static void reml_scheme_init(reml_scheme *scheme, reml_type *type) {
   scheme->type = type;
   UT_icd id_icd = {sizeof(uint32_t), NULL, NULL, NULL};
   utarray_new(scheme->generics, &id_icd);
+  utarray_new(scheme->effect_generics, &id_icd);
   UT_icd constraint_icd = {sizeof(reml_trait_constraint), NULL, NULL, NULL};
   utarray_new(scheme->constraints, &constraint_icd);
 }
@@ -100,6 +102,9 @@ static void reml_scheme_reset(reml_scheme *scheme, reml_type *type) {
   if (scheme->generics) {
     utarray_clear(scheme->generics);
   }
+  if (scheme->effect_generics) {
+    utarray_clear(scheme->effect_generics);
+  }
   if (scheme->constraints) {
     utarray_clear(scheme->constraints);
   }
@@ -107,11 +112,17 @@ static void reml_scheme_reset(reml_scheme *scheme, reml_type *type) {
 }
 
 static void reml_scheme_deinit(reml_scheme *scheme) {
-  if (!scheme || !scheme->generics) {
+  if (!scheme) {
     return;
   }
-  utarray_free(scheme->generics);
-  scheme->generics = NULL;
+  if (scheme->generics) {
+    utarray_free(scheme->generics);
+    scheme->generics = NULL;
+  }
+  if (scheme->effect_generics) {
+    utarray_free(scheme->effect_generics);
+    scheme->effect_generics = NULL;
+  }
   if (scheme->constraints) {
     utarray_free(scheme->constraints);
     scheme->constraints = NULL;
@@ -202,6 +213,10 @@ static reml_scope *reml_symbol_table_current(reml_symbol_table *table) {
     return NULL;
   }
   return *(reml_scope **)utarray_back(table->scopes);
+}
+
+static bool reml_symbol_table_is_top_level(reml_symbol_table *table) {
+  return table && table->scopes && utarray_len(table->scopes) == 1;
 }
 
 static void reml_symbol_table_enter(reml_symbol_table *table) {
@@ -352,6 +367,8 @@ static bool reml_literal_equal(reml_literal left, reml_literal right) {
   }
   return reml_string_view_equal(left.text, right.text);
 }
+
+static reml_effect_set reml_effect_union(reml_effect_set left, reml_effect_set right);
 
 static reml_enum_variant *reml_enum_variant_find(UT_array *variants, reml_string_view name) {
   if (!variants) {
@@ -767,6 +784,62 @@ static void reml_type_collect_vars(reml_type *type, UT_array *vars) {
   }
 }
 
+static reml_effect_row reml_effect_row_resolve(reml_effect_row row) {
+  if (row.tail && row.tail->instance) {
+    reml_effect_row resolved = reml_effect_row_resolve(*row.tail->instance);
+    row.effects = reml_effect_union(row.effects, resolved.effects);
+    row.tail = resolved.tail;
+  }
+  return row;
+}
+
+static void reml_effect_row_collect_vars_from_row(reml_effect_row row, UT_array *vars) {
+  if (!vars) {
+    return;
+  }
+  row = reml_effect_row_resolve(row);
+  if (row.tail) {
+    reml_var_ids_push_unique(vars, row.tail->id);
+  }
+}
+
+static void reml_effect_row_collect_vars(reml_type *type, UT_array *vars) {
+  if (!type || !vars) {
+    return;
+  }
+  type = reml_type_prune(type);
+  if (!type) {
+    return;
+  }
+  if (type->kind == REML_TYPE_TUPLE && type->data.tuple.items) {
+    for (reml_type **it = (reml_type **)utarray_front(type->data.tuple.items); it != NULL;
+         it = (reml_type **)utarray_next(type->data.tuple.items, it)) {
+      reml_effect_row_collect_vars(*it, vars);
+    }
+  }
+  if (type->kind == REML_TYPE_RECORD && type->data.record.fields) {
+    for (reml_record_field *it =
+             (reml_record_field *)utarray_front(type->data.record.fields);
+         it != NULL;
+         it = (reml_record_field *)utarray_next(type->data.record.fields, it)) {
+      reml_effect_row_collect_vars(it->type, vars);
+    }
+  }
+  if (type->kind == REML_TYPE_FUNCTION) {
+    if (type->data.function.params) {
+      for (reml_type **it = (reml_type **)utarray_front(type->data.function.params); it != NULL;
+           it = (reml_type **)utarray_next(type->data.function.params, it)) {
+        reml_effect_row_collect_vars(*it, vars);
+      }
+    }
+    reml_effect_row_collect_vars(type->data.function.result, vars);
+    reml_effect_row_collect_vars_from_row(type->data.function.effects, vars);
+  }
+  if (type->kind == REML_TYPE_REF) {
+    reml_effect_row_collect_vars(type->data.ref.target, vars);
+  }
+}
+
 static void reml_scheme_collect_free_vars(const reml_scheme *scheme, UT_array *vars) {
   if (!scheme || !vars) {
     return;
@@ -778,6 +851,23 @@ static void reml_scheme_collect_free_vars(const reml_scheme *scheme, UT_array *v
   for (uint32_t *it = (uint32_t *)utarray_front(all_vars); it != NULL;
        it = (uint32_t *)utarray_next(all_vars, it)) {
     if (!reml_var_ids_contains(scheme->generics, *it)) {
+      reml_var_ids_push_unique(vars, *it);
+    }
+  }
+  utarray_free(all_vars);
+}
+
+static void reml_scheme_collect_free_effect_vars(const reml_scheme *scheme, UT_array *vars) {
+  if (!scheme || !vars) {
+    return;
+  }
+  UT_icd tmp_icd = {sizeof(uint32_t), NULL, NULL, NULL};
+  UT_array *all_vars = NULL;
+  utarray_new(all_vars, &tmp_icd);
+  reml_effect_row_collect_vars(scheme->type, all_vars);
+  for (uint32_t *it = (uint32_t *)utarray_front(all_vars); it != NULL;
+       it = (uint32_t *)utarray_next(all_vars, it)) {
+    if (!reml_var_ids_contains(scheme->effect_generics, *it)) {
       reml_var_ids_push_unique(vars, *it);
     }
   }
@@ -800,13 +890,110 @@ static void reml_env_collect_free_vars(reml_symbol_table *table, const reml_symb
   }
 }
 
+static void reml_env_collect_free_effect_vars(reml_symbol_table *table, const reml_symbol *skip,
+                                              UT_array *vars) {
+  if (!table || !table->scopes || !vars) {
+    return;
+  }
+  for (reml_scope **it = (reml_scope **)utarray_front(table->scopes); it != NULL;
+       it = (reml_scope **)utarray_next(table->scopes, it)) {
+    for (reml_symbol *sym = (*it)->symbols; sym != NULL; sym = sym->hh.next) {
+      if (sym == skip) {
+        continue;
+      }
+      reml_scheme_collect_free_effect_vars(&sym->scheme, vars);
+    }
+  }
+}
+
 typedef struct {
   uint32_t id;
   reml_type *replacement;
 } reml_type_subst;
 
+typedef struct {
+  uint32_t id;
+  reml_effect_row_var *replacement;
+} reml_effect_row_subst;
+
+static reml_effect_row_var *reml_effect_row_apply_subst(reml_type_ctx *ctx, reml_effect_row_var *var,
+                                                        UT_array *effect_generics,
+                                                        UT_array *effect_substs) {
+  if (!var) {
+    return NULL;
+  }
+  if (!effect_generics || !reml_var_ids_contains(effect_generics, var->id)) {
+    return var;
+  }
+  for (reml_effect_row_subst *it =
+           (reml_effect_row_subst *)utarray_front(effect_substs);
+       it != NULL;
+       it = (reml_effect_row_subst *)utarray_next(effect_substs, it)) {
+    if (it->id == var->id) {
+      return it->replacement;
+    }
+  }
+  reml_effect_row_var *fresh = reml_effect_row_var_make(ctx);
+  reml_effect_row_subst subst = {.id = var->id, .replacement = fresh};
+  utarray_push_back(effect_substs, &subst);
+  return fresh;
+}
+
+static reml_effect_row reml_effect_row_instantiate(reml_type_ctx *ctx, reml_effect_row row,
+                                                   UT_array *effect_generics,
+                                                   UT_array *effect_substs) {
+  if (!row.tail) {
+    return row;
+  }
+  reml_effect_row resolved = reml_effect_row_resolve(row);
+  reml_effect_row_var *tail =
+      reml_effect_row_apply_subst(ctx, resolved.tail, effect_generics, effect_substs);
+  return reml_effect_row_make(resolved.effects, tail);
+}
+
+static UT_array *reml_type_instantiate_items(reml_type_ctx *ctx, UT_array *items,
+                                             UT_array *generics, UT_array *substs,
+                                             UT_array *effect_generics,
+                                             UT_array *effect_substs) {
+  if (!items) {
+    return NULL;
+  }
+  UT_icd item_icd = {sizeof(reml_type *), NULL, NULL, NULL};
+  UT_array *out = NULL;
+  utarray_new(out, &item_icd);
+  for (reml_type **it = (reml_type **)utarray_front(items); it != NULL;
+       it = (reml_type **)utarray_next(items, it)) {
+    reml_type *item = reml_type_instantiate_inner(ctx, *it, generics, substs, effect_generics,
+                                                  effect_substs);
+    utarray_push_back(out, &item);
+  }
+  return out;
+}
+
+static UT_array *reml_type_instantiate_fields(reml_type_ctx *ctx, UT_array *fields,
+                                              UT_array *generics, UT_array *substs,
+                                              UT_array *effect_generics,
+                                              UT_array *effect_substs) {
+  if (!fields) {
+    return NULL;
+  }
+  UT_icd field_icd = {sizeof(reml_record_field), NULL, NULL, NULL};
+  UT_array *out = NULL;
+  utarray_new(out, &field_icd);
+  for (reml_record_field *it = (reml_record_field *)utarray_front(fields); it != NULL;
+       it = (reml_record_field *)utarray_next(fields, it)) {
+    reml_record_field field = {.name = it->name,
+                               .type = reml_type_instantiate_inner(ctx, it->type, generics, substs,
+                                                                   effect_generics, effect_substs)};
+    utarray_push_back(out, &field);
+  }
+  return out;
+}
+
 static reml_type *reml_type_instantiate_inner(reml_type_ctx *ctx, reml_type *type,
-                                              UT_array *generics, UT_array *substs) {
+                                              UT_array *generics, UT_array *substs,
+                                              UT_array *effect_generics,
+                                              UT_array *effect_substs) {
   type = reml_type_prune(type);
   if (!type) {
     return NULL;
@@ -822,6 +1009,31 @@ static reml_type *reml_type_instantiate_inner(reml_type_ctx *ctx, reml_type *typ
     reml_type_subst subst = {.id = type->data.var.id, .replacement = fresh};
     utarray_push_back(substs, &subst);
     return fresh;
+  }
+  if (type->kind == REML_TYPE_TUPLE) {
+    UT_array *items = reml_type_instantiate_items(ctx, type->data.tuple.items, generics, substs,
+                                                  effect_generics, effect_substs);
+    return reml_type_make_tuple(ctx, items);
+  }
+  if (type->kind == REML_TYPE_RECORD) {
+    UT_array *fields = reml_type_instantiate_fields(ctx, type->data.record.fields, generics, substs,
+                                                    effect_generics, effect_substs);
+    return reml_type_make_record(ctx, fields);
+  }
+  if (type->kind == REML_TYPE_FUNCTION) {
+    UT_array *params = reml_type_instantiate_items(ctx, type->data.function.params, generics,
+                                                   substs, effect_generics, effect_substs);
+    reml_type *result = reml_type_instantiate_inner(ctx, type->data.function.result, generics,
+                                                    substs, effect_generics, effect_substs);
+    reml_effect_row effects =
+        reml_effect_row_instantiate(ctx, type->data.function.effects, effect_generics,
+                                    effect_substs);
+    return reml_type_make_function(ctx, params, result, effects);
+  }
+  if (type->kind == REML_TYPE_REF) {
+    reml_type *target = reml_type_instantiate_inner(ctx, type->data.ref.target, generics, substs,
+                                                    effect_generics, effect_substs);
+    return reml_type_make_ref(ctx, target, type->data.ref.is_mutable);
   }
   return type;
 }
@@ -851,13 +1063,22 @@ static reml_type *reml_type_instantiate_with_substs(reml_type_ctx *ctx, const re
   if (!scheme || !scheme->type) {
     return NULL;
   }
-  if (!scheme->generics || utarray_len(scheme->generics) == 0) {
+  bool has_type_generics = scheme->generics && utarray_len(scheme->generics) > 0;
+  bool has_effect_generics = scheme->effect_generics && utarray_len(scheme->effect_generics) > 0;
+  if (!has_type_generics && !has_effect_generics) {
     return scheme->type;
   }
   UT_icd subst_icd = {sizeof(reml_type_subst), NULL, NULL, NULL};
   UT_array *substs = NULL;
   utarray_new(substs, &subst_icd);
-  reml_type *result = reml_type_instantiate_inner(ctx, scheme->type, scheme->generics, substs);
+  UT_icd effect_subst_icd = {sizeof(reml_effect_row_subst), NULL, NULL, NULL};
+  UT_array *effect_substs = NULL;
+  utarray_new(effect_substs, &effect_subst_icd);
+  reml_type *result = reml_type_instantiate_inner(ctx, scheme->type, scheme->generics, substs,
+                                                  scheme->effect_generics, effect_substs);
+  if (effect_substs) {
+    utarray_free(effect_substs);
+  }
   if (out_substs) {
     *out_substs = substs;
   } else {
@@ -880,7 +1101,8 @@ static void reml_report_diag(reml_sema *sema, reml_diagnostic_code code, reml_sp
   if (!sema) {
     return;
   }
-  reml_diagnostic diag = {.code = code, .span = span, .message = message, .pattern = NULL};
+  reml_diagnostic diag = {
+      .code = code, .span = span, .message = message, .pattern = NULL, .effect = NULL};
   reml_diagnostics_push(&sema->diagnostics, diag);
 }
 
@@ -897,6 +1119,40 @@ static void reml_check_effect_contract(reml_sema *sema, const reml_attr_list *at
     reml_report_diag(sema, REML_DIAG_EFFECT_VIOLATION, attrs->no_panic_span,
                      "effect violation: @no_panic forbids panic");
   }
+}
+
+static bool reml_effect_row_is_closed(reml_effect_row row) {
+  row = reml_effect_row_resolve(row);
+  return row.tail == NULL;
+}
+
+static void reml_report_effect_mismatch(reml_sema *sema, reml_span span, reml_effect_row expected,
+                                        reml_effect_row actual) {
+  if (!sema) {
+    return;
+  }
+  reml_effect_row resolved_expected = reml_effect_row_resolve(expected);
+  reml_effect_row resolved_actual = reml_effect_row_resolve(actual);
+  reml_diagnostic_effect *effect =
+      (reml_diagnostic_effect *)calloc(1, sizeof(reml_diagnostic_effect));
+  if (effect) {
+    effect->expected_effects = resolved_expected.effects;
+    effect->actual_effects = resolved_actual.effects;
+    effect->expected_open = resolved_expected.tail != NULL;
+    effect->actual_open = resolved_actual.tail != NULL;
+    if (resolved_expected.tail) {
+      effect->expected_row_var = resolved_expected.tail->id;
+    }
+    if (resolved_actual.tail) {
+      effect->actual_row_var = resolved_actual.tail->id;
+    }
+  }
+  reml_diagnostic diag = {.code = REML_DIAG_EFFECT_CONTRACT_MISMATCH,
+                          .span = span,
+                          .message = "effect contract mismatch",
+                          .pattern = NULL,
+                          .effect = effect};
+  reml_diagnostics_push(&sema->diagnostics, diag);
 }
 
 static void reml_register_type_decl(reml_sema *sema, const reml_type_decl *decl, reml_span span) {
@@ -954,6 +1210,17 @@ static bool reml_expect_type(reml_sema *sema, reml_type *actual, reml_type *expe
   if (reml_type_unify(&sema->types, actual, expected)) {
     return true;
   }
+  reml_type *left = reml_type_prune(actual);
+  reml_type *right = reml_type_prune(expected);
+  if (left && right && left->kind == REML_TYPE_FUNCTION && right->kind == REML_TYPE_FUNCTION) {
+    if (reml_effect_row_is_closed(left->data.function.effects) &&
+        reml_effect_row_is_closed(right->data.function.effects) &&
+        left->data.function.effects.effects != right->data.function.effects.effects) {
+      reml_report_effect_mismatch(sema, span, right->data.function.effects,
+                                  left->data.function.effects);
+      return false;
+    }
+  }
   reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, span, "type mismatch");
   return false;
 }
@@ -962,7 +1229,9 @@ static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_
 static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type *expected,
                                reml_effect_set *effect, bool allow_define, bool is_mutable,
                                size_t constraint_start, size_t constraint_end);
-static reml_effect_set reml_effect_union(reml_effect_set left, reml_effect_set right);
+static reml_effect_set reml_effect_union(reml_effect_set left, reml_effect_set right) {
+  return (reml_effect_set)(left | right);
+}
 
 static reml_symbol *reml_symbol_from_ident(reml_sema *sema, reml_expr *expr) {
   if (!sema || !expr || expr->kind != REML_EXPR_IDENT) {
@@ -1760,7 +2029,8 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
     reml_diagnostic diag = {.code = REML_DIAG_PATTERN_EXHAUSTIVENESS_MISSING,
                             .span = expr->span,
                             .message = "non-exhaustive match expression",
-                            .pattern = pattern_ext};
+                            .pattern = pattern_ext,
+                            .effect = NULL};
     reml_diagnostics_push(&sema->diagnostics, diag);
   }
 
@@ -2036,6 +2306,25 @@ static void reml_generalize(reml_sema *sema, reml_symbol *symbol, reml_type *typ
 
   utarray_free(type_vars);
   utarray_free(env_vars);
+
+  bool allow_effect_poly = reml_symbol_table_is_top_level(sema->symbols);
+  if (!allow_effect_poly) {
+    return;
+  }
+  UT_array *effect_vars = NULL;
+  UT_array *env_effect_vars = NULL;
+  utarray_new(effect_vars, &var_icd);
+  utarray_new(env_effect_vars, &var_icd);
+  reml_effect_row_collect_vars(type, effect_vars);
+  reml_env_collect_free_effect_vars(sema->symbols, symbol, env_effect_vars);
+  for (uint32_t *it = (uint32_t *)utarray_front(effect_vars); it != NULL;
+       it = (uint32_t *)utarray_next(effect_vars, it)) {
+    if (!reml_var_ids_contains(env_effect_vars, *it)) {
+      reml_var_ids_push_unique(symbol->scheme.effect_generics, *it);
+    }
+  }
+  utarray_free(effect_vars);
+  utarray_free(env_effect_vars);
 }
 
 static void reml_define_pattern_symbol(reml_sema *sema, reml_pattern *pattern,
