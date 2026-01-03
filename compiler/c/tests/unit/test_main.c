@@ -14,6 +14,7 @@ void test_lexer_basic(void **state);
 void test_parser_basic(void **state);
 void test_sema(void **state);
 void test_bigint_runtime(void **state);
+void test_effects_runtime(void **state);
 
 int main(void) {
   const struct CMUnitTest tests[] = {
@@ -23,6 +24,7 @@ int main(void) {
     cmocka_unit_test(test_parser_basic),
     cmocka_unit_test(test_sema),
     cmocka_unit_test(test_bigint_runtime),
+    cmocka_unit_test(test_effects_runtime),
   };
 
   return cmocka_run_group_tests(tests, NULL, NULL);

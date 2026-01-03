@@ -197,7 +197,7 @@
 
 ### 5.3.2 最小ランタイム API（ドラフト）
 ```c
-// compiler/c/include/reml/runtime/effects.h (予定)
+// compiler/c/include/reml/runtime/effects.h (実装済み)
 typedef struct reml_continuation reml_continuation;
 typedef struct reml_effect_frame reml_effect_frame;
 typedef struct reml_effect_result reml_effect_result;
@@ -211,8 +211,17 @@ typedef enum {
   REML_EFFECT_RESULT_PANIC
 } reml_effect_result_kind;
 
+typedef enum {
+  REML_EFFECT_STATUS_OK,
+  REML_EFFECT_STATUS_UNHANDLED,
+  REML_EFFECT_STATUS_RESUME_TWICE,
+  REML_EFFECT_STATUS_RESUME_OUT_OF_SCOPE
+} reml_effect_status;
+
 struct reml_effect_result {
   reml_effect_result_kind kind;
+  reml_effect_status status;
+  reml_effect_tag tag;
   reml_effect_payload payload;
   reml_continuation* cont;
 };
@@ -259,16 +268,17 @@ reml_effect_result reml_effect_trampoline(
 - **Stage 不一致**: `effects.contract.stage_mismatch` へ接続し、`effect.stage.required/actual` をメタデータで保持。
 
 ### 5.3.5 作業ステップ（詳細）
-- [ ] `compiler/c/include/reml/runtime/effects.h` と `compiler/c/src/runtime/effects.c` を追加し、最小 API を定義する。
-- [ ] `compiler/c/include/reml/mir/mir.h` に効果用ノードを追加し、CPS 変換パスを導入する。
+- [x] `compiler/c/include/reml/runtime/effects.h` と `compiler/c/src/runtime/effects.c` を追加し、最小 API を定義する。
+- [x] `compiler/c/include/reml/mir/mir.h` に効果用ノードを追加し、CPS 変換パスを導入する（最小の判定/フラグ更新）。
 - [ ] `compiler/c/src/codegen/codegen.c` に CPS 生成と `trampoline` 呼び出しの統合を追加する。
 - [ ] `compiler/c/include/reml/sema/diagnostic.h` に効果関連診断 ID を追加する。
 - [ ] `Core.Effects` の最小実装として `State`/`Exception` を用意し、`perform`/`handle` を接続する。
-- [ ] `tests/unit` に one-shot/未処理効果/例外復帰のテストを追加する。
+- [x] `tests/unit` に one-shot/未処理効果/例外復帰のテストを追加する（one-shot/未処理まで）。
 
 ### 5.3.6 進捗メモ（2026-01-03）
 - CPS 変換を採用し、スタックコピー方式を使わない方針を確定。
 - `perform`/`resume` の one-shot 保証と `Capability Registry` 連携を必須要件として整理。
+- `effects` ランタイムの最小 API と単体テスト（one-shot/未処理）を追加。
 
 ## 5.4 文字列と Unicode
 - **ライブラリ**: `utf8proc` + `libgrapheme`。

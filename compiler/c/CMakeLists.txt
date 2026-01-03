@@ -30,6 +30,8 @@ add_library(reml_core
   src/numeric/bigint.c
   src/numeric/core_numeric.c
   src/runtime/enum.c
+  src/runtime/effects.c
+  src/mir/mir.c
   src/typeck/type.c
   src/sema/diagnostic.c
   src/sema/sema.c
@@ -125,6 +127,7 @@ add_executable(reml_unit_tests
   tests/unit/test_parser_basic.c
   tests/unit/test_sema.c
   tests/unit/test_bigint_runtime.c
+  tests/unit/test_effects_runtime.c
 )
 
 target_link_libraries(reml_unit_tests
