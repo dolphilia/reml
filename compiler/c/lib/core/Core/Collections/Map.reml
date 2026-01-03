@@ -1,0 +1,11 @@
+module Core.Collections.Map
+
+use ::Core.Collections.List
+
+pub type Map<K, V> = List<(K, V)>
+
+pub fn empty_map<K, V>() -> Map<K, V> =
+  List.empty()
+
+pub fn insert<K, V>(map: Map<K, V>, key: K, value: V) -> Map<K, V> =
+  List.push_front(map, (key, value))

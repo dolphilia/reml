@@ -1,0 +1,15 @@
+module Core.Collections.List
+
+pub type List<T> =
+  | Nil
+  | Cons(T, List<T>)
+
+pub fn empty<T>() -> List<T> = Nil
+
+pub fn push_front<T>(list: List<T>, value: T) -> List<T> =
+  Cons(value, list)
+
+pub fn is_empty<T>(list: List<T>) -> Bool =
+  match list with
+  | Nil -> true
+  | Cons(_, _) -> false

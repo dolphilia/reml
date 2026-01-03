@@ -1,0 +1,5 @@
+module Core.IO
+
+pub type IoError
+
+// TODO: Core.IO の @intrinsic バインディングを追加する。

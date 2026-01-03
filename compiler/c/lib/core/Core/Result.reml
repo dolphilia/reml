@@ -1,0 +1,20 @@
+module Core.Result
+
+pub type Result<T, E> =
+  | Ok(T)
+  | Err(E)
+
+pub fn is_ok<T, E>(value: Result<T, E>) -> Bool =
+  match value with
+  | Ok(_) -> true
+  | Err(_) -> false
+
+pub fn is_err<T, E>(value: Result<T, E>) -> Bool =
+  match value with
+  | Ok(_) -> false
+  | Err(_) -> true
+
+pub fn unwrap_or<T, E>(value: Result<T, E>, default: T) -> T =
+  match value with
+  | Ok(inner) -> inner
+  | Err(_) -> default

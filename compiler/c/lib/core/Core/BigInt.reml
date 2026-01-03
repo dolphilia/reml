@@ -1,0 +1,3 @@
+module Core.BigInt
+
+pub type BigInt

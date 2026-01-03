@@ -1,0 +1,3 @@
+module Core.Int
+
+pub type alias Int = i64

@@ -1,0 +1,20 @@
+module Core.Option
+
+pub type Option<T> =
+  | Some(T)
+  | None
+
+pub fn is_some<T>(value: Option<T>) -> Bool =
+  match value with
+  | Some(_) -> true
+  | None -> false
+
+pub fn is_none<T>(value: Option<T>) -> Bool =
+  match value with
+  | Some(_) -> false
+  | None -> true
+
+pub fn unwrap_or<T>(value: Option<T>, default: T) -> T =
+  match value with
+  | Some(inner) -> inner
+  | None -> default

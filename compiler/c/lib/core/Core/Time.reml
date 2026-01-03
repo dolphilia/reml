@@ -1,0 +1,5 @@
+module Core.Time
+
+pub type TimeError
+
+// TODO: Core.Time の @intrinsic バインディングを追加する。

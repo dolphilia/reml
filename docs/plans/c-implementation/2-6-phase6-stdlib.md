@@ -43,6 +43,10 @@
   - Unicode 関連 API（分割・正規化・幅計算）を `utf8proc` / `libgrapheme` に接続する。
   - エラーメッセージと診断 ID を `docs/spec/3-6` 系に合わせる。
 
+### 6.2.1 進捗メモ
+- `compiler/c/lib/core/` を作成し、`Core.*` の最小構成ファイルを配置した。
+- `compiler/c/lib/core/README.md` に `@intrinsic` 対象と C 実装の対応表、Unicode 連携方針、診断 ID の暫定コードを整理した。
+
 ## 6.3 セルフホスティングテスト (Spec Core)
 - **目標**: `examples/spec_core/` のテストスイートをパスする。
 - **ハーネス**:

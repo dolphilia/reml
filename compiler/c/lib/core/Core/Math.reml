@@ -1,0 +1,4 @@
+module Core.Math
+
+pub fn clamp_i64(value: i64, min: i64, max: i64) -> i64 =
+  if value < min then min else if value > max then max else value

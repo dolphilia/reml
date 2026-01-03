@@ -1,0 +1,11 @@
+module Core.String
+
+pub type Str
+pub type String
+pub type Grapheme
+
+@intrinsic("reml_str_len_bytes")
+pub fn len_bytes(value: Str) -> usize = 0
+
+@intrinsic("reml_str_len_graphemes")
+pub fn len_graphemes(value: Str) -> usize = 0

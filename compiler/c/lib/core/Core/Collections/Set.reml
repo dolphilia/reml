@@ -1,0 +1,11 @@
+module Core.Collections.Set
+
+use ::Core.Collections.List
+
+pub type Set<T> = List<T>
+
+pub fn empty_set<T>() -> Set<T> =
+  List.empty()
+
+pub fn insert<T>(set: Set<T>, value: T) -> Set<T> =
+  List.push_front(set, value)

@@ -138,6 +138,8 @@ coverage/
 core
 core.*
 vgcore.*
+!compiler/c/lib/core/
+!compiler/c/lib/core/**
 
 # Valgrind
 *.valgrind

@@ -1,0 +1,15 @@
+module Core
+
+pub use ::Core.Prelude
+pub use ::Core.Option
+pub use ::Core.Result
+pub use ::Core.String
+pub use ::Core.Bytes
+pub use ::Core.Collections
+pub use ::Core.Math
+pub use ::Core.Int
+pub use ::Core.Float
+pub use ::Core.BigInt
+pub use ::Core.IO
+pub use ::Core.Env
+pub use ::Core.Time

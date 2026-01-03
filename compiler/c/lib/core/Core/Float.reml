@@ -1,0 +1,3 @@
+module Core.Float
+
+pub type alias Float = f64

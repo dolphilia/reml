@@ -1,0 +1,5 @@
+module Core.Collections
+
+pub use ::Core.Collections.List
+pub use ::Core.Collections.Map
+pub use ::Core.Collections.Set
