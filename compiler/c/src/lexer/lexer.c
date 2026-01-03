@@ -349,6 +349,24 @@ static reml_token_kind reml_keyword_kind(const reml_string_view *view) {
   if (view->length == 3 && strncmp(view->data, "mut", 3) == 0) {
     return REML_TOKEN_KW_MUT;
   }
+  if (view->length == 7 && strncmp(view->data, "perform", 7) == 0) {
+    return REML_TOKEN_KW_PERFORM;
+  }
+  if (view->length == 2 && strncmp(view->data, "do", 2) == 0) {
+    return REML_TOKEN_KW_DO;
+  }
+  if (view->length == 6 && strncmp(view->data, "handle", 6) == 0) {
+    return REML_TOKEN_KW_HANDLE;
+  }
+  if (view->length == 7 && strncmp(view->data, "handler", 7) == 0) {
+    return REML_TOKEN_KW_HANDLER;
+  }
+  if (view->length == 9 && strncmp(view->data, "operation", 9) == 0) {
+    return REML_TOKEN_KW_OPERATION;
+  }
+  if (view->length == 6 && strncmp(view->data, "resume", 6) == 0) {
+    return REML_TOKEN_KW_RESUME;
+  }
   if (view->length == 2 && strncmp(view->data, "fn", 2) == 0) {
     return REML_TOKEN_KW_FN;
   }

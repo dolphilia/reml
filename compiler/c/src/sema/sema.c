@@ -2252,6 +2252,81 @@ static reml_type *reml_infer_record_update(reml_sema *sema, reml_expr *expr,
   return base_type;
 }
 
+static reml_type *reml_infer_perform(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
+  if (!sema || !expr) {
+    return reml_type_error(&sema->types);
+  }
+  if (expr->data.perform.args) {
+    for (reml_expr **it = (reml_expr **)utarray_front(expr->data.perform.args); it != NULL;
+         it = (reml_expr **)utarray_next(expr->data.perform.args, it)) {
+      reml_effect_set arg_effect = REML_EFFECT_NONE;
+      reml_infer_expr(sema, *it, &arg_effect);
+      if (effect) {
+        *effect = reml_effect_union(*effect, arg_effect);
+      }
+    }
+  }
+  if (effect) {
+    *effect = reml_effect_union(*effect, REML_EFFECT_IO);
+  }
+  return reml_type_unit(&sema->types);
+}
+
+static reml_type *reml_infer_resume(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
+  if (!sema || !expr) {
+    return reml_type_error(&sema->types);
+  }
+  if (expr->data.resume.value) {
+    reml_effect_set value_effect = REML_EFFECT_NONE;
+    reml_type *value_type = reml_infer_expr(sema, expr->data.resume.value, &value_effect);
+    if (effect) {
+      *effect = reml_effect_union(*effect, value_effect);
+    }
+    return value_type ? value_type : reml_type_unit(&sema->types);
+  }
+  return reml_type_unit(&sema->types);
+}
+
+static reml_type *reml_infer_handle(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
+  if (!sema || !expr) {
+    return reml_type_error(&sema->types);
+  }
+  reml_effect_set target_effect = REML_EFFECT_NONE;
+  reml_type *target_type = reml_infer_expr(sema, expr->data.handle.target, &target_effect);
+  if (effect) {
+    *effect = reml_effect_union(*effect, target_effect);
+  }
+
+  if (expr->data.handle.handler.entries) {
+    for (reml_handler_entry *it =
+             (reml_handler_entry *)utarray_front(expr->data.handle.handler.entries);
+         it != NULL;
+         it = (reml_handler_entry *)utarray_next(expr->data.handle.handler.entries, it)) {
+      reml_symbol_table_enter(sema->symbols);
+      if (it->kind == REML_HANDLER_ENTRY_OPERATION && it->data.operation.params) {
+        for (reml_string_view *param =
+                 (reml_string_view *)utarray_front(it->data.operation.params);
+             param != NULL;
+             param = (reml_string_view *)utarray_next(it->data.operation.params, param)) {
+          reml_symbol_table_define(sema->symbols, REML_SYMBOL_VAR, *param, expr->span,
+                                   reml_type_make_var(&sema->types), false, false, false);
+        }
+      }
+      reml_effect_set body_effect = REML_EFFECT_NONE;
+      if (it->kind == REML_HANDLER_ENTRY_OPERATION) {
+        reml_infer_expr(sema, it->data.operation.body, &body_effect);
+      } else {
+        reml_infer_expr(sema, it->data.ret.body, &body_effect);
+      }
+      if (effect) {
+        *effect = reml_effect_union(*effect, body_effect);
+      }
+      reml_symbol_table_exit(sema->symbols);
+    }
+  }
+  return target_type ? target_type : reml_type_unit(&sema->types);
+}
+
 static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
   if (!expr) {
     return reml_type_error(&sema->types);
@@ -2289,6 +2364,15 @@ static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_
       break;
     case REML_EXPR_CONSTRUCTOR:
       result = reml_infer_constructor(sema, expr, &local_effect);
+      break;
+    case REML_EXPR_PERFORM:
+      result = reml_infer_perform(sema, expr, &local_effect);
+      break;
+    case REML_EXPR_HANDLE:
+      result = reml_infer_handle(sema, expr, &local_effect);
+      break;
+    case REML_EXPR_RESUME:
+      result = reml_infer_resume(sema, expr, &local_effect);
       break;
     case REML_EXPR_TUPLE:
       result = reml_infer_tuple(sema, expr, &local_effect);

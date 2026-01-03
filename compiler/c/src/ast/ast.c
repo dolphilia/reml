@@ -82,6 +82,36 @@ reml_expr *reml_expr_make_constructor(reml_span span, reml_string_view name, UT_
   return expr;
 }
 
+reml_expr *reml_expr_make_perform(reml_span span, reml_effect_path path, UT_array *args, bool is_do) {
+  reml_expr *expr = reml_expr_alloc(REML_EXPR_PERFORM, span);
+  if (!expr) {
+    return NULL;
+  }
+  expr->data.perform.path = path;
+  expr->data.perform.args = args;
+  expr->data.perform.is_do = is_do;
+  return expr;
+}
+
+reml_expr *reml_expr_make_handle(reml_span span, reml_expr *target, reml_handler_literal handler) {
+  reml_expr *expr = reml_expr_alloc(REML_EXPR_HANDLE, span);
+  if (!expr) {
+    return NULL;
+  }
+  expr->data.handle.target = target;
+  expr->data.handle.handler = handler;
+  return expr;
+}
+
+reml_expr *reml_expr_make_resume(reml_span span, reml_expr *value) {
+  reml_expr *expr = reml_expr_alloc(REML_EXPR_RESUME, span);
+  if (!expr) {
+    return NULL;
+  }
+  expr->data.resume.value = value;
+  return expr;
+}
+
 reml_expr *reml_expr_make_tuple(reml_span span, UT_array *items) {
   reml_expr *expr = reml_expr_alloc(REML_EXPR_TUPLE, span);
   if (!expr) {
@@ -318,6 +348,40 @@ void reml_expr_free(reml_expr *expr) {
         }
         utarray_free(expr->data.ctor.args);
       }
+      break;
+    case REML_EXPR_PERFORM:
+      if (expr->data.perform.path.segments) {
+        utarray_free(expr->data.perform.path.segments);
+      }
+      if (expr->data.perform.args) {
+        for (reml_expr **it = (reml_expr **)utarray_front(expr->data.perform.args); it != NULL;
+             it = (reml_expr **)utarray_next(expr->data.perform.args, it)) {
+          reml_expr_free(*it);
+        }
+        utarray_free(expr->data.perform.args);
+      }
+      break;
+    case REML_EXPR_HANDLE:
+      reml_expr_free(expr->data.handle.target);
+      if (expr->data.handle.handler.entries) {
+        for (reml_handler_entry *it =
+                 (reml_handler_entry *)utarray_front(expr->data.handle.handler.entries);
+             it != NULL;
+             it = (reml_handler_entry *)utarray_next(expr->data.handle.handler.entries, it)) {
+          if (it->kind == REML_HANDLER_ENTRY_OPERATION) {
+            if (it->data.operation.params) {
+              utarray_free(it->data.operation.params);
+            }
+            reml_expr_free(it->data.operation.body);
+          } else {
+            reml_expr_free(it->data.ret.body);
+          }
+        }
+        utarray_free(expr->data.handle.handler.entries);
+      }
+      break;
+    case REML_EXPR_RESUME:
+      reml_expr_free(expr->data.resume.value);
       break;
     case REML_EXPR_TUPLE:
       if (expr->data.tuple) {

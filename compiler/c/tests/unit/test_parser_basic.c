@@ -218,6 +218,24 @@ void test_parser_basic(void **state) {
     reml_compilation_unit_free(unit);
   }
   {
+    const char *source =
+        "handle perform Console.log(1) with handler Console { operation log(msg, resume) { resume(msg) } return value { value } };";
+    reml_parser parser;
+    reml_parser_init(&parser, source, strlen(source));
+
+    reml_compilation_unit *unit = reml_parse_compilation_unit(&parser);
+    assert_non_null(unit);
+
+    char *rendered = render_unit(unit);
+    assert_non_null(rendered);
+    assert_string_equal(
+        rendered,
+        "(unit (expr (handle (perform Console.log (int 1)) (handler Console (operation log msg resume (block (tail (resume (ident msg))))) (return value (block (tail (ident value))))))))");
+
+    free(rendered);
+    reml_compilation_unit_free(unit);
+  }
+  {
     const char *source = "let { a, b: x } = { a: 1, b: 2 };";
     reml_parser parser;
     reml_parser_init(&parser, source, strlen(source));

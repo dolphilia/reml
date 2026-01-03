@@ -89,6 +89,13 @@ static void reml_free_expr_array(UT_array *items) {
   utarray_free(items);
 }
 
+static void reml_free_string_view_array(UT_array *items) {
+  if (!items) {
+    return;
+  }
+  utarray_free(items);
+}
+
 static void reml_free_match_arms(UT_array *arms) {
   if (!arms) {
     return;
@@ -124,6 +131,22 @@ static void reml_free_record_expr_fields(UT_array *fields) {
     reml_expr_free(it->value);
   }
   utarray_free(fields);
+}
+
+static void reml_free_handler_entries(UT_array *entries) {
+  if (!entries) {
+    return;
+  }
+  for (reml_handler_entry *it = (reml_handler_entry *)utarray_front(entries); it != NULL;
+       it = (reml_handler_entry *)utarray_next(entries, it)) {
+    if (it->kind == REML_HANDLER_ENTRY_OPERATION) {
+      reml_free_string_view_array(it->data.operation.params);
+      reml_expr_free(it->data.operation.body);
+    } else {
+      reml_expr_free(it->data.ret.body);
+    }
+  }
+  utarray_free(entries);
 }
 
 static void reml_free_type_decl_variants(UT_array *variants) {
@@ -469,6 +492,185 @@ static reml_pattern *reml_parse_pattern_primary(reml_parser *parser) {
 
 static reml_pattern *reml_parse_pattern(reml_parser *parser) {
   return reml_parse_pattern_primary(parser);
+}
+
+static bool reml_parse_effect_path(reml_parser *parser, reml_effect_path *out_path,
+                                   reml_span *out_span) {
+  if (!parser || !out_path) {
+    return false;
+  }
+  if (parser->current.kind != REML_TOKEN_IDENT) {
+    reml_parser_set_error(parser, "expected effect path", parser->current.span);
+    return false;
+  }
+  UT_icd seg_icd = {sizeof(reml_string_view), NULL, NULL, NULL};
+  UT_array *segments = NULL;
+  utarray_new(segments, &seg_icd);
+
+  reml_token start = parser->current;
+  reml_token end = start;
+  utarray_push_back(segments, &start.lexeme);
+  reml_parser_advance(parser);
+
+  while (parser->current.kind == REML_TOKEN_DOT) {
+    reml_parser_advance(parser);
+    if (parser->current.kind != REML_TOKEN_IDENT) {
+      reml_parser_set_error(parser, "expected identifier after '.'", parser->current.span);
+      utarray_free(segments);
+      return false;
+    }
+    end = parser->current;
+    utarray_push_back(segments, &end.lexeme);
+    reml_parser_advance(parser);
+  }
+
+  out_path->segments = segments;
+  if (out_span) {
+    *out_span = reml_span_combine(start.span, end.span);
+  }
+  return true;
+}
+
+static reml_expr *reml_parse_block_expression(reml_parser *parser, const char *context) {
+  reml_expr *body = reml_parse_primary(parser);
+  if (!body) {
+    return NULL;
+  }
+  if (body->kind != REML_EXPR_BLOCK) {
+    reml_parser_set_error(parser, context ? context : "expected block", body->span);
+    reml_expr_free(body);
+    return NULL;
+  }
+  return body;
+}
+
+static bool reml_parse_handler_literal(reml_parser *parser, reml_handler_literal *out_handler,
+                                       reml_span *out_span) {
+  if (!parser || !out_handler) {
+    return false;
+  }
+  if (!reml_parser_expect(parser, REML_TOKEN_KW_HANDLER, "expected 'handler'")) {
+    return false;
+  }
+  if (parser->current.kind != REML_TOKEN_IDENT) {
+    reml_parser_set_error(parser, "expected handler name", parser->current.span);
+    return false;
+  }
+  reml_token name_token = parser->current;
+  reml_parser_advance(parser);
+  if (!reml_parser_expect(parser, REML_TOKEN_LBRACE, "expected '{' after handler name")) {
+    return false;
+  }
+
+  UT_icd entry_icd = {sizeof(reml_handler_entry), NULL, NULL, NULL};
+  UT_array *entries = NULL;
+  utarray_new(entries, &entry_icd);
+
+  reml_span last_span = name_token.span;
+  bool parsed_entry = false;
+  while (parser->current.kind != REML_TOKEN_RBRACE &&
+         parser->current.kind != REML_TOKEN_EOF) {
+    if (parser->current.kind == REML_TOKEN_KW_OPERATION) {
+      reml_parser_advance(parser);
+      if (parser->current.kind != REML_TOKEN_IDENT) {
+        reml_parser_set_error(parser, "expected operation name", parser->current.span);
+        reml_free_handler_entries(entries);
+        return false;
+      }
+      reml_token op_name = parser->current;
+      reml_parser_advance(parser);
+      if (!reml_parser_expect(parser, REML_TOKEN_LPAREN, "expected '(' after operation name")) {
+        reml_free_handler_entries(entries);
+        return false;
+      }
+      UT_icd param_icd = {sizeof(reml_string_view), NULL, NULL, NULL};
+      UT_array *params = NULL;
+      utarray_new(params, &param_icd);
+      if (parser->current.kind != REML_TOKEN_RPAREN) {
+        while (true) {
+          if (parser->current.kind != REML_TOKEN_IDENT) {
+            reml_parser_set_error(parser, "expected parameter name", parser->current.span);
+            reml_free_string_view_array(params);
+            reml_free_handler_entries(entries);
+            return false;
+          }
+          reml_token param = parser->current;
+          reml_parser_advance(parser);
+          utarray_push_back(params, &param.lexeme);
+          if (parser->current.kind == REML_TOKEN_COMMA) {
+            reml_parser_advance(parser);
+            continue;
+          }
+          break;
+        }
+      }
+      if (!reml_parser_expect(parser, REML_TOKEN_RPAREN, "expected ')' after parameters")) {
+        reml_free_string_view_array(params);
+        reml_free_handler_entries(entries);
+        return false;
+      }
+      reml_expr *body =
+          reml_parse_block_expression(parser, "expected block after operation handler");
+      if (!body) {
+        reml_free_string_view_array(params);
+        reml_free_handler_entries(entries);
+        return false;
+      }
+      reml_handler_entry entry;
+      entry.kind = REML_HANDLER_ENTRY_OPERATION;
+      entry.data.operation.name = op_name.lexeme;
+      entry.data.operation.params = params;
+      entry.data.operation.body = body;
+      utarray_push_back(entries, &entry);
+      parsed_entry = true;
+      last_span = body->span;
+      continue;
+    }
+    if (parser->current.kind == REML_TOKEN_KW_RETURN) {
+      reml_parser_advance(parser);
+      if (parser->current.kind != REML_TOKEN_IDENT) {
+        reml_parser_set_error(parser, "expected return name", parser->current.span);
+        reml_free_handler_entries(entries);
+        return false;
+      }
+      reml_token return_name = parser->current;
+      reml_parser_advance(parser);
+      reml_expr *body =
+          reml_parse_block_expression(parser, "expected block after return handler");
+      if (!body) {
+        reml_free_handler_entries(entries);
+        return false;
+      }
+      reml_handler_entry entry;
+      entry.kind = REML_HANDLER_ENTRY_RETURN;
+      entry.data.ret.name = return_name.lexeme;
+      entry.data.ret.body = body;
+      utarray_push_back(entries, &entry);
+      parsed_entry = true;
+      last_span = body->span;
+      continue;
+    }
+    reml_parser_set_error(parser, "expected handler entry", parser->current.span);
+    reml_free_handler_entries(entries);
+    return false;
+  }
+
+  if (!parsed_entry) {
+    reml_parser_set_error(parser, "expected handler entry", parser->current.span);
+    reml_free_handler_entries(entries);
+    return false;
+  }
+  reml_token end_token = parser->current;
+  if (!reml_parser_expect(parser, REML_TOKEN_RBRACE, "expected '}' after handler body")) {
+    reml_free_handler_entries(entries);
+    return false;
+  }
+  out_handler->name = name_token.lexeme;
+  out_handler->entries = entries;
+  if (out_span) {
+    *out_span = reml_span_combine(name_token.span, end_token.span);
+  }
+  return true;
 }
 
 static reml_expr *reml_parse_primary(reml_parser *parser) {
@@ -835,6 +1037,98 @@ static reml_expr *reml_parse_primary(reml_parser *parser) {
 
       reml_span span = reml_span_combine(scrutinee->span, last_span);
       return reml_expr_make_match(span, scrutinee, arms);
+    }
+    case REML_TOKEN_KW_PERFORM:
+    case REML_TOKEN_KW_DO: {
+      bool is_do = token.kind == REML_TOKEN_KW_DO;
+      reml_parser_advance(parser);
+      reml_effect_path path = {0};
+      reml_span path_span = token.span;
+      if (!reml_parse_effect_path(parser, &path, &path_span)) {
+        return NULL;
+      }
+      if (!reml_parser_expect(parser, REML_TOKEN_LPAREN, "expected '(' after effect path")) {
+        if (path.segments) {
+          utarray_free(path.segments);
+        }
+        return NULL;
+      }
+      UT_icd arg_icd = {sizeof(reml_expr *), NULL, NULL, NULL};
+      UT_array *args = NULL;
+      utarray_new(args, &arg_icd);
+      if (parser->current.kind != REML_TOKEN_RPAREN) {
+        reml_expr *first = reml_parse_expression_prec(parser, 0);
+        if (!first) {
+          utarray_free(path.segments);
+          reml_free_expr_array(args);
+          return NULL;
+        }
+        utarray_push_back(args, &first);
+        while (parser->current.kind == REML_TOKEN_COMMA) {
+          reml_parser_advance(parser);
+          if (parser->current.kind == REML_TOKEN_RPAREN) {
+            break;
+          }
+          reml_expr *next = reml_parse_expression_prec(parser, 0);
+          if (!next) {
+            utarray_free(path.segments);
+            reml_free_expr_array(args);
+            return NULL;
+          }
+          utarray_push_back(args, &next);
+        }
+      }
+      reml_token end_token = parser->current;
+      if (!reml_parser_expect(parser, REML_TOKEN_RPAREN, "expected ')'")) {
+        utarray_free(path.segments);
+        reml_free_expr_array(args);
+        return NULL;
+      }
+      reml_span span = reml_span_combine(token.span, end_token.span);
+      return reml_expr_make_perform(span, path, args, is_do);
+    }
+    case REML_TOKEN_KW_HANDLE: {
+      reml_parser_advance(parser);
+      reml_expr *target = reml_parse_expression_prec(parser, 0);
+      if (!target) {
+        return NULL;
+      }
+      if (!reml_parser_expect(parser, REML_TOKEN_KW_WITH, "expected 'with'")) {
+        reml_expr_free(target);
+        return NULL;
+      }
+      reml_handler_literal handler = {0};
+      reml_span handler_span = token.span;
+      if (!reml_parse_handler_literal(parser, &handler, &handler_span)) {
+        reml_expr_free(target);
+        return NULL;
+      }
+      reml_span span = reml_span_combine(target->span, handler_span);
+      return reml_expr_make_handle(span, target, handler);
+    }
+    case REML_TOKEN_KW_RESUME: {
+      reml_parser_advance(parser);
+      reml_expr *value = NULL;
+      if (parser->current.kind == REML_TOKEN_LPAREN) {
+        reml_token start = parser->current;
+        reml_parser_advance(parser);
+        if (parser->current.kind != REML_TOKEN_RPAREN) {
+          value = reml_parse_expression_prec(parser, 0);
+          if (!value) {
+            return NULL;
+          }
+        }
+        reml_token end_token = parser->current;
+        if (!reml_parser_expect(parser, REML_TOKEN_RPAREN, "expected ')' after resume")) {
+          reml_expr_free(value);
+          return NULL;
+        }
+        reml_span span = reml_span_combine(token.span, end_token.span);
+        (void)start;
+        return reml_expr_make_resume(span, value);
+      }
+      reml_parser_set_error(parser, "expected '(' after resume", parser->current.span);
+      return NULL;
     }
     case REML_TOKEN_LPAREN: {
       reml_parser_advance(parser);

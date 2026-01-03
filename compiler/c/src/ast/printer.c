@@ -8,6 +8,22 @@ static void reml_write_view(FILE *out, reml_string_view view) {
   fwrite(view.data, 1, view.length, out);
 }
 
+static void reml_write_effect_path(FILE *out, const reml_effect_path *path) {
+  if (!path || !path->segments) {
+    fputs("<effect?>", out);
+    return;
+  }
+  bool first = true;
+  for (reml_string_view *it = (reml_string_view *)utarray_front(path->segments); it != NULL;
+       it = (reml_string_view *)utarray_next(path->segments, it)) {
+    if (!first) {
+      fputc('.', out);
+    }
+    reml_write_view(out, *it);
+    first = false;
+  }
+}
+
 static const char *reml_token_symbol(reml_token_kind kind) {
   reml_operator_entry entry = {0};
   if (reml_operator_lookup(kind, &entry)) {
@@ -178,6 +194,62 @@ void reml_ast_write_expr(FILE *out, const reml_expr *expr) {
           fputs(" ", out);
           reml_ast_write_expr(out, *it);
         }
+      }
+      fputs(")", out);
+      return;
+    case REML_EXPR_PERFORM:
+      fputs(expr->data.perform.is_do ? "(do " : "(perform ", out);
+      reml_write_effect_path(out, &expr->data.perform.path);
+      if (expr->data.perform.args) {
+        for (reml_expr **it = (reml_expr **)utarray_front(expr->data.perform.args); it != NULL;
+             it = (reml_expr **)utarray_next(expr->data.perform.args, it)) {
+          fputs(" ", out);
+          reml_ast_write_expr(out, *it);
+        }
+      }
+      fputs(")", out);
+      return;
+    case REML_EXPR_HANDLE:
+      fputs("(handle ", out);
+      reml_ast_write_expr(out, expr->data.handle.target);
+      fputs(" (handler ", out);
+      reml_write_view(out, expr->data.handle.handler.name);
+      if (expr->data.handle.handler.entries) {
+        for (reml_handler_entry *it =
+                 (reml_handler_entry *)utarray_front(expr->data.handle.handler.entries);
+             it != NULL;
+             it = (reml_handler_entry *)utarray_next(expr->data.handle.handler.entries, it)) {
+          if (it->kind == REML_HANDLER_ENTRY_OPERATION) {
+            fputs(" (operation ", out);
+            reml_write_view(out, it->data.operation.name);
+            if (it->data.operation.params) {
+              for (reml_string_view *param =
+                       (reml_string_view *)utarray_front(it->data.operation.params);
+                   param != NULL;
+                   param = (reml_string_view *)utarray_next(it->data.operation.params, param)) {
+                fputs(" ", out);
+                reml_write_view(out, *param);
+              }
+            }
+            fputs(" ", out);
+            reml_ast_write_expr(out, it->data.operation.body);
+            fputs(")", out);
+          } else {
+            fputs(" (return ", out);
+            reml_write_view(out, it->data.ret.name);
+            fputs(" ", out);
+            reml_ast_write_expr(out, it->data.ret.body);
+            fputs(")", out);
+          }
+        }
+      }
+      fputs("))", out);
+      return;
+    case REML_EXPR_RESUME:
+      fputs("(resume", out);
+      if (expr->data.resume.value) {
+        fputs(" ", out);
+        reml_ast_write_expr(out, expr->data.resume.value);
       }
       fputs(")", out);
       return;

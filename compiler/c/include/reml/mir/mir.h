@@ -5,6 +5,8 @@
 
 #include <utarray.h>
 
+#include "reml/ast/ast.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,6 +35,7 @@ void reml_mir_function_deinit(reml_mir_function *func);
 void reml_mir_function_push_op(reml_mir_function *func, reml_mir_op op);
 bool reml_mir_function_requires_cps(reml_mir_function *func);
 bool reml_mir_lower_to_cps(reml_mir_function *func);
+void reml_mir_collect_unit(reml_mir_function *func, const reml_compilation_unit *unit);
 
 #ifdef __cplusplus
 }

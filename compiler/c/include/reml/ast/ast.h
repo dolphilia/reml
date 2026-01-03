@@ -49,6 +49,9 @@ typedef enum {
   REML_EXPR_REF,
   REML_EXPR_BINARY,
   REML_EXPR_CONSTRUCTOR,
+  REML_EXPR_PERFORM,
+  REML_EXPR_HANDLE,
+  REML_EXPR_RESUME,
   REML_EXPR_TUPLE,
   REML_EXPR_RECORD,
   REML_EXPR_RECORD_UPDATE,
@@ -71,6 +74,10 @@ typedef struct {
 } reml_ref_expr;
 
 typedef struct {
+  UT_array *segments;
+} reml_effect_path;
+
+typedef struct {
   reml_token_kind op;
   reml_expr *left;
   reml_expr *right;
@@ -81,6 +88,12 @@ typedef struct {
   UT_array *args;
   int32_t tag;
 } reml_constructor_expr;
+
+typedef struct {
+  reml_effect_path path;
+  UT_array *args;
+  bool is_do;
+} reml_perform_expr;
 
 typedef struct {
   reml_string_view name;
@@ -107,6 +120,44 @@ typedef struct {
   reml_expr *condition;
   reml_expr *body;
 } reml_while_expr;
+
+typedef enum {
+  REML_HANDLER_ENTRY_OPERATION,
+  REML_HANDLER_ENTRY_RETURN
+} reml_handler_entry_kind;
+
+typedef struct {
+  reml_string_view name;
+  UT_array *params;
+  reml_expr *body;
+} reml_handler_operation;
+
+typedef struct {
+  reml_string_view name;
+  reml_expr *body;
+} reml_handler_return;
+
+typedef struct {
+  reml_handler_entry_kind kind;
+  union {
+    reml_handler_operation operation;
+    reml_handler_return ret;
+  } data;
+} reml_handler_entry;
+
+typedef struct {
+  reml_string_view name;
+  UT_array *entries;
+} reml_handler_literal;
+
+typedef struct {
+  reml_expr *value;
+} reml_resume_expr;
+
+typedef struct {
+  reml_expr *target;
+  reml_handler_literal handler;
+} reml_handle_expr;
 
 typedef enum {
   REML_PATTERN_WILDCARD,
@@ -179,6 +230,9 @@ struct reml_expr {
     reml_ref_expr ref;
     reml_binary_expr binary;
     reml_constructor_expr ctor;
+    reml_perform_expr perform;
+    reml_handle_expr handle;
+    reml_resume_expr resume;
     UT_array *tuple;
     UT_array *record;
     reml_record_update_expr record_update;
@@ -232,6 +286,10 @@ reml_expr *reml_expr_make_ref(reml_span span, bool is_mutable, reml_expr *target
 reml_expr *reml_expr_make_binary(reml_span span, reml_token_kind op, reml_expr *left,
                                  reml_expr *right);
 reml_expr *reml_expr_make_constructor(reml_span span, reml_string_view name, UT_array *args);
+reml_expr *reml_expr_make_perform(reml_span span, reml_effect_path path, UT_array *args,
+                                  bool is_do);
+reml_expr *reml_expr_make_handle(reml_span span, reml_expr *target, reml_handler_literal handler);
+reml_expr *reml_expr_make_resume(reml_span span, reml_expr *value);
 reml_expr *reml_expr_make_tuple(reml_span span, UT_array *items);
 reml_expr *reml_expr_make_record(reml_span span, UT_array *fields);
 reml_expr *reml_expr_make_record_update(reml_span span, reml_expr *base, UT_array *fields);

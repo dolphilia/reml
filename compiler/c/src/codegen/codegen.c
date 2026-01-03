@@ -3304,6 +3304,12 @@ static reml_codegen_value reml_codegen_emit_expr(reml_codegen *codegen,
       return reml_codegen_emit_binary(codegen, scopes, expr);
     case REML_EXPR_CONSTRUCTOR:
       return reml_codegen_emit_constructor(codegen, scopes, expr);
+    case REML_EXPR_PERFORM:
+    case REML_EXPR_HANDLE:
+    case REML_EXPR_RESUME:
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                          "effect expressions are not lowered yet");
+      return reml_codegen_make_value(NULL, expr->type, false);
     case REML_EXPR_TUPLE:
       return reml_codegen_emit_tuple(codegen, scopes, expr);
     case REML_EXPR_RECORD:
@@ -3436,6 +3442,7 @@ bool reml_codegen_generate(reml_codegen *codegen, reml_compilation_unit *unit) {
 
   reml_mir_function mir;
   reml_mir_function_init(&mir);
+  reml_mir_collect_unit(&mir, unit);
   reml_mir_lower_to_cps(&mir);
   bool cps_enabled = mir.cps_lowered;
   reml_mir_function_deinit(&mir);
