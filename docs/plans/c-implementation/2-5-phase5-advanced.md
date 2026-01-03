@@ -357,7 +357,9 @@ reml_effect_result reml_effect_trampoline(
 - constructor/record の式・パターン追加、型検査、codegen までの経路を実装済み。
 - レコードのフィールド正規化順を型検査と codegen の両方で固定済み。
 - enum/record に関する unit テストを追加済み。
-- `type` 宣言、レコード更新構文、未知コンストラクタ/フィールド不足診断は未対応。
+- `type` 宣言、レコード更新構文、未知コンストラクタ/フィールド不足診断まで対応済み。
+- `type` 宣言の登録と enum 生成は `reml_register_type_decl` で実装済み。
+- レコード更新の型検査と codegen を追加済み。
 
 ## 5.6 参照型 (`&T`, `&mut T`)
 - **仕様参照**: `docs/spec/1-2-types-Inference.md`、`docs/spec/1-3-effects-safety.md`。
@@ -434,19 +436,36 @@ reml_effect_result reml_effect_trampoline(
 - **実行確認**: `examples/spec_core` の文字列/パターン/効果を含む例の実行。
 - **診断**: JSON 診断（位置情報・修正案）の出力が整合。
 
+## 5.11 コード調査結果（2026-01-03）
+- **BigInt**: `compiler/c/src/numeric/bigint.c` と `compiler/c/src/numeric/core_numeric.c` でラッパ/API 実装、`compiler/c/src/codegen/codegen.c` でリテラル/演算/比較の lowering を実装済み。`compiler/c/tests/unit/test_bigint_runtime.c` と `compiler/c/tests/unit/test_sema.c` が存在。
+- **パターンマッチ**: `compiler/c/src/sema/sema.c` と `compiler/c/src/codegen/codegen.c` に decision tree 風の直列分岐/`switch` を実装済み。Range/Enum/Record/Tuple/Guard を含むテストが `compiler/c/tests/unit/test_sema.c` / `compiler/c/tests/unit/test_codegen.c` に追加済み。
+- **ADT/レコード/型宣言**: `compiler/c/include/reml/ast/ast.h` に `type` 宣言と constructor/record ノードが追加済み。`compiler/c/src/parser/parser.c`/`compiler/c/src/sema/sema.c`/`compiler/c/src/codegen/codegen.c` でパース・型検査・コード生成まで通ることを確認。
+- **参照型**: `compiler/c/src/sema/sema.c` と `compiler/c/src/codegen/codegen.c` に `&` / `&mut` の検査と lowering を実装済み。`compiler/c/tests/unit/test_sema.c` で alias 競合診断を含むテストあり。
+- **文字列/Unicode**: `compiler/c/src/text/unicode.c`/`compiler/c/src/text/grapheme.c`/`compiler/c/src/runtime/string.c` を実装済み。`compiler/c/tests/unit/test_text_unicode.c` が UTF-8 検証/NFC/グラフェム/表示幅をカバー。
+- **効果ランタイム**: `compiler/c/src/runtime/effects.c` と `compiler/c/src/runtime/effects_core.c` で最小 API と State/Exception を実装済み。`compiler/c/tests/unit/test_effects_runtime.c` で one-shot/未処理効果/例外復帰を確認。
+- **効果行・型推論**: `compiler/c/src/typeck/type.c` と `compiler/c/src/sema/sema.c` に効果行の単一化・行変数を実装済み。`compiler/c/tests/unit/test_type_effects.c` が open/closed row の unify を検証。
+
+## 5.12 未着手・残タスク（次の作業候補）
+1. **効果の言語統合**: `perform`/`handle`/`resume` 構文の追加と MIR 生成、CPS 変換の実装。`compiler/c/src/mir/mir.c` はフラグのみで実際の lowering が未実装。
+2. **DecisionTree の最適化**: パターン行列の列選択/分割（Maranget 系）の本格実装と到達不能/網羅性の拡張。
+3. **診断 JSON 出力**: `extensions.pattern` を CLI 出力に反映し、LSP 連携の足場を作る。
+4. **数値オーバーフロー規約**: `Int` 演算のオーバーフロー時挙動（昇格/診断/例外）を確定し、ランタイム/診断を揃える。
+5. **効果行の伝搬**: `perform`/`handle` 境界での効果行制約収集と値制限の調整（言語統合後に実装）。
+6. **診断メッセージの整備**: `REML_DIAG_*` のメッセージと JSON 形式の対応、主要ケースの例示を拡充。
+
 ## チェックリスト
-- [ ] `BigInt` 演算が動作する。
-- [ ] Enum と Integer に対してパターンマッチングがコンパイルされる。
+- [x] `BigInt` 演算が動作する。
+- [x] Enum と Integer に対してパターンマッチングがコンパイルされる。
 - [x] Integer/Bool のリテラル + ワイルドカード/識別子パターンの match がコンパイルされる。
 - [x] Integer/Bool のリテラルパターンが `switch` へ降下する。
 - [x] Range/Enum の最小ケースが `switch` へ降下する。
 - [x] ガード付き `switch` で再評価パスが生成される。
 - [x] 文字列リテラルと基本的な文字列操作が Unicode で正しく動作する。
 - [ ] 基本的な Effect Handler が動作する (少なくとも State/Exception に対して)。
-- [ ] ADT/レコード型がパース・型検査・コード生成まで通る。
+- [x] ADT/レコード型がパース・型検査・コード生成まで通る。
 - [x] 参照型 (`&T`, `&mut T`) の型規則とコード生成が動作する。
 - [x] 組み込みトレイト解決が演算子に適用される。
 - [x] 効果注釈（`@pure` / `@no_panic`）の構文と契約検査が動作する。
 - [x] 効果行 (`! Σ`) が型推論と診断に反映される（行変数・単一化・診断の基礎まで）。
-- [ ] 型推論がレコード/ADT/参照型/BigIntを含む式で成立する。
+- [x] 型推論がレコード/ADT/参照型/BigIntを含む式で成立する。
 - [ ] 主要ケースの診断 ID とエラーメッセージが整備される。
