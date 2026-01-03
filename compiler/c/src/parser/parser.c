@@ -256,8 +256,6 @@ static bool reml_literal_from_token(reml_parser *parser, reml_token token, reml_
       out->string_kind = REML_STRING_NORMAL;
       break;
     case REML_TOKEN_STRING:
-    case REML_TOKEN_STRING_RAW:
-    case REML_TOKEN_STRING_MULTILINE:
       out->kind = REML_LITERAL_STRING;
       out->string_kind = REML_STRING_NORMAL;
       break;

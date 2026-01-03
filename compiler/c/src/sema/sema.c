@@ -368,8 +368,6 @@ static bool reml_literal_equal(reml_literal left, reml_literal right) {
   return reml_string_view_equal(left.text, right.text);
 }
 
-static reml_effect_set reml_effect_union(reml_effect_set left, reml_effect_set right);
-
 static reml_enum_variant *reml_enum_variant_find(UT_array *variants, reml_string_view name) {
   if (!variants) {
     return NULL;
@@ -916,6 +914,11 @@ typedef struct {
   reml_effect_row_var *replacement;
 } reml_effect_row_subst;
 
+static reml_type *reml_type_instantiate_inner(reml_type_ctx *ctx, reml_type *type,
+                                              UT_array *generics, UT_array *substs,
+                                              UT_array *effect_generics,
+                                              UT_array *effect_substs);
+
 static reml_effect_row_var *reml_effect_row_apply_subst(reml_type_ctx *ctx, reml_effect_row_var *var,
                                                         UT_array *effect_generics,
                                                         UT_array *effect_substs) {
@@ -1229,10 +1232,6 @@ static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_
 static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type *expected,
                                reml_effect_set *effect, bool allow_define, bool is_mutable,
                                size_t constraint_start, size_t constraint_end);
-static reml_effect_set reml_effect_union(reml_effect_set left, reml_effect_set right) {
-  return (reml_effect_set)(left | right);
-}
-
 static reml_symbol *reml_symbol_from_ident(reml_sema *sema, reml_expr *expr) {
   if (!sema || !expr || expr->kind != REML_EXPR_IDENT) {
     return NULL;

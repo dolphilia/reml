@@ -76,6 +76,7 @@ function(reml_make_core_dependencies)
   set(REML_GRAPHEME_LIB ${libgrapheme_SOURCE_DIR}/libgrapheme.a)
   add_custom_command(
     OUTPUT ${REML_GRAPHEME_LIB}
+    COMMAND ${CMAKE_COMMAND} -E rm -f ${libgrapheme_SOURCE_DIR}/gen/sentence.h
     COMMAND ${CMAKE_MAKE_PROGRAM} libgrapheme.a
     WORKING_DIRECTORY ${libgrapheme_SOURCE_DIR}
     COMMENT "Building libgrapheme via upstream Makefile"
