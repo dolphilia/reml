@@ -29,6 +29,9 @@ add_library(reml_core
   src/manifest/manifest.c
   src/numeric/bigint.c
   src/numeric/core_numeric.c
+  src/text/string.c
+  src/text/unicode.c
+  src/text/grapheme.c
   src/runtime/enum.c
   src/runtime/effects.c
   src/runtime/effects_core.c
@@ -49,6 +52,7 @@ target_link_libraries(reml_core
   PUBLIC
     reml_logc
     reml_utf8proc
+    ${REML_GRAPHEME_TARGET}
     reml_tomlc99
     ${REML_TOMMATH_TARGET}
 )
@@ -129,6 +133,7 @@ add_executable(reml_unit_tests
   tests/unit/test_sema.c
   tests/unit/test_bigint_runtime.c
   tests/unit/test_effects_runtime.c
+  tests/unit/test_text_unicode.c
 )
 
 target_link_libraries(reml_unit_tests

@@ -7,6 +7,9 @@
 
 #include <utf8proc.h>
 
+#include "reml/text/grapheme.h"
+#include "reml/text/unicode.h"
+
 static bool reml_is_xid_start(int32_t codepoint) {
   if (codepoint == '_') {
     return true;
@@ -65,6 +68,19 @@ static void reml_lexer_set_error(reml_lexer *lexer, const char *message, size_t 
 }
 
 static void reml_advance_bytes(reml_lexer *lexer, size_t count) {
+  if (count == 0) {
+    return;
+  }
+  if (count == 1) {
+    unsigned char c = (unsigned char)lexer->input[lexer->index];
+    lexer->index += 1;
+    if (c == '\t') {
+      lexer->column += 4;
+    } else {
+      lexer->column += 1;
+    }
+    return;
+  }
   lexer->index += count;
   lexer->column += (int)count;
 }
@@ -78,7 +94,12 @@ static bool reml_advance_codepoint(reml_lexer *lexer, int32_t *out_cp, size_t *o
   ssize_t len = utf8proc_iterate((const uint8_t *)lexer->input + lexer->index, (ssize_t)remaining,
                                  &codepoint);
   if (len < 0) {
-    reml_lexer_set_error(lexer, "invalid UTF-8 sequence", lexer->index, lexer->index + 1,
+    reml_lexer_set_error(lexer, "unicode.invalid_utf8", lexer->index, lexer->index + 1,
+                         lexer->line, lexer->column, lexer->line, lexer->column + 1);
+    return false;
+  }
+  if (!utf8proc_codepoint_valid(codepoint)) {
+    reml_lexer_set_error(lexer, "unicode.invalid_scalar", lexer->index, lexer->index + (size_t)len,
                          lexer->line, lexer->column, lexer->line, lexer->column + 1);
     return false;
   }
@@ -90,6 +111,22 @@ static bool reml_advance_codepoint(reml_lexer *lexer, int32_t *out_cp, size_t *o
   if (out_bytes) {
     *out_bytes = (size_t)len;
   }
+  return true;
+}
+
+static bool reml_advance_grapheme(reml_lexer *lexer) {
+  reml_unicode_error error;
+  size_t advance = reml_grapheme_advance(lexer->input, lexer->length, lexer->index, &error);
+  if (advance == 0) {
+    const char *message = error.kind == REML_UNICODE_INVALID_SCALAR ? "unicode.invalid_scalar"
+                                                                    : "unicode.invalid_utf8";
+    size_t end_offset = lexer->index + (error.length ? error.length : 1);
+    reml_lexer_set_error(lexer, message, lexer->index, end_offset, lexer->line, lexer->column,
+                         lexer->line, lexer->column + 1);
+    return false;
+  }
+  lexer->index += advance;
+  lexer->column += 1;
   return true;
 }
 
@@ -121,7 +158,11 @@ static void reml_skip_whitespace_and_comments(reml_lexer *lexer) {
     if (c == '/' && reml_peek_next_byte(lexer) == '/') {
       reml_advance_bytes(lexer, 2);
       while (lexer->index < lexer->length && reml_peek_byte(lexer) != '\n') {
-        reml_advance_bytes(lexer, 1);
+        if (reml_peek_byte(lexer) < 0x80) {
+          reml_advance_bytes(lexer, 1);
+        } else if (!reml_advance_grapheme(lexer)) {
+          return;
+        }
       }
       continue;
     }
@@ -149,7 +190,11 @@ static void reml_skip_whitespace_and_comments(reml_lexer *lexer) {
           reml_advance_bytes(lexer, 2);
           break;
         }
-        reml_advance_bytes(lexer, 1);
+        if (d < 0x80) {
+          reml_advance_bytes(lexer, 1);
+        } else if (!reml_advance_grapheme(lexer)) {
+          return;
+        }
       }
       continue;
     }
@@ -228,11 +273,43 @@ void reml_lexer_init(reml_lexer *lexer, const char *input, size_t length) {
   lexer->line = 1;
   lexer->column = 1;
   lexer->has_error = false;
+  lexer->pending_error = false;
   lexer->error.message = NULL;
   lexer->error.span = reml_span_make(0, 0, 1, 1, 1, 1);
+
+  reml_unicode_error error;
+  if (!reml_unicode_validate_utf8(input, length, &error)) {
+    const char *message = error.kind == REML_UNICODE_INVALID_SCALAR ? "unicode.invalid_scalar"
+                                                                    : "unicode.invalid_utf8";
+    reml_span span = reml_span_from_offsets(input, length, error.offset, error.offset + error.length);
+    reml_lexer_set_error(lexer, message, span.start_offset, span.end_offset, span.start_line,
+                         span.start_column, span.end_line, span.end_column);
+    lexer->pending_error = true;
+    return;
+  }
+
+  if (!reml_unicode_is_nfc(input, length, &error)) {
+    reml_span span = reml_span_from_offsets(input, length, error.offset, error.offset + error.length);
+    reml_lexer_set_error(lexer, "unicode.normalize.required", span.start_offset, span.end_offset,
+                         span.start_line, span.start_column, span.end_line, span.end_column);
+    lexer->pending_error = true;
+  }
 }
 
 reml_token reml_lexer_next(reml_lexer *lexer) {
+  if (lexer->pending_error) {
+    lexer->pending_error = false;
+    reml_token token;
+    token.kind = REML_TOKEN_INVALID;
+    token.span = lexer->error.span;
+    token.lexeme =
+        reml_string_view_make(lexer->input + token.span.start_offset,
+                              token.span.end_offset > token.span.start_offset
+                                  ? token.span.end_offset - token.span.start_offset
+                                  : 0);
+    return token;
+  }
+
   reml_skip_whitespace_and_comments(lexer);
 
   size_t start_offset = lexer->index;
@@ -270,7 +347,12 @@ reml_token reml_lexer_next(reml_lexer *lexer) {
         return reml_make_token(REML_TOKEN_INVALID, lexer, start_offset, start_line, start_column,
                                lexer->index, lexer->line, lexer->column);
       }
-      reml_advance_bytes(lexer, 1);
+      if (d < 0x80) {
+        reml_advance_bytes(lexer, 1);
+      } else if (!reml_advance_grapheme(lexer)) {
+        return reml_make_token(REML_TOKEN_INVALID, lexer, start_offset, start_line, start_column,
+                               lexer->index, lexer->line, lexer->column);
+      }
     }
     reml_lexer_set_error(lexer, "unterminated string literal", start_offset, lexer->index,
                          start_line, start_column, lexer->line, lexer->column);
@@ -283,7 +365,13 @@ reml_token reml_lexer_next(reml_lexer *lexer) {
     if (lexer->index < lexer->length && reml_peek_byte(lexer) == '\\') {
       reml_advance_bytes(lexer, 2);
     } else if (lexer->index < lexer->length) {
-      reml_advance_bytes(lexer, 1);
+      int d = reml_peek_byte(lexer);
+      if (d < 0x80) {
+        reml_advance_bytes(lexer, 1);
+      } else if (!reml_advance_codepoint(lexer, NULL, NULL)) {
+        return reml_make_token(REML_TOKEN_INVALID, lexer, start_offset, start_line, start_column,
+                               lexer->index, lexer->line, lexer->column);
+      }
     }
     if (lexer->index < lexer->length && reml_peek_byte(lexer) == '\'') {
       reml_advance_bytes(lexer, 1);

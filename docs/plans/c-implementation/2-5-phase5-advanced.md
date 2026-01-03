@@ -300,12 +300,12 @@ reml_effect_result reml_effect_trampoline(
 - **表示幅**: `display_width` は **グラフェム単位**で幅を合計し、`utf8proc_charwidth` の結果を補助情報として扱う。
 
 ### 5.4.2 作業ステップ（詳細）
-- [ ] `compiler/c/include/reml/text/string.h` / `compiler/c/src/text/string.c` を追加し、`reml_string`/`reml_str` と基本 API（生成・破棄・借用）を定義する。
-- [ ] `compiler/c/include/reml/text/unicode.h` / `compiler/c/src/text/unicode.c` を追加し、UTF-8 検証と NFC 正規化（`utf8proc`）を実装する。
-- [ ] `compiler/c/include/reml/text/grapheme.h` / `compiler/c/src/text/grapheme.c` を追加し、`segment_graphemes`/`grapheme_len`/`display_width` のラッパを実装する。
-- [ ] `compiler/c/CMakeLists.txt` に `libgrapheme` をリンクし、`reml_core` から利用できるようにする。
-- [ ] `compiler/c/src/util/span.c` の列計算を **グラフェム単位**へ移行し、`byte_offset` と併記できる API を追加する。
-- [ ] `compiler/c/src/lexer/lexer.c` の入力検証で UTF-8 不正列と NFC 不一致を検出し、診断へ接続する。
+- [x] `compiler/c/include/reml/text/string.h` / `compiler/c/src/text/string.c` を追加し、`reml_string`/`reml_str` と基本 API（生成・破棄・借用）を定義する。
+- [x] `compiler/c/include/reml/text/unicode.h` / `compiler/c/src/text/unicode.c` を追加し、UTF-8 検証と NFC 正規化（`utf8proc`）を実装する。
+- [x] `compiler/c/include/reml/text/grapheme.h` / `compiler/c/src/text/grapheme.c` を追加し、`segment_graphemes`/`grapheme_len`/`display_width` のラッパを実装する。
+- [x] `compiler/c/CMakeLists.txt` に `libgrapheme` をリンクし、`reml_core` から利用できるようにする。
+- [x] `compiler/c/src/util/span.c` の列計算を **グラフェム単位**へ移行し、`byte_offset` と併記できる API を追加する。
+- [x] `compiler/c/src/lexer/lexer.c` の入力検証で UTF-8 不正列と NFC 不一致を検出し、診断へ接続する。
 
 ### 5.4.3 診断と境界規約
 - **無効 UTF-8**: `unicode.invalid_utf8`（`U1001`）を基本とし、`span` は **直前の有効バイト**で報告する。

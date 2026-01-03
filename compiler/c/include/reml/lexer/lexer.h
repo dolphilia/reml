@@ -30,6 +30,7 @@ typedef struct {
   int line;
   int column;
   bool has_error;
+  bool pending_error;
   reml_lex_error error;
 } reml_lexer;
 

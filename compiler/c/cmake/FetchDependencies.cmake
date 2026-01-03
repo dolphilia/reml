@@ -49,6 +49,11 @@ function(reml_make_core_dependencies)
     FetchContent_Populate(utf8proc)
   endif()
 
+  FetchContent_GetProperties(libgrapheme)
+  if(NOT libgrapheme_POPULATED)
+    FetchContent_Populate(libgrapheme)
+  endif()
+
   FetchContent_GetProperties(tomlc99)
   if(NOT tomlc99_POPULATED)
     FetchContent_Populate(tomlc99)
@@ -68,6 +73,14 @@ function(reml_make_core_dependencies)
   add_library(reml_utf8proc STATIC ${utf8proc_SOURCE_DIR}/utf8proc.c)
   target_include_directories(reml_utf8proc PUBLIC ${utf8proc_SOURCE_DIR})
 
+  file(GLOB REML_GRAPHEME_SOURCES
+    "${libgrapheme_SOURCE_DIR}/*.c"
+    "${libgrapheme_SOURCE_DIR}/src/*.c"
+  )
+  add_library(reml_grapheme STATIC ${REML_GRAPHEME_SOURCES})
+  target_include_directories(reml_grapheme PUBLIC ${libgrapheme_SOURCE_DIR}
+                                               ${libgrapheme_SOURCE_DIR}/include)
+
   add_library(reml_tomlc99 STATIC ${tomlc99_SOURCE_DIR}/toml.c)
   target_include_directories(reml_tomlc99 PUBLIC ${tomlc99_SOURCE_DIR})
 
@@ -77,6 +90,7 @@ function(reml_make_core_dependencies)
 
   set(REML_TOMMATH_TARGET reml_tommath PARENT_SCOPE)
   set(REML_TOMMATH_INCLUDE_DIR ${libtommath_SOURCE_DIR} PARENT_SCOPE)
+  set(REML_GRAPHEME_TARGET reml_grapheme PARENT_SCOPE)
 
   set(REML_UTHASH_INCLUDE_DIR ${uthash_SOURCE_DIR}/src PARENT_SCOPE)
 endfunction()
