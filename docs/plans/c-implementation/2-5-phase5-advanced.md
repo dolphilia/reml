@@ -270,8 +270,8 @@ reml_effect_result reml_effect_trampoline(
 ### 5.3.5 作業ステップ（詳細）
 - [x] `compiler/c/include/reml/runtime/effects.h` と `compiler/c/src/runtime/effects.c` を追加し、最小 API を定義する。
 - [x] `compiler/c/include/reml/mir/mir.h` に効果用ノードを追加し、CPS 変換パスを導入する（最小の判定/フラグ更新）。
-- [ ] `compiler/c/src/codegen/codegen.c` に CPS 生成と `trampoline` 呼び出しの統合を追加する。
-- [ ] `compiler/c/include/reml/sema/diagnostic.h` に効果関連診断 ID を追加する。
+- [x] `compiler/c/src/codegen/codegen.c` に CPS 生成と `trampoline` 呼び出しの統合を追加する（最小経路）。
+- [x] `compiler/c/include/reml/sema/diagnostic.h` に効果関連診断 ID を追加する。
 - [ ] `Core.Effects` の最小実装として `State`/`Exception` を用意し、`perform`/`handle` を接続する。
 - [x] `tests/unit` に one-shot/未処理効果/例外復帰のテストを追加する（one-shot/未処理まで）。
 
@@ -279,6 +279,7 @@ reml_effect_result reml_effect_trampoline(
 - CPS 変換を採用し、スタックコピー方式を使わない方針を確定。
 - `perform`/`resume` の one-shot 保証と `Capability Registry` 連携を必須要件として整理。
 - `effects` ランタイムの最小 API と単体テスト（one-shot/未処理）を追加。
+- CPS/trampoline の最小統合と、効果系診断 ID の追加を完了。
 
 ## 5.4 文字列と Unicode
 - **ライブラリ**: `utf8proc` + `libgrapheme`。

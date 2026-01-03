@@ -6,6 +6,7 @@
 
 #include <utarray.h>
 
+#include "reml/mir/mir.h"
 #include "reml/typeck/type.h"
 #include "reml/util/span.h"
 
@@ -62,6 +63,7 @@ static bool reml_record_field_index(reml_type *type, reml_string_view name, size
                                     reml_type **out_type);
 static LLVMTypeRef reml_codegen_tuple_struct_type(reml_codegen *codegen, reml_type *type);
 static LLVMTypeRef reml_codegen_record_struct_type(reml_codegen *codegen, reml_type *type);
+static LLVMTypeRef reml_codegen_effect_result_type(reml_codegen *codegen);
 
 static void reml_codegen_report(reml_codegen *codegen, reml_diagnostic_code code, reml_span span,
                                 const char *message) {
@@ -238,6 +240,16 @@ static LLVMTypeRef reml_codegen_lower_type(reml_codegen *codegen, reml_type *typ
     default:
       return NULL;
   }
+}
+
+static LLVMTypeRef reml_codegen_effect_result_type(reml_codegen *codegen) {
+  if (!codegen) {
+    return NULL;
+  }
+  LLVMTypeRef i32 = LLVMInt32TypeInContext(codegen->context);
+  LLVMTypeRef i8_ptr = LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0);
+  return LLVMStructTypeInContext(codegen->context,
+                                 (LLVMTypeRef[]){i32, i32, i8_ptr, i8_ptr, i8_ptr}, 5, 0);
 }
 
 static LLVMValueRef reml_codegen_create_entry_alloca(reml_codegen *codegen, LLVMTypeRef type,
@@ -2706,6 +2718,12 @@ bool reml_codegen_generate(reml_codegen *codegen, reml_compilation_unit *unit) {
     return false;
   }
 
+  reml_mir_function mir;
+  reml_mir_function_init(&mir);
+  reml_mir_lower_to_cps(&mir);
+  bool cps_enabled = mir.cps_lowered;
+  reml_mir_function_deinit(&mir);
+
   LLVMTypeRef i64 = LLVMInt64TypeInContext(codegen->context);
   LLVMTypeRef fn_type = LLVMFunctionType(i64, NULL, 0, 0);
   codegen->current_function = LLVMAddFunction(codegen->module, "reml_main", fn_type);
@@ -2745,10 +2763,100 @@ bool reml_codegen_generate(reml_codegen *codegen, reml_compilation_unit *unit) {
   LLVMBasicBlockRef main_entry =
       LLVMAppendBasicBlockInContext(codegen->context, main_fn, "entry");
   LLVMPositionBuilderAtEnd(codegen->builder, main_entry);
-  LLVMValueRef main_call = LLVMBuildCall2(codegen->builder, fn_type, codegen->current_function,
-                                          NULL, 0, "call");
-  LLVMValueRef main_ret = LLVMBuildTrunc(codegen->builder, main_call, i32, "ret");
-  LLVMBuildRet(codegen->builder, main_ret);
+  if (cps_enabled) {
+    LLVMTypeRef effect_result_type = reml_codegen_effect_result_type(codegen);
+    LLVMTypeRef effect_fn_type = LLVMFunctionType(effect_result_type, (LLVMTypeRef[]){i8_ptr, i8_ptr},
+                                                  2, 0);
+    LLVMTypeRef effect_fn_ptr = LLVMPointerType(effect_fn_type, 0);
+
+    LLVMValueRef effect_entry = LLVMAddFunction(codegen->module, "reml_main_effect", effect_fn_type);
+    LLVMBasicBlockRef effect_entry_block =
+        LLVMAppendBasicBlockInContext(codegen->context, effect_entry, "entry");
+    LLVMPositionBuilderAtEnd(codegen->builder, effect_entry_block);
+
+    LLVMValueRef entry_call =
+        LLVMBuildCall2(codegen->builder, fn_type, codegen->current_function, NULL, 0, "call");
+
+    LLVMValueRef malloc_fn = LLVMGetNamedFunction(codegen->module, "malloc");
+    if (!malloc_fn) {
+      LLVMTypeRef malloc_type = LLVMFunctionType(i8_ptr, (LLVMTypeRef[]){i64}, 1, 0);
+      malloc_fn = LLVMAddFunction(codegen->module, "malloc", malloc_type);
+    }
+    LLVMValueRef alloc_size = LLVMConstInt(i64, (uint64_t)sizeof(int64_t), 0);
+    LLVMValueRef payload_ptr =
+        LLVMBuildCall2(codegen->builder, LLVMGetElementType(LLVMTypeOf(malloc_fn)), malloc_fn,
+                       &alloc_size, 1, "payload");
+    LLVMValueRef payload_i64_ptr =
+        LLVMBuildBitCast(codegen->builder, payload_ptr, LLVMPointerType(i64, 0), "payload_i64");
+    LLVMBuildStore(codegen->builder, entry_call, payload_i64_ptr);
+
+    LLVMValueRef result = LLVMGetUndef(effect_result_type);
+    LLVMValueRef kind_val = LLVMConstInt(i32, 0, 0);
+    LLVMValueRef status_val = LLVMConstInt(i32, 0, 0);
+    LLVMValueRef null_ptr = LLVMConstNull(i8_ptr);
+    result = LLVMBuildInsertValue(codegen->builder, result, kind_val, 0, "result");
+    result = LLVMBuildInsertValue(codegen->builder, result, status_val, 1, "result");
+    result = LLVMBuildInsertValue(codegen->builder, result, null_ptr, 2, "result");
+    result = LLVMBuildInsertValue(codegen->builder, result, payload_ptr, 3, "result");
+    result = LLVMBuildInsertValue(codegen->builder, result, null_ptr, 4, "result");
+    LLVMBuildRet(codegen->builder, result);
+
+    LLVMPositionBuilderAtEnd(codegen->builder, main_entry);
+
+    LLVMValueRef trampoline_fn = LLVMGetNamedFunction(codegen->module, "reml_effect_trampoline");
+    if (!trampoline_fn) {
+      LLVMTypeRef trampoline_type =
+          LLVMFunctionType(effect_result_type, (LLVMTypeRef[]){effect_fn_ptr, i8_ptr}, 2, 0);
+      trampoline_fn = LLVMAddFunction(codegen->module, "reml_effect_trampoline", trampoline_type);
+    }
+    LLVMValueRef entry_ptr = LLVMBuildBitCast(codegen->builder, effect_entry, effect_fn_ptr, "entry");
+    LLVMValueRef env_null = LLVMConstNull(i8_ptr);
+    LLVMValueRef trampoline_call = LLVMBuildCall2(
+        codegen->builder, LLVMGetElementType(LLVMTypeOf(trampoline_fn)), trampoline_fn,
+        (LLVMValueRef[]){entry_ptr, env_null}, 2, "effect");
+
+    LLVMValueRef kind = LLVMBuildExtractValue(codegen->builder, trampoline_call, 0, "kind");
+    LLVMValueRef status = LLVMBuildExtractValue(codegen->builder, trampoline_call, 1, "status");
+    LLVMValueRef kind_ok =
+        LLVMBuildICmp(codegen->builder, LLVMIntEQ, kind, kind_val, "kind_ok");
+    LLVMValueRef status_ok =
+        LLVMBuildICmp(codegen->builder, LLVMIntEQ, status, status_val, "status_ok");
+    LLVMValueRef ok = LLVMBuildAnd(codegen->builder, kind_ok, status_ok, "ok");
+
+    LLVMBasicBlockRef ok_block =
+        LLVMAppendBasicBlockInContext(codegen->context, main_fn, "effect_ok");
+    LLVMBasicBlockRef fail_block =
+        LLVMAppendBasicBlockInContext(codegen->context, main_fn, "effect_fail");
+    LLVMBuildCondBr(codegen->builder, ok, ok_block, fail_block);
+
+    LLVMPositionBuilderAtEnd(codegen->builder, ok_block);
+    LLVMValueRef payload = LLVMBuildExtractValue(codegen->builder, trampoline_call, 3, "payload");
+    LLVMValueRef payload_value_ptr =
+        LLVMBuildBitCast(codegen->builder, payload, LLVMPointerType(i64, 0), "payload_i64");
+    LLVMValueRef payload_value =
+        LLVMBuildLoad2(codegen->builder, i64, payload_value_ptr, "payload_value");
+
+    LLVMValueRef free_fn = LLVMGetNamedFunction(codegen->module, "free");
+    if (!free_fn) {
+      LLVMTypeRef free_type = LLVMFunctionType(LLVMVoidTypeInContext(codegen->context),
+                                               (LLVMTypeRef[]){i8_ptr}, 1, 0);
+      free_fn = LLVMAddFunction(codegen->module, "free", free_type);
+    }
+    LLVMBuildCall2(codegen->builder, LLVMGetElementType(LLVMTypeOf(free_fn)), free_fn, &payload, 1,
+                   "");
+
+    LLVMValueRef main_ret = LLVMBuildTrunc(codegen->builder, payload_value, i32, "ret");
+    LLVMBuildRet(codegen->builder, main_ret);
+
+    LLVMPositionBuilderAtEnd(codegen->builder, fail_block);
+    LLVMValueRef fallback = LLVMConstInt(i32, 1, 0);
+    LLVMBuildRet(codegen->builder, fallback);
+  } else {
+    LLVMValueRef main_call =
+        LLVMBuildCall2(codegen->builder, fn_type, codegen->current_function, NULL, 0, "call");
+    LLVMValueRef main_ret = LLVMBuildTrunc(codegen->builder, main_call, i32, "ret");
+    LLVMBuildRet(codegen->builder, main_ret);
+  }
 
   char *verify_error = NULL;
   if (LLVMVerifyModule(codegen->module, LLVMReturnStatusAction, &verify_error) != 0) {
