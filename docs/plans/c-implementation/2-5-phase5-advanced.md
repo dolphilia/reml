@@ -292,6 +292,33 @@ reml_effect_result reml_effect_trampoline(
   4.  正規化 (NFC) と無効 UTF-8 の扱いを仕様に合わせて固定。
   5.  テスト: 絵文字/結合文字/幅計算/無効列の診断。
 
+### 5.4.1 実装方針（C 実装）
+- **表現**: `reml_string`（所有）と `reml_str`（借用ビュー）を分離し、UTF-8 バイト列 + 長さで管理する。MVP では RC/COW/SSO は保留し、後続で拡張可能な構造に留める。
+- **正規化**: `reml_string_new` で NFC 正規化を基本とし、入力が NFC でない場合は `unicode.normalize.required` の診断へ接続できるフックを用意する（字句段階で拒否する場合は `lexer` 側で呼び出す）。
+- **境界**: `reml_str` は **コードポイント境界**のみ許可し、グラフェム境界は `slice_graphemes` と `segment_graphemes` に委譲する。
+- **Grapheme**: `libgrapheme` の拡張書記素クラスタ分割（UAX #29）を利用し、`grapheme_len`/`iter` を提供する。
+- **表示幅**: `display_width` は **グラフェム単位**で幅を合計し、`utf8proc_charwidth` の結果を補助情報として扱う。
+
+### 5.4.2 作業ステップ（詳細）
+- [ ] `compiler/c/include/reml/text/string.h` / `compiler/c/src/text/string.c` を追加し、`reml_string`/`reml_str` と基本 API（生成・破棄・借用）を定義する。
+- [ ] `compiler/c/include/reml/text/unicode.h` / `compiler/c/src/text/unicode.c` を追加し、UTF-8 検証と NFC 正規化（`utf8proc`）を実装する。
+- [ ] `compiler/c/include/reml/text/grapheme.h` / `compiler/c/src/text/grapheme.c` を追加し、`segment_graphemes`/`grapheme_len`/`display_width` のラッパを実装する。
+- [ ] `compiler/c/CMakeLists.txt` に `libgrapheme` をリンクし、`reml_core` から利用できるようにする。
+- [ ] `compiler/c/src/util/span.c` の列計算を **グラフェム単位**へ移行し、`byte_offset` と併記できる API を追加する。
+- [ ] `compiler/c/src/lexer/lexer.c` の入力検証で UTF-8 不正列と NFC 不一致を検出し、診断へ接続する。
+
+### 5.4.3 診断と境界規約
+- **無効 UTF-8**: `unicode.invalid_utf8`（`U1001`）を基本とし、`span` は **直前の有効バイト**で報告する。
+- **不正スカラ値**: `unicode.invalid_scalar`（`U1002`）としてサロゲート等を拒否する。
+- **NFC 不一致**: `unicode.normalize.required`（`U1003`）を字句段階の警告/エラーとして用意する。
+- **スライス境界**: `slice_codepoints` はコードポイント境界のみ、`slice_graphemes` はグラフェム境界のみ許可し、違反時は `text.slice.invalid_boundary` を返す。
+
+### 5.4.4 テスト計画（MVP）
+- **グラフェム**: `e\u{0301}` / `🇯🇵` / ZWJ 絵文字の `grapheme_len` が 1 になること。
+- **正規化**: NFC/NFD の相互変換と、NFC 強制時の診断（字句レイヤでの検証）を確認。
+- **無効 UTF-8**: 不正バイト列を入力に与え、`unicode.invalid_utf8` が正しい `span` と `byte_offset` を返すこと。
+- **表示幅**: 結合文字・絵文字で `display_width` が期待値と一致すること。
+
 ## 5.5 ADT とレコード型
 - **仕様参照**: `docs/spec/1-2-types-Inference.md`、`docs/spec/1-5-formal-grammar-bnf.md`。
 - **タスク**:
