@@ -35,6 +35,7 @@ add_library(reml_core
   src/runtime/enum.c
   src/runtime/effects.c
   src/runtime/effects_core.c
+  src/runtime/string.c
   src/mir/mir.c
   src/typeck/type.c
   src/sema/diagnostic.c

@@ -923,6 +923,262 @@ static bool reml_is_numeric_type(reml_type *type, reml_type_ctx *ctx) {
          type == reml_type_float(ctx);
 }
 
+typedef enum {
+  REML_TRAIT_ADD,
+  REML_TRAIT_SUB,
+  REML_TRAIT_MUL,
+  REML_TRAIT_DIV,
+  REML_TRAIT_REM,
+  REML_TRAIT_BITXOR,
+  REML_TRAIT_EQ,
+  REML_TRAIT_ORD
+} reml_trait_kind;
+
+typedef struct {
+  reml_trait_kind trait;
+  reml_type_kind left;
+  reml_type_kind right;
+  reml_type_kind result;
+} reml_trait_impl;
+
+typedef struct {
+  reml_trait_kind trait;
+  reml_type *left;
+  reml_type *right;
+  reml_type *result;
+  reml_span span;
+} reml_trait_constraint;
+
+static reml_type *reml_type_from_kind(reml_type_ctx *ctx, reml_type_kind kind) {
+  if (!ctx) {
+    return NULL;
+  }
+  switch (kind) {
+    case REML_TYPE_INT:
+      return reml_type_int(ctx);
+    case REML_TYPE_BIGINT:
+      return reml_type_bigint(ctx);
+    case REML_TYPE_FLOAT:
+      return reml_type_float(ctx);
+    case REML_TYPE_BOOL:
+      return reml_type_bool(ctx);
+    case REML_TYPE_CHAR:
+      return reml_type_char(ctx);
+    case REML_TYPE_STRING:
+      return reml_type_string(ctx);
+    case REML_TYPE_UNIT:
+      return reml_type_unit(ctx);
+    case REML_TYPE_ERROR:
+      return reml_type_error(ctx);
+    default:
+      return reml_type_error(ctx);
+  }
+}
+
+static const reml_trait_impl kTraitImpls[] = {
+    {REML_TRAIT_ADD, REML_TYPE_INT, REML_TYPE_INT, REML_TYPE_INT},
+    {REML_TRAIT_ADD, REML_TYPE_BIGINT, REML_TYPE_BIGINT, REML_TYPE_BIGINT},
+    {REML_TRAIT_ADD, REML_TYPE_FLOAT, REML_TYPE_FLOAT, REML_TYPE_FLOAT},
+    {REML_TRAIT_ADD, REML_TYPE_STRING, REML_TYPE_STRING, REML_TYPE_STRING},
+    {REML_TRAIT_SUB, REML_TYPE_INT, REML_TYPE_INT, REML_TYPE_INT},
+    {REML_TRAIT_SUB, REML_TYPE_BIGINT, REML_TYPE_BIGINT, REML_TYPE_BIGINT},
+    {REML_TRAIT_SUB, REML_TYPE_FLOAT, REML_TYPE_FLOAT, REML_TYPE_FLOAT},
+    {REML_TRAIT_MUL, REML_TYPE_INT, REML_TYPE_INT, REML_TYPE_INT},
+    {REML_TRAIT_MUL, REML_TYPE_BIGINT, REML_TYPE_BIGINT, REML_TYPE_BIGINT},
+    {REML_TRAIT_MUL, REML_TYPE_FLOAT, REML_TYPE_FLOAT, REML_TYPE_FLOAT},
+    {REML_TRAIT_DIV, REML_TYPE_INT, REML_TYPE_INT, REML_TYPE_INT},
+    {REML_TRAIT_DIV, REML_TYPE_BIGINT, REML_TYPE_BIGINT, REML_TYPE_BIGINT},
+    {REML_TRAIT_DIV, REML_TYPE_FLOAT, REML_TYPE_FLOAT, REML_TYPE_FLOAT},
+    {REML_TRAIT_REM, REML_TYPE_INT, REML_TYPE_INT, REML_TYPE_INT},
+    {REML_TRAIT_REM, REML_TYPE_BIGINT, REML_TYPE_BIGINT, REML_TYPE_BIGINT},
+    {REML_TRAIT_REM, REML_TYPE_FLOAT, REML_TYPE_FLOAT, REML_TYPE_FLOAT},
+    {REML_TRAIT_BITXOR, REML_TYPE_INT, REML_TYPE_INT, REML_TYPE_INT},
+    {REML_TRAIT_EQ, REML_TYPE_INT, REML_TYPE_INT, REML_TYPE_BOOL},
+    {REML_TRAIT_EQ, REML_TYPE_BIGINT, REML_TYPE_BIGINT, REML_TYPE_BOOL},
+    {REML_TRAIT_EQ, REML_TYPE_FLOAT, REML_TYPE_FLOAT, REML_TYPE_BOOL},
+    {REML_TRAIT_EQ, REML_TYPE_BOOL, REML_TYPE_BOOL, REML_TYPE_BOOL},
+    {REML_TRAIT_EQ, REML_TYPE_CHAR, REML_TYPE_CHAR, REML_TYPE_BOOL},
+    {REML_TRAIT_EQ, REML_TYPE_STRING, REML_TYPE_STRING, REML_TYPE_BOOL},
+    {REML_TRAIT_ORD, REML_TYPE_INT, REML_TYPE_INT, REML_TYPE_BOOL},
+    {REML_TRAIT_ORD, REML_TYPE_BIGINT, REML_TYPE_BIGINT, REML_TYPE_BOOL},
+    {REML_TRAIT_ORD, REML_TYPE_FLOAT, REML_TYPE_FLOAT, REML_TYPE_BOOL},
+    {REML_TRAIT_ORD, REML_TYPE_CHAR, REML_TYPE_CHAR, REML_TYPE_BOOL},
+    {REML_TRAIT_ORD, REML_TYPE_STRING, REML_TYPE_STRING, REML_TYPE_BOOL},
+};
+
+static void reml_trait_constraints_init(reml_sema *sema) {
+  if (!sema) {
+    return;
+  }
+  UT_icd constraint_icd = {sizeof(reml_trait_constraint), NULL, NULL, NULL};
+  utarray_new(sema->trait_constraints, &constraint_icd);
+}
+
+static void reml_trait_constraints_deinit(reml_sema *sema) {
+  if (!sema || !sema->trait_constraints) {
+    return;
+  }
+  utarray_free(sema->trait_constraints);
+  sema->trait_constraints = NULL;
+}
+
+static void reml_trait_constraints_add(reml_sema *sema, reml_trait_kind trait, reml_type *left,
+                                       reml_type *right, reml_type *result, reml_span span) {
+  if (!sema || !sema->trait_constraints) {
+    return;
+  }
+  reml_trait_constraint constraint = {.trait = trait,
+                                       .left = left,
+                                       .right = right,
+                                       .result = result,
+                                       .span = span};
+  utarray_push_back(sema->trait_constraints, &constraint);
+}
+
+static size_t reml_trait_match_candidates(reml_trait_kind trait, reml_type_kind left_kind,
+                                          reml_type_kind right_kind, const reml_trait_impl **out,
+                                          bool *out_duplicate) {
+  size_t matches = 0;
+  const reml_trait_impl *match = NULL;
+  bool duplicate = false;
+  for (size_t i = 0; i < sizeof(kTraitImpls) / sizeof(kTraitImpls[0]); ++i) {
+    const reml_trait_impl *impl = &kTraitImpls[i];
+    if (impl->trait != trait) {
+      continue;
+    }
+    if (left_kind != REML_TYPE_VAR && left_kind != impl->left) {
+      continue;
+    }
+    if (right_kind != REML_TYPE_VAR && right_kind != impl->right) {
+      continue;
+    }
+    if (!match) {
+      match = impl;
+    } else if (match->left == impl->left && match->right == impl->right &&
+               match->result == impl->result) {
+      duplicate = true;
+    }
+    matches++;
+  }
+  if (out) {
+    *out = match;
+  }
+  if (out_duplicate) {
+    *out_duplicate = duplicate;
+  }
+  return matches;
+}
+
+static void reml_trait_constraints_resolve(reml_sema *sema) {
+  if (!sema || !sema->trait_constraints) {
+    return;
+  }
+  for (reml_trait_constraint *it =
+           (reml_trait_constraint *)utarray_front(sema->trait_constraints);
+       it != NULL;
+       it = (reml_trait_constraint *)utarray_next(sema->trait_constraints, it)) {
+    reml_type *left = reml_type_prune(it->left);
+    reml_type *right = reml_type_prune(it->right);
+    reml_type *result = reml_type_prune(it->result);
+    if (!left || !right || !result) {
+      continue;
+    }
+    if (left->kind == REML_TYPE_ERROR || right->kind == REML_TYPE_ERROR ||
+        result->kind == REML_TYPE_ERROR) {
+      continue;
+    }
+    const reml_trait_impl *match = NULL;
+    bool duplicate = false;
+    size_t matches = reml_trait_match_candidates(it->trait, left->kind, right->kind, &match,
+                                                  &duplicate);
+    if (matches == 0) {
+      reml_report_diag(sema, REML_DIAG_TRAIT_UNRESOLVED, it->span,
+                       "cannot resolve operator trait");
+      continue;
+    }
+    if (matches > 1) {
+      if (left->kind != REML_TYPE_VAR && right->kind != REML_TYPE_VAR && duplicate) {
+        reml_report_diag(sema, REML_DIAG_TRAIT_DUPLICATE, it->span,
+                         "duplicate operator trait implementation");
+      } else {
+        reml_report_diag(sema, REML_DIAG_TRAIT_AMBIGUOUS, it->span,
+                         "ambiguous operator trait");
+      }
+      continue;
+    }
+    reml_type *expected_left = reml_type_from_kind(&sema->types, match->left);
+    reml_type *expected_right = reml_type_from_kind(&sema->types, match->right);
+    reml_type *expected_result = reml_type_from_kind(&sema->types, match->result);
+    if (!expected_left || !expected_right || !expected_result) {
+      continue;
+    }
+    if (!reml_type_unify(&sema->types, left, expected_left) ||
+        !reml_type_unify(&sema->types, right, expected_right) ||
+        !reml_type_unify(&sema->types, result, expected_result)) {
+      reml_report_diag(sema, REML_DIAG_TRAIT_UNRESOLVED, it->span,
+                       "cannot resolve operator trait");
+    }
+  }
+}
+
+static reml_type *reml_resolve_binary_trait(reml_sema *sema, reml_trait_kind trait,
+                                            reml_type *left, reml_type *right, reml_span span) {
+  if (!sema) {
+    return NULL;
+  }
+  left = reml_type_prune(left);
+  right = reml_type_prune(right);
+  if (!left || !right) {
+    return reml_type_error(&sema->types);
+  }
+  if (left->kind == REML_TYPE_ERROR || right->kind == REML_TYPE_ERROR) {
+    return reml_type_error(&sema->types);
+  }
+
+  reml_type_kind left_kind = left->kind;
+  reml_type_kind right_kind = right->kind;
+  const reml_trait_impl *match = NULL;
+  bool has_duplicate = false;
+  size_t matches =
+      reml_trait_match_candidates(trait, left_kind, right_kind, &match, &has_duplicate);
+
+  if (matches == 0) {
+    reml_report_diag(sema, REML_DIAG_TRAIT_UNRESOLVED, span, "cannot resolve operator trait");
+    return reml_type_error(&sema->types);
+  }
+  if (matches > 1) {
+    if (left_kind == REML_TYPE_VAR || right_kind == REML_TYPE_VAR) {
+      reml_type *result = reml_type_make_var(&sema->types);
+      reml_trait_constraints_add(sema, trait, left, right, result, span);
+      return result;
+    }
+    if (has_duplicate) {
+      reml_report_diag(sema, REML_DIAG_TRAIT_DUPLICATE, span,
+                       "duplicate operator trait implementation");
+    } else {
+      reml_report_diag(sema, REML_DIAG_TRAIT_AMBIGUOUS, span, "ambiguous operator trait");
+    }
+    return reml_type_error(&sema->types);
+  }
+
+  reml_type *expected_left = reml_type_from_kind(&sema->types, match->left);
+  reml_type *expected_right = reml_type_from_kind(&sema->types, match->right);
+  if (!expected_left || !expected_right) {
+    return reml_type_error(&sema->types);
+  }
+  if (left_kind == REML_TYPE_VAR &&
+      !reml_expect_type(sema, left, expected_left, span)) {
+    return reml_type_error(&sema->types);
+  }
+  if (right_kind == REML_TYPE_VAR &&
+      !reml_expect_type(sema, right, expected_right, span)) {
+    return reml_type_error(&sema->types);
+  }
+  reml_type *result = reml_type_from_kind(&sema->types, match->result);
+  reml_trait_constraints_add(sema, trait, left, right, result, span);
+  return result;
+}
+
 static reml_type *reml_infer_unary(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
   reml_type *operand = reml_infer_expr(sema, expr->data.unary.operand, effect);
   if (!operand) {
@@ -1067,31 +1323,6 @@ static reml_type *reml_infer_assignment(reml_sema *sema, reml_expr *expr,
   return reml_type_unit(&sema->types);
 }
 
-static bool reml_unify_binary_numeric(reml_sema *sema, reml_type *left, reml_type *right,
-                                      reml_span span) {
-  left = reml_type_prune(left);
-  right = reml_type_prune(right);
-  if (left->kind == REML_TYPE_VAR && right->kind == REML_TYPE_VAR) {
-    return reml_expect_type(sema, left, reml_type_int(&sema->types), span) &&
-           reml_expect_type(sema, right, reml_type_int(&sema->types), span);
-  }
-  if (left->kind == REML_TYPE_VAR && reml_is_numeric_type(right, &sema->types)) {
-    return reml_expect_type(sema, left, right, span);
-  }
-  if (right->kind == REML_TYPE_VAR && reml_is_numeric_type(left, &sema->types)) {
-    return reml_expect_type(sema, right, left, span);
-  }
-  if (!reml_is_numeric_type(left, &sema->types) || !reml_is_numeric_type(right, &sema->types)) {
-    reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, span, "numeric operator expects numbers");
-    return false;
-  }
-  if (!reml_type_unify(&sema->types, left, right)) {
-    reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, span, "numeric operands must match");
-    return false;
-  }
-  return true;
-}
-
 static reml_type *reml_infer_binary(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
   if (expr->data.binary.op == REML_TOKEN_COLONEQ) {
     return reml_infer_assignment(sema, expr, effect);
@@ -1103,30 +1334,25 @@ static reml_type *reml_infer_binary(reml_sema *sema, reml_expr *expr, reml_effec
   }
   switch (expr->data.binary.op) {
     case REML_TOKEN_PLUS:
+      return reml_resolve_binary_trait(sema, REML_TRAIT_ADD, left, right, expr->span);
     case REML_TOKEN_MINUS:
+      return reml_resolve_binary_trait(sema, REML_TRAIT_SUB, left, right, expr->span);
     case REML_TOKEN_STAR:
+      return reml_resolve_binary_trait(sema, REML_TRAIT_MUL, left, right, expr->span);
     case REML_TOKEN_SLASH:
+      return reml_resolve_binary_trait(sema, REML_TRAIT_DIV, left, right, expr->span);
     case REML_TOKEN_PERCENT:
+      return reml_resolve_binary_trait(sema, REML_TRAIT_REM, left, right, expr->span);
     case REML_TOKEN_CARET:
-      if (!reml_unify_binary_numeric(sema, left, right, expr->span)) {
-        return reml_type_error(&sema->types);
-      }
-      return reml_type_prune(left);
+      return reml_resolve_binary_trait(sema, REML_TRAIT_BITXOR, left, right, expr->span);
     case REML_TOKEN_LT:
     case REML_TOKEN_LE:
     case REML_TOKEN_GT:
     case REML_TOKEN_GE:
-      if (!reml_unify_binary_numeric(sema, left, right, expr->span)) {
-        return reml_type_error(&sema->types);
-      }
-      return reml_type_bool(&sema->types);
+      return reml_resolve_binary_trait(sema, REML_TRAIT_ORD, left, right, expr->span);
     case REML_TOKEN_EQEQ:
     case REML_TOKEN_NOTEQ:
-      if (!reml_type_unify(&sema->types, left, right)) {
-        reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, expr->span, "equality types must match");
-        return reml_type_error(&sema->types);
-      }
-      return reml_type_bool(&sema->types);
+      return reml_resolve_binary_trait(sema, REML_TRAIT_EQ, left, right, expr->span);
     case REML_TOKEN_LOGICAL_AND:
     case REML_TOKEN_LOGICAL_OR:
       if (!reml_expect_type(sema, left, reml_type_bool(&sema->types), expr->span) ||
@@ -2074,6 +2300,7 @@ void reml_sema_init(reml_sema *sema) {
   sema->enum_decls = NULL;
   reml_type_ctx_init(&sema->types);
   reml_diagnostics_init(&sema->diagnostics);
+  reml_trait_constraints_init(sema);
 }
 
 void reml_sema_deinit(reml_sema *sema) {
@@ -2104,6 +2331,7 @@ void reml_sema_deinit(reml_sema *sema) {
   sema->enum_decls = NULL;
   reml_type_ctx_deinit(&sema->types);
   reml_diagnostics_deinit(&sema->diagnostics);
+  reml_trait_constraints_deinit(sema);
 }
 
 bool reml_sema_check(reml_sema *sema, reml_compilation_unit *unit) {
@@ -2120,6 +2348,7 @@ bool reml_sema_check(reml_sema *sema, reml_compilation_unit *unit) {
     }
   }
 
+  reml_trait_constraints_resolve(sema);
   return reml_diagnostics_count(&sema->diagnostics) == 0;
 }
 

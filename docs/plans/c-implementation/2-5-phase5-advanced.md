@@ -319,6 +319,10 @@ reml_effect_result reml_effect_trampoline(
 - **無効 UTF-8**: 不正バイト列を入力に与え、`unicode.invalid_utf8` が正しい `span` と `byte_offset` を返すこと。
 - **表示幅**: 結合文字・絵文字で `display_width` が期待値と一致すること。
 
+### 5.4.5 進捗メモ（2026-01-03）
+- 文字列ランタイム（`reml_string_from_utf8`/`concat`/`cmp`/`free`）を追加し、基本テストを追加。
+- 文字列リテラルの codegen と `+`/比較演算子のランタイム呼び出しを接続。
+
 ## 5.5 ADT とレコード型
 - **仕様参照**: `docs/spec/1-2-types-Inference.md`、`docs/spec/1-5-formal-grammar-bnf.md`。
 - **タスク**:
@@ -378,6 +382,11 @@ reml_effect_result reml_effect_trampoline(
   4.  失敗時の診断（未解決/曖昧/重複）を整備。
   5.  テスト: `Int`/`Float`/`String` の演算子解決。
 
+### 5.7.1 進捗メモ（2026-01-03）
+- 組み込みトレイトの固定テーブル（Add/Sub/Mul/Div/Rem/Eq/Ord/BitXor）を追加。
+- 演算子解決をトレイトベースに移行し、未解決/曖昧/重複の診断を追加。
+- `Int`/`Float`/`String` の演算子解決と未解決ケースの Sema テストを追加。
+
 ## 5.8 効果行 (`! Σ`)
 - **仕様参照**: `docs/spec/1-2-types-Inference.md`、`docs/spec/1-3-effects-safety.md`。
 - **タスク**:
@@ -396,6 +405,9 @@ reml_effect_result reml_effect_trampoline(
   4.  効果行と値制限の統合（効果がある `let` を単相化）。
   5.  テスト: 型注釈なしの推論、曖昧性診断、レコード/ADT の推論。
 
+### 5.9.1 進捗メモ（2026-01-03）
+- 演算子トレイトの制約収集用リストを追加し、チェック後に再解決する下地を実装。
+
 ## 5.10 検証と完了条件
 - **テスト**: `tests/unit` と `tests/integration` に追加。
 - **実行確認**: `examples/spec_core` の文字列/パターン/効果を含む例の実行。
@@ -408,11 +420,11 @@ reml_effect_result reml_effect_trampoline(
 - [x] Integer/Bool のリテラルパターンが `switch` へ降下する。
 - [x] Range/Enum の最小ケースが `switch` へ降下する。
 - [x] ガード付き `switch` で再評価パスが生成される。
-- [ ] 文字列リテラルと基本的な文字列操作が Unicode で正しく動作する。
+- [x] 文字列リテラルと基本的な文字列操作が Unicode で正しく動作する。
 - [ ] 基本的な Effect Handler が動作する (少なくとも State/Exception に対して)。
 - [ ] ADT/レコード型がパース・型検査・コード生成まで通る。
 - [x] 参照型 (`&T`, `&mut T`) の型規則とコード生成が動作する。
-- [ ] 組み込みトレイト解決が演算子に適用される。
+- [x] 組み込みトレイト解決が演算子に適用される。
 - [ ] 効果行 (`! Σ`) が型推論と診断に反映される。
 - [ ] 型推論がレコード/ADT/参照型/BigIntを含む式で成立する。
 - [ ] 主要ケースの診断 ID とエラーメッセージが整備される。

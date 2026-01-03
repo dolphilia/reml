@@ -25,6 +25,7 @@ typedef struct {
   LLVMValueRef current_function;
   char *target_triple;
   LLVMTypeRef enum_repr_type;
+  LLVMTypeRef string_repr_type;
   reml_diagnostic_list diagnostics;
 } reml_codegen;
 

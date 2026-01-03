@@ -53,6 +53,7 @@ static bool reml_type_is_int(reml_type *type);
 static bool reml_type_is_bigint(reml_type *type);
 static bool reml_type_is_float(reml_type *type);
 static bool reml_type_is_bool(reml_type *type);
+static bool reml_type_is_string(reml_type *type);
 static bool reml_type_is_unit(reml_type *type);
 static bool reml_type_is_enum(reml_type *type);
 static bool reml_type_is_tuple(reml_type *type);
@@ -217,6 +218,84 @@ static char *reml_strip_numeric_literal(reml_string_view view) {
   return buffer;
 }
 
+static bool reml_unescape_string_literal(reml_string_view view, char **out_data,
+                                         size_t *out_len) {
+  if (!out_data || !out_len) {
+    return false;
+  }
+  *out_data = NULL;
+  *out_len = 0;
+  if (view.length == 0) {
+    return true;
+  }
+  size_t start = 0;
+  size_t end = view.length;
+  if (view.length >= 2 && view.data[0] == '"' && view.data[view.length - 1] == '"') {
+    start = 1;
+    end = view.length - 1;
+  }
+  size_t capacity = end - start;
+  char *buffer = (char *)malloc(capacity + 1);
+  if (!buffer) {
+    return false;
+  }
+  size_t out = 0;
+  for (size_t i = start; i < end; ++i) {
+    char c = view.data[i];
+    if (c == '\\') {
+      if (i + 1 >= end) {
+        free(buffer);
+        return false;
+      }
+      char next = view.data[++i];
+      switch (next) {
+        case 'n':
+          buffer[out++] = '\n';
+          break;
+        case 't':
+          buffer[out++] = '\t';
+          break;
+        case 'r':
+          buffer[out++] = '\r';
+          break;
+        case '\\':
+          buffer[out++] = '\\';
+          break;
+        case '"':
+          buffer[out++] = '"';
+          break;
+        default:
+          buffer[out++] = next;
+          break;
+      }
+      continue;
+    }
+    buffer[out++] = c;
+  }
+  buffer[out] = '\0';
+  *out_data = buffer;
+  *out_len = out;
+  return true;
+}
+
+static LLVMValueRef reml_codegen_build_string_literal(reml_codegen *codegen, const char *data,
+                                                      size_t len) {
+  if (!codegen || !data) {
+    return NULL;
+  }
+  LLVMValueRef constant =
+      LLVMConstStringInContext(codegen->context, data, (unsigned)len, 1);
+  LLVMTypeRef array_type = LLVMTypeOf(constant);
+  LLVMValueRef global = LLVMAddGlobal(codegen->module, array_type, "str.lit");
+  LLVMSetInitializer(global, constant);
+  LLVMSetGlobalConstant(global, 1);
+  LLVMSetLinkage(global, LLVMPrivateLinkage);
+  LLVMSetUnnamedAddr(global, LLVMGlobalUnnamedAddr);
+  LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 0);
+  LLVMValueRef indices[2] = {zero, zero};
+  return LLVMBuildInBoundsGEP2(codegen->builder, array_type, global, indices, 2, "str.ptr");
+}
+
 static LLVMTypeRef reml_codegen_lower_type(reml_codegen *codegen, reml_type *type) {
   if (!codegen || !type) {
     return NULL;
@@ -231,6 +310,8 @@ static LLVMTypeRef reml_codegen_lower_type(reml_codegen *codegen, reml_type *typ
       return LLVMDoubleTypeInContext(codegen->context);
     case REML_TYPE_BOOL:
       return LLVMInt1TypeInContext(codegen->context);
+    case REML_TYPE_STRING:
+      return LLVMPointerType(codegen->string_repr_type, 0);
     case REML_TYPE_UNIT:
       return LLVMVoidTypeInContext(codegen->context);
     case REML_TYPE_ENUM:
@@ -308,6 +389,18 @@ static void reml_codegen_emit_enum_free(reml_codegen *codegen, LLVMValueRef valu
   LLVMBuildCall2(codegen->builder, fn_type, fn, args, 1, "");
 }
 
+static void reml_codegen_emit_string_free(reml_codegen *codegen, LLVMValueRef value) {
+  if (!codegen || !value) {
+    return;
+  }
+  LLVMTypeRef str_ptr = LLVMPointerType(codegen->string_repr_type, 0);
+  LLVMTypeRef params[1] = {str_ptr};
+  LLVMTypeRef fn_type = LLVMFunctionType(LLVMVoidTypeInContext(codegen->context), params, 1, 0);
+  LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, "reml_string_free", fn_type);
+  LLVMValueRef args[1] = {value};
+  LLVMBuildCall2(codegen->builder, fn_type, fn, args, 1, "");
+}
+
 static void reml_codegen_scope_emit_drops(reml_codegen *codegen, reml_codegen_scope *scope,
                                           reml_symbol_id skip_id) {
   if (!codegen || !scope || !scope->drops) {
@@ -319,12 +412,21 @@ static void reml_codegen_scope_emit_drops(reml_codegen *codegen, reml_codegen_sc
       continue;
     }
     if (!reml_type_is_enum(it->type)) {
-      continue;
+      if (!reml_type_is_string(it->type)) {
+        continue;
+      }
     }
-    LLVMValueRef enum_value =
-        LLVMBuildLoad2(codegen->builder, LLVMPointerType(codegen->enum_repr_type, 0),
-                       it->alloca, "enum.load");
-    reml_codegen_emit_enum_free(codegen, enum_value);
+    if (reml_type_is_enum(it->type)) {
+      LLVMValueRef enum_value =
+          LLVMBuildLoad2(codegen->builder, LLVMPointerType(codegen->enum_repr_type, 0),
+                         it->alloca, "enum.load");
+      reml_codegen_emit_enum_free(codegen, enum_value);
+    } else if (reml_type_is_string(it->type)) {
+      LLVMValueRef string_value =
+          LLVMBuildLoad2(codegen->builder, LLVMPointerType(codegen->string_repr_type, 0),
+                         it->alloca, "string.load");
+      reml_codegen_emit_string_free(codegen, string_value);
+    }
   }
 }
 
@@ -661,7 +763,7 @@ static bool reml_codegen_emit_statement(reml_codegen *codegen, reml_codegen_scop
       }
       LLVMBuildStore(codegen->builder, value.value, alloca);
       reml_codegen_scope_define(scopes, pattern->symbol_id, alloca, llvm_type);
-      if (reml_type_is_enum(value.type)) {
+      if (reml_type_is_enum(value.type) || reml_type_is_string(value.type)) {
         reml_codegen_scope_register_drop(scopes, pattern->symbol_id, alloca, value.type);
       }
       return false;
@@ -758,6 +860,35 @@ static reml_codegen_value reml_codegen_emit_literal(reml_codegen *codegen, reml_
       return reml_codegen_make_value(llvm_value, expr->type, false);
     }
     case REML_LITERAL_STRING:
+      {
+        char *unescaped = NULL;
+        size_t unescaped_len = 0;
+        if (!reml_unescape_string_literal(literal.text, &unescaped, &unescaped_len)) {
+          reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                              "invalid string literal");
+          return reml_codegen_make_value(NULL, expr->type, false);
+        }
+        LLVMValueRef data_ptr = reml_codegen_build_string_literal(
+            codegen, unescaped ? unescaped : "", unescaped_len);
+        free(unescaped);
+        if (!data_ptr) {
+          reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                              "failed to emit string literal");
+          return reml_codegen_make_value(NULL, expr->type, false);
+        }
+        LLVMTypeRef str_ptr = LLVMPointerType(codegen->string_repr_type, 0);
+        LLVMTypeRef params[2] = {LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0),
+                                 LLVMInt64TypeInContext(codegen->context)};
+        LLVMTypeRef fn_type = LLVMFunctionType(str_ptr, params, 2, 0);
+        LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, "reml_string_from_utf8", fn_type);
+        LLVMValueRef args[2] = {
+            data_ptr,
+            LLVMConstInt(LLVMInt64TypeInContext(codegen->context),
+                         (unsigned long long)unescaped_len, 0)};
+        LLVMValueRef value =
+            LLVMBuildCall2(codegen->builder, fn_type, fn, args, 2, "string.lit");
+        return reml_codegen_make_value(value, expr->type, false);
+      }
     case REML_LITERAL_CHAR:
     default:
       reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
@@ -1347,6 +1478,11 @@ static bool reml_type_is_bool(reml_type *type) {
   return type && type->kind == REML_TYPE_BOOL;
 }
 
+static bool reml_type_is_string(reml_type *type) {
+  type = type ? reml_type_prune(type) : NULL;
+  return type && type->kind == REML_TYPE_STRING;
+}
+
 static bool reml_type_is_unit(reml_type *type) {
   type = type ? reml_type_prune(type) : NULL;
   return type && type->kind == REML_TYPE_UNIT;
@@ -1897,6 +2033,7 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
   bool is_int = reml_type_is_int(left.type);
   bool is_bigint = reml_type_is_bigint(left.type);
   bool is_bool = reml_type_is_bool(left.type);
+  bool is_string = reml_type_is_string(left.type);
 
   switch (expr->data.binary.op) {
     case REML_TOKEN_PLUS:
@@ -1911,6 +2048,16 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
       if (is_bigint) {
         LLVMValueRef value = reml_codegen_call_bigint_binary(codegen, "reml_numeric_bigint_add",
                                                              left.value, right.value);
+        return reml_codegen_make_value(value, expr->type, false);
+      }
+      if (is_string) {
+        LLVMTypeRef str_ptr = LLVMPointerType(codegen->string_repr_type, 0);
+        LLVMTypeRef params[2] = {str_ptr, str_ptr};
+        LLVMTypeRef fn_type = LLVMFunctionType(str_ptr, params, 2, 0);
+        LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, "reml_string_concat", fn_type);
+        LLVMValueRef args[2] = {left.value, right.value};
+        LLVMValueRef value =
+            LLVMBuildCall2(codegen->builder, fn_type, fn, args, 2, "string.add");
         return reml_codegen_make_value(value, expr->type, false);
       }
       break;
@@ -1998,6 +2145,18 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
         return reml_codegen_make_value(
             LLVMBuildICmp(codegen->builder, LLVMIntSLT, cmp, zero, "cmp"), expr->type, false);
       }
+      if (is_string) {
+        LLVMTypeRef str_ptr = LLVMPointerType(codegen->string_repr_type, 0);
+        LLVMTypeRef params[2] = {str_ptr, str_ptr};
+        LLVMTypeRef fn_type = LLVMFunctionType(LLVMInt32TypeInContext(codegen->context), params, 2,
+                                               0);
+        LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, "reml_string_cmp", fn_type);
+        LLVMValueRef args[2] = {left.value, right.value};
+        LLVMValueRef cmp = LLVMBuildCall2(codegen->builder, fn_type, fn, args, 2, "string.cmp");
+        LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
+        return reml_codegen_make_value(
+            LLVMBuildICmp(codegen->builder, LLVMIntSLT, cmp, zero, "cmp"), expr->type, false);
+      }
       break;
     case REML_TOKEN_LE:
       if (is_float) {
@@ -2013,6 +2172,18 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
       if (is_bigint) {
         LLVMValueRef cmp = reml_codegen_call_bigint_cmp(codegen, "reml_numeric_bigint_cmp",
                                                         left.value, right.value);
+        LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
+        return reml_codegen_make_value(
+            LLVMBuildICmp(codegen->builder, LLVMIntSLE, cmp, zero, "cmp"), expr->type, false);
+      }
+      if (is_string) {
+        LLVMTypeRef str_ptr = LLVMPointerType(codegen->string_repr_type, 0);
+        LLVMTypeRef params[2] = {str_ptr, str_ptr};
+        LLVMTypeRef fn_type = LLVMFunctionType(LLVMInt32TypeInContext(codegen->context), params, 2,
+                                               0);
+        LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, "reml_string_cmp", fn_type);
+        LLVMValueRef args[2] = {left.value, right.value};
+        LLVMValueRef cmp = LLVMBuildCall2(codegen->builder, fn_type, fn, args, 2, "string.cmp");
         LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
         return reml_codegen_make_value(
             LLVMBuildICmp(codegen->builder, LLVMIntSLE, cmp, zero, "cmp"), expr->type, false);
@@ -2036,6 +2207,18 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
         return reml_codegen_make_value(
             LLVMBuildICmp(codegen->builder, LLVMIntSGT, cmp, zero, "cmp"), expr->type, false);
       }
+      if (is_string) {
+        LLVMTypeRef str_ptr = LLVMPointerType(codegen->string_repr_type, 0);
+        LLVMTypeRef params[2] = {str_ptr, str_ptr};
+        LLVMTypeRef fn_type = LLVMFunctionType(LLVMInt32TypeInContext(codegen->context), params, 2,
+                                               0);
+        LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, "reml_string_cmp", fn_type);
+        LLVMValueRef args[2] = {left.value, right.value};
+        LLVMValueRef cmp = LLVMBuildCall2(codegen->builder, fn_type, fn, args, 2, "string.cmp");
+        LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
+        return reml_codegen_make_value(
+            LLVMBuildICmp(codegen->builder, LLVMIntSGT, cmp, zero, "cmp"), expr->type, false);
+      }
       break;
     case REML_TOKEN_GE:
       if (is_float) {
@@ -2055,6 +2238,18 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
         return reml_codegen_make_value(
             LLVMBuildICmp(codegen->builder, LLVMIntSGE, cmp, zero, "cmp"), expr->type, false);
       }
+      if (is_string) {
+        LLVMTypeRef str_ptr = LLVMPointerType(codegen->string_repr_type, 0);
+        LLVMTypeRef params[2] = {str_ptr, str_ptr};
+        LLVMTypeRef fn_type = LLVMFunctionType(LLVMInt32TypeInContext(codegen->context), params, 2,
+                                               0);
+        LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, "reml_string_cmp", fn_type);
+        LLVMValueRef args[2] = {left.value, right.value};
+        LLVMValueRef cmp = LLVMBuildCall2(codegen->builder, fn_type, fn, args, 2, "string.cmp");
+        LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
+        return reml_codegen_make_value(
+            LLVMBuildICmp(codegen->builder, LLVMIntSGE, cmp, zero, "cmp"), expr->type, false);
+      }
       break;
     case REML_TOKEN_EQEQ:
       if (is_float) {
@@ -2065,6 +2260,18 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
       if (is_bigint) {
         LLVMValueRef cmp = reml_codegen_call_bigint_cmp(codegen, "reml_numeric_bigint_cmp",
                                                         left.value, right.value);
+        LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
+        return reml_codegen_make_value(
+            LLVMBuildICmp(codegen->builder, LLVMIntEQ, cmp, zero, "cmp"), expr->type, false);
+      }
+      if (is_string) {
+        LLVMTypeRef str_ptr = LLVMPointerType(codegen->string_repr_type, 0);
+        LLVMTypeRef params[2] = {str_ptr, str_ptr};
+        LLVMTypeRef fn_type = LLVMFunctionType(LLVMInt32TypeInContext(codegen->context), params, 2,
+                                               0);
+        LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, "reml_string_cmp", fn_type);
+        LLVMValueRef args[2] = {left.value, right.value};
+        LLVMValueRef cmp = LLVMBuildCall2(codegen->builder, fn_type, fn, args, 2, "string.cmp");
         LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
         return reml_codegen_make_value(
             LLVMBuildICmp(codegen->builder, LLVMIntEQ, cmp, zero, "cmp"), expr->type, false);
@@ -2081,6 +2288,18 @@ static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
       if (is_bigint) {
         LLVMValueRef cmp = reml_codegen_call_bigint_cmp(codegen, "reml_numeric_bigint_cmp",
                                                         left.value, right.value);
+        LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
+        return reml_codegen_make_value(
+            LLVMBuildICmp(codegen->builder, LLVMIntNE, cmp, zero, "cmp"), expr->type, false);
+      }
+      if (is_string) {
+        LLVMTypeRef str_ptr = LLVMPointerType(codegen->string_repr_type, 0);
+        LLVMTypeRef params[2] = {str_ptr, str_ptr};
+        LLVMTypeRef fn_type = LLVMFunctionType(LLVMInt32TypeInContext(codegen->context), params, 2,
+                                               0);
+        LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, "reml_string_cmp", fn_type);
+        LLVMValueRef args[2] = {left.value, right.value};
+        LLVMValueRef cmp = LLVMBuildCall2(codegen->builder, fn_type, fn, args, 2, "string.cmp");
         LLVMValueRef zero = LLVMConstInt(LLVMInt32TypeInContext(codegen->context), 0, 1);
         return reml_codegen_make_value(
             LLVMBuildICmp(codegen->builder, LLVMIntNE, cmp, zero, "cmp"), expr->type, false);
@@ -2846,6 +3065,12 @@ bool reml_codegen_init(reml_codegen *codegen, const char *module_name) {
       (LLVMTypeRef[]){LLVMInt32TypeInContext(codegen->context),
                       LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0)},
       2, 0);
+  codegen->string_repr_type =
+      LLVMStructTypeInContext(codegen->context,
+                              (LLVMTypeRef[]){LLVMPointerType(
+                                                   LLVMInt8TypeInContext(codegen->context), 0),
+                                               LLVMInt64TypeInContext(codegen->context)},
+                              2, 0);
 
   codegen->target_triple = LLVMGetDefaultTargetTriple();
   if (!codegen->target_triple) {

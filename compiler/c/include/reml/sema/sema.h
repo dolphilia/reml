@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 
+#include <utarray.h>
+
 #include "reml/ast/ast.h"
 #include "reml/sema/diagnostic.h"
 #include "reml/typeck/type.h"
@@ -21,6 +23,7 @@ typedef struct {
   reml_enum_decl_entry *enum_decls;
   reml_type_ctx types;
   reml_diagnostic_list diagnostics;
+  UT_array *trait_constraints;
 } reml_sema;
 
 void reml_sema_init(reml_sema *sema);
