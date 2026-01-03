@@ -16,6 +16,10 @@ reml_effect_row reml_effect_row_closed(reml_effect_set effects) {
   return reml_effect_row_make(effects, NULL);
 }
 
+static bool reml_type_is_numeric_kind(reml_type_kind kind) {
+  return kind == REML_TYPE_INT || kind == REML_TYPE_BIGINT || kind == REML_TYPE_FLOAT;
+}
+
 static reml_effect_row *reml_effect_row_new(reml_type_ctx *ctx, reml_effect_set effects,
                                             reml_effect_row_var *tail) {
   reml_effect_row *row = (reml_effect_row *)calloc(1, sizeof(reml_effect_row));
@@ -60,6 +64,33 @@ static bool reml_string_view_equal(reml_string_view left, reml_string_view right
     return true;
   }
   return memcmp(left.data, right.data, left.length) == 0;
+}
+
+static bool reml_type_ctx_has_numeric(reml_type_ctx *ctx, reml_type *type) {
+  if (!ctx || !ctx->numeric_vars || !type || type->kind != REML_TYPE_VAR) {
+    return false;
+  }
+  for (reml_type **it = (reml_type **)utarray_front(ctx->numeric_vars); it != NULL;
+       it = (reml_type **)utarray_next(ctx->numeric_vars, it)) {
+    if (*it == type) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void reml_type_ctx_mark_numeric_var(reml_type_ctx *ctx, reml_type *type) {
+  if (!ctx || !type || type->kind != REML_TYPE_VAR) {
+    return;
+  }
+  if (!ctx->numeric_vars) {
+    UT_icd var_icd = {sizeof(reml_type *), NULL, NULL, NULL};
+    utarray_new(ctx->numeric_vars, &var_icd);
+  }
+  if (reml_type_ctx_has_numeric(ctx, type)) {
+    return;
+  }
+  utarray_push_back(ctx->numeric_vars, &type);
 }
 
 static reml_enum_variant *reml_enum_variant_find(reml_type *enum_type, reml_string_view name) {
@@ -321,6 +352,7 @@ void reml_type_ctx_init(reml_type_ctx *ctx) {
   ctx->arena = NULL;
   ctx->effect_rows = NULL;
   ctx->effect_row_vars = NULL;
+  ctx->numeric_vars = NULL;
   ctx->next_var_id = 1;
   ctx->next_effect_row_id = 1;
   ctx->error_type = reml_type_new(ctx, REML_TYPE_ERROR);
@@ -354,6 +386,10 @@ void reml_type_ctx_deinit(reml_type_ctx *ctx) {
     }
     utarray_free(ctx->effect_row_vars);
     ctx->effect_row_vars = NULL;
+  }
+  if (ctx->numeric_vars) {
+    utarray_free(ctx->numeric_vars);
+    ctx->numeric_vars = NULL;
   }
   if (ctx->arena) {
     for (reml_type **it = (reml_type **)utarray_front(ctx->arena); it != NULL;
@@ -412,6 +448,20 @@ static bool reml_type_occurs_in(reml_type *var, reml_type *type) {
          it = (reml_record_field *)utarray_next(type->data.record.fields, it)) {
       if (reml_type_occurs_in(var, it->type)) {
         return true;
+      }
+    }
+  }
+  if (type->kind == REML_TYPE_ENUM && type->data.enum_type.variants) {
+    for (reml_enum_variant *it =
+             (reml_enum_variant *)utarray_front(type->data.enum_type.variants);
+         it != NULL; it = (reml_enum_variant *)utarray_next(type->data.enum_type.variants, it)) {
+      if (it->fields) {
+        for (reml_type **field = (reml_type **)utarray_front(it->fields); field != NULL;
+             field = (reml_type **)utarray_next(it->fields, field)) {
+          if (reml_type_occurs_in(var, *field)) {
+            return true;
+          }
+        }
       }
     }
   }
@@ -530,6 +580,13 @@ bool reml_type_unify(reml_type_ctx *ctx, reml_type *left, reml_type *right) {
   }
 
   if (left->kind == REML_TYPE_VAR) {
+    if (reml_type_ctx_has_numeric(ctx, left)) {
+      if (right->kind == REML_TYPE_VAR) {
+        reml_type_ctx_mark_numeric_var(ctx, right);
+      } else if (!reml_type_is_numeric_kind(right->kind)) {
+        return false;
+      }
+    }
     if (reml_type_occurs_in(left, right)) {
       return false;
     }
@@ -538,6 +595,13 @@ bool reml_type_unify(reml_type_ctx *ctx, reml_type *left, reml_type *right) {
   }
 
   if (right->kind == REML_TYPE_VAR) {
+    if (reml_type_ctx_has_numeric(ctx, right)) {
+      if (left->kind == REML_TYPE_VAR) {
+        reml_type_ctx_mark_numeric_var(ctx, left);
+      } else if (!reml_type_is_numeric_kind(left->kind)) {
+        return false;
+      }
+    }
     if (reml_type_occurs_in(right, left)) {
       return false;
     }
@@ -563,6 +627,35 @@ bool reml_type_unify(reml_type_ctx *ctx, reml_type *left, reml_type *right) {
   }
 
   return false;
+}
+
+void reml_type_mark_numeric(reml_type_ctx *ctx, reml_type *type) {
+  if (!ctx || !type) {
+    return;
+  }
+  type = reml_type_prune(type);
+  if (!type || type->kind != REML_TYPE_VAR) {
+    return;
+  }
+  reml_type_ctx_mark_numeric_var(ctx, type);
+}
+
+void reml_type_apply_numeric_defaults(reml_type_ctx *ctx, reml_type *default_type) {
+  if (!ctx || !ctx->numeric_vars || !default_type) {
+    return;
+  }
+  for (reml_type **it = (reml_type **)utarray_front(ctx->numeric_vars); it != NULL;
+       it = (reml_type **)utarray_next(ctx->numeric_vars, it)) {
+    reml_type *var = *it;
+    if (!var) {
+      continue;
+    }
+    var = reml_type_prune(var);
+    if (!var || var->kind != REML_TYPE_VAR || var->data.var.instance) {
+      continue;
+    }
+    var->data.var.instance = default_type;
+  }
 }
 
 reml_type *reml_type_error(reml_type_ctx *ctx) {

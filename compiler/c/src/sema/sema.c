@@ -768,6 +768,19 @@ static void reml_type_collect_vars(reml_type *type, UT_array *vars) {
       reml_type_collect_vars(it->type, vars);
     }
   }
+  if (type->kind == REML_TYPE_ENUM && type->data.enum_type.variants) {
+    for (reml_enum_variant *it =
+             (reml_enum_variant *)utarray_front(type->data.enum_type.variants);
+         it != NULL; it = (reml_enum_variant *)utarray_next(type->data.enum_type.variants, it)) {
+      if (!it->fields) {
+        continue;
+      }
+      for (reml_type **field = (reml_type **)utarray_front(it->fields); field != NULL;
+           field = (reml_type **)utarray_next(it->fields, field)) {
+        reml_type_collect_vars(*field, vars);
+      }
+    }
+  }
   if (type->kind == REML_TYPE_FUNCTION) {
     if (type->data.function.params) {
       for (reml_type **it = (reml_type **)utarray_front(type->data.function.params); it != NULL;
@@ -821,6 +834,19 @@ static void reml_effect_row_collect_vars(reml_type *type, UT_array *vars) {
          it != NULL;
          it = (reml_record_field *)utarray_next(type->data.record.fields, it)) {
       reml_effect_row_collect_vars(it->type, vars);
+    }
+  }
+  if (type->kind == REML_TYPE_ENUM && type->data.enum_type.variants) {
+    for (reml_enum_variant *it =
+             (reml_enum_variant *)utarray_front(type->data.enum_type.variants);
+         it != NULL; it = (reml_enum_variant *)utarray_next(type->data.enum_type.variants, it)) {
+      if (!it->fields) {
+        continue;
+      }
+      for (reml_type **field = (reml_type **)utarray_front(it->fields); field != NULL;
+           field = (reml_type **)utarray_next(it->fields, field)) {
+        reml_effect_row_collect_vars(*field, vars);
+      }
     }
   }
   if (type->kind == REML_TYPE_FUNCTION) {
@@ -1241,8 +1267,14 @@ static reml_symbol *reml_symbol_from_ident(reml_sema *sema, reml_expr *expr) {
 
 static reml_type *reml_infer_literal(reml_sema *sema, reml_literal literal) {
   switch (literal.kind) {
-    case REML_LITERAL_INT:
-      return reml_type_int(&sema->types);
+    case REML_LITERAL_INT: {
+      reml_type *literal_type = reml_type_make_var(&sema->types);
+      if (!literal_type) {
+        return reml_type_error(&sema->types);
+      }
+      reml_type_mark_numeric(&sema->types, literal_type);
+      return literal_type;
+    }
     case REML_LITERAL_BIGINT:
       return reml_type_bigint(&sema->types);
     case REML_LITERAL_FLOAT:
@@ -1262,6 +1294,25 @@ static bool reml_is_numeric_type(reml_type *type, reml_type_ctx *ctx) {
   type = reml_type_prune(type);
   return type == reml_type_int(ctx) || type == reml_type_bigint(ctx) ||
          type == reml_type_float(ctx);
+}
+
+static bool reml_expect_numeric_type(reml_sema *sema, reml_type *type, reml_span span) {
+  if (!sema || !type) {
+    return false;
+  }
+  type = reml_type_prune(type);
+  if (!type) {
+    return false;
+  }
+  if (type->kind == REML_TYPE_VAR) {
+    reml_type_mark_numeric(&sema->types, type);
+    return true;
+  }
+  if (reml_is_numeric_type(type, &sema->types)) {
+    return true;
+  }
+  reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, span, "numeric type expected");
+  return false;
 }
 
 typedef struct {
@@ -1560,16 +1611,10 @@ static reml_type *reml_infer_unary(reml_sema *sema, reml_expr *expr, reml_effect
   }
   switch (expr->data.unary.op) {
     case REML_TOKEN_MINUS:
-      if (operand->kind == REML_TYPE_VAR) {
-        reml_expect_type(sema, operand, reml_type_int(&sema->types), expr->span);
-        return operand;
-      }
-      if (!reml_is_numeric_type(operand, &sema->types)) {
-        reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, expr->span,
-                         "unary '-' expects numeric type");
+      if (!reml_expect_numeric_type(sema, operand, expr->span)) {
         return reml_type_error(&sema->types);
       }
-      return operand;
+      return reml_type_prune(operand);
     case REML_TOKEN_BANG:
       reml_expect_type(sema, operand, reml_type_bool(&sema->types), expr->span);
       return reml_type_bool(&sema->types);
@@ -2367,6 +2412,7 @@ static void reml_define_pattern_symbol(reml_sema *sema, reml_pattern *pattern,
   pattern->symbol_id = symbol->id;
   pattern->type = expected;
 
+  reml_type_apply_numeric_defaults(&sema->types, reml_type_int(&sema->types));
   bool allow_poly = effect ? (*effect == REML_EFFECT_NONE) : true;
   reml_generalize(sema, symbol, expected, allow_poly);
   reml_scheme_set_constraints(&symbol->scheme, sema, constraint_start, constraint_end);
@@ -2395,6 +2441,11 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
       return;
     }
     case REML_PATTERN_RANGE: {
+      if (!reml_expect_type(sema, expected, reml_type_int(&sema->types), pattern->span)) {
+        pattern->type = reml_type_error(&sema->types);
+        return;
+      }
+      expected = reml_type_prune(expected);
       reml_type *start_type = reml_infer_literal(sema, pattern->data.range.start);
       reml_type *end_type = reml_infer_literal(sema, pattern->data.range.end);
       if (!reml_expect_type(sema, start_type, expected, pattern->span) ||
@@ -2758,6 +2809,7 @@ bool reml_sema_check(reml_sema *sema, reml_compilation_unit *unit) {
     }
   }
 
+  reml_type_apply_numeric_defaults(&sema->types, reml_type_int(&sema->types));
   reml_trait_constraints_resolve(sema);
   return reml_diagnostics_count(&sema->diagnostics) == 0;
 }

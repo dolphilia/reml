@@ -118,6 +118,60 @@ static void test_sema_trait_string_add_ok(void **state) {
   reml_compilation_unit_free(unit);
 }
 
+static void test_sema_numeric_literal_default_int_ok(void **state) {
+  (void)state;
+
+  const char *source = "let x = 1; let y = x + 2; y;";
+  reml_compilation_unit *unit = parse_source(source);
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+
+  const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+  assert_true(ok);
+  assert_int_equal(reml_diagnostics_count(diags), 0);
+
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+}
+
+static void test_sema_numeric_literal_float_promotion_ok(void **state) {
+  (void)state;
+
+  const char *source = "let x = 1 + 2.0; x;";
+  reml_compilation_unit *unit = parse_source(source);
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+
+  const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+  assert_true(ok);
+  assert_int_equal(reml_diagnostics_count(diags), 0);
+
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+}
+
+static void test_sema_numeric_literal_bigint_promotion_ok(void **state) {
+  (void)state;
+
+  const char *source = "let x = 9223372036854775808 + 1; x;";
+  reml_compilation_unit *unit = parse_source(source);
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+
+  const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+  assert_true(ok);
+  assert_int_equal(reml_diagnostics_count(diags), 0);
+
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+}
+
 static void test_sema_type_mismatch(void **state) {
   (void)state;
 
@@ -516,6 +570,9 @@ void test_sema(void **state) {
   test_sema_basic_ok(state);
   test_sema_trait_float_add_ok(state);
   test_sema_trait_string_add_ok(state);
+  test_sema_numeric_literal_default_int_ok(state);
+  test_sema_numeric_literal_float_promotion_ok(state);
+  test_sema_numeric_literal_bigint_promotion_ok(state);
   test_sema_type_mismatch(state);
   test_sema_trait_unresolved(state);
   test_sema_undefined_symbol(state);
