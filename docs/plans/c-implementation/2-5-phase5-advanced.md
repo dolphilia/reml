@@ -330,6 +330,29 @@ reml_effect_result reml_effect_trampoline(
   6.  パターンマッチングと連携する診断（不足/余剰フィールド、未知コンストラクタ）。
   7.  テスト: `Option`/`Result`、レコードの構築・参照・更新。
 
+### 5.5.1 実装方針（C 実装）
+- **ADT 表現**: enum を `{ tag: i32, payload: *i8 }` として表現し、`reml_enum_make`/`reml_enum_free` で生成・破棄する。
+- **レコード表現**: フィールド名の正規化順（昇順）に並べた LLVM struct を生成する。
+- **型宣言**: 現状はコンストラクタ利用時に enum 型を生成する最小モデルで運用し、`type` 宣言と名前付き ADT は後続タスクで導入する。
+
+### 5.5.2 作業ステップ（詳細）
+- [x] AST に constructor/record の式・パターンを追加する (`compiler/c/include/reml/ast/ast.h`)。
+- [ ] AST に `type` 宣言とレコード更新構文のノードを追加する。
+- [x] パーサーで constructor 呼び出しと record literal/record pattern を解析する (`compiler/c/src/parser/parser.c`)。
+- [ ] パーサーで `type` 宣言とレコード更新構文を解析する。
+- [x] 型チェックで constructor arity/フィールド型検査と record 正規化順を実装する (`compiler/c/src/sema/sema.c`)。
+- [x] レコードの正規化順をレイアウトへ反映する (`compiler/c/src/sema/sema.c`, `compiler/c/src/codegen/codegen.c`)。
+- [x] Codegen で enum tag/payload と record struct の生成・アクセスを実装する (`compiler/c/src/codegen/codegen.c`, `compiler/c/src/runtime/enum.c`)。
+- [ ] 不足/余剰フィールド、未知コンストラクタ向けの診断 ID を追加し、式/パターンで統一する。
+- [x] テストで enum constructor/record/tuple match と drop を追加する (`compiler/c/tests/unit/test_sema.c`, `compiler/c/tests/unit/test_codegen.c`, `compiler/c/tests/unit/test_parser_basic.c`)。
+- [ ] `type` 宣言とレコード更新のパース/型検査/コード生成テストを追加する。
+
+### 5.5.3 進捗メモ（2026-01-03）
+- constructor/record の式・パターン追加、型検査、codegen までの経路を実装済み。
+- レコードのフィールド正規化順を型検査と codegen の両方で固定済み。
+- enum/record に関する unit テストを追加済み。
+- `type` 宣言、レコード更新構文、未知コンストラクタ/フィールド不足診断は未対応。
+
 ## 5.6 参照型 (`&T`, `&mut T`)
 - **仕様参照**: `docs/spec/1-2-types-Inference.md`、`docs/spec/1-3-effects-safety.md`。
 - **タスク**:
