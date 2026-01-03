@@ -189,6 +189,87 @@
   4.  `resume` の再入禁止（one-shot）検査と診断を実装。
   5.  例外/State を代表ケースとして実装し、テストで動作保証。
 
+### 5.3.1 実装方針（C 実装）
+- **効果境界**: `perform` は最寄りの `handle` へ制御を移す。ハンドラが無い場合は `effects.unhandled` として停止。
+- **one-shot 保証**: 継続 (`continuation`) は 1 度だけ `resume` 可能。2 回目以降は診断を発行して停止。
+- **CPS 変換の単位**: 効果を持つ関数のみ CPS 化し、純粋関数は通常呼び出しで残す（呼び出し境界でラッパを生成）。
+- **Capability 連携**: `perform` 対象効果が `Stage` を持つ場合は `CapabilityRegistry` と照合する。Stage 不一致は `effects.contract.stage_mismatch` に接続する。
+
+### 5.3.2 最小ランタイム API（ドラフト）
+```c
+// compiler/c/include/reml/runtime/effects.h (予定)
+typedef struct reml_continuation reml_continuation;
+typedef struct reml_effect_frame reml_effect_frame;
+typedef struct reml_effect_result reml_effect_result;
+
+typedef const char* reml_effect_tag;
+typedef void* reml_effect_payload;
+
+typedef enum {
+  REML_EFFECT_RESULT_RETURN,
+  REML_EFFECT_RESULT_PERFORM,
+  REML_EFFECT_RESULT_PANIC
+} reml_effect_result_kind;
+
+struct reml_effect_result {
+  reml_effect_result_kind kind;
+  reml_effect_payload payload;
+  reml_continuation* cont;
+};
+
+typedef reml_effect_result (*reml_effect_fn)(void* env, reml_continuation* k);
+typedef reml_effect_result (*reml_effect_handler_fn)(
+  reml_effect_tag tag,
+  reml_effect_payload payload,
+  reml_continuation* k,
+  void* handler_env
+);
+
+reml_effect_frame* reml_effect_push_handler(
+  reml_effect_handler_fn handler,
+  void* handler_env,
+  reml_effect_frame* parent
+);
+reml_effect_frame* reml_effect_pop_handler(reml_effect_frame* frame);
+
+reml_effect_result reml_effect_perform(
+  reml_effect_tag tag,
+  reml_effect_payload payload,
+  reml_continuation* k
+);
+reml_effect_result reml_effect_resume(
+  reml_continuation* k,
+  reml_effect_payload value
+);
+reml_effect_result reml_effect_trampoline(
+  reml_effect_fn entry,
+  void* env
+);
+```
+
+### 5.3.3 CPS 変換とステートマシン生成
+- **MIR ノード**: `MIR_EFFECT_PERFORM`, `MIR_EFFECT_HANDLE`, `MIR_EFFECT_RESUME` を追加し、ハンドラ境界のスコープを明示化する。
+- **状態表現**: CPS 関数は `{ pc, locals, handler_frame }` を持つ状態構造体とし、`pc` を `switch` で分岐。
+- **継続 (`continuation`)**: `pc` と `locals` のスナップショットを保持し、`resume` で再開。再入防止のため `consumed` フラグを必須化。
+- **境界の最小化**: `perform` が無い関数は CPS 化しない。CPS 関数の呼び出しは `trampoline` から開始する。
+
+### 5.3.4 診断と安全規約
+- **未捕捉効果**: `effects.unhandled`（未処理の `perform`）を追加。
+- **再入禁止**: `effects.resume.already_used`（2 回目の `resume`）、`effects.resume.out_of_scope`（ハンドラ終了後の `resume`）。
+- **Stage 不一致**: `effects.contract.stage_mismatch` へ接続し、`effect.stage.required/actual` をメタデータで保持。
+
+### 5.3.5 作業ステップ（詳細）
+- [ ] `compiler/c/include/reml/runtime/effects.h` と `compiler/c/src/runtime/effects.c` を追加し、最小 API を定義する。
+- [ ] `compiler/c/include/reml/mir/mir.h` に効果用ノードを追加し、CPS 変換パスを導入する。
+- [ ] `compiler/c/src/codegen/codegen.c` に CPS 生成と `trampoline` 呼び出しの統合を追加する。
+- [ ] `compiler/c/include/reml/sema/diagnostic.h` に効果関連診断 ID を追加する。
+- [ ] `Core.Effects` の最小実装として `State`/`Exception` を用意し、`perform`/`handle` を接続する。
+- [ ] `tests/unit` に one-shot/未処理効果/例外復帰のテストを追加する。
+
+### 5.3.6 進捗メモ（2026-01-03）
+- CPS 変換を採用し、スタックコピー方式を使わない方針を確定。
+- `perform`/`resume` の one-shot 保証と `Capability Registry` 連携を必須要件として整理。
+
 ## 5.4 文字列と Unicode
 - **ライブラリ**: `utf8proc` + `libgrapheme`。
 - **仕様参照**: `docs/spec/1-4-test-unicode-model.md`、`docs/spec/3-3-core-text-unicode.md`。
