@@ -25,6 +25,15 @@ bool reml_unicode_validate_utf8(const char *input, size_t length, reml_unicode_e
         utf8proc_iterate((const utf8proc_uint8_t *)input + index, (utf8proc_ssize_t)(length - index),
                          &codepoint);
     if (len < 0) {
+      if (length - index >= 3) {
+        unsigned char b0 = (unsigned char)input[index];
+        unsigned char b1 = (unsigned char)input[index + 1];
+        unsigned char b2 = (unsigned char)input[index + 2];
+        if (b0 == 0xED && (b1 & 0xE0) == 0xA0 && (b2 & 0xC0) == 0x80) {
+          reml_unicode_set_error(out_error, REML_UNICODE_INVALID_SCALAR, index, 3);
+          return false;
+        }
+      }
       size_t error_offset = last_valid > 0 ? last_valid - 1 : 0;
       reml_unicode_set_error(out_error, REML_UNICODE_INVALID_UTF8, error_offset, 1);
       return false;

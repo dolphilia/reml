@@ -21,7 +21,7 @@ reml_declare_dependency(yyjson https://github.com/ibireme/yyjson.git 0.9.0)
 reml_declare_dependency(tomlc99 https://github.com/cktan/tomlc99.git 26b9c1ea770dab2378e5041b695d24ccebe58a7a)
 reml_declare_dependency(libtommath https://github.com/libtom/libtommath.git v1.2.0)
 reml_declare_dependency(utf8proc https://github.com/JuliaStrings/utf8proc.git v2.8.0)
-reml_declare_dependency(libgrapheme https://github.com/tekknolagi/libgrapheme.git v2.0.1)
+reml_declare_dependency(libgrapheme https://github.com/tekknolagi/libgrapheme.git 2.0.1)
 reml_declare_dependency(cmocka https://git.cryptomilk.org/projects/cmocka.git cmocka-1.1.7)
 reml_declare_dependency(logc https://github.com/rxi/log.c.git f9ea34994bd58ed342d2245cd4110bb5c6790153)
 reml_declare_dependency(tinydir https://github.com/cxong/tinydir.git 1.2.6)
@@ -73,13 +73,16 @@ function(reml_make_core_dependencies)
   add_library(reml_utf8proc STATIC ${utf8proc_SOURCE_DIR}/utf8proc.c)
   target_include_directories(reml_utf8proc PUBLIC ${utf8proc_SOURCE_DIR})
 
-  file(GLOB REML_GRAPHEME_SOURCES
-    "${libgrapheme_SOURCE_DIR}/*.c"
-    "${libgrapheme_SOURCE_DIR}/src/*.c"
+  set(REML_GRAPHEME_LIB ${libgrapheme_SOURCE_DIR}/libgrapheme.a)
+  add_custom_command(
+    OUTPUT ${REML_GRAPHEME_LIB}
+    COMMAND ${CMAKE_MAKE_PROGRAM} libgrapheme.a
+    WORKING_DIRECTORY ${libgrapheme_SOURCE_DIR}
+    COMMENT "Building libgrapheme via upstream Makefile"
   )
-  add_library(reml_grapheme STATIC ${REML_GRAPHEME_SOURCES})
-  target_include_directories(reml_grapheme PUBLIC ${libgrapheme_SOURCE_DIR}
-                                               ${libgrapheme_SOURCE_DIR}/include)
+  add_custom_target(reml_grapheme_build DEPENDS ${REML_GRAPHEME_LIB})
+  add_library(reml_grapheme STATIC IMPORTED GLOBAL)
+  set_target_properties(reml_grapheme PROPERTIES IMPORTED_LOCATION ${REML_GRAPHEME_LIB})
 
   add_library(reml_tomlc99 STATIC ${tomlc99_SOURCE_DIR}/toml.c)
   target_include_directories(reml_tomlc99 PUBLIC ${tomlc99_SOURCE_DIR})
@@ -91,6 +94,7 @@ function(reml_make_core_dependencies)
   set(REML_TOMMATH_TARGET reml_tommath PARENT_SCOPE)
   set(REML_TOMMATH_INCLUDE_DIR ${libtommath_SOURCE_DIR} PARENT_SCOPE)
   set(REML_GRAPHEME_TARGET reml_grapheme PARENT_SCOPE)
+  set(REML_GRAPHEME_BUILD_TARGET reml_grapheme_build PARENT_SCOPE)
 
   set(REML_UTHASH_INCLUDE_DIR ${uthash_SOURCE_DIR}/src PARENT_SCOPE)
 endfunction()

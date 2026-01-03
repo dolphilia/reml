@@ -57,6 +57,10 @@ target_link_libraries(reml_core
     ${REML_TOMMATH_TARGET}
 )
 
+if(REML_GRAPHEME_BUILD_TARGET)
+  add_dependencies(reml_core ${REML_GRAPHEME_BUILD_TARGET})
+endif()
+
 if(REML_ENABLE_LLVM)
   find_package(LLVM REQUIRED CONFIG)
   message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
