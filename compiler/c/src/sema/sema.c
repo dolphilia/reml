@@ -298,6 +298,49 @@ static size_t reml_enum_variant_count(reml_type *enum_type) {
   return utarray_len(enum_type->data.enum_type.variants);
 }
 
+static int reml_string_view_cmp(const void *left, const void *right) {
+  const reml_record_field *a = (const reml_record_field *)left;
+  const reml_record_field *b = (const reml_record_field *)right;
+  size_t len = a->name.length < b->name.length ? a->name.length : b->name.length;
+  if (len > 0) {
+    int cmp = memcmp(a->name.data, b->name.data, len);
+    if (cmp != 0) {
+      return cmp;
+    }
+  }
+  if (a->name.length < b->name.length) {
+    return -1;
+  }
+  if (a->name.length > b->name.length) {
+    return 1;
+  }
+  return 0;
+}
+
+static void reml_record_fields_sort(UT_array *fields) {
+  if (!fields || utarray_len(fields) == 0) {
+    return;
+  }
+  reml_record_field *data = (reml_record_field *)utarray_front(fields);
+  size_t count = utarray_len(fields);
+  qsort(data, count, sizeof(reml_record_field), reml_string_view_cmp);
+}
+
+static reml_record_field *reml_record_field_find(reml_type *record, reml_string_view name) {
+  if (!record || record->kind != REML_TYPE_RECORD || !record->data.record.fields) {
+    return NULL;
+  }
+  for (reml_record_field *it =
+           (reml_record_field *)utarray_front(record->data.record.fields);
+       it != NULL;
+       it = (reml_record_field *)utarray_next(record->data.record.fields, it)) {
+    if (reml_string_view_equal(it->name, name)) {
+      return it;
+    }
+  }
+  return NULL;
+}
+
 static char *reml_strip_numeric_literal(reml_string_view view) {
   char *buffer = (char *)malloc(view.length + 1);
   if (!buffer) {
@@ -402,6 +445,74 @@ static void reml_interval_insert(UT_array *intervals, int64_t start, int64_t end
   }
 }
 
+static reml_string_view reml_string_view_from_cstr(const char *text) {
+  return reml_string_view_make(text, text ? strlen(text) : 0);
+}
+
+static reml_diagnostic_pattern *reml_pattern_extension_new(void) {
+  reml_diagnostic_pattern *pattern =
+      (reml_diagnostic_pattern *)calloc(1, sizeof(reml_diagnostic_pattern));
+  if (!pattern) {
+    return NULL;
+  }
+  pattern->missing_variants = NULL;
+  pattern->missing_ranges = NULL;
+  return pattern;
+}
+
+static void reml_pattern_extension_add_variant(reml_diagnostic_pattern *pattern,
+                                               reml_string_view name) {
+  if (!pattern) {
+    return;
+  }
+  if (!pattern->missing_variants) {
+    UT_icd variant_icd = {sizeof(reml_string_view), NULL, NULL, NULL};
+    utarray_new(pattern->missing_variants, &variant_icd);
+  }
+  utarray_push_back(pattern->missing_variants, &name);
+}
+
+static void reml_pattern_extension_add_range(reml_diagnostic_pattern *pattern, int64_t start,
+                                             int64_t end, bool inclusive) {
+  if (!pattern) {
+    return;
+  }
+  if (!pattern->missing_ranges) {
+    UT_icd range_icd = {sizeof(reml_diagnostic_range), NULL, NULL, NULL};
+    utarray_new(pattern->missing_ranges, &range_icd);
+  }
+  reml_diagnostic_range range = {.start = start, .end = end, .inclusive = inclusive};
+  utarray_push_back(pattern->missing_ranges, &range);
+}
+
+static void reml_pattern_extension_add_missing_ranges(reml_diagnostic_pattern *pattern,
+                                                      UT_array *intervals) {
+  if (!pattern) {
+    return;
+  }
+  if (!intervals || utarray_len(intervals) == 0) {
+    reml_pattern_extension_add_range(pattern, (int64_t)INT64_MIN, (int64_t)INT64_MAX, true);
+    return;
+  }
+  int64_t cursor = (int64_t)INT64_MIN;
+  bool covers_end = false;
+  for (reml_int_interval *it = (reml_int_interval *)utarray_front(intervals); it != NULL;
+       it = (reml_int_interval *)utarray_next(intervals, it)) {
+    if (cursor < it->start) {
+      int64_t gap_end = it->start - 1;
+      reml_pattern_extension_add_range(pattern, cursor, gap_end, true);
+    }
+    if (it->end == (int64_t)INT64_MAX) {
+      covers_end = true;
+      break;
+    }
+    cursor = it->end + 1;
+  }
+  if (!covers_end && cursor <= (int64_t)INT64_MAX) {
+    reml_pattern_extension_add_range(pattern, cursor, (int64_t)INT64_MAX, true);
+  }
+}
+
 static bool reml_type_is_bool(reml_type *type) {
   type = type ? reml_type_prune(type) : NULL;
   return type && type->kind == REML_TYPE_BOOL;
@@ -455,6 +566,14 @@ static void reml_type_collect_vars(reml_type *type, UT_array *vars) {
     for (reml_type **it = (reml_type **)utarray_front(type->data.tuple.items); it != NULL;
          it = (reml_type **)utarray_next(type->data.tuple.items, it)) {
       reml_type_collect_vars(*it, vars);
+    }
+  }
+  if (type->kind == REML_TYPE_RECORD && type->data.record.fields) {
+    for (reml_record_field *it =
+             (reml_record_field *)utarray_front(type->data.record.fields);
+         it != NULL;
+         it = (reml_record_field *)utarray_next(type->data.record.fields, it)) {
+      reml_type_collect_vars(it->type, vars);
     }
   }
   if (type->kind == REML_TYPE_FUNCTION) {
@@ -547,7 +666,7 @@ static void reml_report_diag(reml_sema *sema, reml_diagnostic_code code, reml_sp
   if (!sema) {
     return;
   }
-  reml_diagnostic diag = {.code = code, .span = span, .message = message};
+  reml_diagnostic diag = {.code = code, .span = span, .message = message, .pattern = NULL};
   reml_diagnostics_push(&sema->diagnostics, diag);
 }
 
@@ -905,8 +1024,53 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
     }
   }
   if (!exhaustive) {
-    reml_report_diag(sema, REML_DIAG_PATTERN_EXHAUSTIVENESS_MISSING, expr->span,
-                     "non-exhaustive match expression");
+    reml_diagnostic_pattern *pattern_ext = NULL;
+    reml_type *scrutinee_type = reml_type_prune(scrutinee);
+    if (reml_type_is_bool(scrutinee_type)) {
+      pattern_ext = reml_pattern_extension_new();
+      if (pattern_ext) {
+        if (!bool_seen[0]) {
+          reml_pattern_extension_add_variant(pattern_ext,
+                                             reml_string_view_from_cstr("false"));
+        }
+        if (!bool_seen[1]) {
+          reml_pattern_extension_add_variant(pattern_ext,
+                                             reml_string_view_from_cstr("true"));
+        }
+      }
+    } else if (scrutinee_type && scrutinee_type->kind == REML_TYPE_ENUM) {
+      pattern_ext = reml_pattern_extension_new();
+      if (pattern_ext && scrutinee_type->data.enum_type.variants) {
+        for (reml_enum_variant *it =
+                 (reml_enum_variant *)utarray_front(scrutinee_type->data.enum_type.variants);
+             it != NULL;
+             it = (reml_enum_variant *)utarray_next(scrutinee_type->data.enum_type.variants,
+                                                    it)) {
+          bool seen = false;
+          for (int32_t *it_tag = (int32_t *)utarray_front(seen_tags); it_tag != NULL;
+               it_tag = (int32_t *)utarray_next(seen_tags, it_tag)) {
+            if (*it_tag == it->tag) {
+              seen = true;
+              break;
+            }
+          }
+          if (!seen) {
+            reml_pattern_extension_add_variant(pattern_ext, it->name);
+          }
+        }
+      }
+    } else if (scrutinee_type && scrutinee_type->kind == REML_TYPE_INT) {
+      pattern_ext = reml_pattern_extension_new();
+      if (pattern_ext) {
+        reml_pattern_extension_add_missing_ranges(pattern_ext, seen_intervals);
+      }
+    }
+
+    reml_diagnostic diag = {.code = REML_DIAG_PATTERN_EXHAUSTIVENESS_MISSING,
+                            .span = expr->span,
+                            .message = "non-exhaustive match expression",
+                            .pattern = pattern_ext};
+    reml_diagnostics_push(&sema->diagnostics, diag);
   }
 
   if (seen_literals) {
@@ -959,6 +1123,60 @@ static reml_type *reml_infer_constructor(reml_sema *sema, reml_expr *expr,
   return enum_type;
 }
 
+static reml_type *reml_infer_tuple(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
+  if (!sema || !expr) {
+    return reml_type_error(&sema->types);
+  }
+  UT_icd item_icd = {sizeof(reml_type *), NULL, NULL, NULL};
+  UT_array *items = NULL;
+  utarray_new(items, &item_icd);
+
+  if (expr->data.tuple) {
+    for (reml_expr **it = (reml_expr **)utarray_front(expr->data.tuple); it != NULL;
+         it = (reml_expr **)utarray_next(expr->data.tuple, it)) {
+      reml_effect_set item_effect = REML_EFFECT_NONE;
+      reml_type *item_type = reml_infer_expr(sema, *it, &item_effect);
+      if (effect) {
+        *effect = reml_effect_union(*effect, item_effect);
+      }
+      utarray_push_back(items, &item_type);
+    }
+  }
+
+  reml_type *tuple_type = reml_type_make_tuple(&sema->types, items);
+  return tuple_type ? tuple_type : reml_type_error(&sema->types);
+}
+
+static reml_type *reml_infer_record(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
+  if (!sema || !expr) {
+    return reml_type_error(&sema->types);
+  }
+  UT_icd field_icd = {sizeof(reml_record_field), NULL, NULL, NULL};
+  UT_array *fields = NULL;
+  utarray_new(fields, &field_icd);
+
+  if (expr->data.record) {
+    for (reml_record_expr_field *it =
+             (reml_record_expr_field *)utarray_front(expr->data.record);
+         it != NULL;
+         it = (reml_record_expr_field *)utarray_next(expr->data.record, it)) {
+      reml_effect_set field_effect = REML_EFFECT_NONE;
+      reml_type *field_type = reml_infer_expr(sema, it->value, &field_effect);
+      if (effect) {
+        *effect = reml_effect_union(*effect, field_effect);
+      }
+      reml_record_field field;
+      field.name = it->name;
+      field.type = field_type;
+      utarray_push_back(fields, &field);
+    }
+  }
+
+  reml_record_fields_sort(fields);
+  reml_type *record_type = reml_type_make_record(&sema->types, fields);
+  return record_type ? record_type : reml_type_error(&sema->types);
+}
+
 static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
   if (!expr) {
     return reml_type_error(&sema->types);
@@ -988,6 +1206,12 @@ static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_
       break;
     case REML_EXPR_CONSTRUCTOR:
       result = reml_infer_constructor(sema, expr, &local_effect);
+      break;
+    case REML_EXPR_TUPLE:
+      result = reml_infer_tuple(sema, expr, &local_effect);
+      break;
+    case REML_EXPR_RECORD:
+      result = reml_infer_record(sema, expr, &local_effect);
       break;
     case REML_EXPR_BLOCK:
       result = reml_infer_block(sema, expr, &local_effect);
@@ -1179,11 +1403,104 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
       return;
     }
     case REML_PATTERN_TUPLE:
+      {
+        size_t item_count = pattern->data.items ? utarray_len(pattern->data.items) : 0;
+        reml_type *target = reml_type_prune(expected);
+        if (target && target->kind == REML_TYPE_VAR) {
+          UT_icd item_icd = {sizeof(reml_type *), NULL, NULL, NULL};
+          UT_array *items = NULL;
+          utarray_new(items, &item_icd);
+          for (size_t i = 0; i < item_count; ++i) {
+            reml_type *item_type = reml_type_make_var(&sema->types);
+            utarray_push_back(items, &item_type);
+          }
+          reml_type *tuple_type = reml_type_make_tuple(&sema->types, items);
+          reml_expect_type(sema, target, tuple_type, pattern->span);
+          target = reml_type_prune(target);
+        }
+        if (!target || target->kind != REML_TYPE_TUPLE) {
+          reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, pattern->span,
+                           "tuple pattern expects tuple type");
+          pattern->type = reml_type_error(&sema->types);
+          return;
+        }
+        size_t target_count = target->data.tuple.items ? utarray_len(target->data.tuple.items) : 0;
+        if (target_count != item_count) {
+          reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, pattern->span,
+                           "tuple pattern arity mismatch");
+          pattern->type = reml_type_error(&sema->types);
+          return;
+        }
+        if (pattern->data.items && target->data.tuple.items) {
+          size_t index = 0;
+          for (reml_pattern **it = (reml_pattern **)utarray_front(pattern->data.items);
+               it != NULL;
+               it = (reml_pattern **)utarray_next(pattern->data.items, it)) {
+            reml_type **item_type =
+                (reml_type **)utarray_eltptr(target->data.tuple.items, index);
+            reml_check_pattern(sema, *it, item_type ? *item_type : expected, effect, allow_define);
+            index++;
+          }
+        }
+        pattern->type = expected;
+        return;
+      }
     case REML_PATTERN_RECORD:
-      reml_report_diag(sema, REML_DIAG_UNSUPPORTED_FEATURE, pattern->span,
-                       "pattern kind not supported in phase 3");
-      pattern->type = reml_type_error(&sema->types);
-      return;
+      {
+        size_t field_count = pattern->data.fields ? utarray_len(pattern->data.fields) : 0;
+        reml_type *target = reml_type_prune(expected);
+        if (target && target->kind == REML_TYPE_VAR) {
+          UT_icd field_icd = {sizeof(reml_record_field), NULL, NULL, NULL};
+          UT_array *fields = NULL;
+          utarray_new(fields, &field_icd);
+          if (pattern->data.fields) {
+            for (reml_pattern_field *it =
+                     (reml_pattern_field *)utarray_front(pattern->data.fields);
+                 it != NULL;
+                 it = (reml_pattern_field *)utarray_next(pattern->data.fields, it)) {
+              reml_record_field field;
+              field.name = it->name;
+              field.type = reml_type_make_var(&sema->types);
+              utarray_push_back(fields, &field);
+            }
+          }
+          reml_record_fields_sort(fields);
+          reml_type *record_type = reml_type_make_record(&sema->types, fields);
+          reml_expect_type(sema, target, record_type, pattern->span);
+          target = reml_type_prune(target);
+        }
+        if (!target || target->kind != REML_TYPE_RECORD) {
+          reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, pattern->span,
+                           "record pattern expects record type");
+          pattern->type = reml_type_error(&sema->types);
+          return;
+        }
+        size_t target_count =
+            target->data.record.fields ? utarray_len(target->data.record.fields) : 0;
+        if (target_count != field_count) {
+          reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, pattern->span,
+                           "record pattern field mismatch");
+          pattern->type = reml_type_error(&sema->types);
+          return;
+        }
+        if (pattern->data.fields) {
+          for (reml_pattern_field *it =
+                   (reml_pattern_field *)utarray_front(pattern->data.fields);
+               it != NULL;
+               it = (reml_pattern_field *)utarray_next(pattern->data.fields, it)) {
+            reml_record_field *field = reml_record_field_find(target, it->name);
+            if (!field) {
+              reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, pattern->span,
+                               "record pattern field mismatch");
+              pattern->type = reml_type_error(&sema->types);
+              return;
+            }
+            reml_check_pattern(sema, it->pattern, field->type, effect, allow_define);
+          }
+        }
+        pattern->type = expected;
+        return;
+      }
     default:
       return;
   }

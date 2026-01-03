@@ -23,6 +23,7 @@ typedef enum {
   REML_TYPE_UNIT,
   REML_TYPE_ENUM,
   REML_TYPE_TUPLE,
+  REML_TYPE_RECORD,
   REML_TYPE_FUNCTION,
   REML_TYPE_VAR
 } reml_type_kind;
@@ -35,6 +36,11 @@ typedef struct {
   int32_t tag;
 } reml_enum_variant;
 
+typedef struct {
+  reml_string_view name;
+  reml_type *type;
+} reml_record_field;
+
 struct reml_type {
   reml_type_kind kind;
   union {
@@ -44,6 +50,9 @@ struct reml_type {
     struct {
       UT_array *items;
     } tuple;
+    struct {
+      UT_array *fields;
+    } record;
     struct {
       UT_array *params;
       reml_type *result;
@@ -85,6 +94,8 @@ reml_type *reml_type_char(reml_type_ctx *ctx);
 reml_type *reml_type_string(reml_type_ctx *ctx);
 reml_type *reml_type_unit(reml_type_ctx *ctx);
 reml_type *reml_type_make_enum(reml_type_ctx *ctx);
+reml_type *reml_type_make_tuple(reml_type_ctx *ctx, UT_array *items);
+reml_type *reml_type_make_record(reml_type_ctx *ctx, UT_array *fields);
 
 #ifdef __cplusplus
 }

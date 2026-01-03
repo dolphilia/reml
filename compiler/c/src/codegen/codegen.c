@@ -16,7 +16,14 @@ typedef struct {
 } reml_codegen_binding;
 
 typedef struct {
+  reml_symbol_id id;
+  LLVMValueRef alloca;
+  reml_type *type;
+} reml_codegen_drop;
+
+typedef struct {
   UT_array *bindings;
+  UT_array *drops;
 } reml_codegen_scope;
 
 typedef struct {
@@ -46,15 +53,21 @@ static bool reml_type_is_float(reml_type *type);
 static bool reml_type_is_bool(reml_type *type);
 static bool reml_type_is_unit(reml_type *type);
 static bool reml_type_is_enum(reml_type *type);
+static bool reml_type_is_tuple(reml_type *type);
+static bool reml_type_is_record(reml_type *type);
 static bool reml_string_view_equal(reml_string_view left, reml_string_view right);
 static reml_enum_variant *reml_codegen_enum_variant(reml_type *type, reml_string_view name);
+static bool reml_record_field_index(reml_type *type, reml_string_view name, size_t *out_index,
+                                    reml_type **out_type);
+static LLVMTypeRef reml_codegen_tuple_struct_type(reml_codegen *codegen, reml_type *type);
+static LLVMTypeRef reml_codegen_record_struct_type(reml_codegen *codegen, reml_type *type);
 
 static void reml_codegen_report(reml_codegen *codegen, reml_diagnostic_code code, reml_span span,
                                 const char *message) {
   if (!codegen) {
     return;
   }
-  reml_diagnostic diag = {.code = code, .span = span, .message = message};
+  reml_diagnostic diag = {.code = code, .span = span, .message = message, .pattern = NULL};
   reml_diagnostics_push(&codegen->diagnostics, diag);
 }
 
@@ -65,6 +78,8 @@ static reml_codegen_scope *reml_codegen_scope_new(void) {
   }
   UT_icd binding_icd = {sizeof(reml_codegen_binding), NULL, NULL, NULL};
   utarray_new(scope->bindings, &binding_icd);
+  UT_icd drop_icd = {sizeof(reml_codegen_drop), NULL, NULL, NULL};
+  utarray_new(scope->drops, &drop_icd);
   return scope;
 }
 
@@ -74,6 +89,9 @@ static void reml_codegen_scope_free(reml_codegen_scope *scope) {
   }
   if (scope->bindings) {
     utarray_free(scope->bindings);
+  }
+  if (scope->drops) {
+    utarray_free(scope->drops);
   }
   free(scope);
 }
@@ -157,6 +175,19 @@ static reml_codegen_binding *reml_codegen_scope_lookup(reml_codegen_scope_stack 
   return NULL;
 }
 
+static void reml_codegen_scope_register_drop(reml_codegen_scope_stack *stack, reml_symbol_id id,
+                                             LLVMValueRef alloca, reml_type *type) {
+  if (!stack || id == REML_SYMBOL_ID_INVALID || !alloca || !type) {
+    return;
+  }
+  reml_codegen_scope *scope = reml_codegen_scope_stack_current(stack);
+  if (!scope || !scope->drops) {
+    return;
+  }
+  reml_codegen_drop drop = {.id = id, .alloca = alloca, .type = type};
+  utarray_push_back(scope->drops, &drop);
+}
+
 static char *reml_string_view_to_cstr(reml_string_view view) {
   char *buffer = (char *)malloc(view.length + 1);
   if (!buffer) {
@@ -200,6 +231,9 @@ static LLVMTypeRef reml_codegen_lower_type(reml_codegen *codegen, reml_type *typ
       return LLVMVoidTypeInContext(codegen->context);
     case REML_TYPE_ENUM:
       return LLVMPointerType(codegen->enum_repr_type, 0);
+    case REML_TYPE_TUPLE:
+    case REML_TYPE_RECORD:
+      return LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0);
     default:
       return NULL;
   }
@@ -231,6 +265,57 @@ static LLVMValueRef reml_codegen_get_runtime_fn(reml_codegen *codegen, const cha
 
 static LLVMTypeRef reml_codegen_bigint_type(reml_codegen *codegen) {
   return LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0);
+}
+
+static reml_symbol_id reml_codegen_expr_skip_id(const reml_expr *expr) {
+  if (!expr || expr->kind != REML_EXPR_IDENT) {
+    return REML_SYMBOL_ID_INVALID;
+  }
+  return expr->symbol_id;
+}
+
+static void reml_codegen_emit_enum_free(reml_codegen *codegen, LLVMValueRef value) {
+  if (!codegen || !value) {
+    return;
+  }
+  LLVMTypeRef enum_ptr = LLVMPointerType(codegen->enum_repr_type, 0);
+  LLVMTypeRef params[1] = {enum_ptr};
+  LLVMTypeRef fn_type = LLVMFunctionType(LLVMVoidTypeInContext(codegen->context), params, 1, 0);
+  LLVMValueRef fn = reml_codegen_get_runtime_fn(codegen, "reml_enum_free", fn_type);
+  LLVMValueRef args[1] = {value};
+  LLVMBuildCall2(codegen->builder, fn_type, fn, args, 1, "");
+}
+
+static void reml_codegen_scope_emit_drops(reml_codegen *codegen, reml_codegen_scope *scope,
+                                          reml_symbol_id skip_id) {
+  if (!codegen || !scope || !scope->drops) {
+    return;
+  }
+  for (reml_codegen_drop *it = (reml_codegen_drop *)utarray_front(scope->drops); it != NULL;
+       it = (reml_codegen_drop *)utarray_next(scope->drops, it)) {
+    if (it->id == skip_id) {
+      continue;
+    }
+    if (!reml_type_is_enum(it->type)) {
+      continue;
+    }
+    LLVMValueRef enum_value =
+        LLVMBuildLoad2(codegen->builder, LLVMPointerType(codegen->enum_repr_type, 0),
+                       it->alloca, "enum.load");
+    reml_codegen_emit_enum_free(codegen, enum_value);
+  }
+}
+
+static void reml_codegen_scope_emit_all_drops(reml_codegen *codegen,
+                                              reml_codegen_scope_stack *stack,
+                                              reml_symbol_id skip_id) {
+  if (!codegen || !stack || !stack->scopes) {
+    return;
+  }
+  for (reml_codegen_scope **it = (reml_codegen_scope **)utarray_back(stack->scopes); it != NULL;
+       it = (reml_codegen_scope **)utarray_prev(stack->scopes, it)) {
+    reml_codegen_scope_emit_drops(codegen, *it, skip_id);
+  }
 }
 
 static LLVMValueRef reml_codegen_call_bigint_binary(reml_codegen *codegen, const char *name,
@@ -449,6 +534,8 @@ static bool reml_codegen_emit_statement(reml_codegen *codegen, reml_codegen_scop
                      LLVMConstInt(LLVMInt64TypeInContext(codegen->context), 0, 1));
         return true;
       }
+      reml_codegen_scope_emit_all_drops(codegen, scopes,
+                                        reml_codegen_expr_skip_id(stmt->data.expr));
       reml_type *result_type = value.type ? reml_type_prune(value.type) : NULL;
       LLVMValueRef result = NULL;
       if (result_type && result_type->kind == REML_TYPE_INT) {
@@ -507,6 +594,9 @@ static bool reml_codegen_emit_statement(reml_codegen *codegen, reml_codegen_scop
       }
       LLVMBuildStore(codegen->builder, value.value, alloca);
       reml_codegen_scope_define(scopes, pattern->symbol_id, alloca, llvm_type);
+      if (reml_type_is_enum(value.type)) {
+        reml_codegen_scope_register_drop(scopes, pattern->symbol_id, alloca, value.type);
+      }
       return false;
     }
     default:
@@ -530,10 +620,16 @@ static reml_codegen_value reml_codegen_emit_block(reml_codegen *codegen,
 
   if (block && block->tail) {
     reml_codegen_value value = reml_codegen_emit_expr(codegen, scopes, block->tail);
+    reml_codegen_scope_emit_drops(codegen, reml_codegen_scope_stack_current(scopes),
+                                  reml_codegen_expr_skip_id(block->tail));
+    reml_codegen_scope_emit_drops(codegen, reml_codegen_scope_stack_current(scopes),
+                                  reml_codegen_expr_skip_id(arm->body));
     reml_codegen_scope_stack_pop(scopes);
     return value;
   }
 
+  reml_codegen_scope_emit_drops(codegen, reml_codegen_scope_stack_current(scopes),
+                                REML_SYMBOL_ID_INVALID);
   reml_codegen_scope_stack_pop(scopes);
   return reml_codegen_make_value(NULL, type, false);
 }
@@ -693,6 +789,108 @@ static LLVMValueRef reml_codegen_emit_pattern_check(reml_codegen *codegen, reml_
         LLVMBuildICmp(codegen->builder, end_pred, scrutinee, end_const, "range.le");
     return LLVMBuildAnd(codegen->builder, ge, le, "range.and");
   }
+  if (pattern->kind == REML_PATTERN_TUPLE) {
+    if (!reml_type_is_tuple(type)) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "tuple pattern expects tuple scrutinee");
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    reml_type *tuple_type = reml_type_prune(type);
+    size_t field_count =
+        pattern->data.items ? utarray_len(pattern->data.items) : 0;
+    size_t tuple_count =
+        tuple_type->data.tuple.items ? utarray_len(tuple_type->data.tuple.items) : 0;
+    if (field_count != tuple_count) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "tuple pattern arity mismatch");
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    LLVMTypeRef tuple_struct = reml_codegen_tuple_struct_type(codegen, tuple_type);
+    if (!tuple_struct) {
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    LLVMValueRef tuple_typed =
+        LLVMBuildBitCast(codegen->builder, scrutinee, LLVMPointerType(tuple_struct, 0),
+                         "tuple.cast");
+    LLVMValueRef all_match = LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 1, 0);
+    size_t index = 0;
+    for (reml_pattern **it = (reml_pattern **)utarray_front(pattern->data.items); it != NULL;
+         it = (reml_pattern **)utarray_next(pattern->data.items, it)) {
+      reml_type **field_type = (reml_type **)utarray_eltptr(tuple_type->data.tuple.items, index);
+      LLVMTypeRef field_llvm =
+          reml_codegen_lower_type(codegen, field_type ? *field_type : NULL);
+      if (!field_llvm) {
+        field_llvm = LLVMInt64TypeInContext(codegen->context);
+      }
+      LLVMValueRef field_ptr =
+          LLVMBuildStructGEP2(codegen->builder, tuple_struct, tuple_typed, (unsigned)index,
+                              "tuple.field.ptr");
+      LLVMValueRef field_value =
+          LLVMBuildLoad2(codegen->builder, field_llvm, field_ptr, "tuple.field");
+      LLVMValueRef field_match =
+          reml_codegen_emit_pattern_check(codegen, *it, field_value,
+                                          field_type ? *field_type : NULL);
+      if (!field_match) {
+        field_match = LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+      }
+      all_match = LLVMBuildAnd(codegen->builder, all_match, field_match, "match.and");
+      index++;
+    }
+    return all_match;
+  }
+  if (pattern->kind == REML_PATTERN_RECORD) {
+    if (!reml_type_is_record(type)) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "record pattern expects record scrutinee");
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    reml_type *record_type = reml_type_prune(type);
+    size_t field_count =
+        pattern->data.fields ? utarray_len(pattern->data.fields) : 0;
+    size_t record_count =
+        record_type->data.record.fields ? utarray_len(record_type->data.record.fields) : 0;
+    if (field_count != record_count) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "record pattern field mismatch");
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    LLVMTypeRef record_struct = reml_codegen_record_struct_type(codegen, record_type);
+    if (!record_struct) {
+      return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+    }
+    LLVMValueRef record_typed =
+        LLVMBuildBitCast(codegen->builder, scrutinee, LLVMPointerType(record_struct, 0),
+                         "record.cast");
+    LLVMValueRef all_match = LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 1, 0);
+    for (reml_pattern_field *it =
+             (reml_pattern_field *)utarray_front(pattern->data.fields);
+         it != NULL;
+         it = (reml_pattern_field *)utarray_next(pattern->data.fields, it)) {
+      size_t field_index = 0;
+      reml_type *field_type = NULL;
+      if (!reml_record_field_index(record_type, it->name, &field_index, &field_type)) {
+        reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, pattern->span,
+                            "record field missing in type");
+        return LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+      }
+      LLVMTypeRef field_llvm = reml_codegen_lower_type(codegen, field_type);
+      if (!field_llvm) {
+        field_llvm = LLVMInt64TypeInContext(codegen->context);
+      }
+      LLVMValueRef field_ptr =
+          LLVMBuildStructGEP2(codegen->builder, record_struct, record_typed,
+                              (unsigned)field_index, "record.field.ptr");
+      LLVMValueRef field_value =
+          LLVMBuildLoad2(codegen->builder, field_llvm, field_ptr, "record.field");
+      LLVMValueRef field_match =
+          reml_codegen_emit_pattern_check(codegen, it->pattern, field_value, field_type);
+      if (!field_match) {
+        field_match = LLVMConstInt(LLVMInt1TypeInContext(codegen->context), 0, 0);
+      }
+      all_match = LLVMBuildAnd(codegen->builder, all_match, field_match, "match.and");
+    }
+    return all_match;
+  }
   if (pattern->kind == REML_PATTERN_CONSTRUCTOR) {
     if (!reml_type_is_enum(type)) {
       reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
@@ -804,9 +1002,94 @@ static void reml_codegen_bind_pattern(reml_codegen *codegen, reml_codegen_scope_
     reml_codegen_bind_pattern_value(codegen, scopes, pattern, scrutinee, type);
     return;
   }
-  if (pattern->kind == REML_PATTERN_TUPLE || pattern->kind == REML_PATTERN_RECORD) {
-    reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
-                        "complex patterns are not supported in codegen");
+  if (pattern->kind == REML_PATTERN_TUPLE) {
+    if (!reml_type_is_tuple(type)) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "tuple binding expects tuple type");
+      return;
+    }
+    reml_type *tuple_type = reml_type_prune(type);
+    size_t field_count =
+        pattern->data.items ? utarray_len(pattern->data.items) : 0;
+    size_t tuple_count =
+        tuple_type->data.tuple.items ? utarray_len(tuple_type->data.tuple.items) : 0;
+    if (field_count != tuple_count) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "tuple binding arity mismatch");
+      return;
+    }
+    LLVMTypeRef tuple_struct = reml_codegen_tuple_struct_type(codegen, tuple_type);
+    if (!tuple_struct) {
+      return;
+    }
+    LLVMValueRef tuple_typed =
+        LLVMBuildBitCast(codegen->builder, scrutinee, LLVMPointerType(tuple_struct, 0),
+                         "tuple.bind.cast");
+    size_t index = 0;
+    for (reml_pattern **it = (reml_pattern **)utarray_front(pattern->data.items); it != NULL;
+         it = (reml_pattern **)utarray_next(pattern->data.items, it)) {
+      reml_type **field_type = (reml_type **)utarray_eltptr(tuple_type->data.tuple.items, index);
+      LLVMTypeRef field_llvm =
+          reml_codegen_lower_type(codegen, field_type ? *field_type : NULL);
+      if (!field_llvm) {
+        field_llvm = LLVMInt64TypeInContext(codegen->context);
+      }
+      LLVMValueRef field_ptr =
+          LLVMBuildStructGEP2(codegen->builder, tuple_struct, tuple_typed, (unsigned)index,
+                              "tuple.bind.ptr");
+      LLVMValueRef field_value =
+          LLVMBuildLoad2(codegen->builder, field_llvm, field_ptr, "tuple.bind");
+      reml_codegen_bind_pattern_value(codegen, scopes, *it, field_value,
+                                      field_type ? *field_type : NULL);
+      index++;
+    }
+    return;
+  }
+  if (pattern->kind == REML_PATTERN_RECORD) {
+    if (!reml_type_is_record(type)) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "record binding expects record type");
+      return;
+    }
+    reml_type *record_type = reml_type_prune(type);
+    size_t field_count =
+        pattern->data.fields ? utarray_len(pattern->data.fields) : 0;
+    size_t record_count =
+        record_type->data.record.fields ? utarray_len(record_type->data.record.fields) : 0;
+    if (field_count != record_count) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
+                          "record binding field mismatch");
+      return;
+    }
+    LLVMTypeRef record_struct = reml_codegen_record_struct_type(codegen, record_type);
+    if (!record_struct) {
+      return;
+    }
+    LLVMValueRef record_typed =
+        LLVMBuildBitCast(codegen->builder, scrutinee, LLVMPointerType(record_struct, 0),
+                         "record.bind.cast");
+    for (reml_pattern_field *it =
+             (reml_pattern_field *)utarray_front(pattern->data.fields);
+         it != NULL;
+         it = (reml_pattern_field *)utarray_next(pattern->data.fields, it)) {
+      size_t field_index = 0;
+      reml_type *field_type = NULL;
+      if (!reml_record_field_index(record_type, it->name, &field_index, &field_type)) {
+        reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, pattern->span,
+                            "record field missing in type");
+        return;
+      }
+      LLVMTypeRef field_llvm = reml_codegen_lower_type(codegen, field_type);
+      if (!field_llvm) {
+        field_llvm = LLVMInt64TypeInContext(codegen->context);
+      }
+      LLVMValueRef field_ptr =
+          LLVMBuildStructGEP2(codegen->builder, record_struct, record_typed,
+                              (unsigned)field_index, "record.bind.ptr");
+      LLVMValueRef field_value =
+          LLVMBuildLoad2(codegen->builder, field_llvm, field_ptr, "record.bind");
+      reml_codegen_bind_pattern_value(codegen, scopes, it->pattern, field_value, field_type);
+    }
     return;
   }
   if (pattern->kind == REML_PATTERN_CONSTRUCTOR) {
@@ -917,8 +1200,7 @@ static void reml_codegen_bind_pattern_value(reml_codegen *codegen, reml_codegen_
       return;
     case REML_PATTERN_TUPLE:
     case REML_PATTERN_RECORD:
-      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, pattern->span,
-                          "complex patterns are not supported in codegen");
+      reml_codegen_bind_pattern(codegen, scopes, pattern, value, type);
       return;
     default:
       return;
@@ -955,6 +1237,16 @@ static bool reml_type_is_enum(reml_type *type) {
   return type && type->kind == REML_TYPE_ENUM;
 }
 
+static bool reml_type_is_tuple(reml_type *type) {
+  type = type ? reml_type_prune(type) : NULL;
+  return type && type->kind == REML_TYPE_TUPLE;
+}
+
+static bool reml_type_is_record(reml_type *type) {
+  type = type ? reml_type_prune(type) : NULL;
+  return type && type->kind == REML_TYPE_RECORD;
+}
+
 static bool reml_string_view_equal(reml_string_view left, reml_string_view right) {
   if (left.length != right.length) {
     return false;
@@ -981,6 +1273,108 @@ static reml_enum_variant *reml_codegen_enum_variant(reml_type *type, reml_string
   return NULL;
 }
 
+static reml_record_expr_field *reml_record_expr_field_find(UT_array *fields,
+                                                           reml_string_view name) {
+  if (!fields) {
+    return NULL;
+  }
+  for (reml_record_expr_field *it =
+           (reml_record_expr_field *)utarray_front(fields);
+       it != NULL;
+       it = (reml_record_expr_field *)utarray_next(fields, it)) {
+    if (reml_string_view_equal(it->name, name)) {
+      return it;
+    }
+  }
+  return NULL;
+}
+
+static bool reml_record_field_index(reml_type *type, reml_string_view name, size_t *out_index,
+                                    reml_type **out_type) {
+  type = type ? reml_type_prune(type) : NULL;
+  if (!type || type->kind != REML_TYPE_RECORD || !type->data.record.fields) {
+    return false;
+  }
+  size_t index = 0;
+  for (reml_record_field *it =
+           (reml_record_field *)utarray_front(type->data.record.fields);
+       it != NULL;
+       it = (reml_record_field *)utarray_next(type->data.record.fields, it)) {
+    if (reml_string_view_equal(it->name, name)) {
+      if (out_index) {
+        *out_index = index;
+      }
+      if (out_type) {
+        *out_type = it->type;
+      }
+      return true;
+    }
+    index++;
+  }
+  return false;
+}
+
+static LLVMTypeRef reml_codegen_tuple_struct_type(reml_codegen *codegen, reml_type *type) {
+  if (!codegen || !type) {
+    return NULL;
+  }
+  type = reml_type_prune(type);
+  if (!type || type->kind != REML_TYPE_TUPLE) {
+    return NULL;
+  }
+  size_t count = type->data.tuple.items ? utarray_len(type->data.tuple.items) : 0;
+  LLVMTypeRef *field_types = NULL;
+  if (count > 0) {
+    field_types = (LLVMTypeRef *)calloc(count, sizeof(LLVMTypeRef));
+    if (!field_types) {
+      return NULL;
+    }
+    for (size_t i = 0; i < count; ++i) {
+      reml_type **item_type = (reml_type **)utarray_eltptr(type->data.tuple.items, i);
+      field_types[i] = reml_codegen_lower_type(codegen, item_type ? *item_type : NULL);
+      if (!field_types[i]) {
+        field_types[i] = LLVMInt64TypeInContext(codegen->context);
+      }
+    }
+  }
+  LLVMTypeRef tuple_struct =
+      LLVMStructTypeInContext(codegen->context, field_types, (unsigned)count, 0);
+  free(field_types);
+  return tuple_struct;
+}
+
+static LLVMTypeRef reml_codegen_record_struct_type(reml_codegen *codegen, reml_type *type) {
+  if (!codegen || !type) {
+    return NULL;
+  }
+  type = reml_type_prune(type);
+  if (!type || type->kind != REML_TYPE_RECORD) {
+    return NULL;
+  }
+  size_t count = type->data.record.fields ? utarray_len(type->data.record.fields) : 0;
+  LLVMTypeRef *field_types = NULL;
+  if (count > 0) {
+    field_types = (LLVMTypeRef *)calloc(count, sizeof(LLVMTypeRef));
+    if (!field_types) {
+      return NULL;
+    }
+    size_t index = 0;
+    for (reml_record_field *it =
+             (reml_record_field *)utarray_front(type->data.record.fields);
+         it != NULL;
+         it = (reml_record_field *)utarray_next(type->data.record.fields, it)) {
+      field_types[index] = reml_codegen_lower_type(codegen, it->type);
+      if (!field_types[index]) {
+        field_types[index] = LLVMInt64TypeInContext(codegen->context);
+      }
+      index++;
+    }
+  }
+  LLVMTypeRef record_struct =
+      LLVMStructTypeInContext(codegen->context, field_types, (unsigned)count, 0);
+  free(field_types);
+  return record_struct;
+}
 static reml_codegen_value reml_codegen_emit_unary(reml_codegen *codegen,
                                                   reml_codegen_scope_stack *scopes,
                                                   reml_expr *expr) {
@@ -1122,6 +1516,111 @@ static reml_codegen_value reml_codegen_emit_constructor(reml_codegen *codegen,
 
   free(arg_values);
   return reml_codegen_make_value(enum_value, expr->type, false);
+}
+
+static reml_codegen_value reml_codegen_emit_tuple(reml_codegen *codegen,
+                                                  reml_codegen_scope_stack *scopes,
+                                                  reml_expr *expr) {
+  reml_type *tuple_type = reml_type_prune(expr->type);
+  if (!tuple_type || tuple_type->kind != REML_TYPE_TUPLE) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                        "tuple expression expects tuple type");
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+  LLVMTypeRef tuple_struct = reml_codegen_tuple_struct_type(codegen, tuple_type);
+  if (!tuple_struct) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                        "failed to lower tuple type");
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+  LLVMValueRef alloca =
+      reml_codegen_create_entry_alloca(codegen, tuple_struct, "tuple.tmp");
+  if (!alloca) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                        "failed to allocate tuple");
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+  size_t index = 0;
+  if (expr->data.tuple) {
+    for (reml_expr **it = (reml_expr **)utarray_front(expr->data.tuple); it != NULL;
+         it = (reml_expr **)utarray_next(expr->data.tuple, it)) {
+      reml_codegen_value value = reml_codegen_emit_expr(codegen, scopes, *it);
+      if (value.terminated) {
+        return value;
+      }
+      reml_type **field_type =
+          (reml_type **)utarray_eltptr(tuple_type->data.tuple.items, index);
+      LLVMTypeRef field_llvm =
+          reml_codegen_lower_type(codegen, field_type ? *field_type : NULL);
+      if (!field_llvm) {
+        field_llvm = LLVMInt64TypeInContext(codegen->context);
+      }
+      LLVMValueRef field_ptr =
+          LLVMBuildStructGEP2(codegen->builder, tuple_struct, alloca, (unsigned)index,
+                              "tuple.field.ptr");
+      LLVMBuildStore(codegen->builder, value.value, field_ptr);
+      index++;
+    }
+  }
+  LLVMValueRef cast =
+      LLVMBuildBitCast(codegen->builder, alloca,
+                       LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0),
+                       "tuple.cast");
+  return reml_codegen_make_value(cast, expr->type, false);
+}
+
+static reml_codegen_value reml_codegen_emit_record(reml_codegen *codegen,
+                                                   reml_codegen_scope_stack *scopes,
+                                                   reml_expr *expr) {
+  reml_type *record_type = reml_type_prune(expr->type);
+  if (!record_type || record_type->kind != REML_TYPE_RECORD) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                        "record expression expects record type");
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+  LLVMTypeRef record_struct = reml_codegen_record_struct_type(codegen, record_type);
+  if (!record_struct) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                        "failed to lower record type");
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+  LLVMValueRef alloca =
+      reml_codegen_create_entry_alloca(codegen, record_struct, "record.tmp");
+  if (!alloca) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                        "failed to allocate record");
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+  size_t index = 0;
+  for (reml_record_field *it =
+           (reml_record_field *)utarray_front(record_type->data.record.fields);
+       it != NULL;
+       it = (reml_record_field *)utarray_next(record_type->data.record.fields, it)) {
+    reml_record_expr_field *expr_field = reml_record_expr_field_find(expr->data.record, it->name);
+    if (!expr_field) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                          "record field missing in expression");
+      return reml_codegen_make_value(NULL, expr->type, false);
+    }
+    reml_codegen_value value = reml_codegen_emit_expr(codegen, scopes, expr_field->value);
+    if (value.terminated) {
+      return value;
+    }
+    LLVMTypeRef field_llvm = reml_codegen_lower_type(codegen, it->type);
+    if (!field_llvm) {
+      field_llvm = LLVMInt64TypeInContext(codegen->context);
+    }
+    LLVMValueRef field_ptr =
+        LLVMBuildStructGEP2(codegen->builder, record_struct, alloca, (unsigned)index,
+                            "record.field.ptr");
+    LLVMBuildStore(codegen->builder, value.value, field_ptr);
+    index++;
+  }
+  LLVMValueRef cast =
+      LLVMBuildBitCast(codegen->builder, alloca,
+                       LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0),
+                       "record.cast");
+  return reml_codegen_make_value(cast, expr->type, false);
 }
 
 static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
@@ -1520,6 +2019,8 @@ static LLVMBasicBlockRef reml_codegen_emit_match_chain(
         reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, arm->guard->span,
                             "missing match guard value");
         LLVMBuildBr(codegen->builder, next_bb);
+        reml_codegen_scope_emit_drops(codegen, reml_codegen_scope_stack_current(scopes),
+                                      reml_codegen_expr_skip_id(arm->body));
         reml_codegen_scope_stack_pop(scopes);
         LLVMPositionBuilderAtEnd(codegen->builder, next_bb);
         current_bb = next_bb;
@@ -1830,6 +2331,8 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
           if (guard.terminated || !guard.value) {
             reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, it->arm->guard->span,
                                 "missing match guard value");
+            reml_codegen_scope_emit_drops(codegen, reml_codegen_scope_stack_current(scopes),
+                                          reml_codegen_expr_skip_id(it->arm->body));
             reml_codegen_scope_stack_pop(scopes);
           } else {
             LLVMBasicBlockRef guard_bb = LLVMAppendBasicBlockInContext(
@@ -1841,10 +2344,14 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
             LLVMPositionBuilderAtEnd(codegen->builder, guard_bb);
             body_bb = guard_bb;
             body = reml_codegen_emit_expr(codegen, scopes, it->arm->body);
+            reml_codegen_scope_emit_drops(codegen, reml_codegen_scope_stack_current(scopes),
+                                          reml_codegen_expr_skip_id(it->arm->body));
             reml_codegen_scope_stack_pop(scopes);
           }
         } else {
           body = reml_codegen_emit_expr(codegen, scopes, it->arm->body);
+          reml_codegen_scope_emit_drops(codegen, reml_codegen_scope_stack_current(scopes),
+                                        reml_codegen_expr_skip_id(it->arm->body));
           reml_codegen_scope_stack_pop(scopes);
         }
 
@@ -1875,6 +2382,8 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
           if (guard.terminated || !guard.value) {
             reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, default_arm->guard->span,
                                 "missing match guard value");
+            reml_codegen_scope_emit_drops(codegen, reml_codegen_scope_stack_current(scopes),
+                                          reml_codegen_expr_skip_id(default_arm->body));
             reml_codegen_scope_stack_pop(scopes);
           } else {
             LLVMBasicBlockRef guard_bb = LLVMAppendBasicBlockInContext(
@@ -1886,10 +2395,14 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
             LLVMPositionBuilderAtEnd(codegen->builder, guard_bb);
             body_bb = guard_bb;
             body = reml_codegen_emit_expr(codegen, scopes, default_arm->body);
+            reml_codegen_scope_emit_drops(codegen, reml_codegen_scope_stack_current(scopes),
+                                          reml_codegen_expr_skip_id(default_arm->body));
             reml_codegen_scope_stack_pop(scopes);
           }
         } else {
           body = reml_codegen_emit_expr(codegen, scopes, default_arm->body);
+          reml_codegen_scope_emit_drops(codegen, reml_codegen_scope_stack_current(scopes),
+                                        reml_codegen_expr_skip_id(default_arm->body));
           reml_codegen_scope_stack_pop(scopes);
         }
 
@@ -2000,6 +2513,10 @@ static reml_codegen_value reml_codegen_emit_expr(reml_codegen *codegen,
       return reml_codegen_emit_binary(codegen, scopes, expr);
     case REML_EXPR_CONSTRUCTOR:
       return reml_codegen_emit_constructor(codegen, scopes, expr);
+    case REML_EXPR_TUPLE:
+      return reml_codegen_emit_tuple(codegen, scopes, expr);
+    case REML_EXPR_RECORD:
+      return reml_codegen_emit_record(codegen, scopes, expr);
     case REML_EXPR_BLOCK:
       return reml_codegen_emit_block(codegen, scopes, &expr->data.block, expr->type);
     case REML_EXPR_IF:

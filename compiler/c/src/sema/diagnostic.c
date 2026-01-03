@@ -1,5 +1,7 @@
 #include "reml/sema/diagnostic.h"
 
+#include <stdlib.h>
+
 #include <utarray.h>
 
 void reml_diagnostics_init(reml_diagnostic_list *list) {
@@ -13,6 +15,20 @@ void reml_diagnostics_init(reml_diagnostic_list *list) {
 void reml_diagnostics_deinit(reml_diagnostic_list *list) {
   if (!list || !list->items) {
     return;
+  }
+  for (reml_diagnostic *it = (reml_diagnostic *)utarray_front(list->items); it != NULL;
+       it = (reml_diagnostic *)utarray_next(list->items, it)) {
+    if (!it->pattern) {
+      continue;
+    }
+    if (it->pattern->missing_variants) {
+      utarray_free(it->pattern->missing_variants);
+    }
+    if (it->pattern->missing_ranges) {
+      utarray_free(it->pattern->missing_ranges);
+    }
+    free(it->pattern);
+    it->pattern = NULL;
   }
   utarray_free(list->items);
   list->items = NULL;

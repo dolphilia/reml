@@ -199,6 +199,21 @@ let array =
 
 ### B-11. `Parse.fail` / `Parse.recover` から `Diagnostic` へ接続する手順
 
+---
+
+## D. パターンマッチ診断（暫定）
+
+| message_key | severity | domain | 説明 |
+| --- | --- | --- | --- |
+| `pattern.exhaustiveness.missing` | Error | Parser | 網羅性不足。`extensions.pattern.missing_variants` または `missing_ranges` を付与する。 |
+| `pattern.unreachable_arm` | Warning | Parser | 到達不能なアーム。重複レンジ/タグ/リテラルを検出した場合に発行。 |
+| `pattern.range.type_mismatch` | Error | Parser | Range パターンの境界型が一致しない、または整数以外に適用された場合。 |
+| `pattern.range.bound_inverted` | Error | Parser | Range 境界が逆転している場合。`extensions.pattern.range` に `start/end/inclusive` を付与する。 |
+
+* `pattern.exhaustiveness.missing` は、Enum なら不足コンストラクタ名の配列（`missing_variants`）、Range なら不足区間の配列（`missing_ranges`）を `extensions.pattern` に付与する。  
+* `missing_ranges` の各要素は `{ start, end, inclusive }` で表現し、`start/end` は文字列表記（例: `"1"`）を用いる。  
+* `pattern.unreachable_arm` はガード無しの重複ケースに限定し、ガード付きは到達不能とみなさない。
+
 > 0-1 §2.2「分かりやすいエラーメッセージ」を満たすため、`Parse.fail` に素朴な文字列を渡すだけで終わらせず、ここで定める手順で `Diagnostic` を構築する。
 
 1. **スパンの決定**：現在位置を 2.1 §C のスパン取得ヘルパで取得し、`at` にはグラフェム境界を含む最小スパンを渡す。`Input` が保持する `g_index` / `cp_index` を再利用し、行頭からの列計算は `Core.Text.slice_graphemes` と `display_width` の結果を積算して求める。トークンを先読み済みの場合は、消費済み領域と現在位置を比較して誤差を ±1 グラフェム以内に補正する。

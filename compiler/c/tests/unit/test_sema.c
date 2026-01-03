@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <string.h>
 
+#include <utarray.h>
+
 #include <cmocka.h>
 
 #include "reml/parser/parser.h"
@@ -25,6 +27,37 @@ static bool has_diag(const reml_diagnostic_list *diags, reml_diagnostic_code cod
   for (size_t i = 0; i < count; ++i) {
     const reml_diagnostic *diag = reml_diagnostics_at(diags, i);
     if (diag && diag->code == code) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static const reml_diagnostic *find_diag(const reml_diagnostic_list *diags,
+                                        reml_diagnostic_code code) {
+  if (!diags) {
+    return NULL;
+  }
+  size_t count = reml_diagnostics_count(diags);
+  for (size_t i = 0; i < count; ++i) {
+    const reml_diagnostic *diag = reml_diagnostics_at(diags, i);
+    if (diag && diag->code == code) {
+      return diag;
+    }
+  }
+  return NULL;
+}
+
+static bool pattern_missing_variant(const reml_diagnostic *diag, const char *name) {
+  if (!diag || !diag->pattern || !diag->pattern->missing_variants || !name) {
+    return false;
+  }
+  reml_string_view target = reml_string_view_make(name, strlen(name));
+  for (reml_string_view *it =
+           (reml_string_view *)utarray_front(diag->pattern->missing_variants);
+       it != NULL;
+       it = (reml_string_view *)utarray_next(diag->pattern->missing_variants, it)) {
+    if (it->length == target.length && memcmp(it->data, target.data, target.length) == 0) {
       return true;
     }
   }
@@ -123,6 +156,11 @@ static void test_sema_match_non_exhaustive(void **state) {
   assert_false(ok);
   assert_true(reml_diagnostics_count(diags) > 0);
   assert_true(has_diag(diags, REML_DIAG_PATTERN_EXHAUSTIVENESS_MISSING));
+  const reml_diagnostic *diag =
+      find_diag(diags, REML_DIAG_PATTERN_EXHAUSTIVENESS_MISSING);
+  assert_non_null(diag);
+  assert_non_null(diag->pattern);
+  assert_true(pattern_missing_variant(diag, "false"));
 
   reml_sema_deinit(&sema);
   reml_compilation_unit_free(unit);
@@ -201,6 +239,42 @@ static void test_sema_enum_constructor_ok(void **state) {
   reml_compilation_unit_free(unit);
 }
 
+static void test_sema_match_tuple_record_ok(void **state) {
+  (void)state;
+
+  {
+    const char *source = "let x = (1, 2); match x with | (1, 2) -> 1 | _ -> 2;";
+    reml_compilation_unit *unit = parse_source(source);
+
+    reml_sema sema;
+    reml_sema_init(&sema);
+    bool ok = reml_sema_check(&sema, unit);
+
+    const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+    assert_true(ok);
+    assert_int_equal(reml_diagnostics_count(diags), 0);
+
+    reml_sema_deinit(&sema);
+    reml_compilation_unit_free(unit);
+  }
+  {
+    const char *source =
+        "let x = { a: 1, b: 2 }; match x with | { a: 1, b: 2 } -> 1 | _ -> 2;";
+    reml_compilation_unit *unit = parse_source(source);
+
+    reml_sema sema;
+    reml_sema_init(&sema);
+    bool ok = reml_sema_check(&sema, unit);
+
+    const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+    assert_true(ok);
+    assert_int_equal(reml_diagnostics_count(diags), 0);
+
+    reml_sema_deinit(&sema);
+    reml_compilation_unit_free(unit);
+  }
+}
+
 void test_sema(void **state) {
   test_sema_basic_ok(state);
   test_sema_type_mismatch(state);
@@ -211,4 +285,5 @@ void test_sema(void **state) {
   test_sema_match_guard_ok(state);
   test_sema_match_range_ok(state);
   test_sema_enum_constructor_ok(state);
+  test_sema_match_tuple_record_ok(state);
 }

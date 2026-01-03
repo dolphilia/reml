@@ -1,11 +1,14 @@
 #ifndef REML_SEMA_DIAGNOSTIC_H
 #define REML_SEMA_DIAGNOSTIC_H
 
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include <utarray.h>
 
 #include "reml/util/span.h"
+#include "reml/util/string_view.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,9 +33,21 @@ typedef enum {
 } reml_diagnostic_code;
 
 typedef struct {
+  int64_t start;
+  int64_t end;
+  bool inclusive;
+} reml_diagnostic_range;
+
+typedef struct {
+  UT_array *missing_variants;
+  UT_array *missing_ranges;
+} reml_diagnostic_pattern;
+
+typedef struct {
   reml_diagnostic_code code;
   reml_span span;
   const char *message;
+  reml_diagnostic_pattern *pattern;
 } reml_diagnostic;
 
 typedef struct {

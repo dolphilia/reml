@@ -215,6 +215,16 @@ static bool reml_type_occurs_in(reml_type *var, reml_type *type) {
       }
     }
   }
+  if (type->kind == REML_TYPE_RECORD && type->data.record.fields) {
+    for (reml_record_field *it =
+             (reml_record_field *)utarray_front(type->data.record.fields);
+         it != NULL;
+         it = (reml_record_field *)utarray_next(type->data.record.fields, it)) {
+      if (reml_type_occurs_in(var, it->type)) {
+        return true;
+      }
+    }
+  }
   if (type->kind == REML_TYPE_FUNCTION) {
     if (type->data.function.params) {
       for (reml_type **it = (reml_type **)utarray_front(type->data.function.params); it != NULL;
@@ -229,6 +239,20 @@ static bool reml_type_occurs_in(reml_type *var, reml_type *type) {
     }
   }
   return false;
+}
+
+static reml_record_field *reml_record_field_find(reml_type *record, reml_string_view name) {
+  if (!record || record->kind != REML_TYPE_RECORD || !record->data.record.fields) {
+    return NULL;
+  }
+  for (reml_record_field *it =
+           (reml_record_field *)utarray_front(record->data.record.fields);
+       it != NULL; it = (reml_record_field *)utarray_next(record->data.record.fields, it)) {
+    if (reml_string_view_equal(it->name, name)) {
+      return it;
+    }
+  }
+  return NULL;
 }
 
 static bool reml_type_unify_composite(reml_type_ctx *ctx, reml_type *left, reml_type *right) {
@@ -248,6 +272,25 @@ static bool reml_type_unify_composite(reml_type_ctx *ctx, reml_type *left, reml_
       reml_type **left_item = (reml_type **)utarray_eltptr(left->data.tuple.items, i);
       reml_type **right_item = (reml_type **)utarray_eltptr(right->data.tuple.items, i);
       if (!reml_type_unify(ctx, *left_item, *right_item)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (left->kind == REML_TYPE_RECORD) {
+    size_t left_count = left->data.record.fields ? utarray_len(left->data.record.fields) : 0;
+    size_t right_count = right->data.record.fields ? utarray_len(right->data.record.fields) : 0;
+    if (left_count != right_count) {
+      return false;
+    }
+    for (reml_record_field *it =
+             (reml_record_field *)utarray_front(left->data.record.fields);
+         it != NULL; it = (reml_record_field *)utarray_next(left->data.record.fields, it)) {
+      reml_record_field *match = reml_record_field_find(right, it->name);
+      if (!match) {
+        return false;
+      }
+      if (!reml_type_unify(ctx, it->type, match->type)) {
         return false;
       }
     }
@@ -311,7 +354,8 @@ bool reml_type_unify(reml_type_ctx *ctx, reml_type *left, reml_type *right) {
     if (left->kind == REML_TYPE_ENUM) {
       return reml_type_unify_enum(ctx, left, right);
     }
-    if (left->kind == REML_TYPE_TUPLE || left->kind == REML_TYPE_FUNCTION) {
+    if (left->kind == REML_TYPE_TUPLE || left->kind == REML_TYPE_RECORD ||
+        left->kind == REML_TYPE_FUNCTION) {
       return reml_type_unify_composite(ctx, left, right);
     }
     return true;
@@ -359,5 +403,23 @@ reml_type *reml_type_make_enum(reml_type_ctx *ctx) {
   }
   UT_icd variant_icd = {sizeof(reml_enum_variant), NULL, NULL, NULL};
   utarray_new(type->data.enum_type.variants, &variant_icd);
+  return type;
+}
+
+reml_type *reml_type_make_tuple(reml_type_ctx *ctx, UT_array *items) {
+  reml_type *type = reml_type_new(ctx, REML_TYPE_TUPLE);
+  if (!type) {
+    return NULL;
+  }
+  type->data.tuple.items = items;
+  return type;
+}
+
+reml_type *reml_type_make_record(reml_type_ctx *ctx, UT_array *fields) {
+  reml_type *type = reml_type_new(ctx, REML_TYPE_RECORD);
+  if (!type) {
+    return NULL;
+  }
+  type->data.record.fields = fields;
   return type;
 }

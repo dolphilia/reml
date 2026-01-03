@@ -174,6 +174,33 @@ void reml_ast_write_expr(FILE *out, const reml_expr *expr) {
       }
       fputs(")", out);
       return;
+    case REML_EXPR_TUPLE:
+      fputs("(tuple", out);
+      if (expr->data.tuple) {
+        for (reml_expr **it = (reml_expr **)utarray_front(expr->data.tuple); it != NULL;
+             it = (reml_expr **)utarray_next(expr->data.tuple, it)) {
+          fputs(" ", out);
+          reml_ast_write_expr(out, *it);
+        }
+      }
+      fputs(")", out);
+      return;
+    case REML_EXPR_RECORD:
+      fputs("(record", out);
+      if (expr->data.record) {
+        for (reml_record_expr_field *it =
+                 (reml_record_expr_field *)utarray_front(expr->data.record);
+             it != NULL;
+             it = (reml_record_expr_field *)utarray_next(expr->data.record, it)) {
+          fputs(" (field ", out);
+          reml_write_view(out, it->name);
+          fputs(" ", out);
+          reml_ast_write_expr(out, it->value);
+          fputs(")", out);
+        }
+      }
+      fputs(")", out);
+      return;
     case REML_EXPR_BLOCK:
       fputs("(block", out);
       if (expr->data.block.statements) {

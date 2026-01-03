@@ -63,6 +63,24 @@ reml_expr *reml_expr_make_constructor(reml_span span, reml_string_view name, UT_
   return expr;
 }
 
+reml_expr *reml_expr_make_tuple(reml_span span, UT_array *items) {
+  reml_expr *expr = reml_expr_alloc(REML_EXPR_TUPLE, span);
+  if (!expr) {
+    return NULL;
+  }
+  expr->data.tuple = items;
+  return expr;
+}
+
+reml_expr *reml_expr_make_record(reml_span span, UT_array *fields) {
+  reml_expr *expr = reml_expr_alloc(REML_EXPR_RECORD, span);
+  if (!expr) {
+    return NULL;
+  }
+  expr->data.record = fields;
+  return expr;
+}
+
 reml_expr *reml_expr_make_block(reml_span span, reml_block_expr block) {
   reml_expr *expr = reml_expr_alloc(REML_EXPR_BLOCK, span);
   if (!expr) {
@@ -248,6 +266,26 @@ void reml_expr_free(reml_expr *expr) {
           reml_expr_free(*it);
         }
         utarray_free(expr->data.ctor.args);
+      }
+      break;
+    case REML_EXPR_TUPLE:
+      if (expr->data.tuple) {
+        for (reml_expr **it = (reml_expr **)utarray_front(expr->data.tuple); it != NULL;
+             it = (reml_expr **)utarray_next(expr->data.tuple, it)) {
+          reml_expr_free(*it);
+        }
+        utarray_free(expr->data.tuple);
+      }
+      break;
+    case REML_EXPR_RECORD:
+      if (expr->data.record) {
+        for (reml_record_expr_field *it =
+                 (reml_record_expr_field *)utarray_front(expr->data.record);
+             it != NULL;
+             it = (reml_record_expr_field *)utarray_next(expr->data.record, it)) {
+          reml_expr_free(it->value);
+        }
+        utarray_free(expr->data.record);
       }
       break;
     case REML_EXPR_BLOCK:

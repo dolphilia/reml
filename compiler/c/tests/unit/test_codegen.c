@@ -193,6 +193,86 @@ static void test_codegen_enum_constructor(void **state) {
   reml_compilation_unit_free(unit);
 }
 
+static void test_codegen_match_tuple_record(void **state) {
+  (void)state;
+
+  {
+    const char *source = "let x = (1, 2); match x with | (1, 2) -> 1 | _ -> 2;";
+    reml_compilation_unit *unit = parse_source(source);
+
+    reml_sema sema;
+    reml_sema_init(&sema);
+    bool ok = reml_sema_check(&sema, unit);
+    assert_true(ok);
+    assert_int_equal(reml_diagnostics_count(reml_sema_diagnostics(&sema)), 0);
+
+    reml_codegen codegen;
+    ok = reml_codegen_init(&codegen, "test_module");
+    assert_true(ok);
+
+    ok = reml_codegen_generate(&codegen, unit);
+    assert_true(ok);
+    assert_int_equal(reml_diagnostics_count(reml_codegen_diagnostics(&codegen)), 0);
+
+    reml_codegen_deinit(&codegen);
+    reml_sema_deinit(&sema);
+    reml_compilation_unit_free(unit);
+  }
+  {
+    const char *source =
+        "let x = { a: 1, b: 2 }; match x with | { a: 1, b: 2 } -> 1 | _ -> 2;";
+    reml_compilation_unit *unit = parse_source(source);
+
+    reml_sema sema;
+    reml_sema_init(&sema);
+    bool ok = reml_sema_check(&sema, unit);
+    assert_true(ok);
+    assert_int_equal(reml_diagnostics_count(reml_sema_diagnostics(&sema)), 0);
+
+    reml_codegen codegen;
+    ok = reml_codegen_init(&codegen, "test_module");
+    assert_true(ok);
+
+    ok = reml_codegen_generate(&codegen, unit);
+    assert_true(ok);
+    assert_int_equal(reml_diagnostics_count(reml_codegen_diagnostics(&codegen)), 0);
+
+    reml_codegen_deinit(&codegen);
+    reml_sema_deinit(&sema);
+    reml_compilation_unit_free(unit);
+  }
+}
+
+static void test_codegen_enum_drop(void **state) {
+  (void)state;
+
+  const char *source = "let x = Some(1); x;";
+  reml_compilation_unit *unit = parse_source(source);
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+  assert_true(ok);
+  assert_int_equal(reml_diagnostics_count(reml_sema_diagnostics(&sema)), 0);
+
+  reml_codegen codegen;
+  ok = reml_codegen_init(&codegen, "test_module");
+  assert_true(ok);
+
+  ok = reml_codegen_generate(&codegen, unit);
+  assert_true(ok);
+  assert_int_equal(reml_diagnostics_count(reml_codegen_diagnostics(&codegen)), 0);
+
+  char *ir = LLVMPrintModuleToString(codegen.module);
+  assert_non_null(ir);
+  assert_non_null(strstr(ir, "reml_enum_free"));
+  LLVMDisposeMessage(ir);
+
+  reml_codegen_deinit(&codegen);
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+}
+
 void test_codegen(void **state) {
   test_codegen_basic(state);
   test_codegen_while(state);
@@ -201,4 +281,6 @@ void test_codegen(void **state) {
   test_codegen_match_range(state);
   test_codegen_match_guard(state);
   test_codegen_enum_constructor(state);
+  test_codegen_match_tuple_record(state);
+  test_codegen_enum_drop(state);
 }
