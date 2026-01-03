@@ -31,6 +31,17 @@ typedef enum {
 
 typedef struct reml_type reml_type;
 
+typedef uint32_t reml_effect_set;
+
+enum {
+  REML_EFFECT_NONE = 0,
+  REML_EFFECT_MUT = 1u << 0,
+  REML_EFFECT_IO = 1u << 1,
+  REML_EFFECT_PANIC = 1u << 2,
+  REML_EFFECT_FFI = 1u << 3,
+  REML_EFFECT_UNSAFE = 1u << 4
+};
+
 typedef struct {
   reml_string_view name;
   UT_array *fields;
@@ -57,7 +68,7 @@ struct reml_type {
     struct {
       UT_array *params;
       reml_type *result;
-      uint32_t effects;
+      reml_effect_set effects;
     } function;
     struct {
       reml_type *target;
@@ -83,6 +94,8 @@ typedef struct {
   reml_type *prim_unit;
 } reml_type_ctx;
 
+reml_effect_set reml_effect_union(reml_effect_set left, reml_effect_set right);
+
 void reml_type_ctx_init(reml_type_ctx *ctx);
 void reml_type_ctx_deinit(reml_type_ctx *ctx);
 
@@ -101,6 +114,8 @@ reml_type *reml_type_unit(reml_type_ctx *ctx);
 reml_type *reml_type_make_enum(reml_type_ctx *ctx);
 reml_type *reml_type_make_tuple(reml_type_ctx *ctx, UT_array *items);
 reml_type *reml_type_make_record(reml_type_ctx *ctx, UT_array *fields);
+reml_type *reml_type_make_function(reml_type_ctx *ctx, UT_array *params, reml_type *result,
+                                   reml_effect_set effects);
 reml_type *reml_type_make_ref(reml_type_ctx *ctx, reml_type *target, bool is_mutable);
 
 #ifdef __cplusplus

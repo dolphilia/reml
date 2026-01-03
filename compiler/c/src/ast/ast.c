@@ -2,6 +2,15 @@
 
 #include <stdlib.h>
 
+reml_attr_list reml_attr_list_empty(void) {
+  reml_attr_list attrs;
+  attrs.is_pure = false;
+  attrs.is_no_panic = false;
+  attrs.pure_span = reml_span_make(0, 0, 1, 1, 1, 1);
+  attrs.no_panic_span = reml_span_make(0, 0, 1, 1, 1, 1);
+  return attrs;
+}
+
 static reml_expr *reml_expr_alloc(reml_expr_kind kind, reml_span span) {
   reml_expr *expr = (reml_expr *)calloc(1, sizeof(reml_expr));
   if (!expr) {
@@ -216,49 +225,54 @@ reml_pattern *reml_pattern_make_range(reml_span span, reml_literal start, reml_l
   return pattern;
 }
 
-reml_stmt *reml_stmt_make_expr(reml_span span, reml_expr *expr) {
+reml_stmt *reml_stmt_make_expr(reml_span span, reml_attr_list attrs, reml_expr *expr) {
   reml_stmt *stmt = (reml_stmt *)calloc(1, sizeof(reml_stmt));
   if (!stmt) {
     return NULL;
   }
   stmt->kind = REML_STMT_EXPR;
   stmt->span = span;
+  stmt->attrs = attrs;
   stmt->data.expr = expr;
   return stmt;
 }
 
-reml_stmt *reml_stmt_make_return(reml_span span, reml_expr *expr) {
+reml_stmt *reml_stmt_make_return(reml_span span, reml_attr_list attrs, reml_expr *expr) {
   reml_stmt *stmt = (reml_stmt *)calloc(1, sizeof(reml_stmt));
   if (!stmt) {
     return NULL;
   }
   stmt->kind = REML_STMT_RETURN;
   stmt->span = span;
+  stmt->attrs = attrs;
   stmt->data.expr = expr;
   return stmt;
 }
 
-reml_stmt *reml_stmt_make_val_decl(reml_span span, reml_pattern *pattern, reml_expr *value,
-                                   bool is_mutable) {
+reml_stmt *reml_stmt_make_val_decl(reml_span span, reml_attr_list attrs, reml_pattern *pattern,
+                                   reml_expr *value, bool is_mutable) {
   reml_stmt *stmt = (reml_stmt *)calloc(1, sizeof(reml_stmt));
   if (!stmt) {
     return NULL;
   }
   stmt->kind = REML_STMT_VAL_DECL;
   stmt->span = span;
+  stmt->attrs = attrs;
   stmt->data.val_decl.pattern = pattern;
   stmt->data.val_decl.value = value;
   stmt->data.val_decl.is_mutable = is_mutable;
   return stmt;
 }
 
-reml_stmt *reml_stmt_make_type_decl(reml_span span, reml_string_view name, UT_array *variants) {
+reml_stmt *reml_stmt_make_type_decl(reml_span span, reml_attr_list attrs, reml_string_view name,
+                                    UT_array *variants) {
   reml_stmt *stmt = (reml_stmt *)calloc(1, sizeof(reml_stmt));
   if (!stmt) {
     return NULL;
   }
   stmt->kind = REML_STMT_TYPE_DECL;
   stmt->span = span;
+  stmt->attrs = attrs;
   stmt->data.type_decl.name = name;
   stmt->data.type_decl.variants = variants;
   return stmt;

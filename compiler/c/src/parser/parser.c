@@ -48,6 +48,14 @@ static bool reml_token_is_underscore(const reml_token *token) {
          token->lexeme.data[0] == '_';
 }
 
+static bool reml_string_view_matches(reml_string_view view, const char *text) {
+  if (!text) {
+    return false;
+  }
+  size_t len = strlen(text);
+  return view.length == len && memcmp(view.data, text, len) == 0;
+}
+
 static void reml_free_stmt_array(UT_array *statements) {
   if (!statements) {
     return;
@@ -130,6 +138,44 @@ static void reml_free_type_decl_variants(UT_array *variants) {
     }
   }
   utarray_free(variants);
+}
+
+static reml_attr_list reml_parse_attributes(reml_parser *parser) {
+  reml_attr_list attrs = reml_attr_list_empty();
+  while (parser->current.kind == REML_TOKEN_AT) {
+    reml_token at_token = parser->current;
+    reml_parser_advance(parser);
+    if (parser->current.kind != REML_TOKEN_IDENT) {
+      reml_parser_set_error(parser, "expected attribute name", parser->current.span);
+      return attrs;
+    }
+    reml_token name = parser->current;
+    reml_parser_advance(parser);
+    reml_span attr_span = reml_span_combine(at_token.span, name.span);
+
+    if (reml_string_view_matches(name.lexeme, "pure")) {
+      if (attrs.is_pure) {
+        reml_parser_set_error(parser, "duplicate attribute: pure", name.span);
+        return attrs;
+      }
+      attrs.is_pure = true;
+      attrs.pure_span = attr_span;
+      continue;
+    }
+    if (reml_string_view_matches(name.lexeme, "no_panic")) {
+      if (attrs.is_no_panic) {
+        reml_parser_set_error(parser, "duplicate attribute: no_panic", name.span);
+        return attrs;
+      }
+      attrs.is_no_panic = true;
+      attrs.no_panic_span = attr_span;
+      continue;
+    }
+
+    reml_parser_set_error(parser, "unsupported attribute", name.span);
+    return attrs;
+  }
+  return attrs;
 }
 
 static bool reml_int_literal_fits_i64(reml_string_view view, bool *fits_i64) {
@@ -604,7 +650,8 @@ static reml_expr *reml_parse_primary(reml_parser *parser) {
              parser->current.kind != REML_TOKEN_EOF) {
         if (parser->current.kind == REML_TOKEN_KW_RETURN ||
             parser->current.kind == REML_TOKEN_KW_LET ||
-            parser->current.kind == REML_TOKEN_KW_VAR) {
+            parser->current.kind == REML_TOKEN_KW_VAR ||
+            parser->current.kind == REML_TOKEN_AT) {
           reml_stmt *stmt = reml_parse_statement(parser);
           if (!stmt) {
             reml_free_stmt_array(statements);
@@ -622,7 +669,8 @@ static reml_expr *reml_parse_primary(reml_parser *parser) {
 
         if (parser->current.kind == REML_TOKEN_SEMI) {
           reml_parser_advance(parser);
-          reml_stmt *stmt = reml_stmt_make_expr(expr->span, expr);
+          reml_attr_list attrs = reml_attr_list_empty();
+          reml_stmt *stmt = reml_stmt_make_expr(expr->span, attrs, expr);
           if (!stmt) {
             reml_expr_free(expr);
             reml_free_stmt_array(statements);
@@ -898,6 +946,13 @@ static reml_expr *reml_parse_expression_prec(reml_parser *parser, int min_prec) 
 }
 
 static reml_stmt *reml_parse_statement(reml_parser *parser) {
+  if (!parser) {
+    return NULL;
+  }
+  reml_attr_list attrs = reml_parse_attributes(parser);
+  if (parser->has_error) {
+    return NULL;
+  }
   if (parser->current.kind == REML_TOKEN_KW_TYPE) {
     reml_token keyword = parser->current;
     reml_parser_advance(parser);
@@ -984,7 +1039,7 @@ static reml_stmt *reml_parse_statement(reml_parser *parser) {
       return NULL;
     }
     reml_span span = reml_span_combine(keyword.span, end_token.span);
-    return reml_stmt_make_type_decl(span, name_token.lexeme, variants);
+    return reml_stmt_make_type_decl(span, attrs, name_token.lexeme, variants);
   }
 
   if (parser->current.kind == REML_TOKEN_KW_LET || parser->current.kind == REML_TOKEN_KW_VAR) {
@@ -1010,7 +1065,7 @@ static reml_stmt *reml_parse_statement(reml_parser *parser) {
       return NULL;
     }
     reml_span span = reml_span_combine(keyword.span, value->span);
-    return reml_stmt_make_val_decl(span, pattern, value, is_mutable);
+    return reml_stmt_make_val_decl(span, attrs, pattern, value, is_mutable);
   }
 
   if (parser->current.kind == REML_TOKEN_KW_RETURN) {
@@ -1024,7 +1079,7 @@ static reml_stmt *reml_parse_statement(reml_parser *parser) {
     if (!reml_parser_expect(parser, REML_TOKEN_SEMI, "expected ';' after return")) {
       return NULL;
     }
-    return reml_stmt_make_return(span, expr);
+    return reml_stmt_make_return(span, attrs, expr);
   }
 
   reml_expr *expr = reml_parse_expression_prec(parser, 0);
@@ -1035,7 +1090,7 @@ static reml_stmt *reml_parse_statement(reml_parser *parser) {
   if (!reml_parser_expect(parser, REML_TOKEN_SEMI, "expected ';' after expression")) {
     return NULL;
   }
-  return reml_stmt_make_expr(span, expr);
+  return reml_stmt_make_expr(span, attrs, expr);
 }
 
 void reml_parser_init(reml_parser *parser, const char *input, size_t length) {

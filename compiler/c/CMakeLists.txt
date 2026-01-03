@@ -139,6 +139,7 @@ add_executable(reml_unit_tests
   tests/unit/test_bigint_runtime.c
   tests/unit/test_effects_runtime.c
   tests/unit/test_text_unicode.c
+  tests/unit/test_type_effects.c
 )
 
 target_link_libraries(reml_unit_tests

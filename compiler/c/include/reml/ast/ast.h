@@ -35,6 +35,13 @@ typedef struct {
   reml_string_kind string_kind;
 } reml_literal;
 
+typedef struct {
+  bool is_pure;
+  bool is_no_panic;
+  reml_span pure_span;
+  reml_span no_panic_span;
+} reml_attr_list;
+
 typedef enum {
   REML_EXPR_LITERAL,
   REML_EXPR_IDENT,
@@ -202,6 +209,7 @@ typedef struct {
 typedef struct reml_stmt {
   reml_stmt_kind kind;
   reml_span span;
+  reml_attr_list attrs;
   union {
     reml_expr *expr;
     struct {
@@ -233,6 +241,8 @@ reml_expr *reml_expr_make_if(reml_span span, reml_expr *condition, reml_expr *th
 reml_expr *reml_expr_make_while(reml_span span, reml_expr *condition, reml_expr *body);
 reml_expr *reml_expr_make_match(reml_span span, reml_expr *scrutinee, UT_array *arms);
 
+reml_attr_list reml_attr_list_empty(void);
+
 reml_pattern *reml_pattern_make_wildcard(reml_span span);
 reml_pattern *reml_pattern_make_ident(reml_span span, reml_string_view ident);
 reml_pattern *reml_pattern_make_literal(reml_span span, reml_literal literal);
@@ -242,11 +252,12 @@ reml_pattern *reml_pattern_make_constructor(reml_span span, reml_string_view nam
 reml_pattern *reml_pattern_make_range(reml_span span, reml_literal start, reml_literal end,
                                       bool inclusive);
 
-reml_stmt *reml_stmt_make_expr(reml_span span, reml_expr *expr);
-reml_stmt *reml_stmt_make_return(reml_span span, reml_expr *expr);
-reml_stmt *reml_stmt_make_val_decl(reml_span span, reml_pattern *pattern, reml_expr *value,
-                                   bool is_mutable);
-reml_stmt *reml_stmt_make_type_decl(reml_span span, reml_string_view name, UT_array *variants);
+reml_stmt *reml_stmt_make_expr(reml_span span, reml_attr_list attrs, reml_expr *expr);
+reml_stmt *reml_stmt_make_return(reml_span span, reml_attr_list attrs, reml_expr *expr);
+reml_stmt *reml_stmt_make_val_decl(reml_span span, reml_attr_list attrs, reml_pattern *pattern,
+                                   reml_expr *value, bool is_mutable);
+reml_stmt *reml_stmt_make_type_decl(reml_span span, reml_attr_list attrs, reml_string_view name,
+                                    UT_array *variants);
 
 reml_compilation_unit *reml_compilation_unit_new(void);
 void reml_compilation_unit_add_stmt(reml_compilation_unit *unit, reml_stmt *stmt);

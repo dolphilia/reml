@@ -199,6 +199,43 @@ static void test_sema_bigint_literal_ok(void **state) {
   reml_compilation_unit_free(unit);
 }
 
+static void test_sema_attr_pure_violation(void **state) {
+  (void)state;
+
+  const char *source = "@pure let x = { var y = 0; y := y + 1; y };";
+  reml_compilation_unit *unit = parse_source(source);
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+
+  const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+  assert_false(ok);
+  assert_true(reml_diagnostics_count(diags) > 0);
+  assert_true(has_diag(diags, REML_DIAG_EFFECT_VIOLATION));
+
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+}
+
+static void test_sema_attr_no_panic_ok(void **state) {
+  (void)state;
+
+  const char *source = "@no_panic let x = 1 + 2; x;";
+  reml_compilation_unit *unit = parse_source(source);
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+
+  const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+  assert_true(ok);
+  assert_int_equal(reml_diagnostics_count(diags), 0);
+
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+}
+
 static void test_sema_match_non_exhaustive(void **state) {
   (void)state;
 
@@ -483,6 +520,8 @@ void test_sema(void **state) {
   test_sema_trait_unresolved(state);
   test_sema_undefined_symbol(state);
   test_sema_bigint_literal_ok(state);
+  test_sema_attr_pure_violation(state);
+  test_sema_attr_no_panic_ok(state);
   test_sema_match_non_exhaustive(state);
   test_sema_match_unreachable(state);
   test_sema_match_guard_ok(state);

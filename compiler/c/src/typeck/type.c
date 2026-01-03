@@ -3,6 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+reml_effect_set reml_effect_union(reml_effect_set left, reml_effect_set right) {
+  return (reml_effect_set)(left | right);
+}
+
 static bool reml_string_view_equal(reml_string_view left, reml_string_view right) {
   if (left.length != right.length) {
     return false;
@@ -432,6 +436,18 @@ reml_type *reml_type_make_record(reml_type_ctx *ctx, UT_array *fields) {
     return NULL;
   }
   type->data.record.fields = fields;
+  return type;
+}
+
+reml_type *reml_type_make_function(reml_type_ctx *ctx, UT_array *params, reml_type *result,
+                                   reml_effect_set effects) {
+  reml_type *type = reml_type_new(ctx, REML_TYPE_FUNCTION);
+  if (!type) {
+    return NULL;
+  }
+  type->data.function.params = params;
+  type->data.function.result = result;
+  type->data.function.effects = effects;
   return type;
 }
 

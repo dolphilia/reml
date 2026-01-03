@@ -82,15 +82,6 @@ struct reml_symbol_table {
   reml_symbol_id next_id;
 };
 
-typedef uint8_t reml_effect_set;
-
-enum {
-  REML_EFFECT_NONE = 0,
-  REML_EFFECT_MUT = 1 << 0,
-  REML_EFFECT_IO = 1 << 1,
-  REML_EFFECT_PANIC = 1 << 2
-};
-
 static void reml_scheme_init(reml_scheme *scheme, reml_type *type) {
   if (!scheme) {
     return;
@@ -893,6 +884,21 @@ static void reml_report_diag(reml_sema *sema, reml_diagnostic_code code, reml_sp
   reml_diagnostics_push(&sema->diagnostics, diag);
 }
 
+static void reml_check_effect_contract(reml_sema *sema, const reml_attr_list *attrs,
+                                       reml_effect_set effects) {
+  if (!sema || !attrs) {
+    return;
+  }
+  if (attrs->is_pure && effects != REML_EFFECT_NONE) {
+    reml_report_diag(sema, REML_DIAG_EFFECT_VIOLATION, attrs->pure_span,
+                     "effect violation: @pure requires no effects");
+  }
+  if (attrs->is_no_panic && (effects & REML_EFFECT_PANIC) != 0) {
+    reml_report_diag(sema, REML_DIAG_EFFECT_VIOLATION, attrs->no_panic_span,
+                     "effect violation: @no_panic forbids panic");
+  }
+}
+
 static void reml_register_type_decl(reml_sema *sema, const reml_type_decl *decl, reml_span span) {
   if (!sema || !decl) {
     return;
@@ -1470,10 +1476,6 @@ static reml_type *reml_infer_binary(reml_sema *sema, reml_expr *expr, reml_effec
                        "unsupported binary operator");
       return reml_type_error(&sema->types);
   }
-}
-
-static reml_effect_set reml_effect_union(reml_effect_set left, reml_effect_set right) {
-  return (reml_effect_set)(left | right);
 }
 
 static reml_type *reml_infer_block(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
@@ -2377,6 +2379,7 @@ static void reml_check_stmt(reml_sema *sema, reml_stmt *stmt, reml_effect_set *e
       size_t constraint_end = reml_trait_constraints_count(sema);
       reml_check_pattern(sema, stmt->data.val_decl.pattern, value_type, &value_effect, true,
                          stmt->data.val_decl.is_mutable, constraint_start, constraint_end);
+      reml_check_effect_contract(sema, &stmt->attrs, value_effect);
       if (effect) {
         *effect = reml_effect_union(*effect, value_effect);
       }
@@ -2385,6 +2388,7 @@ static void reml_check_stmt(reml_sema *sema, reml_stmt *stmt, reml_effect_set *e
     case REML_STMT_RETURN: {
       reml_effect_set expr_effect = REML_EFFECT_NONE;
       reml_infer_expr(sema, stmt->data.expr, &expr_effect);
+      reml_check_effect_contract(sema, &stmt->attrs, expr_effect);
       if (effect) {
         *effect = reml_effect_union(*effect, expr_effect);
       }
@@ -2393,12 +2397,14 @@ static void reml_check_stmt(reml_sema *sema, reml_stmt *stmt, reml_effect_set *e
     case REML_STMT_EXPR: {
       reml_effect_set expr_effect = REML_EFFECT_NONE;
       reml_infer_expr(sema, stmt->data.expr, &expr_effect);
+      reml_check_effect_contract(sema, &stmt->attrs, expr_effect);
       if (effect) {
         *effect = reml_effect_union(*effect, expr_effect);
       }
       break;
     }
     case REML_STMT_TYPE_DECL:
+      reml_check_effect_contract(sema, &stmt->attrs, REML_EFFECT_NONE);
       break;
     default:
       break;

@@ -751,6 +751,9 @@ reml_token reml_lexer_next(reml_lexer *lexer) {
     case ']':
       return reml_make_token(REML_TOKEN_RBRACKET, lexer, start_offset, start_line, start_column,
                              lexer->index, lexer->line, lexer->column);
+    case '@':
+      return reml_make_token(REML_TOKEN_AT, lexer, start_offset, start_line, start_column,
+                             lexer->index, lexer->line, lexer->column);
     case ',':
       return reml_make_token(REML_TOKEN_COMMA, lexer, start_offset, start_line, start_column,
                              lexer->index, lexer->line, lexer->column);
@@ -922,6 +925,8 @@ const char *reml_token_kind_name(reml_token_kind kind) {
       return "KW_USE";
     case REML_TOKEN_KW_MODULE:
       return "KW_MODULE";
+    case REML_TOKEN_AT:
+      return "AT";
     case REML_TOKEN_LPAREN:
       return "LPAREN";
     case REML_TOKEN_RPAREN:
