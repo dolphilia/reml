@@ -158,6 +158,23 @@ void test_parser_basic(void **state) {
     reml_compilation_unit_free(unit);
   }
   {
+    const char *source = "type Option = | Some(Int) | None; let x = Some(1);";
+    reml_parser parser;
+    reml_parser_init(&parser, source, strlen(source));
+
+    reml_compilation_unit *unit = reml_parse_compilation_unit(&parser);
+    assert_non_null(unit);
+
+    char *rendered = render_unit(unit);
+    assert_non_null(rendered);
+    assert_string_equal(
+        rendered,
+        "(unit (type Option (variant Some Int) (variant None)) (let (pident x) (ctor Some (int 1))))");
+
+    free(rendered);
+    reml_compilation_unit_free(unit);
+  }
+  {
     const char *source = "let x = (1, 2);";
     reml_parser parser;
     reml_parser_init(&parser, source, strlen(source));
@@ -202,6 +219,23 @@ void test_parser_basic(void **state) {
     assert_string_equal(
         rendered,
         "(unit (let (precord (field a (pident a)) (field b (pident x))) (record (field a (int 1)) (field b (int 2)))))");
+
+    free(rendered);
+    reml_compilation_unit_free(unit);
+  }
+  {
+    const char *source = "let x = { a: 1, b: 2 }; let y = { x with b: 3 };";
+    reml_parser parser;
+    reml_parser_init(&parser, source, strlen(source));
+
+    reml_compilation_unit *unit = reml_parse_compilation_unit(&parser);
+    assert_non_null(unit);
+
+    char *rendered = render_unit(unit);
+    assert_non_null(rendered);
+    assert_string_equal(
+        rendered,
+        "(unit (let (pident x) (record (field a (int 1)) (field b (int 2)))) (let (pident y) (record_update (ident x) (field b (int 3)))))");
 
     free(rendered);
     reml_compilation_unit_free(unit);

@@ -31,6 +31,19 @@ typedef struct reml_symbol {
   UT_hash_handle hh;
 } reml_symbol;
 
+typedef struct reml_constructor_entry {
+  reml_string_view name;
+  reml_type *enum_type;
+  reml_enum_variant *variant;
+  UT_hash_handle hh;
+} reml_constructor_entry;
+
+typedef struct reml_enum_decl_entry {
+  reml_string_view name;
+  reml_type *enum_type;
+  UT_hash_handle hh;
+} reml_enum_decl_entry;
+
 typedef struct {
   reml_symbol *symbols;
 } reml_scope;
@@ -213,6 +226,24 @@ static reml_symbol *reml_symbol_table_define(reml_symbol_table *table, reml_symb
   return symbol;
 }
 
+static reml_constructor_entry *reml_constructor_lookup(reml_sema *sema, reml_string_view name) {
+  if (!sema) {
+    return NULL;
+  }
+  reml_constructor_entry *entry = NULL;
+  HASH_FIND(hh, sema->constructors, name.data, name.length, entry);
+  return entry;
+}
+
+static reml_enum_decl_entry *reml_enum_decl_lookup(reml_sema *sema, reml_string_view name) {
+  if (!sema) {
+    return NULL;
+  }
+  reml_enum_decl_entry *entry = NULL;
+  HASH_FIND(hh, sema->enum_decls, name.data, name.length, entry);
+  return entry;
+}
+
 static bool reml_var_ids_contains(UT_array *vars, uint32_t id) {
   if (!vars) {
     return false;
@@ -339,6 +370,19 @@ static reml_record_field *reml_record_field_find(reml_type *record, reml_string_
     }
   }
   return NULL;
+}
+
+static bool reml_pattern_fields_contains(UT_array *fields, reml_string_view name) {
+  if (!fields) {
+    return false;
+  }
+  for (reml_pattern_field *it = (reml_pattern_field *)utarray_front(fields); it != NULL;
+       it = (reml_pattern_field *)utarray_next(fields, it)) {
+    if (reml_string_view_equal(it->name, name)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 static char *reml_strip_numeric_literal(reml_string_view view) {
@@ -732,6 +776,56 @@ static void reml_report_diag(reml_sema *sema, reml_diagnostic_code code, reml_sp
   }
   reml_diagnostic diag = {.code = code, .span = span, .message = message, .pattern = NULL};
   reml_diagnostics_push(&sema->diagnostics, diag);
+}
+
+static void reml_register_type_decl(reml_sema *sema, const reml_type_decl *decl, reml_span span) {
+  if (!sema || !decl) {
+    return;
+  }
+  if (reml_enum_decl_lookup(sema, decl->name)) {
+    reml_report_diag(sema, REML_DIAG_DUPLICATE_SYMBOL, span, "duplicate type declaration");
+    return;
+  }
+  reml_type *enum_type = reml_type_make_enum(&sema->types);
+  if (!enum_type) {
+    return;
+  }
+  if (decl->variants) {
+    for (reml_type_decl_variant *it =
+             (reml_type_decl_variant *)utarray_front(decl->variants);
+         it != NULL;
+         it = (reml_type_decl_variant *)utarray_next(decl->variants, it)) {
+      if (reml_constructor_lookup(sema, it->name)) {
+        reml_report_diag(sema, REML_DIAG_DUPLICATE_SYMBOL, span,
+                         "duplicate constructor declaration");
+        continue;
+      }
+      size_t field_count = it->fields ? utarray_len(it->fields) : 0;
+      reml_enum_variant *variant =
+          reml_enum_variant_add(&sema->types, enum_type, it->name, field_count);
+      if (!variant) {
+        continue;
+      }
+      reml_constructor_entry *entry =
+          (reml_constructor_entry *)calloc(1, sizeof(reml_constructor_entry));
+      if (!entry) {
+        continue;
+      }
+      entry->name = it->name;
+      entry->enum_type = enum_type;
+      entry->variant = variant;
+      HASH_ADD_KEYPTR(hh, sema->constructors, entry->name.data, entry->name.length, entry);
+    }
+  }
+  reml_enum_decl_entry *decl_entry =
+      (reml_enum_decl_entry *)calloc(1, sizeof(reml_enum_decl_entry));
+  if (!decl_entry) {
+    return;
+  }
+  decl_entry->name = decl->name;
+  decl_entry->enum_type = enum_type;
+  HASH_ADD_KEYPTR(hh, sema->enum_decls, decl_entry->name.data, decl_entry->name.length,
+                  decl_entry);
 }
 
 static bool reml_expect_type(reml_sema *sema, reml_type *actual, reml_type *expected,
@@ -1178,14 +1272,22 @@ static reml_type *reml_infer_constructor(reml_sema *sema, reml_expr *expr,
   if (!sema || !expr) {
     return reml_type_error(&sema->types);
   }
-  reml_type *enum_type = reml_type_make_enum(&sema->types);
-  if (!enum_type) {
+  reml_constructor_entry *entry = reml_constructor_lookup(sema, expr->data.ctor.name);
+  if (!entry) {
+    reml_report_diag(sema, REML_DIAG_CONSTRUCTOR_UNKNOWN, expr->span,
+                     "unknown constructor");
+    return reml_type_error(&sema->types);
+  }
+  reml_type *enum_type = entry->enum_type;
+  reml_enum_variant *variant = entry->variant;
+  if (!enum_type || !variant) {
     return reml_type_error(&sema->types);
   }
   size_t arg_count = expr->data.ctor.args ? utarray_len(expr->data.ctor.args) : 0;
-  reml_enum_variant *variant =
-      reml_enum_variant_add(&sema->types, enum_type, expr->data.ctor.name, arg_count);
-  if (!variant) {
+  size_t field_count = variant->fields ? utarray_len(variant->fields) : 0;
+  if (arg_count != field_count) {
+    reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, expr->span,
+                     "constructor arity mismatch");
     return reml_type_error(&sema->types);
   }
   expr->data.ctor.tag = variant->tag;
@@ -1264,6 +1366,68 @@ static reml_type *reml_infer_record(reml_sema *sema, reml_expr *expr, reml_effec
   return record_type ? record_type : reml_type_error(&sema->types);
 }
 
+static reml_type *reml_infer_record_update(reml_sema *sema, reml_expr *expr,
+                                           reml_effect_set *effect) {
+  if (!sema || !expr) {
+    return reml_type_error(&sema->types);
+  }
+  reml_effect_set base_effect = REML_EFFECT_NONE;
+  reml_type *base_type = reml_infer_expr(sema, expr->data.record_update.base, &base_effect);
+  if (effect) {
+    *effect = reml_effect_union(*effect, base_effect);
+  }
+  base_type = reml_type_prune(base_type);
+
+  if (base_type && base_type->kind == REML_TYPE_VAR) {
+    UT_icd field_icd = {sizeof(reml_record_field), NULL, NULL, NULL};
+    UT_array *fields = NULL;
+    utarray_new(fields, &field_icd);
+    if (expr->data.record_update.fields) {
+      for (reml_record_expr_field *it =
+               (reml_record_expr_field *)utarray_front(expr->data.record_update.fields);
+           it != NULL;
+           it = (reml_record_expr_field *)utarray_next(expr->data.record_update.fields, it)) {
+        reml_record_field field;
+        field.name = it->name;
+        field.type = reml_type_make_var(&sema->types);
+        utarray_push_back(fields, &field);
+      }
+    }
+    reml_record_fields_sort(fields);
+    reml_type *record_type = reml_type_make_record(&sema->types, fields);
+    reml_expect_type(sema, base_type, record_type, expr->span);
+    base_type = reml_type_prune(base_type);
+  }
+
+  if (!base_type || base_type->kind != REML_TYPE_RECORD) {
+    reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, expr->span,
+                     "record update expects record type");
+    return reml_type_error(&sema->types);
+  }
+
+  if (expr->data.record_update.fields) {
+    for (reml_record_expr_field *it =
+             (reml_record_expr_field *)utarray_front(expr->data.record_update.fields);
+         it != NULL;
+         it = (reml_record_expr_field *)utarray_next(expr->data.record_update.fields, it)) {
+      reml_record_field *field = reml_record_field_find(base_type, it->name);
+      if (!field) {
+        reml_report_diag(sema, REML_DIAG_RECORD_FIELD_UNKNOWN, expr->span,
+                         "unknown record field");
+        return reml_type_error(&sema->types);
+      }
+      reml_effect_set field_effect = REML_EFFECT_NONE;
+      reml_type *value_type = reml_infer_expr(sema, it->value, &field_effect);
+      if (effect) {
+        *effect = reml_effect_union(*effect, field_effect);
+      }
+      reml_expect_type(sema, value_type, field->type, it->value->span);
+    }
+  }
+
+  return base_type;
+}
+
 static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
   if (!expr) {
     return reml_type_error(&sema->types);
@@ -1299,6 +1463,9 @@ static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_
       break;
     case REML_EXPR_RECORD:
       result = reml_infer_record(sema, expr, &local_effect);
+      break;
+    case REML_EXPR_RECORD_UPDATE:
+      result = reml_infer_record_update(sema, expr, &local_effect);
       break;
     case REML_EXPR_BLOCK:
       result = reml_infer_block(sema, expr, &local_effect);
@@ -1447,8 +1614,15 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
     case REML_PATTERN_CONSTRUCTOR: {
       reml_type *target = reml_type_prune(expected);
       if (target && target->kind == REML_TYPE_VAR) {
-        reml_type *enum_type = reml_type_make_enum(&sema->types);
-        reml_expect_type(sema, target, enum_type, pattern->span);
+        reml_constructor_entry *entry =
+            reml_constructor_lookup(sema, pattern->data.ctor.name);
+        if (!entry) {
+          reml_report_diag(sema, REML_DIAG_CONSTRUCTOR_UNKNOWN, pattern->span,
+                           "unknown constructor");
+          pattern->type = reml_type_error(&sema->types);
+          return;
+        }
+        reml_expect_type(sema, target, entry->enum_type, pattern->span);
         target = reml_type_prune(target);
       }
       if (!target || target->kind != REML_TYPE_ENUM) {
@@ -1462,9 +1636,15 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
       reml_enum_variant *variant =
           reml_enum_variant_find(target->data.enum_type.variants, pattern->data.ctor.name);
       if (!variant) {
-        variant = reml_enum_variant_add(&sema->types, target, pattern->data.ctor.name, field_count);
+        reml_constructor_entry *entry =
+            reml_constructor_lookup(sema, pattern->data.ctor.name);
+        if (entry && entry->enum_type == target) {
+          variant = entry->variant;
+        }
       }
       if (!variant) {
+        reml_report_diag(sema, REML_DIAG_CONSTRUCTOR_UNKNOWN, pattern->span,
+                         "unknown constructor");
         pattern->type = reml_type_error(&sema->types);
         return;
       }
@@ -1534,7 +1714,6 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
       }
     case REML_PATTERN_RECORD:
       {
-        size_t field_count = pattern->data.fields ? utarray_len(pattern->data.fields) : 0;
         reml_type *target = reml_type_prune(expected);
         if (target && target->kind == REML_TYPE_VAR) {
           UT_icd field_icd = {sizeof(reml_record_field), NULL, NULL, NULL};
@@ -1562,11 +1741,39 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
           pattern->type = reml_type_error(&sema->types);
           return;
         }
-        size_t target_count =
-            target->data.record.fields ? utarray_len(target->data.record.fields) : 0;
-        if (target_count != field_count) {
-          reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, pattern->span,
-                           "record pattern field mismatch");
+        bool missing = false;
+        bool unknown = false;
+        if (target->data.record.fields) {
+          for (reml_record_field *it =
+                   (reml_record_field *)utarray_front(target->data.record.fields);
+               it != NULL;
+               it = (reml_record_field *)utarray_next(target->data.record.fields, it)) {
+            if (!reml_pattern_fields_contains(pattern->data.fields, it->name)) {
+              missing = true;
+              break;
+            }
+          }
+        }
+        if (pattern->data.fields) {
+          for (reml_pattern_field *it =
+                   (reml_pattern_field *)utarray_front(pattern->data.fields);
+               it != NULL;
+               it = (reml_pattern_field *)utarray_next(pattern->data.fields, it)) {
+            if (!reml_record_field_find(target, it->name)) {
+              unknown = true;
+              break;
+            }
+          }
+        }
+        if (missing) {
+          reml_report_diag(sema, REML_DIAG_RECORD_FIELD_MISSING, pattern->span,
+                           "record field missing");
+        }
+        if (unknown) {
+          reml_report_diag(sema, REML_DIAG_RECORD_FIELD_UNKNOWN, pattern->span,
+                           "unknown record field");
+        }
+        if (missing || unknown) {
           pattern->type = reml_type_error(&sema->types);
           return;
         }
@@ -1577,8 +1784,8 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
                it = (reml_pattern_field *)utarray_next(pattern->data.fields, it)) {
             reml_record_field *field = reml_record_field_find(target, it->name);
             if (!field) {
-              reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, pattern->span,
-                               "record pattern field mismatch");
+              reml_report_diag(sema, REML_DIAG_RECORD_FIELD_UNKNOWN, pattern->span,
+                               "unknown record field");
               pattern->type = reml_type_error(&sema->types);
               return;
             }
@@ -1600,6 +1807,10 @@ static void reml_first_pass_decls(reml_sema *sema, reml_compilation_unit *unit) 
   for (reml_stmt **it = (reml_stmt **)utarray_front(unit->statements); it != NULL;
        it = (reml_stmt **)utarray_next(unit->statements, it)) {
     reml_stmt *stmt = *it;
+    if (stmt->kind == REML_STMT_TYPE_DECL) {
+      reml_register_type_decl(sema, &stmt->data.type_decl, stmt->span);
+      continue;
+    }
     if (stmt->kind != REML_STMT_VAL_DECL) {
       continue;
     }
@@ -1658,6 +1869,8 @@ static void reml_check_stmt(reml_sema *sema, reml_stmt *stmt, reml_effect_set *e
       }
       break;
     }
+    case REML_STMT_TYPE_DECL:
+      break;
     default:
       break;
   }
@@ -1670,6 +1883,8 @@ void reml_sema_init(reml_sema *sema) {
   sema->symbols = (reml_symbol_table *)calloc(1, sizeof(reml_symbol_table));
   reml_symbol_table_init(sema->symbols);
   reml_symbol_table_enter(sema->symbols);
+  sema->constructors = NULL;
+  sema->enum_decls = NULL;
   reml_type_ctx_init(&sema->types);
   reml_diagnostics_init(&sema->diagnostics);
 }
@@ -1686,6 +1901,20 @@ void reml_sema_deinit(reml_sema *sema) {
     free(sema->symbols);
     sema->symbols = NULL;
   }
+  reml_constructor_entry *ctor = NULL;
+  reml_constructor_entry *ctor_tmp = NULL;
+  HASH_ITER(hh, sema->constructors, ctor, ctor_tmp) {
+    HASH_DEL(sema->constructors, ctor);
+    free(ctor);
+  }
+  reml_enum_decl_entry *decl = NULL;
+  reml_enum_decl_entry *decl_tmp = NULL;
+  HASH_ITER(hh, sema->enum_decls, decl, decl_tmp) {
+    HASH_DEL(sema->enum_decls, decl);
+    free(decl);
+  }
+  sema->constructors = NULL;
+  sema->enum_decls = NULL;
   reml_type_ctx_deinit(&sema->types);
   reml_diagnostics_deinit(&sema->diagnostics);
 }

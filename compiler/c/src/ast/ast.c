@@ -81,6 +81,16 @@ reml_expr *reml_expr_make_record(reml_span span, UT_array *fields) {
   return expr;
 }
 
+reml_expr *reml_expr_make_record_update(reml_span span, reml_expr *base, UT_array *fields) {
+  reml_expr *expr = reml_expr_alloc(REML_EXPR_RECORD_UPDATE, span);
+  if (!expr) {
+    return NULL;
+  }
+  expr->data.record_update.base = base;
+  expr->data.record_update.fields = fields;
+  return expr;
+}
+
 reml_expr *reml_expr_make_block(reml_span span, reml_block_expr block) {
   reml_expr *expr = reml_expr_alloc(REML_EXPR_BLOCK, span);
   if (!expr) {
@@ -230,6 +240,18 @@ reml_stmt *reml_stmt_make_val_decl(reml_span span, reml_pattern *pattern, reml_e
   return stmt;
 }
 
+reml_stmt *reml_stmt_make_type_decl(reml_span span, reml_string_view name, UT_array *variants) {
+  reml_stmt *stmt = (reml_stmt *)calloc(1, sizeof(reml_stmt));
+  if (!stmt) {
+    return NULL;
+  }
+  stmt->kind = REML_STMT_TYPE_DECL;
+  stmt->span = span;
+  stmt->data.type_decl.name = name;
+  stmt->data.type_decl.variants = variants;
+  return stmt;
+}
+
 reml_compilation_unit *reml_compilation_unit_new(void) {
   reml_compilation_unit *unit = (reml_compilation_unit *)calloc(1, sizeof(reml_compilation_unit));
   if (!unit) {
@@ -288,6 +310,18 @@ void reml_expr_free(reml_expr *expr) {
         utarray_free(expr->data.record);
       }
       break;
+    case REML_EXPR_RECORD_UPDATE:
+      reml_expr_free(expr->data.record_update.base);
+      if (expr->data.record_update.fields) {
+        for (reml_record_expr_field *it =
+                 (reml_record_expr_field *)utarray_front(expr->data.record_update.fields);
+             it != NULL;
+             it = (reml_record_expr_field *)utarray_next(expr->data.record_update.fields, it)) {
+          reml_expr_free(it->value);
+        }
+        utarray_free(expr->data.record_update.fields);
+      }
+      break;
     case REML_EXPR_BLOCK:
       if (expr->data.block.statements) {
         for (reml_stmt **it = (reml_stmt **)utarray_front(expr->data.block.statements);
@@ -335,6 +369,19 @@ void reml_stmt_free(reml_stmt *stmt) {
     case REML_STMT_VAL_DECL:
       reml_pattern_free(stmt->data.val_decl.pattern);
       reml_expr_free(stmt->data.val_decl.value);
+      break;
+    case REML_STMT_TYPE_DECL:
+      if (stmt->data.type_decl.variants) {
+        for (reml_type_decl_variant *it =
+                 (reml_type_decl_variant *)utarray_front(stmt->data.type_decl.variants);
+             it != NULL;
+             it = (reml_type_decl_variant *)utarray_next(stmt->data.type_decl.variants, it)) {
+          if (it->fields) {
+            utarray_free(it->fields);
+          }
+        }
+        utarray_free(stmt->data.type_decl.variants);
+      }
       break;
     default:
       reml_expr_free(stmt->data.expr);

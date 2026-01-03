@@ -12,9 +12,13 @@ extern "C" {
 #endif
 
 typedef struct reml_symbol_table reml_symbol_table;
+typedef struct reml_constructor_entry reml_constructor_entry;
+typedef struct reml_enum_decl_entry reml_enum_decl_entry;
 
 typedef struct {
   reml_symbol_table *symbols;
+  reml_constructor_entry *constructors;
+  reml_enum_decl_entry *enum_decls;
   reml_type_ctx types;
   reml_diagnostic_list diagnostics;
 } reml_sema;

@@ -263,6 +263,9 @@ static reml_token_kind reml_keyword_kind(const reml_string_view *view) {
   if (view->length == 6 && strncmp(view->data, "module", 6) == 0) {
     return REML_TOKEN_KW_MODULE;
   }
+  if (view->length == 4 && strncmp(view->data, "type", 4) == 0) {
+    return REML_TOKEN_KW_TYPE;
+  }
   return REML_TOKEN_IDENT;
 }
 

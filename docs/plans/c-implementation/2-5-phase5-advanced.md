@@ -337,15 +337,15 @@ reml_effect_result reml_effect_trampoline(
 
 ### 5.5.2 作業ステップ（詳細）
 - [x] AST に constructor/record の式・パターンを追加する (`compiler/c/include/reml/ast/ast.h`)。
-- [ ] AST に `type` 宣言とレコード更新構文のノードを追加する。
+- [x] AST に `type` 宣言とレコード更新構文のノードを追加する。
 - [x] パーサーで constructor 呼び出しと record literal/record pattern を解析する (`compiler/c/src/parser/parser.c`)。
-- [ ] パーサーで `type` 宣言とレコード更新構文を解析する。
+- [x] パーサーで `type` 宣言とレコード更新構文を解析する。
 - [x] 型チェックで constructor arity/フィールド型検査と record 正規化順を実装する (`compiler/c/src/sema/sema.c`)。
 - [x] レコードの正規化順をレイアウトへ反映する (`compiler/c/src/sema/sema.c`, `compiler/c/src/codegen/codegen.c`)。
 - [x] Codegen で enum tag/payload と record struct の生成・アクセスを実装する (`compiler/c/src/codegen/codegen.c`, `compiler/c/src/runtime/enum.c`)。
-- [ ] 不足/余剰フィールド、未知コンストラクタ向けの診断 ID を追加し、式/パターンで統一する。
+- [x] 不足/余剰フィールド、未知コンストラクタ向けの診断 ID を追加し、式/パターンで統一する。
 - [x] テストで enum constructor/record/tuple match と drop を追加する (`compiler/c/tests/unit/test_sema.c`, `compiler/c/tests/unit/test_codegen.c`, `compiler/c/tests/unit/test_parser_basic.c`)。
-- [ ] `type` 宣言とレコード更新のパース/型検査/コード生成テストを追加する。
+- [x] `type` 宣言とレコード更新のパース/型検査/コード生成テストを追加する。
 
 ### 5.5.3 進捗メモ（2026-01-03）
 - constructor/record の式・パターン追加、型検査、codegen までの経路を実装済み。

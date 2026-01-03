@@ -657,6 +657,8 @@ static bool reml_codegen_emit_statement(reml_codegen *codegen, reml_codegen_scop
       }
       return false;
     }
+    case REML_STMT_TYPE_DECL:
+      return false;
     default:
       return false;
   }
@@ -1679,6 +1681,99 @@ static reml_codegen_value reml_codegen_emit_record(reml_codegen *codegen,
   return reml_codegen_make_value(cast, expr->type, false);
 }
 
+static reml_codegen_value reml_codegen_emit_record_update(reml_codegen *codegen,
+                                                          reml_codegen_scope_stack *scopes,
+                                                          reml_expr *expr) {
+  reml_type *record_type = reml_type_prune(expr->type);
+  if (!record_type || record_type->kind != REML_TYPE_RECORD) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                        "record update expects record type");
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+  LLVMTypeRef record_struct = reml_codegen_record_struct_type(codegen, record_type);
+  if (!record_struct) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                        "failed to lower record type");
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+  reml_codegen_value base_value =
+      reml_codegen_emit_expr(codegen, scopes, expr->data.record_update.base);
+  if (base_value.terminated) {
+    return base_value;
+  }
+  if (!base_value.value) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                        "record update missing base value");
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+
+  if (expr->data.record_update.fields) {
+    for (reml_record_expr_field *it =
+             (reml_record_expr_field *)utarray_front(expr->data.record_update.fields);
+         it != NULL;
+         it = (reml_record_expr_field *)utarray_next(expr->data.record_update.fields, it)) {
+      size_t field_index = 0;
+      if (!reml_record_field_index(record_type, it->name, &field_index, NULL)) {
+        reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                            "record update field missing in type");
+        return reml_codegen_make_value(NULL, expr->type, false);
+      }
+    }
+  }
+
+  LLVMValueRef alloca =
+      reml_codegen_create_entry_alloca(codegen, record_struct, "record.update.tmp");
+  if (!alloca) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                        "failed to allocate record");
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+  LLVMValueRef base_cast =
+      LLVMBuildBitCast(codegen->builder, base_value.value,
+                       LLVMPointerType(record_struct, 0), "record.update.cast");
+
+  size_t index = 0;
+  for (reml_record_field *it =
+           (reml_record_field *)utarray_front(record_type->data.record.fields);
+       it != NULL;
+       it = (reml_record_field *)utarray_next(record_type->data.record.fields, it)) {
+    reml_record_expr_field *expr_field =
+        reml_record_expr_field_find(expr->data.record_update.fields, it->name);
+    LLVMValueRef value = NULL;
+    if (expr_field) {
+      reml_codegen_value field_value = reml_codegen_emit_expr(codegen, scopes, expr_field->value);
+      if (field_value.terminated) {
+        return field_value;
+      }
+      value = field_value.value;
+    } else {
+      LLVMTypeRef field_llvm = reml_codegen_lower_type(codegen, it->type);
+      if (!field_llvm) {
+        field_llvm = LLVMInt64TypeInContext(codegen->context);
+      }
+      LLVMValueRef base_ptr =
+          LLVMBuildStructGEP2(codegen->builder, record_struct, base_cast, (unsigned)index,
+                              "record.update.base.ptr");
+      value = LLVMBuildLoad2(codegen->builder, field_llvm, base_ptr, "record.update.base");
+    }
+    LLVMTypeRef field_llvm = reml_codegen_lower_type(codegen, it->type);
+    if (!field_llvm) {
+      field_llvm = LLVMInt64TypeInContext(codegen->context);
+    }
+    LLVMValueRef field_ptr =
+        LLVMBuildStructGEP2(codegen->builder, record_struct, alloca, (unsigned)index,
+                            "record.update.field.ptr");
+    LLVMBuildStore(codegen->builder, value, field_ptr);
+    index++;
+  }
+
+  LLVMValueRef cast =
+      LLVMBuildBitCast(codegen->builder, alloca,
+                       LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0),
+                       "record.update.out");
+  return reml_codegen_make_value(cast, expr->type, false);
+}
+
 static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
                                                    reml_codegen_scope_stack *scopes,
                                                    reml_expr *expr) {
@@ -2600,6 +2695,8 @@ static reml_codegen_value reml_codegen_emit_expr(reml_codegen *codegen,
       return reml_codegen_emit_tuple(codegen, scopes, expr);
     case REML_EXPR_RECORD:
       return reml_codegen_emit_record(codegen, scopes, expr);
+    case REML_EXPR_RECORD_UPDATE:
+      return reml_codegen_emit_record_update(codegen, scopes, expr);
     case REML_EXPR_BLOCK:
       return reml_codegen_emit_block(codegen, scopes, &expr->data.block, expr->type);
     case REML_EXPR_IF:

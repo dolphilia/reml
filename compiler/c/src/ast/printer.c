@@ -201,6 +201,23 @@ void reml_ast_write_expr(FILE *out, const reml_expr *expr) {
       }
       fputs(")", out);
       return;
+    case REML_EXPR_RECORD_UPDATE:
+      fputs("(record_update ", out);
+      reml_ast_write_expr(out, expr->data.record_update.base);
+      if (expr->data.record_update.fields) {
+        for (reml_record_expr_field *it =
+                 (reml_record_expr_field *)utarray_front(expr->data.record_update.fields);
+             it != NULL;
+             it = (reml_record_expr_field *)utarray_next(expr->data.record_update.fields, it)) {
+          fputs(" (field ", out);
+          reml_write_view(out, it->name);
+          fputs(" ", out);
+          reml_ast_write_expr(out, it->value);
+          fputs(")", out);
+        }
+      }
+      fputs(")", out);
+      return;
     case REML_EXPR_BLOCK:
       fputs("(block", out);
       if (expr->data.block.statements) {
@@ -284,6 +301,30 @@ void reml_ast_write_stmt(FILE *out, const reml_stmt *stmt) {
       reml_ast_write_pattern(out, stmt->data.val_decl.pattern);
       fputs(" ", out);
       reml_ast_write_expr(out, stmt->data.val_decl.value);
+      fputs(")", out);
+      return;
+    case REML_STMT_TYPE_DECL:
+      fputs("(type ", out);
+      reml_write_view(out, stmt->data.type_decl.name);
+      if (stmt->data.type_decl.variants) {
+        for (reml_type_decl_variant *it =
+                 (reml_type_decl_variant *)utarray_front(stmt->data.type_decl.variants);
+             it != NULL;
+             it = (reml_type_decl_variant *)utarray_next(stmt->data.type_decl.variants, it)) {
+          fputs(" (variant ", out);
+          reml_write_view(out, it->name);
+          if (it->fields) {
+            for (reml_string_view *field =
+                     (reml_string_view *)utarray_front(it->fields);
+                 field != NULL;
+                 field = (reml_string_view *)utarray_next(it->fields, field)) {
+              fputs(" ", out);
+              reml_write_view(out, *field);
+            }
+          }
+          fputs(")", out);
+        }
+      }
       fputs(")", out);
       return;
     default:

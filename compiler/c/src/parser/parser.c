@@ -118,6 +118,20 @@ static void reml_free_record_expr_fields(UT_array *fields) {
   utarray_free(fields);
 }
 
+static void reml_free_type_decl_variants(UT_array *variants) {
+  if (!variants) {
+    return;
+  }
+  for (reml_type_decl_variant *it = (reml_type_decl_variant *)utarray_front(variants);
+       it != NULL;
+       it = (reml_type_decl_variant *)utarray_next(variants, it)) {
+    if (it->fields) {
+      utarray_free(it->fields);
+    }
+  }
+  utarray_free(variants);
+}
+
 static bool reml_int_literal_fits_i64(reml_string_view view, bool *fits_i64) {
   if (!fits_i64) {
     return false;
@@ -460,6 +474,62 @@ static reml_expr *reml_parse_primary(reml_parser *parser) {
       if (parser->current.kind == REML_TOKEN_IDENT) {
         reml_token name_token = parser->current;
         reml_token next_token = reml_parser_peek(parser);
+        if (next_token.kind == REML_TOKEN_KW_WITH) {
+          reml_parser_advance(parser);
+          reml_expr *base = reml_expr_make_ident(name_token.span, name_token.lexeme);
+          if (!base) {
+            return NULL;
+          }
+          if (!reml_parser_expect(parser, REML_TOKEN_KW_WITH, "expected 'with'")) {
+            reml_expr_free(base);
+            return NULL;
+          }
+          UT_icd field_icd = {sizeof(reml_record_expr_field), NULL, NULL, NULL};
+          UT_array *fields = NULL;
+          utarray_new(fields, &field_icd);
+
+          while (parser->current.kind != REML_TOKEN_RBRACE &&
+                 parser->current.kind != REML_TOKEN_EOF) {
+            if (parser->current.kind != REML_TOKEN_IDENT) {
+              reml_parser_set_error(parser, "expected record field", parser->current.span);
+              reml_expr_free(base);
+              reml_free_record_expr_fields(fields);
+              return NULL;
+            }
+            reml_token field_name = parser->current;
+            reml_parser_advance(parser);
+            if (!reml_parser_expect(parser, REML_TOKEN_COLON, "expected ':' after field name")) {
+              reml_expr_free(base);
+              reml_free_record_expr_fields(fields);
+              return NULL;
+            }
+            reml_expr *value = reml_parse_expression_prec(parser, 0);
+            if (!value) {
+              reml_expr_free(base);
+              reml_free_record_expr_fields(fields);
+              return NULL;
+            }
+            reml_record_expr_field field;
+            field.name = field_name.lexeme;
+            field.value = value;
+            utarray_push_back(fields, &field);
+
+            if (parser->current.kind == REML_TOKEN_COMMA) {
+              reml_parser_advance(parser);
+              continue;
+            }
+            break;
+          }
+
+          reml_token end_token = parser->current;
+          if (!reml_parser_expect(parser, REML_TOKEN_RBRACE, "expected '}'")) {
+            reml_expr_free(base);
+            reml_free_record_expr_fields(fields);
+            return NULL;
+          }
+          reml_span span = reml_span_combine(start_token.span, end_token.span);
+          return reml_expr_make_record_update(span, base, fields);
+        }
         if (next_token.kind == REML_TOKEN_COLON) {
           UT_icd field_icd = {sizeof(reml_record_expr_field), NULL, NULL, NULL};
           UT_array *fields = NULL;
@@ -791,6 +861,95 @@ static reml_expr *reml_parse_expression_prec(reml_parser *parser, int min_prec) 
 }
 
 static reml_stmt *reml_parse_statement(reml_parser *parser) {
+  if (parser->current.kind == REML_TOKEN_KW_TYPE) {
+    reml_token keyword = parser->current;
+    reml_parser_advance(parser);
+    if (parser->current.kind != REML_TOKEN_IDENT) {
+      reml_parser_set_error(parser, "expected type name", parser->current.span);
+      return NULL;
+    }
+    reml_token name_token = parser->current;
+    reml_parser_advance(parser);
+    if (!reml_parser_expect(parser, REML_TOKEN_EQ, "expected '=' after type name")) {
+      return NULL;
+    }
+    if (parser->current.kind == REML_TOKEN_PIPE) {
+      reml_parser_advance(parser);
+    }
+
+    UT_icd variant_icd = {sizeof(reml_type_decl_variant), NULL, NULL, NULL};
+    UT_array *variants = NULL;
+    utarray_new(variants, &variant_icd);
+    bool has_variant = false;
+
+    while (parser->current.kind == REML_TOKEN_IDENT) {
+      has_variant = true;
+      reml_token ctor_token = parser->current;
+      reml_parser_advance(parser);
+
+      reml_type_decl_variant variant;
+      variant.name = ctor_token.lexeme;
+      variant.fields = NULL;
+
+      if (parser->current.kind == REML_TOKEN_LPAREN) {
+        reml_parser_advance(parser);
+        UT_icd field_icd = {sizeof(reml_string_view), NULL, NULL, NULL};
+        utarray_new(variant.fields, &field_icd);
+
+        if (parser->current.kind != REML_TOKEN_RPAREN) {
+          while (true) {
+            if (parser->current.kind != REML_TOKEN_IDENT) {
+              reml_parser_set_error(parser, "expected type name", parser->current.span);
+              if (variant.fields) {
+                utarray_free(variant.fields);
+              }
+              reml_free_type_decl_variants(variants);
+              return NULL;
+            }
+            reml_string_view field_name = parser->current.lexeme;
+            reml_parser_advance(parser);
+            utarray_push_back(variant.fields, &field_name);
+            if (parser->current.kind == REML_TOKEN_COMMA) {
+              reml_parser_advance(parser);
+              continue;
+            }
+            break;
+          }
+        }
+
+        if (!reml_parser_expect(parser, REML_TOKEN_RPAREN, "expected ')'")) {
+          if (variant.fields) {
+            utarray_free(variant.fields);
+          }
+          reml_free_type_decl_variants(variants);
+          return NULL;
+        }
+      }
+
+      utarray_push_back(variants, &variant);
+
+      if (parser->current.kind == REML_TOKEN_PIPE) {
+        reml_parser_advance(parser);
+        continue;
+      }
+      break;
+    }
+
+    if (!has_variant) {
+      reml_parser_set_error(parser, "expected type variant", parser->current.span);
+      reml_free_type_decl_variants(variants);
+      return NULL;
+    }
+
+    reml_token end_token = parser->current;
+    if (!reml_parser_expect(parser, REML_TOKEN_SEMI, "expected ';' after type declaration")) {
+      reml_free_type_decl_variants(variants);
+      return NULL;
+    }
+    reml_span span = reml_span_combine(keyword.span, end_token.span);
+    return reml_stmt_make_type_decl(span, name_token.lexeme, variants);
+  }
+
   if (parser->current.kind == REML_TOKEN_KW_LET || parser->current.kind == REML_TOKEN_KW_VAR) {
     reml_token keyword = parser->current;
     reml_parser_advance(parser);

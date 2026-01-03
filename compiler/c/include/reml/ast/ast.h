@@ -36,6 +36,7 @@ typedef enum {
   REML_EXPR_CONSTRUCTOR,
   REML_EXPR_TUPLE,
   REML_EXPR_RECORD,
+  REML_EXPR_RECORD_UPDATE,
   REML_EXPR_BLOCK,
   REML_EXPR_IF,
   REML_EXPR_WHILE,
@@ -65,6 +66,11 @@ typedef struct {
   reml_string_view name;
   reml_expr *value;
 } reml_record_expr_field;
+
+typedef struct {
+  reml_expr *base;
+  UT_array *fields;
+} reml_record_update_expr;
 
 typedef struct {
   UT_array *statements;
@@ -154,6 +160,7 @@ struct reml_expr {
     reml_constructor_expr ctor;
     UT_array *tuple;
     UT_array *record;
+    reml_record_update_expr record_update;
     reml_block_expr block;
     reml_if_expr if_expr;
     reml_while_expr while_expr;
@@ -164,8 +171,19 @@ struct reml_expr {
 typedef enum {
   REML_STMT_EXPR,
   REML_STMT_RETURN,
-  REML_STMT_VAL_DECL
+  REML_STMT_VAL_DECL,
+  REML_STMT_TYPE_DECL
 } reml_stmt_kind;
+
+typedef struct {
+  reml_string_view name;
+  UT_array *fields;
+} reml_type_decl_variant;
+
+typedef struct {
+  reml_string_view name;
+  UT_array *variants;
+} reml_type_decl;
 
 typedef struct reml_stmt {
   reml_stmt_kind kind;
@@ -176,6 +194,7 @@ typedef struct reml_stmt {
       reml_pattern *pattern;
       reml_expr *value;
     } val_decl;
+    reml_type_decl type_decl;
   } data;
 } reml_stmt;
 
@@ -191,6 +210,7 @@ reml_expr *reml_expr_make_binary(reml_span span, reml_token_kind op, reml_expr *
 reml_expr *reml_expr_make_constructor(reml_span span, reml_string_view name, UT_array *args);
 reml_expr *reml_expr_make_tuple(reml_span span, UT_array *items);
 reml_expr *reml_expr_make_record(reml_span span, UT_array *fields);
+reml_expr *reml_expr_make_record_update(reml_span span, reml_expr *base, UT_array *fields);
 reml_expr *reml_expr_make_block(reml_span span, reml_block_expr block);
 reml_expr *reml_expr_make_if(reml_span span, reml_expr *condition, reml_expr *then_branch,
                              reml_expr *else_branch);
@@ -209,6 +229,7 @@ reml_pattern *reml_pattern_make_range(reml_span span, reml_literal start, reml_l
 reml_stmt *reml_stmt_make_expr(reml_span span, reml_expr *expr);
 reml_stmt *reml_stmt_make_return(reml_span span, reml_expr *expr);
 reml_stmt *reml_stmt_make_val_decl(reml_span span, reml_pattern *pattern, reml_expr *value);
+reml_stmt *reml_stmt_make_type_decl(reml_span span, reml_string_view name, UT_array *variants);
 
 reml_compilation_unit *reml_compilation_unit_new(void);
 void reml_compilation_unit_add_stmt(reml_compilation_unit *unit, reml_stmt *stmt);
