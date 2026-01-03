@@ -31,6 +31,7 @@ add_library(reml_core
   src/numeric/core_numeric.c
   src/runtime/enum.c
   src/runtime/effects.c
+  src/runtime/effects_core.c
   src/mir/mir.c
   src/typeck/type.c
   src/sema/diagnostic.c
