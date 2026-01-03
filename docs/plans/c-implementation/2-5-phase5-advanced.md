@@ -132,9 +132,9 @@
 - 例外: `Bool` で `true/false` が揃う場合は catch-all 無しでも `switch` を許可する。
 
 ### 5.2.9 残タスクと推奨順
-1. **DecisionTree の最適化**: 列選択/分割（Maranget 系）を本格化し、ネスト/Or/Range の行列分割を整理。
+1. **DecisionTree の最適化**: 列選択/分割（Maranget 系）を本格化し、ネスト/Or/Range の行列分割を整理。✅ tuple/record の列選択・guard 対応まで実装済み（詳細は 5.2.13）。
 2. **網羅性/到達不能の拡張**: タプル/レコード/コンストラクタ payload を含むケースへ診断を拡張。
-3. **診断の JSON 出力拡張**: `extensions.pattern` を CLI/LSP 出力に反映する。
+3. **診断の JSON 出力拡張**: `extensions.pattern` を CLI/LSP 出力に反映する。✅ CLI 側の JSON 出力に実装済み（`reml internal codegen --diag-json`）。
 
 ### 5.2.10 診断 JSON 出力と LSP 連携の設計メモ（2026-01-03）
 - **CLI 入口**: `reml internal codegen --diag-json <file>` を追加し、診断を JSON で標準出力へ出す。
@@ -148,6 +148,11 @@
 ### 5.2.11 進捗メモ（2026-01-03）
 - Enum コンストラクタの `switch` 生成で、**同一 tag の複数アームを 1 ケースへ統合**する最適化を追加。
 - `--diag-json` の JSON 形式と LSP 接続の設計メモを追記。
+
+### 5.2.13 進捗メモ（2026-01-04）
+- DecisionTree の列選択を tuple/record に一般化し、switch + case 内チェーンの分岐を実装済み。
+- guard 付き match を DecisionTree 内で評価し、失敗時の fallback を統合済み。
+- `extensions.pattern` の JSON 出力を CLI の `--diag-json` で出力する実装を追加済み。
 
 ### 5.2.12 残余パターン抽出の詳細設計（2026-01-03）
 - **目的**: `pattern.exhaustiveness.missing` の精度を上げ、タプル/レコード/コンストラクタ payload の不足箇所を `extensions.pattern` に構造化して出力する。
