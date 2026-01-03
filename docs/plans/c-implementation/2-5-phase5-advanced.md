@@ -113,7 +113,9 @@
 - [x] ADT/Enum のコンストラクタ式とランタイム生成
 - [x] Enum/ADT ペイロード破棄の設計方針を確定
 - [x] `reml_enum_free` の挿入（スコープ終端/return/ブロック末尾）
-- [ ] タプル/レコードの分岐展開
+- [x] タプル/レコードの分岐展開（AST/Type/Sema/Codegen + テスト）
+- [x] `pattern.exhaustiveness.missing` の `extensions.pattern` 生成（missing_variants/missing_ranges）
+- [x] enum の drop 経路を含む IR 生成テストを追加
 - [x] ガード/ネストパターンの優先順位ルール固定（仕様のみ）
 - [x] `switch` 化のヒューリスティック適用（Int/Bool/Range/Enum）
 
@@ -130,10 +132,9 @@
 - 例外: `Bool` で `true/false` が揃う場合は catch-all 無しでも `switch` を許可する。
 
 ### 5.2.9 残タスクと推奨順
-1. **`reml_enum_free` の挿入**: `return`/ブロック末尾/スコープ終端での drop を Codegen に追加。
-2. **網羅性診断の詳細化**: Range/Enum の不足ケースを `docs/spec/2-5-error.md` に反映し、メタデータを決める。
-3. **constructor/tag 安定化の仕様記載**: `docs/spec/1-2-types-Inference.md` に宣言順タグの安定化ルールを追記。
-4. **タプル/レコードの分岐展開**: AST/Type/Codegen の落とし込みとテスト追加。
+1. **DecisionTree の最適化**: 列選択/分割（Maranget 系）を本格化し、ネスト/Or/Range の行列分割を整理。
+2. **網羅性/到達不能の拡張**: タプル/レコード/コンストラクタ payload を含むケースへ診断を拡張。
+3. **診断の JSON 出力拡張**: `extensions.pattern` を CLI/LSP 出力に反映する。
 
 ## 5.3 Algebraic Effects (ランタイムサポート)
 - **目標**: `perform`, `resume`, `handle` のサポート。
