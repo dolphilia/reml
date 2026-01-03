@@ -145,6 +145,36 @@
   - `pattern.exhaustiveness.missing` は `data.extensions.pattern` を保持し、IDE 側で不足パターンを表示する。
   - `pattern.range.bound_inverted` 等の拡張も同様に `extensions.pattern` へ集約する。
 
+### 5.2.11 進捗メモ（2026-01-03）
+- Enum コンストラクタの `switch` 生成で、**同一 tag の複数アームを 1 ケースへ統合**する最適化を追加。
+- `--diag-json` の JSON 形式と LSP 接続の設計メモを追記。
+
+### 5.2.12 残余パターン抽出の詳細設計（2026-01-03）
+- **目的**: `pattern.exhaustiveness.missing` の精度を上げ、タプル/レコード/コンストラクタ payload の不足箇所を `extensions.pattern` に構造化して出力する。
+- **表現案**: `extensions.pattern.missing` を導入し、`missing_variants`/`missing_ranges` と併用。
+  - `missing_variants`: `["Some", "None"]` のような enum 直下の不足コンストラクタ。
+  - `missing_ranges`: `{start,end,inclusive}` の配列（Int の未被覆区間）。
+  - `missing_tuples`: `[{ arity: 2, items: [PatternMissing, PatternMissing] }]`
+  - `missing_records`: `[{ fields: [{ name: "x", missing: PatternMissing }, ...] }]`
+  - `missing_payloads`: `[{ ctor: "Some", missing: PatternMissing }]`
+- **PatternMissing の構造**（再帰型）:
+  - `any`（ワイルドカード相当）
+  - `literal`（`int/float/bool/...`）
+  - `range`（`start/end/inclusive`）
+  - `tuple`（`arity` + `items`）
+  - `record`（`fields` 配列）
+  - `constructor`（`ctor` + `payload`）
+- **抽出アルゴリズム（概要）**:
+  1.  **Maranget の行列分割**で列を選択し、各列の**残余**を計算する。
+  2.  **constructor**: 同一コンストラクタの行を束ね、payload の残余を再帰的に算出。
+  3.  **tuple/record**: 先頭列で分割後、残余列の**直積合成**で `missing_tuples/records` を生成。
+  4.  **guard**: guard 付きアームは「網羅性寄与しない」扱いとし、残余抽出対象から除外。
+  5.  **縮約**: 隣接区間のマージ、重複パターンの除去、`any` の吸収を行う。
+- **段階導入**:
+  - Phase A: enum payload の不足のみ `missing_payloads` へ出力。
+  - Phase B: tuple の `missing_tuples` を追加。
+  - Phase C: record の `missing_records` と field 単位の不足を追加。
+
 ## 5.3 Algebraic Effects (ランタイムサポート)
 - **目標**: `perform`, `resume`, `handle` のサポート。
 - **仕様参照**: `docs/spec/1-3-effects-safety.md`、`docs/spec/3-8-core-runtime-capability.md`。
