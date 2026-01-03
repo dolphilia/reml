@@ -84,7 +84,7 @@ pub fn pattern_messages() -> &'static [PatternDiagnosticMessage] {
             code: "pattern.exhaustiveness.missing",
             title: "match の網羅性が不足しています",
             message: "この match はすべての入力を網羅していません。未処理のケースを追加してください。",
-            severity: DiagnosticSeverity::Warning,
+            severity: DiagnosticSeverity::Error,
         },
         PatternDiagnosticMessage {
             code: "pattern.unreachable_arm",

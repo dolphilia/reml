@@ -777,6 +777,22 @@ pub struct TypecheckViolation {
     pub iterator_stage: Option<IteratorStageViolationInfo>,
     #[serde(skip_serializing)]
     pub capability_mismatch: Option<CapabilityMismatch>,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pattern_missing_variants: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pattern_missing_ranges: Option<Vec<PatternRangeInfo>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pattern_range: Option<PatternRangeInfo>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct PatternRangeInfo {
+    pub start: String,
+    pub end: String,
+    pub inclusive: bool,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -914,6 +930,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -934,6 +953,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -954,6 +976,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -977,6 +1002,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -996,6 +1024,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1032,6 +1063,9 @@ impl TypecheckViolation {
                 required.clone(),
                 actual.clone(),
             )),
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
         .with_expected_summary(top_level_declaration_summary())
     }
@@ -1075,6 +1109,9 @@ impl TypecheckViolation {
                 source: snapshot.source,
             }),
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
         .with_expected_summary(top_level_declaration_summary())
     }
@@ -1094,6 +1131,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1112,6 +1152,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1131,6 +1174,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1149,6 +1195,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1177,6 +1226,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1205,6 +1257,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1232,6 +1287,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1260,6 +1318,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1283,6 +1344,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1306,6 +1370,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1326,6 +1393,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1346,6 +1416,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1368,6 +1441,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1390,6 +1466,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1408,6 +1487,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1426,6 +1508,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1444,6 +1529,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1466,6 +1554,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1484,6 +1575,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1502,6 +1596,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1520,6 +1617,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1538,6 +1638,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1555,6 +1658,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1573,6 +1679,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1591,6 +1700,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1628,6 +1740,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1655,6 +1770,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1673,6 +1791,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1689,6 +1810,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1730,22 +1854,41 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
-    fn pattern_range_bound_inverted(span: Span, start: i64, end: i64) -> Self {
+    fn pattern_range_bound_inverted(
+        span: Span,
+        start: IntLiteralInfo,
+        end: IntLiteralInfo,
+        inclusive: bool,
+    ) -> Self {
+        let pattern_range = PatternRangeInfo {
+            start: start.raw,
+            end: end.raw,
+            inclusive,
+        };
         Self {
             kind: TypecheckViolationKind::PatternRangeBoundInverted,
             code: "pattern.range.bound_inverted",
             message: "範囲パターンの下限と上限が逆転しています。".to_string(),
             span: Some(span),
-            notes: vec![ViolationNote::plain(format!("開始: {start} / 終了: {end}"))],
+            notes: vec![ViolationNote::plain(format!(
+                "開始: {} / 終了: {}",
+                pattern_range.start, pattern_range.end
+            ))],
             capability: None,
             function: None,
             expected: None,
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: Some(pattern_range),
         }
     }
 
@@ -1762,6 +1905,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1780,10 +1926,17 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
-    fn pattern_exhaustiveness_missing(span: Span) -> Self {
+    fn pattern_exhaustiveness_missing(
+        span: Span,
+        missing_variants: Option<Vec<String>>,
+        missing_ranges: Option<Vec<PatternRangeInfo>>,
+    ) -> Self {
         Self {
             kind: TypecheckViolationKind::PatternExhaustivenessMissing,
             code: "pattern.exhaustiveness.missing",
@@ -1798,6 +1951,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: missing_variants,
+            pattern_missing_ranges: missing_ranges,
+            pattern_range: None,
         }
     }
 
@@ -1816,6 +1972,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1838,6 +1997,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1857,6 +2019,9 @@ impl TypecheckViolation {
             recover,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1885,6 +2050,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1913,6 +2081,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1936,6 +2107,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1954,6 +2128,9 @@ impl TypecheckViolation {
             recover: None,
             iterator_stage: None,
             capability_mismatch: None,
+            pattern_missing_variants: None,
+            pattern_missing_ranges: None,
+            pattern_range: None,
         }
     }
 
@@ -1965,12 +2142,8 @@ impl TypecheckViolation {
             | TypecheckViolationKind::UnicodeShadowing
             | TypecheckViolationKind::ActivePatternReturnContract
             | TypecheckViolationKind::ActivePatternNameConflict
-            | TypecheckViolationKind::PatternExhaustivenessMissing
-            | TypecheckViolationKind::PatternUnreachableArm
             | TypecheckViolationKind::PatternBindingDuplicate
             | TypecheckViolationKind::PatternRegexUnsupportedTarget
-            | TypecheckViolationKind::PatternRangeTypeMismatch
-            | TypecheckViolationKind::PatternRangeBoundInverted
             | TypecheckViolationKind::PatternSliceTypeMismatch
             | TypecheckViolationKind::PatternSliceMultipleRest
             | TypecheckViolationKind::ValueRestriction
@@ -2004,6 +2177,10 @@ impl TypecheckViolation {
             | TypecheckViolationKind::NativeLlvmIrMissingCfg
             | TypecheckViolationKind::UnsafeInPureContext => "effects",
             TypecheckViolationKind::CoreParseRecoverBranch
+            | TypecheckViolationKind::PatternExhaustivenessMissing
+            | TypecheckViolationKind::PatternUnreachableArm
+            | TypecheckViolationKind::PatternRangeTypeMismatch
+            | TypecheckViolationKind::PatternRangeBoundInverted
             | TypecheckViolationKind::OpBuilderLevelConflict
             | TypecheckViolationKind::OpBuilderFixityMissing => "parser",
             TypecheckViolationKind::RuntimeBridgeStageMismatch => "runtime",
@@ -4482,6 +4659,8 @@ fn infer_expr(
             if coverage.should_report_missing && !coverage.coverage_reached {
                 violations.push(TypecheckViolation::pattern_exhaustiveness_missing(
                     expr.span(),
+                    coverage.missing_variants,
+                    coverage.missing_ranges,
                 ));
             }
             make_typed(
@@ -6339,6 +6518,110 @@ fn is_range_compatible_type(ty: &Type) -> bool {
         || is_unknown_type(ty)
 }
 
+fn is_exact_int_type(ty: &Type) -> bool {
+    matches!(ty, Type::Builtin(BuiltinType::Int))
+        || matches!(
+            ty,
+            Type::App {
+                constructor,
+                arguments: _
+            } if constructor == "Int"
+        )
+}
+
+fn merge_intervals(intervals: &[RangeInterval]) -> Vec<RangeInterval> {
+    let mut merged = intervals.to_vec();
+    merged.sort_by(|left, right| {
+        let left_start = left.start.unwrap_or(i64::MIN);
+        let right_start = right.start.unwrap_or(i64::MIN);
+        left_start
+            .cmp(&right_start)
+            .then_with(|| left.end.unwrap_or(i64::MAX).cmp(&right.end.unwrap_or(i64::MAX)))
+    });
+    let mut output: Vec<RangeInterval> = Vec::new();
+    for interval in merged {
+        if output.is_empty() {
+            output.push(interval);
+            continue;
+        }
+        let last = output.last_mut().unwrap();
+        if ranges_overlap_or_adjacent(last, &interval) {
+            last.end = merge_end(last.end, interval.end);
+        } else {
+            output.push(interval);
+        }
+    }
+    output
+}
+
+fn ranges_overlap_or_adjacent(left: &RangeInterval, right: &RangeInterval) -> bool {
+    let left_end = match left.end {
+        Some(value) => value,
+        None => return true,
+    };
+    let right_start = right.start.unwrap_or(i64::MIN);
+    if left_end == i64::MAX {
+        return true;
+    }
+    left_end.saturating_add(1) >= right_start
+}
+
+fn merge_end(left: Option<i64>, right: Option<i64>) -> Option<i64> {
+    match (left, right) {
+        (None, _) | (_, None) => None,
+        (Some(left), Some(right)) => Some(left.max(right)),
+    }
+}
+
+fn range_covers_all(interval: &RangeInterval) -> bool {
+    let covers_low = interval.start.is_none() || interval.start == Some(i64::MIN);
+    let covers_high = interval.end.is_none() || interval.end == Some(i64::MAX);
+    covers_low && covers_high
+}
+
+fn compute_missing_ranges(intervals: &[RangeInterval]) -> Vec<PatternRangeInfo> {
+    let mut missing = Vec::new();
+    if intervals.is_empty() {
+        return missing;
+    }
+    let first = &intervals[0];
+    if let Some(start) = first.start {
+        if let Some(end) = start.checked_sub(1) {
+            missing.push(make_missing_range(None, Some(end)));
+        }
+    }
+    for window in intervals.windows(2) {
+        let current = &window[0];
+        let next = &window[1];
+        let Some(current_end) = current.end else {
+            return missing;
+        };
+        let next_start = next.start.unwrap_or(i64::MIN);
+        let gap_start = current_end.checked_add(1);
+        let gap_end = next_start.checked_sub(1);
+        if let (Some(start), Some(end)) = (gap_start, gap_end) {
+            if start <= end {
+                missing.push(make_missing_range(Some(start), Some(end)));
+            }
+        }
+    }
+    let last = intervals.last().unwrap();
+    if let Some(end) = last.end {
+        if let Some(start) = end.checked_add(1) {
+            missing.push(make_missing_range(Some(start), None));
+        }
+    }
+    missing
+}
+
+fn make_missing_range(start: Option<i64>, end: Option<i64>) -> PatternRangeInfo {
+    PatternRangeInfo {
+        start: start.map(|value| value.to_string()).unwrap_or_else(|| "-inf".to_string()),
+        end: end.map(|value| value.to_string()).unwrap_or_else(|| "+inf".to_string()),
+        inclusive: true,
+    }
+}
+
 fn array_element_type(target_ty: &Type) -> Option<Type> {
     match target_ty {
         Type::Slice { element } => Some(element.as_ref().clone()),
@@ -6383,15 +6666,24 @@ fn pattern_hint_type(pattern: &Pattern) -> Option<Type> {
     }
 }
 
-fn int_literal_value(pattern: Option<&Pattern>) -> Option<i64> {
+#[derive(Debug, Clone)]
+struct IntLiteralInfo {
+    value: i64,
+    raw: String,
+}
+
+fn int_literal_info(pattern: Option<&Pattern>) -> Option<IntLiteralInfo> {
     match pattern {
         Some(Pattern {
             kind:
                 PatternKind::Literal(Literal {
-                    value: LiteralKind::Int { value, .. },
+                    value: LiteralKind::Int { value, raw, .. },
                 }),
             ..
-        }) => Some(*value),
+        }) => Some(IntLiteralInfo {
+            value: *value,
+            raw: raw.clone(),
+        }),
         _ => None,
     }
 }
@@ -6434,13 +6726,18 @@ fn validate_range_pattern(
             end_ty.clone(),
         ));
     }
-    if let (Some(start_val), Some(end_val)) = (int_literal_value(start), int_literal_value(end)) {
-        if start_val > end_val {
-            violations.push(TypecheckViolation::pattern_range_bound_inverted(
-                pattern.span,
-                start_val,
-                end_val,
-            ));
+    if let (Some(start_info), Some(end_info)) =
+        (int_literal_info(start), int_literal_info(end))
+    {
+        if start_info.value > end_info.value {
+            if let PatternKind::Range { inclusive, .. } = &pattern.kind {
+                violations.push(TypecheckViolation::pattern_range_bound_inverted(
+                    pattern.span,
+                    start_info,
+                    end_info,
+                    *inclusive,
+                ));
+            }
         }
     }
 }
@@ -6629,6 +6926,8 @@ struct ExhaustivenessResult {
     coverage_reached: bool,
     should_report_missing: bool,
     unreachable_arm_indices: Vec<usize>,
+    missing_variants: Option<Vec<String>>,
+    missing_ranges: Option<Vec<PatternRangeInfo>>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -6638,6 +6937,134 @@ enum ExhaustivenessDomain {
     OptionLike,
     Slice,
     Sum,
+}
+
+#[derive(Debug, Clone)]
+struct RangeInterval {
+    start: Option<i64>,
+    end: Option<i64>,
+}
+
+#[derive(Default)]
+struct RangeCoverageTracker {
+    active: bool,
+    has_range_pattern: bool,
+    has_unknown_bound: bool,
+    has_wildcard: bool,
+    intervals: Vec<RangeInterval>,
+}
+
+struct RangeCoverageResult {
+    has_domain: bool,
+    coverage_reached: bool,
+    missing_ranges: Option<Vec<PatternRangeInfo>>,
+}
+
+impl RangeCoverageTracker {
+    fn new(target_ty: &Type) -> Self {
+        Self {
+            active: is_exact_int_type(target_ty),
+            ..Self::default()
+        }
+    }
+
+    fn observe_pattern(&mut self, pattern: &Pattern) {
+        if !self.active {
+            return;
+        }
+        self.collect_from_pattern(pattern);
+    }
+
+    fn collect_from_pattern(&mut self, pattern: &Pattern) {
+        match &pattern.kind {
+            PatternKind::Wildcard | PatternKind::Var(_) => {
+                self.has_wildcard = true;
+            }
+            PatternKind::Binding { pattern: inner, .. } => {
+                self.collect_from_pattern(inner);
+            }
+            PatternKind::Guard { pattern: inner, .. } => {
+                self.collect_from_pattern(inner);
+            }
+            PatternKind::Or { variants } => {
+                for variant in variants {
+                    self.collect_from_pattern(variant);
+                }
+            }
+            PatternKind::Range {
+                start,
+                end,
+                inclusive,
+            } => {
+                self.has_range_pattern = true;
+                if start.is_none() && end.is_none() {
+                    self.has_wildcard = true;
+                    return;
+                }
+                let start_info = int_literal_info(start.as_deref());
+                let end_info = int_literal_info(end.as_deref());
+                if (start.is_some() && start_info.is_none())
+                    || (end.is_some() && end_info.is_none())
+                {
+                    self.has_unknown_bound = true;
+                    return;
+                }
+                let mut end_value = end_info.as_ref().map(|info| info.value);
+                if let (Some(value), false) = (end_value, *inclusive) {
+                    end_value = value.checked_sub(1);
+                    if end_value.is_none() {
+                        return;
+                    }
+                }
+                self.push_interval(start_info.map(|info| info.value), end_value);
+            }
+            PatternKind::Literal(Literal {
+                value: LiteralKind::Int { value, .. },
+            }) => {
+                self.has_range_pattern = true;
+                self.push_interval(Some(*value), Some(*value));
+            }
+            _ => {}
+        }
+    }
+
+    fn push_interval(&mut self, start: Option<i64>, end: Option<i64>) {
+        if let (Some(start), Some(end)) = (start, end) {
+            if start > end {
+                return;
+            }
+        }
+        self.intervals.push(RangeInterval { start, end });
+    }
+
+    fn result(&self) -> RangeCoverageResult {
+        if !self.active || !self.has_range_pattern || self.has_wildcard {
+            return RangeCoverageResult {
+                has_domain: self.active && self.has_range_pattern,
+                coverage_reached: self.has_wildcard,
+                missing_ranges: None,
+            };
+        }
+        if self.has_unknown_bound || self.intervals.is_empty() {
+            return RangeCoverageResult {
+                has_domain: true,
+                coverage_reached: false,
+                missing_ranges: None,
+            };
+        }
+        let merged = merge_intervals(&self.intervals);
+        let coverage_reached = merged.len() == 1 && range_covers_all(&merged[0]);
+        let missing_ranges = if coverage_reached {
+            None
+        } else {
+            Some(compute_missing_ranges(&merged))
+        };
+        RangeCoverageResult {
+            has_domain: true,
+            coverage_reached,
+            missing_ranges,
+        }
+    }
 }
 
 fn sum_constructors_for_type(env: &TypeEnv, target_ty: &Type) -> Option<HashSet<String>> {
@@ -6692,23 +7119,58 @@ fn analyze_match_exhaustiveness(
 ) -> ExhaustivenessResult {
     let (domain, sum_constructors) = exhaustiveness_domain_for_type(env, target_ty);
     let mut tracker = ExhaustivenessTracker::new(domain, sum_constructors);
+    let mut range_tracker = RangeCoverageTracker::new(target_ty);
     let mut unreachable_arm_indices = Vec::new();
     let mut has_partial_active_pattern = false;
     for (idx, arm) in arms.iter().enumerate() {
         if contains_partial_active_pattern(&arm.pattern) {
             has_partial_active_pattern = true;
         }
-        if tracker.coverage_reached() {
+        if tracker.coverage_reached() && arm.guard.is_none() {
             unreachable_arm_indices.push(idx);
             continue;
         }
         tracker.observe_arm(arm);
+        if arm.guard.is_none() {
+            range_tracker.observe_pattern(&arm.pattern);
+        }
     }
+    let range_result = range_tracker.result();
+    let coverage_reached = tracker.coverage_reached() || range_result.coverage_reached;
+    let should_report_missing = domain != ExhaustivenessDomain::Unknown
+        || has_partial_active_pattern
+        || range_result.has_domain;
+    let missing_variants = if domain == ExhaustivenessDomain::Sum && !coverage_reached {
+        tracker
+            .sum_constructors
+            .as_ref()
+            .map(|constructors| {
+                let mut missing = constructors
+                    .difference(&tracker.sum_seen)
+                    .cloned()
+                    .collect::<Vec<_>>();
+                missing.sort();
+                if missing.is_empty() {
+                    None
+                } else {
+                    Some(missing)
+                }
+            })
+            .unwrap_or(None)
+    } else {
+        None
+    };
+    let missing_ranges = if range_result.has_domain && !coverage_reached {
+        range_result.missing_ranges
+    } else {
+        None
+    };
     ExhaustivenessResult {
-        coverage_reached: tracker.coverage_reached(),
-        should_report_missing: domain != ExhaustivenessDomain::Unknown
-            || has_partial_active_pattern,
+        coverage_reached,
+        should_report_missing,
         unreachable_arm_indices,
+        missing_variants,
+        missing_ranges,
     }
 }
 

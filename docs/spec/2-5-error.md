@@ -211,7 +211,7 @@ let array =
 | `pattern.range.bound_inverted` | Error | Parser | Range 境界が逆転している場合。`extensions.pattern.range` に `start/end/inclusive` を付与する。 |
 
 * `pattern.exhaustiveness.missing` は、Enum なら不足コンストラクタ名の配列（`missing_variants`）、Range なら不足区間の配列（`missing_ranges`）を `extensions.pattern` に付与する。  
-* `missing_ranges` の各要素は `{ start, end, inclusive }` で表現し、`start/end` は文字列表記（例: `"1"`）を用いる。  
+* `missing_ranges` の各要素は `{ start, end, inclusive }` で表現し、`start/end` は文字列表記（例: `"1"`）を用いる。無限側の境界は `"-inf"` / `"+inf"` を用いて表現する。  
 * `pattern.unreachable_arm` はガード無しの重複ケースに限定し、ガード付きは到達不能とみなさない。
 
 > 0-1 §2.2「分かりやすいエラーメッセージ」を満たすため、`Parse.fail` に素朴な文字列を渡すだけで終わらせず、ここで定める手順で `Diagnostic` を構築する。

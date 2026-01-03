@@ -3590,6 +3590,19 @@ fn build_type_diagnostics(
             }
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
             extensions.insert("cfg".to_string(), args.target_cfg_extension.clone());
+            let mut pattern_extension = Map::new();
+            if let Some(variants) = violation.pattern_missing_variants.as_ref() {
+                pattern_extension.insert("missing_variants".to_string(), json!(variants));
+            }
+            if let Some(ranges) = violation.pattern_missing_ranges.as_ref() {
+                pattern_extension.insert("missing_ranges".to_string(), json!(ranges));
+            }
+            if let Some(range) = violation.pattern_range.as_ref() {
+                pattern_extension.insert("range".to_string(), json!(range));
+            }
+            if !pattern_extension.is_empty() {
+                extensions.insert("pattern".to_string(), Value::Object(pattern_extension));
+            }
             let mut severity_label = messages::find_message(violation.code)
                 .map(|template| template.severity.as_str())
                 .unwrap_or("error");
