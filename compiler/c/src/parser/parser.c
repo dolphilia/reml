@@ -202,23 +202,39 @@ static bool reml_literal_from_token(reml_parser *parser, reml_token token, reml_
         return false;
       }
       out->kind = fits_i64 ? REML_LITERAL_INT : REML_LITERAL_BIGINT;
+      out->string_kind = REML_STRING_NORMAL;
       break;
     }
     case REML_TOKEN_FLOAT:
       out->kind = REML_LITERAL_FLOAT;
+      out->string_kind = REML_STRING_NORMAL;
       break;
     case REML_TOKEN_STRING:
+    case REML_TOKEN_STRING_RAW:
+    case REML_TOKEN_STRING_MULTILINE:
       out->kind = REML_LITERAL_STRING;
+      out->string_kind = REML_STRING_NORMAL;
+      break;
+    case REML_TOKEN_STRING_RAW:
+      out->kind = REML_LITERAL_STRING;
+      out->string_kind = REML_STRING_RAW;
+      break;
+    case REML_TOKEN_STRING_MULTILINE:
+      out->kind = REML_LITERAL_STRING;
+      out->string_kind = REML_STRING_MULTILINE;
       break;
     case REML_TOKEN_CHAR:
       out->kind = REML_LITERAL_CHAR;
+      out->string_kind = REML_STRING_NORMAL;
       break;
     case REML_TOKEN_KW_TRUE:
     case REML_TOKEN_KW_FALSE:
       out->kind = REML_LITERAL_BOOL;
+      out->string_kind = REML_STRING_NORMAL;
       break;
     default:
       out->kind = REML_LITERAL_INT;
+      out->string_kind = REML_STRING_NORMAL;
       break;
   }
   out->text = token.lexeme;
@@ -274,9 +290,10 @@ static reml_pattern *reml_parse_pattern_primary(reml_parser *parser) {
     return reml_pattern_make_ident(token.span, token.lexeme);
   }
 
-  if (token.kind == REML_TOKEN_INT || token.kind == REML_TOKEN_FLOAT || token.kind == REML_TOKEN_STRING ||
-      token.kind == REML_TOKEN_CHAR || token.kind == REML_TOKEN_KW_TRUE ||
-      token.kind == REML_TOKEN_KW_FALSE) {
+  if (token.kind == REML_TOKEN_INT || token.kind == REML_TOKEN_FLOAT ||
+      token.kind == REML_TOKEN_STRING || token.kind == REML_TOKEN_STRING_RAW ||
+      token.kind == REML_TOKEN_STRING_MULTILINE || token.kind == REML_TOKEN_CHAR ||
+      token.kind == REML_TOKEN_KW_TRUE || token.kind == REML_TOKEN_KW_FALSE) {
     reml_parser_advance(parser);
     reml_literal literal;
     if (!reml_literal_from_token(parser, token, &literal)) {
@@ -288,7 +305,8 @@ static reml_pattern *reml_parse_pattern_primary(reml_parser *parser) {
       reml_parser_advance(parser);
       reml_token end_token = parser->current;
       if (!(end_token.kind == REML_TOKEN_INT || end_token.kind == REML_TOKEN_FLOAT ||
-            end_token.kind == REML_TOKEN_STRING || end_token.kind == REML_TOKEN_CHAR ||
+            end_token.kind == REML_TOKEN_STRING || end_token.kind == REML_TOKEN_STRING_RAW ||
+            end_token.kind == REML_TOKEN_STRING_MULTILINE || end_token.kind == REML_TOKEN_CHAR ||
             end_token.kind == REML_TOKEN_KW_TRUE || end_token.kind == REML_TOKEN_KW_FALSE)) {
         reml_parser_set_error(parser, "expected range bound literal", end_token.span);
         return NULL;
@@ -458,6 +476,8 @@ static reml_expr *reml_parse_primary(reml_parser *parser) {
     case REML_TOKEN_INT:
     case REML_TOKEN_FLOAT:
     case REML_TOKEN_STRING:
+    case REML_TOKEN_STRING_RAW:
+    case REML_TOKEN_STRING_MULTILINE:
     case REML_TOKEN_CHAR:
     case REML_TOKEN_KW_TRUE:
     case REML_TOKEN_KW_FALSE: {
@@ -709,6 +729,8 @@ static reml_expr *reml_parse_primary(reml_parser *parser) {
              parser->current.kind == REML_TOKEN_INT ||
              parser->current.kind == REML_TOKEN_FLOAT ||
              parser->current.kind == REML_TOKEN_STRING ||
+             parser->current.kind == REML_TOKEN_STRING_RAW ||
+             parser->current.kind == REML_TOKEN_STRING_MULTILINE ||
              parser->current.kind == REML_TOKEN_CHAR ||
              parser->current.kind == REML_TOKEN_KW_TRUE ||
              parser->current.kind == REML_TOKEN_KW_FALSE ||

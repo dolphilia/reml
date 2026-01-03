@@ -322,6 +322,8 @@ reml_effect_result reml_effect_trampoline(
 ### 5.4.5 進捗メモ（2026-01-03）
 - 文字列ランタイム（`reml_string_from_utf8`/`concat`/`cmp`/`free`）を追加し、基本テストを追加。
 - 文字列リテラルの codegen と `+`/比較演算子のランタイム呼び出しを接続。
+- 通常/生/複数行の文字列トークンと Unicode エスケープ検証を lexer/parser に追加。
+- `\u{...}` と複数行の dedent を含むアンエスケープ処理を codegen に追加。
 
 ## 5.5 ADT とレコード型
 - **仕様参照**: `docs/spec/1-2-types-Inference.md`、`docs/spec/1-5-formal-grammar-bnf.md`。
@@ -407,6 +409,7 @@ reml_effect_result reml_effect_trampoline(
 
 ### 5.9.1 進捗メモ（2026-01-03）
 - 演算子トレイトの制約収集用リストを追加し、チェック後に再解決する下地を実装。
+- 変数束縛での制約スナップショットとインスタンス化時の制約伝搬を追加。
 
 ## 5.10 検証と完了条件
 - **テスト**: `tests/unit` と `tests/integration` に追加。

@@ -23,9 +23,16 @@ typedef enum {
   REML_LITERAL_BOOL
 } reml_literal_kind;
 
+typedef enum {
+  REML_STRING_NORMAL,
+  REML_STRING_RAW,
+  REML_STRING_MULTILINE
+} reml_string_kind;
+
 typedef struct {
   reml_literal_kind kind;
   reml_string_view text;
+  reml_string_kind string_kind;
 } reml_literal;
 
 typedef enum {

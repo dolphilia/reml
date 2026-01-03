@@ -9,6 +9,25 @@
 #include <utarray.h>
 
 typedef enum {
+  REML_TRAIT_ADD,
+  REML_TRAIT_SUB,
+  REML_TRAIT_MUL,
+  REML_TRAIT_DIV,
+  REML_TRAIT_REM,
+  REML_TRAIT_BITXOR,
+  REML_TRAIT_EQ,
+  REML_TRAIT_ORD
+} reml_trait_kind;
+
+typedef struct {
+  reml_trait_kind trait;
+  reml_type *left;
+  reml_type *right;
+  reml_type *result;
+  reml_span span;
+} reml_trait_constraint;
+
+typedef enum {
   REML_SYMBOL_FUNC,
   REML_SYMBOL_VAR,
   REML_SYMBOL_TYPE,
@@ -18,6 +37,7 @@ typedef enum {
 typedef struct {
   reml_type *type;
   UT_array *generics;
+  UT_array *constraints;
 } reml_scheme;
 
 typedef struct reml_symbol {
@@ -78,6 +98,8 @@ static void reml_scheme_init(reml_scheme *scheme, reml_type *type) {
   scheme->type = type;
   UT_icd id_icd = {sizeof(uint32_t), NULL, NULL, NULL};
   utarray_new(scheme->generics, &id_icd);
+  UT_icd constraint_icd = {sizeof(reml_trait_constraint), NULL, NULL, NULL};
+  utarray_new(scheme->constraints, &constraint_icd);
 }
 
 static void reml_scheme_reset(reml_scheme *scheme, reml_type *type) {
@@ -86,6 +108,9 @@ static void reml_scheme_reset(reml_scheme *scheme, reml_type *type) {
   }
   if (scheme->generics) {
     utarray_clear(scheme->generics);
+  }
+  if (scheme->constraints) {
+    utarray_clear(scheme->constraints);
   }
   scheme->type = type;
 }
@@ -96,6 +121,10 @@ static void reml_scheme_deinit(reml_scheme *scheme) {
   }
   utarray_free(scheme->generics);
   scheme->generics = NULL;
+  if (scheme->constraints) {
+    utarray_free(scheme->constraints);
+    scheme->constraints = NULL;
+  }
   scheme->type = NULL;
 }
 
@@ -325,6 +354,9 @@ static bool reml_string_view_equal(reml_string_view left, reml_string_view right
 
 static bool reml_literal_equal(reml_literal left, reml_literal right) {
   if (left.kind != right.kind) {
+    return false;
+  }
+  if (left.kind == REML_LITERAL_STRING && left.string_kind != right.string_kind) {
     return false;
   }
   return reml_string_view_equal(left.text, right.text);
@@ -803,7 +835,28 @@ static reml_type *reml_type_instantiate_inner(reml_type_ctx *ctx, reml_type *typ
   return type;
 }
 
-static reml_type *reml_type_instantiate(reml_type_ctx *ctx, const reml_scheme *scheme) {
+static reml_type *reml_type_apply_substs(reml_type *type, UT_array *substs) {
+  type = reml_type_prune(type);
+  if (!type || !substs) {
+    return type;
+  }
+  if (type->kind != REML_TYPE_VAR) {
+    return type;
+  }
+  for (reml_type_subst *it = (reml_type_subst *)utarray_front(substs); it != NULL;
+       it = (reml_type_subst *)utarray_next(substs, it)) {
+    if (it->id == type->data.var.id) {
+      return it->replacement;
+    }
+  }
+  return type;
+}
+
+static reml_type *reml_type_instantiate_with_substs(reml_type_ctx *ctx, const reml_scheme *scheme,
+                                                     UT_array **out_substs) {
+  if (out_substs) {
+    *out_substs = NULL;
+  }
   if (!scheme || !scheme->type) {
     return NULL;
   }
@@ -814,7 +867,20 @@ static reml_type *reml_type_instantiate(reml_type_ctx *ctx, const reml_scheme *s
   UT_array *substs = NULL;
   utarray_new(substs, &subst_icd);
   reml_type *result = reml_type_instantiate_inner(ctx, scheme->type, scheme->generics, substs);
-  utarray_free(substs);
+  if (out_substs) {
+    *out_substs = substs;
+  } else {
+    utarray_free(substs);
+  }
+  return result;
+}
+
+static reml_type *reml_type_instantiate(reml_type_ctx *ctx, const reml_scheme *scheme) {
+  UT_array *substs = NULL;
+  reml_type *result = reml_type_instantiate_with_substs(ctx, scheme, &substs);
+  if (substs) {
+    utarray_free(substs);
+  }
   return result;
 }
 
@@ -888,7 +954,8 @@ static bool reml_expect_type(reml_sema *sema, reml_type *actual, reml_type *expe
 
 static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_set *effect);
 static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type *expected,
-                               reml_effect_set *effect, bool allow_define, bool is_mutable);
+                               reml_effect_set *effect, bool allow_define, bool is_mutable,
+                               size_t constraint_start, size_t constraint_end);
 static reml_effect_set reml_effect_union(reml_effect_set left, reml_effect_set right);
 
 static reml_symbol *reml_symbol_from_ident(reml_sema *sema, reml_expr *expr) {
@@ -923,31 +990,12 @@ static bool reml_is_numeric_type(reml_type *type, reml_type_ctx *ctx) {
          type == reml_type_float(ctx);
 }
 
-typedef enum {
-  REML_TRAIT_ADD,
-  REML_TRAIT_SUB,
-  REML_TRAIT_MUL,
-  REML_TRAIT_DIV,
-  REML_TRAIT_REM,
-  REML_TRAIT_BITXOR,
-  REML_TRAIT_EQ,
-  REML_TRAIT_ORD
-} reml_trait_kind;
-
 typedef struct {
   reml_trait_kind trait;
   reml_type_kind left;
   reml_type_kind right;
   reml_type_kind result;
 } reml_trait_impl;
-
-typedef struct {
-  reml_trait_kind trait;
-  reml_type *left;
-  reml_type *right;
-  reml_type *result;
-  reml_span span;
-} reml_trait_constraint;
 
 static reml_type *reml_type_from_kind(reml_type_ctx *ctx, reml_type_kind kind) {
   if (!ctx) {
@@ -1022,6 +1070,13 @@ static void reml_trait_constraints_deinit(reml_sema *sema) {
   sema->trait_constraints = NULL;
 }
 
+static size_t reml_trait_constraints_count(const reml_sema *sema) {
+  if (!sema || !sema->trait_constraints) {
+    return 0;
+  }
+  return utarray_len(sema->trait_constraints);
+}
+
 static void reml_trait_constraints_add(reml_sema *sema, reml_trait_kind trait, reml_type *left,
                                        reml_type *right, reml_type *result, reml_span span) {
   if (!sema || !sema->trait_constraints) {
@@ -1033,6 +1088,47 @@ static void reml_trait_constraints_add(reml_sema *sema, reml_trait_kind trait, r
                                        .result = result,
                                        .span = span};
   utarray_push_back(sema->trait_constraints, &constraint);
+}
+
+static void reml_scheme_set_constraints(reml_scheme *scheme, reml_sema *sema, size_t start,
+                                        size_t end) {
+  if (!scheme || !scheme->constraints) {
+    return;
+  }
+  utarray_clear(scheme->constraints);
+  if (!sema || !sema->trait_constraints) {
+    return;
+  }
+  size_t total = utarray_len(sema->trait_constraints);
+  if (start >= total || end > total || start >= end) {
+    return;
+  }
+  for (size_t i = start; i < end; ++i) {
+    reml_trait_constraint *constraint =
+        (reml_trait_constraint *)utarray_eltptr(sema->trait_constraints, i);
+    if (constraint) {
+      utarray_push_back(scheme->constraints, constraint);
+    }
+  }
+}
+
+static void reml_trait_constraints_instantiate(reml_sema *sema, const reml_scheme *scheme,
+                                               UT_array *substs) {
+  if (!sema || !scheme || !scheme->constraints) {
+    return;
+  }
+  for (reml_trait_constraint *it =
+           (reml_trait_constraint *)utarray_front(scheme->constraints);
+       it != NULL;
+       it = (reml_trait_constraint *)utarray_next(scheme->constraints, it)) {
+    reml_type *left = reml_type_apply_substs(it->left, substs);
+    reml_type *right = reml_type_apply_substs(it->right, substs);
+    reml_type *result = reml_type_apply_substs(it->result, substs);
+    if (!left || !right || !result) {
+      continue;
+    }
+    reml_trait_constraints_add(sema, it->trait, left, right, result, it->span);
+  }
 }
 
 static size_t reml_trait_match_candidates(reml_trait_kind trait, reml_type_kind left_kind,
@@ -1085,6 +1181,10 @@ static void reml_trait_constraints_resolve(reml_sema *sema) {
     }
     if (left->kind == REML_TYPE_ERROR || right->kind == REML_TYPE_ERROR ||
         result->kind == REML_TYPE_ERROR) {
+      continue;
+    }
+    if (left->kind == REML_TYPE_VAR || right->kind == REML_TYPE_VAR ||
+        result->kind == REML_TYPE_VAR) {
       continue;
     }
     const reml_trait_impl *match = NULL;
@@ -1387,10 +1487,12 @@ static reml_type *reml_infer_block(reml_sema *sema, reml_expr *expr, reml_effect
       reml_effect_set stmt_effect = REML_EFFECT_NONE;
       switch (stmt->kind) {
         case REML_STMT_VAL_DECL: {
+          size_t constraint_start = reml_trait_constraints_count(sema);
           reml_type *value_type =
               reml_infer_expr(sema, stmt->data.val_decl.value, &stmt_effect);
+          size_t constraint_end = reml_trait_constraints_count(sema);
           reml_check_pattern(sema, stmt->data.val_decl.pattern, value_type, &stmt_effect, true,
-                             stmt->data.val_decl.is_mutable);
+                             stmt->data.val_decl.is_mutable, constraint_start, constraint_end);
           break;
         }
         case REML_STMT_RETURN:
@@ -1534,7 +1636,9 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
       }
       reml_symbol_table_enter(sema->symbols);
       reml_effect_set arm_effect = REML_EFFECT_NONE;
-      reml_check_pattern(sema, it->pattern, scrutinee, &arm_effect, true, false);
+      size_t constraint_mark = reml_trait_constraints_count(sema);
+      reml_check_pattern(sema, it->pattern, scrutinee, &arm_effect, true, false, constraint_mark,
+                         constraint_mark);
       if (it->pattern && it->pattern->kind == REML_PATTERN_CONSTRUCTOR && !has_guard) {
         int32_t tag = it->pattern->data.ctor.tag;
         bool payload_full = reml_pattern_ctor_payload_covers_all(it->pattern);
@@ -1849,7 +1953,12 @@ static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_
         result = reml_type_error(&sema->types);
       } else {
         expr->symbol_id = symbol->id;
-        result = reml_type_instantiate(&sema->types, &symbol->scheme);
+        UT_array *substs = NULL;
+        result = reml_type_instantiate_with_substs(&sema->types, &symbol->scheme, &substs);
+        reml_trait_constraints_instantiate(sema, &symbol->scheme, substs);
+        if (substs) {
+          utarray_free(substs);
+        }
       }
       break;
     }
@@ -1929,7 +2038,8 @@ static void reml_generalize(reml_sema *sema, reml_symbol *symbol, reml_type *typ
 
 static void reml_define_pattern_symbol(reml_sema *sema, reml_pattern *pattern,
                                        reml_type *expected, bool allow_define, bool is_mutable,
-                                       reml_effect_set *effect) {
+                                       reml_effect_set *effect, size_t constraint_start,
+                                       size_t constraint_end) {
   if (!pattern || !allow_define) {
     return;
   }
@@ -1969,10 +2079,12 @@ static void reml_define_pattern_symbol(reml_sema *sema, reml_pattern *pattern,
 
   bool allow_poly = effect ? (*effect == REML_EFFECT_NONE) : true;
   reml_generalize(sema, symbol, expected, allow_poly);
+  reml_scheme_set_constraints(&symbol->scheme, sema, constraint_start, constraint_end);
 }
 
 static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type *expected,
-                               reml_effect_set *effect, bool allow_define, bool is_mutable) {
+                               reml_effect_set *effect, bool allow_define, bool is_mutable,
+                               size_t constraint_start, size_t constraint_end) {
   if (!pattern) {
     return;
   }
@@ -1981,7 +2093,8 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
       pattern->type = expected;
       return;
     case REML_PATTERN_IDENT:
-      reml_define_pattern_symbol(sema, pattern, expected, allow_define, is_mutable, effect);
+      reml_define_pattern_symbol(sema, pattern, expected, allow_define, is_mutable, effect,
+                                 constraint_start, constraint_end);
       return;
     case REML_PATTERN_LITERAL: {
       reml_type *literal_type = reml_infer_literal(sema, pattern->data.literal);
@@ -2073,7 +2186,7 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
              it = (reml_pattern **)utarray_next(pattern->data.ctor.items, it)) {
           reml_type **field_type = (reml_type **)utarray_eltptr(variant->fields, index);
           reml_check_pattern(sema, *it, field_type ? *field_type : expected, effect, allow_define,
-                             is_mutable);
+                             is_mutable, constraint_start, constraint_end);
           index++;
         }
       }
@@ -2116,8 +2229,8 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
                it = (reml_pattern **)utarray_next(pattern->data.items, it)) {
             reml_type **item_type =
                 (reml_type **)utarray_eltptr(target->data.tuple.items, index);
-          reml_check_pattern(sema, *it, item_type ? *item_type : expected, effect, allow_define,
-                             is_mutable);
+            reml_check_pattern(sema, *it, item_type ? *item_type : expected, effect, allow_define,
+                               is_mutable, constraint_start, constraint_end);
             index++;
           }
         }
@@ -2201,7 +2314,8 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
               pattern->type = reml_type_error(&sema->types);
               return;
             }
-            reml_check_pattern(sema, it->pattern, field->type, effect, allow_define, is_mutable);
+            reml_check_pattern(sema, it->pattern, field->type, effect, allow_define, is_mutable,
+                               constraint_start, constraint_end);
           }
         }
         pattern->type = expected;
@@ -2258,9 +2372,11 @@ static void reml_check_stmt(reml_sema *sema, reml_stmt *stmt, reml_effect_set *e
   switch (stmt->kind) {
     case REML_STMT_VAL_DECL: {
       reml_effect_set value_effect = REML_EFFECT_NONE;
+      size_t constraint_start = reml_trait_constraints_count(sema);
       reml_type *value_type = reml_infer_expr(sema, stmt->data.val_decl.value, &value_effect);
+      size_t constraint_end = reml_trait_constraints_count(sema);
       reml_check_pattern(sema, stmt->data.val_decl.pattern, value_type, &value_effect, true,
-                         stmt->data.val_decl.is_mutable);
+                         stmt->data.val_decl.is_mutable, constraint_start, constraint_end);
       if (effect) {
         *effect = reml_effect_union(*effect, value_effect);
       }

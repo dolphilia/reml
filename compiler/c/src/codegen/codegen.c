@@ -1,6 +1,7 @@
 #include "reml/codegen/codegen.h"
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -218,8 +219,157 @@ static char *reml_strip_numeric_literal(reml_string_view view) {
   return buffer;
 }
 
-static bool reml_unescape_string_literal(reml_string_view view, char **out_data,
-                                         size_t *out_len) {
+static bool reml_is_hex_digit(int c) {
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+static bool reml_encode_utf8(uint32_t codepoint, char out[4], size_t *out_len) {
+  if (!out_len) {
+    return false;
+  }
+  if (codepoint <= 0x7F) {
+    out[0] = (char)codepoint;
+    *out_len = 1;
+    return true;
+  }
+  if (codepoint <= 0x7FF) {
+    out[0] = (char)(0xC0 | (codepoint >> 6));
+    out[1] = (char)(0x80 | (codepoint & 0x3F));
+    *out_len = 2;
+    return true;
+  }
+  if (codepoint <= 0xFFFF) {
+    if (codepoint >= 0xD800 && codepoint <= 0xDFFF) {
+      return false;
+    }
+    out[0] = (char)(0xE0 | (codepoint >> 12));
+    out[1] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+    out[2] = (char)(0x80 | (codepoint & 0x3F));
+    *out_len = 3;
+    return true;
+  }
+  if (codepoint <= 0x10FFFF) {
+    out[0] = (char)(0xF0 | (codepoint >> 18));
+    out[1] = (char)(0x80 | ((codepoint >> 12) & 0x3F));
+    out[2] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+    out[3] = (char)(0x80 | (codepoint & 0x3F));
+    *out_len = 4;
+    return true;
+  }
+  return false;
+}
+
+static bool reml_normalize_newlines(const char *input, size_t length, char **out_data,
+                                    size_t *out_len) {
+  if (!out_data || !out_len) {
+    return false;
+  }
+  *out_data = NULL;
+  *out_len = 0;
+  if (!input || length == 0) {
+    return true;
+  }
+  char *buffer = (char *)malloc(length + 1);
+  if (!buffer) {
+    return false;
+  }
+  size_t out = 0;
+  for (size_t i = 0; i < length; ++i) {
+    char c = input[i];
+    if (c == '\r') {
+      if (i + 1 < length && input[i + 1] == '\n') {
+        i += 1;
+      }
+      buffer[out++] = '\n';
+      continue;
+    }
+    buffer[out++] = c;
+  }
+  buffer[out] = '\0';
+  *out_data = buffer;
+  *out_len = out;
+  return true;
+}
+
+static bool reml_dedent_multiline(const char *input, size_t length, char **out_data,
+                                  size_t *out_len) {
+  if (!out_data || !out_len) {
+    return false;
+  }
+  *out_data = NULL;
+  *out_len = 0;
+  if (!input || length == 0) {
+    return true;
+  }
+  char *normalized = NULL;
+  size_t normalized_len = 0;
+  if (!reml_normalize_newlines(input, length, &normalized, &normalized_len)) {
+    return false;
+  }
+  size_t start = 0;
+  if (normalized_len > 0 && normalized[0] == '\n') {
+    start = 1;
+  }
+  size_t min_indent = SIZE_MAX;
+  size_t line_start = start;
+  while (line_start <= normalized_len) {
+    size_t i = line_start;
+    while (i < normalized_len && (normalized[i] == ' ' || normalized[i] == '\t')) {
+      i++;
+    }
+    if (i < normalized_len && normalized[i] != '\n') {
+      size_t indent = i - line_start;
+      if (indent < min_indent) {
+        min_indent = indent;
+      }
+    }
+    while (i < normalized_len && normalized[i] != '\n') {
+      i++;
+    }
+    if (i >= normalized_len) {
+      break;
+    }
+    line_start = i + 1;
+  }
+  if (min_indent == SIZE_MAX) {
+    min_indent = 0;
+  }
+  char *buffer = (char *)malloc(normalized_len + 1);
+  if (!buffer) {
+    free(normalized);
+    return false;
+  }
+  size_t out = 0;
+  line_start = start;
+  while (line_start <= normalized_len) {
+    size_t i = line_start;
+    size_t removed = 0;
+    while (i < normalized_len && removed < min_indent &&
+           (normalized[i] == ' ' || normalized[i] == '\t')) {
+      i++;
+      removed++;
+    }
+    while (i < normalized_len) {
+      char c = normalized[i++];
+      buffer[out++] = c;
+      if (c == '\n') {
+        break;
+      }
+    }
+    if (i >= normalized_len) {
+      break;
+    }
+    line_start = i;
+  }
+  buffer[out] = '\0';
+  free(normalized);
+  *out_data = buffer;
+  *out_len = out;
+  return true;
+}
+
+static bool reml_extract_string_content(reml_string_kind kind, reml_string_view view,
+                                        const char **out_data, size_t *out_len) {
   if (!out_data || !out_len) {
     return false;
   }
@@ -230,24 +380,104 @@ static bool reml_unescape_string_literal(reml_string_view view, char **out_data,
   }
   size_t start = 0;
   size_t end = view.length;
-  if (view.length >= 2 && view.data[0] == '"' && view.data[view.length - 1] == '"') {
-    start = 1;
-    end = view.length - 1;
+  if (kind == REML_STRING_RAW) {
+    if (view.length < 2 || view.data[0] != 'r') {
+      return false;
+    }
+    size_t index = 1;
+    size_t hashes = 0;
+    while (index < view.length && view.data[index] == '#') {
+      hashes++;
+      index++;
+    }
+    if (index >= view.length || view.data[index] != '"') {
+      return false;
+    }
+    start = index + 1;
+    if (end < start + 1 + hashes) {
+      return false;
+    }
+    if (view.data[end - 1 - hashes] != '"') {
+      return false;
+    }
+    for (size_t i = 0; i < hashes; ++i) {
+      if (view.data[end - 1 - i] != '#') {
+        return false;
+      }
+    }
+    end = end - 1 - hashes;
+  } else if (kind == REML_STRING_MULTILINE) {
+    if (view.length < 6 || view.data[0] != '"' || view.data[1] != '"' || view.data[2] != '"' ||
+        view.data[end - 1] != '"' || view.data[end - 2] != '"' || view.data[end - 3] != '"') {
+      return false;
+    }
+    start = 3;
+    end = view.length - 3;
+  } else {
+    if (view.length >= 2 && view.data[0] == '"' && view.data[view.length - 1] == '"') {
+      start = 1;
+      end = view.length - 1;
+    }
   }
-  size_t capacity = end - start;
-  char *buffer = (char *)malloc(capacity + 1);
+  if (end < start) {
+    return false;
+  }
+  *out_data = view.data + start;
+  *out_len = end - start;
+  return true;
+}
+
+static bool reml_unescape_string_literal(reml_string_kind kind, reml_string_view view,
+                                         char **out_data, size_t *out_len) {
+  if (!out_data || !out_len) {
+    return false;
+  }
+  *out_data = NULL;
+  *out_len = 0;
+  const char *content = NULL;
+  size_t content_len = 0;
+  if (!reml_extract_string_content(kind, view, &content, &content_len)) {
+    return false;
+  }
+  if (!content) {
+    return true;
+  }
+  if (kind == REML_STRING_RAW) {
+    char *normalized = NULL;
+    size_t normalized_len = 0;
+    if (!reml_normalize_newlines(content, content_len, &normalized, &normalized_len)) {
+      return false;
+    }
+    *out_data = normalized;
+    *out_len = normalized_len;
+    return true;
+  }
+  char *multiline = NULL;
+  size_t multiline_len = 0;
+  const char *input = content;
+  size_t input_len = content_len;
+  if (kind == REML_STRING_MULTILINE) {
+    if (!reml_dedent_multiline(content, content_len, &multiline, &multiline_len)) {
+      return false;
+    }
+    input = multiline ? multiline : "";
+    input_len = multiline_len;
+  }
+  char *buffer = (char *)malloc(input_len + 1);
   if (!buffer) {
+    free(multiline);
     return false;
   }
   size_t out = 0;
-  for (size_t i = start; i < end; ++i) {
-    char c = view.data[i];
+  for (size_t i = 0; i < input_len; ++i) {
+    char c = input[i];
     if (c == '\\') {
-      if (i + 1 >= end) {
+      if (i + 1 >= input_len) {
+        free(multiline);
         free(buffer);
         return false;
       }
-      char next = view.data[++i];
+      char next = input[++i];
       switch (next) {
         case 'n':
           buffer[out++] = '\n';
@@ -264,6 +494,64 @@ static bool reml_unescape_string_literal(reml_string_view view, char **out_data,
         case '"':
           buffer[out++] = '"';
           break;
+        case '\'':
+          buffer[out++] = '\'';
+          break;
+        case '/':
+          buffer[out++] = '/';
+          break;
+        case 'u': {
+          if (i + 1 >= input_len || input[i + 1] != '{') {
+            free(multiline);
+            free(buffer);
+            return false;
+          }
+          i += 2;
+          int digits = 0;
+          uint32_t codepoint = 0;
+          while (i < input_len && input[i] != '}') {
+            char hex = input[i];
+            if (!reml_is_hex_digit((unsigned char)hex) || digits >= 6) {
+              free(multiline);
+              free(buffer);
+              return false;
+            }
+            codepoint <<= 4;
+            if (hex >= '0' && hex <= '9') {
+              codepoint |= (uint32_t)(hex - '0');
+            } else if (hex >= 'a' && hex <= 'f') {
+              codepoint |= (uint32_t)(hex - 'a' + 10);
+            } else {
+              codepoint |= (uint32_t)(hex - 'A' + 10);
+            }
+            digits += 1;
+            i++;
+          }
+          if (digits == 0 || i >= input_len || input[i] != '}') {
+            free(multiline);
+            free(buffer);
+            return false;
+          }
+          char utf8[4];
+          size_t utf8_len = 0;
+          if (!reml_encode_utf8(codepoint, utf8, &utf8_len)) {
+            free(multiline);
+            free(buffer);
+            return false;
+          }
+          if (out + utf8_len > input_len) {
+            char *grown = (char *)realloc(buffer, out + utf8_len + 1);
+            if (!grown) {
+              free(multiline);
+              free(buffer);
+              return false;
+            }
+            buffer = grown;
+          }
+          memcpy(buffer + out, utf8, utf8_len);
+          out += utf8_len;
+          break;
+        }
         default:
           buffer[out++] = next;
           break;
@@ -273,6 +561,7 @@ static bool reml_unescape_string_literal(reml_string_view view, char **out_data,
     buffer[out++] = c;
   }
   buffer[out] = '\0';
+  free(multiline);
   *out_data = buffer;
   *out_len = out;
   return true;
@@ -859,11 +1148,11 @@ static reml_codegen_value reml_codegen_emit_literal(reml_codegen *codegen, reml_
           LLVMConstInt(LLVMInt1TypeInContext(codegen->context), is_true ? 1 : 0, 0);
       return reml_codegen_make_value(llvm_value, expr->type, false);
     }
-    case REML_LITERAL_STRING:
-      {
+    case REML_LITERAL_STRING: {
         char *unescaped = NULL;
         size_t unescaped_len = 0;
-        if (!reml_unescape_string_literal(literal.text, &unescaped, &unescaped_len)) {
+        if (!reml_unescape_string_literal(literal.string_kind, literal.text, &unescaped,
+                                          &unescaped_len)) {
           reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
                               "invalid string literal");
           return reml_codegen_make_value(NULL, expr->type, false);

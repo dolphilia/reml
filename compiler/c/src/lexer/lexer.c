@@ -58,6 +58,10 @@ static int reml_peek_next_byte(const reml_lexer *lexer) {
   return (unsigned char)lexer->input[lexer->index + 1];
 }
 
+static bool reml_is_hex_digit(int c) {
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
 static void reml_lexer_set_error(reml_lexer *lexer, const char *message, size_t start_offset,
                                  size_t end_offset, int start_line, int start_column, int end_line,
                                  int end_column) {
@@ -127,6 +131,97 @@ static bool reml_advance_grapheme(reml_lexer *lexer) {
   }
   lexer->index += advance;
   lexer->column += 1;
+  return true;
+}
+
+static void reml_advance_line_break(reml_lexer *lexer) {
+  if (!lexer || lexer->index >= lexer->length) {
+    return;
+  }
+  int c = reml_peek_byte(lexer);
+  if (c == '\r') {
+    reml_advance_bytes(lexer, 1);
+    if (reml_peek_byte(lexer) == '\n') {
+      reml_advance_bytes(lexer, 1);
+    }
+    lexer->line += 1;
+    lexer->column = 1;
+    return;
+  }
+  if (c == '\n') {
+    reml_advance_bytes(lexer, 1);
+    lexer->line += 1;
+    lexer->column = 1;
+  }
+}
+
+static bool reml_lex_unicode_escape(reml_lexer *lexer, size_t escape_offset, int escape_line,
+                                    int escape_column) {
+  if (reml_peek_byte(lexer) != 'u') {
+    reml_lexer_set_error(lexer, "invalid escape sequence", escape_offset, lexer->index,
+                         escape_line, escape_column, lexer->line, lexer->column);
+    return false;
+  }
+  reml_advance_bytes(lexer, 1);
+  if (reml_peek_byte(lexer) != '{') {
+    reml_lexer_set_error(lexer, "invalid unicode escape", escape_offset, lexer->index,
+                         escape_line, escape_column, lexer->line, lexer->column);
+    return false;
+  }
+  reml_advance_bytes(lexer, 1);
+  int digits = 0;
+  uint32_t codepoint = 0;
+  while (lexer->index < lexer->length) {
+    int c = reml_peek_byte(lexer);
+    if (c == '}') {
+      break;
+    }
+    if (!reml_is_hex_digit(c) || digits >= 6) {
+      reml_lexer_set_error(lexer, "invalid unicode escape", escape_offset, lexer->index + 1,
+                           escape_line, escape_column, lexer->line, lexer->column + 1);
+      return false;
+    }
+    codepoint <<= 4;
+    if (c >= '0' && c <= '9') {
+      codepoint |= (uint32_t)(c - '0');
+    } else if (c >= 'a' && c <= 'f') {
+      codepoint |= (uint32_t)(c - 'a' + 10);
+    } else {
+      codepoint |= (uint32_t)(c - 'A' + 10);
+    }
+    digits += 1;
+    reml_advance_bytes(lexer, 1);
+  }
+  if (digits == 0 || reml_peek_byte(lexer) != '}') {
+    reml_lexer_set_error(lexer, "invalid unicode escape", escape_offset, lexer->index,
+                         escape_line, escape_column, lexer->line, lexer->column);
+    return false;
+  }
+  reml_advance_bytes(lexer, 1);
+  if (codepoint > 0x10FFFF || (codepoint >= 0xD800 && codepoint <= 0xDFFF)) {
+    reml_lexer_set_error(lexer, "unicode.invalid_scalar", escape_offset, lexer->index,
+                         escape_line, escape_column, lexer->line, lexer->column);
+    return false;
+  }
+  return true;
+}
+
+static bool reml_is_raw_string_start(const reml_lexer *lexer, size_t *out_hashes) {
+  if (!lexer || reml_peek_byte(lexer) != 'r') {
+    return false;
+  }
+  size_t index = lexer->index + 1;
+  size_t hashes = 0;
+  while (index < lexer->length && lexer->input[index] == '#') {
+    hashes += 1;
+    index += 1;
+  }
+  if (index >= lexer->length || lexer->input[index] != '"') {
+    return false;
+  }
+  if (out_hashes) {
+    *out_hashes = hashes;
+  }
   return true;
 }
 
@@ -334,13 +429,126 @@ reml_token reml_lexer_next(reml_lexer *lexer) {
     return reml_lexer_next(lexer);
   }
 
+  if (c == 'r') {
+    size_t hashes = 0;
+    if (reml_is_raw_string_start(lexer, &hashes)) {
+      reml_advance_bytes(lexer, 1);
+      for (size_t i = 0; i < hashes; ++i) {
+        reml_advance_bytes(lexer, 1);
+      }
+      reml_advance_bytes(lexer, 1);
+      while (lexer->index < lexer->length) {
+        int d = reml_peek_byte(lexer);
+        if (d == '"') {
+          bool match = true;
+          for (size_t i = 0; i < hashes; ++i) {
+            if (lexer->index + 1 + i >= lexer->length ||
+                lexer->input[lexer->index + 1 + i] != '#') {
+              match = false;
+              break;
+            }
+          }
+          if (match) {
+            reml_advance_bytes(lexer, 1 + hashes);
+            return reml_make_token(REML_TOKEN_STRING_RAW, lexer, start_offset, start_line,
+                                   start_column, lexer->index, lexer->line, lexer->column);
+          }
+        }
+        if (d == '\n' || d == '\r') {
+          reml_advance_line_break(lexer);
+          continue;
+        }
+        if (d < 0x80) {
+          reml_advance_bytes(lexer, 1);
+        } else if (!reml_advance_grapheme(lexer)) {
+          return reml_make_token(REML_TOKEN_INVALID, lexer, start_offset, start_line, start_column,
+                                 lexer->index, lexer->line, lexer->column);
+        }
+      }
+      reml_lexer_set_error(lexer, "unterminated raw string literal", start_offset, lexer->index,
+                           start_line, start_column, lexer->line, lexer->column);
+      return reml_make_token(REML_TOKEN_INVALID, lexer, start_offset, start_line, start_column,
+                             lexer->index, lexer->line, lexer->column);
+    }
+  }
+
+  if (c == '"' && reml_peek_next_byte(lexer) == '"' &&
+      lexer->index + 2 < lexer->length && lexer->input[lexer->index + 2] == '"') {
+    reml_advance_bytes(lexer, 3);
+    while (lexer->index < lexer->length) {
+      int d = reml_peek_byte(lexer);
+      if (d == '"' && lexer->index + 2 < lexer->length &&
+          lexer->input[lexer->index + 1] == '"' && lexer->input[lexer->index + 2] == '"') {
+        reml_advance_bytes(lexer, 3);
+        return reml_make_token(REML_TOKEN_STRING_MULTILINE, lexer, start_offset, start_line,
+                               start_column, lexer->index, lexer->line, lexer->column);
+      }
+      if (d == '\\') {
+        size_t escape_offset = lexer->index;
+        int escape_line = lexer->line;
+        int escape_column = lexer->column;
+        reml_advance_bytes(lexer, 1);
+        int next = reml_peek_byte(lexer);
+        if (next == 'u') {
+          if (!reml_lex_unicode_escape(lexer, escape_offset, escape_line, escape_column)) {
+            return reml_make_token(REML_TOKEN_INVALID, lexer, start_offset, start_line,
+                                   start_column, lexer->index, lexer->line, lexer->column);
+          }
+          continue;
+        }
+        if (next == 'n' || next == 'r' || next == 't' || next == '\\' || next == '"' ||
+            next == '\'' || next == '/') {
+          reml_advance_bytes(lexer, 1);
+          continue;
+        }
+        reml_lexer_set_error(lexer, "invalid escape sequence", escape_offset, lexer->index,
+                             escape_line, escape_column, lexer->line, lexer->column);
+        return reml_make_token(REML_TOKEN_INVALID, lexer, start_offset, start_line, start_column,
+                               lexer->index, lexer->line, lexer->column);
+      }
+      if (d == '\n' || d == '\r') {
+        reml_advance_line_break(lexer);
+        continue;
+      }
+      if (d < 0x80) {
+        reml_advance_bytes(lexer, 1);
+      } else if (!reml_advance_grapheme(lexer)) {
+        return reml_make_token(REML_TOKEN_INVALID, lexer, start_offset, start_line, start_column,
+                               lexer->index, lexer->line, lexer->column);
+      }
+    }
+    reml_lexer_set_error(lexer, "unterminated multiline string literal", start_offset,
+                         lexer->index, start_line, start_column, lexer->line, lexer->column);
+    return reml_make_token(REML_TOKEN_INVALID, lexer, start_offset, start_line, start_column,
+                           lexer->index, lexer->line, lexer->column);
+  }
+
   if (c == '"') {
     reml_advance_bytes(lexer, 1);
     while (lexer->index < lexer->length) {
       int d = reml_peek_byte(lexer);
       if (d == '\\') {
-        reml_advance_bytes(lexer, 2);
-        continue;
+        size_t escape_offset = lexer->index;
+        int escape_line = lexer->line;
+        int escape_column = lexer->column;
+        reml_advance_bytes(lexer, 1);
+        int next = reml_peek_byte(lexer);
+        if (next == 'u') {
+          if (!reml_lex_unicode_escape(lexer, escape_offset, escape_line, escape_column)) {
+            return reml_make_token(REML_TOKEN_INVALID, lexer, start_offset, start_line,
+                                   start_column, lexer->index, lexer->line, lexer->column);
+          }
+          continue;
+        }
+        if (next == 'n' || next == 'r' || next == 't' || next == '\\' || next == '"' ||
+            next == '\'' || next == '/') {
+          reml_advance_bytes(lexer, 1);
+          continue;
+        }
+        reml_lexer_set_error(lexer, "invalid escape sequence", escape_offset, lexer->index,
+                             escape_line, escape_column, lexer->line, lexer->column);
+        return reml_make_token(REML_TOKEN_INVALID, lexer, start_offset, start_line, start_column,
+                               lexer->index, lexer->line, lexer->column);
       }
       if (d == '"') {
         reml_advance_bytes(lexer, 1);
@@ -369,7 +577,25 @@ reml_token reml_lexer_next(reml_lexer *lexer) {
   if (c == '\'') {
     reml_advance_bytes(lexer, 1);
     if (lexer->index < lexer->length && reml_peek_byte(lexer) == '\\') {
-      reml_advance_bytes(lexer, 2);
+      size_t escape_offset = lexer->index;
+      int escape_line = lexer->line;
+      int escape_column = lexer->column;
+      reml_advance_bytes(lexer, 1);
+      int next = reml_peek_byte(lexer);
+      if (next == 'u') {
+        if (!reml_lex_unicode_escape(lexer, escape_offset, escape_line, escape_column)) {
+          return reml_make_token(REML_TOKEN_INVALID, lexer, start_offset, start_line,
+                                 start_column, lexer->index, lexer->line, lexer->column);
+        }
+      } else if (next == 'n' || next == 'r' || next == 't' || next == '\\' || next == '"' ||
+                 next == '\'' || next == '/') {
+        reml_advance_bytes(lexer, 1);
+      } else {
+        reml_lexer_set_error(lexer, "invalid escape sequence", escape_offset, lexer->index,
+                             escape_line, escape_column, lexer->line, lexer->column);
+        return reml_make_token(REML_TOKEN_INVALID, lexer, start_offset, start_line, start_column,
+                               lexer->index, lexer->line, lexer->column);
+      }
     } else if (lexer->index < lexer->length) {
       int d = reml_peek_byte(lexer);
       if (d < 0x80) {
@@ -656,6 +882,10 @@ const char *reml_token_kind_name(reml_token_kind kind) {
       return "FLOAT";
     case REML_TOKEN_STRING:
       return "STRING";
+    case REML_TOKEN_STRING_RAW:
+      return "STRING_RAW";
+    case REML_TOKEN_STRING_MULTILINE:
+      return "STRING_MULTILINE";
     case REML_TOKEN_CHAR:
       return "CHAR";
     case REML_TOKEN_KW_RETURN:
