@@ -518,11 +518,75 @@ static bool reml_type_is_bool(reml_type *type) {
   return type && type->kind == REML_TYPE_BOOL;
 }
 
-static bool reml_pattern_is_catch_all(const reml_pattern *pattern) {
+static bool reml_pattern_is_bind_all(const reml_pattern *pattern) {
   if (!pattern) {
     return false;
   }
-  return pattern->kind == REML_PATTERN_WILDCARD || pattern->kind == REML_PATTERN_IDENT;
+  if (pattern->kind == REML_PATTERN_WILDCARD || pattern->kind == REML_PATTERN_IDENT) {
+    return true;
+  }
+  if (pattern->kind == REML_PATTERN_TUPLE) {
+    if (!pattern->data.items) {
+      return true;
+    }
+    for (reml_pattern **it = (reml_pattern **)utarray_front(pattern->data.items); it != NULL;
+         it = (reml_pattern **)utarray_next(pattern->data.items, it)) {
+      if (!reml_pattern_is_bind_all(*it)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (pattern->kind == REML_PATTERN_RECORD) {
+    if (!pattern->data.fields) {
+      return true;
+    }
+    for (reml_pattern_field *it =
+             (reml_pattern_field *)utarray_front(pattern->data.fields);
+         it != NULL;
+         it = (reml_pattern_field *)utarray_next(pattern->data.fields, it)) {
+      if (!reml_pattern_is_bind_all(it->pattern)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+static bool reml_pattern_is_catch_all(const reml_pattern *pattern, reml_type *scrutinee) {
+  if (!pattern) {
+    return false;
+  }
+  if (pattern->kind == REML_PATTERN_WILDCARD || pattern->kind == REML_PATTERN_IDENT) {
+    return true;
+  }
+  scrutinee = scrutinee ? reml_type_prune(scrutinee) : NULL;
+  if (pattern->kind == REML_PATTERN_TUPLE &&
+      scrutinee && scrutinee->kind == REML_TYPE_TUPLE) {
+    return reml_pattern_is_bind_all(pattern);
+  }
+  if (pattern->kind == REML_PATTERN_RECORD &&
+      scrutinee && scrutinee->kind == REML_TYPE_RECORD) {
+    return reml_pattern_is_bind_all(pattern);
+  }
+  return false;
+}
+
+static bool reml_pattern_ctor_payload_covers_all(const reml_pattern *pattern) {
+  if (!pattern || pattern->kind != REML_PATTERN_CONSTRUCTOR) {
+    return false;
+  }
+  if (!pattern->data.ctor.items) {
+    return true;
+  }
+  for (reml_pattern **it = (reml_pattern **)utarray_front(pattern->data.ctor.items); it != NULL;
+       it = (reml_pattern **)utarray_next(pattern->data.ctor.items, it)) {
+    if (!reml_pattern_is_bind_all(*it)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static bool reml_pattern_is_bool_literal(const reml_pattern *pattern, bool *out_value) {
@@ -920,7 +984,7 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
       if (has_catch_all) {
         reml_report_diag(sema, REML_DIAG_PATTERN_UNREACHABLE_ARM, it->pattern->span,
                          "unreachable match arm");
-      } else if (reml_pattern_is_catch_all(it->pattern) && !has_guard) {
+      } else if (reml_pattern_is_catch_all(it->pattern, scrutinee) && !has_guard) {
         has_catch_all = true;
       } else if (it->pattern && it->pattern->kind == REML_PATTERN_LITERAL && !has_guard) {
         bool bool_value = false;
@@ -948,21 +1012,7 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
           }
         }
       } else if (it->pattern && it->pattern->kind == REML_PATTERN_CONSTRUCTOR && !has_guard) {
-        int32_t tag = it->pattern->data.ctor.tag;
-        bool seen = false;
-        for (int32_t *it_tag = (int32_t *)utarray_front(seen_tags); it_tag != NULL;
-             it_tag = (int32_t *)utarray_next(seen_tags, it_tag)) {
-          if (*it_tag == tag) {
-            seen = true;
-            break;
-          }
-        }
-        if (seen) {
-          reml_report_diag(sema, REML_DIAG_PATTERN_UNREACHABLE_ARM, it->pattern->span,
-                           "unreachable match arm");
-        } else {
-          utarray_push_back(seen_tags, &tag);
-        }
+        /* handled after reml_check_pattern to use resolved tag */
       } else if (it->pattern && it->pattern->kind == REML_PATTERN_RANGE && !has_guard) {
         if (reml_type_prune(scrutinee) &&
             reml_type_prune(scrutinee)->kind == REML_TYPE_INT) {
@@ -987,6 +1037,26 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
       reml_symbol_table_enter(sema->symbols);
       reml_effect_set arm_effect = REML_EFFECT_NONE;
       reml_check_pattern(sema, it->pattern, scrutinee, &arm_effect, true);
+      if (it->pattern && it->pattern->kind == REML_PATTERN_CONSTRUCTOR && !has_guard) {
+        int32_t tag = it->pattern->data.ctor.tag;
+        bool payload_full = reml_pattern_ctor_payload_covers_all(it->pattern);
+        bool seen = false;
+        if (payload_full) {
+          for (int32_t *it_tag = (int32_t *)utarray_front(seen_tags); it_tag != NULL;
+               it_tag = (int32_t *)utarray_next(seen_tags, it_tag)) {
+            if (*it_tag == tag) {
+              seen = true;
+              break;
+            }
+          }
+          if (seen) {
+            reml_report_diag(sema, REML_DIAG_PATTERN_UNREACHABLE_ARM, it->pattern->span,
+                             "unreachable match arm");
+          } else {
+            utarray_push_back(seen_tags, &tag);
+          }
+        }
+      }
       if (it->guard) {
         reml_effect_set guard_effect = REML_EFFECT_NONE;
         reml_type *guard_type = reml_infer_expr(sema, it->guard, &guard_effect);
@@ -1011,9 +1081,26 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
   }
   if (!exhaustive) {
     scrutinee = reml_type_prune(scrutinee);
-    if (scrutinee && scrutinee->kind == REML_TYPE_ENUM) {
-      exhaustive = reml_enum_variant_count(scrutinee) > 0 &&
-                   reml_enum_variant_count(scrutinee) == utarray_len(seen_tags);
+    if (scrutinee && scrutinee->kind == REML_TYPE_ENUM &&
+        scrutinee->data.enum_type.variants) {
+      exhaustive = reml_enum_variant_count(scrutinee) > 0;
+      for (reml_enum_variant *it =
+               (reml_enum_variant *)utarray_front(scrutinee->data.enum_type.variants);
+           it != NULL;
+           it = (reml_enum_variant *)utarray_next(scrutinee->data.enum_type.variants, it)) {
+        bool seen = false;
+        for (int32_t *it_tag = (int32_t *)utarray_front(seen_tags); it_tag != NULL;
+             it_tag = (int32_t *)utarray_next(seen_tags, it_tag)) {
+          if (*it_tag == it->tag) {
+            seen = true;
+            break;
+          }
+        }
+        if (!seen) {
+          exhaustive = false;
+          break;
+        }
+      }
     }
   }
   if (!exhaustive) {

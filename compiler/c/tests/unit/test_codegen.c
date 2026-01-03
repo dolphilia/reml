@@ -171,7 +171,7 @@ static void test_codegen_match_guard(void **state) {
 static void test_codegen_enum_constructor(void **state) {
   (void)state;
 
-  const char *source = "let x = Some(1); match x with | Some(1) -> 1 | None -> 2;";
+  const char *source = "let x = Some(1); match x with | Some(_) -> 1 | None() -> 2;";
   reml_compilation_unit *unit = parse_source(source);
 
   reml_sema sema;

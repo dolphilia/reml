@@ -3,6 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <inttypes.h>
+
+#include <utarray.h>
+
 #include "argparse.h"
 #include "reml/ast/printer.h"
 #include "reml/codegen/codegen.h"
@@ -101,6 +105,151 @@ static void print_diagnostics(const char *stage, const reml_diagnostic_list *lis
   }
 }
 
+static void json_write_escaped(FILE *out, const char *text) {
+  if (!out || !text) {
+    return;
+  }
+  for (const char *p = text; *p != '\0'; ++p) {
+    unsigned char c = (unsigned char)*p;
+    switch (c) {
+      case '"':
+        fputs("\\\"", out);
+        break;
+      case '\\':
+        fputs("\\\\", out);
+        break;
+      case '\n':
+        fputs("\\n", out);
+        break;
+      case '\r':
+        fputs("\\r", out);
+        break;
+      case '\t':
+        fputs("\\t", out);
+        break;
+      default:
+        if (c < 0x20) {
+          fprintf(out, "\\u%04x", (unsigned int)c);
+        } else {
+          fputc(c, out);
+        }
+        break;
+    }
+  }
+}
+
+static void json_write_string_view(FILE *out, reml_string_view view) {
+  fputc('"', out);
+  for (size_t i = 0; i < view.length; ++i) {
+    unsigned char c = (unsigned char)view.data[i];
+    switch (c) {
+      case '"':
+        fputs("\\\"", out);
+        break;
+      case '\\':
+        fputs("\\\\", out);
+        break;
+      case '\n':
+        fputs("\\n", out);
+        break;
+      case '\r':
+        fputs("\\r", out);
+        break;
+      case '\t':
+        fputs("\\t", out);
+        break;
+      default:
+        if (c < 0x20) {
+          fprintf(out, "\\u%04x", (unsigned int)c);
+        } else {
+          fputc(c, out);
+        }
+        break;
+    }
+  }
+  fputc('"', out);
+}
+
+static void print_diagnostics_json(FILE *out, const reml_diagnostic_list *list) {
+  if (!out) {
+    return;
+  }
+  fputc('[', out);
+  if (list) {
+    size_t count = reml_diagnostics_count(list);
+    for (size_t i = 0; i < count; ++i) {
+      const reml_diagnostic *diag = reml_diagnostics_at(list, i);
+      if (!diag) {
+        continue;
+      }
+      if (i > 0) {
+        fputc(',', out);
+      }
+      fputc('{', out);
+      fprintf(out, "\"code\":%d,", (int)diag->code);
+      fputs("\"message\":\"", out);
+      json_write_escaped(out, diag->message ? diag->message : "");
+      fputs("\",\"span\":{", out);
+      fprintf(out, "\"start_line\":%d,\"start_column\":%d,", diag->span.start_line,
+              diag->span.start_column);
+      fprintf(out, "\"end_line\":%d,\"end_column\":%d", diag->span.end_line,
+              diag->span.end_column);
+      fputs("}", out);
+
+      if (diag->pattern) {
+        fputs(",\"extensions\":{\"pattern\":{", out);
+        fputs("\"missing_variants\":[", out);
+        if (diag->pattern->missing_variants) {
+          size_t vcount = utarray_len(diag->pattern->missing_variants);
+          size_t vindex = 0;
+          for (reml_string_view *it =
+                   (reml_string_view *)utarray_front(diag->pattern->missing_variants);
+               it != NULL;
+               it = (reml_string_view *)utarray_next(diag->pattern->missing_variants, it)) {
+            if (vindex++ > 0) {
+              fputc(',', out);
+            }
+            json_write_string_view(out, *it);
+          }
+          (void)vcount;
+        }
+        fputs("],\"missing_ranges\":[", out);
+        if (diag->pattern->missing_ranges) {
+          size_t rindex = 0;
+          for (reml_diagnostic_range *it =
+                   (reml_diagnostic_range *)utarray_front(diag->pattern->missing_ranges);
+               it != NULL;
+               it = (reml_diagnostic_range *)utarray_next(diag->pattern->missing_ranges, it)) {
+            if (rindex++ > 0) {
+              fputc(',', out);
+            }
+            fprintf(out,
+                    "{\"start\":%" PRId64 ",\"end\":%" PRId64 ",\"inclusive\":%s}",
+                    it->start, it->end, it->inclusive ? "true" : "false");
+          }
+        }
+        fputs("]}", out);
+        fputs("}", out);
+      }
+
+      fputc('}', out);
+    }
+  }
+  fputc(']', out);
+}
+
+static void print_diagnostics_json_object(FILE *out, const reml_diagnostic_list *sema_list,
+                                          const reml_diagnostic_list *codegen_list) {
+  if (!out) {
+    return;
+  }
+  fputs("{\"sema\":", out);
+  print_diagnostics_json(out, sema_list);
+  fputs(",\"codegen\":", out);
+  print_diagnostics_json(out, codegen_list);
+  fputs("}\n", out);
+}
+
 static char *derive_object_path(const char *bin_path) {
   size_t len = strlen(bin_path);
   char *path = (char *)malloc(len + 3);
@@ -148,6 +297,7 @@ static int command_internal_codegen(int argc, const char **argv) {
   const char *bin_path = NULL;
   char *derived_obj_path = NULL;
   bool remove_obj = false;
+  bool diag_json = false;
 
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "--emit-ir") == 0 || strcmp(argv[i], "--emit-llvm") == 0) {
@@ -156,6 +306,10 @@ static int command_internal_codegen(int argc, const char **argv) {
         return 1;
       }
       ir_path = argv[++i];
+      continue;
+    }
+    if (strcmp(argv[i], "--diag-json") == 0) {
+      diag_json = true;
       continue;
     }
     if (strcmp(argv[i], "--emit-obj") == 0) {
@@ -217,7 +371,11 @@ static int command_internal_codegen(int argc, const char **argv) {
   reml_sema_init(&sema);
   bool ok = reml_sema_check(&sema, unit);
   if (!ok) {
-    print_diagnostics("sema", reml_sema_diagnostics(&sema));
+    if (diag_json) {
+      print_diagnostics_json_object(stdout, reml_sema_diagnostics(&sema), NULL);
+    } else {
+      print_diagnostics("sema", reml_sema_diagnostics(&sema));
+    }
     reml_sema_deinit(&sema);
     reml_compilation_unit_free(unit);
     free(content);
@@ -226,7 +384,12 @@ static int command_internal_codegen(int argc, const char **argv) {
 
   reml_codegen codegen;
   if (!reml_codegen_init(&codegen, "reml_module")) {
-    print_diagnostics("codegen", reml_codegen_diagnostics(&codegen));
+    if (diag_json) {
+      print_diagnostics_json_object(stdout, reml_sema_diagnostics(&sema),
+                                    reml_codegen_diagnostics(&codegen));
+    } else {
+      print_diagnostics("codegen", reml_codegen_diagnostics(&codegen));
+    }
     reml_codegen_deinit(&codegen);
     reml_sema_deinit(&sema);
     reml_compilation_unit_free(unit);
@@ -235,7 +398,12 @@ static int command_internal_codegen(int argc, const char **argv) {
   }
 
   if (!reml_codegen_generate(&codegen, unit)) {
-    print_diagnostics("codegen", reml_codegen_diagnostics(&codegen));
+    if (diag_json) {
+      print_diagnostics_json_object(stdout, reml_sema_diagnostics(&sema),
+                                    reml_codegen_diagnostics(&codegen));
+    } else {
+      print_diagnostics("codegen", reml_codegen_diagnostics(&codegen));
+    }
     reml_codegen_deinit(&codegen);
     reml_sema_deinit(&sema);
     reml_compilation_unit_free(unit);
@@ -244,7 +412,12 @@ static int command_internal_codegen(int argc, const char **argv) {
   }
 
   if (ir_path && !reml_codegen_emit_ir(&codegen, ir_path)) {
-    print_diagnostics("codegen", reml_codegen_diagnostics(&codegen));
+    if (diag_json) {
+      print_diagnostics_json_object(stdout, reml_sema_diagnostics(&sema),
+                                    reml_codegen_diagnostics(&codegen));
+    } else {
+      print_diagnostics("codegen", reml_codegen_diagnostics(&codegen));
+    }
     reml_codegen_deinit(&codegen);
     reml_sema_deinit(&sema);
     reml_compilation_unit_free(unit);
@@ -253,7 +426,12 @@ static int command_internal_codegen(int argc, const char **argv) {
   }
 
   if (obj_path && !reml_codegen_emit_object(&codegen, obj_path)) {
-    print_diagnostics("codegen", reml_codegen_diagnostics(&codegen));
+    if (diag_json) {
+      print_diagnostics_json_object(stdout, reml_sema_diagnostics(&sema),
+                                    reml_codegen_diagnostics(&codegen));
+    } else {
+      print_diagnostics("codegen", reml_codegen_diagnostics(&codegen));
+    }
     reml_codegen_deinit(&codegen);
     reml_sema_deinit(&sema);
     reml_compilation_unit_free(unit);
@@ -275,6 +453,9 @@ static int command_internal_codegen(int argc, const char **argv) {
     return 1;
   }
 
+  if (diag_json) {
+    print_diagnostics_json_object(stdout, reml_sema_diagnostics(&sema), NULL);
+  }
   reml_codegen_deinit(&codegen);
   reml_sema_deinit(&sema);
   reml_compilation_unit_free(unit);
