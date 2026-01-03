@@ -40,6 +40,16 @@ reml_expr *reml_expr_make_unary(reml_span span, reml_token_kind op, reml_expr *o
   return expr;
 }
 
+reml_expr *reml_expr_make_ref(reml_span span, bool is_mutable, reml_expr *target) {
+  reml_expr *expr = reml_expr_alloc(REML_EXPR_REF, span);
+  if (!expr) {
+    return NULL;
+  }
+  expr->data.ref.is_mutable = is_mutable;
+  expr->data.ref.target = target;
+  return expr;
+}
+
 reml_expr *reml_expr_make_binary(reml_span span, reml_token_kind op, reml_expr *left,
                                  reml_expr *right) {
   reml_expr *expr = reml_expr_alloc(REML_EXPR_BINARY, span);
@@ -228,7 +238,8 @@ reml_stmt *reml_stmt_make_return(reml_span span, reml_expr *expr) {
   return stmt;
 }
 
-reml_stmt *reml_stmt_make_val_decl(reml_span span, reml_pattern *pattern, reml_expr *value) {
+reml_stmt *reml_stmt_make_val_decl(reml_span span, reml_pattern *pattern, reml_expr *value,
+                                   bool is_mutable) {
   reml_stmt *stmt = (reml_stmt *)calloc(1, sizeof(reml_stmt));
   if (!stmt) {
     return NULL;
@@ -237,6 +248,7 @@ reml_stmt *reml_stmt_make_val_decl(reml_span span, reml_pattern *pattern, reml_e
   stmt->span = span;
   stmt->data.val_decl.pattern = pattern;
   stmt->data.val_decl.value = value;
+  stmt->data.val_decl.is_mutable = is_mutable;
   return stmt;
 }
 
@@ -276,6 +288,9 @@ void reml_expr_free(reml_expr *expr) {
   switch (expr->kind) {
     case REML_EXPR_UNARY:
       reml_expr_free(expr->data.unary.operand);
+      break;
+    case REML_EXPR_REF:
+      reml_expr_free(expr->data.ref.target);
       break;
     case REML_EXPR_BINARY:
       reml_expr_free(expr->data.binary.left);

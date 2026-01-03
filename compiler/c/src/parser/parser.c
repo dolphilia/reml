@@ -814,10 +814,25 @@ static reml_expr *reml_parse_primary(reml_parser *parser) {
 }
 
 static bool reml_is_unary_operator(reml_token_kind kind) {
-  return kind == REML_TOKEN_MINUS || kind == REML_TOKEN_BANG;
+  return kind == REML_TOKEN_MINUS || kind == REML_TOKEN_BANG || kind == REML_TOKEN_STAR;
 }
 
 static reml_expr *reml_parse_prefix(reml_parser *parser) {
+  if (parser->current.kind == REML_TOKEN_AMP) {
+    reml_token amp = parser->current;
+    reml_parser_advance(parser);
+    bool is_mutable = false;
+    if (parser->current.kind == REML_TOKEN_KW_MUT) {
+      is_mutable = true;
+      reml_parser_advance(parser);
+    }
+    reml_expr *target = reml_parse_prefix(parser);
+    if (!target) {
+      return NULL;
+    }
+    reml_span span = reml_span_combine(amp.span, target->span);
+    return reml_expr_make_ref(span, is_mutable, target);
+  }
   if (reml_is_unary_operator(parser->current.kind)) {
     reml_token op = parser->current;
     reml_parser_advance(parser);
@@ -952,6 +967,7 @@ static reml_stmt *reml_parse_statement(reml_parser *parser) {
 
   if (parser->current.kind == REML_TOKEN_KW_LET || parser->current.kind == REML_TOKEN_KW_VAR) {
     reml_token keyword = parser->current;
+    bool is_mutable = keyword.kind == REML_TOKEN_KW_VAR;
     reml_parser_advance(parser);
     reml_pattern *pattern = reml_parse_pattern(parser);
     if (!pattern) {
@@ -972,7 +988,7 @@ static reml_stmt *reml_parse_statement(reml_parser *parser) {
       return NULL;
     }
     reml_span span = reml_span_combine(keyword.span, value->span);
-    return reml_stmt_make_val_decl(span, pattern, value);
+    return reml_stmt_make_val_decl(span, pattern, value, is_mutable);
   }
 
   if (parser->current.kind == REML_TOKEN_KW_RETURN) {

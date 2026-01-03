@@ -203,6 +203,78 @@ static void test_sema_match_guard_ok(void **state) {
   reml_compilation_unit_free(unit);
 }
 
+static void test_sema_ref_read_ok(void **state) {
+  (void)state;
+
+  const char *source = "let x = 1; let r = &x; *r;";
+  reml_compilation_unit *unit = parse_source(source);
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+
+  const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+  assert_true(ok);
+  assert_int_equal(reml_diagnostics_count(diags), 0);
+
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+}
+
+static void test_sema_ref_mut_update_ok(void **state) {
+  (void)state;
+
+  const char *source = "var x = 1; let r = &mut x; *r := 2; x;";
+  reml_compilation_unit *unit = parse_source(source);
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+
+  const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+  assert_true(ok);
+  assert_int_equal(reml_diagnostics_count(diags), 0);
+
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+}
+
+static void test_sema_ref_alias_conflict(void **state) {
+  (void)state;
+
+  const char *source = "var x = 1; let a = &x; let b = &mut x;";
+  reml_compilation_unit *unit = parse_source(source);
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+
+  const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+  assert_false(ok);
+  assert_true(has_diag(diags, REML_DIAG_REF_ALIAS_CONFLICT));
+
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+}
+
+static void test_sema_ref_mut_requires_var(void **state) {
+  (void)state;
+
+  const char *source = "let x = 1; let r = &mut x;";
+  reml_compilation_unit *unit = parse_source(source);
+
+  reml_sema sema;
+  reml_sema_init(&sema);
+  bool ok = reml_sema_check(&sema, unit);
+
+  const reml_diagnostic_list *diags = reml_sema_diagnostics(&sema);
+  assert_false(ok);
+  assert_true(has_diag(diags, REML_DIAG_REF_NOT_MUTABLE));
+
+  reml_sema_deinit(&sema);
+  reml_compilation_unit_free(unit);
+}
+
 static void test_sema_match_range_ok(void **state) {
   (void)state;
 
@@ -354,6 +426,10 @@ void test_sema(void **state) {
   test_sema_match_non_exhaustive(state);
   test_sema_match_unreachable(state);
   test_sema_match_guard_ok(state);
+  test_sema_ref_read_ok(state);
+  test_sema_ref_mut_update_ok(state);
+  test_sema_ref_alias_conflict(state);
+  test_sema_ref_mut_requires_var(state);
   test_sema_match_range_ok(state);
   test_sema_enum_constructor_ok(state);
   test_sema_match_enum_payload_non_exhaustive(state);

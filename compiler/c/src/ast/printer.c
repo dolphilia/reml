@@ -153,6 +153,13 @@ void reml_ast_write_expr(FILE *out, const reml_expr *expr) {
       reml_ast_write_expr(out, expr->data.unary.operand);
       fputs(")", out);
       return;
+    case REML_EXPR_REF:
+      fputs("(", out);
+      fputs(expr->data.ref.is_mutable ? "&mut" : "&", out);
+      fputs(" ", out);
+      reml_ast_write_expr(out, expr->data.ref.target);
+      fputs(")", out);
+      return;
     case REML_EXPR_BINARY:
       fputs("(", out);
       fputs(reml_token_symbol(expr->data.binary.op), out);

@@ -25,6 +25,7 @@ typedef enum {
   REML_TYPE_TUPLE,
   REML_TYPE_RECORD,
   REML_TYPE_FUNCTION,
+  REML_TYPE_REF,
   REML_TYPE_VAR
 } reml_type_kind;
 
@@ -58,6 +59,10 @@ struct reml_type {
       reml_type *result;
       uint32_t effects;
     } function;
+    struct {
+      reml_type *target;
+      bool is_mutable;
+    } ref;
     struct {
       uint32_t id;
       reml_type *instance;
@@ -96,6 +101,7 @@ reml_type *reml_type_unit(reml_type_ctx *ctx);
 reml_type *reml_type_make_enum(reml_type_ctx *ctx);
 reml_type *reml_type_make_tuple(reml_type_ctx *ctx, UT_array *items);
 reml_type *reml_type_make_record(reml_type_ctx *ctx, UT_array *fields);
+reml_type *reml_type_make_ref(reml_type_ctx *ctx, reml_type *target, bool is_mutable);
 
 #ifdef __cplusplus
 }

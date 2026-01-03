@@ -27,6 +27,9 @@ typedef struct reml_symbol {
   reml_scheme scheme;
   bool is_builtin;
   bool is_predeclared;
+  bool is_mutable;
+  uint32_t shared_borrows;
+  bool mut_borrowed;
   reml_symbol_id id;
   UT_hash_handle hh;
 } reml_symbol;
@@ -46,7 +49,13 @@ typedef struct reml_enum_decl_entry {
 
 typedef struct {
   reml_symbol *symbols;
+  UT_array *borrows;
 } reml_scope;
+
+typedef struct {
+  reml_symbol *symbol;
+  bool is_mutable;
+} reml_borrow_record;
 
 struct reml_symbol_table {
   UT_array *scopes;
@@ -96,12 +105,38 @@ static reml_scope *reml_scope_new(void) {
     return NULL;
   }
   scope->symbols = NULL;
+  scope->borrows = NULL;
+  UT_icd borrow_icd = {sizeof(reml_borrow_record), NULL, NULL, NULL};
+  utarray_new(scope->borrows, &borrow_icd);
   return scope;
+}
+
+static void reml_scope_release_borrows(reml_scope *scope) {
+  if (!scope || !scope->borrows) {
+    return;
+  }
+  for (reml_borrow_record *it = (reml_borrow_record *)utarray_front(scope->borrows); it != NULL;
+       it = (reml_borrow_record *)utarray_next(scope->borrows, it)) {
+    if (!it->symbol) {
+      continue;
+    }
+    if (it->is_mutable) {
+      it->symbol->mut_borrowed = false;
+    } else if (it->symbol->shared_borrows > 0) {
+      it->symbol->shared_borrows -= 1;
+    }
+  }
+  utarray_clear(scope->borrows);
 }
 
 static void reml_scope_free(reml_scope *scope) {
   if (!scope) {
     return;
+  }
+  reml_scope_release_borrows(scope);
+  if (scope->borrows) {
+    utarray_free(scope->borrows);
+    scope->borrows = NULL;
   }
   reml_symbol *sym = NULL;
   reml_symbol *tmp = NULL;
@@ -111,6 +146,14 @@ static void reml_scope_free(reml_scope *scope) {
     free(sym);
   }
   free(scope);
+}
+
+static void reml_scope_record_borrow(reml_scope *scope, reml_symbol *symbol, bool is_mutable) {
+  if (!scope || !scope->borrows || !symbol) {
+    return;
+  }
+  reml_borrow_record record = {.symbol = symbol, .is_mutable = is_mutable};
+  utarray_push_back(scope->borrows, &record);
 }
 
 static void reml_symbol_table_init(reml_symbol_table *table) {
@@ -197,8 +240,8 @@ static bool reml_symbol_table_has_builtin(reml_symbol_table *table, reml_string_
 
 static reml_symbol *reml_symbol_table_define(reml_symbol_table *table, reml_symbol_kind kind,
                                              reml_string_view name, reml_span span,
-                                             reml_type *type, bool is_builtin,
-                                             bool is_predeclared) {
+                                             reml_type *type, bool is_builtin, bool is_predeclared,
+                                             bool is_mutable) {
   if (!table) {
     return NULL;
   }
@@ -220,6 +263,9 @@ static reml_symbol *reml_symbol_table_define(reml_symbol_table *table, reml_symb
   symbol->span = span;
   symbol->is_builtin = is_builtin;
   symbol->is_predeclared = is_predeclared;
+  symbol->is_mutable = is_mutable;
+  symbol->shared_borrows = 0;
+  symbol->mut_borrowed = false;
   symbol->id = table->next_id++;
   reml_scheme_init(&symbol->scheme, type);
   HASH_ADD_KEYPTR(hh, scope->symbols, symbol->name.data, symbol->name.length, symbol);
@@ -693,6 +739,9 @@ static void reml_type_collect_vars(reml_type *type, UT_array *vars) {
     }
     reml_type_collect_vars(type->data.function.result, vars);
   }
+  if (type->kind == REML_TYPE_REF) {
+    reml_type_collect_vars(type->data.ref.target, vars);
+  }
 }
 
 static void reml_scheme_collect_free_vars(const reml_scheme *scheme, UT_array *vars) {
@@ -839,7 +888,15 @@ static bool reml_expect_type(reml_sema *sema, reml_type *actual, reml_type *expe
 
 static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_set *effect);
 static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type *expected,
-                               reml_effect_set *effect, bool allow_define);
+                               reml_effect_set *effect, bool allow_define, bool is_mutable);
+static reml_effect_set reml_effect_union(reml_effect_set left, reml_effect_set right);
+
+static reml_symbol *reml_symbol_from_ident(reml_sema *sema, reml_expr *expr) {
+  if (!sema || !expr || expr->kind != REML_EXPR_IDENT) {
+    return NULL;
+  }
+  return reml_symbol_table_lookup(sema->symbols, expr->data.ident);
+}
 
 static reml_type *reml_infer_literal(reml_sema *sema, reml_literal literal) {
   switch (literal.kind) {
@@ -886,11 +943,128 @@ static reml_type *reml_infer_unary(reml_sema *sema, reml_expr *expr, reml_effect
     case REML_TOKEN_BANG:
       reml_expect_type(sema, operand, reml_type_bool(&sema->types), expr->span);
       return reml_type_bool(&sema->types);
+    case REML_TOKEN_STAR: {
+      reml_type *target = reml_type_prune(operand);
+      if (!target || target->kind != REML_TYPE_REF) {
+        reml_report_diag(sema, REML_DIAG_TYPE_MISMATCH, expr->span,
+                         "deref expects reference type");
+        return reml_type_error(&sema->types);
+      }
+      return target->data.ref.target ? target->data.ref.target : reml_type_error(&sema->types);
+    }
     default:
       reml_report_diag(sema, REML_DIAG_UNSUPPORTED_FEATURE, expr->span,
                        "unsupported unary operator");
       return reml_type_error(&sema->types);
   }
+}
+
+static reml_type *reml_infer_ref(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
+  if (!expr) {
+    return reml_type_error(&sema->types);
+  }
+  reml_expr *target_expr = expr->data.ref.target;
+  if (!target_expr) {
+    return reml_type_error(&sema->types);
+  }
+  reml_type *target_type = reml_infer_expr(sema, target_expr, effect);
+  if (!target_type) {
+    return reml_type_error(&sema->types);
+  }
+  if (reml_type_prune(target_type)->kind == REML_TYPE_ERROR) {
+    return reml_type_error(&sema->types);
+  }
+  reml_symbol *symbol = reml_symbol_from_ident(sema, target_expr);
+  if (!symbol) {
+    reml_report_diag(sema, REML_DIAG_REF_EXPECTS_LVALUE, expr->span,
+                     "reference expects lvalue");
+    return reml_type_error(&sema->types);
+  }
+  if (expr->data.ref.is_mutable && !symbol->is_mutable) {
+    reml_report_diag(sema, REML_DIAG_REF_NOT_MUTABLE, expr->span,
+                     "mutable reference requires mutable binding");
+    return reml_type_error(&sema->types);
+  }
+  if (expr->data.ref.is_mutable) {
+    if (symbol->mut_borrowed || symbol->shared_borrows > 0) {
+      reml_report_diag(sema, REML_DIAG_REF_ALIAS_CONFLICT, expr->span,
+                       "mutable borrow conflicts with existing borrow");
+      return reml_type_error(&sema->types);
+    }
+    symbol->mut_borrowed = true;
+  } else {
+    if (symbol->mut_borrowed) {
+      reml_report_diag(sema, REML_DIAG_REF_ALIAS_CONFLICT, expr->span,
+                       "shared borrow conflicts with mutable borrow");
+      return reml_type_error(&sema->types);
+    }
+    symbol->shared_borrows += 1;
+  }
+
+  reml_scope *scope = reml_symbol_table_current(sema->symbols);
+  reml_scope_record_borrow(scope, symbol, expr->data.ref.is_mutable);
+  if (effect && expr->data.ref.is_mutable) {
+    *effect = reml_effect_union(*effect, REML_EFFECT_MUT);
+  }
+  return reml_type_make_ref(&sema->types, target_type, expr->data.ref.is_mutable);
+}
+
+static reml_type *reml_infer_assignment(reml_sema *sema, reml_expr *expr,
+                                        reml_effect_set *effect) {
+  reml_expr *left = expr->data.binary.left;
+  reml_expr *right = expr->data.binary.right;
+  if (!left || !right) {
+    return reml_type_error(&sema->types);
+  }
+
+  reml_type *left_type = NULL;
+  if (left->kind == REML_EXPR_IDENT) {
+    reml_symbol *symbol = reml_symbol_from_ident(sema, left);
+    if (!symbol) {
+      reml_report_diag(sema, REML_DIAG_UNDEFINED_SYMBOL, left->span, "undefined symbol");
+      return reml_type_error(&sema->types);
+    }
+    if (!symbol->is_mutable) {
+      reml_report_diag(sema, REML_DIAG_ASSIGN_NOT_MUTABLE, expr->span,
+                       "assignment requires mutable binding");
+      return reml_type_error(&sema->types);
+    }
+    if (symbol->mut_borrowed || symbol->shared_borrows > 0) {
+      reml_report_diag(sema, REML_DIAG_REF_ALIAS_CONFLICT, expr->span,
+                       "assignment conflicts with active borrow");
+      return reml_type_error(&sema->types);
+    }
+    left_type = reml_infer_expr(sema, left, effect);
+  } else if (left->kind == REML_EXPR_UNARY && left->data.unary.op == REML_TOKEN_STAR) {
+    reml_effect_set left_effect = REML_EFFECT_NONE;
+    left_type = reml_infer_expr(sema, left, &left_effect);
+    if (effect) {
+      *effect = reml_effect_union(*effect, left_effect);
+    }
+    reml_type *operand_type =
+        left->data.unary.operand ? reml_type_prune(left->data.unary.operand->type) : NULL;
+    if (!operand_type || operand_type->kind != REML_TYPE_REF || !operand_type->data.ref.is_mutable) {
+      reml_report_diag(sema, REML_DIAG_ASSIGN_NOT_MUTABLE, expr->span,
+                       "assignment requires mutable reference");
+      return reml_type_error(&sema->types);
+    }
+  } else {
+    reml_report_diag(sema, REML_DIAG_REF_EXPECTS_LVALUE, expr->span,
+                     "assignment expects lvalue");
+    return reml_type_error(&sema->types);
+  }
+
+  reml_effect_set right_effect = REML_EFFECT_NONE;
+  reml_type *right_type = reml_infer_expr(sema, right, &right_effect);
+  if (effect) {
+    *effect = reml_effect_union(*effect, right_effect);
+    *effect = reml_effect_union(*effect, REML_EFFECT_MUT);
+  }
+  if (!left_type || !right_type) {
+    return reml_type_error(&sema->types);
+  }
+  reml_expect_type(sema, right_type, left_type, expr->span);
+  return reml_type_unit(&sema->types);
 }
 
 static bool reml_unify_binary_numeric(reml_sema *sema, reml_type *left, reml_type *right,
@@ -919,6 +1093,9 @@ static bool reml_unify_binary_numeric(reml_sema *sema, reml_type *left, reml_typ
 }
 
 static reml_type *reml_infer_binary(reml_sema *sema, reml_expr *expr, reml_effect_set *effect) {
+  if (expr->data.binary.op == REML_TOKEN_COLONEQ) {
+    return reml_infer_assignment(sema, expr, effect);
+  }
   reml_type *left = reml_infer_expr(sema, expr->data.binary.left, effect);
   reml_type *right = reml_infer_expr(sema, expr->data.binary.right, effect);
   if (!left || !right) {
@@ -986,7 +1163,8 @@ static reml_type *reml_infer_block(reml_sema *sema, reml_expr *expr, reml_effect
         case REML_STMT_VAL_DECL: {
           reml_type *value_type =
               reml_infer_expr(sema, stmt->data.val_decl.value, &stmt_effect);
-          reml_check_pattern(sema, stmt->data.val_decl.pattern, value_type, &stmt_effect, true);
+          reml_check_pattern(sema, stmt->data.val_decl.pattern, value_type, &stmt_effect, true,
+                             stmt->data.val_decl.is_mutable);
           break;
         }
         case REML_STMT_RETURN:
@@ -1130,7 +1308,7 @@ static reml_type *reml_infer_match(reml_sema *sema, reml_expr *expr, reml_effect
       }
       reml_symbol_table_enter(sema->symbols);
       reml_effect_set arm_effect = REML_EFFECT_NONE;
-      reml_check_pattern(sema, it->pattern, scrutinee, &arm_effect, true);
+      reml_check_pattern(sema, it->pattern, scrutinee, &arm_effect, true, false);
       if (it->pattern && it->pattern->kind == REML_PATTERN_CONSTRUCTOR && !has_guard) {
         int32_t tag = it->pattern->data.ctor.tag;
         bool payload_full = reml_pattern_ctor_payload_covers_all(it->pattern);
@@ -1452,6 +1630,9 @@ static reml_type *reml_infer_expr(reml_sema *sema, reml_expr *expr, reml_effect_
     case REML_EXPR_UNARY:
       result = reml_infer_unary(sema, expr, &local_effect);
       break;
+    case REML_EXPR_REF:
+      result = reml_infer_ref(sema, expr, &local_effect);
+      break;
     case REML_EXPR_BINARY:
       result = reml_infer_binary(sema, expr, &local_effect);
       break;
@@ -1521,7 +1702,7 @@ static void reml_generalize(reml_sema *sema, reml_symbol *symbol, reml_type *typ
 }
 
 static void reml_define_pattern_symbol(reml_sema *sema, reml_pattern *pattern,
-                                       reml_type *expected, bool allow_define,
+                                       reml_type *expected, bool allow_define, bool is_mutable,
                                        reml_effect_set *effect) {
   if (!pattern || !allow_define) {
     return;
@@ -1544,7 +1725,7 @@ static void reml_define_pattern_symbol(reml_sema *sema, reml_pattern *pattern,
   reml_symbol *symbol = existing;
   if (!symbol) {
     symbol = reml_symbol_table_define(sema->symbols, REML_SYMBOL_VAR, pattern->data.ident,
-                                      pattern->span, expected, false, false);
+                                      pattern->span, expected, false, false, is_mutable);
   }
   if (!symbol) {
     return;
@@ -1552,6 +1733,9 @@ static void reml_define_pattern_symbol(reml_sema *sema, reml_pattern *pattern,
   if (existing && existing->is_predeclared) {
     reml_expect_type(sema, existing->scheme.type, expected, pattern->span);
     expected = reml_type_prune(existing->scheme.type);
+  }
+  if (!existing) {
+    symbol->is_mutable = is_mutable;
   }
   symbol->is_predeclared = false;
   pattern->symbol_id = symbol->id;
@@ -1562,7 +1746,7 @@ static void reml_define_pattern_symbol(reml_sema *sema, reml_pattern *pattern,
 }
 
 static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type *expected,
-                               reml_effect_set *effect, bool allow_define) {
+                               reml_effect_set *effect, bool allow_define, bool is_mutable) {
   if (!pattern) {
     return;
   }
@@ -1571,7 +1755,7 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
       pattern->type = expected;
       return;
     case REML_PATTERN_IDENT:
-      reml_define_pattern_symbol(sema, pattern, expected, allow_define, effect);
+      reml_define_pattern_symbol(sema, pattern, expected, allow_define, is_mutable, effect);
       return;
     case REML_PATTERN_LITERAL: {
       reml_type *literal_type = reml_infer_literal(sema, pattern->data.literal);
@@ -1662,7 +1846,8 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
              it != NULL;
              it = (reml_pattern **)utarray_next(pattern->data.ctor.items, it)) {
           reml_type **field_type = (reml_type **)utarray_eltptr(variant->fields, index);
-          reml_check_pattern(sema, *it, field_type ? *field_type : expected, effect, allow_define);
+          reml_check_pattern(sema, *it, field_type ? *field_type : expected, effect, allow_define,
+                             is_mutable);
           index++;
         }
       }
@@ -1705,7 +1890,8 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
                it = (reml_pattern **)utarray_next(pattern->data.items, it)) {
             reml_type **item_type =
                 (reml_type **)utarray_eltptr(target->data.tuple.items, index);
-            reml_check_pattern(sema, *it, item_type ? *item_type : expected, effect, allow_define);
+          reml_check_pattern(sema, *it, item_type ? *item_type : expected, effect, allow_define,
+                             is_mutable);
             index++;
           }
         }
@@ -1789,7 +1975,7 @@ static void reml_check_pattern(reml_sema *sema, reml_pattern *pattern, reml_type
               pattern->type = reml_type_error(&sema->types);
               return;
             }
-            reml_check_pattern(sema, it->pattern, field->type, effect, allow_define);
+            reml_check_pattern(sema, it->pattern, field->type, effect, allow_define, is_mutable);
           }
         }
         pattern->type = expected;
@@ -1829,9 +2015,9 @@ static void reml_first_pass_decls(reml_sema *sema, reml_compilation_unit *unit) 
                        "duplicate symbol in scope");
       continue;
     }
-    reml_symbol *symbol =
-        reml_symbol_table_define(sema->symbols, REML_SYMBOL_VAR, pattern->data.ident,
-                                 pattern->span, reml_type_make_var(&sema->types), false, true);
+    reml_symbol *symbol = reml_symbol_table_define(
+        sema->symbols, REML_SYMBOL_VAR, pattern->data.ident, pattern->span,
+        reml_type_make_var(&sema->types), false, true, stmt->data.val_decl.is_mutable);
     if (symbol) {
       pattern->symbol_id = symbol->id;
       pattern->type = symbol->scheme.type;
@@ -1847,7 +2033,8 @@ static void reml_check_stmt(reml_sema *sema, reml_stmt *stmt, reml_effect_set *e
     case REML_STMT_VAL_DECL: {
       reml_effect_set value_effect = REML_EFFECT_NONE;
       reml_type *value_type = reml_infer_expr(sema, stmt->data.val_decl.value, &value_effect);
-      reml_check_pattern(sema, stmt->data.val_decl.pattern, value_type, &value_effect, true);
+      reml_check_pattern(sema, stmt->data.val_decl.pattern, value_type, &value_effect, true,
+                         stmt->data.val_decl.is_mutable);
       if (effect) {
         *effect = reml_effect_union(*effect, value_effect);
       }

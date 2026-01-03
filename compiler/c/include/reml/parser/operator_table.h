@@ -16,15 +16,16 @@ typedef enum {
 } reml_assoc;
 
 typedef enum {
-  REML_PREC_PIPE = 0,
-  REML_PREC_OR = 1,
-  REML_PREC_AND = 2,
-  REML_PREC_EQ = 3,
-  REML_PREC_REL = 4,
-  REML_PREC_RANGE = 5,
-  REML_PREC_ADD = 6,
-  REML_PREC_MUL = 7,
-  REML_PREC_POW = 8
+  REML_PREC_ASSIGN = 0,
+  REML_PREC_PIPE = 1,
+  REML_PREC_OR = 2,
+  REML_PREC_AND = 3,
+  REML_PREC_EQ = 4,
+  REML_PREC_REL = 5,
+  REML_PREC_RANGE = 6,
+  REML_PREC_ADD = 7,
+  REML_PREC_MUL = 8,
+  REML_PREC_POW = 9
 } reml_precedence;
 
 typedef struct {

@@ -251,6 +251,9 @@ static reml_token_kind reml_keyword_kind(const reml_string_view *view) {
   if (view->length == 3 && strncmp(view->data, "var", 3) == 0) {
     return REML_TOKEN_KW_VAR;
   }
+  if (view->length == 3 && strncmp(view->data, "mut", 3) == 0) {
+    return REML_TOKEN_KW_MUT;
+  }
   if (view->length == 2 && strncmp(view->data, "fn", 2) == 0) {
     return REML_TOKEN_KW_FN;
   }
@@ -613,7 +616,8 @@ reml_token reml_lexer_next(reml_lexer *lexer) {
         return reml_make_token(REML_TOKEN_LOGICAL_AND, lexer, start_offset, start_line,
                                start_column, lexer->index, lexer->line, lexer->column);
       }
-      break;
+      return reml_make_token(REML_TOKEN_AMP, lexer, start_offset, start_line, start_column,
+                             lexer->index, lexer->line, lexer->column);
     case '|':
       if (reml_peek_byte(lexer) == '|') {
         reml_advance_bytes(lexer, 1);
@@ -678,6 +682,8 @@ const char *reml_token_kind_name(reml_token_kind kind) {
       return "KW_LET";
     case REML_TOKEN_KW_VAR:
       return "KW_VAR";
+    case REML_TOKEN_KW_MUT:
+      return "KW_MUT";
     case REML_TOKEN_KW_FN:
       return "KW_FN";
     case REML_TOKEN_KW_PUB:
@@ -716,6 +722,8 @@ const char *reml_token_kind_name(reml_token_kind kind) {
       return "ARROW";
     case REML_TOKEN_EQ:
       return "EQ";
+    case REML_TOKEN_AMP:
+      return "AMP";
     case REML_TOKEN_CARET:
       return "CARET";
     case REML_TOKEN_LOGICAL_AND:

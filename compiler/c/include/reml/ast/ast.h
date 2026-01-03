@@ -32,6 +32,7 @@ typedef enum {
   REML_EXPR_LITERAL,
   REML_EXPR_IDENT,
   REML_EXPR_UNARY,
+  REML_EXPR_REF,
   REML_EXPR_BINARY,
   REML_EXPR_CONSTRUCTOR,
   REML_EXPR_TUPLE,
@@ -49,6 +50,11 @@ typedef struct {
   reml_token_kind op;
   reml_expr *operand;
 } reml_unary_expr;
+
+typedef struct {
+  bool is_mutable;
+  reml_expr *target;
+} reml_ref_expr;
 
 typedef struct {
   reml_token_kind op;
@@ -156,6 +162,7 @@ struct reml_expr {
     reml_literal literal;
     reml_string_view ident;
     reml_unary_expr unary;
+    reml_ref_expr ref;
     reml_binary_expr binary;
     reml_constructor_expr ctor;
     UT_array *tuple;
@@ -193,6 +200,7 @@ typedef struct reml_stmt {
     struct {
       reml_pattern *pattern;
       reml_expr *value;
+      bool is_mutable;
     } val_decl;
     reml_type_decl type_decl;
   } data;
@@ -205,6 +213,7 @@ typedef struct {
 reml_expr *reml_expr_make_literal(reml_span span, reml_literal literal);
 reml_expr *reml_expr_make_ident(reml_span span, reml_string_view ident);
 reml_expr *reml_expr_make_unary(reml_span span, reml_token_kind op, reml_expr *operand);
+reml_expr *reml_expr_make_ref(reml_span span, bool is_mutable, reml_expr *target);
 reml_expr *reml_expr_make_binary(reml_span span, reml_token_kind op, reml_expr *left,
                                  reml_expr *right);
 reml_expr *reml_expr_make_constructor(reml_span span, reml_string_view name, UT_array *args);
@@ -228,7 +237,8 @@ reml_pattern *reml_pattern_make_range(reml_span span, reml_literal start, reml_l
 
 reml_stmt *reml_stmt_make_expr(reml_span span, reml_expr *expr);
 reml_stmt *reml_stmt_make_return(reml_span span, reml_expr *expr);
-reml_stmt *reml_stmt_make_val_decl(reml_span span, reml_pattern *pattern, reml_expr *value);
+reml_stmt *reml_stmt_make_val_decl(reml_span span, reml_pattern *pattern, reml_expr *value,
+                                   bool is_mutable);
 reml_stmt *reml_stmt_make_type_decl(reml_span span, reml_string_view name, UT_array *variants);
 
 reml_compilation_unit *reml_compilation_unit_new(void);

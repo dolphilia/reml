@@ -238,6 +238,11 @@ static bool reml_type_occurs_in(reml_type *var, reml_type *type) {
       return true;
     }
   }
+  if (type->kind == REML_TYPE_REF) {
+    if (reml_type_occurs_in(var, type->data.ref.target)) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -358,6 +363,12 @@ bool reml_type_unify(reml_type_ctx *ctx, reml_type *left, reml_type *right) {
         left->kind == REML_TYPE_FUNCTION) {
       return reml_type_unify_composite(ctx, left, right);
     }
+    if (left->kind == REML_TYPE_REF) {
+      if (left->data.ref.is_mutable != right->data.ref.is_mutable) {
+        return false;
+      }
+      return reml_type_unify(ctx, left->data.ref.target, right->data.ref.target);
+    }
     return true;
   }
 
@@ -421,5 +432,15 @@ reml_type *reml_type_make_record(reml_type_ctx *ctx, UT_array *fields) {
     return NULL;
   }
   type->data.record.fields = fields;
+  return type;
+}
+
+reml_type *reml_type_make_ref(reml_type_ctx *ctx, reml_type *target, bool is_mutable) {
+  reml_type *type = reml_type_new(ctx, REML_TYPE_REF);
+  if (!type) {
+    return NULL;
+  }
+  type->data.ref.target = target;
+  type->data.ref.is_mutable = is_mutable;
   return type;
 }

@@ -57,6 +57,7 @@ static bool reml_type_is_unit(reml_type *type);
 static bool reml_type_is_enum(reml_type *type);
 static bool reml_type_is_tuple(reml_type *type);
 static bool reml_type_is_record(reml_type *type);
+static bool reml_type_is_ref(reml_type *type);
 static bool reml_string_view_equal(reml_string_view left, reml_string_view right);
 static reml_enum_variant *reml_codegen_enum_variant(reml_type *type, reml_string_view name);
 static bool reml_record_field_index(reml_type *type, reml_string_view name, size_t *out_index,
@@ -237,6 +238,14 @@ static LLVMTypeRef reml_codegen_lower_type(reml_codegen *codegen, reml_type *typ
     case REML_TYPE_TUPLE:
     case REML_TYPE_RECORD:
       return LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0);
+    case REML_TYPE_REF: {
+      reml_type *target = type->data.ref.target;
+      LLVMTypeRef target_type = reml_codegen_lower_type(codegen, target);
+      if (!target_type || LLVMGetTypeKind(target_type) == LLVMVoidTypeKind) {
+        return LLVMPointerType(LLVMInt8TypeInContext(codegen->context), 0);
+      }
+      return LLVMPointerType(target_type, 0);
+    }
     default:
       return NULL;
   }
@@ -768,6 +777,59 @@ static reml_codegen_value reml_codegen_emit_ident(reml_codegen *codegen,
   }
   LLVMValueRef loaded = LLVMBuildLoad2(codegen->builder, binding->type, binding->value, "load");
   return reml_codegen_make_value(loaded, expr->type, false);
+}
+
+static bool reml_codegen_emit_lvalue(reml_codegen *codegen, reml_codegen_scope_stack *scopes,
+                                     reml_expr *expr, LLVMValueRef *out_ptr,
+                                     LLVMTypeRef *out_type) {
+  if (!codegen || !expr || !out_ptr || !out_type) {
+    return false;
+  }
+  if (expr->kind == REML_EXPR_IDENT) {
+    reml_codegen_binding *binding = reml_codegen_scope_lookup(scopes, expr->symbol_id);
+    if (!binding) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                          "unknown local binding");
+      return false;
+    }
+    *out_ptr = binding->value;
+    *out_type = binding->type;
+    return true;
+  }
+  if (expr->kind == REML_EXPR_UNARY && expr->data.unary.op == REML_TOKEN_STAR) {
+    reml_codegen_value operand =
+        reml_codegen_emit_expr(codegen, scopes, expr->data.unary.operand);
+    if (operand.terminated) {
+      return false;
+    }
+    if (!operand.value) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                          "missing deref operand");
+      return false;
+    }
+    LLVMTypeRef llvm_type = reml_codegen_lower_type(codegen, expr->type);
+    if (!llvm_type) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                          "unsupported deref type");
+      return false;
+    }
+    *out_ptr = operand.value;
+    *out_type = llvm_type;
+    return true;
+  }
+  return false;
+}
+
+static reml_codegen_value reml_codegen_emit_ref(reml_codegen *codegen,
+                                                reml_codegen_scope_stack *scopes, reml_expr *expr) {
+  LLVMValueRef ptr = NULL;
+  LLVMTypeRef ptr_type = NULL;
+  if (!reml_codegen_emit_lvalue(codegen, scopes, expr->data.ref.target, &ptr, &ptr_type)) {
+    reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                        "reference expects lvalue");
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
+  return reml_codegen_make_value(ptr, expr->type, false);
 }
 
 static LLVMValueRef reml_codegen_emit_pattern_check(reml_codegen *codegen, reml_pattern *pattern,
@@ -1305,6 +1367,11 @@ static bool reml_type_is_record(reml_type *type) {
   return type && type->kind == REML_TYPE_RECORD;
 }
 
+static bool reml_type_is_ref(reml_type *type) {
+  type = type ? reml_type_prune(type) : NULL;
+  return type && type->kind == REML_TYPE_REF;
+}
+
 static bool reml_string_view_equal(reml_string_view left, reml_string_view right) {
   if (left.length != right.length) {
     return false;
@@ -1467,6 +1534,19 @@ static reml_codegen_value reml_codegen_emit_unary(reml_codegen *codegen,
   if (expr->data.unary.op == REML_TOKEN_BANG) {
     if (reml_type_is_bool(operand.type)) {
       LLVMValueRef value = LLVMBuildNot(codegen->builder, operand.value, "not");
+      return reml_codegen_make_value(value, expr->type, false);
+    }
+  }
+  if (expr->data.unary.op == REML_TOKEN_STAR) {
+    if (reml_type_is_ref(operand.type)) {
+      reml_type *target = reml_type_prune(operand.type)->data.ref.target;
+      LLVMTypeRef llvm_type = reml_codegen_lower_type(codegen, target);
+      if (!llvm_type) {
+        reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                            "unsupported deref type");
+        return reml_codegen_make_value(NULL, expr->type, false);
+      }
+      LLVMValueRef value = LLVMBuildLoad2(codegen->builder, llvm_type, operand.value, "deref");
       return reml_codegen_make_value(value, expr->type, false);
     }
   }
@@ -1777,6 +1857,28 @@ static reml_codegen_value reml_codegen_emit_record_update(reml_codegen *codegen,
 static reml_codegen_value reml_codegen_emit_binary(reml_codegen *codegen,
                                                    reml_codegen_scope_stack *scopes,
                                                    reml_expr *expr) {
+  if (expr->data.binary.op == REML_TOKEN_COLONEQ) {
+    LLVMValueRef target_ptr = NULL;
+    LLVMTypeRef target_type = NULL;
+    if (!reml_codegen_emit_lvalue(codegen, scopes, expr->data.binary.left, &target_ptr,
+                                  &target_type)) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_UNSUPPORTED, expr->span,
+                          "assignment expects lvalue");
+      return reml_codegen_make_value(NULL, expr->type, false);
+    }
+    (void)target_type;
+    reml_codegen_value right = reml_codegen_emit_expr(codegen, scopes, expr->data.binary.right);
+    if (right.terminated) {
+      return right;
+    }
+    if (!right.value) {
+      reml_codegen_report(codegen, REML_DIAG_CODEGEN_INTERNAL, expr->span,
+                          "missing assignment value");
+      return reml_codegen_make_value(NULL, expr->type, false);
+    }
+    LLVMBuildStore(codegen->builder, right.value, target_ptr);
+    return reml_codegen_make_value(NULL, expr->type, false);
+  }
   reml_codegen_value left = reml_codegen_emit_expr(codegen, scopes, expr->data.binary.left);
   if (left.terminated) {
     return left;
@@ -2687,6 +2789,8 @@ static reml_codegen_value reml_codegen_emit_expr(reml_codegen *codegen,
       return reml_codegen_emit_ident(codegen, scopes, expr);
     case REML_EXPR_UNARY:
       return reml_codegen_emit_unary(codegen, scopes, expr);
+    case REML_EXPR_REF:
+      return reml_codegen_emit_ref(codegen, scopes, expr);
     case REML_EXPR_BINARY:
       return reml_codegen_emit_binary(codegen, scopes, expr);
     case REML_EXPR_CONSTRUCTOR:
