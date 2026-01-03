@@ -20,6 +20,16 @@
   - 例外/パニック相当（`panic` のメッセージ整形と終了コード）。
 - **バインディング**: C 関数を Reml の `@intrinsic` で公開し、ABI 一覧を `docs/` にまとめる。
 
+### 6.1.1 作業ステップ（詳細）
+- [ ] `compiler/c/lib/runtime/` を作成し、`runtime.h` / `runtime.c` の最低限スケルトンを配置する。
+- [ ] 失敗時の共通 ABI として `reml_result`（`ok`/`err`、診断 ID、メッセージ）を定義し、`reml_panic` の終了コード規約を決める。
+- [ ] 文字列/バイト表現（`reml_string`/`reml_bytes` など）を `ptr + len` で定義し、UTF-8 検証の責務を明確化する。
+- [ ] メモリ割り当てラッパー（`reml_alloc`/`reml_free`/`reml_arena_*`）と OOM ハンドリング方針を追加する。
+- [ ] IO プリミティブ（`reml_print`/`reml_eprint`/`reml_read_file`/`reml_write_file`）を追加し、`Result` でエラーを返す。
+- [ ] システムプリミティブ（`reml_time_now`/`reml_env_get`/`reml_args`/`reml_cwd`）を追加する。
+- [ ] `compiler/c/lib/runtime/CMakeLists.txt` を追加し、`reml_runtime` ターゲットを `reml_core` からリンク可能にする。
+- [ ] `@intrinsic` へ公開する ABI 一覧を `docs/` に整理し、関数名・引数・戻り値・エラーコードを記述する。
+
 ## 6.2 Core ライブラリの移植
 - **ソース**: `compiler/c/lib/core/` (Reml ファイル)。
 - **対象モジュール（最小セット）**:
@@ -28,7 +38,7 @@
   - `Core.Math`, `Core.Int`, `Core.Float`, `Core.BigInt`
   - `Core.IO`, `Core.Env`, `Core.Time`
 - **タスク**:
-  - `compiler/ocaml` / `compiler/rust` から API と仕様を抽出し、互換インタフェースを定義する。
+  - `compiler/rust` から API と仕様を抽出し、互換インタフェースを定義する。
   - `@intrinsic` 対象を一覧化し、C 実装に移譲する範囲を明確化する。
   - Unicode 関連 API（分割・正規化・幅計算）を `utf8proc` / `libgrapheme` に接続する。
   - エラーメッセージと診断 ID を `docs/spec/3-6` 系に合わせる。
