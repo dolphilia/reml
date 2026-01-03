@@ -41,6 +41,7 @@ static bool reml_parser_expect(reml_parser *parser, reml_token_kind kind, const 
 }
 
 static reml_expr *reml_parse_expression_prec(reml_parser *parser, int min_prec);
+static reml_expr *reml_parse_primary(reml_parser *parser);
 static reml_stmt *reml_parse_statement(reml_parser *parser);
 
 static bool reml_token_is_underscore(const reml_token *token) {
@@ -588,7 +589,8 @@ static bool reml_parse_handler_literal(reml_parser *parser, reml_handler_literal
       utarray_new(params, &param_icd);
       if (parser->current.kind != REML_TOKEN_RPAREN) {
         while (true) {
-          if (parser->current.kind != REML_TOKEN_IDENT) {
+          if (parser->current.kind != REML_TOKEN_IDENT &&
+              parser->current.kind != REML_TOKEN_KW_RESUME) {
             reml_parser_set_error(parser, "expected parameter name", parser->current.span);
             reml_free_string_view_array(params);
             reml_free_handler_entries(entries);

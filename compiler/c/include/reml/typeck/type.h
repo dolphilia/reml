@@ -122,6 +122,7 @@ reml_type *reml_type_make_var(reml_type_ctx *ctx);
 reml_type *reml_type_prune(reml_type *type);
 bool reml_type_unify(reml_type_ctx *ctx, reml_type *left, reml_type *right);
 void reml_type_mark_numeric(reml_type_ctx *ctx, reml_type *type);
+bool reml_type_is_numeric_var(reml_type_ctx *ctx, reml_type *type);
 void reml_type_apply_numeric_defaults(reml_type_ctx *ctx, reml_type *default_type);
 
 reml_type *reml_type_error(reml_type_ctx *ctx);

@@ -1296,6 +1296,10 @@ static bool reml_is_numeric_type(reml_type *type, reml_type_ctx *ctx) {
          type == reml_type_float(ctx);
 }
 
+static bool reml_type_kind_is_numeric(reml_type_kind kind) {
+  return kind == REML_TYPE_INT || kind == REML_TYPE_BIGINT || kind == REML_TYPE_FLOAT;
+}
+
 static bool reml_expect_numeric_type(reml_sema *sema, reml_type *type, reml_span span) {
   if (!sema || !type) {
     return false;
@@ -1508,8 +1512,7 @@ static void reml_trait_constraints_resolve(reml_sema *sema) {
         result->kind == REML_TYPE_ERROR) {
       continue;
     }
-    if (left->kind == REML_TYPE_VAR || right->kind == REML_TYPE_VAR ||
-        result->kind == REML_TYPE_VAR) {
+    if (left->kind == REML_TYPE_VAR || right->kind == REML_TYPE_VAR) {
       continue;
     }
     const reml_trait_impl *match = NULL;
@@ -1583,6 +1586,16 @@ static reml_type *reml_resolve_binary_trait(reml_sema *sema, reml_trait_kind tra
     } else {
       reml_report_diag(sema, REML_DIAG_TRAIT_AMBIGUOUS, span, "ambiguous operator trait");
     }
+    return reml_type_error(&sema->types);
+  }
+
+  bool left_numeric_var =
+      left_kind == REML_TYPE_VAR && reml_type_is_numeric_var(&sema->types, left);
+  bool right_numeric_var =
+      right_kind == REML_TYPE_VAR && reml_type_is_numeric_var(&sema->types, right);
+  if ((left_numeric_var && !reml_type_kind_is_numeric(match->left)) ||
+      (right_numeric_var && !reml_type_kind_is_numeric(match->right))) {
+    reml_report_diag(sema, REML_DIAG_TRAIT_UNRESOLVED, span, "cannot resolve operator trait");
     return reml_type_error(&sema->types);
   }
 

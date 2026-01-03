@@ -18,6 +18,8 @@ endif()
 include(cmake/FetchDependencies.cmake)
 reml_make_core_dependencies()
 
+add_subdirectory(lib/runtime)
+
 add_library(reml_core
   src/util/logger.c
   src/util/span.c
@@ -51,6 +53,7 @@ target_include_directories(reml_core
 
 target_link_libraries(reml_core
   PUBLIC
+    reml_runtime
     reml_logc
     reml_utf8proc
     ${REML_GRAPHEME_TARGET}

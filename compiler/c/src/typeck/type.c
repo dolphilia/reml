@@ -640,6 +640,10 @@ void reml_type_mark_numeric(reml_type_ctx *ctx, reml_type *type) {
   reml_type_ctx_mark_numeric_var(ctx, type);
 }
 
+bool reml_type_is_numeric_var(reml_type_ctx *ctx, reml_type *type) {
+  return reml_type_ctx_has_numeric(ctx, type);
+}
+
 void reml_type_apply_numeric_defaults(reml_type_ctx *ctx, reml_type *default_type) {
   if (!ctx || !ctx->numeric_vars || !default_type) {
     return;
