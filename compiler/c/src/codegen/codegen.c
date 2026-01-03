@@ -2314,8 +2314,8 @@ static reml_codegen_value reml_codegen_emit_match(reml_codegen *codegen,
           }
         }
         if (seen) {
-          valid = false;
-          break;
+          index++;
+          continue;
         }
         utarray_push_back(seen_values, &value);
         LLVMValueRef literal_value =

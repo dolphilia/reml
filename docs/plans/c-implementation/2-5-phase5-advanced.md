@@ -136,6 +136,15 @@
 2. **網羅性/到達不能の拡張**: タプル/レコード/コンストラクタ payload を含むケースへ診断を拡張。
 3. **診断の JSON 出力拡張**: `extensions.pattern` を CLI/LSP 出力に反映する。
 
+### 5.2.10 診断 JSON 出力と LSP 連携の設計メモ（2026-01-03）
+- **CLI 入口**: `reml internal codegen --diag-json <file>` を追加し、診断を JSON で標準出力へ出す。
+- **出力形**: `{ "sema": [...], "codegen": [...] }` の 2 本立て。各要素は
+  - `code` (int), `message` (string), `span` (start/end line/column)
+  - `extensions.pattern` に `missing_variants` / `missing_ranges` を収容
+- **LSP 連携**: 将来的に `--diag-json` の出力を LSP サーバへパイプし、`Diagnostic.data` に `extensions` を付与する。
+  - `pattern.exhaustiveness.missing` は `data.extensions.pattern` を保持し、IDE 側で不足パターンを表示する。
+  - `pattern.range.bound_inverted` 等の拡張も同様に `extensions.pattern` へ集約する。
+
 ## 5.3 Algebraic Effects (ランタイムサポート)
 - **目標**: `perform`, `resume`, `handle` のサポート。
 - **仕様参照**: `docs/spec/1-3-effects-safety.md`、`docs/spec/3-8-core-runtime-capability.md`。
