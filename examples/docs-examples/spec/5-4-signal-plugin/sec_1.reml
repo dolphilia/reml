@@ -1,0 +1,8 @@
+pub type SignalCapability = {
+  register_handler: fn(Signal, SignalHandler) -> Result<PreviousHandler, SignalError>, // effect {signal, unsafe}
+  mask: fn(Set<Signal>) -> Result<SignalMask, SignalError>,                             // effect {signal}
+  unmask: fn(SignalMask) -> Result<(), SignalError>,                                   // effect {signal}
+  send: fn(Core.System.Process.ProcessId, Signal) -> Result<(), SignalError>,          // effect {signal, process}
+  wait: fn(Set<Signal>, Option<Core.Numeric.Time.Duration>) -> Result<SignalInfo, SignalError>, // effect {signal, io.blocking}
+  raise: fn(Signal) -> Result<(), SignalError>,                                        // effect {signal}
+}

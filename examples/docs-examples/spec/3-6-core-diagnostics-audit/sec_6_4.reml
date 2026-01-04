@@ -1,0 +1,27 @@
+pub type Span
+pub type TemplateSegmentId
+pub type CapabilityId
+pub type EscapePolicy
+pub type Json
+pub type Diagnostic
+
+pub enum DiagnosticDomain =
+  | Template
+  | Other(Str)
+
+pub enum TemplateMessageKey =
+  | RenderFailure                   // `template.render.failure`
+  | FilterUnknown                   // `template.filter.unknown`
+  | CapabilityMissing               // `template.capability.missing`
+  | EscapeBypassed                  // `template.escape.bypassed`
+
+fn diagnostic_template(key: TemplateMessageKey, span: Option<Span>, data: TemplateDiagData) -> Diagnostic
+
+pub type TemplateDiagData = {
+  template_id: Option<Str>,
+  segment: Option<TemplateSegmentId>,
+  filter: Option<Str>,
+  capability: Option<CapabilityId>,
+  escape_policy: Option<EscapePolicy>,
+  context_snapshot: Option<Json>,
+}

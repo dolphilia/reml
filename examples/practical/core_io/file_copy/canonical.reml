@@ -1,0 +1,48 @@
+module Examples.Practical.CoreIO.FileCopy
+
+use Core
+use Core.IO
+use Core.Path
+use Core.Diagnostics
+
+type CopyReport = new {
+  src: Path,
+  dst: Path,
+  bytes: u64,
+}
+
+fn copy_into_sandbox(src: Str, dst: Str, audit: AuditSink) -> Result<CopyReport, Diagnostic> {
+  let src_path = path(src)?;
+  let dst_root = path("/var/tmp")?;
+  let canonical_dst = sandbox_path(path(dst)?, dst_root)
+    .map_err(|err| err.into_diagnostic())?;
+
+  let bytes = with_reader(src_path.clone(), |reader| {
+    with_writer(canonical_dst.clone(), |writer| {
+      copy(reader, writer)
+    })
+  })?;
+
+  log_io(
+    "examples.practical.core_io.file_copy",
+    Some(canonical_dst.clone()),
+    bytes,
+    audit,
+  )?;
+
+  Ok(CopyReport({
+    src: src_path,
+    dst: canonical_dst,
+    bytes,
+  }))
+}
+
+fn main(audit: AuditSink) -> Result<(), Diagnostic> {
+  let report = copy_into_sandbox(
+    "/tmp/spec-core/input.txt",
+    "/tmp/spec-core/output.txt",
+    audit,
+  )?;
+  println("copied " + report.bytes.to_string() + " bytes");
+  Ok(())
+}

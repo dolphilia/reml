@@ -1,0 +1,4 @@
+  effect Console : io {
+    operation log : Text -> Unit
+    operation ask : Text -> Text
+  }

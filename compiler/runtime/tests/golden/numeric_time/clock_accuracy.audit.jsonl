@@ -1,0 +1,3 @@
+{"scenario":"clock_accuracy","case":"now","time.syscall.latency_ns":73.187,"collector.effect.time_calls":1,"source":"tests/expected/time_now.json"}
+{"scenario":"clock_accuracy","case":"monotonic_now","time.syscall.latency_ns":67.455,"collector.effect.time_calls":1,"source":"tests/expected/time_now.json"}
+{"scenario":"clock_accuracy","case":"sleep","status":"pending","reason":"sleep latency measurements are collected via tooling/ci/collect-iterator-audit-metrics.py","source":"tests/expected/time_sleep.json"}

@@ -1,0 +1,27 @@
+use Core;
+use Core.Net;
+use Core.Net.Tcp;
+use Core.Net.Udp;
+use Core.Net.Url;
+use Core.Text;
+
+fn parse_udp_url(text: Str) -> Result<Url, Net.NetError> {
+  match Url.parse(text) with
+  | Ok(url) -> Ok(url)
+  | Err(err) -> Err({
+      kind: Net.NetErrorKind::InvalidAddress,
+      message: err.message,
+      diagnostic_key: "net.address.invalid",
+      retryable: false,
+      url: None,
+    })
+}
+
+fn send_ping() -> Result<Int, Net.NetError>  // effect {net}
+{
+  let bind_url = parse_udp_url("udp://0.0.0.0:0/")?;
+  let socket = Udp.bind(bind_url)?;
+  let payload = Text.as_bytes("ping");
+  let peer: Tcp.SocketAddr = { host: "127.0.0.1", port: 9000 };
+  Udp.send_to(socket, payload, peer)
+}

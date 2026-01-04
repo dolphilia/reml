@@ -1,0 +1,36 @@
+use Core;
+use Core.Net.Http;
+use Core.Net.Url;
+use Core.Text;
+
+fn parse_http_url(text: Str) -> Result<Url, Http.HttpError> {
+  match Url.parse(text) with
+  | Ok(url) -> Ok(url)
+  | Err(err) -> Err({
+      kind: Http.HttpErrorKind::InvalidUrl,
+      message: err.message,
+      diagnostic_key: "net.http.invalid_url",
+      status: None,
+      cause: None,
+    })
+}
+
+fn get_text(url_text: Str) -> Result<Http.Response, Http.HttpError>  // effect {net}
+{
+  let url = parse_http_url(url_text)?;
+  let headers = Map.empty_map();
+  let client = Http.client({
+    timeout_ms: Some(1500),
+    max_redirects: 2,
+    default_headers: headers,
+  });
+
+  let request = {
+    method: Http.HttpMethod::Get,
+    url: url,
+    headers: headers,
+    body: Text.as_bytes(""),
+  };
+
+  Http.request(client, request)
+}

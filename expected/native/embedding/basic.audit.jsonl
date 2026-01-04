@@ -1,0 +1,4 @@
+{"scenario":"examples/native/embedding/basic.c","metadata":{"native.embed.entrypoint":"reml_create_context","embed.abi.version":"0.1.0"}}
+{"scenario":"examples/native/embedding/basic.c","metadata":{"native.embed.entrypoint":"reml_load_module","embed.abi.version":"0.1.0"}}
+{"scenario":"examples/native/embedding/basic.c","metadata":{"native.embed.entrypoint":"reml_run","embed.abi.version":"0.1.0"}}
+{"scenario":"examples/native/embedding/basic.c","metadata":{"native.embed.entrypoint":"reml_dispose_context","embed.abi.version":"0.1.0"}}

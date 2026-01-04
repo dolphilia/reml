@@ -1,0 +1,64 @@
+{
+  "cases": [
+    {
+      "id": "io.fs.read",
+      "requirement": { "type": "at_least", "stage": "beta" },
+      "expect": "pass"
+    },
+    {
+      "id": "io.fs.write",
+      "requirement": { "type": "at_least", "stage": "beta" },
+      "expect": "pass"
+    },
+    {
+      "id": "fs.permissions.read",
+      "requirement": { "type": "exact", "stage": "stable" },
+      "expect": "pass"
+    },
+    {
+      "id": "fs.permissions.modify",
+      "requirement": { "type": "exact", "stage": "stable" },
+      "expect": "pass"
+    },
+    {
+      "id": "fs.symlink.query",
+      "requirement": { "type": "at_least", "stage": "beta" },
+      "expect": "pass"
+    },
+    {
+      "id": "fs.symlink.modify",
+      "requirement": { "type": "exact", "stage": "stable" },
+      "expect": "pass"
+    },
+    {
+      "id": "security.fs.policy",
+      "requirement": { "type": "exact", "stage": "stable" },
+      "expect": "pass"
+    },
+    {
+      "id": "memory.buffered_io",
+      "requirement": { "type": "at_least", "stage": "beta" },
+      "expect": "pass"
+    },
+    {
+      "id": "fs.watcher.native",
+      "requirement": { "type": "at_least", "stage": "beta" },
+      "expect": "pass"
+    },
+    {
+      "id": "fs.watcher.recursive",
+      "requirement": { "type": "exact", "stage": "stable" },
+      "expect": "pass"
+    },
+    {
+      "id": "watcher.resource_limits",
+      "requirement": { "type": "at_least", "stage": "beta" },
+      "expect": "pass"
+    },
+    {
+      "id": "io.fs.read",
+      "requirement": { "type": "exact", "stage": "alpha" },
+      "expect": "fail"
+    }
+  ]
+}

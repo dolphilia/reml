@@ -1,0 +1,16 @@
+module Examples.Practical.CoreText.Unicode.GraphemeNfc
+
+use Core.Text
+use Core.Unicode
+
+fn normalize_sample(text: Str) -> Str {
+  let normalized = Text.normalize(text, NormalizationForm::NFC)
+  let graphemes = Text.graphemes(normalized)
+  let count = Text.count(graphemes)
+  Int.to_string(count)
+}
+
+fn main() -> Str {
+  let sample = "e01👨\u200d💻"
+  "graphemes=" + normalize_sample(sample)
+}

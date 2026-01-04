@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PluginBundleRegistration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["bundle_id", "bundle_version", "plugins", "signature_status"],
+  "properties": {
+    "bundle_id": {
+      "type": "string"
+    },
+    "bundle_version": {
+      "type": "string"
+    },
+    "signature_status": {
+      "type": "string",
+      "enum": ["verified", "skipped"]
+    },
+    "plugins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["plugin_id", "capabilities"],
+        "properties": {
+          "plugin_id": {
+            "type": "string"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+let diagnostics = toDiagnostics(source, error, parse_error_defaults("GraphQL schema"))

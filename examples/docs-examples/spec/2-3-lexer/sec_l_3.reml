@@ -1,0 +1,6 @@
+let strLit: Parser<String> =
+  lexeme(sc,
+    stringLit()
+    .or(stringRaw())
+    .or(stringMultiline(dedent=true))
+  ).label("string")

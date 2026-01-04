@@ -1,0 +1,28 @@
+pub type MetricsCapability = {
+  emit: fn(MetricPoint<Float>) -> Result<(), CapabilityError>,
+  list: fn() -> Result<List<MetricDescriptor>, CapabilityError>,
+}
+
+pub type AuditCapability = {
+  emit: fn(Diagnostic) -> Result<(), CapabilityError>,       // `effect {audit}`
+  status: fn() -> Result<AuditStatus, CapabilityError>,
+}
+
+pub struct ExecutionMetricsScope = {
+  registry: MetricsRegistry,
+  conductor_id: Str,
+  pipeline_id: Str,
+  node_path: List<Str>,
+  resolved_limits: ResourceLimitDigest,
+  execution_plan: Option<ExecutionPlanDigest>,
+}
+
+fn Runtime::execution_scope(conductor_id: Str,
+  pipeline_id: Str,
+  node_path: List<Str>,
+  plan: Option<ExecutionPlan>,
+  limits: Option<ResourceLimitSet>) -> Result<ExecutionMetricsScope, CapabilityError>
+
+fn ExecutionMetricsScope::sub_scope(&self, node_path: List<Str>) -> ExecutionMetricsScope
+fn ExecutionMetricsScope::registry(&self) -> &MetricsRegistry
+fn ExecutionMetricsScope::resolved_limits(&self) -> &ResourceLimitDigest

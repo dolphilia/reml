@@ -1,0 +1,48 @@
+module Examples.Practical.EmbeddedDsl.MarkdownRemlError
+
+use Core.Parse
+use Core.Parse.Lex
+
+let reml_space =
+  Lex.whitespace()
+    .or(Lex.commentLine("//"))
+    .or(Lex.commentBlock("/*", "*/", true))
+    |> Lex.skipMany
+
+fn ident() -> Parser<Str> {
+  token("identifier", Lex.lexeme(reml_space, Lex.identifier()))
+}
+
+fn number() -> Parser<Str> {
+  token("number", Lex.lexeme(reml_space, Lex.int10()))
+}
+
+let reml_stmt: Parser<()> =
+  rule(
+    "let_stmt",
+    Lex.keyword(reml_space, "let")
+      .then(ident())
+      .then(Lex.symbol(reml_space, "="))
+      .then(number())
+      .map(|_| ())
+  )
+
+let reml_block = embedded_dsl(
+  dsl_id = "reml",
+  start = "```reml",
+  end = "```",
+  parser = reml_stmt,
+  lsp = None,
+  mode = EmbeddedMode::ParallelSafe,
+  context = ContextBridge::Inherit { keys = ["scope", "type_env"] }
+)
+
+let markdown = rule("markdown", reml_block.map(|_| ()))
+
+fn main() -> Str {
+  let input = "```reml\nlet answer = 42\n"
+  let result = Parse.run(markdown, input, RunConfig.default())
+  match result.value with
+    | Some(_) -> "完了"
+    | None -> "失敗"
+}

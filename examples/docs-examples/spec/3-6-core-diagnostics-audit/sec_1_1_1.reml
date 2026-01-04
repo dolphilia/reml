@@ -1,0 +1,10 @@
+pub enum AuditEvent =
+  | PipelineStarted
+  | PipelineCompleted
+  | PipelineFailed
+  | CapabilityMismatch
+  | AsyncSupervisorRestarted
+  | AsyncSupervisorExhausted
+  | ConfigCompatChanged
+  | EnvMutation
+  | Custom(Str)

@@ -1,0 +1,7 @@
+type TextBuilder
+
+fn builder() -> TextBuilder                               // `effect {mem}`
+fn append(builder: &mut TextBuilder, value: Str) -> ()     // `effect {mut, unicode}`
+fn push_grapheme(builder: &mut TextBuilder, g: Grapheme) -> () // `effect {mut, unicode}`
+fn reserve(builder: &mut TextBuilder, additional: usize) -> ()  // `effect {mut, mem}`
+fn finish(builder: TextBuilder) -> String                  // `effect {mem}`

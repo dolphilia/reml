@@ -1,0 +1,11 @@
+module examples.ffi.dsl.unsafe_direct
+
+use Core.Ffi
+use Core.Ffi.Dsl as ffi
+
+pub fn cos_raw(x: f64) -> Result<f64, FfiError> =
+  effect {ffi, unsafe} {
+    let lib = ffi.bind_library("m")?
+    let raw = lib.bind_fn("cos", ffi.fn_sig([ffi.double], ffi.double, false))?
+    raw(x)
+  }

@@ -1,0 +1,18 @@
+module Spec.Core.Chapter1.TypeDecl.AliasGeneric
+
+use Core.Prelude
+
+// BNF: TypeDecl / Type alias（docs/spec/1-5-formal-grammar-bnf.md §2）
+type alias PhaseResult<T> = Result<T, Str>
+
+type alias PhaseMap<K, V> = { key: K, value: V }
+
+fn wrap(value: Int) -> PhaseResult<{ key: Str, value: Int }> {
+  Ok({ key = "phase4", value = value })
+}
+
+fn main() -> Str {
+  match wrap(42) with
+    Ok(record) -> record.key
+    Err(msg) -> msg
+}

@@ -1,0 +1,18 @@
+{
+  "cases": [
+    {
+      "pattern": "yyyy-MM-dd'T'HH:mm:ss",
+      "timestamp": { "seconds": 1709632245, "nanos": 0 },
+      "expected": "2024-03-05T09:50:45",
+      "input": "2024-03-05T09:50:45",
+      "locale": "und"
+    },
+    {
+      "pattern": "yyyy/MM/dd HH:mm",
+      "timestamp": { "seconds": 1735689600, "nanos": 0 },
+      "expected": "2025/01/01 00:00",
+      "input": "2025/01/01 00:00",
+      "locale": "ja-JP"
+    }
+  ]
+}

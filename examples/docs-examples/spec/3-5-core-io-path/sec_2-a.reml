@@ -1,0 +1,18 @@
+pub type Bytes
+pub type FileReader
+pub type IoError
+pub type Path
+pub type u64
+
+trait Reader {
+  fn read(&mut self, buf: &mut Bytes) -> Result<usize, IoError>;            // `effect {io, io.blocking}`
+  fn read_exact(&mut self, size: usize) -> Result<Bytes, IoError>;          // `effect {io, io.blocking}`
+}
+
+trait Writer {
+  fn write(&mut self, buf: Bytes) -> Result<usize, IoError>;                // `effect {io, io.blocking}`
+  fn flush(&mut self) -> Result<(), IoError>;                               // `effect {io, io.blocking}`
+}
+
+fn copy<R: Reader, W: Writer>(reader: &mut R, writer: &mut W) -> Result<u64, IoError> // `effect {io, io.blocking}`
+fn with_reader<T>(path: Path, f: (FileReader) -> Result<T, IoError>) -> Result<T, IoError> // `effect {io, io.blocking}`

@@ -1,0 +1,15 @@
+pub type SchemaVersion = {
+  major: u32,
+  minor: u32,
+  patch: u32,
+  compatibility: CompatibilityLevel,
+}
+
+pub enum CompatibilityLevel =
+  | FullyCompatible
+  | BackwardCompatible
+  | ForwardCompatible
+  | BreakingChange
+
+fn check_compatibility(old: SchemaVersion, new: SchemaVersion) -> CompatibilityResult
+fn auto_version_schema<T>(old: Schema<T>, new: Schema<T>) -> SchemaVersion

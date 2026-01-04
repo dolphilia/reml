@@ -1,0 +1,2 @@
+match value with
+| x @ Some(inner) -> inner

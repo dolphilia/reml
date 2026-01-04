@@ -1,0 +1,19 @@
+pub type SemVer
+pub type Bytes
+pub type Json
+
+pub struct Codec<Send, Recv> {
+  name: Str,
+  version: Option<SemVer>,
+  encode: fn(Send) -> Result<Bytes, CodecError>,
+  decode: fn(Bytes) -> Result<Recv, CodecError>,
+  validate: fn(&Recv) -> Result<(), CodecError>,
+}
+
+pub type CodecError = {
+  kind: CodecErrorKind,
+  message: Str,
+  cause: Option<Json>,
+}
+
+pub enum CodecErrorKind = EncodeFailed | DecodeFailed | ValidationFailed | UnsupportedVersion

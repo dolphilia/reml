@@ -1,0 +1,40 @@
+pub type BufferStats
+pub type CapabilityId
+pub type EffectLabels
+pub type GlobStats
+pub type Path
+pub type Timestamp
+pub type WatchStats
+pub type u64
+
+pub type IoError = {
+  kind: IoErrorKind,
+  message: Str,
+  path: Option<Path>,
+  context: Option<IoContext>,
+}
+
+pub enum IoErrorKind =
+  | NotFound
+  | PermissionDenied
+  | ConnectionRefused
+  | InvalidInput
+  | TimedOut
+  | WriteZero
+  | Interrupted
+  | UnexpectedEof
+  | OutOfMemory
+  | SecurityViolation
+  | UnsupportedPlatform
+
+pub type IoContext = {
+  operation: Str,
+  path: Option<Path>,
+  capability: Option<CapabilityId>,
+  bytes_processed: Option<u64>,
+  timestamp: Timestamp,
+  effects: EffectLabels,
+  buffer: Option<BufferStats>,
+  watch: Option<WatchStats>,
+  glob: Option<GlobStats>,
+}

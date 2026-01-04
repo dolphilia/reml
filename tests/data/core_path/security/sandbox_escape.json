@@ -1,0 +1,8 @@
+{
+  "code": "core.path.security.violation",
+  "extensions": {
+    "security": {
+      "reason": "traversal_detected"
+    }
+  }
+}

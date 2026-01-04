@@ -1,0 +1,16 @@
+module Spec.Core.Chapter2.Streaming.DemandHint
+
+use Core.Parse as Parse
+use Core.Prelude
+
+fn digits() -> Parse.Parser<List<Int>> {
+  Parse.repeat(Parse.expect_digit())
+}
+
+fn main() -> Str {
+  let feeder = Parse.StreamFeeder.from_chunks(["12", "34"])
+  let result = Parse.run_stream(digits(), feeder, Parse.DemandHint::More)
+  match result with
+    Ok(values) -> format("stream=%d", [values.len()])
+    Err(diag) -> diag.message
+}

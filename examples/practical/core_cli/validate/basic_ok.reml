@@ -1,0 +1,35 @@
+module Examples.Practical.CoreCli.Validate.BasicOk
+
+use Core.Cli
+
+fn main() -> Str {
+  let parse_spec = Cli.builder()
+    .arg("input", help = "input file")
+    .build()
+
+  let validate_spec = Cli.builder()
+    .flag("strict", help = "strict mode")
+    .arg("input", help = "input file")
+    .build()
+
+  let format_spec = Cli.builder()
+    .arg("input", help = "input file")
+    .arg("output", help = "output file")
+    .build()
+
+  let spec = Cli.builder()
+    .command("parse", help = "parse input", spec = parse_spec)
+    .command("validate", help = "validate input", spec = validate_spec)
+    .command("format", help = "format input", spec = format_spec)
+    .build()
+
+  match Cli.parse(spec, ["validate", "--strict", "sample.reml"]) with
+    | Ok(values) -> {
+      let input = Cli.get_arg(values, "input")
+      match input with
+        | Some(path) ->
+          if Cli.get_flag(values, "strict") then "validate:strict:" + path else "validate:soft:" + path
+        | None -> "missing"
+    }
+    | Err(_) -> "cli:error"
+}

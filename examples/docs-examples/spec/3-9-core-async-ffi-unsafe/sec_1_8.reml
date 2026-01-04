@@ -1,0 +1,22 @@
+pub type Span
+pub type Json
+
+pub type AsyncError = {
+  kind: AsyncErrorKind,
+  message: Str,
+  span: Option<Span>,
+  cause: List<AsyncErrorLink>,
+  metadata: Map<Str, Json>,
+}
+
+pub type AsyncErrorLink = {
+  kind: AsyncErrorKind,
+  message: Str,
+  origin: AsyncErrorOrigin,
+  span: Option<Span>,
+  metadata: Map<Str, Json>,
+}
+
+pub enum AsyncErrorOrigin = Task | Channel | Actor | Scheduler | Timer | Capability(Str) | Ffi | Config | External(Str)
+
+pub enum AsyncErrorKind = Cancelled | Timeout | RuntimeUnavailable | InvalidConfiguration | CodecFailure

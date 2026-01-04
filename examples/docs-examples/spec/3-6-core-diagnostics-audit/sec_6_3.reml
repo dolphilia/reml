@@ -1,0 +1,4 @@
+pub type DslMetricsHandle
+pub type Diagnostic
+
+fn record_target_diagnostics(metrics: DslMetricsHandle, diag: Diagnostic) -> () = todo

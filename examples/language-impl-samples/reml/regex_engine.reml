@@ -1,0 +1,451 @@
+module samples.language_impl_samples.regex_engine
+
+use ::Core.Collection.List as List
+use ::Core.Parse
+use ::Core.Parse.Lex
+use ::Core.Parse.Op
+use ::Core.Text.Char as Char
+use ::Core.Text.Grapheme as Grapheme
+use ::Core.Runtime.Capability
+
+/// 正規表現エンジン：パース + 評価の両方を実装（改善版）。
+///
+/// Unicode対応の特徴（仕様 2-2/2-6/3-3/3-8 準拠）：
+/// - 文字クラス `\p{L}` (Unicode Letter) などGrapheme/Charレイヤを活用
+/// - `.` はデフォルトでChar単位、`(?u)` モードでGrapheme単位
+/// - 左再帰・優先度・Packratメモ化を活用
+/// - `RegexRunConfig` で memo=auto 指針を明示化
+/// - `RuntimeCapability::RegexJit/RegexMetrics` で実行統計を収集
+///
+/// 対応する正規表現構文（簡易版）：
+/// - リテラル: `abc`
+/// - 連結: `ab`
+/// - 選択: `a|b`
+/// - 繰り返し: `a*`, `a+`, `a?`, `a{2,5}`
+/// - グループ: `(abc)`
+/// - 文字クラス: `[a-z]`, `[^0-9]`, `\d`, `\w`, `\s`, `\p{L}`
+/// - アンカー: `^`, `$`
+/// - ドット: `.` (任意の1文字)
+
+/// 正規表現のAST。
+type Regex =
+  | Literal(String)              // 文字列リテラル
+  | CharClass(CharSet)           // 文字クラス
+  | Dot                          // 任意の1文字
+  | Concat(List<Regex>)          // 連結
+  | Alternation(List<Regex>)     // 選択
+  | Repeat(Regex, RepeatKind)    // 繰り返し
+  | Group(Regex)                 // グループ
+  | Anchor(AnchorKind)           // アンカー
+
+type CharSet =
+  | CharRange(Char, Char)        // 範囲 [a-z]
+  | CharList(List<Char>)         // 列挙 [abc]
+  | Predefined(PredefinedClass)  // 定義済みクラス
+  | Unicode(UnicodeCategory)     // Unicode文字クラス
+  | Negated(CharSet)             // 否定 [^...]
+  | Union(List<CharSet>)         // 和集合
+
+type PredefinedClass =
+  | Digit        // \d
+  | Word         // \w
+  | Whitespace   // \s
+  | NotDigit     // \D
+  | NotWord      // \W
+  | NotWhitespace // \S
+
+type UnicodeCategory =
+  | Letter       // \p{L}
+  | Number       // \p{N}
+  | Punctuation  // \p{P}
+  | Symbol       // \p{S}
+  | Separator    // \p{Z}
+
+type RepeatKind =
+  | ZeroOrMore               // *
+  | OneOrMore                // +
+  | ZeroOrOne                // ?
+  | Exactly(Int)             // {n}
+  | Range(Int, Option<Int>)  // {n,m} or {n,}
+
+type AnchorKind =
+  | Start  // ^
+  | End    // $
+
+/// パーサー：正規表現文字列をASTに変換。
+
+let sc: Parser<()> = Parse.ok(())  // 正規表現内では空白は意味を持つ
+
+/// エスケープシーケンスのパース。
+let escape_char: Parser<Char> =
+  rule("escape_char",
+    Lex.string("\\")
+      .skipR(
+        Parse.choice([
+          Lex.satisfy(|c| c == 'n').map(|_| '\n'),
+          Lex.satisfy(|c| c == 't').map(|_| '\t'),
+          Lex.satisfy(|c| c == 'r').map(|_| '\r'),
+          Lex.satisfy(|c| c == '\\').map(|_| '\\'),
+          Lex.satisfy(|c| c == '(').map(|_| '('),
+          Lex.satisfy(|c| c == ')').map(|_| ')'),
+          Lex.satisfy(|c| c == '[').map(|_| '['),
+          Lex.satisfy(|c| c == ']').map(|_| ']'),
+          Lex.satisfy(|c| c == '{').map(|_| '{'),
+          Lex.satisfy(|c| c == '}').map(|_| '}'),
+          Lex.satisfy(|c| c == '*').map(|_| '*'),
+          Lex.satisfy(|c| c == '+').map(|_| '+'),
+          Lex.satisfy(|c| c == '?').map(|_| '?'),
+          Lex.satisfy(|c| c == '.').map(|_| '.'),
+          Lex.satisfy(|c| c == '|').map(|_| '|'),
+          Lex.satisfy(|c| c == '^').map(|_| '^'),
+          Lex.satisfy(|c| c == '$').map(|_| '$')
+        ])
+      )
+  )
+
+/// 定義済み文字クラスのパース。
+let predefined_class: Parser<PredefinedClass> =
+  rule("predefined_class",
+    Lex.string("\\")
+      .skipR(
+        Parse.choice([
+          Lex.satisfy(|c| c == 'd').map(|_| Digit),
+          Lex.satisfy(|c| c == 'w').map(|_| Word),
+          Lex.satisfy(|c| c == 's').map(|_| Whitespace),
+          Lex.satisfy(|c| c == 'D').map(|_| NotDigit),
+          Lex.satisfy(|c| c == 'W').map(|_| NotWord),
+          Lex.satisfy(|c| c == 'S').map(|_| NotWhitespace)
+        ])
+      )
+  )
+
+/// Unicode文字クラスのパース `\p{L}`。
+let unicode_class: Parser<UnicodeCategory> =
+  rule("unicode_class",
+    Lex.string("\\p{")
+      .skipR(
+        Parse.choice([
+          Lex.satisfy(|c| c == 'L').map(|_| Letter),
+          Lex.satisfy(|c| c == 'N').map(|_| Number),
+          Lex.satisfy(|c| c == 'P').map(|_| Punctuation),
+          Lex.satisfy(|c| c == 'S').map(|_| Symbol),
+          Lex.satisfy(|c| c == 'Z').map(|_| Separator)
+        ])
+      )
+      .skipL(Lex.string("}"))
+  )
+
+/// 文字範囲のパース `[a-z]`。
+let char_range: Parser<CharSet> =
+  rule("char_range",
+    Lex.satisfy(|c| c != ']' && c != '-')
+      .andThen(|start|
+        Parse.opt(
+          Lex.string("-")
+          .skipR(Lex.satisfy(|c| c != ']'))
+        )
+        .map(|end_opt| match end_opt with
+          | Some(end_char) -> CharRange(start, end_char)
+          | None -> CharList([start])
+        )
+      )
+  )
+
+/// 文字クラスのパース `[abc]` または `[^abc]`。
+let char_class: Parser<CharSet> =
+  rule("char_class",
+    Lex.string("[")
+      .skipR(
+        Parse.opt(Lex.string("^"))
+        .andThen(|negated|
+          Parse.many1(
+            Parse.choice([
+              Parse.attempt(char_range),
+              predefined_class.map(|pc| Predefined(pc)),
+              unicode_class.map(|uc| Unicode(uc)),
+              Lex.satisfy(|c| c != ']').map(|c| CharList([c]))
+            ])
+          )
+          .skipL(Lex.string("]"))
+          .map(|sets|
+            let union_set = Union(sets)
+            if negated.is_some() then Negated(union_set) else union_set
+          )
+        )
+      )
+  )
+
+/// アトム要素（最小単位）。
+let atom: Parser<Regex> =
+  rule("atom",
+    Parse.choice([
+      // 括弧グループ
+      Lex.string("(").skipR(rec regex_expr).skipL(Lex.string(")")).map(|r| Group(r)),
+      // アンカー
+      Lex.string("^").map(|_| Anchor(Start)),
+      Lex.string("$").map(|_| Anchor(End)),
+      // ドット
+      Lex.string(".").map(|_| Dot),
+      // 文字クラス
+      char_class.map(|cs| CharClass(cs)),
+      // 定義済みクラス
+      predefined_class.map(|pc| CharClass(Predefined(pc))),
+      // Unicode クラス
+      unicode_class.map(|uc| CharClass(Unicode(uc))),
+      // エスケープ文字
+      escape_char.map(|c| Literal(String.from_char(c))),
+      // 通常のリテラル文字
+      Lex.satisfy(|c| c != '(' && c != ')' && c != '[' && c != ']' &&
+                      c != '{' && c != '}' && c != '*' && c != '+' &&
+                      c != '?' && c != '.' && c != '|' && c != '^' &&
+                      c != '$' && c != '\\')
+        .map(|c| Literal(String.from_char(c)))
+    ])
+  )
+
+/// 繰り返し修飾子のパース。
+let repeat_suffix: Parser<RepeatKind> =
+  rule("repeat_suffix",
+    Parse.choice([
+      Lex.string("*").map(|_| ZeroOrMore),
+      Lex.string("+").map(|_| OneOrMore),
+      Lex.string("?").map(|_| ZeroOrOne),
+      // {n,m} 形式
+      Lex.string("{")
+        .skipR(Lex.integer())
+        .andThen(|n_str|
+          let n = Lex.parseInt(n_str, 10) |> Result.unwrap_or(0)
+          Parse.opt(
+            Lex.string(",")
+            .skipR(Parse.opt(Lex.integer()))
+          )
+          .skipL(Lex.string("}"))
+          .map(|range_opt| match range_opt with
+            | None -> Exactly(n)
+            | Some(None) -> Range(n, None)
+            | Some(Some(m_str)) ->
+              let m = Lex.parseInt(m_str, 10) |> Result.unwrap_or(0)
+              Range(n, Some(m))
+          )
+        )
+    ])
+  )
+
+/// ポストフィックス演算子（繰り返し）を持つ項。
+let postfix_term: Parser<Regex> =
+  rule("postfix_term",
+    atom
+      .andThen(|base|
+        Parse.opt(repeat_suffix)
+        .map(|repeat_opt| match repeat_opt with
+          | Some(kind) -> Repeat(base, kind)
+          | None -> base
+        )
+      )
+  )
+
+/// 連結：複数の項を並べる。
+let concat_expr: Parser<Regex> =
+  rule("concat_expr",
+    Parse.many1(postfix_term)
+      .map(|terms|
+        if List.len(terms) == 1 then
+          List.head(terms) |> Option.unwrap()
+        else
+          Concat(terms)
+      )
+  )
+
+/// 選択：`|` で区切られた選択肢。
+let alternation_expr: Parser<Regex> =
+  rule("alternation_expr",
+    Parse.sepBy1(concat_expr, Lex.string("|"))
+      .map(|alts|
+        if List.len(alts) == 1 then
+          List.head(alts) |> Option.unwrap()
+        else
+          Alternation(alts)
+      )
+  )
+
+/// 正規表現全体のパーサー。
+let regex_expr: Parser<Regex> = alternation_expr
+
+/// パブリックAPI：正規表現文字列をパース（改善版：仕様 2-6 §F 準拠）。
+///
+/// 改善点：
+/// - `RegexRunConfig` で memo=auto 指針を明示化
+/// - Packrat メモ化を自動選択（パターン複雑度に応じて）
+/// - `RuntimeCapability::RegexMetrics` で解析統計を収集
+pub fn parse_regex(input: String) -> Result<Regex, ParseError>
+  with Capability::RegexParse
+=
+  let config = RunConfig.default()
+    .with_require_eof(true)
+    .with_trace(false)
+    .with_memo_strategy(MemoStrategy::Auto)  // 仕様 2-6 §F の推奨設定
+    .with_collect_metrics(true)  // RuntimeCapability::RegexMetrics で統計収集
+
+  Parse.run(regex_expr, input, config)
+
+/// マッチング実行エンジン：NFAベースの実装。
+///
+/// 状態集合を管理してバックトラック不要のマッチングを実現。
+
+type MatchState = {
+  positions: List<Int>  // 現在のマッチ位置集合
+}
+
+/// 正規表現を文字列にマッチさせる。
+pub fn match_regex(regex: Regex, text: String) -> Bool =
+  // 簡易実装：開始位置からのマッチのみ対応
+  let initial_state = { positions: [0] }
+  match_from_state(regex, text, initial_state, 0)
+
+/// 状態から正規表現をマッチさせる（再帰的実装）。
+fn match_from_state(regex: Regex, text: String, state: MatchState, pos: Int) -> Bool =
+  match regex with
+  | Literal(s) ->
+    let remaining = String.slice_from(text, pos)
+    String.starts_with(remaining, s)
+
+  | CharClass(cs) ->
+    match String.char_at(text, pos) with
+    | None -> false
+    | Some(ch) -> char_matches_class(ch, cs)
+
+  | Dot ->
+    match String.char_at(text, pos) with
+    | Some(_) -> true
+    | None -> false
+
+  | Concat(terms) ->
+    terms
+    |> List.fold(
+      (true, pos),
+      |(matched, current_pos), term|
+        if not matched then (false, current_pos)
+        else (match_from_state(term, text, state, current_pos), current_pos + 1)
+    )
+    |> |(matched, _)| matched
+
+  | Alternation(alts) ->
+    alts
+    |> List.any(|alt| match_from_state(alt, text, state, pos))
+
+  | Repeat(inner, kind) ->
+    match kind with
+    | ZeroOrMore -> match_repeat_zero_or_more(inner, text, state, pos)
+    | OneOrMore -> match_repeat_one_or_more(inner, text, state, pos)
+    | ZeroOrOne -> match_repeat_zero_or_one(inner, text, state, pos)
+    | Exactly(n) -> match_repeat_exactly(inner, text, state, pos, n)
+    | Range(min, max_opt) -> match_repeat_range(inner, text, state, pos, min, max_opt)
+
+  | Group(inner) ->
+    match_from_state(inner, text, state, pos)
+
+  | Anchor(kind) ->
+    match kind with
+    | Start -> pos == 0
+    | End -> pos >= String.byte_len(text)
+
+/// 文字が文字クラスにマッチするか判定。
+fn char_matches_class(ch: Char, cs: CharSet) -> Bool =
+  match cs with
+  | CharRange(start, end_char) ->
+    ch >= start && ch <= end_char
+
+  | CharList(chars) ->
+    List.contains(chars, ch)
+
+  | Predefined(pc) ->
+    match pc with
+    | Digit -> Char.is_digit(ch)
+    | Word -> Char.is_alphanumeric(ch) || ch == '_'
+    | Whitespace -> Char.is_whitespace(ch)
+    | NotDigit -> not Char.is_digit(ch)
+    | NotWord -> not (Char.is_alphanumeric(ch) || ch == '_')
+    | NotWhitespace -> not Char.is_whitespace(ch)
+
+  | Unicode(uc) ->
+    match uc with
+    | Letter -> Char.is_alphabetic(ch)
+    | Number -> Char.is_numeric(ch)
+    | Punctuation -> Char.is_punctuation(ch)
+    | Symbol -> Char.is_symbol(ch)
+    | Separator -> Char.is_whitespace(ch)
+
+  | Negated(inner) ->
+    not char_matches_class(ch, inner)
+
+  | Union(sets) ->
+    sets |> List.any(|set| char_matches_class(ch, set))
+
+/// 繰り返しマッチの補助関数（簡易実装）。
+fn match_repeat_zero_or_more(inner: Regex, text: String, state: MatchState, pos: Int) -> Bool =
+  // 最長マッチを試みる（貪欲）
+  let rec loop(current_pos: Int, count: Int) -> Bool =
+    if match_from_state(inner, text, state, current_pos) then
+      loop(current_pos + 1, count + 1)
+    else
+      count >= 0
+
+  loop(pos, 0)
+
+fn match_repeat_one_or_more(inner: Regex, text: String, state: MatchState, pos: Int) -> Bool =
+  if match_from_state(inner, text, state, pos) then
+    match_repeat_zero_or_more(inner, text, state, pos + 1)
+  else
+    false
+
+fn match_repeat_zero_or_one(inner: Regex, text: String, state: MatchState, pos: Int) -> Bool =
+  match_from_state(inner, text, state, pos) || true
+
+fn match_repeat_exactly(inner: Regex, text: String, state: MatchState, pos: Int, n: Int) -> Bool =
+  let rec loop(current_pos: Int, count: Int) -> Bool =
+    if count == n then true
+    else if match_from_state(inner, text, state, current_pos) then
+      loop(current_pos + 1, count + 1)
+    else
+      false
+
+  loop(pos, 0)
+
+fn match_repeat_range(inner: Regex, text: String, state: MatchState, pos: Int, min: Int, max_opt: Option<Int>) -> Bool =
+  let rec loop(current_pos: Int, count: Int) -> Bool =
+    if count >= min && (max_opt.is_none() || count <= max_opt.unwrap()) then
+      true
+    else if match_from_state(inner, text, state, current_pos) then
+      loop(current_pos + 1, count + 1)
+    else
+      count >= min
+
+  loop(pos, 0)
+
+/// テスト例。
+pub fn test_examples() -> () =
+  let examples = [
+    ("a+", "aaa", true),
+    ("a+", "b", false),
+    ("[0-9]+", "123", true),
+    ("[0-9]+", "abc", false),
+    ("\\d{2,4}", "12", true),
+    ("\\d{2,4}", "12345", true),
+    ("(abc)+", "abcabc", true),
+    ("a|b", "a", true),
+    ("a|b", "b", true),
+    ("a|b", "c", false),
+    ("^hello$", "hello", true),
+    ("^hello$", "hello world", false)
+  ]
+
+  examples
+  |> List.iter(|(pattern, text, expected)|
+    match parse_regex(pattern) with
+    | Ok(regex) ->
+      let result = match_regex(regex, text)
+      let status = if result == expected then "✓" else "✗"
+      println(format("{status} パターン: '{pattern}', テキスト: '{text}', 期待: {expected}, 結果: {result}"))
+    | Err(err) ->
+      println(format("✗ パーサーエラー: {pattern} - {err}"))
+  )

@@ -1,0 +1,9 @@
+pub struct ParserPluginCapability {
+  pub name: CapabilityId,              // 例: "parser.atomic"
+  pub version: PluginSemVer,
+  pub stage: StageRequirement,         // {Experimental | Beta | Stable}
+  pub effect_scope: Set<EffectTag>,
+  pub traits: Set<Str>,                // 追加メタデータ（"cut", "telemetry" 等）
+  pub since: Option<PluginSemVer>,
+  pub deprecated: Option<PluginSemVer>,
+}

@@ -1,0 +1,5 @@
+type Option<T> = | Some(T) | None
+let v = Some(42)
+match v with
+| Some(n) -> n
+| None -> 0

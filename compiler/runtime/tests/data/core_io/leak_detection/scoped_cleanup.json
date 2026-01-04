@@ -1,0 +1,7 @@
+{
+  "case": "scoped cleanup resets leak tracker",
+  "expected": {
+    "open_files": 0,
+    "temp_dirs": 0
+  }
+}

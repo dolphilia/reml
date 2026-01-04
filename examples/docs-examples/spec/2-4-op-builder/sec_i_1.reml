@@ -1,0 +1,10 @@
+let expr =
+  precedence(cond)
+    .level(|lvl| {
+      lvl.ternary({
+        head: sym("?"),
+        mid:  sym(":"),
+        build: (c, t, f) -> IfExpr(c, t, f)
+      })
+    })
+    .build()

@@ -1,0 +1,3 @@
+impl RunConfig {
+  fn with_extension(self, key: Str, update: fn(Map<Str, Any>) -> Map<Str, Any>) -> RunConfig = todo
+}

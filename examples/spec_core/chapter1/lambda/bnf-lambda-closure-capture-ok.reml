@@ -1,0 +1,13 @@
+module Spec.Core.Chapter1.Lambda.ClosureCapture
+
+use Core.Prelude
+
+// BNF: Lambda（docs/spec/1-5-formal-grammar-bnf.md §4）
+fn make_increment(step: Int) -> fn(Int) -> Int {
+  |value: Int| -> Int { value + step }
+}
+
+fn main() -> Int {
+  let inc = make_increment(5)
+  inc(7)
+}

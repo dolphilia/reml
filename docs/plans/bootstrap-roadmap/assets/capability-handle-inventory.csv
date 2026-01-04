@@ -1,0 +1,15 @@
+capability_id,spec_section,rust_entry_point,test_reference,status,notes,run_id
+gc,3-8-core-runtime-capability.md§1.1,―,―,未実装,"CapabilityRegistry に GC ハンドル構造体や `CapabilityHandle::Gc` が存在せず、Stage/Descriptor 情報を保持できない。",20291221-core-runtime-capability
+io,3-8-core-runtime-capability.md§1.1,compiler/runtime/src/io/adapters.rs#L27-L200,compiler/runtime/src/io/adapters.rs#L214-L233,Stage検証のみ,"FsAdapter / WatcherAdapter が `verify_stage_for_io` を呼び出し Stage をキャッシュするが、`CapabilityHandle::Io` や `describe()` API が未定義。",20291221-core-runtime-capability
+async,3-8-core-runtime-capability.md§1.1,―,―,未実装,"`AsyncCapability` / `ActorRuntimeCapability` を保持する型や Stage ガードが Rust 実装に存在しない。",20291221-core-runtime-capability
+actor,3-8-core-runtime-capability.md§1.1,―,―,未実装,"Actor ランタイムのハンドル・監査 API は計画のみで、Rust 側コードは未着手。",20291221-core-runtime-capability
+audit,3-8-core-runtime-capability.md§1.1,compiler/runtime/src/audit/mod.rs#L1-L220,compiler/runtime/src/audit/mod.rs#L240-L360,APIのみ,"AuditEnvelope / AuditEvent は存在するが Capability Registry との連携と `CapabilityHandle::Audit` バリアントが欠落。",20291221-core-runtime-capability
+metrics,3-8-core-runtime-capability.md§1.1,compiler/runtime/src/diagnostics/stage_guard.rs#L6-L80,―,Stage検証のみ,"`MetricsStageGuard` が `CapabilityRegistry::registry()` を直接呼ぶ PoC で、正式な `CapabilityHandle::Metrics` や Descriptor を返していない。",20291221-core-runtime-capability
+plugin,3-8-core-runtime-capability.md§1.1,compiler/runtime/src/capability/plugin.rs,compiler/runtime/tests/capability_handle_metadata.rs,型定義のみ,"`PluginCapability`/`CapabilityHandle::Plugin` は定義済みだが、Registry 登録・Manifest 連携・Bundle 検証・ロード経路は未着手。",20291221-core-runtime-capability
+system,3-8-core-runtime-capability.md§1.1,―,―,未実装,"`SyscallCapability` や OS ブリッジのラッパーは未着手。",20291221-core-runtime-capability
+process,3-8-core-runtime-capability.md§1.1,―,―,未実装,"プロセス/スレッド操作を提供するハンドルや Stage ガードが未定義。",20291221-core-runtime-capability
+memory,3-8-core-runtime-capability.md§1.1,compiler/runtime/src/io/adapters.rs#L95-L111,―,Stage検証のみ,"`memory.buffered_io` を FsAdapter で検証しているが、専用 `MemoryCapability` 型や `describe_all` から参照するメタデータがない。",20291221-core-runtime-capability
+signal,3-8-core-runtime-capability.md§1.1,―,―,未実装,"Signal/Interrupt ハンドルと Stage 管理は未実装。",20291221-core-runtime-capability
+hardware,3-8-core-runtime-capability.md§1.1,―,―,未実装,"ハードウェア検出・NUMA 情報を扱う Capability の Rust 実装が存在しない。",20291221-core-runtime-capability
+realtime,3-8-core-runtime-capability.md§1.1,―,―,未実装,"リアルタイムタイマ/スケジューラ用 Capability が未定義。",20291221-core-runtime-capability
+security,3-8-core-runtime-capability.md§1.1,compiler/runtime/src/path/security.rs#L120-L360,compiler/runtime/src/path/security.rs#L365-L420,部分実装,"PathSecurity が `security.fs.policy` を検証しているが Registry に登録されず、`CapabilityDescriptor` へも転写されていない。",20291221-core-runtime-capability

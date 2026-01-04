@@ -1,0 +1,4 @@
+fn increment_all(xs) {
+  pipe(xs)
+    |> map(|value| value + 1)
+}

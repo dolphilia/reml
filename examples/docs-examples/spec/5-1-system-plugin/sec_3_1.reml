@@ -1,0 +1,31 @@
+pub type SyscallError
+pub type i64
+pub type SyscallRet = i64
+pub type SyscallThunk = fn() -> Result<SyscallRet, SyscallError>
+pub type AuditSink
+pub type Json
+pub type Map<K, V> = List<(K, V)>
+
+pub type SyscallDescriptor = {
+  name: Str,
+  audit_metadata: Map<Str, Json>,
+}
+
+pub struct AuditContext {
+  domain: Str,
+  subject: Str,
+  sink: AuditSink,
+  metadata: Map<Str, Json>,
+}
+
+impl AuditContext {
+  fn new(domain: Str, subject: Str, sink: AuditSink) -> Result<AuditContext, SyscallError> = todo
+  fn with_metadata(self, metadata: Map<Str, Json>) -> Self = todo
+  fn log(self, event: Str, payload: Json) -> Result<(), SyscallError> = todo
+}
+
+fn audited_syscall(
+  desc: SyscallDescriptor,
+  thunk: SyscallThunk,
+  sink: AuditSink,
+) -> Result<SyscallRet, SyscallError> = todo

@@ -1,0 +1,20 @@
+pub enum EnvErrorKind =
+  | NotFound
+  | PermissionDenied
+  | InvalidEncoding
+  | UnsupportedPlatform
+  | IoFailure
+
+pub type EnvError = {
+  kind: EnvErrorKind,
+  message: Str,
+  key: Option<Str>,
+  context: Option<EnvContext>,
+}
+
+pub type PlatformInfo
+
+pub type EnvContext = {
+  operation_name: Str,        // "get", "set", "remove"
+  platform: PlatformInfo,
+}

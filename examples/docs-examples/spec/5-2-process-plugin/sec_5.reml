@@ -1,0 +1,14 @@
+pub type ProcessError = {
+  kind: ProcessErrorKind,
+  message: Str,
+  code: Option<i32>,
+}
+
+pub enum ProcessErrorKind = SpawnFailed | TimedOut | TerminatedBySignal | InvalidCommand | PermissionDenied | Unsupported
+
+pub type ThreadError = {
+  kind: ThreadErrorKind,
+  message: Str,
+}
+
+pub enum ThreadErrorKind = CreationFailed | JoinFailed | InvalidAffinity | Unsupported

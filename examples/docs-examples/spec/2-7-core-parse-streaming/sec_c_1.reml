@@ -1,0 +1,16 @@
+type Continuation<T> = {
+  state: Opaque,
+  parser: Parser<T>,
+  config: RunConfig,
+  meta: ContinuationMeta
+}
+
+struct ContinuationMeta {
+  commit_watermark: usize,
+  buffered: Input,
+  resume_hint: Option<DemandHint>,
+  expected_tokens: Set<Expectation>,
+  last_checkpoint: Option<Span>,
+  trace_label: Option<Str>,
+  resume_lineage: List<Str>
+}

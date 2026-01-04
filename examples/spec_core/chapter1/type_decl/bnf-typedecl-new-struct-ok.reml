@@ -1,0 +1,22 @@
+module Spec.Core.Chapter1.TypeDecl.NewStruct
+
+use Core.Prelude
+
+// BNF: TypeDecl / new Type（docs/spec/1-5-formal-grammar-bnf.md §2）
+type Phase4Plan = new {
+  id: Str,
+  owners: Array<Str>,
+  progress: Int,
+}
+
+fn phase4_bootstrap() -> Phase4Plan {
+  Phase4Plan({
+    id = "bootstrap-phase4",
+    owners = ["core", "runtime"],
+    progress = 0,
+  })
+}
+
+fn main() -> Phase4Plan {
+  phase4_bootstrap()
+}

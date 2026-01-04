@@ -1,0 +1,15 @@
+pub enum DiagnosticDomain =
+  | Syntax
+  | Parser
+  | Type
+  | Effect
+  | Runtime
+  | Net
+  | Config
+  | Manifest
+  | Target
+  | Security
+  | Plugin
+  | Cli
+  | Lsp
+  | Other(Str)

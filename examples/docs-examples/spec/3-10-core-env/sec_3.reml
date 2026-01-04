@@ -1,0 +1,5 @@
+pub type Capability
+pub type PlatformInfo
+
+fn platform_info() -> PlatformInfo                               // `effect {runtime}`
+fn has_capability(cap: Capability) -> Bool                       // `effect {runtime}`

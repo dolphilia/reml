@@ -1,0 +1,19 @@
+module Spec.Core.Chapter1.TraitImpl.Duplicate
+
+use Core.Prelude
+
+trait MiniDisplay {
+  fn render(self) -> Str
+}
+
+impl MiniDisplay for Int {
+  fn render(self) -> Str = self.to_string()
+}
+
+impl MiniDisplay for Int {
+  fn render(self) -> Str = self.to_string()
+}
+
+fn main() -> Str {
+  "duplicate-impl"
+}

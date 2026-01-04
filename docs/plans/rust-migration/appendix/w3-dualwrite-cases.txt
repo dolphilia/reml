@@ -1,0 +1,8 @@
+# W3 dual-write input cases for type inference
+# format: name::(inline|file)::value
+
+pattern_tuple::inline::fn pair() = (1, 2)\nlet (x, y) = pair()\nfn main() = x + y
+residual_effect::inline::effect ConsoleLog\nhandler ConsoleLog { fn perform(msg) = () }\nfn main() = perform ConsoleLog \"hi\"\n
+callconv_windows_messagebox::file::examples/ffi/windows/messagebox.reml
+ffi_dispatch_async::file::examples/ffi/macos/ffi_dispatch_async.reml
+diagnostic_effect_stage::inline::effect AsyncOnly\nfn disallowed() = perform AsyncOnly 1

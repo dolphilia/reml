@@ -1,0 +1,46 @@
+module Examples.Practical.CoreTest.Dsl.ErrorExpectationBasic
+
+use Core.Parse
+use Core.Parse.Lex
+use Core.Test.Dsl
+
+type Expr =
+  | Int(Int)
+  | Add(Expr, Expr)
+
+let sc: Parser<()> =
+  Lex.whitespace()
+    |> Lex.skipMany
+
+fn lexeme<A>(p: Parser<A>) -> Parser<A> {
+  Lex.lexeme(sc, p)
+}
+
+fn sym(text: Str) -> Parser<()> {
+  Lex.symbol(sc, text)
+}
+
+fn int_expr() -> Parser<Expr> {
+  lexeme(Lex.int10())
+    .andThen(|digits| match Lex.parseI64(digits) with
+      | Ok(value) -> ok(Int(value))
+      | Err(_) -> fail(format("数値として解釈できません: {digits}"))
+    )
+}
+
+fn expr_parser() -> Parser<Expr> {
+  rule("dsl.expr.add",
+    int_expr()
+      .then(skipL(sym("+"), int_expr()))
+      .map(|(lhs, rhs)| Add(lhs, rhs))
+  )
+}
+
+fn main() -> Str {
+  let outcome = test_parser(expr_parser()) {
+    case "1 +" => Error({ code: "parser.unexpected_eof", at: Some(Offset(3)), message: None })
+  }
+  match outcome with
+    | Ok(_) -> "dsl:ok"
+    | Err(_) -> "dsl:error"
+}

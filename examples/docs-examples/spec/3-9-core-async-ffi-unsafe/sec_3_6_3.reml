@@ -1,0 +1,10 @@
+pub type NonNullPtr<T>
+pub type Object
+pub type UnsafeError
+
+pub type RootGuard = {
+  ptr: NonNullPtr<Object>,
+}
+
+fn RootGuard::new(ptr: NonNullPtr<Object>) -> Result<RootGuard, UnsafeError>  // `unsafe`
+fn RootGuard::release(self) -> Result<(), UnsafeError>                       // `unsafe`

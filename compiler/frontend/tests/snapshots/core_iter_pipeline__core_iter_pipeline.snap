@@ -1,0 +1,270 @@
+---
+source: tests/core_iter_pipeline.rs
+assertion_line: 179
+expression: cases
+---
+- case: list_roundtrip
+  collector:
+    effects:
+      async_pending: false
+      audit: false
+      debug: false
+      mem: true
+      mem_bytes: 32
+      mutating: false
+      predicate_calls: 0
+    kind: list
+    markers:
+      finish: 1
+      mem_reservation: 32
+      reserve: 0
+    stage:
+      actual: stable
+      capability: core.collector.list
+      kind: list
+      required:
+        mode: exact
+        stage: stable
+      source: "ListCollector::finish"
+  effects:
+    async_pending: false
+    audit: false
+    debug: false
+    mem: false
+    mem_bytes: 0
+    mutating: false
+    predicate_calls: 0
+  stage:
+    actual: beta
+    capability: core.iter.core
+    kind: core_iter
+    required:
+      mode: at_least
+      stage: beta
+    source: "core_iter_pipeline::list_roundtrip"
+  value:
+    - 1
+    - 2
+    - 3
+    - 4
+- case: map_filter_vec
+  collector:
+    effects:
+      async_pending: false
+      audit: false
+      debug: false
+      mem: true
+      mem_bytes: 12
+      mutating: true
+      predicate_calls: 0
+    kind: vec
+    markers:
+      finish: 1
+      mem_reservation: 0
+      reserve: 0
+    stage:
+      actual: beta
+      capability: core.collector.vec
+      kind: vec
+      required:
+        mode: at_least
+        stage: beta
+      source: "VecCollector::finish"
+  effects:
+    async_pending: false
+    audit: false
+    debug: false
+    mem: false
+    mem_bytes: 0
+    mutating: true
+    predicate_calls: 4
+  stage:
+    actual: stable
+    capability: core.iter.core
+    kind: core_iter
+    required:
+      mode: exact
+      stage: stable
+    source: "core_iter_pipeline::map_filter_vec"
+  value:
+    - 20
+    - 30
+    - 40
+- case: zip_collect_list
+  collector:
+    effects:
+      async_pending: false
+      audit: false
+      debug: false
+      mem: true
+      mem_bytes: 96
+      mutating: true
+      predicate_calls: 0
+    kind: vec
+    markers:
+      finish: 1
+      mem_reservation: 0
+      reserve: 0
+    stage:
+      actual: beta
+      capability: core.collector.vec
+      kind: vec
+      required:
+        mode: at_least
+        stage: beta
+      source: "VecCollector::finish"
+  effects:
+    async_pending: false
+    audit: false
+    debug: false
+    mem: false
+    mem_bytes: 0
+    mutating: true
+    predicate_calls: 0
+  stage:
+    actual: beta
+    capability: core.iter.core
+    kind: core_iter
+    required:
+      mode: at_least
+      stage: beta
+    source: "core_iter_pipeline::zip_collect_list"
+  value:
+    - - 1
+      - red
+    - - 2
+      - green
+    - - 3
+      - blue
+- case: buffered_mem_case
+  collector:
+    effects:
+      async_pending: false
+      audit: false
+      debug: false
+      mem: true
+      mem_bytes: 20
+      mutating: true
+      predicate_calls: 0
+    kind: vec
+    markers:
+      finish: 1
+      mem_reservation: 0
+      reserve: 0
+    stage:
+      actual: beta
+      capability: core.collector.vec
+      kind: vec
+      required:
+        mode: at_least
+        stage: beta
+      source: "VecCollector::finish"
+  effects:
+    async_pending: false
+    audit: false
+    debug: false
+    mem: true
+    mem_bytes: 2
+    mutating: false
+    predicate_calls: 0
+  stage:
+    actual: beta
+    capability: core.iter.core
+    kind: core_iter
+    required:
+      mode: at_least
+      stage: beta
+    source: "core_iter_pipeline::buffered_mem_case"
+  value:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+- case: from_iter_and_into_iter
+  collector:
+    effects:
+      async_pending: false
+      audit: false
+      debug: false
+      mem: true
+      mem_bytes: 24
+      mutating: false
+      predicate_calls: 0
+    kind: list
+    markers:
+      finish: 1
+      mem_reservation: 24
+      reserve: 0
+    stage:
+      actual: stable
+      capability: core.collector.list
+      kind: list
+      required:
+        mode: exact
+        stage: stable
+      source: "ListCollector::finish"
+  effects:
+    async_pending: false
+    audit: false
+    debug: false
+    mem: false
+    mem_bytes: 0
+    mutating: false
+    predicate_calls: 0
+  stage:
+    actual: beta
+    capability: core.iter.core
+    kind: core_iter
+    required:
+      mode: at_least
+      stage: beta
+    source: "core_iter_pipeline::from_iter_and_into_iter"
+  std_into_iter:
+    - 20
+    - 21
+    - 22
+  value:
+    - 10
+    - 11
+    - 12
+- case: try_collect_success
+  collector:
+    effects:
+      async_pending: false
+      audit: false
+      debug: false
+      mem: true
+      mem_bytes: 32
+      mutating: true
+      predicate_calls: 0
+    kind: vec
+    markers:
+      finish: 1
+      mem_reservation: 0
+      reserve: 0
+    stage:
+      actual: beta
+      capability: core.collector.vec
+      kind: vec
+      required:
+        mode: at_least
+        stage: beta
+      source: "VecCollector::finish"
+  effects:
+    async_pending: false
+    audit: false
+    debug: false
+    mem: false
+    mem_bytes: 0
+    mutating: false
+    predicate_calls: 0
+  stage:
+    actual: beta
+    capability: core.iter.core
+    kind: core_iter
+    required:
+      mode: at_least
+      stage: beta
+    source: "core_iter_pipeline::try_collect_success"
+  value: []

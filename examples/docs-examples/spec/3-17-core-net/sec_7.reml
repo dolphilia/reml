@@ -1,0 +1,20 @@
+pub type Url
+
+pub type NetError = {
+  kind: NetErrorKind,
+  message: Str,
+  diagnostic_key: Str,
+  retryable: Bool,
+  url: Option<Url>,
+}
+
+pub enum NetErrorKind =
+  | DnsFailure
+  | ConnectionRefused
+  | ConnectionReset
+  | Timeout
+  | NetworkUnreachable
+  | InvalidAddress
+  | PermissionDenied
+  | ProtocolViolation
+  | Unsupported

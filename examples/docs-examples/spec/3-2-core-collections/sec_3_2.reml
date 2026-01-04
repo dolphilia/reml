@@ -1,0 +1,15 @@
+pub type Borrow<T>
+pub type BorrowMut<T>
+
+pub type Cell<T: Copy>
+
+fn new_cell<T: Copy>(value: T) -> Cell<T>       // `effect {cell}`
+fn get<T: Copy>(cell: &Cell<T>) -> T            // `@pure`
+fn set<T: Copy>(cell: &Cell<T>, value: T) -> () // `effect {cell}`
+
+pub type Ref<T>
+
+fn new_ref<T>(value: T) -> Ref<T>               // `effect {rc}`
+fn clone_ref<T>(value: &Ref<T>) -> Ref<T>       // `effect {rc}`
+fn borrow<T>(value: &Ref<T>) -> Borrow<T>       // `@pure`
+fn borrow_mut<T>(value: &Ref<T>) -> BorrowMut<T>// `effect {mut, rc}`

@@ -1,0 +1,6 @@
+Config {
+  entries: [
+    Entry { key: "x", value: IntValue(1) },
+    Entry { key: "y", value: IntValue(2) }
+  ]
+}

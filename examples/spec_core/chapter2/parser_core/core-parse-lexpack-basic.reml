@@ -1,0 +1,148 @@
+module Spec.Core.Chapter2.Parser.LexPackBasic
+
+use Core.Parse as Parse
+use Core.Parse.Lex as Lex
+use Core.Prelude
+
+// parse-driver 用入力（Rust 側 `--parse-driver` が最初に見つけた Parse.run 呼び出しの文字列を抜き出して実行する）
+// Parse.run("alpha = ;")
+
+type Value =
+  | Num(f64)
+  | Str(Text)
+  | Var(Text)
+
+type Assignment = { name: Text, value: Value }
+
+// LexPack 入口: 空白/コメント + ラベル付き identifier/number/string をまとめ、RunConfig.lex へプロファイル情報を書き戻す。
+fn make_lex_pack() {
+  let profile = "strict_json"
+  let identifier_profile = "unicode"
+  let layout_profile = None
+  let safety = "strict"
+
+  let space: Parse.Parser<()> =
+    (Lex.whitespace()
+      .or(Lex.commentLine("//"))
+      .or(Lex.commentBlock("/*", "*/", nested = false)))
+    |> Lex.skipMany
+
+  let lexeme = (|p| Lex.lexeme(space, p))
+  let symbol = (|text| Lex.symbol(space, text))
+  let keyword = (|text| Lex.keyword(space, text))
+
+  let identifier =
+    Parse.label("identifier",
+      lexeme(Lex.identifier()))
+
+  let number_token =
+    Parse.label("number",
+      lexeme(Parse.attempt(Lex.float()).or(Lex.integer())))
+
+  let number =
+    Parse.rule("lexpack.number",
+      number_token.andThen(|repr|
+        match Lex.parseF64(repr) with
+        | Ok(value) -> Parse.ok(value)
+        | Err(_) -> Parse.fail(format("数値として解釈できません: {repr}"))
+      )
+    )
+
+  let string_literal =
+    Parse.label("string", lexeme(Lex.stringLit()))
+
+  {
+    space,
+    lexeme,
+    symbol,
+    keyword,
+    identifier,
+    number,
+    string_literal,
+    profile,
+    identifier_profile,
+    layout_profile,
+    safety,
+  }
+}
+
+fn lex_run_config(lex) -> RunConfig {
+  RunConfig::builder()
+    .with_extension("lex", {
+      profile: lex.profile,
+      identifier_profile: lex.identifier_profile,
+      layout_profile: lex.layout_profile,
+      safety: lex.safety,
+    })
+    .finish()
+}
+
+fn value(lex) -> Parse.Parser<Value> {
+  Parse.choice([
+    lex.identifier.map(|name| Var(name)),
+    lex.number.map(|n| Num(n)),
+    lex.string_literal.map(|s| Str(s)),
+  ])
+}
+
+fn assignment(lex) -> Parse.Parser<Assignment> {
+  Parse.rule("lexpack.assignment",
+    lex.identifier
+      .skipL(lex.symbol("="))
+      .then(value(lex))
+      .skipL(lex.symbol(";"))
+      .map(|(name, value)| { name, value })
+  )
+}
+
+fn program(lex) -> Parse.Parser<List<Assignment>> {
+  lex.space
+    .skipR(Parse.many(assignment(lex)))
+    .skipL(Parse.eof())
+}
+
+fn format_value(value: Value) -> Text {
+  match value with
+  | Num(n) -> format("%g", [n])
+  | Str(text) -> format("\"%s\"", [text])
+  | Var(name) -> name
+}
+
+fn format_assignments(assignments: List<Assignment>) -> Text {
+  let parts = assignments
+    |> List.map(|a| format("%s=%s", [a.name, format_value(a.value)]))
+  format("assignments=[%s]", [Text.join(parts, ",")])
+}
+
+fn run_case(label: Text, expected: Text, lex, cfg: RunConfig, source: Text) -> Text {
+  match Parse.run(program(lex), source, cfg) with
+  | Ok(assignments) -> format("%s: %s", [label, format_assignments(assignments)])
+  | Err(diag) -> {
+      format("%s: expected(%s) %s", [label, expected, diag.message])
+    }
+}
+
+fn main() -> Text {
+  let lex = make_lex_pack()
+  let cfg = lex_run_config(lex)
+
+  let source_ok =
+    "// leading comment\n\
+     foo = 10 ; /* block */\n\
+     // another comment\n\
+     bar=20; baz = 3; qux = \"hello\" ;\n"
+
+  let source_ng =
+    "alpha = ;\n\
+     beta = \"ok\";\n"
+
+  let source_missing_ident =
+    " = 1;\n\
+      gamma = \"late\";\n"
+
+  let ok_text = run_case("ok", "identifier|number|string", lex, cfg, source_ok)
+  let err_missing_ident = run_case("err.missing_ident", "identifier", lex, cfg, source_missing_ident)
+  let err_missing_value = run_case("err.missing_value", "identifier|number|string", lex, cfg, source_ng)
+
+  format("%s\n%s\n%s", [ok_text, err_missing_ident, err_missing_value])
+}

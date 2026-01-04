@@ -1,0 +1,27 @@
+pub type CpuId = {
+  vendor: Str,
+  model: Str,
+  family: u32,
+  stepping: u32,
+}
+
+pub type CpuFeatures = {
+  sse: Bool,
+  sse2: Bool,
+  sse3: Bool,
+  sse4_1: Bool,
+  sse4_2: Bool,
+  avx: Bool,
+  avx2: Bool,
+  avx512: Bool,
+  aes: Bool,
+  sha: Bool,
+  neon: Bool,
+  custom: Set<Str>,
+}
+
+pub type NumaNode = {
+  id: u32,
+  cpus: Set<u32>,
+  memory_bytes: usize,
+}

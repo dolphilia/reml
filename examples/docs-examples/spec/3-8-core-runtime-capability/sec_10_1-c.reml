@@ -1,0 +1,20 @@
+pub type RuntimeBridgeId = Str
+pub type CapabilityId = Str
+pub type StageRequirement = Str
+pub type StageId = Str
+pub type Text = Str
+
+pub type RuntimeBridgeAuditSpec = {
+  audit_domain: Str,                  // 例: "bridge.reload"
+  mandatory_events: Set<Str>,         // 例: {"bridge.reload", "bridge.rollback"}
+  requires_audit_effect: Bool,
+  rollout_checklist: List<Text>,
+}
+
+pub enum RuntimeBridgeError =
+  | AlreadyRegistered { id: RuntimeBridgeId }
+  | CapabilityViolation { id: RuntimeBridgeId, capability: CapabilityId, required_stage: StageRequirement, actual_stage: StageId }
+  | TargetMismatch { id: RuntimeBridgeId, requested: Str, detected: Str }
+  | StageViolation { id: RuntimeBridgeId, required: StageRequirement, actual: StageId }
+  | ReloadUnsupported { id: RuntimeBridgeId }
+  | ReloadFailure { id: RuntimeBridgeId, detail: Option<Text> }

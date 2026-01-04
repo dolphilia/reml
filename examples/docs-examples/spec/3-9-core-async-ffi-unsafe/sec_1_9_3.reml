@@ -1,0 +1,12 @@
+pub type ActorSystem
+pub type ActorRef<T>
+pub type AsyncError
+pub type Duration
+pub type Future<T>
+pub type Text
+
+pub enum Message = Greet(Text) | Hello(Text)
+
+fn spawn_greeter(system: &ActorSystem) -> Result<ActorRef<Message>, AsyncError> // `effect {io.async}`
+fn greet(system: &ActorSystem, greeter: ActorRef<Message>, name: Text, timeout: Duration)
+  -> Future<Result<Message, AsyncError>>                                       // `effect {io.async}`

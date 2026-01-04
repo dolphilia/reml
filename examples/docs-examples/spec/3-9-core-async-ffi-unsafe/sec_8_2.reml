@@ -1,0 +1,14 @@
+pub type ForeignFunction
+pub type CachedForeignFunction
+pub type FfiCall
+pub type FfiValue
+pub type FfiError
+pub type FfiSignature
+pub type CompiledWrapper
+
+// 関数呼び出しのキャッシュ
+fn cache_ffi_function(foreign_fn: ForeignFunction, cache_size: usize) -> CachedForeignFunction
+fn batch_ffi_calls(calls: List<FfiCall>) -> Result<List<FfiValue>, FfiError>
+
+// JIT コンパイルされた FFI ラッパー
+fn compile_ffi_wrapper(signature: FfiSignature) -> Result<CompiledWrapper, FfiError>  // `effect {jit}`

@@ -1,0 +1,5 @@
+pub type Signal = Core.Runtime.Signal
+pub type SignalInfo = Core.Runtime.SignalInfo
+pub type SignalHandler = fn(Signal) -> ()
+
+pub type SignalMask = Set<Signal>

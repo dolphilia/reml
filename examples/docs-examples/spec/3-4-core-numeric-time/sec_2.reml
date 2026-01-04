@@ -1,0 +1,23 @@
+pub type u64
+pub type HistogramBucket
+pub type LinearModel
+
+pub type HistogramBucketState = {
+  bucket: HistogramBucket,
+  count: u64,
+  sum: Option<Float>
+}
+
+fn histogram(iter: Iter<Float>, buckets: List<HistogramBucket>) -> Result<List<HistogramBucketState>, Diagnostic> // `@pure`
+fn rolling_average(window: usize, values: Iter<Float>) -> Iter<Float>                                            // `@pure`
+fn z_score(value: Float, mean: Float, stddev: Float) -> Option<Float>                                            // `@pure`
+fn quantiles(iter: Iter<Float>, points: List<Float>) -> Result<Map<Float, Float>, StatisticsError>             // `@pure`
+fn correlation(x: Iter<Float>, y: Iter<Float>) -> Result<Float, StatisticsError>                               // `@pure`
+fn linear_regression(points: Iter<(Float, Float)>) -> Result<LinearModel, StatisticsError>                      // `@pure`
+
+pub type StatisticsError = {
+  kind: StatisticsErrorKind,
+  message: Str,
+}
+
+pub enum StatisticsErrorKind = InsufficientData | InvalidParameter | NumericalInstability

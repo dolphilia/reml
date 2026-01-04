@@ -1,0 +1,15 @@
+pub type SyscallNumber = Int
+pub type SyscallError = Int
+pub type PlatformSyscalls = Int
+pub type SyscallDescriptor = Int
+pub type SyscallRet = Int
+pub type SyscallId = Int
+
+pub type SyscallCapability = {
+  raw_syscall: fn(SyscallNumber, List<Int>) -> Result<Int, SyscallError>,      // effect {syscall, unsafe}
+  platform_syscalls: PlatformSyscalls,                                        // effect {syscall}
+  audited_syscall: fn(SyscallDescriptor, SyscallThunk) -> Result<SyscallRet, SyscallError>, // effect {syscall, audit}
+  supports: fn(SyscallId) -> Bool,
+}
+
+pub type SyscallThunk = fn() -> Result<SyscallRet, SyscallError>

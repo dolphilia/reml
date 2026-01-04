@@ -1,0 +1,6 @@
+fn wasm_run<T>(p: Parser<T>, bytes: Bytes, cfg: RunConfig) -> Result<T, Diagnostic> = {
+  let cfg = config_with_left_recursion(cfg, "off");
+  let cfg = config_with_packrat(cfg, false); // メモリ制約に合わせる
+  let cfg = config_with_target_extra(cfg, "wasi", "preview2");
+  run(p, bytes, cfg)
+}

@@ -1,0 +1,17 @@
+[project]
+name = "config-integration"
+version = "1.2.0"
+stage = "beta"
+kind = "application"
+capabilities = ["core.config"]
+
+[dsl.integration]
+entry = "dsl/sample.reml"
+exports = ["IntegrationExport"]
+kind = "runtime_bridge"
+expect_effects = ["config.load"]
+expect_effects_stage = "beta"
+summary = "fixture used by manifest integration test"
+
+[config.compatibility.json]
+profile = "json-relaxed"

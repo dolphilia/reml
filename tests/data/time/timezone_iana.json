@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "name": "Asia/Tokyo",
+      "expected_offset_seconds": 32400
+    },
+    {
+      "name": "Europe/London",
+      "expected_offset_seconds": 0
+    },
+    {
+      "name": "America/New_York",
+      "expected_offset_seconds": -18000
+    }
+  ]
+}

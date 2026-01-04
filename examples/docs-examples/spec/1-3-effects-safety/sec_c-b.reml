@@ -1,0 +1,6 @@
+@pure
+fn sum(xs: [i64]) -> i64 = {
+  print("x")
+  fold(xs, 0, |acc, x| acc + x)
+}
+// error: @pure 関数で io 効果が検出されました … at print

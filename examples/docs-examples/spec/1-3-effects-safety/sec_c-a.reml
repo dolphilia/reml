@@ -1,0 +1,11 @@
+@pure         // Σ の全効果を禁止（純粋関数）
+@no_panic     // panic を禁止（→ コンパイル時チェック）
+@no_alloc     // 文字列/ベクタ等のヒープ確保を禁止（MIR検査）
+@async_free   // io.async を禁止（イベントループ安全性）
+@no_blocking  // io.blocking を禁止（非同期環境での誤用検知）
+@no_timer     // io.timer を禁止（決定性重視セクション）
+@must_await   // Future/Task の未使用を警告
+@must_use     // 戻り値の未使用を禁止（Result 等に推奨）
+@inline       // 最適化ヒント
+fn effect_contract_sample(xs: [i64]) -> i64 =
+  fold(xs, 0, |acc, x| acc + x)

@@ -1,0 +1,18 @@
+struct ProdProfile;
+impl Profile for ProdProfile {
+  fn id(&self) -> ProfileId = ProfileId::new("prod")
+  fn overrides(&self) -> Map<Str, Any> = Map::empty().insert("score.max", 5.0)
+}
+
+let report = validate_with_profile(hardenedSchema, incoming, ProdProfile)
+let _ =
+  if !report.diagnostics.is_empty() then
+    emit_metrics("data.validation", {
+      latency_ms = 12.4,
+      throughput_per_min = 320.0,
+      error_rate = report.diagnostics.len() / incoming.len(),
+      last_audit_id = report.audit_id,
+      custom = Map::empty().insert("profile", "prod")
+    })
+  else
+    ()

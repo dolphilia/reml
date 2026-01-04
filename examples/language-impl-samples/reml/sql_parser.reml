@@ -1,0 +1,415 @@
+module samples.language_impl_samples.sql_parser
+
+use ::Core.Collection.List as List
+use ::Core.Parse
+use ::Core.Parse.Lex
+use ::Core.Parse.Op
+
+/// 簡易SQL AST。
+/// SELECT, WHERE, JOIN, ORDER BY など基本的な構文のみ対応。
+type Query =
+  | Select {
+      columns: List<Column>,
+      from: TableRef,
+      where_clause: Option<Expr>,
+      joins: List<Join>,
+      order_by: Option<OrderBy>
+    }
+
+type Column =
+  | AllColumns          // SELECT *
+  | ColumnExpr(Expr, alias: Option<String>)
+
+type TableRef = {
+  table: String,
+  alias: Option<String>
+}
+
+type Join = {
+  join_type: JoinType,
+  table: TableRef,
+  on_condition: Expr
+}
+
+type JoinType =
+  | InnerJoin
+  | LeftJoin
+  | RightJoin
+  | FullJoin
+
+type OrderBy = {
+  columns: List<(Expr, OrderDirection)>
+}
+
+type OrderDirection = Asc | Desc
+
+/// SQL式（演算子優先度が重要）。
+type Expr =
+  | Literal(Literal)
+  | Column(String)
+  | QualifiedColumn(table: String, column: String)
+  | BinaryOp(op: BinOp, left: Expr, right: Expr)
+  | UnaryOp(op: UnOp, expr: Expr)
+  | FunctionCall(name: String, args: List<Expr>)
+  | Parenthesized(Expr)
+
+type Literal =
+  | IntLit(Int)
+  | FloatLit(f64)
+  | StringLit(String)
+  | BoolLit(Bool)
+  | NullLit
+
+type BinOp =
+  | Add | Sub | Mul | Div | Mod
+  | Eq | Ne | Lt | Le | Gt | Ge
+  | And | Or
+  | Like
+
+type UnOp =
+  | Not
+  | IsNull
+  | IsNotNull
+
+/// 空白・コメントスキップ。
+let sc: Parser<()> =
+  (Lex.whitespace()
+    .or(Lex.commentLine("--"))
+    .or(Lex.commentBlock("/*", "*/", nested = false)))
+  |> Lex.skipMany
+
+let lexeme<A>(p: Parser<A>) -> Parser<A> = Lex.lexeme(sc, p)
+let sym(text: Str) -> Parser<()> = Lex.symbol(sc, text)
+
+/// SQL予約語（キーワード）のパース。
+/// 大文字小文字を区別しない。
+let keyword(kw: Str) -> Parser<()> =
+  rule(format("keyword.{kw}"),
+    lexeme(
+      Lex.string_case_insensitive(kw)
+        .skipL(Parse.notFollowedBy(Lex.satisfy(Char.is_alphanumeric)))
+    )
+  )
+
+/// 識別子（テーブル名・カラム名）。
+/// 予約語との衝突を避けるため、予約語リストをチェック。
+let identifier: Parser<String> =
+  rule("identifier",
+    lexeme(
+      Lex.satisfy(|c| Char.is_xid_start(c))
+        .andThen(|first|
+          Lex.takeWhile(|c| Char.is_xid_continue(c))
+          .map(|rest| String.from_char(first) ++ rest)
+        )
+        .andThen(|name|
+          let reserved = ["select", "from", "where", "join", "inner", "left",
+                          "right", "full", "on", "and", "or", "not", "like",
+                          "order", "by", "asc", "desc", "null", "true", "false"]
+          if List.contains(reserved, String.to_lowercase(name)) then
+            Parse.fail(format("予約語 '{name}' は識別子として使用できません"))
+          else
+            Parse.ok(name)
+        )
+    )
+  )
+
+/// リテラルのパース。
+let literal: Parser<Literal> =
+  rule("literal",
+    Parse.choice([
+      keyword("null").map(|_| NullLit),
+      keyword("true").map(|_| BoolLit(true)),
+      keyword("false").map(|_| BoolLit(false)),
+      Parse.attempt(lexeme(Lex.float()).map(|s|
+        FloatLit(Lex.parseF64(s) |> Result.unwrap_or(0.0))
+      )),
+      lexeme(Lex.integer()).map(|s|
+        IntLit(Lex.parseInt(s, 10) |> Result.unwrap_or(0))
+      ),
+      lexeme(Lex.stringLit()).map(|s| StringLit(s))
+    ])
+  )
+
+/// カラム参照（qualified または simple）。
+let column_ref: Parser<Expr> =
+  rule("column_ref",
+    identifier
+      .andThen(|first|
+        Parse.opt(sym(".").skipR(identifier))
+        .map(|second| match second with
+          | Some(col) -> QualifiedColumn(first, col)
+          | None -> Column(first)
+        )
+      )
+  )
+
+/// 関数呼び出し。
+let function_call: Parser<Expr> =
+  rule("function_call",
+    identifier
+      .skipL(sym("("))
+      .andThen(|name|
+        Parse.sepBy(rec expr, sym(","))
+        .skipL(sym(")"))
+        .map(|args| FunctionCall(name, args))
+      )
+  )
+
+/// アトム式（リテラル、カラム、関数、括弧）。
+let atom: Parser<Expr> =
+  rule("atom",
+    Parse.choice([
+      sym("(").skipR(rec expr).skipL(sym(")")).map(|e| Parenthesized(e)),
+      Parse.attempt(function_call),
+      column_ref,
+      literal.map(|lit| Literal(lit))
+    ])
+  )
+
+/// 演算子優先度ビルダーを使った式パーサー。
+///
+/// SQL演算子の優先度（高 → 低）：
+/// 1. 単項演算子（NOT, IS NULL）
+/// 2. 乗除（*, /, %）
+/// 3. 加減（+, -）
+/// 4. 比較（=, <>, <, <=, >, >=, LIKE）
+/// 5. AND
+/// 6. OR
+let expr: Parser<Expr> =
+  rule("expr",
+    Op.precedence(atom, { operand_label: "expression", space: sc })
+      // レベル1: 単項演算子（prefix）
+      .level(|lvl| {
+        lvl.prefix(keyword("not").map(|_| (|e| UnaryOp(Not, e))))
+      })
+      // レベル2: postfix（IS NULL, IS NOT NULL）
+      .level(|lvl| {
+        lvl.postfix(
+          keyword("is").skipR(keyword("null"))
+          .map(|_| (|e| UnaryOp(IsNull, e)))
+        )
+        lvl.postfix(
+          keyword("is").skipR(keyword("not")).skipR(keyword("null"))
+          .map(|_| (|e| UnaryOp(IsNotNull, e)))
+        )
+      })
+      // レベル3: 乗除（左結合）
+      .level(|lvl| {
+        lvl.infixl(sym("*").map(|_| (|a, b| BinaryOp(Mul, a, b))))
+        lvl.infixl(sym("/").map(|_| (|a, b| BinaryOp(Div, a, b))))
+        lvl.infixl(sym("%").map(|_| (|a, b| BinaryOp(Mod, a, b))))
+      })
+      // レベル4: 加減（左結合）
+      .level(|lvl| {
+        lvl.infixl(sym("+").map(|_| (|a, b| BinaryOp(Add, a, b))))
+        lvl.infixl(sym("-").map(|_| (|a, b| BinaryOp(Sub, a, b))))
+      })
+      // レベル5: 比較（非結合）
+      .level(|lvl| {
+        let cmp_ops = Parse.choice([
+          sym("=").map(|_| Eq),
+          sym("<>").map(|_| Ne),
+          sym("!=").map(|_| Ne),
+          sym("<=").map(|_| Le),
+          sym(">=").map(|_| Ge),
+          sym("<").map(|_| Lt),
+          sym(">").map(|_| Gt),
+          keyword("like").map(|_| Like)
+        ])
+        lvl.infixn(cmp_ops.map(|op| (|a, b| BinaryOp(op, a, b))))
+      })
+      // レベル6: AND（左結合）
+      .level(|lvl| {
+        lvl.infixl(keyword("and").map(|_| (|a, b| BinaryOp(And, a, b))))
+      })
+      // レベル7: OR（左結合）
+      .level(|lvl| {
+        lvl.infixl(keyword("or").map(|_| (|a, b| BinaryOp(Or, a, b))))
+      })
+      .build()
+  )
+
+/// カラムリスト（SELECT句）。
+let column_list: Parser<List<Column>> =
+  rule("column_list",
+    Parse.choice([
+      sym("*").map(|_| [AllColumns]),
+      Parse.sepBy1(
+        expr.andThen(|e|
+          Parse.opt(keyword("as").skipR(identifier))
+          .map(|alias| ColumnExpr(e, alias))
+        ),
+        sym(",")
+      )
+    ])
+  )
+
+/// テーブル参照（FROM句）。
+let table_ref: Parser<TableRef> =
+  rule("table_ref",
+    identifier
+      .andThen(|table|
+        Parse.opt(keyword("as").skipR(identifier).or(identifier))
+        .map(|alias| { table: table, alias: alias })
+      )
+  )
+
+/// JOIN句のパース。
+let join_clause: Parser<Join> =
+  rule("join_clause",
+    Parse.choice([
+      keyword("inner").skipR(keyword("join")).map(|_| InnerJoin),
+      keyword("left").skipR(keyword("join")).map(|_| LeftJoin),
+      keyword("right").skipR(keyword("join")).map(|_| RightJoin),
+      keyword("full").skipR(keyword("join")).map(|_| FullJoin),
+      keyword("join").map(|_| InnerJoin)
+    ])
+    .andThen(|join_type|
+      table_ref
+        .andThen(|table|
+          keyword("on")
+            .skipR(expr)
+            .map(|condition| {
+              join_type: join_type,
+              table: table,
+              on_condition: condition
+            })
+        )
+    )
+  )
+
+/// ORDER BY句のパース。
+let order_by_clause: Parser<OrderBy> =
+  rule("order_by_clause",
+    keyword("order").skipR(keyword("by"))
+      .skipR(
+        Parse.sepBy1(
+          expr.andThen(|e|
+            Parse.opt(
+              keyword("asc").map(|_| Asc)
+              .or(keyword("desc").map(|_| Desc))
+            )
+            .map(|dir| (e, dir |> Option.unwrap_or(Asc)))
+          ),
+          sym(",")
+        )
+        .map(|columns| { columns: columns })
+      )
+  )
+
+/// SELECT文のパース。
+let select_query: Parser<Query> =
+  rule("select_query",
+    keyword("select")
+      .skipR(column_list)
+      .andThen(|columns|
+        keyword("from")
+          .skipR(table_ref)
+          .andThen(|from|
+            Parse.many(join_clause)
+            .andThen(|joins|
+              Parse.opt(keyword("where").skipR(expr))
+              .andThen(|where_clause|
+                Parse.opt(order_by_clause)
+                .map(|order_by|
+                  Select {
+                    columns: columns,
+                    from: from,
+                    where_clause: where_clause,
+                    joins: joins,
+                    order_by: order_by
+                  }
+                )
+              )
+            )
+          )
+      )
+  )
+
+/// パブリックAPI：SQL文字列をパース。
+pub fn parse(input: String) -> Result<Query, ParseError> =
+  let config = RunConfig.default()
+    .with_require_eof(true)
+    .with_trace(false)
+
+  Parse.run(
+    sc.skipR(select_query).skipL(Parse.opt(sym(";"))),
+    input,
+    config
+  )
+
+/// 簡易的なレンダリング（検証用）。
+pub fn render_to_string(query: Query) -> String =
+  match query with
+  | Select { columns, from, where_clause, joins, order_by } ->
+    let cols_str = render_columns(columns)
+    let from_str = format("FROM {from.table}")
+      ++ (from.alias |> Option.map(|a| format(" AS {a}")) |> Option.unwrap_or(""))
+
+    let joins_str = joins
+      |> List.map(|j|
+        let join_type_str = match j.join_type with
+          | InnerJoin -> "INNER JOIN"
+          | LeftJoin -> "LEFT JOIN"
+          | RightJoin -> "RIGHT JOIN"
+          | FullJoin -> "FULL JOIN"
+        format("{join_type_str} {j.table.table} ON {render_expr(j.on_condition)}")
+      )
+      |> String.join(" ")
+
+    let where_str = where_clause
+      |> Option.map(|e| format(" WHERE {render_expr(e)}"))
+      |> Option.unwrap_or("")
+
+    let order_str = order_by
+      |> Option.map(|ob|
+        let cols = ob.columns
+          |> List.map(|(e, dir)|
+            let dir_str = match dir with Asc -> "ASC" | Desc -> "DESC"
+            format("{render_expr(e)} {dir_str}")
+          )
+          |> String.join(", ")
+        format(" ORDER BY {cols}")
+      )
+      |> Option.unwrap_or("")
+
+    format("SELECT {cols_str} {from_str} {joins_str}{where_str}{order_str}")
+
+let render_columns(columns: List<Column>) -> String =
+  columns
+  |> List.map(|col| match col with
+    | AllColumns -> "*"
+    | ColumnExpr(e, alias) ->
+      render_expr(e) ++ (alias |> Option.map(|a| format(" AS {a}")) |> Option.unwrap_or(""))
+  )
+  |> String.join(", ")
+
+let render_expr(expr: Expr) -> String =
+  match expr with
+  | Literal(lit) -> render_literal(lit)
+  | Column(name) -> name
+  | QualifiedColumn(table, col) -> format("{table}.{col}")
+  | BinaryOp(op, left, right) ->
+    format("({render_expr(left)} {render_binop(op)} {render_expr(right)})")
+  | UnaryOp(op, e) ->
+    match op with
+    | Not -> format("NOT {render_expr(e)}")
+    | IsNull -> format("{render_expr(e)} IS NULL")
+    | IsNotNull -> format("{render_expr(e)} IS NOT NULL")
+  | FunctionCall(name, args) ->
+    format("{name}({args |> List.map(render_expr) |> String.join(\", \")})")
+  | Parenthesized(e) -> format("({render_expr(e)})")
+
+let render_literal(lit: Literal) -> String =
+  match lit with
+  | IntLit(n) -> format("{n}")
+  | FloatLit(f) -> format("{f}")
+  | StringLit(s) -> format("'{s}'")
+  | BoolLit(b) -> if b then "TRUE" else "FALSE"
+  | NullLit -> "NULL"
+
+let render_binop(op: BinOp) -> String =
+  match op with
+  | Add -> "+" | Sub -> "-" | Mul -> "*" | Div -> "/" | Mod -> "%"
+  | Eq -> "=" | Ne -> "<>" | Lt -> "<" | Le -> "<=" | Gt -> ">" | Ge -> ">="
+  | And -> "AND" | Or -> "OR" | Like -> "LIKE"

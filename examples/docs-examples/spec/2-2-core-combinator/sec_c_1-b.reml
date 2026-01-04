@@ -1,0 +1,23 @@
+type ExprOpLevel<A> = {
+  prefix: [Parser<A -> A>] = [],
+  postfix: [Parser<A -> A>] = [],
+  infixl: [Parser<(A, A) -> A>] = [],
+  infixr: [Parser<(A, A) -> A>] = [],
+  infixn: [Parser<(A, A) -> A>] = [],
+}
+
+type ExprBuilderConfig = {
+  space: Option<Parser<()>>,
+  operand_label: Option<String>,
+  commit_style: ExprCommit = ExprCommit::Preserve,
+}
+
+type ExprCommit
+  = Preserve       // term/op が持つ committed を尊重（デフォルト）
+  | CommitOperators // 各演算子直後に cut_here 相当を挿入し期待集合を縮約
+
+fn expr_builder<A>(
+  atom: Parser<A>,
+  levels: [ExprOpLevel<A>],
+  config: ExprBuilderConfig = {}
+) -> Parser<A> = todo

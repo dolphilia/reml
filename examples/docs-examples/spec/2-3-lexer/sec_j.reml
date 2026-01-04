@@ -1,0 +1,2 @@
+let sym(s) = expect("symbol '" + s + "'", symbol(sc, s))
+let kw(s)  = expect("keyword " + s, keyword(sc, s))

@@ -1,0 +1,50 @@
+[
+  {
+    "schema_version": "2.0.0-draft",
+    "message": "ストリーミング解析のバックプレッシャ診断",
+    "severity": 1,
+    "codes": ["parser.stream.pending"],
+    "primary": {
+      "file": "file:///workspace/examples/streaming.reml",
+      "start_line": 0,
+      "start_col": 0,
+      "end_line": 0,
+      "end_col": 0
+    },
+    "audit_metadata": {
+      "schema.version": "1.1",
+      "parser.stream.resume_hint": "resume-token"
+    },
+    "audit": {
+      "metadata": {
+        "schema.version": "1.1",
+        "parser.stream.pending.resume_hint": {
+          "action": "pause",
+          "min_bytes": 16,
+          "preferred_bytes": 32,
+          "resume_hint": "resume-token",
+          "reason": "pending.backpressure"
+        }
+      },
+      "audit_id": "cli/stream-meta#0",
+      "change_set": {
+        "policy": "phase2.7.stream_meta.v1",
+        "origin": "cli",
+        "items": [
+          { "kind": "input", "path": "examples/streaming.reml" }
+        ]
+      }
+    },
+    "timestamp": "1970-01-01T00:00:00Z",
+    "stream_meta": {
+      "bytes_consumed": 128,
+      "chunks_consumed": 4,
+      "await_count": 2,
+      "resume_count": 2,
+      "last_reason": "pending.backpressure",
+      "memo_bytes": 64,
+      "backpressure_policy": "auto",
+      "backpressure_events": 1
+    }
+  }
+]

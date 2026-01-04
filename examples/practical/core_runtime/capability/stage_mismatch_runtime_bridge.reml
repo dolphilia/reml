@@ -1,0 +1,12 @@
+module Examples.Practical.CoreRuntime.Capability.StageMismatch
+
+use Core.Runtime.Bridge
+
+fn main() -> Str {
+  RuntimeBridge.verify_stage(
+    bridge = "telemetry_bridge",
+    required = Stage::Stable,
+    provided = Stage::Beta
+  )
+  "runtime-bridge"
+}

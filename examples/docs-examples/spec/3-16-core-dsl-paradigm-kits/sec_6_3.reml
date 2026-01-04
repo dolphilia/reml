@@ -1,0 +1,32 @@
+use Core.Dsl.Vm
+
+pub type VmState<Value> = {
+  stack: List<Value>,
+  frames: List<CallFrame>,
+}
+
+pub type CallFrame = { ip: Int }
+
+pub type VmError = { kind: VmErrorKind, message: Str }
+
+pub enum VmErrorKind =
+  | Halted
+  | InvalidOpcode
+  | StackUnderflow
+  | RuntimeFailure
+
+enum Op = | Push(Int) | Add | Halt
+
+fn exec_op<Value>(state: VmState<Value>, op: Op) -> Result<VmState<Value>, VmError> = todo
+
+fn example() -> () = {
+  let code = Vm.bytecode_builder()
+    .emit(Op.Push(1))
+    .emit(Op.Push(2))
+    .emit(Op.Add)
+    .emit(Op.Halt)
+    .build()
+
+  let state = { stack: [], frames: [{ ip: 0 }] }
+  let _ = Vm.run(code, state, |state, op| { exec_op(state, op) })
+}

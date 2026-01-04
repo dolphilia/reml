@@ -1,0 +1,7 @@
+pub type MemoryError = {
+  kind: MemoryErrorKind,
+  message: Str,
+  errno: Option<i32>,
+}
+
+pub enum MemoryErrorKind = PermissionDenied | InvalidArgument | OutOfMemory | AlignmentError | AlreadyExists | NotFound | Unsupported | PolicyViolation

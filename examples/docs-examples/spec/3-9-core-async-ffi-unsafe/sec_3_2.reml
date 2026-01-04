@@ -1,0 +1,13 @@
+pub type Ptr<T>
+pub type MutPtr<T>
+pub type NonNullPtr<T>
+pub type UnsafeError
+
+fn addr_of<T>(value: &T) -> Ptr<T>
+fn addr_of_mut<T>(value: &mut T) -> MutPtr<T>
+fn from_option<T>(value: Option<NonNullPtr<T>>) -> Ptr<T>
+fn require_non_null<T>(ptr: Ptr<T>) -> Result<NonNullPtr<T>, UnsafeError>
+fn cast<T, U>(ptr: Ptr<T>) -> Ptr<U>                                       // `unsafe`
+fn cast_mut<T, U>(ptr: MutPtr<T>) -> MutPtr<U>                             // `unsafe`
+fn to_int<T>(ptr: Ptr<T>) -> usize                                         // `unsafe`
+fn from_int<T>(addr: usize) -> Ptr<T>                                      // `unsafe`

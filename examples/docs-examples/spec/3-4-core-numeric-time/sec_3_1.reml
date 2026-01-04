@@ -1,0 +1,6 @@
+pub type Timestamp
+
+enum TimeFormat = Rfc3339 | Unix | Custom(Str)
+
+fn format(ts: Timestamp, fmt: TimeFormat) -> Result<String, Diagnostic> // `effect {unicode}`
+fn parse(str: Str, fmt: TimeFormat) -> Result<Timestamp, Diagnostic>    // `effect {unicode}`

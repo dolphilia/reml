@@ -1,0 +1,29 @@
+pub type Parser<T>
+pub type TestError
+
+pub enum AstMatcher<T> =
+  | Pattern(Str)
+  | Record(List<(Str, AstMatcher<T>)>)
+  | List(List<AstMatcher<T>>)
+
+pub type DslCase<T> = {
+  name: Option<Str>,
+  source: Str,
+  expect: DslExpectation<T>,
+}
+
+pub enum DslExpectation<T> =
+  | Ast(AstMatcher<T>)
+  | Error(ErrorExpectation)
+
+pub type ErrorExpectation = {
+  code: Str,
+  at: Option<AtSpec>,
+  message: Option<Str>,
+}
+
+pub enum AtSpec =
+  | Offset(Int)
+  | LineCol(line: Int, col: Int)
+
+fn test_parser<T>(parser: Parser<T>, cases: List<DslCase<T>>) -> Result<(), TestError>

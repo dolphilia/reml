@@ -1,0 +1,14 @@
+pub type IoError
+pub type Path
+pub type Watcher
+pub type u8
+
+type WatchEvent = Created(Path) | Modified(Path) | Deleted(Path)
+
+fn watch_with_limits(paths: List<Path>, limits: WatchLimits, callback: (WatchEvent) -> ()) -> Result<Watcher, IoError> // `effect {io, io.async}`
+
+pub type WatchLimits = {
+  max_events_per_second: u32,
+  max_depth: Option<u8>,
+  exclude_patterns: List<Str>,
+}

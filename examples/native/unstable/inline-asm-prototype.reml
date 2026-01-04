@@ -1,0 +1,12 @@
+module Examples.Native.Unstable.InlineAsmPrototype
+
+// NOTE: Phase 4 では解析のみ。feature "native-unstable" がないと診断される想定。
+@unstable("inline_asm")
+// effect {native, unsafe}
+fn main() -> Str
+{
+  unsafe {
+    inline_asm("rdtsc")
+  }
+  "inline asm prototype"
+}

@@ -1,0 +1,6 @@
+locale_id,supports_rfc3339,supports_unix,supports_custom,status,fallback,notes
+und,true,true,true,Supported,,Core.Time 既定ロケール。ICU 互換パターンは `tooling/scripts/update_time_locale_table.py` で生成されたテーブルが保証する。
+ja-JP,true,true,true,Supported,und,"Custom パターンは ICU 互換トランスレータ経由で `LocaleId::parse(""ja-JP"")` と等価。フォールバックは und。"
+tr-TR,true,true,true,Supported,und,"Core.Text でサポート済み。i/İ の特殊ケースも Custom フォーマット経由で利用可能。"
+az-Latn,true,true,false,Planned,tr-TR,"Core.Text と同じく planned 扱い。LocaleId チェックは format()/parse() 手前で弾き、tr-TR へフォールバックを誘導。"
+zh-TW,true,true,false,Planned,ja-JP,"幅変換マッピング確定後に Custom 対応を追加。現状は Rfc3339/Unix のみ許可し、文字幅は ja-JP を参照する。"

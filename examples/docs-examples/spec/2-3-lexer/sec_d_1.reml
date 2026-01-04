@@ -1,0 +1,10 @@
+type IdentifierProfile = {
+  allow_underscore: Bool = true,
+  start_pred: Char -> Bool,   // 既定: XID_Start or '_'
+  cont_pred:  Char -> Bool,   // 既定: XID_Continue or '_'
+  nfc_required: Bool = true,  // NFC でない識別子は拒否
+  forbid_bidi_ctrl: Bool = true,   // Bidi 制御文字禁止
+  confusable_warn: Bool = true     // 見かけ紛らわし警告
+}
+
+fn identifier(profile: IdentifierProfile = DefaultId) -> Parser<Str> = todo

@@ -1,0 +1,91 @@
+name: Phase 4 Spec Core Suites
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  suites:
+    name: Run spec_core/practical suites
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Phase 4 suites
+        id: phase4-run
+        shell: bash
+        run: |
+          set -euo pipefail
+          spec_status=0
+          practical_status=0
+
+          set +e
+          bash tooling/examples/run_examples.sh --suite spec_core
+          spec_status=$?
+          bash tooling/examples/run_examples.sh --suite practical
+          practical_status=$?
+          set -e
+
+          echo "spec_core_status=${spec_status}" >> "${GITHUB_OUTPUT}"
+          echo "practical_status=${practical_status}" >> "${GITHUB_OUTPUT}"
+
+          if [[ ${spec_status} -ne 0 || ${practical_status} -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Run spec_core e2e regression suite
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test -p reml_e2e --test scenario -- --scenario spec-core
+
+      - name: Publish KPI summary
+        if: always()
+        shell: bash
+        env:
+          SPEC_STATUS: ${{ steps.phase4-run.outputs.spec_core_status }}
+          PRACTICAL_STATUS: ${{ steps.phase4-run.outputs.practical_status }}
+        run: |
+          set -euo pipefail
+          summary="${GITHUB_STEP_SUMMARY}"
+          {
+            echo "## Phase 4 スイート KPI"
+            echo ""
+            echo "- spec_core: exit ${SPEC_STATUS:-1}"
+            echo "- practical: exit ${PRACTICAL_STATUS:-1}"
+            echo ""
+          } >> "${summary}"
+
+          if [[ -f reports/spec-audit/ch4/spec-core-dashboard.md ]]; then
+            {
+              echo "### spec_core レポート"
+              sed -n '1,6p' reports/spec-audit/ch4/spec-core-dashboard.md
+              echo ""
+            } >> "${summary}"
+          fi
+
+          if [[ -f reports/spec-audit/ch4/practical-suite-index.md ]]; then
+            {
+              echo "### practical レポート"
+              sed -n '1,6p' reports/spec-audit/ch4/practical-suite-index.md
+              echo ""
+            } >> "${summary}"
+          fi
+
+      - name: Upload Phase 4 reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase4-spec-core-reports
+          path: |
+            reports/spec-audit/ch4/spec-core-dashboard.md
+            reports/spec-audit/ch4/practical-suite-index.md
+            reports/spec-audit/ch4/logs
+          if-no-files-found: ignore

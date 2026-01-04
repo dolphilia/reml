@@ -1,0 +1,19 @@
+// 1) 一文字（コードポイント）判定
+fn satisfy(pred: Char -> Bool) -> Parser<Char> = todo
+
+// 2) 固定文字列（最長一致、NFC 前提）
+fn string(s: Str) -> Parser<Str> = todo
+
+// 3) 1 文字でも良い “集合”
+fn oneOf(chars: Str) -> Parser<Char> = todo      // 任意の 1 文字が含まれていれば
+fn noneOf(chars: Str) -> Parser<Char> = todo     // いずれでもない
+
+// 4) 走査（※空成功を返さない版も提供）
+fn takeWhile(pred: Char -> Bool)  -> Parser<Str> = todo     // 0 文字以上
+fn takeWhile1(pred: Char -> Bool) -> Parser<Str> = todo     // 1 文字以上（空なら失敗）
+
+// 5) 直後を覗くだけ（非消費）
+fn peek() -> Parser<Option<Char>> = todo
+
+// 6) 行区切り（CR/LF/CRLF を LF へ正規化）
+fn lineEnding() -> Parser<()> = todo    // 行末を 1 回読む（非返却）

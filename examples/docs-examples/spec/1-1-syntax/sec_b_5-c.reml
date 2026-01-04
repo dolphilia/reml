@@ -1,0 +1,13 @@
+handle greet() with
+  handler Console {
+    operation log(msg, resume) {
+      println("LOG: " + msg)
+      resume(())
+    }
+    operation ask(prompt, resume) {
+      resume("Reml")
+    }
+    return value {
+      value
+    }
+  }

@@ -1,0 +1,9 @@
+// グラフ出力手順の確認に使う最小限の算術サンプル。
+
+fn sum_pair(a: i64, b: i64) -> i64 = a + b
+
+fn triple_product(a: i64, b: i64, c: i64) -> i64 =
+  sum_pair(a, b) * c
+
+pub fn main() -> i64 =
+  triple_product(3, 5, 2)

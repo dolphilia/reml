@@ -1,0 +1,15 @@
+pub type Ptr<T>
+pub type MutPtr<T>
+pub type Span<T>
+pub type UnsafeError
+pub type isize
+
+fn add<T>(ptr: Ptr<T>, count: usize) -> Ptr<T>                              // `unsafe`
+fn add_mut<T>(ptr: MutPtr<T>, count: usize) -> MutPtr<T>                    // `unsafe`
+fn offset<T>(ptr: Ptr<T>, delta: isize) -> Ptr<T>                           // `unsafe`
+fn byte_offset<T>(ptr: Ptr<T>, bytes: isize) -> Ptr<T>                      // `unsafe`
+
+fn span_from_raw_parts<T>(ptr: Ptr<T>, len: usize) -> Result<Span<T>, UnsafeError>
+fn span_split_at<T>(span: Span<T>, index: usize) -> Result<(Span<T>, Span<T>), UnsafeError>
+fn span_as_ptr<T>(span: Span<T>) -> Ptr<T>
+fn span_as_mut_ptr<T>(span: Span<T>) -> MutPtr<T>

@@ -1,0 +1,23 @@
+pub type LibraryHandle
+pub type FfiError
+pub type BoundLibrary
+pub type ForeignFunction
+pub type FfiArgs
+pub type FfiValue
+pub type FfiType
+pub type CallingConvention
+pub type FfiSandbox
+pub type AuditHandle
+pub type RuntimeCapability
+pub type Path
+
+fn auto_bind(library: LibraryHandle, name: Str, signature: FfiSignature) -> Result<TypedForeignFn, FfiError> // `effect {ffi}`
+fn auto_bind_all(library: LibraryHandle, spec: [FfiBinding]) -> Result<BoundLibrary, FfiError>               // `effect {ffi}`
+fn call_with_capability(cap: FfiCapability, symbol: ForeignFunction, args: FfiArgs) -> Result<FfiValue, FfiError> // `effect {ffi, security, audit}`
+
+pub type FfiSignature = { params: [FfiType], return_type: FfiType }
+pub type FfiBinding   = { name: Str, signature: FfiSignature, conventions: CallingConvention }
+pub type SymbolHandle = { library: LibraryHandle, function: ForeignFunction }
+pub type TypedForeignFn = { call: fn(FfiArgs) -> Result<FfiValue, FfiError>, symbol: ForeignFunction, metadata: FfiBinding }
+pub type FfiCapability = { call_function: fn(SymbolHandle, FfiArgs) -> Result<FfiValue, FfiError>, sandbox: Option<FfiSandbox>, audit: AuditHandle }
+pub type LibraryMetadata = { path: Path, preferred_convention: Option<CallingConvention>, required_capabilities: Set<RuntimeCapability> }

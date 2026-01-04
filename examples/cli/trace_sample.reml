@@ -1,0 +1,16 @@
+fn compute(a: i64, b: i64) -> i64 {
+  let prod = a * b
+  let sum = a + b
+  if sum > 10 then prod + sum else prod - sum
+}
+
+fn pipeline(base: i64) -> i64 {
+  let first = compute(base, base + 2)
+  let second = compute(base + 1, base + 3)
+  first + second
+}
+
+fn main() -> i64 {
+  let result = pipeline(4)
+  result
+}

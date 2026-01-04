@@ -1,0 +1,11 @@
+fn spawn_pipeline(cmd: Command, audit: AuditSink) -> Result<ProcessHandle, ProcessError> {
+  let ctx = AuditContext::new("process", cmd.program.to_string())?;
+  let proc_handle = ProcessCapability::spawn_process(cmd.clone(), Environment::default())?;
+  ctx.log(
+    "process.spawned",
+    Map::empty()
+      .insert("pid", proc_handle.pid)
+      .insert("args", cmd.args),
+  )?;
+  Ok(proc_handle)
+}

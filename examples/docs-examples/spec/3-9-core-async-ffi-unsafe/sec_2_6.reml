@@ -1,0 +1,28 @@
+pub type Ptr<T>
+pub type Layout
+pub type FnPtr<Args, Ret>
+pub type VoidPtr
+pub type Span<T>
+pub type FfiError
+pub type MutPtr<T>
+pub type u8
+
+pub type ForeignPtr<T> = {
+  raw: Ptr<T>,
+  layout: Option<Layout>,
+  release: Option<FnPtr<(VoidPtr,), ()>>,
+}
+
+pub type ForeignBuffer = {
+  span: Span<u8>,
+  release: Option<FnPtr<(VoidPtr,), ()>>,
+  ownership: Ownership,
+}
+
+pub enum Ownership = Borrowed | Owned | Transferred
+
+fn wrap_foreign_ptr<T>(raw: Ptr<T>, layout: Option<Layout>) -> Result<ForeignPtr<T>, FfiError>      // `effect {unsafe}`
+fn borrow_span<T>(raw: Ptr<T>, len: usize) -> Result<Span<T>, FfiError>                             // `effect {unsafe}`
+fn acquire_mut_span<T>(raw: MutPtr<T>, len: usize) -> Result<Span<T>, FfiError>                     // `effect {unsafe}`
+fn release_foreign_ptr<T>(ptr: ForeignPtr<T>) -> Result<(), FfiError>                               // `effect {unsafe, memory}`
+fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Result<(), FfiError>   // `effect {unsafe, memory}`

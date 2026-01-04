@@ -1,0 +1,7 @@
+pub type BenchmarkHarness = {
+  input_generator: fn() -> Json,                     // `effect {runtime}`
+  iterations: u32,
+  warmup: u32,
+  metrics: List<MetricPoint<Float>>,                // `@pure`
+  trace: Option<TraceSink>,
+}

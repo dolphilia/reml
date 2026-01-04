@@ -1,0 +1,20 @@
+[package]
+name = "reml_e2e"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "reml_e2e"
+path = "src/lib.rs"
+test = false
+doctest = false
+bench = false
+
+[dependencies]
+anyhow = "1.0"
+
+[[test]]
+name = "scenario"
+path = "tests/scenario.rs"
+harness = false

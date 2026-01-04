@@ -1,0 +1,35 @@
+[package]
+name = "reml_text_benchmarks"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+# rustc 1.69.0 で動作させるため、criterion は 0.4 系へ固定し既定の rayon 依存を無効化する
+criterion = { version = "0.4", default-features = false, features = ["cargo_bench_support"] }
+reml_runtime = { path = "../compiler/runtime" }
+
+[patch.crates-io]
+# crates.io から引ける最新 `half` は rustc 1.81+ を要求するため、v2.2.1 を Git タグから取得する
+half = { git = "https://github.com/starkat99/half-rs", tag = "v2.2.1" }
+
+
+[[bench]]
+name = "text_normalization"
+path = "text/normalization.rs"
+harness = false
+
+[[bench]]
+name = "text_grapheme"
+path = "text/grapheme.rs"
+harness = false
+
+[[bench]]
+name = "text_builder"
+path = "text/builder.rs"
+harness = false
+
+[[bench]]
+name = "parse_profile"
+path = "parse/profile.rs"
+harness = false

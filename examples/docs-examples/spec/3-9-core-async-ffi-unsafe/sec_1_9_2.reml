@@ -1,0 +1,23 @@
+pub type Codec<S, R>
+pub type Bytes
+pub type TransportMetrics
+pub type ActorSystem
+pub type AsyncError
+pub type NodeId
+pub type ActorId
+pub type ActorRef<T>
+
+pub type TransportHandle = {
+  name: Str,
+  codec: Codec<Bytes, Bytes>,
+  secure: TransportSecurity,
+  metrics: TransportMetrics,
+}
+
+fn register_transport(system: &ActorSystem, transport: TransportHandle)
+  -> Result<(), AsyncError>                                             // `effect {io.async, audit}`
+
+fn route(system: &ActorSystem, node: NodeId, actor: ActorId)
+  -> Result<ActorRef<Bytes>, AsyncError>                                // `effect {io.async}`
+
+pub enum TransportSecurity = None | TLS { alpn: Str, pin: Option<Bytes> }

@@ -1,0 +1,13 @@
+pub type CapabilityDescriptor = {
+  id: CapabilityId,
+  stage: StageId,
+  effect_scope: Set<EffectTag>,
+  provider: CapabilityProvider,
+  manifest_path: Option<Path>,
+  last_verified_at: Option<Timestamp>,
+}
+
+pub enum CapabilityProvider = Core
+  | Plugin { package: Str, version: Option<SemVer> }
+  | ExternalBridge { name: Str, version: Option<SemVer> }
+  | RuntimeComponent { name: Str };

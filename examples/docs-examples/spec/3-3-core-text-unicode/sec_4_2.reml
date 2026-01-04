@@ -1,0 +1,7 @@
+enum TextPattern = Literal(Str) | GraphemeSeq(List<Grapheme>) | Regex(RegexHandle)
+
+type RegexHandle
+
+fn find(str: Str, pat: TextPattern) -> Option<ByteIndex>         // `effect {regex}`
+fn find_grapheme(str: Str, pat: TextPattern) -> Option<GraphemeIndex> // `effect {regex}`
+fn replace(str: Str, pat: TextPattern, replacement: Str) -> Result<String, UnicodeError> // `effect {unicode, mem}`

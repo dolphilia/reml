@@ -1,0 +1,49 @@
+use Core;
+use Core.IO;
+use Core.Path;
+use Core.Numeric;
+use Core.Diagnostics;
+
+type CopyReport = new {
+  src: Path,
+  dst: Path,
+  bytes: u64,
+  elapsed_ms: f64,
+}
+
+fn copy_file(src: Str, dst: Str, audit: AuditSink) -> Result<CopyReport, Diagnostic> =
+{
+  let src_path = path(src)?;
+  let dst_path = path(dst)?;
+
+  let sandboxed_dst =
+    sandbox_path(dst_path.clone(), path("/var/tmp")?)
+      .map_err(|err| err.into_diagnostic())?;
+
+  let started = Core.Numeric.now()?;
+
+  let bytes = with_reader(src_path.clone(), |reader| {
+    with_writer(sandboxed_dst.clone(), |writer| {
+      // Reader / Writer は IoContext に effect {io, io.blocking} を自動記録する
+      copy(reader, writer)
+    })
+  })?;
+
+  let elapsed = Core.Numeric.duration_between(started, Core.Numeric.now()?)?;
+
+  log_io(
+    "examples.core_io.file_copy",
+    Some(sandboxed_dst.clone()),
+    elapsed,
+    audit,
+  )?;
+
+  Ok(
+    CopyReport({
+      src = src_path,
+      dst = sandboxed_dst,
+      bytes = bytes,
+      elapsed_ms = elapsed.as_milliseconds(),
+    }),
+  )
+}

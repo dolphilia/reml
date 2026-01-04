@@ -1,0 +1,35 @@
+module Examples.DslParadigm.MiniRuby.Basic
+
+// Core.Dsl.Object / Core.Dsl.Gc を利用する最小例。
+use Core.Prelude
+use Core.Dsl.Object
+use Core.Dsl.Gc
+
+type RubyValue =
+  | StrValue(GcRef<Str>)
+  | IntValue(Int)
+
+let string_class = Object.class_builder("String")
+  .method("length", |_, _| { Ok(IntValue(5)) })
+  .build()
+
+fn run_string_length(scope: RootScope) -> Result<Int, DispatchError> {
+  match Gc.alloc(scope, "remly") with
+    | Ok(text) -> {
+      let obj = { table: string_class, payload: StrValue(text), shape_id: 1 }
+      let value = Object.call(obj, "length", [], None)
+      match value with
+        | IntValue(size) -> Ok(size)
+        | _ -> Ok(0)
+    }
+    | Err(_) -> Err({ kind: DispatchErrorKind::RuntimeFailure, message: "gc_failed" })
+}
+
+fn main() -> Int {
+  let heap = Gc.new(GcStrategy::Arena)
+  Gc.with_scope(heap, |scope| {
+    match run_string_length(scope) with
+    | Ok(value) -> value
+    | Err(_) -> 0
+  })
+}

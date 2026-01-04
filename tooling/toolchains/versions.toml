@@ -1,0 +1,23 @@
+# Reml クロスツールチェーン バージョン管理ファイル
+
+# ターゲットプロファイル
+[target]
+triple = "x86_64-unknown-linux-gnu"
+glibc = "2.37"
+
+# Homebrew 依存パッケージ
+[homebrew]
+llvm = "18.1.8"
+lld = "21.1.2"
+binutils = "2.45"
+gnu_tar = "1.35"
+coreutils = "9.8"
+pkg_config = "2.4.3"
+zstd = "1.5.7"
+
+# sysroot アーカイブ（cache/ ディレクトリ）
+[archives.debian_bookworm_x86_64]
+filename = "debian-bookworm-x86_64.tar.zst"
+sha256 = "49b9ee8917f7235b6f20aaff3f983d616c53f29354ad180782ed024186df5452"
+source = "https://deb.debian.org/debian/"
+notes = "Debian 12 (bookworm) x86_64 sysroot。sha256 を取得したら更新し、0-4-risk-handling.md に記録する。"

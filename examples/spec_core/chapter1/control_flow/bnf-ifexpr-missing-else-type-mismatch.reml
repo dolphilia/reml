@@ -1,0 +1,16 @@
+module Spec.Core.Chapter1.ControlFlow.IfExprMissingElse
+
+use Core.Prelude
+
+// BNF: IfExpr（docs/spec/1-5-formal-grammar-bnf.md §4）
+// else を省略したまま Int を返そうとしており、Unit 以外の戻り値は許可されない想定の診断例。
+fn choose(flag: Bool) -> Int {
+  if flag then {
+    1
+  }
+  0
+}
+
+fn main() -> Int {
+  choose(true)
+}

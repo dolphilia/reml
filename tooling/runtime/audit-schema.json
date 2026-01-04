@@ -1,0 +1,282 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reml.dev/schemas/audit-envelope.json",
+  "title": "Reml AuditEnvelope Schema",
+  "description": "監査ログ `AuditEnvelope.metadata` の正式スキーマ。Phase 2-3 で導入された FFI ブリッジ情報および Phase 2-4 の型クラス辞書メタデータを含み、効果ステージ・辞書解決・ブリッジ契約の整合性を保証する。",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "timestamp": {
+      "description": "ISO8601 形式のタイムスタンプ",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T"
+    },
+    "category": {
+      "description": "監査イベントカテゴリ",
+      "type": "string"
+    },
+    "metadata": {
+      "description": "`AuditEnvelope.metadata` に格納される任意のフィールド",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "effect": {
+          "description": "効果システム関連の監査メタデータ",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "typeclass": {
+          "description": "型クラス辞書解決に関する監査メタデータ",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "trait",
+            "type_args",
+            "constraint",
+            "resolution_state",
+            "dictionary",
+            "candidates",
+            "pending",
+            "generalized_typevars",
+            "graph"
+          ],
+          "properties": {
+            "trait": {
+              "description": "対象となるトレイト名",
+              "type": "string"
+            },
+            "type_args": {
+              "description": "制約に渡された型引数のリスト",
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "constraint": {
+              "description": "文字列表現された制約（例: Iterator<T, U>）",
+              "type": "string"
+            },
+            "resolution_state": {
+              "description": "解決状態（resolved, stage_mismatch, ambiguous など）",
+              "type": "string"
+            },
+            "dictionary": {
+              "description": "解決された辞書、または欠落時のプレースホルダ",
+              "$ref": "#/definitions/typeclassDictionary"
+            },
+            "candidates": {
+              "description": "候補辞書の一覧（曖昧性調査用）",
+              "type": "array",
+              "items": { "$ref": "#/definitions/typeclassDictionary" }
+            },
+            "pending": {
+              "description": "未解決・保留中の制約（循環検出など）",
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "generalized_typevars": {
+              "description": "一般化された型変数や未解決の型変数",
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "graph": {
+              "description": "制約グラフに関する追加情報",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [ "export_dot" ],
+              "properties": {
+                "export_dot": {
+                  "description": "制約グラフを DOT 形式で出力したパス（存在しない場合は null）",
+                  "type": [ "string", "null" ]
+                }
+              }
+            }
+          }
+        },
+        "bridge": {
+          "description": "FFI ブリッジに関する監査メタデータ（Phase 2-3 で導入）",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "target",
+            "arch",
+            "abi",
+            "audit_pass_rate",
+            "ownership",
+            "extern_symbol",
+            "platform",
+            "return"
+          ],
+          "properties": {
+            "status": {
+              "description": "ブリッジ呼び出しの結果（ok, failure, leak など）",
+              "type": "string"
+            },
+            "target": {
+              "description": "ターゲット triple 文字列（例: arm64-apple-darwin）",
+              "type": "string"
+            },
+            "arch": {
+              "description": "アーキテクチャ識別子（arm64, x86_64 など）",
+              "type": "string"
+            },
+            "abi": {
+              "description": "呼出規約を示す識別子（system_v, msvc, aapcs64 など）",
+              "type": "string"
+            },
+            "expected_abi": {
+              "description": "Typer が期待した ABI（比較用）",
+              "type": "string"
+            },
+            "ownership": {
+              "description": "所有権契約（borrowed, transferred, reference など）",
+              "type": "string"
+            },
+            "extern_symbol": {
+              "description": "リンク対象のシンボル名",
+              "type": "string"
+            },
+            "extern_name": {
+              "description": "ソース上で指定されたシンボル名（alias を含む）",
+              "type": "string"
+            },
+            "link_name": {
+              "description": "シンボル名が別名を持つ場合の alias",
+              "type": "string"
+            },
+            "library": {
+              "description": "リンク対象のライブラリ名（必要に応じて）",
+              "type": "string"
+            },
+            "callconv": {
+              "description": "細分化された呼出規約名。`abi` と同一なら省略可能。",
+              "type": "string"
+            },
+            "audit_pass_rate": {
+              "description": "ブリッジ監査で収集した成功率メトリクス（0.0〜1.0）。",
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            "platform": {
+              "description": "監査上で利用するプラットフォーム識別子（例: windows-msvc-x64, macos-arm64）",
+              "type": "string"
+            },
+            "block_target": {
+              "description": "extern ブロック全体で宣言された target",
+              "type": "string"
+            },
+            "return": {
+              "description": "返り値所有権および包み処理の監査情報",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "ownership",
+                "status",
+                "wrap",
+                "release_handler",
+                "rc_adjustment"
+              ],
+              "properties": {
+                "ownership": {
+                  "description": "返り値の所有権（borrowed, transferred, none など）",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "返り値処理の結果（wrap, release, failure など）",
+                  "type": "string"
+                },
+                "wrap": {
+                  "description": "返り値を包む際に使用したヘルパ（例: wrap_foreign_ptr）",
+                  "type": "string"
+                },
+                "release_handler": {
+                  "description": "移譲時に呼び出した解放ハンドラ（例: dec_ref, reml_ffi_release_transferred）",
+                  "type": "string"
+                },
+                "rc_adjustment": {
+                  "description": "参照カウントの増減（例: +1, -1, none）",
+                  "type": "string"
+                }
+              }
+            },
+            "diagnostics": {
+              "description": "Typer で検出した契約違反の補助情報",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true,
+                "required": [
+                  "code",
+                  "message"
+                ],
+                "properties": {
+                  "code": {
+                    "description": "診断コード（例: ffi.contract.ownership_mismatch）",
+                    "type": "string"
+                  },
+                  "message": {
+                    "description": "診断メッセージ",
+                    "type": "string"
+                  },
+                  "span": {
+                    "description": "ソースコード位置情報",
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "start",
+                      "end"
+                    ],
+                    "properties": {
+                      "start": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "end": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "typeclassDictionary": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "kind",
+        "identifier",
+        "trait",
+        "type_args",
+        "repr"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": [ "string", "null" ]
+        },
+        "trait": {
+          "type": [ "string", "null" ]
+        },
+        "type_args": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "repr": {
+          "type": [ "string", "null" ]
+        },
+        "parameter_index": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

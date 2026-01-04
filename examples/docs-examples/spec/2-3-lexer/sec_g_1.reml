@@ -1,0 +1,21 @@
+type ConfigTriviaProfile = {
+  line: List<Str> = ["//"],
+  block: List<CommentPair> = [CommentPair("/*", "*/", nested=false)],
+  shebang: Bool = false,
+  hash_inline: Bool = false,
+  doc_comment: Option<Str> = None,
+}
+
+type CommentPair = {
+  start: Str,
+  end: Str,
+  nested: Bool = true,
+}
+
+const ConfigTriviaProfile::strict_json: ConfigTriviaProfile = todo
+const ConfigTriviaProfile::json_relaxed: ConfigTriviaProfile = todo
+const ConfigTriviaProfile::toml_relaxed: ConfigTriviaProfile = todo
+
+fn config_trivia(profile: ConfigTriviaProfile) -> Parser<()> = todo
+fn config_lexeme<A>(profile: ConfigTriviaProfile, p: Parser<A>) -> Parser<A> = todo
+fn config_symbol(profile: ConfigTriviaProfile, s: Str) -> Parser<()> = todo

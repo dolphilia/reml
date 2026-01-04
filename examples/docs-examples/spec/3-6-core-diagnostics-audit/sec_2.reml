@@ -1,0 +1,22 @@
+pub type Diagnostic
+pub type Span
+pub type Severity
+pub type DiagnosticDomain
+pub type Hint
+pub type AuditEnvelope
+
+fn diagnostic(message: Str) -> DiagnosticBuilder                     // `@pure`
+
+pub type DiagnosticBuilder = {
+  diag: Diagnostic,
+}
+
+impl DiagnosticBuilder {
+  fn with_span(self, span: Span) -> Self = todo                       // `@pure`
+  fn with_severity(self, severity: Severity) -> Self = todo           // `@pure`
+  fn with_domain(self, domain: DiagnosticDomain) -> Self = todo       // `@pure`
+  fn with_code(self, code: Str) -> Self = todo                        // `@pure`
+  fn add_hint(self, hint: Hint) -> Self = todo                        // `@pure`
+  fn attach_audit(self, audit: AuditEnvelope) -> Self = todo          // `@pure`
+  fn finish(self) -> Diagnostic = todo                                // `@pure`
+}

@@ -1,0 +1,21 @@
+pub type CapabilityBridgeRecord = {
+  id: CapabilityId,
+  stage: StageRequirement,
+  effect_scope: Set<EffectTag>,
+  aliases: List<Str>,
+}
+
+pub type CapabilityBridgeManifest = {
+  capabilities: List<CapabilityBridgeRecord>,
+  stage_bounds: Option<DslStageBounds>,
+}
+
+pub type CapabilityBridgeSnapshot = {
+  requirements: List<DslCapabilityRequirement>,
+  stage_bounds: DslStageBounds,
+}
+
+fn transform_capability_manifest_to_reml(
+  manifest: CapabilityBridgeManifest,
+  defaults: DslStageBounds
+) -> Result<CapabilityBridgeSnapshot, CapabilityError>              // `@pure`

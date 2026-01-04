@@ -1,0 +1,64 @@
+<mxfile host="app.diagrams.net" modified="2024-05-10T00:00:00.000Z" agent="Mozilla/5.0" version="22.0.5" editor="svg">
+  <diagram id="core-numeric-time-deps" name="Core Numeric &amp; Time Dependencies">
+    <mxGraphModel dx="1180" dy="720" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="collections" value="Core.Collections&#xa;Spec: docs/spec/3-2-core-collections.md&#xa;Impl: compiler/runtime/src/collections/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="60" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="iter" value="Core.Iter&#xa;Spec: docs/spec/3-1-core-prelude-iteration.md&#xa;Impl: compiler/runtime/src/prelude/iter/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="320" y="60" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="diagnostics" value="Core.Diagnostics&#xa;Spec: docs/spec/3-6-core-diagnostics-audit.md&#xa;Impl: compiler/runtime/src/prelude/ensure.rs (現行)&#xa;+ planned diagnostics/metric_point.rs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="580" y="60" width="260" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="runtime" value="Core.Runtime Capability&#xa;Spec: docs/spec/3-8-core-runtime-capability.md&#xa;Impl: compiler/runtime/src/registry.rs / stage.rs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="880" y="60" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="numeric" value="Core.Numeric API&#xa;Spec: docs/spec/3-4-core-numeric-time.md §1-2&#xa;Impl: compiler/runtime/src/numeric/ (planned)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="220" y="230" width="260" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="time" value="Core.Time API&#xa;Spec: docs/spec/3-4-core-numeric-time.md §3&#xa;Impl: compiler/runtime/src/time/ (planned)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="580" y="230" width="260" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="audit" value="MetricPoint / AuditSink&#xa;Spec: docs/spec/3-6-core-diagnostics-audit.md §4&#xa;Impl: compiler/runtime/src/diagnostics/metric_point.rs (planned)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="220" y="400" width="260" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="io" value="Core.IO / Env&#xa;Spec: docs/spec/3-5-core-io-path.md&#xa;Impl: compiler/runtime/src/io/ + runtime adapters" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="580" y="400" width="260" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-collections-numeric" value="List/Map feed statistics / histogram builders" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="collections" target="numeric">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-iter-numeric" value="IterNumericExt + Collector bridges" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="iter" target="numeric">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-diagnostics-numeric" value="StatisticsError → Diagnostic" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="diagnostics" target="numeric">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-runtime-numeric" value="CapabilityStage &amp; StageRequirement" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="runtime" target="numeric">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-diagnostics-time" value="TimeError → Diagnostic" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="diagnostics" target="time">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-runtime-time" value="Capability time.now / time.sleep" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="runtime" target="time">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-time-io" value="Timestamp ⇔ IO adapters / Env::clock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="time" target="io">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-numeric-audit" value="MetricPoint → AuditSink&#xa;(effect {audit})" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="numeric" target="audit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-time-audit" value="Duration latency metrics" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="time" target="audit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-iter-time" value="Iter timeline streaming" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;dashed=1;html=1;" edge="1" parent="1" source="iter" target="time">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

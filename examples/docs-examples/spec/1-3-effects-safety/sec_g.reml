@@ -1,0 +1,6 @@
+fn write(path: String, bytes: [u8]) -> Result<(), Error> = {
+  let f = File.open(path, "wb")?
+  f.writeAll(bytes)?
+  defer f.close()
+  Ok(())
+}

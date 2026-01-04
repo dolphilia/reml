@@ -1,0 +1,8 @@
+module Spec.Core.Chapter1.ModuleUse.SuperDepth
+
+use super.Core.Prelude
+
+// BNF: UseDecl（docs/spec/1-5-formal-grammar-bnf.md §1） invalid case
+fn main() -> Str {
+  "super at root should error"
+}

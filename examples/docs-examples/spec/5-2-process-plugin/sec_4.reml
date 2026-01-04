@@ -1,0 +1,10 @@
+pub type ThreadStart = fn(ThreadHandle) -> Result<(), ThreadError>
+
+pub type ThreadOptions = {
+  name: Option<Str>,
+  stack_size: Option<usize>,
+  detached: Bool,
+  priority: Option<ThreadPriority>,
+}
+
+pub enum ThreadPriority = Low | Normal | High | Realtime

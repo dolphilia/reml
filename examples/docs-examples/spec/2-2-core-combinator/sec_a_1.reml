@@ -1,0 +1,5 @@
+fn ok<T>(v: T) -> Parser<T> = todo                    // 成功・非消費
+fn fail(msg: String = "") -> Parser<Never> = todo     // 失敗・非消費（期待集合は空）
+fn eof() -> Parser<()> = todo                         // 入力末尾のみ成功（非消費）
+fn rule<T>(name: String, p: Parser<T>) -> Parser<T> = todo // 名前/ID 付与（Packrat/診断）
+fn label<T>(name: String, p: Parser<T>) -> Parser<T> = todo // 失敗時の期待名を差し替え

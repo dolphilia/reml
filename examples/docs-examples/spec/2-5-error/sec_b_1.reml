@@ -1,0 +1,2 @@
+fn expected(at: Span, xs: Set<Expectation>) -> ParseError = todo
+fn custom(at: Span, msg: Str) -> ParseError = todo

@@ -1,0 +1,228 @@
+module samples.language_impl_samples.prelude_guard_template
+
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.Diagnostics as Diag
+use ::Core.Runtime as Runtime
+use ::Core.Text.String as Str
+
+/// Prelude Guard (`ensure`/`ensure_not_null`) を用いたテンプレート DSL の検証例。
+///
+/// **検証対象**:
+/// - 3-1-core-prelude-iteration.md §2.2 `ensure`/`ensure_not_null`
+/// - 3-6-core-diagnostics-audit.md §5.2 `core.prelude.ensure_failed` の監査メタデータ
+/// - `Result` 伝播 (`?`) と DSL パイプラインの統合
+///
+/// **シナリオ**:
+/// 1. ステージ要件・ポインタ種別・値存在の 3 点を `ensure` でチェック
+/// 2. `Map.get` が返す `Option` を `ensure_not_null` で即時 `Result` へ昇格
+/// 3. 失敗時は `core.prelude.guard.*` メタデータを付与した `Diagnostic` で早期終了
+
+type TemplateValue =
+  | Literal(Str)
+  | Sequence(List<TemplateValue>)
+
+type TemplateSlot = {
+  name: Str,
+  description: Str,
+  required_stage: Runtime.StageId,
+  pointer_class: Str,
+  fallback: Option<TemplateValue>,
+}
+
+type TemplateContext = {
+  namespace: Str,
+  stage: Runtime.StageId,
+  pointer_class: Str,
+  bindings: Map<Str, TemplateValue>,
+}
+
+type RenderedSlot = {
+  slot_name: Str,
+  rendered: TemplateValue,
+}
+
+type TemplatePreview = {
+  namespace: Str,
+  stage: Runtime.StageId,
+  slots: List<RenderedSlot>,
+}
+
+/// DSL が要求するすべてのスロットを検証し、`Result` で安全に返す。 // @pure
+fn render_preview(
+  ctx: TemplateContext,
+  slots: List<TemplateSlot>
+) -> Result<TemplatePreview, Diag.Diagnostic>
+  = do {
+    let rendered = List.fold(
+      slots,
+      Result.ok(List.empty()),
+      |acc_res, slot| {
+        match acc_res with
+        | Err(err) -> Result.err(err)
+        | Ok(acc) -> {
+          let next_slot = guard_slot(slot, ctx)?;
+          Result.ok(List.push_back(acc, next_slot))
+        }
+      }
+    )?;
+
+    Ok(TemplatePreview {
+      namespace: ctx.namespace,
+      stage: ctx.stage,
+      slots: rendered,
+    })
+  }
+
+/// 個別スロットの検証ロジック。 // @pure
+fn guard_slot(
+  slot: TemplateSlot,
+  ctx: TemplateContext
+) -> Result<RenderedSlot, Diag.Diagnostic>
+  = do {
+    ensure(
+      slot.name != "",
+      || guard_violation(
+        "ensure",
+        slot,
+        ctx,
+        "slot name must not be empty"
+      )
+    )?;
+
+    ensure(
+      slot.pointer_class == ctx.pointer_class,
+      || guard_violation(
+        "ensure",
+        slot,
+        ctx,
+        format(
+          "pointer class `{slot.pointer_class}` must match namespace `{ctx.pointer_class}`"
+        )
+      )
+    )?;
+
+    ensure(
+      stage_allows(ctx.stage, slot.required_stage),
+      || guard_violation(
+        "ensure",
+        slot,
+        ctx,
+        format(
+          "stage `{stage_label(ctx.stage)}` does not satisfy `{stage_label(slot.required_stage)}`"
+        )
+      )
+    )?;
+
+    let candidate = match Map.get(ctx.bindings, slot.name) with
+      | Some(value) -> Some(value)
+      | None -> slot.fallback;
+
+    let value = ensure_not_null(
+      candidate,
+      || guard_violation(
+        "ensure_not_null",
+        slot,
+        ctx,
+        format("binding `{slot.name}` is missing and no fallback is defined")
+      )
+    )?;
+
+    Ok(RenderedSlot {
+      slot_name: slot.name,
+      rendered: value,
+    })
+  }
+
+/// `ensure` 違反を `Diagnostic` へ正規化。 // @pure
+fn guard_violation(
+  guard_kind: Str,
+  slot: TemplateSlot,
+  ctx: TemplateContext,
+  message: Str
+) -> Diag.Diagnostic
+  = do {
+    let metadata = Map.from_list([
+      ("core.prelude.guard.kind", Json.String(guard_kind)),
+      ("core.prelude.guard.trigger", Json.String(slot.name)),
+      ("core.prelude.guard.pointer_class", Json.String(slot.pointer_class)),
+      ("core.prelude.guard.stage.required", Json.String(stage_label(slot.required_stage))),
+      ("core.prelude.guard.stage.actual", Json.String(stage_label(ctx.stage))),
+      ("template.namespace", Json.String(ctx.namespace)),
+    ]);
+
+    Diag.diagnostic(message)
+      |> Diag.with_severity(Diag.Severity.Error)
+      |> Diag.with_domain(Diag.DiagnosticDomain.Runtime)
+      |> Diag.with_code("core.prelude.ensure_failed")
+      |> Diag.attach_audit(Diag.AuditEnvelope {
+        audit_id: None,
+        change_set: None,
+        capability: None,
+        metadata,
+      })
+      |> Diag.finish()
+  }
+
+/// Stage の順序比較。 // @pure
+fn stage_allows(
+  actual: Runtime.StageId,
+  required: Runtime.StageId
+) -> Bool
+  = stage_rank(actual) >= stage_rank(required)
+
+fn stage_rank(stage: Runtime.StageId) -> Int  // @pure
+  = match stage {
+    | Runtime.StageId.Experimental -> 0
+    | Runtime.StageId.Beta -> 1
+    | Runtime.StageId.Stable -> 2
+  }
+
+fn stage_label(stage: Runtime.StageId) -> Str  // @pure
+  = match stage {
+    | Runtime.StageId.Experimental -> "Experimental"
+    | Runtime.StageId.Beta -> "Beta"
+    | Runtime.StageId.Stable -> "Stable"
+  }
+
+/// サンプルデータを使った検証フロー。 // effect {io}
+fn preview_guard_demo() -> Result<(), Diag.Diagnostic>
+  = do {
+    let ctx = TemplateContext {
+      namespace: "marketing.hero",
+      stage: Runtime.StageId.Beta,
+      pointer_class: "template",
+      bindings: Map.from_list([
+        ("headline", Literal("Reml Standard Library")),
+        ("cta", Literal("Start audit-safe parsing")),
+      ]),
+    };
+
+    let slots = [
+      TemplateSlot {
+        name: "headline",
+        description: "Hero headline",
+        required_stage: Runtime.StageId.Experimental,
+        pointer_class: "template",
+        fallback: None,
+      },
+      TemplateSlot {
+        name: "cta",
+        description: "Primary CTA",
+        required_stage: Runtime.StageId.Beta,
+        pointer_class: "template",
+        fallback: Some(Literal("Learn more")),
+      },
+      TemplateSlot {
+        name: "partner_logo",
+        description: "Optional badge",
+        required_stage: Runtime.StageId.Stable,
+        pointer_class: "asset",
+        fallback: Some(Literal("default.svg")),
+      },
+    ];
+
+    // `partner_logo` は pointer_class 不一致で `ensure` が発火。
+    let _preview = render_preview(ctx, slots)?;
+    Ok(())
+  }

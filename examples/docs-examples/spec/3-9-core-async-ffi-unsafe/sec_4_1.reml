@@ -1,0 +1,21 @@
+pub type Ptr<T>
+pub type CodeLocation
+pub type u8
+pub type isize
+
+fn verify_memory_safety(ptr: Ptr<u8>, size: usize) -> Result<(), UnsafeError>  // `effect {unsafe}`
+fn check_alignment<T>(ptr: Ptr<T>) -> Bool                                     // `effect {unsafe}`
+fn bounds_check(ptr: Ptr<u8>, offset: isize, bounds: (usize, usize)) -> Result<(), UnsafeError> // `effect {unsafe}`
+
+pub type UnsafeError = {
+  kind: UnsafeErrorKind,
+  message: Str,
+  location: Option<CodeLocation>,
+}
+
+pub enum UnsafeErrorKind = NullPointer
+  | OutOfBounds
+  | InvalidAlignment
+  | UseAfterFree
+  | DoubleFree
+  | MemoryLeak

@@ -1,0 +1,1 @@
+pub type CapabilitySet = Set<CapabilityId>

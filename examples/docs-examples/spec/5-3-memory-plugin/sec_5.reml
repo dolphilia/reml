@@ -1,0 +1,1 @@
+fn log_mmap(request: MmapRequest, result: Result<MappedMemory, MemoryError>, audit: AuditSink) -> Result<(), Diagnostic> // effect {audit}

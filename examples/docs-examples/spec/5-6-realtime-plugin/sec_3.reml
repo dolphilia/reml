@@ -1,0 +1,6 @@
+pub type RealTimeError = {
+  kind: RealTimeErrorKind,
+  message: Str,
+}
+
+pub enum RealTimeErrorKind = Unsupported | PermissionDenied | InvalidPolicy | TimerOverflow | DeadlineMissed

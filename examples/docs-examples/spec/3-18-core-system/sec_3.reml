@@ -1,0 +1,57 @@
+module Core.System.Process
+
+pub type ProcessId = Int
+pub type ExitStatus = Int
+pub type Duration
+pub type Timestamp
+pub type Path
+pub type Signal
+
+pub type Command = {
+  program: Path,
+  args: List<Str>,
+  cwd: Option<Path>,
+  env: Option<Map<Str, Str>>,
+}
+
+pub type SpawnOptions = {
+  stdin: Option<Path>,
+  stdout: Option<Path>,
+  stderr: Option<Path>,
+  detach: Bool,
+}
+
+pub type ProcessHandle = {
+  pid: ProcessId,
+  started_at: Option<Timestamp>,
+}
+
+pub type ThreadHandle = Int
+pub type ThreadStart = fn() -> Result<(), ThreadError>
+
+pub type ThreadOptions = {
+  name: Option<Str>,
+  stack_size: Option<Int>,
+  detached: Bool,
+}
+
+pub enum ThreadErrorKind = CreationFailed | JoinFailed | Unsupported
+
+pub type ThreadError = {
+  kind: ThreadErrorKind,
+  message: Str,
+}
+
+pub enum ProcessErrorKind = SpawnFailed | PermissionDenied | TimedOut | TerminatedBySignal | Unsupported
+
+pub type ProcessError = {
+  kind: ProcessErrorKind,
+  message: Str,
+  context: Option<Str>,
+}
+
+fn spawn(command: Command, options: SpawnOptions) -> Result<ProcessHandle, ProcessError> // effect {process}
+fn wait(proc_handle: ProcessHandle, timeout: Option<Duration>) -> Result<ExitStatus, ProcessError> // effect {process, io.blocking}
+fn kill(proc_handle: ProcessHandle, signal: Signal) -> Result<(), ProcessError> // effect {process, signal}
+fn create_thread(start: ThreadStart, options: ThreadOptions) -> Result<ThreadHandle, ThreadError> // effect {thread}
+fn join_thread(thread_handle: ThreadHandle, timeout: Option<Duration>) -> Result<(), ThreadError> // effect {thread, io.blocking}

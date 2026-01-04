@@ -1,0 +1,13 @@
+// examples/core_diagnostics/pipeline_branch.reml
+use Core;
+
+fn choose(flag: Bool) -> Int =
+  if flag then 1 else -1
+
+fn pipeline_branch(flag: Bool) -> Int =
+  {
+    let base = 10;
+    base + choose(flag)
+  }
+
+fn main() -> Int = pipeline_branch(true)

@@ -1,0 +1,395 @@
+// Pratt Parser 実装
+// 演算子優先度解析の古典的手法
+// 2-4-op-builder.md のコンビネーターアプローチと比較
+
+use Core.{Result, Option, List, String, Int, IO}
+use Core.Result.{Ok, Err}
+use Core.Option.{Some, None}
+
+// トークン型定義
+type Token =
+  | Number(Int)
+  | Plus
+  | Minus
+  | Star
+  | Slash
+  | Power
+  | LParen
+  | RParen
+  | EOF
+
+// 式の抽象構文木
+type Expr =
+  | Num(Int)
+  | Binary(op: BinOp, left: Expr, right: Expr)
+  | Unary(op: UnOp, expr: Expr)
+
+type BinOp = Add | Sub | Mul | Div | Pow
+
+type UnOp = Neg | Pos
+
+// 字句解析器の状態
+type LexerState = {
+  input: String,
+  pos: Int,
+}
+
+// パーサーの状態
+type ParserState = {
+  tokens: List<Token>,
+  pos: Int,
+}
+
+// エラー型
+type ParseError = String
+
+// 束縛力（優先度）
+// left: 左束縛力、right: 右束縛力
+type BindingPower = { left: Int, right: Int }
+
+// 字句解析
+fn lexer(input: String) -> Result<List<Token>, ParseError> {
+  fn go(state: LexerState, acc: List<Token>) -> Result<List<Token>, ParseError> {
+    if state.pos >= String.length(state.input) {
+      Ok(List.append(acc, [EOF]))
+    } else {
+      match String.char_at(state.input, state.pos) {
+        None -> Ok(List.append(acc, [EOF])),
+        Some(c) -> {
+          if c == ' ' || c == '\n' || c == '\t' {
+            go({ ...state, pos: state.pos + 1 }, acc)
+          } else if c == '+' {
+            go({ ...state, pos: state.pos + 1 }, List.append(acc, [Plus]))
+          } else if c == '-' {
+            go({ ...state, pos: state.pos + 1 }, List.append(acc, [Minus]))
+          } else if c == '*' {
+            go({ ...state, pos: state.pos + 1 }, List.append(acc, [Star]))
+          } else if c == '/' {
+            go({ ...state, pos: state.pos + 1 }, List.append(acc, [Slash]))
+          } else if c == '^' {
+            go({ ...state, pos: state.pos + 1 }, List.append(acc, [Power]))
+          } else if c == '(' {
+            go({ ...state, pos: state.pos + 1 }, List.append(acc, [LParen]))
+          } else if c == ')' {
+            go({ ...state, pos: state.pos + 1 }, List.append(acc, [RParen]))
+          } else if c >= '0' && c <= '9' {
+            let num_str = String.take_while(
+              String.drop(state.input, state.pos),
+              fn(ch) { ch >= '0' && ch <= '9' }
+            )
+            let len = String.length(num_str)
+            match Int.parse(num_str) {
+              Some(n) -> go(
+                { ...state, pos: state.pos + len },
+                List.append(acc, [Number(n)])
+              ),
+              None -> Err("Invalid number: {num_str}")
+            }
+          } else {
+            Err("Unexpected character: {c}")
+          }
+        }
+      }
+    }
+  }
+
+  go({ input: input, pos: 0 }, [])
+}
+
+// 現在のトークンを取得
+fn current(state: ParserState) -> Token {
+  match List.get(state.tokens, state.pos) {
+    Some(tok) -> tok,
+    None -> EOF
+  }
+}
+
+// 次のトークンへ進む
+fn advance(state: ParserState) -> ParserState {
+  { ...state, pos: state.pos + 1 }
+}
+
+// 束縛力（優先度）を取得
+fn binding_power(tok: Token) -> BindingPower {
+  match tok {
+    Plus -> { left: 20, right: 21 },   // 左結合
+    Minus -> { left: 20, right: 21 },  // 左結合
+    Star -> { left: 30, right: 31 },   // 左結合
+    Slash -> { left: 30, right: 31 },  // 左結合
+    Power -> { left: 40, right: 39 },  // 右結合（right < left）
+    _ -> { left: 0, right: 0 }
+  }
+}
+
+// 前置演算子の束縛力
+fn prefix_binding_power(tok: Token) -> Int {
+  match tok {
+    Plus -> 50,
+    Minus -> 50,
+    _ -> 0
+  }
+}
+
+// Null Denotation (前置解析)
+// トークンが式の先頭に来たときの解析
+fn nud(tok: Token, state: ParserState) -> Result<{ expr: Expr, state: ParserState }, ParseError> {
+  match tok {
+    Number(n) -> Ok({ expr: Num(n), state: advance(state) }),
+
+    LParen -> {
+      let state' = advance(state)
+      parse_expr(0, state')
+        .and_then(fn(result) {
+          match current(result.state) {
+            RParen -> Ok({ expr: result.expr, state: advance(result.state) }),
+            tok -> Err("Expected ')', found: {tok}")
+          }
+        })
+    },
+
+    Minus -> {
+      let state' = advance(state)
+      parse_expr(prefix_binding_power(Minus), state')
+        .map(fn(result) {
+          { expr: Unary(Neg, result.expr), state: result.state }
+        })
+    },
+
+    Plus -> {
+      let state' = advance(state)
+      parse_expr(prefix_binding_power(Plus), state')
+        .map(fn(result) {
+          { expr: Unary(Pos, result.expr), state: result.state }
+        })
+    },
+
+    _ -> Err("Unexpected token in prefix position: {tok}")
+  }
+}
+
+// Left Denotation (中置解析)
+// 左側に式があるときの解析
+fn led(
+  tok: Token,
+  left: Expr,
+  state: ParserState
+) -> Result<{ expr: Expr, state: ParserState }, ParseError> {
+  match tok {
+    Plus -> {
+      let bp = binding_power(Plus)
+      let state' = advance(state)
+      parse_expr(bp.right, state')
+        .map(fn(result) {
+          { expr: Binary(Add, left, result.expr), state: result.state }
+        })
+    },
+
+    Minus -> {
+      let bp = binding_power(Minus)
+      let state' = advance(state)
+      parse_expr(bp.right, state')
+        .map(fn(result) {
+          { expr: Binary(Sub, left, result.expr), state: result.state }
+        })
+    },
+
+    Star -> {
+      let bp = binding_power(Star)
+      let state' = advance(state)
+      parse_expr(bp.right, state')
+        .map(fn(result) {
+          { expr: Binary(Mul, left, result.expr), state: result.state }
+        })
+    },
+
+    Slash -> {
+      let bp = binding_power(Slash)
+      let state' = advance(state)
+      parse_expr(bp.right, state')
+        .map(fn(result) {
+          { expr: Binary(Div, left, result.expr), state: result.state }
+        })
+    },
+
+    Power -> {
+      let bp = binding_power(Power)
+      let state' = advance(state)
+      parse_expr(bp.right, state')
+        .map(fn(result) {
+          { expr: Binary(Pow, left, result.expr), state: result.state }
+        })
+    },
+
+    _ -> Err("Unexpected token in infix position: {tok}")
+  }
+}
+
+// Pratt Parser の核心: 優先度ベース式解析
+fn parse_expr(
+  min_bp: Int,
+  state: ParserState
+) -> Result<{ expr: Expr, state: ParserState }, ParseError> {
+  let tok = current(state)
+  nud(tok, state)
+    .and_then(fn(result) {
+      go(min_bp, result.expr, result.state)
+    })
+
+  where
+
+  fn go(
+    min_bp: Int,
+    left: Expr,
+    state: ParserState
+  ) -> Result<{ expr: Expr, state: ParserState }, ParseError> {
+    let tok = current(state)
+    let bp = binding_power(tok)
+
+    if bp.left < min_bp {
+      Ok({ expr: left, state: state })
+    } else {
+      led(tok, left, state)
+        .and_then(fn(result) {
+          go(min_bp, result.expr, result.state)
+        })
+    }
+  }
+}
+
+// パース実行
+fn parse(input: String) -> Result<Expr, ParseError> {
+  lexer(input)
+    .and_then(fn(tokens) {
+      parse_expr(0, { tokens: tokens, pos: 0 })
+    })
+    .and_then(fn(result) {
+      match current(result.state) {
+        EOF -> Ok(result.expr),
+        tok -> Err("Unexpected token at end: {tok}")
+      }
+    })
+}
+
+// 評価
+fn eval(expr: Expr) -> Int {
+  match expr {
+    Num(n) -> n,
+    Binary(Add, l, r) -> eval(l) + eval(r),
+    Binary(Sub, l, r) -> eval(l) - eval(r),
+    Binary(Mul, l, r) -> eval(l) * eval(r),
+    Binary(Div, l, r) -> eval(l) / eval(r),
+    Binary(Pow, l, r) -> pow_int(eval(l), eval(r)),
+    Unary(Neg, e) -> -eval(e),
+    Unary(Pos, e) -> eval(e)
+  }
+}
+
+// 整数累乗
+fn pow_int(base: Int, exp: Int) -> Int {
+  if exp == 0 {
+    1
+  } else if exp < 0 {
+    0  // 簡易実装のため負の指数は0とする
+  } else {
+    base * pow_int(base, exp - 1)
+  }
+}
+
+// 式を文字列化（デバッグ用）
+fn expr_to_string(expr: Expr) -> String {
+  match expr {
+    Num(n) -> Int.to_string(n),
+    Binary(Add, l, r) -> "({expr_to_string(l)} + {expr_to_string(r)})",
+    Binary(Sub, l, r) -> "({expr_to_string(l)} - {expr_to_string(r)})",
+    Binary(Mul, l, r) -> "({expr_to_string(l)} * {expr_to_string(r)})",
+    Binary(Div, l, r) -> "({expr_to_string(l)} / {expr_to_string(r)})",
+    Binary(Pow, l, r) -> "({expr_to_string(l)} ^ {expr_to_string(r)})",
+    Unary(Neg, e) -> "(-{expr_to_string(e)})",
+    Unary(Pos, e) -> "(+{expr_to_string(e)})"
+  }
+}
+
+// テスト実行
+fn main() -> IO<Unit> {
+  IO.println("=== Pratt Parser Tests ===")
+
+  test("2 + 3 * 4", "(2 + (3 * 4))", 14)
+  test("2 * 3 + 4", "((2 * 3) + 4)", 10)
+  test("2 ^ 3 ^ 2", "(2 ^ (3 ^ 2))", 512)  // 右結合
+  test("(1 + 2) * 3", "((1 + 2) * 3)", 9)
+  test("-5 + 3", "((-5) + 3)", -2)
+  test("2 * -3", "(2 * (-3))", -6)
+  test("10 - 2 - 3", "((10 - 2) - 3)", 5)  // 左結合
+  test("2 + 3 * 4 ^ 2", "(2 + (3 * (4 ^ 2)))", 50)
+
+  where
+
+  fn test(input: String, expected_ast: String, expected_val: Int) -> IO<Unit> {
+    match parse(input) {
+      Err(msg) -> IO.println("FAIL: {input} -> {msg}"),
+      Ok(ast) -> {
+        let ast_str = expr_to_string(ast)
+        let val = eval(ast)
+        if ast_str == expected_ast && val == expected_val {
+          IO.println("PASS: {input} = {val}")
+        } else {
+          IO.println(
+            "FAIL: {input} -> {ast_str} = {val} " ++
+            "(expected: {expected_ast} = {expected_val})"
+          )
+        }
+      }
+    }
+  }
+}
+
+// 設計ノート:
+//
+// このPratt Parser実装は、2-4-op-builder.md で定義された OpBuilder コンビネーター
+// アプローチと対照的な、手続き的な演算子優先度解析手法を示しています。
+//
+// 主な違い:
+//
+// 1. **コンビネーター vs 手続き的**
+//    - OpBuilder: infix_left/infix_right 等の宣言的コンビネーター
+//    - Pratt: binding_power + nud/led の手続き的ループ
+//
+// 2. **優先度の表現**
+//    - OpBuilder: 層ごとの演算子グループ定義
+//      ```reml
+//      OpBuilder.new()
+//        .infix_left(30, [("*", Mul), ("/", Div)])
+//        .infix_right(40, [("^", Pow)])
+//      ```
+//    - Pratt: 数値ベースの束縛力
+//      ```reml
+//      Plus -> { left: 20, right: 21 }   // 左結合
+//      Power -> { left: 40, right: 39 }  // 右結合
+//      ```
+//
+// 3. **結合性の制御**
+//    - OpBuilder: infix_left/infix_right で明示
+//    - Pratt: right束縛力を left より小さくすることで右結合を実現
+//
+// 4. **拡張性**
+//    - OpBuilder: 新しい演算子は層に追加するだけ
+//    - Pratt: nud/led関数にケース追加が必要
+//
+// 5. **バックトラック**
+//    - OpBuilder: コンビネーターの or で自動
+//    - Pratt: 優先度比較で決定的に選択（バックトラック不要）
+//
+// Pratt Parser の利点:
+// - 非常に高速（再帰が浅い、バックトラック不要）
+// - 動的な演算子追加が容易（束縛力テーブルの変更のみ）
+// - 実装が小さい（50-100行程度）
+//
+// OpBuilder の利点:
+// - 宣言的で読みやすい
+// - 型安全性が高い（コンビネーター合成で検証）
+// - 他のコンビネーターと自然に統合
+// - エラーメッセージが詳細（期待集合の自動追跡）
+//
+// 実用上、多くの産業用パーサー（V8, Rust-Analyzer, TypeScript等）は
+// Prattアルゴリズムを採用していますが、教育目的やDSL設計では
+// コンビネーターアプローチの方が適している場合があります。

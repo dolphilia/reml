@@ -1,0 +1,1 @@
+let example = sym("let").then(ident).then(cut_here()).then(sym("=").then(expr))

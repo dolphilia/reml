@@ -1,0 +1,30 @@
+pub type RuntimeBridgeId = Int
+pub type DemandHint = Int
+pub type Text = Str
+pub type StageRequirement = Int
+pub type StageId = Int
+pub type RuntimeBridgeHandle = Int
+pub type RuntimeBridgeError = Int
+
+pub type StreamSignal = {
+  kind: StreamSignalKind,                  // Pending / Resume / Error / Completed
+  bridge_id: RuntimeBridgeId,
+  demand_hint: Option<DemandHint>,
+  last_reason: Option<Text>,               // 例: "pending.backpressure"
+  stage_required: Option<StageRequirement>,
+  stage_actual: Option<StageId>,
+  flow_policy: Option<Text>,               // "auto" / "manual"
+  backpressure: Option<BackpressureSignal>,
+}
+
+pub enum StreamSignalKind = Pending | Resume | Error | Completed
+
+pub type BackpressureSignal = {
+  max_lag_bytes: Option<Int>,
+  debounce_ms: Option<Int>,
+  throttle_ratio: Option<Float>,
+}
+
+impl RuntimeBridgeHandle {
+  fn stream_signal(signal: StreamSignal) -> Result<(), RuntimeBridgeError> = () // `effect {runtime}`
+}

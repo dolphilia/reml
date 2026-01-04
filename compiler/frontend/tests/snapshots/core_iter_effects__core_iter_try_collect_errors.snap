@@ -1,0 +1,94 @@
+---
+source: tests/core_iter_effects.rs
+assertion_line: 113
+expression: cases
+---
+- case: item_error
+  error:
+    kind: item
+    value: boom
+- case: collector_error
+  error:
+    audit:
+      collector.capability: core.collector.map
+      collector.effect.async_pending: false
+      collector.effect.audit: false
+      collector.effect.cell: false
+      collector.effect.cell_mutations: 0
+      collector.effect.debug: false
+      collector.effect.finish: 0
+      collector.effect.io: false
+      collector.effect.io_async: false
+      collector.effect.io_async_calls: 0
+      collector.effect.io_async_ops: 0
+      collector.effect.io_blocking: false
+      collector.effect.io_blocking_calls: 0
+      collector.effect.io_blocking_ops: 0
+      collector.effect.mem: true
+      collector.effect.mem_bytes: 28
+      collector.effect.mem_reservation: 0
+      collector.effect.mut: true
+      collector.effect.predicate_calls: 0
+      collector.effect.rc: false
+      collector.effect.rc_ops: 0
+      collector.effect.reserve: 0
+      collector.effect.security: false
+      collector.effect.security_checks: 0
+      collector.effect.security_events: 0
+      collector.effect.time: false
+      collector.effect.time_calls: 0
+      collector.effect.transfer: false
+      collector.error.key: "\"dup\""
+      collector.kind: map
+      collector.stage.actual: beta
+      collector.stage.mismatch: false
+      collector.stage.mode: at_least
+      collector.stage.required: beta
+      collector.stage.source: "MapCollector::push"
+    code: core.prelude.collector_failed
+    domain: runtime
+    extensions:
+      prelude.collector:
+        capability: core.collector.map
+        effects:
+          async_pending: false
+          audit: false
+          cell: false
+          debug: false
+          io: false
+          io_async: false
+          io_async_calls: 0
+          io_blocking: false
+          io_blocking_calls: 0
+          mem: true
+          mem_bytes: 28
+          mut: true
+          predicate_calls: 0
+          rc: false
+          rc_ops: 0
+          security: false
+          security_events: 0
+          time: false
+          time_calls: 0
+          transfer: false
+          unicode: false
+        error_key: "\"dup\""
+        error_kind: duplicate_key
+        kind: map
+        markers:
+          finish: 0
+          io_async_ops: 0
+          io_blocking_ops: 0
+          mem_reservation: 0
+          reserve: 0
+          security_checks: 0
+          time_calls: 0
+        message: "duplicate key: \"dup\""
+        source: "MapCollector::push"
+        stage_actual: beta
+        stage_mismatch: false
+        stage_mode: at_least
+        stage_required: beta
+    message: "MapCollector failed: duplicate key: \"dup\""
+    notes: []
+    severity: error

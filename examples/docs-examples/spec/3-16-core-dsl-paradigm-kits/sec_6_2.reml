@@ -1,0 +1,28 @@
+pub type Bytecode<Op> = {
+  ops: List<Op>,
+}
+
+pub type VmState<Value> = {
+  stack: List<Value>,
+  frames: List<CallFrame>,
+}
+
+pub type CallFrame = { ip: Int }
+
+pub type VmError = { kind: VmErrorKind, message: Str }
+
+pub enum VmErrorKind =
+  | Halted
+  | InvalidOpcode
+  | StackUnderflow
+  | RuntimeFailure
+
+pub type BytecodeBuilder<Op> = {}
+
+fn bytecode_builder<Op>() -> BytecodeBuilder<Op>
+
+fn run<Op, Value>(
+  code: Bytecode<Op>,
+  state: VmState<Value>,
+  exec: fn(VmState<Value>, Op) -> Result<VmState<Value>, VmError>
+) -> Result<VmState<Value>, VmError> // `effect {runtime}`

@@ -1,0 +1,68 @@
+pub type Uuid
+pub type OverflowPolicy
+pub type AsyncError
+pub type MailboxStats
+pub type Counter
+pub type Histogram
+pub type SchedulerHandle
+pub type TransportHandle
+pub type CapabilityRegistry
+pub type Duration
+pub type Any
+pub type EffectTag
+pub type DiagnosticSpan
+pub type Future<T>
+pub type ExitStatus
+
+pub type ActorId = Uuid
+pub type NodeId = Str
+
+pub type MailboxHandle<Message> = {
+  capacity: usize,
+  overflow: OverflowPolicy,
+  enqueue: fn(Message) -> Result<(), AsyncError>,
+  metrics: MailboxStats,
+}
+
+pub type TransportMetrics = {
+  throughput: Counter,
+  latency: Histogram,
+}
+
+pub type ActorSystem = {
+  scheduler: SchedulerHandle,
+  transport: Option<TransportHandle>,
+  registry: CapabilityRegistry,
+  config: ActorSystemConfig,
+}
+
+pub type ActorSystemConfig = {
+  mailbox_high_watermark: usize,
+  mailbox_low_watermark: usize,
+  ask_timeout: Duration,
+}
+
+pub type ActorRef<Message> = {
+  id: ActorId,
+  mailbox: MailboxHandle<Message>,
+  system: ActorSystem,
+}
+
+pub type ActorContext = {
+  self_ref: ActorRef<Any>,
+  tags: Set<EffectTag>,
+  span: DiagnosticSpan,
+}
+
+fn spawn_actor<Message, State>(system: ActorSystem, init: () -> State,
+  on_message: fn(Message, State, ActorContext) -> Future<()>)
+  -> Result<ActorRef<Message>, AsyncError>                             // `effect {io.async}`
+
+fn send<Message>(target: ActorRef<Message>, message: Message)
+  -> Result<(), AsyncError>                                            // `effect {io.async}`
+
+fn ask<Message, Reply>(target: ActorRef<Message>, message: Message,
+  timeout: Duration) -> Future<Result<Reply, AsyncError>>              // `effect {io.async, io.timer}`
+
+fn link(l: ActorRef<Any>, r: ActorRef<Any>) -> Result<(), AsyncError>  // `effect {io.async}`
+fn monitor(actor: ActorRef<Any>) -> Future<ExitStatus>                 // `effect {io.async}`

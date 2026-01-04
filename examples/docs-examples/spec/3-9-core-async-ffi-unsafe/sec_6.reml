@@ -1,0 +1,5 @@
+pub type Path
+pub type AsyncError
+pub type Diagnostic
+
+fn async_file_copy(src: Path, dest: Path) -> Result<(), Diagnostic>          // `effect {io.async}`

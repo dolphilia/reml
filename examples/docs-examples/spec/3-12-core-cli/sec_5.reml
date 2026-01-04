@@ -1,0 +1,18 @@
+use Core.Cli
+
+fn main() -> Str {
+  let spec = Cli.builder()
+    .flag("verbose", help = "verbose log")
+    .arg("input", help = "input file")
+    .build()
+
+  match Cli.parse(spec, ["--verbose", "input.reml"]) with
+  | Ok(values) -> {
+      let input = Cli.get_arg(values, "input")
+      match input with
+      | Some(path) ->
+          if Cli.get_flag(values, "verbose") then "verbose:" + path else "quiet:" + path
+      | None -> "missing"
+    }
+  | Err(_) -> "cli:error"
+}

@@ -1,0 +1,43 @@
+use Core.Parse
+use Core.Parse.Lex
+
+let sc = Lex.spaceOrTabsOrNewlines |> Lex.skipMany
+let sym(s) = symbol(sc, s)
+let int = lexeme(sc, Lex.int(10)).map(|digits| parseI64(digits))
+
+// operand: 括弧 / 単項マイナス(後述の prefix レベルでも可) / 数
+let atom: Parser<i64> =
+  (sym("(").then(cut_here()).then(rec expr).then(expect("')'", sym(")"))).map(|(_,v,_)| v))
+    .or(int)
+    .label("atom")
+
+let expr: Parser<i64> =
+  precedence(atom, { operand_label: "expression", space: sc })
+    .level(|lvl| {                   // postfix
+      lvl.postfix(sym("!").map(|_| (|a| fact(a))))
+    })
+    .level(|lvl| {                   // prefix（右結合）
+      lvl.prefix(sym("-").map(|_| (|a| -a)))
+        .prefix(sym("+").map(|_| (|a| a)))
+    })
+    .level(|lvl| {                   // べき乗は右結合
+      lvl.infixr(sym("^").map(|_| (|a,b| pow(a,b))))
+    })
+    .level(|lvl| {                   // 乗除は左結合
+      lvl.infixl(sym("*").map(|_| (|a,b| a*b)))
+        .infixl(sym("/").map(|_| (|a,b| a/b)))
+    })
+    .level(|lvl| {                   // 加減は左結合
+      lvl.infixl(sym("+").map(|_| (|a,b| a+b)))
+        .infixl(sym("-").map(|_| (|a,b| a-b)))
+    })
+    .level(|lvl| {                   // 比較は非結合
+      let cmp = choice([
+        sym("<").map(|_| (|a,b| cmp_lt(a,b))),
+        sym("<=").map(|_| (|a,b| cmp_le(a,b))),
+        sym(">").map(|_| (|a,b| cmp_gt(a,b))),
+        sym(">=").map(|_| (|a,b| cmp_ge(a,b)))
+      ]);
+      lvl.infixn(cmp)
+    })
+    .build()

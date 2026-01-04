@@ -1,0 +1,16 @@
+pub type Diagnostic
+pub type AuditSink
+pub type AuditError
+
+pub type AuditPolicy = {
+  level: AuditLevel,
+  include_patterns: List<Str>,
+  exclude_patterns: List<Str>,
+  retention_days: Option<u32>,
+  anonymize_pii: Bool,
+}
+
+pub enum AuditLevel = Off | Error | Warning | Info | Debug | Trace
+
+fn apply_policy(diag: Diagnostic, policy: AuditPolicy) -> Option<Diagnostic>  // `effect {privacy}`
+fn audit_with_policy(diag: Diagnostic, sink: AuditSink, policy: AuditPolicy) -> Result<(), AuditError>

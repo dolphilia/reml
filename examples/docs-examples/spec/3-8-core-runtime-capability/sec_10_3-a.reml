@@ -1,0 +1,26 @@
+pub type Any = Int
+pub type ReloadState<T> = T
+pub type Bytes = List<Int>
+
+pub type RuntimeBridgeReloadSpec = {
+  diff_format: Str,                    // 例: "SchemaDiff<Old, New>"
+  state_format: Str,                   // 例: "ReloadState<T>"
+  requires_audit_id: Bool,
+  rollback: RuntimeBridgeRollbackPolicy,
+  diagnostics: RuntimeBridgeReloadDiagnostics,
+}
+
+pub enum RuntimeBridgeRollbackPolicy = Required | Optional | Unsupported
+
+pub type RuntimeBridgeReloadDiagnostics = {
+  reload_event: Str,                   // 例: "bridge.reload"
+  rollback_event: Option<Str>,         // 例: Some("bridge.rollback")
+  diff_diagnostic: Str,                // 例: "bridge.diff.rejected"
+}
+
+pub type RuntimeBridgeReloadHandle = {
+  reload: fn(ReloadState<Any>, Bytes) -> Result<ReloadState<Any>, ReloadError>,
+  rollback: fn(ReloadState<Any>) -> Result<ReloadState<Any>, ReloadError>,
+}
+
+pub enum ReloadError = ValidationFailed | ApplyFailed | RollbackFailed | AuditIncomplete

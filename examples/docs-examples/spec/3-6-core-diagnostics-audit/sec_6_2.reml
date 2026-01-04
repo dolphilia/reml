@@ -1,0 +1,11 @@
+pub type Tracer
+pub type DslId
+pub type TraceContext
+pub type TraceSpan
+pub type DslOutcome
+pub type ChannelId
+pub type ChannelDirection
+
+fn start_dsl_span(tracer: Tracer, dsl_id: DslId, context: TraceContext) -> TraceSpan // `effect {trace}`
+fn finish_dsl_span(span: TraceSpan, outcome: DslOutcome) -> ()                        // `effect {trace}`
+fn attach_channel_link(span: TraceSpan, channel_id: ChannelId, direction: ChannelDirection) -> () // `effect {trace}`

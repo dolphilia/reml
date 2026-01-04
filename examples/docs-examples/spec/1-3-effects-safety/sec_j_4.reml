@@ -1,0 +1,8 @@
+@no_panic
+fn strictlyPositive(n: i64) -> Result<i64, Error> =
+  if n <= 0 then Err(Error::Invalid) else Ok(n)
+
+fn total(xs: [i64]) -> Result<i64, Error> = {
+  let ys = (xs |> map(strictlyPositive) |> sequence)?
+  sumOk(ys)
+}

@@ -1,0 +1,7 @@
+impl<A> Parser<A> {
+  fn with_space(self, space: Parser<()>) -> Parser<A> = todo
+}
+
+impl Parser<()> {
+  fn space_id(self) -> ParserId = todo
+}

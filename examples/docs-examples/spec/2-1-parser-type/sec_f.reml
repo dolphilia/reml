@@ -1,0 +1,7 @@
+type ParseError = {
+  at: Span,                           // 失敗位置（最狭）
+  expected: Set<Expectation>,         // 期待集合（トークン/ラベル/EOF 等）
+  context: List<Label>,               // 直近の label からの文脈
+  committed: Bool,                    // cut を越えた失敗か
+  notes: List<String>                 // 補助（回復やヒント）
+}

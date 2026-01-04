@@ -1,0 +1,106 @@
+[
+  {
+    "id": "00000000-0000-0000-0000-000000000042",
+    "message": "FFI ブリッジの Stage が要求値と一致しません",
+    "severity": 1,
+    "domain": "runtime",
+    "codes": ["ffi.bridge.stage_mismatch", "audit.stage"],
+    "primary": {
+      "file": "examples/ffi/check_stage.reml",
+      "start_line": 11,
+      "start_col": 2,
+      "end_line": 11,
+      "end_col": 32
+    },
+    "secondary": [
+      {
+        "span": {
+          "file": "examples/ffi/check_stage.reml",
+          "start_line": 4,
+          "start_col": 7,
+          "end_line": 4,
+          "end_col": 24
+        },
+        "message": "Capability Registry で宣言された Stage は Production"
+      }
+    ],
+    "expected": {
+      "message_key": "ffi.bridge.stage.expected_production",
+      "alternatives": [
+        { "kind": "custom", "value": "Stage が Production であること" }
+      ],
+      "locale_args": ["Production", "Windows"]
+    },
+    "hints": [
+      {
+        "message": "Capability 設定を更新するか `--ack-stage-mismatch` を指定してください",
+        "actions": [
+          {
+            "kind": "replace",
+            "range": {
+              "file": "examples/ffi/check_stage.reml",
+              "start_line": 11,
+              "start_col": 15,
+              "end_line": 11,
+              "end_col": 23
+            },
+            "text": "\"Production\""
+          }
+        ]
+      }
+    ],
+    "fixits": [
+      {
+        "kind": "insert",
+        "range": {
+          "file": "examples/ffi/check_stage.reml",
+          "start_line": 12,
+          "start_col": 1,
+          "end_line": 12,
+          "end_col": 1
+        },
+        "text": "@override(stage = \"Production\")\n"
+      }
+    ],
+    "extensions": {
+      "bridge.status": "stage_mismatch",
+      "bridge.platform": "windows-msvc",
+      "bridge.target": "ffi.dispatch.async",
+      "effects.contract.stage.required": "Production",
+      "effects.contract.stage.actual": "Preview"
+    },
+    "audit_metadata": {
+      "bridge.platform": "windows-msvc",
+      "bridge.status": "stage_mismatch"
+    },
+    "audit": {
+      "audit_id": "11111111-1111-1111-1111-111111111111",
+      "change_set": null,
+      "capability": "core.ffi.bridge",
+      "metadata": {
+        "effect.stage.required": "Production",
+        "effect.stage.actual": "Preview",
+        "bridge.return.status": "unsafe"
+      }
+    },
+    "timestamp": "2025-10-24T09:30:00Z",
+    "structured_hints": [
+      {
+        "kind": "command",
+        "payload": {
+          "command": "reml.applyFix",
+          "data": {
+            "replacement": "\"Production\"",
+            "range": {
+              "file": "examples/ffi/check_stage.reml",
+              "start_line": 11,
+              "start_col": 15,
+              "end_line": 11,
+              "end_col": 23
+            }
+          }
+        }
+      }
+    ]
+  }
+]

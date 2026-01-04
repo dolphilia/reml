@@ -1,0 +1,5 @@
+pub type EnvError
+
+fn get_env(key: Str) -> Result<Option<Str>, EnvError>              // `effect {io}`
+fn set_env(key: Str, value: Str) -> Result<(), EnvError>           // `effect {io, security}`
+fn remove_env(key: Str) -> Result<(), EnvError>                    // `effect {io, security}`

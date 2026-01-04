@@ -1,0 +1,13 @@
+pub type Bytes
+pub type PathError
+
+pub type Path = {
+  raw: Bytes,
+}
+
+fn path(str: Str) -> Result<Path, PathError>                     // `@pure`
+fn join(base: Path, segment: Str) -> Path                        // `@pure`
+fn parent(path: Path) -> Option<Path>                            // `@pure`
+fn normalize(path: Path) -> Path                                 // `@pure`
+fn is_absolute(path: Path) -> Bool                               // `@pure`
+fn glob(pattern: Str) -> Result<List<Path>, PathError>           // `effect {io, io.blocking}`

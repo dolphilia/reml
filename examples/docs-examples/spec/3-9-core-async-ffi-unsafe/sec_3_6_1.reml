@@ -1,0 +1,5 @@
+pub type Ptr<T>
+pub type u8
+
+fn strlen(ptr: Ptr<u8>) -> usize                                           // `extern "C"`
+fn c_strlen(input: Str) -> usize                                           // `unsafe`

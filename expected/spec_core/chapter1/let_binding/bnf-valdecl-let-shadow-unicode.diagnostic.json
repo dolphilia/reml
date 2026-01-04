@@ -1,0 +1,16 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter1/let_binding/bnf-valdecl-let-shadow-unicode.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "language.shadowing.unicode",
+      "message": "Unicode 識別子の再束縛は `let` セクションの警告ポリシーにより拒否されます。",
+      "notes": [
+        {
+          "message": "`αβ` を 1 回のみ束縛するか、別名に変更してください。"
+        }
+      ]
+    }
+  ]
+}

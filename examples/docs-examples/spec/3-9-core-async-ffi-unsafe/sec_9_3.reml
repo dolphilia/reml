@@ -1,0 +1,6 @@
+pub type CorruptionPattern
+pub type UnsafeInvariant
+pub type TestResult<T>
+
+fn simulate_memory_corruption(pattern: CorruptionPattern) -> ()                 // `effect {unsafe, test}`
+fn test_unsafe_invariants(invariants: List<UnsafeInvariant>) -> TestResult<()> // `effect {unsafe, test}`

@@ -1,0 +1,30 @@
+pub type ActorSystem = {}
+
+pub type SupervisorSpec = {}
+
+pub type ActorDefinition<Message> = {
+  name: Str,
+  on_message: fn(Message) -> Result<(), ActorError>,
+}
+
+pub type MailboxBridge<Message> = {
+  send: fn(Message) -> Result<(), ActorError>, // `effect {io.async}`
+  receive: fn() -> Result<Message, ActorError>, // `effect {io.async}`
+}
+
+pub type SupervisionBridge = {
+  spec: SupervisorSpec,
+}
+
+pub type ActorError = { kind: ActorErrorKind, message: Str }
+
+pub enum ActorErrorKind =
+  | SpawnFailed
+  | MailboxUnavailable
+  | RuntimeFailure
+
+fn spawn<Message>(
+  system: ActorSystem,
+  def: ActorDefinition<Message>,
+  supervision: Option<SupervisionBridge>
+) -> Result<MailboxBridge<Message>, ActorError> // `effect {io.async}`

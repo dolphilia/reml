@@ -1,0 +1,8 @@
+[alias]
+# `cargo xtask <subcommand>` をリポジトリ直下から実行できるようにする。
+xtask = "run --manifest-path compiler/xtask/Cargo.toml --"
+
+[target.'cfg(test)']
+# Rust 安定版には `panic_fmt` lint が存在しないため、代替として
+# `non-fmt-panics` を deny に設定し、panic 呼び出しの取りこぼしを抑制する。
+rustflags = ["-Dnon-fmt-panics"]

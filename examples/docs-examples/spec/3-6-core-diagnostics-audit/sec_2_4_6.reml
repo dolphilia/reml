@@ -1,0 +1,10 @@
+pub type Span
+pub type CapabilityId
+pub type RuntimeCapabilityError
+pub type Diagnostic
+
+pub struct EffectDiagnostic;
+
+impl EffectDiagnostic {
+  fn stage_violation(span: Span, capability: CapabilityId, err: RuntimeCapabilityError) -> Diagnostic = todo // `@pure`
+}

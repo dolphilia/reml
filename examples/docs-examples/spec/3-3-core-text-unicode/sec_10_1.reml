@@ -1,0 +1,63 @@
+module Core.Regex
+
+fn compile(pat: Str, options: RegexOptions) -> Result<RegexHandle, RegexError> // `effect {regex}`
+fn run(rx: RegexHandle, text: Str, mode: RegexRunMode = RegexRunMode::default()) -> RegexMatch // `effect {regex}`
+fn is_match(rx: RegexHandle, text: Str) -> Bool                                // `effect {regex}`
+fn to_diagnostic(error: RegexError) -> Diagnostic                                 // `@pure`
+
+type RegexOptions = {
+  unicode_profile: UnicodeClassProfile = UnicodeClassProfile::Unicode15,
+  flags: Set<PatternFlag> = {},
+  literal: Bool = false,
+  max_ast_nodes: usize = 4096,
+  audit: Option<AuditSink> = None,
+}
+
+enum PatternFlag =
+  | CaseInsensitive
+  | MultiLine
+  | DotMatchesNewline
+  | UnicodeClass
+  | GraphemeMode
+  | Jit
+
+type RegexRunMode = {
+  start_at: Option<ByteIndex> = None,
+  end_at: Option<ByteIndex> = None,
+  find_all: Bool = false,
+  timeout: Option<Duration> = None,
+}
+
+type RegexMatch = {
+  spans: List<Option<SpanBytes>>,
+  captures: List<Option<Str>>,
+  remainder: Option<SpanBytes>,
+  diagnostics: List<Diagnostic>,
+}
+
+type RegexError = {
+  kind: RegexErrorKind,
+  span: Option<Span>,
+  message: Str,
+  suggested_profile: Option<UnicodeClassProfile>,
+}
+
+enum RegexErrorKind =
+  | Syntax
+  | UnsupportedUnicodeClass
+  | UnsupportedFlag
+  | TooManyNodes
+  | Timeout
+  | CapabilityRequired
+
+type UnicodeClassProfile = {
+  version: UnicodeVersion,
+  enabled_sets: Set<Str>,
+  custom_sets: Map<Str, UnicodeSet>,
+}
+
+type UnicodeSet = {
+  name: Str,
+  ranges: List<(u32, u32)>,
+  description: Option<Str>,
+}

@@ -1,0 +1,8 @@
+pub type IoError
+pub type Path
+pub type SecurityError
+pub type SecurityPolicy
+
+fn validate_path(path: Path, policy: SecurityPolicy) -> Result<Path, SecurityError>  // `effect {security}`
+fn sandbox_path(path: Path, root: Path) -> Result<Path, SecurityError>             // `effect {security}`
+fn is_safe_symlink(path: Path) -> Result<Bool, IoError>                           // `effect {io, io.blocking, security}`

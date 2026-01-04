@@ -1,0 +1,89 @@
+pub type ActorSystem
+pub type ActorRef<T>
+pub type Any
+pub type AsyncError
+pub type EffectTag
+pub type BackoffStrategy
+pub type NonZeroU16
+pub type Duration
+pub type Future<T>
+pub type AsyncStream<T>
+pub type ActorId
+pub type Diagnostic
+pub type Timestamp
+pub type AsyncErrorKind
+pub type Uuid
+pub type u16
+
+pub type SupervisorSpec = {
+  name: Str,
+  strategy: RestartStrategy,
+  children: List<ChildSpec>,
+  health_check: Option<SupervisorHealthCheck>,
+  audit_label: Option<Str>,
+}
+
+pub type ChildSpec = {
+  build: fn(&ActorSystem) -> Result<ActorRef<Any>, AsyncError>,
+  policy: ChildRestartPolicy,
+  tags: Set<EffectTag>,
+  backoff: Option<BackoffStrategy>,
+}
+
+pub enum RestartStrategy = OneForOne { budget: RestartBudget }
+  | OneForAll { budget: RestartBudget }
+  | Temporary
+
+pub type RestartBudget = {
+  max_restarts: NonZeroU16,
+  within: Duration,
+  cooldown: Duration,
+}
+
+pub enum ChildRestartPolicy = Permanent | Transient | Temporary
+
+pub type SupervisorHandle = {
+  id: Uuid,
+  descriptor: SupervisorDescriptor,
+  observe: fn() -> AsyncStream<SupervisorEvent>,
+  restart: fn(ActorId) -> Result<(), AsyncError>,
+  shutdown: fn(Duration) -> Future<Result<(), AsyncError>>,
+}
+
+pub type SupervisorEvent = {
+  actor: ActorId,
+  outcome: SupervisorOutcome,
+  restart_count: u16,
+  observed_at: Timestamp,
+  diagnostic: Option<Diagnostic>,
+}
+
+pub enum SupervisorOutcome = Restarted | Escalated | Exhausted | Stopped | Failed(AsyncErrorKind)
+
+pub type SupervisorDescriptor = {
+  name: Str,
+  strategy: RestartStrategy,
+  children: List<ChildDigest>,
+}
+
+pub type ChildDigest = {
+  actor: ActorId,
+  policy: ChildRestartPolicy,
+  tags: Set<EffectTag>,
+}
+
+fn spawn_supervised(system: ActorSystem, spec: SupervisorSpec)
+  -> Result<SupervisorHandle, AsyncError>                                  // `effect {io.async, audit}`
+
+fn supervisor_stats(supervisor: SupervisorHandle) -> SupervisorStats         // `@pure`
+
+pub type SupervisorStats = {
+  restarts_in_window: u16,
+  window_started_at: Timestamp,
+  exhausted: Bool,
+}
+
+pub type SupervisorHealthCheck = {
+  interval: Duration,
+  probe: fn(SupervisorHandle) -> Future<Result<(), AsyncError>>,
+}

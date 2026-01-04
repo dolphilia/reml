@@ -1,0 +1,30 @@
+pub type GcCapability = Int
+pub type IoCapability = Int
+pub type AsyncCapability = Int
+pub type ActorRuntimeCapability = Int
+pub type AuditCapability = Int
+pub type MetricsCapability = Int
+pub type PluginCapability = Int
+pub type SyscallCapability = Int
+pub type ProcessCapability = Int
+pub type MemoryCapability = Int
+pub type SignalCapability = Int
+pub type HardwareCapability = Int
+pub type RealTimeCapability = Int
+pub type SecurityCapability = Int
+
+pub enum CapabilityHandle =
+  | Gc(GcCapability)
+  | Io(IoCapability)
+  | Async(AsyncCapability)
+  | Actor(ActorRuntimeCapability)
+  | Audit(AuditCapability)
+  | Metrics(MetricsCapability)
+  | Plugin(PluginCapability)
+  | System(SyscallCapability)
+  | Process(ProcessCapability)
+  | Memory(MemoryCapability)
+  | Signal(SignalCapability)
+  | Hardware(HardwareCapability)
+  | RealTime(RealTimeCapability)
+  | Security(SecurityCapability)

@@ -1,0 +1,4 @@
+fn load(path: Path, schema: Schema<T>) -> Result<T, Diagnostic>                // `effect {io, config}`
+fn validate<T>(value: T, schema: Schema<T>) -> Result<(), Diagnostic>          // `@pure`
+fn compare<T>(old: T, new: T, schema: Schema<T>) -> Result<(), ChangeSet>     // `@pure`
+fn apply_diff<T>(value: T, diff: ChangeSet) -> Result<T, Diagnostic>           // `effect {config}`

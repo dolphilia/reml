@@ -1,0 +1,5 @@
+// ident と同一文字列ならキーワードとして成功し、直後が ident-continue なら失敗
+fn keyword(space: Parser<()>, kw: Str) -> Parser<()> = todo     // lexeme + 境界確認
+
+// 予約語集合をまとめて拒否（identifier と組み合わせ）
+fn reserved(profile: IdentifierProfile, set: Set<Str>) -> Parser<Never> = todo

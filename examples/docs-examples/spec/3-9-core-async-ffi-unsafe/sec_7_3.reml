@@ -1,0 +1,12 @@
+pub type UnsafeError
+
+// メモリ安全性の動的検証
+fn enable_memory_sanitizer(config: SanitizerConfig) -> Result<(), UnsafeError>  // `effect {unsafe, debug}`
+
+pub type SanitizerConfig = {
+  detect_out_of_bounds: Bool,
+  detect_use_after_free: Bool,
+  detect_double_free: Bool,
+  detect_memory_leaks: Bool,
+  quarantine_freed_memory: Bool,
+}

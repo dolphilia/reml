@@ -1,0 +1,23 @@
+use Core.Parse
+use Core.Parse.Lex
+
+let sc = Lex.spaceOrTabsOrNewlines |> Lex.skipMany
+fn sym(s: Str) -> Parser<()> = symbol(sc, s)
+let int    = lexeme(sc, Lex.int(10))
+
+let expr: Parser<i64> = rule("expr", chainl1(term, addOp))
+let term: Parser<i64> = rule("term", chainl1(factor, mulOp))
+
+let addOp: Parser<(i64,i64)->i64> =
+  (sym("+").map(|_| (|a,b| a+b)))
+  .or(sym("-").map(|_| (|a,b| a-b)))
+
+let mulOp: Parser<(i64,i64)->i64> =
+  (sym("*").map(|_| (|a,b| a*b)))
+  .or(sym("/").map(|_| (|a,b| a/b)))
+
+let factor: Parser<i64> = rule("factor",
+  (sym("(").then(cut(expr)).then(sym(")")).map(|(_,v,_)| v))   // 括弧に cut
+    .or(sym("-").then(factor).map(|(_,x)| 0 - x))               // 単項 -
+    .or(int)
+)

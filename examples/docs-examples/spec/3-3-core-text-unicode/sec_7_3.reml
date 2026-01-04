@@ -1,0 +1,4 @@
+// Unicode 攻撃の軽減
+fn sanitize_input(text: Str, policy: SanitizePolicy) -> Result<String, UnicodeError> // `effect {unicode}`
+fn detect_suspicious_patterns(text: Str) -> List<SuspiciousPattern>                 // `@pure`
+fn safe_truncate(text: Str, max_bytes: usize) -> Str                               // `@pure`

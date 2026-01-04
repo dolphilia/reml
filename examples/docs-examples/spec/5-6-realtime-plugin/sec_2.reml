@@ -1,0 +1,18 @@
+pub enum SchedulingPolicy = Normal | Fifo | RoundRobin | Deadline | Custom(Str)
+
+pub type Priority = i32
+
+pub type PreviousScheduler = {
+  policy: SchedulingPolicy,
+  priority: Priority,
+}
+
+pub type TimerHandle = u64
+
+pub type TimerHandler = fn(TimerEvent) -> ()
+
+pub type TimerEvent = {
+  handle: TimerHandle,
+  scheduled: Duration,
+  fired_at: Timestamp,
+}

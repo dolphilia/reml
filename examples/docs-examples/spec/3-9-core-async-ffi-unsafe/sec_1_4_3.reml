@@ -1,0 +1,9 @@
+pub type Duration
+pub type RetryPolicy
+pub type SchedulerConfig
+
+pub enum ExecutionStrategy = Serial | Parallel { max_concurrency: Option<usize> } | Streaming
+
+pub enum ErrorPropagationPolicy = FailFast | Isolate { circuit_breaker: Option<Duration> } | Retry { policy: RetryPolicy }
+
+pub enum SchedulingPolicy = Auto | Explicit(SchedulerConfig)

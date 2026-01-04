@@ -1,0 +1,9 @@
+pub type Parser<T> = Int
+pub type ReloadState<T> = T
+pub type SchemaDiff<Old, New> = Int
+pub type Old = Int
+pub type New = Int
+pub type ReloadError = Int
+
+fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New>)
+  -> Result<ReloadState<T>, ReloadError>

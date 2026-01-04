@@ -1,0 +1,12 @@
+fn pretty(src: Str, e: ParseError, opts: PrettyOptions) -> String = todo
+
+type PrettyOptions = {
+  max_expected: usize = 6,           // 一覧上限
+  context_depth: usize = 3,          // 文脈表示の深さ
+  show_bytes: Bool = true,           // (byte 134) などを併記
+  snippet_lines: usize = 2,          // 前後の抜粋行数
+  color: Bool = true,                // 終端色付け
+  locale: Locale = "ja",             // メッセージ言語
+  expectation_locale: Option<Locale> = None,   // 期待メッセージのロケール（未指定なら locale を使用）
+  expectation_templates: Map<Str, Str> = {}    // message_key -> テンプレート（"{0}", "{1}" 形式）
+}

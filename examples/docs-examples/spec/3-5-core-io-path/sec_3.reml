@@ -1,0 +1,17 @@
+pub type Fd
+pub type FileMetadata
+pub type FileOptions
+pub type IoError
+pub type Path
+pub type PathBuf
+
+pub type File = {
+  fd: Fd,
+  path: PathBuf,
+}
+
+fn open(path: Path) -> Result<File, IoError>                       // `effect {io, io.blocking}`
+fn create(path: Path, options: FileOptions) -> Result<File, IoError> // `effect {io, io.blocking}`
+fn metadata(path: Path) -> Result<FileMetadata, IoError>           // `effect {io, io.blocking}`
+fn remove(path: Path) -> Result<(), IoError>                       // `effect {io, io.blocking}`
+fn sync(file: &mut File) -> Result<(), IoError>                    // `effect {io, io.blocking}`

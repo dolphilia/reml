@@ -1,0 +1,16 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter1/let_binding/bnf-valdecl-missing-initializer-error.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "parser.syntax.expected_tokens",
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "message": "ここで`->`、`.`、`:` または `=`のいずれかが必要です"
+        }
+      ]
+    }
+  ]
+}

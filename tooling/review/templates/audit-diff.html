@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Audit Diff Summary</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 1.5rem; color: #1f2933; }
+    h1, h2 { color: #102a43; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; }
+    th, td { border: 1px solid #d0d7de; padding: 0.5rem 0.75rem; text-align: left; font-size: 0.95rem; }
+    th { background: #f6f8fa; font-weight: 600; }
+    code { background: #f6f8fa; padding: 0.1rem 0.4rem; border-radius: 0.25rem; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin: 1rem 0; }
+    .summary-card { border: 1px solid #d0d7de; border-radius: 0.5rem; padding: 0.75rem 1rem; background: #fff; }
+    .summary-card h3 { margin: 0 0 0.4rem 0; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; }
+    .summary-card p { margin: 0; font-size: 1.2rem; font-weight: 600; }
+    .detail-section { margin-bottom: 2rem; }
+    .empty-state { padding: 1rem; border: 1px dashed #d0d7de; background: #f6f8fa; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <h1>Audit Diff Summary</h1>
+  <p>Generated at: {{generated_at}}</p>
+
+  <div class="summary">
+    <div class="summary-card">
+      <h3>Regressions</h3>
+      <p>{{diagnostic_regressions}}</p>
+    </div>
+    <div class="summary-card">
+      <h3>New Diagnostics</h3>
+      <p>{{diagnostic_new}}</p>
+    </div>
+    <div class="summary-card">
+      <h3>Metadata Changes</h3>
+      <p>{{metadata_changed}}</p>
+    </div>
+    <div class="summary-card">
+      <h3>pass_rate Δ</h3>
+      <p>{{pass_rate_delta}}</p>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <h2>Inputs</h2>
+    <table>
+      <thead>
+        <tr><th>Role</th><th>Path</th><th>Entries</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Base</td><td><code>{{base_path}}</code></td><td>{{base_entries}}</td></tr>
+        <tr><td>Target</td><td><code>{{target_path}}</code></td><td>{{target_entries}}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="detail-section">
+    <h2>Diagnostic changes</h2>
+    {{diagnostic_table}}
+  </div>
+
+  <div class="detail-section">
+    <h2>Metadata changes</h2>
+    {{metadata_table}}
+  </div>
+</body>
+</html>

@@ -1,0 +1,4 @@
+fn read_config(path: String) -> Result<Config, Error> = {
+  let text = read_file(path)?;
+  parse_config(text)?
+}

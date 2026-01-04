@@ -1,0 +1,2 @@
+fn chainl1<A>(term: Parser<A>, op: Parser<(A, A) -> A>) -> Parser<A> = todo
+fn chainr1<A>(term: Parser<A>, op: Parser<(A, A) -> A>) -> Parser<A> = todo

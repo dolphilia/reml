@@ -1,0 +1,12 @@
+use Core.Parse
+use Core.Parse.Lex
+
+struct LexPack {
+  space: Any,
+  symbol: Any,
+  ident: Any,
+}
+
+fn lex_pack(profile: ConfigTriviaProfile = ConfigTriviaProfile::strict_json) -> LexPack =
+  LexPack { space: todo, symbol: todo, ident: todo }
+fn parse_entry<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T> = todo

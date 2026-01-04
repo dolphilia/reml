@@ -1,0 +1,40 @@
+pub type CliSpec = {
+  name: Str,
+  version: Option<Str>,
+  description: Option<Str>,
+  entries: List<CliEntry>,
+}
+
+pub enum CliEntry =
+  | Flag { name: Str, help: Str }
+  | Arg { name: Str, help: Str }
+  | Command { name: Str, help: Str, spec: CliSpec }
+
+pub type CliValues = {
+  flags: Set<Str>,
+  args: Map<Str, Str>,
+  command: Option<Str>,
+}
+
+pub type CliBuilder
+
+pub type CliError = {
+  kind: CliErrorKind,
+  message: Str,
+  hint: Option<Str>,
+}
+
+pub enum CliErrorKind =
+  | MissingArgument
+  | UnknownFlag
+  | UnknownCommand
+  | ValueParseFailed
+
+fn builder() -> CliBuilder
+fn flag(builder: CliBuilder, name: Str, help: Str) -> CliBuilder
+fn arg(builder: CliBuilder, name: Str, help: Str) -> CliBuilder
+fn command(builder: CliBuilder, name: Str, help: Str, spec: CliSpec) -> CliBuilder
+fn build(builder: CliBuilder) -> CliSpec
+fn parse(spec: CliSpec, argv: List<Str>) -> Result<CliValues, CliError>
+fn get_flag(values: CliValues, name: Str) -> Bool
+fn get_arg(values: CliValues, name: Str) -> Option<Str>

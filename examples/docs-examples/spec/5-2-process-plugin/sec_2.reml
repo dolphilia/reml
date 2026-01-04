@@ -1,0 +1,11 @@
+pub type Command = {
+  program: Path,
+  args: List<Str>,
+  cwd: Option<Path>,
+  env: Environment,
+  stdin: StdioSpec,
+  stdout: StdioSpec,
+  stderr: StdioSpec,
+}
+
+pub enum StdioSpec = Inherit | Null | Pipe | File(Path)

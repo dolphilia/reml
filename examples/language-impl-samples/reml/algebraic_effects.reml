@@ -1,0 +1,265 @@
+module samples.language_impl_samples.algebraic_effects
+
+use ::Core.Collection.List as List
+
+/// 代数的効果を使うミニ言語：状態・例外・非決定性を持つ式評価器。
+///
+/// この実装は Reml の効果システムを活用し、以下の効果を明示的に扱う：
+/// 1. State<S> - 可変状態の読み書き
+/// 2. Except<E> - 例外の送出と捕捉
+/// 3. Choose - 非決定的選択（複数の結果を生成）
+///
+/// 他言語（Haskell のモナド変換子、Rust の Result/State 手動管理）と比較して、
+/// Reml では効果が型推論され、ハンドラーで明示的に制御される点が特徴。
+
+/// ミニ言語の式定義。
+type Expr =
+  | Lit(Int)
+  | Var(String)
+  | Add(Expr, Expr)
+  | Mul(Expr, Expr)
+  | Div(Expr, Expr)
+  | Get              // 状態を取得
+  | Put(Expr)        // 状態を更新
+  | Fail(String)     // 例外を送出
+  | Choose(Expr, Expr)  // 非決定的選択
+
+/// 環境：変数束縛。
+type Env = List<(String, Int)>
+
+/// 効果の定義（Reml の effect 宣言）。
+
+/// 状態効果：可変状態の読み書き。
+effect State<S> {
+  operation get() -> S
+  operation put(s: S) -> ()
+}
+
+/// 例外効果：エラーの送出。
+effect Except<E> {
+  operation raise(err: E) -> Never
+}
+
+/// 非決定性効果：複数の選択肢を生成。
+effect Choose {
+  operation choose<A>(left: A, right: A) -> A
+}
+
+/// 式の評価関数（効果を持つ）。
+///
+/// 効果シグネチャ：
+/// - State<Int>: 状態の読み書き
+/// - Except<String>: 例外の送出
+/// - Choose: 非決定的選択
+///
+/// Reml では効果が型推論されるため、明示的な型注釈は不要だが、
+/// ドキュメント目的で記載。
+fn eval(expr: Expr, env: Env) -> Int
+  with State<Int>, Except<String>, Choose
+=
+  match expr with
+  | Lit(n) -> n
+  | Var(name) ->
+    match List.find(env, |(k, _)| k == name) with
+    | Some((_, v)) -> v
+    | None -> perform Except.raise(format("未定義変数: {name}"))
+  | Add(left, right) ->
+    let l = eval(left, env)
+    let r = eval(right, env)
+    l + r
+  | Mul(left, right) ->
+    let l = eval(left, env)
+    let r = eval(right, env)
+    l * r
+  | Div(left, right) ->
+    let l = eval(left, env)
+    let r = eval(right, env)
+    if r == 0 then
+      perform Except.raise("ゼロ除算")
+    else
+      l / r
+  | Get ->
+    perform State.get()
+  | Put(expr) ->
+    let v = eval(expr, env)
+    perform State.put(v)
+    v
+  | Fail(msg) ->
+    perform Except.raise(msg)
+  | Choose(left, right) ->
+    let choice = perform Choose.choose(
+      eval(left, env),
+      eval(right, env)
+    )
+    choice
+
+/// 効果ハンドラー：State<Int> を処理。
+///
+/// 状態を初期値 init_state から開始し、最終状態と結果をペアで返す。
+handler state_handler<A>(init_state: Int) -> (A, Int)
+  for State<Int>
+{
+  operation get() resume ->
+    let (result, final_state) = resume(init_state)
+    (result, final_state)
+
+  operation put(new_state: Int) resume ->
+    let (result, _) = resume(())
+    (result, new_state)
+
+  return value ->
+    (value, init_state)
+}
+
+/// 効果ハンドラー：Except<String> を処理。
+///
+/// 例外を捕捉して Result<A, String> に変換。
+handler except_handler<A>() -> Result<A, String>
+  for Except<String>
+{
+  operation raise(err: String) resume ->
+    Err(err)
+
+  return value ->
+    Ok(value)
+}
+
+/// 効果ハンドラー：Choose を処理（リスト収集版）。
+///
+/// すべての選択肢を試し、結果のリストを返す。
+handler choose_handler<A>() -> List<A>
+  for Choose
+{
+  operation choose<B>(left: B, right: B) resume ->
+    let left_results = resume(left)
+    let right_results = resume(right)
+    List.append(left_results, right_results)
+
+  return value ->
+    [value]
+}
+
+/// 効果ハンドラーの合成例：すべての効果を処理。
+///
+/// State → Except → Choose の順でハンドル。
+/// 最終的に Result<List<(Int, Int)>, String> を返す。
+pub fn run_with_all_effects(expr: Expr, env: Env, init_state: Int)
+  -> Result<List<(Int, Int)>, String>
+=
+  handle state_handler(init_state) do
+    handle except_handler() do
+      handle choose_handler() do
+        eval(expr, env)
+
+/// 効果の部分的処理：State のみをハンドル。
+///
+/// Except と Choose は呼び出し側に伝播。
+pub fn run_with_state(expr: Expr, env: Env, init_state: Int)
+  -> (Int, Int) with Except<String>, Choose
+=
+  handle state_handler(init_state) do
+    eval(expr, env)
+
+/// 効果の部分的処理：Except のみをハンドル。
+///
+/// State と Choose は呼び出し側に伝播。
+pub fn run_with_except(expr: Expr, env: Env)
+  -> Result<Int, String> with State<Int>, Choose
+=
+  handle except_handler() do
+    eval(expr, env)
+
+/// 簡易的なテストケース例。
+pub fn example_expressions() -> List<(String, Expr)> = [
+  ("単純な加算", Add(Lit(10), Lit(20))),
+  ("乗算と除算", Div(Mul(Lit(6), Lit(7)), Lit(2))),
+  ("状態の取得", Add(Get, Lit(5))),
+  ("状態の更新", Put(Add(Get, Lit(1)))),
+  ("ゼロ除算エラー", Div(Lit(10), Lit(0))),
+  ("非決定的選択", Choose(Lit(1), Lit(2))),
+  ("複雑な例", Add(
+    Choose(Lit(10), Lit(20)),
+    Put(Add(Get, Lit(1)))
+  ))
+]
+
+/// テスト実行関数。
+pub fn run_examples() -> () =
+  let examples = example_expressions()
+  let env = []
+  let init_state = 0
+
+  examples
+  |> List.iter(|(name, expr)|
+    println(format("--- {name} ---"))
+    match run_with_all_effects(expr, env, init_state) with
+    | Ok(results) ->
+      results
+      |> List.iter(|(value, state)|
+        println(format("  結果: {value}, 状態: {state}"))
+      )
+    | Err(err) ->
+      println(format("  エラー: {err}"))
+  )
+
+/// 他言語との比較ポイント：
+///
+/// 1. **Haskell（モナド変換子）**
+///    - StateT, ExceptT, ListT を積み重ねる必要がある
+///    - 型が複雑になり、lift を多用する
+///    - 効果の順序変更が困難（モナド変換子の積み替え）
+///
+///    ```haskell
+///    type Eval a = StateT Int (ExceptT String []) a
+///
+///    eval :: Expr -> Eval Int
+///    eval (Choose l r) = do
+///      vl <- eval l
+///      vr <- eval r
+///      lift $ lift [vl, vr]  -- 2回 lift が必要
+///    ```
+///
+/// 2. **Rust（手動管理）**
+///    - State は引数で明示的に渡す
+///    - Except は Result<T, E> で表現
+///    - Choose はVec<T>で表現し、flatMap相当の処理を手動実装
+///
+///    ```rust
+///    fn eval(expr: &Expr, env: &Env, state: &mut i32)
+///      -> Result<Vec<i32>, String>
+///    {
+///      match expr {
+///        Expr::Choose(l, r) => {
+///          let mut results = Vec::new();
+///          results.extend(eval(l, env, state)?);
+///          results.extend(eval(r, env, state)?);
+///          Ok(results)
+///        }
+///        // ...
+///      }
+///    }
+///    ```
+///    - 状態管理が煩雑で、バグが入りやすい
+///
+/// 3. **Koka（効果型推論）**
+///    - Reml と最も近い設計
+///    - 効果が型レベルで追跡され、ハンドラーで処理
+///
+///    ```koka
+///    effect state<s> {
+///      fun get() : s
+///      fun put(x : s) : ()
+///    }
+///
+///    fun eval(expr : expr, env : env) : <state<int>, exn, ndet> int {
+///      match expr {
+///        Choose(l, r) -> choose(eval(l, env), eval(r, env))
+///      }
+///    }
+///    ```
+///
+/// Reml の利点：
+/// - 効果が型推論され、明示的な型注釈が不要
+/// - ハンドラーの合成が自然で、順序変更が容易
+/// - 他言語のモナド変換子の複雑さを回避
+/// - エラーメッセージが効果システムと統合され、高品質

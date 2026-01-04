@@ -1,0 +1,11 @@
+pub type Column<T, Meta> = {
+  dtype: TypeRef<T>,
+  constraints: List<Constraint<T>>,
+  meta: Meta,
+}
+
+pub type SchemaRecord<T> = Map<Str, Column<T, ColumnMeta>>
+
+fn column<T>(dtype: TypeRef<T>, constraints: List<Constraint<T>>) -> Column<T, ColumnMeta> // `@pure`
+fn resource<P, K>(prefix: P, key: K) -> ResourceId<P, K>                                   // `@pure`
+fn infer_schema<T>(samples: Iter<Json>) -> Result<SchemaRecord<T>, Diagnostic>             // `effect {audit}`

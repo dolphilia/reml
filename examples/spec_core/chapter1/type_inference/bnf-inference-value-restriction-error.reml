@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.TypeInference.ValueRestriction
+
+use Core.Prelude
+
+// BNF: Let binding + value restriction（docs/spec/1-2-types-Inference.md §C.3）
+var cell = []
+
+let reuse = cell
+
+fn main() -> Str {
+  "value-restriction"
+}

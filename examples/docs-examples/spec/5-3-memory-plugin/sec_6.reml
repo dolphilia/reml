@@ -1,0 +1,4 @@
+fn map_file(path: Path, protection: MemoryProtection) -> Result<MappedMemory, MemoryError> // effect {memory, io, unsafe}
+fn map_shared_buffer(name: Str, size: usize) -> Result<SharedMemory, MemoryError>          // effect {memory, process, unsafe}
+fn unmap(memory: MappedMemory) -> Result<(), MemoryError>                                  // effect {memory}
+fn remap(memory: &mut MappedMemory, new_len: usize) -> Result<(), MemoryError>             // effect {memory, unsafe}

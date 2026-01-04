@@ -1,0 +1,16 @@
+pub type Table<K, V>
+
+// 永続コレクション間の変換
+fn list_to_set<T: Ord>(list: List<T>) -> Set<T>                 // `@pure`
+fn map_keys<K: Ord, V>(map: Map<K, V>) -> Set<K>               // `@pure`
+fn map_values<K, V>(map: Map<K, V>) -> List<V>                 // `@pure`
+
+// 永続・可変間の変換
+fn list_to_vec<T>(list: List<T>) -> Vec<T>                     // `effect {mem}`
+fn vec_to_list<T>(vec: Vec<T>) -> List<T>                      // `effect {mem}`
+fn map_to_table<K, V>(map: Map<K, V>) -> Table<K, V>           // `effect {mut, mem}`
+fn table_to_map<K: Ord, V>(table: Table<K, V>) -> Map<K, V>    // `@pure`
+
+// 特殊化された変換
+fn collect_duplicates<T: Ord>(list: List<T>) -> Map<T, usize>  // `@pure`
+fn group_by<T, K: Ord>(list: List<T>, f: (T) -> K) -> Map<K, List<T>> // `@pure`

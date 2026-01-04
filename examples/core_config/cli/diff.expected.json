@@ -1,0 +1,122 @@
+{
+  "command": "config.diff",
+  "base": {
+    "path": "../../examples/core_config/cli/config_old.json",
+    "format": "json",
+    "entries": 7
+  },
+  "target": {
+    "path": "../../examples/core_config/cli/config_new.json",
+    "format": "json",
+    "entries": 7
+  },
+  "summary": {
+    "added": 1,
+    "removed": 1,
+    "updated": 3,
+    "total": 5
+  },
+  "change_set": {
+    "origin": "core.collections",
+    "policy": "core.collections.audit.v1",
+    "category": "collections.diff",
+    "stage": "stable",
+    "kind": "collections.diff.map",
+    "summary": {
+      "added": 1,
+      "removed": 1,
+      "updated": 3,
+      "total": 5
+    },
+    "metadata": {
+      "stage": "stable",
+      "category": "collections.diff",
+      "kind": "collections.diff.map",
+      "origin": "core.collections"
+    },
+    "items": [
+      {
+        "kind": "collections.diff.updated",
+        "key": "limits.cpu",
+        "previous": "500m",
+        "current": "750m"
+      },
+      {
+        "kind": "collections.diff.updated",
+        "key": "limits.memory",
+        "previous": "1Gi",
+        "current": "2Gi"
+      },
+      {
+        "kind": "collections.diff.removed",
+        "key": "service.features[1]",
+        "previous": "telemetry"
+      },
+      {
+        "kind": "collections.diff.updated",
+        "key": "service.replicas",
+        "previous": 2,
+        "current": 3
+      },
+      {
+        "kind": "collections.diff.added",
+        "key": "telemetry.enabled",
+        "current": true
+      }
+    ],
+    "total": 5
+  },
+  "schema_diff": {
+    "kind": "MapDiff",
+    "metadata": {
+      "origin": "core.collections",
+      "policy": "core.collections.audit.v1",
+      "category": "collections.diff",
+      "stage": "stable",
+      "total": 5,
+      "mem_bytes": 0
+    },
+    "changes": [
+      {
+        "kind": "Updated",
+        "key": "limits.cpu",
+        "previous": "500m",
+        "current": "750m",
+        "type_tag": "string",
+        "mem_bytes": 0
+      },
+      {
+        "kind": "Updated",
+        "key": "limits.memory",
+        "previous": "1Gi",
+        "current": "2Gi",
+        "type_tag": "string",
+        "mem_bytes": 0
+      },
+      {
+        "kind": "Removed",
+        "key": "service.features[1]",
+        "previous": "telemetry",
+        "current": null,
+        "type_tag": "string",
+        "mem_bytes": 0
+      },
+      {
+        "kind": "Updated",
+        "key": "service.replicas",
+        "previous": 2,
+        "current": 3,
+        "type_tag": "number",
+        "mem_bytes": 0
+      },
+      {
+        "kind": "Added",
+        "key": "telemetry.enabled",
+        "previous": null,
+        "current": true,
+        "type_tag": "bool",
+        "mem_bytes": 0
+      }
+    ]
+  }
+}

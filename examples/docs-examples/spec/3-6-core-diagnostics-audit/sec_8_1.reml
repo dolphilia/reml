@@ -1,0 +1,15 @@
+pub type RuntimeBridgeId
+pub type StageRequirement
+pub type StageId
+pub type Path
+pub type Text
+
+pub type BridgeDiagnostic = {
+  id: RuntimeBridgeId,
+  stage_required: Option<StageRequirement>,
+  stage_actual: Option<StageId>,
+  target_requested: Option<Str>,
+  target_detected: Option<Str>,
+  manifest_path: Option<Path>,
+  checklist_missing: List<Text>,
+}

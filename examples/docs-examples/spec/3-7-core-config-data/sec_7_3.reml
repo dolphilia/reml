@@ -1,0 +1,8 @@
+// スキーマ間のマッピング
+fn map_schema<T, U>(from: Schema<T>, to: Schema<U>, mapping: FieldMapping) -> Result<U, MappingError>
+fn transform_data<T, U>(data: T, from_schema: Schema<T>, to_schema: Schema<U>) -> Result<U, TransformError>
+
+// スキーマの結合と分解
+fn union_schemas<T>(schemas: List<Schema<T>>) -> Schema<T>
+fn intersect_schemas<T>(schemas: List<Schema<T>>) -> Option<Schema<T>>
+fn project_schema<T>(schema: Schema<T>, fields: List<Str>) -> Schema<T>  // フィールドサブセットの抽出

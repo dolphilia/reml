@@ -1,0 +1,13 @@
+// 10 進（"1_234" 許容）
+fn int10() -> Parser<Str> = todo                     // “文字列” として取得（桁を維持）
+fn int(radix: 2|8|10|16, allow_prefix: Bool = false) -> Parser<Str> = todo
+// 0b / 0o / 0x プレフィックス対応
+fn intAuto() -> Parser<(radix: u8, digits: Str)> = todo // 0x..., 0o..., 0b..., それ以外は 10
+
+// 浮動小数（10 進、"1.23", ".5", "1e-9", "1_000.0" など）
+fn float() -> Parser<Str> = todo
+
+// 文字列から数値へ（範囲チェック付き）
+fn parseI64(digits: Str, radix: u8 = 10)  -> Result<i64, Overflow> = todo
+fn parseU64(digits: Str, radix: u8 = 10)  -> Result<u64, Overflow> = todo
+fn parseF64(repr: Str)                    -> Result<f64, ParseFloatError> = todo

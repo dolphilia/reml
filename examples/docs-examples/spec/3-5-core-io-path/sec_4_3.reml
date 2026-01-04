@@ -1,0 +1,7 @@
+pub type PathError
+
+pub enum PathStyle = Native | Posix | Windows
+
+fn normalize_path(text: Str, style: PathStyle = Native) -> Result<Str, PathError>    // `@pure`
+fn join_paths(parts: List<Str>, style: PathStyle = Native) -> Result<Str, PathError>  // `@pure`
+fn is_absolute_str(text: Str, style: PathStyle = Native) -> Bool                      // `@pure`

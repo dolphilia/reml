@@ -1,0 +1,42 @@
+{
+  "diagnostics": [
+    {
+      "schema_version": "2.0.0-draft",
+      "message": "scale cannot exceed requested precision",
+      "severity": "error",
+      "domain": "runtime",
+      "timestamp": "1970-01-01T00:00:00Z",
+      "code": "core.numeric.precision.invalid_precision",
+      "codes": [
+        "core.numeric.precision.invalid_precision"
+      ],
+      "primary": {
+        "file": "tests/data/numeric/precision/decimal_precision.reml",
+        "start_line": 2,
+        "start_col": 0,
+        "end_line": 6,
+        "end_col": 20
+      },
+      "audit_metadata": {
+        "numeric.precision.error_kind": "invalid_precision",
+        "numeric.precision.precision_kind": "decimal",
+        "numeric.precision.scale": 6,
+        "numeric.precision.precision": 4,
+        "numeric.precision.value": "123.456"
+      },
+      "extensions": {
+        "numeric.precision": {
+          "error_kind": "invalid_precision",
+          "precision_kind": "decimal",
+          "scale": 6,
+          "precision": 4,
+          "value": "123.456"
+        },
+        "effects": {
+          "required_capabilities": [],
+          "actual_capabilities": []
+        }
+      }
+    }
+  ]
+}

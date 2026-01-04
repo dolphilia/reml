@@ -1,0 +1,172 @@
+module samples.language_impl_samples.mini_lisp_combinator
+
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.Prelude
+use ::Core.Text as Text
+use ::Core.Parse
+use ::Core.Parse.Lex
+
+/// S 式 AST。
+type Expr =
+  | Number(f64)
+  | Symbol(Text)
+  | ListExpr(List<Expr>)
+
+/// 評価結果のバリエーション。
+type Value =
+  | VNumber(f64)
+  | VLambda({ params: List<Text>, body: Expr, env: Env })
+  | VBuiltin(NativeFn)
+
+/// ネイティブ関数は値リストを受け取り Result を返す。
+type alias NativeFn = fn(List<Value>) -> Result<Value, Text>
+
+type Env = Map<Text, Value>
+
+/// 空白とコメントを読み飛ばすスキーマ。
+let sc: Parser<()> =
+  (Lex.whitespace()
+    .or(Lex.commentLine(";"))
+    .or(Lex.commentBlock("#|", "|#", nested = true)))
+  |> Lex.skipMany
+
+fn lexeme<A>(p: Parser<A>) -> Parser<A> {
+  Lex.lexeme(sc, p)
+}
+
+fn sym(token: Str) -> Parser<()> {
+  symbol(sc, token)
+}
+
+fn trim<A>(p: Parser<A>) -> Parser<A> {
+  Lex.trim(sc, p)
+}
+
+let number_atom: Parser<Expr> =
+  rule("lisp.number",
+    lexeme(Lex.float())
+      .andThen(|repr| match Lex.parseF64(repr) with
+        | Ok(value) -> ok(Number(value))
+        | Err(_) -> fail(format("数値として解釈できません: {repr}"))
+      )
+  )
+
+let symbol_atom: Parser<Expr> =
+  rule("lisp.symbol",
+    lexeme(Lex.identifier())
+      .map(|name| Symbol(name))
+  )
+
+let expr: Parser<Expr> = rule("lisp.expr",
+  choice([
+    number_atom,
+    symbol_atom,
+    list_expr,
+  ])
+)
+
+let list_expr: Parser<Expr> =
+  rule("lisp.list",
+    between(sym("("), many(expr), sym(")"))
+      .map(|items| ListExpr(items))
+  )
+
+let program: Parser<Expr> =
+  rule("lisp.program",
+    skipR(trim(sc, expr), eof())
+  )
+
+fn parse(source: Text) -> Result<Expr, ParseError> =
+  Core.Parse.run(program, source)
+
+/// --- 以下、評価系 ---
+fn eval_expr(expr: Expr, env: Env) -> Result<Value, Text> {
+  match expr with
+  | Number(n) -> Result.ok(VNumber(n))
+  | Symbol(name) ->
+    Map.get(env, name).ok_or(| | format("未定義シンボル: {name}"))
+  | ListExpr(items) -> eval_list(items, env)
+}
+
+fn eval_list(items: List<Expr>, env: Env) -> Result<Value, Text> {
+  match List.pop_front(items) with
+  | None -> Result.err("空の式は評価できません")
+  | Some((head, rest)) -> {
+    let callee = eval_expr(head, env)?
+    let args = List.fold(rest, Result.ok(List.empty()), |acc_res, expr| {
+      match acc_res with
+      | Err(err) -> Result.err(err)
+      | Ok(acc) ->
+        match eval_expr(expr, env) with
+        | Ok(value) -> Result.ok(List.push_back(acc, value))
+        | Err(err) -> Result.err(err)
+        end
+      end
+    })?
+    apply(callee, args)
+  }
+}
+
+fn apply(callee: Value, args: List<Value>) -> Result<Value, Text> {
+  match callee with
+  | VBuiltin(fun) -> fun(args)
+  | VLambda(lambda) -> apply_lambda(lambda, args)
+  | VNumber(_) -> Result.err("数値は関数として適用できません")
+}
+
+fn apply_lambda(lambda: { params: List<Text>, body: Expr, env: Env }, args: List<Value>) -> Result<Value, Text> {
+  let params = lambda.params
+  let values = args
+  let pairs = List.zip(params, values)
+  if List.len(pairs) != List.len(params) then {
+    Result.err("引数の数が一致しません")
+  } else {
+    let new_env = List.fold(pairs, lambda.env, |acc, pair| {
+      match pair with
+      | (param, value) -> Map.insert(acc, param, value)
+      end
+    })
+    eval_expr(lambda.body, new_env)
+  }
+}
+
+fn default_env() -> Env {
+  match Map.from_pairs([
+    ("+", VBuiltin(builtin_numeric(|a, b| a + b))),
+    ("-", VBuiltin(builtin_numeric(|a, b| a - b))),
+    ("*", VBuiltin(builtin_numeric(|a, b| a * b))),
+    ("/", VBuiltin(builtin_numeric(|a, b| a / b))),
+  ]) with
+  | Ok(env) -> env
+  | Err(_) -> Map.empty()
+}
+
+fn builtin_numeric(op: fn(f64, f64) -> f64) -> NativeFn {
+  |args| {
+    match List.pop_front(args) with
+    | None -> Result.err("数値演算は 2 引数のみ対応します")
+    | Some((first, rest1)) ->
+      match List.pop_front(rest1) with
+      | None -> Result.err("数値演算は 2 引数のみ対応します")
+      | Some((second, tail)) ->
+        if List.is_empty(tail) then {
+          match (first, second) with
+          | (VNumber(lhs), VNumber(rhs)) -> Result.ok(VNumber(op(lhs, rhs)))
+          | _ -> Result.err("数値以外を演算できません")
+          end
+        } else {
+          Result.err("数値演算は 2 引数のみ対応します")
+        }
+      end
+    end
+  }
+}
+
+fn eval_program(source: Text) -> Result<Value, Text> {
+  let expr = parse(source)?
+  eval_expr(expr, default_env())
+}
+
+// 利用例
+// eval_program("(+ 1 2)") => Ok(VNumber(3.0))

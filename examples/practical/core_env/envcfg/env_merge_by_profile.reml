@@ -1,0 +1,19 @@
+module Examples.Practical.CoreEnv.EnvCfg.Merge
+
+use Core.Collections
+use Core.System.Env as Env
+
+fn main() -> Str {
+  let base_values = Map.insert(Map.empty_map(), "API_URL", "https://prod");
+  let base = Env.Profile {
+    name = "default",
+    values = base_values,
+  }
+  let cli_values = Map.insert(Map.empty_map(), "API_URL", "https://cli.local");
+  let cli = Env.Profile {
+    name = "cli",
+    values = cli_values,
+  }
+  let merged = Env.merge_profiles([base, cli], target = "cli")
+  merged.values["API_URL"]
+}

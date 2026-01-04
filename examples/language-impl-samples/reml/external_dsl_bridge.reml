@@ -1,0 +1,803 @@
+module samples.language_impl_samples.external_dsl_bridge
+
+use ::Core.Parse as Parse
+use ::Core.Parse.Combinator as P
+use ::Core.Parse.Lex as Lex
+use ::Core.Config as Config
+use ::Core.Config.Manifest as Manifest
+use ::Core.Diagnostics as Diag
+use ::Core.IO as IO
+use ::Core.Text.String as Str
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.Data.Json as Json
+
+/// 外部DSLブリッジ: GraphQL サブセット・Capability マニフェスト → Reml 変換
+///
+/// **検証対象**:
+/// - 2-2-core-combinator.md の Core.Parse.Combinator API
+/// - 3-7-core-config-data.md と 3-8-core-runtime-capability.md の整合性
+/// - ParseError → Diagnostic 変換 (2-5-error.md)
+/// - DslExportSignature の型検証 (1-2-types-inference.md)
+/// - notes/reml-language-influences-analysis.md のメタプログラミング観点
+///
+/// **想定ユースケース**:
+/// 外部システム（GraphQL API、TOML設定ファイル等）の定義を
+/// Reml の型安全なDSL表現に変換し、型検証・エラー診断を統一的に扱う。
+
+/// ============================================================================
+/// 1. GraphQL サブセット AST 定義
+/// ============================================================================
+
+/// GraphQL スキーマ定義（簡易版）
+type GraphQLSchema = {
+  types: List<GraphQLType>,
+  queries: List<GraphQLField>,
+  mutations: List<GraphQLField>,
+}
+
+/// GraphQL 型定義
+type GraphQLType =
+  | Scalar { name: Str }
+  | Object { name: Str, fields: List<GraphQLField> }
+  | Enum { name: Str, values: List<Str> }
+  | List { inner_type: Box<GraphQLType> }
+  | NonNull { inner_type: Box<GraphQLType> }
+
+/// GraphQL フィールド定義
+type GraphQLField = {
+  name: Str,
+  arguments: List<GraphQLArgument>,
+  return_type: GraphQLType,
+  description: Option<Str>,
+}
+
+/// GraphQL 引数定義
+type GraphQLArgument = {
+  name: Str,
+  arg_type: GraphQLType,
+  default_value: Option<Str>,
+}
+
+/// ============================================================================
+/// 2. Capability マニフェスト AST 定義
+/// ============================================================================
+
+/// Capability マニフェスト（TOML形式）
+type CapabilityManifest = {
+  capabilities: List<CapabilityDef>,
+  stages: Map<Str, StageDef>,
+  effects: List<EffectDef>,
+}
+
+/// Capability 定義
+type CapabilityDef = {
+  id: Str,
+  stage: Str,
+  permissions: List<Str>,
+  isolation_level: Str,
+  audit_required: Bool,
+}
+
+/// Stage 定義
+type StageDef = {
+  id: Str,
+  description: Str,
+  required_checks: List<Str>,
+}
+
+/// Effect 定義
+type EffectDef = {
+  tag: Str,
+  category: Str,
+  capability: Option<Str>,
+}
+
+/// ============================================================================
+/// 3. Reml 中間表現 (IR)
+/// ============================================================================
+
+/// Reml 型表現
+type RemlType =
+  | Int
+  | Float
+  | Str
+  | Bool
+  | Option { inner: Box<RemlType> }
+  | List { inner: Box<RemlType> }
+  | Record { fields: Map<Str, RemlType> }
+  | Custom { name: Str }
+
+/// Reml DSL エントリ表現
+type RemlDslEntry = {
+  name: Str,
+  input_type: RemlType,
+  output_type: RemlType,
+  effects: List<Str>,
+  capabilities: List<Str>,
+  stage_bounds: Runtime.StageBounds,
+}
+
+/// ============================================================================
+/// 4. GraphQL パーサー (Core.Parse.Combinator 使用)
+/// ============================================================================
+
+/// GraphQL スカラー型パーサー
+/// 効果: なし (@pure)
+fn parse_graphql_scalar() -> Parse.Parser<GraphQLType>  // @pure
+  = P.choice([
+    P.string("Int") |> P.map(|_| GraphQLType.Scalar { name: "Int" }),
+    P.string("Float") |> P.map(|_| GraphQLType.Scalar { name: "Float" }),
+    P.string("String") |> P.map(|_| GraphQLType.Scalar { name: "String" }),
+    P.string("Boolean") |> P.map(|_| GraphQLType.Scalar { name: "Boolean" }),
+    P.string("ID") |> P.map(|_| GraphQLType.Scalar { name: "ID" }),
+  ])
+
+/// GraphQL リスト型パーサー
+/// 効果: なし (@pure)
+fn parse_graphql_list_type() -> Parse.Parser<GraphQLType>  // @pure
+  = P.between(
+    P.char('['),
+    P.char(']'),
+    parse_graphql_type()
+  )
+  |> P.map(|inner| GraphQLType.List { inner_type: Box.new(inner) })
+
+/// GraphQL NonNull 型パーサー
+/// 効果: なし (@pure)
+fn parse_graphql_nonnull_type() -> Parse.Parser<GraphQLType>  // @pure
+  = P.then(
+    parse_graphql_type(),
+    P.char('!')
+  )
+  |> P.map(|(inner, _)| GraphQLType.NonNull { inner_type: Box.new(inner) })
+
+/// GraphQL 型パーサー（再帰定義）
+/// 効果: なし (@pure)
+fn parse_graphql_type() -> Parse.Parser<GraphQLType>  // @pure
+  = P.choice([
+    parse_graphql_nonnull_type(),
+    parse_graphql_list_type(),
+    parse_graphql_scalar(),
+    Lex.identifier() |> P.map(|name| GraphQLType.Object { name: name, fields: [] }),
+  ])
+
+/// GraphQL フィールド引数パーサー
+/// 効果: なし (@pure)
+fn parse_graphql_argument() -> Parse.Parser<GraphQLArgument>  // @pure
+  = P.do_notation(|bind| {
+    let name = bind(Lex.identifier());
+    bind(Lex.ws());
+    bind(P.char(':'));
+    bind(Lex.ws());
+    let arg_type = bind(parse_graphql_type());
+
+    P.pure(GraphQLArgument {
+      name: name,
+      arg_type: arg_type,
+      default_value: None,
+    })
+  })
+
+/// GraphQL フィールドパーサー
+/// 効果: なし (@pure)
+fn parse_graphql_field() -> Parse.Parser<GraphQLField>  // @pure
+  = P.do_notation(|bind| {
+    let name = bind(Lex.identifier());
+    bind(Lex.ws());
+
+    // 引数リスト（オプション）
+    let arguments = bind(P.optional(
+      P.between(
+        P.char('('),
+        P.char(')'),
+        P.sep_by(parse_graphql_argument(), P.char(',') |> P.then_skip(Lex.ws()))
+      )
+    ))
+    |> P.map(|opt| match opt { | Some(args) -> args | None -> [] });
+
+    bind(P.char(':'));
+    bind(Lex.ws());
+    let return_type = bind(parse_graphql_type());
+
+    P.pure(GraphQLField {
+      name: name,
+      arguments: arguments,
+      return_type: return_type,
+      description: None,
+    })
+  })
+
+/// GraphQL オブジェクト型パーサー
+/// 効果: なし (@pure)
+fn parse_graphql_object() -> Parse.Parser<GraphQLType>  // @pure
+  = P.do_notation(|bind| {
+    bind(P.string("type"));
+    bind(Lex.ws());
+    let name = bind(Lex.identifier());
+    bind(Lex.ws());
+    bind(P.char('{'));
+    bind(Lex.ws());
+
+    let fields = bind(P.many(
+      parse_graphql_field() |> P.then_skip(Lex.ws())
+    ));
+
+    bind(P.char('}'));
+
+    P.pure(GraphQLType.Object { name: name, fields: fields })
+  })
+
+/// GraphQL スキーマパーサー
+/// 効果: なし (@pure)
+fn parse_graphql_schema() -> Parse.Parser<GraphQLSchema>  // @pure
+  = P.do_notation(|bind| {
+    bind(Lex.ws());
+    let types = bind(P.many(parse_graphql_object() |> P.then_skip(Lex.ws())));
+
+    P.pure(GraphQLSchema {
+      types: types,
+      queries: [],
+      mutations: [],
+    })
+  })
+
+/// ============================================================================
+/// 5. Capability マニフェストパーサー (TOML形式)
+/// ============================================================================
+
+/// Capability 定義パーサー（簡易版）
+/// 効果: なし (@pure)
+fn parse_capability_def() -> Parse.Parser<CapabilityDef>  // @pure
+  = P.do_notation(|bind| {
+    bind(P.string("[[capabilities]]"));
+    bind(Lex.ws());
+
+    // id = "..."
+    bind(P.string("id"));
+    bind(Lex.ws());
+    bind(P.char('='));
+    bind(Lex.ws());
+    let id = bind(Lex.string_lit());
+    bind(Lex.ws());
+
+    // stage = "..."
+    bind(P.string("stage"));
+    bind(Lex.ws());
+    bind(P.char('='));
+    bind(Lex.ws());
+    let stage = bind(Lex.string_lit());
+    bind(Lex.ws());
+
+    // audit_required = true/false
+    bind(P.string("audit_required"));
+    bind(Lex.ws());
+    bind(P.char('='));
+    bind(Lex.ws());
+    let audit_required = bind(P.choice([
+      P.string("true") |> P.map(|_| true),
+      P.string("false") |> P.map(|_| false),
+    ]));
+    bind(Lex.ws());
+
+    P.pure(CapabilityDef {
+      id: id,
+      stage: stage,
+      permissions: [],
+      isolation_level: "None",
+      audit_required: audit_required,
+    })
+  })
+
+/// Capability マニフェストパーサー
+/// 効果: なし (@pure)
+fn parse_capability_manifest() -> Parse.Parser<CapabilityManifest>  // @pure
+  = P.do_notation(|bind| {
+    bind(Lex.ws());
+    let capabilities = bind(P.many(parse_capability_def() |> P.then_skip(Lex.ws())));
+
+    P.pure(CapabilityManifest {
+      capabilities: capabilities,
+      stages: Map.empty(),
+      effects: [],
+    })
+  })
+
+/// ============================================================================
+/// 6. GraphQL → Reml 変換
+/// ============================================================================
+
+/// GraphQL 型を Reml 型に変換
+/// 効果: なし (@pure)
+fn graphql_type_to_reml(gql_type: GraphQLType) -> RemlType  // @pure
+  = match gql_type {
+    | GraphQLType.Scalar { name } -> {
+      match name {
+        | "Int" -> RemlType.Int
+        | "Float" -> RemlType.Float
+        | "String" -> RemlType.Str
+        | "Boolean" -> RemlType.Bool
+        | "ID" -> RemlType.Str
+        | _ -> RemlType.Custom { name: name }
+      }
+    }
+    | GraphQLType.Object { name, fields } -> {
+      let field_map = Map.from_list(
+        List.map(fields, |f| (f.name, graphql_type_to_reml(f.return_type)))
+      );
+      RemlType.Record { fields: field_map }
+    }
+    | GraphQLType.List { inner_type } -> {
+      RemlType.List { inner: Box.new(graphql_type_to_reml(*inner_type)) }
+    }
+    | GraphQLType.NonNull { inner_type } -> {
+      graphql_type_to_reml(*inner_type)
+    }
+    | GraphQLType.Enum { name, values } -> {
+      RemlType.Custom { name: name }
+    }
+  }
+
+/// GraphQL フィールドを Reml DSL エントリに変換
+/// 効果: なし (@pure)
+fn graphql_field_to_reml_entry(field: GraphQLField) -> RemlDslEntry  // @pure
+  = do {
+    let input_type = if List.length(field.arguments) == 0 {
+      RemlType.Record { fields: Map.empty() }
+    } else {
+      let arg_fields = Map.from_list(
+        List.map(field.arguments, |arg| (arg.name, graphql_type_to_reml(arg.arg_type)))
+      );
+      RemlType.Record { fields: arg_fields }
+    };
+
+    let output_type = graphql_type_to_reml(field.return_type);
+
+    RemlDslEntry {
+      name: field.name,
+      input_type: input_type,
+      output_type: output_type,
+      effects: ["io"],  // GraphQL クエリは通常 IO 効果を持つ
+      capabilities: ["network.http"],  // HTTP リクエストが必要
+      stage_bounds: Runtime.StageBounds {
+        min_stage: Runtime.StageId.Beta,
+        max_stage: Runtime.StageId.Stable,
+      },
+    }
+  }
+
+/// ============================================================================
+/// 7. Capability マニフェスト → Reml 変換
+/// ============================================================================
+
+/// Capability 定義を Reml Capability ID に変換
+/// 効果: なし (@pure)
+fn capability_def_to_reml(cap: CapabilityDef) -> (Str, List<Str>)  // @pure
+  = do {
+    let effects = if cap.audit_required {
+      ["audit"]
+    } else {
+      []
+    };
+
+    (cap.id, effects)
+  }
+
+/// ============================================================================
+/// 8. 型検証: DslExportSignature との整合チェック
+/// ============================================================================
+
+/// Reml DSL エントリの型検証
+/// 効果: なし (@pure)
+fn validate_reml_entry(
+  entry: RemlDslEntry,
+  expected_signature: Option<Manifest.DslExportSignature<Json>>
+) -> Result<(), Diag.Diagnostic>  // @pure
+  = match expected_signature {
+    | None -> {
+      // 期待シグネチャがない場合は警告のみ
+      let diagnostic = Diag.diagnostic("No expected signature for DSL entry")
+        |> Diag.with_severity(Diag.Severity.Warning)
+        |> Diag.with_domain(Diag.DiagnosticDomain.Config)
+        |> Diag.with_code("dsl.signature.missing")
+        |> Diag.finish();
+
+      Err(diagnostic)
+    }
+    | Some(signature) -> {
+      // 効果タグの整合性チェック
+      let declared_effects = Set.from_list(entry.effects);
+      let expected_effects = signature.allows_effects;
+
+      if !Set.is_subset(declared_effects, expected_effects) {
+        let missing_effects = Set.difference(declared_effects, expected_effects);
+
+        let diagnostic = Diag.diagnostic("DSL effects mismatch")
+          |> Diag.with_severity(Diag.Severity.Error)
+          |> Diag.with_domain(Diag.DiagnosticDomain.Effect)
+          |> Diag.with_code("manifest.dsl.effect_mismatch")
+          |> Diag.attach_audit(Diag.AuditEnvelope {
+            audit_id: Some(Diag.new_uuid()),
+            change_set: None,
+            capability: None,
+            metadata: Map.from_list([
+              ("dsl_name", Json.String(entry.name)),
+              ("missing_effects", Json.Array(
+                List.map(Set.to_list(missing_effects), Json.String)
+              )),
+            ]),
+          })
+          |> Diag.finish();
+
+        Err(diagnostic)
+      } else {
+        // Capability の整合性チェック
+        let declared_capabilities = Set.from_list(entry.capabilities);
+        let expected_capabilities = signature.requires_capabilities;
+
+        if !Set.is_subset(declared_capabilities, expected_capabilities) {
+          let missing_capabilities = Set.difference(declared_capabilities, expected_capabilities);
+
+          let diagnostic = Diag.diagnostic("DSL capabilities mismatch")
+            |> Diag.with_severity(Diag.Severity.Error)
+            |> Diag.with_domain(Diag.DiagnosticDomain.Effect)
+            |> Diag.with_code("manifest.dsl.capability_mismatch")
+            |> Diag.attach_audit(Diag.AuditEnvelope {
+              audit_id: Some(Diag.new_uuid()),
+              change_set: None,
+              capability: None,
+              metadata: Map.from_list([
+                ("dsl_name", Json.String(entry.name)),
+                ("missing_capabilities", Json.Array(
+                  List.map(Set.to_list(missing_capabilities), Json.String)
+                )),
+              ]),
+            })
+            |> Diag.finish();
+
+          Err(diagnostic)
+        } else {
+          // Stage の整合性チェック
+          let stage_compatible = Runtime.check_stage_compatibility(
+            entry.stage_bounds,
+            signature.stage_bounds
+          );
+
+          if !stage_compatible {
+            let diagnostic = Diag.diagnostic("DSL stage bounds mismatch")
+              |> Diag.with_severity(Diag.Severity.Error)
+              |> Diag.with_domain(Diag.DiagnosticDomain.Effect)
+              |> Diag.with_code("manifest.dsl.stage_mismatch")
+              |> Diag.attach_audit(Diag.AuditEnvelope {
+                audit_id: Some(Diag.new_uuid()),
+                change_set: None,
+                capability: None,
+                metadata: Map.from_list([
+                  ("dsl_name", Json.String(entry.name)),
+                  ("declared_min_stage", Json.String(stage_to_string(entry.stage_bounds.min_stage))),
+                  ("declared_max_stage", Json.String(stage_to_string(entry.stage_bounds.max_stage))),
+                  ("expected_min_stage", Json.String(stage_to_string(signature.stage_bounds.min_stage))),
+                  ("expected_max_stage", Json.String(stage_to_string(signature.stage_bounds.max_stage))),
+                ]),
+              })
+              |> Diag.finish();
+
+            Err(diagnostic)
+          } else {
+            Ok(())
+          }
+        }
+      }
+    }
+  }
+
+/// ============================================================================
+/// 9. ParseError → Diagnostic 変換
+/// ============================================================================
+
+/// ParseError を Diagnostic に変換
+/// 効果: なし (@pure)
+fn parse_error_to_diagnostic(
+  source: Str,
+  error: Parse.ParseError,
+  input_name: Str
+) -> Diag.Diagnostic  // @pure
+  = do {
+    // parse_error_defaults でプリセットを取得し、カスタマイズ
+    let default_opts = Diag.parse_error_defaults(input_name);
+
+    let opts = default_opts {
+      code: Some("external.dsl.parse_error"),
+      audit: Some(Diag.AuditEnvelope {
+        audit_id: Some(Diag.new_uuid()),
+        change_set: None,
+        capability: None,
+        metadata: Map.from_list([
+          ("input_name", Json.String(input_name)),
+          ("error_kind", Json.String(parse_error_kind_to_string(error.kind))),
+          ("error_position", Json.Number(error.position)),
+          ("parse.error.source", Json.String("external_dsl")),
+        ]),
+      }),
+    };
+
+    Diag.from_parse_error(source, error, opts)
+  }
+
+/// ============================================================================
+/// 10. エンドツーエンド変換パイプライン
+/// ============================================================================
+
+/// GraphQL スキーマを解析して Reml DSL エントリに変換
+/// 効果: {diagnostic}
+fn transform_graphql_to_reml(
+  graphql_source: Str,
+  expected_signatures: Map<Str, Manifest.DslExportSignature<Json>>
+) -> Result<List<RemlDslEntry>, List<Diag.Diagnostic>>  // effect {diagnostic}
+  = do {
+    // GraphQL スキーマをパース
+    let parse_result = Parse.run(parse_graphql_schema(), graphql_source);
+
+    match parse_result {
+      | Ok(schema) -> {
+        // GraphQL 型から Reml エントリへ変換
+        let entries = List.flat_map(schema.types, |gql_type| {
+          match gql_type {
+            | GraphQLType.Object { name, fields } -> {
+              List.map(fields, graphql_field_to_reml_entry)
+            }
+            | _ -> []
+          }
+        });
+
+        // 型検証
+        let validation_errors = List.filter_map(entries, |entry| {
+          let expected = Map.get(expected_signatures, entry.name);
+          match validate_reml_entry(entry, expected) {
+            | Ok(_) -> None
+            | Err(diagnostic) -> Some(diagnostic)
+          }
+        });
+
+        if List.length(validation_errors) > 0 {
+          Err(validation_errors)
+        } else {
+          Ok(entries)
+        }
+      }
+      | Err(error) -> {
+        let diagnostic = parse_error_to_diagnostic(graphql_source, error, "GraphQL schema");
+        Err([diagnostic])
+      }
+    }
+  }
+
+/// Capability マニフェストを解析して Reml 表現に変換
+/// 効果: {diagnostic}
+fn transform_capability_manifest_to_reml(
+  toml_source: Str
+) -> Result<Map<Str, List<Str>>, List<Diag.Diagnostic>>  // effect {diagnostic}
+  = do {
+    // TOML をパース
+    let parse_result = Parse.run(parse_capability_manifest(), toml_source);
+
+    match parse_result {
+      | Ok(manifest) -> {
+        // Capability 定義から効果マップへ変換
+        let effect_map = Map.from_list(
+          List.map(manifest.capabilities, capability_def_to_reml)
+        );
+
+        Ok(effect_map)
+      }
+      | Err(error) -> {
+        let diagnostic = parse_error_to_diagnostic(toml_source, error, "Capability manifest");
+        Err([diagnostic])
+      }
+    }
+  }
+
+/// ============================================================================
+/// 11. 診断レポート生成
+/// ============================================================================
+
+/// 変換結果の診断レポートを生成
+/// 効果: {diagnostic, audit}
+fn generate_transformation_report(
+  entries: List<RemlDslEntry>,
+  errors: List<Diag.Diagnostic>
+) -> Result<(), Diag.AuditError>  // effect {diagnostic, audit}
+  = do {
+    let severity = if List.length(errors) > 0 {
+      Diag.Severity.Error
+    } else {
+      Diag.Severity.Info
+    };
+
+    let diagnostic = Diag.diagnostic("External DSL transformation completed")
+      |> Diag.with_severity(severity)
+      |> Diag.with_domain(Diag.DiagnosticDomain.Config)
+      |> Diag.with_code("external.dsl.transformation.report")
+      |> Diag.attach_audit(Diag.AuditEnvelope {
+        audit_id: Some(Diag.new_uuid()),
+        change_set: None,
+        capability: None,
+        metadata: Map.from_list([
+          ("entries_count", Json.Number(List.length(entries))),
+          ("errors_count", Json.Number(List.length(errors))),
+        ]),
+      })
+      |> Diag.finish();
+
+    Diag.emit(diagnostic, Diag.console_audit_sink)?;
+
+    // エラー詳細を出力
+    if List.length(errors) > 0 {
+      IO.println("✗ Transformation errors:");
+      List.for_each(errors, |diag| {
+        IO.println(Str.concat("  - ", diag.message));
+      });
+    } else {
+      IO.println("✓ Transformation successful");
+    }
+
+    Ok(())
+  }
+
+/// ============================================================================
+/// 12. メイン実行フロー
+/// ============================================================================
+
+/// GraphQL 変換パイプラインを実行
+/// 効果: {diagnostic, audit}
+fn run_graphql_transformation() -> Result<(), Str>  // effect {diagnostic, audit}
+  = do {
+    IO.println("--- GraphQL → Reml 変換パイプライン ---");
+
+    // サンプル GraphQL スキーマ
+    let graphql_schema = """
+      type User {
+        id: ID!
+        name: String!
+        email: String
+        posts: [Post!]!
+      }
+
+      type Post {
+        id: ID!
+        title: String!
+        content: String
+        author: User!
+      }
+    """;
+
+    // 期待シグネチャ（空のマップ）
+    let expected_signatures = Map.empty();
+
+    // 変換実行
+    match transform_graphql_to_reml(graphql_schema, expected_signatures) {
+      | Ok(entries) -> {
+        IO.println(Str.concat("✓ 変換成功: ", Str.concat(
+          Str.from_int(List.length(entries)),
+          " エントリ"
+        )));
+
+        // エントリ詳細を出力
+        List.for_each(entries, |entry| {
+          IO.println(Str.concat("  - ", Str.concat(
+            entry.name,
+            Str.concat(": ", type_to_string(entry.output_type))
+          )));
+        });
+
+        generate_transformation_report(entries, [])?;
+        Ok(())
+      }
+      | Err(diagnostics) -> {
+        generate_transformation_report([], diagnostics)?;
+        Err("GraphQL transformation failed")
+      }
+    }
+  }
+
+/// Capability マニフェスト変換パイプラインを実行
+/// 効果: {diagnostic, audit}
+fn run_capability_manifest_transformation() -> Result<(), Str>  // effect {diagnostic, audit}
+  = do {
+    IO.println("--- Capability マニフェスト → Reml 変換パイプライン ---");
+
+    // サンプル Capability マニフェスト
+    let capability_toml = """
+      [[capabilities]]
+      id = "io.async"
+      stage = "Stable"
+      audit_required = true
+
+      [[capabilities]]
+      id = "network.http"
+      stage = "Beta"
+      audit_required = false
+    """;
+
+    // 変換実行
+    match transform_capability_manifest_to_reml(capability_toml) {
+      | Ok(effect_map) -> {
+        IO.println(Str.concat("✓ 変換成功: ", Str.concat(
+          Str.from_int(Map.size(effect_map)),
+          " Capability"
+        )));
+
+        // Capability 詳細を出力
+        Map.for_each(effect_map, |cap_id, effects| {
+          IO.println(Str.concat("  - ", Str.concat(
+            cap_id,
+            Str.concat(": ", Str.concat("[", Str.concat(
+              Str.join(effects, ", "),
+              "]"
+            )))
+          )));
+        });
+
+        Ok(())
+      }
+      | Err(diagnostics) -> {
+        generate_transformation_report([], diagnostics)?;
+        Err("Capability manifest transformation failed")
+      }
+    }
+  }
+
+/// 全変換パイプラインを実行
+/// 効果: {diagnostic, audit}
+pub fn main() -> Result<(), Str>  // effect {diagnostic, audit}
+  = do {
+    IO.println("=== 外部DSLブリッジ統合テスト ===");
+    IO.println("");
+
+    // 1. GraphQL 変換
+    match run_graphql_transformation() {
+      | Ok(_) -> IO.println("✓ GraphQL 変換完了")
+      | Err(err) -> IO.println(Str.concat("✗ エラー: ", err))
+    }
+    IO.println("");
+
+    // 2. Capability マニフェスト変換
+    match run_capability_manifest_transformation() {
+      | Ok(_) -> IO.println("✓ Capability マニフェスト変換完了")
+      | Err(err) -> IO.println(Str.concat("✗ エラー: ", err))
+    }
+    IO.println("");
+
+    IO.println("=== 全変換パイプライン完了 ===");
+    Ok(())
+  }
+
+/// ============================================================================
+/// ユーティリティ関数
+/// ============================================================================
+
+fn parse_error_kind_to_string(kind: Parse.ParseErrorKind) -> Str  // @pure
+  = match kind {
+    | Parse.ParseErrorKind.UnexpectedToken -> "UnexpectedToken"
+    | Parse.ParseErrorKind.UnexpectedEof -> "UnexpectedEof"
+    | Parse.ParseErrorKind.Custom -> "Custom"
+  }
+
+fn type_to_string(ty: RemlType) -> Str  // @pure
+  = match ty {
+    | RemlType.Int -> "Int"
+    | RemlType.Float -> "Float"
+    | RemlType.Str -> "Str"
+    | RemlType.Bool -> "Bool"
+    | RemlType.Option { inner } -> Str.concat("Option<", Str.concat(type_to_string(*inner), ">"))
+    | RemlType.List { inner } -> Str.concat("List<", Str.concat(type_to_string(*inner), ">"))
+    | RemlType.Record { fields } -> "Record"
+    | RemlType.Custom { name } -> name
+  }
+
+fn stage_to_string(stage: Runtime.StageId) -> Str  // @pure
+  = match stage {
+    | Runtime.StageId.Experimental -> "Experimental"
+    | Runtime.StageId.Beta -> "Beta"
+    | Runtime.StageId.Stable -> "Stable"
+  }

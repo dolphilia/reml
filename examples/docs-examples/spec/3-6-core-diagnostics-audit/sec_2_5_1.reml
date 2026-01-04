@@ -1,0 +1,36 @@
+pub type Uuid
+pub type ActorId
+pub type SupervisorOutcome
+pub type u16
+pub type NonZeroU16
+pub type Duration
+pub type Timestamp
+pub type Stage
+
+pub type SupervisorDiagnosticExtension = {
+  supervisor_id: Uuid,
+  supervisor_name: Str,
+  actor_id: ActorId,
+  outcome: SupervisorOutcome,
+  restart_count: u16,
+  strategy: RestartStrategyDigest,
+  budget: Option<RestartBudgetDigest>,
+  exhausted: Bool,
+  stage_required: Option<Stage>,
+  stage_actual: Option<Stage>,
+}
+
+pub type RestartStrategyDigest = {
+  kind: RestartStrategyKind,
+  budget: Option<RestartBudgetDigest>,
+}
+
+pub enum RestartStrategyKind = OneForOne | OneForAll | Temporary
+
+pub type RestartBudgetDigest = {
+  max_restarts: NonZeroU16,
+  within: Duration,
+  cooldown: Duration,
+  restarts_in_window: u16,
+  window_started_at: Timestamp,
+}

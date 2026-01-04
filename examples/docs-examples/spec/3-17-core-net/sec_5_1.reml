@@ -1,0 +1,9 @@
+module Core.Net.Tcp
+
+pub type TcpStream
+pub type TcpListener
+
+pub type SocketAddr = {
+  host: Str,
+  port: Int,
+}

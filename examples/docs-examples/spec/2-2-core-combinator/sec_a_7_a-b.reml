@@ -1,0 +1,2 @@
+let op_add = symbol(sc, "+").then(cut_here()).map(|_| (|a, b| Add(a, b)))
+let expr = chainl1(term, op_add).label("expression")

@@ -1,0 +1,7 @@
+  fn choose_value(cond: bool, value: Option<i64>) -> i64 {
+    let base = if cond then 1 else 0
+
+    match value with
+    | Some(v) -> v + base
+    | None    -> base
+  }

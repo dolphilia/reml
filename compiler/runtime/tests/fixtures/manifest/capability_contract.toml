@@ -1,0 +1,8 @@
+[project]
+name = "contract-demo"
+version = "0.1.0"
+
+[run.target]
+capabilities = [
+  { id = "io.fs.read", stage = "stable", declared_effects = ["io", "fs.read"], source_span = { start = 10, end = 24 } }
+]

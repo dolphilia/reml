@@ -1,0 +1,7 @@
+@dsl_export(name = "TelemetryDsl")
+fn build_telemetry_dsl() {
+  // Telemetry DSL placeholder used by docs/guides samples.
+  collect_metrics(|metric| {
+    metric.emit("bridge.stage.actual", Stage::Stable)
+  })
+}

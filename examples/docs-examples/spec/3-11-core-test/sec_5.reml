@@ -1,0 +1,10 @@
+pub type Bytes
+pub type TestError
+
+pub type FuzzConfig = {
+  seed: Bytes,
+  max_cases: Int,
+  max_bytes: Int,
+}
+
+fn fuzz_bytes(config: FuzzConfig, f: fn(Bytes) -> Result<(), TestError>) -> Result<(), TestError>

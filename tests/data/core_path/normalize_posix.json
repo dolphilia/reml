@@ -1,0 +1,35 @@
+[
+  {
+    "input": "/tmp/../var//log/.",
+    "normalized": "/var/log",
+    "is_absolute": true,
+    "parent": "/var",
+    "components": ["/", "var", "log"],
+    "join": {
+      "segment": "app/config",
+      "result": "/var/log/app/config"
+    }
+  },
+  {
+    "input": "./config/./../config/app",
+    "normalized": "config/app",
+    "is_absolute": false,
+    "parent": "config",
+    "components": ["config", "app"],
+    "join": {
+      "segment": "../secrets",
+      "result": "config/secrets"
+    }
+  },
+  {
+    "input": "../outside////",
+    "normalized": "../outside",
+    "is_absolute": false,
+    "parent": "..",
+    "components": ["..", "outside"],
+    "join": {
+      "segment": "logs",
+      "result": "../outside/logs"
+    }
+  }
+]

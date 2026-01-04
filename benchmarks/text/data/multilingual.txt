@@ -1,0 +1,7 @@
+The quick brown fox jumps over 13 lazy dogs and hums softly while compiling DSLs.
+Reml は多段 DSL のために Core.Text を設計し、文字列三層モデル (Bytes/Str/String) を実装する。
+في ليلٍ هادئٍ يختبر المترجم نصوصاً عربيةً وأرقاماً ١٢٣٤٥٦.
+数字と時間: 2027-03-31T10:42:17Z — １２３４５, Ⅷ, ⅞.
+Kana/Kanji/Emoji: かな漢字カナ🙂🤝🏼🚀 + 絵文字家族 👨‍👩‍👧‍👦 と 国旗 🇯🇵.
+Mixed scripts with accents: naïve façade coöperate élève.
+Hangul and Tibetan: 한글 테스트와 བོད་ཡིག་ཀྱི་ཚིགས.

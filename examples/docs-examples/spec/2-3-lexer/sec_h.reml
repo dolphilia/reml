@@ -1,0 +1,5 @@
+fn bol() -> Parser<()> = todo                     // 行頭（BOL）
+fn eol() -> Parser<()> = todo                     // 行末（EOL）
+fn indentEq(n: usize) -> Parser<()> = todo        // その行の列 == n
+fn indentGt(n: usize) -> Parser<()> = todo        // 列 > n
+fn column() -> Parser<usize> = todo               // 現在列（グラフェム数）

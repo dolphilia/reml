@@ -1,0 +1,12 @@
+pub type Span
+
+pub enum PiiType = Email | PhoneNumber | CreditCard | SocialSecurityNumber | Custom(Str)
+
+pub type RedactPolicy = {
+  pii_types: List<PiiType>,
+  replacement: Str,
+  preserve_structure: Bool,
+}
+
+fn detect_pii(text: Str) -> List<(PiiType, Span)>                    // `@pure`
+fn redact_pii(diag: Diagnostic, policy: RedactPolicy) -> Diagnostic  // `effect {privacy}`

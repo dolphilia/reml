@@ -1,0 +1,666 @@
+module samples.language_impl_samples.stream_processing_dsl
+
+use ::Core.Async as Async
+use ::Core.Diagnostics as Diag
+use ::Core.Runtime as Runtime
+use ::Core.Resource as Resource
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.IO as IO
+use ::Core.Text.String as Str
+use ::Core.Numeric as Num
+
+/// 逐次ストリームDSL統合: Core.Async・効果タグ・リソース制限の横断実装
+///
+/// **検証対象**:
+/// - 3-9-core-async-ffi-unsafe.md §1.3 の AsyncStream API
+/// - 3-9-core-async-ffi-unsafe.md §1.4 の ExecutionPlan とバックプレッシャー
+/// - 効果タグ {io.async, io.timer} の明示的ハンドリング
+/// - 3-6-core-diagnostics-audit.md §6.1 のメトリクス収集
+/// - ウィンドウ集計・遅延評価・キャンセルハンドラの統合
+///
+/// **想定ユースケース**:
+/// リアルタイムデータストリーム処理システムで、タイムベース・カウントベースの
+/// ウィンドウ集計を行い、バックプレッシャー制御とキャンセル処理を実装する。
+
+/// ============================================================================
+/// 1. データ型定義
+/// ============================================================================
+
+/// ストリームイベント
+type StreamEvent = {
+  id: Int,
+  value: Float,
+  timestamp: Int,
+  category: Str,
+}
+
+/// ウィンドウ種別
+type WindowType =
+  | TimeWindow { duration_ms: Int }
+  | CountWindow { size: Int }
+  | SlidingWindow { duration_ms: Int, slide_ms: Int }
+
+/// ウィンドウ集計結果
+type WindowAggregate = {
+  window_id: Int,
+  start_time: Int,
+  end_time: Int,
+  count: Int,
+  sum: Float,
+  avg: Float,
+  min: Float,
+  max: Float,
+}
+
+/// ストリーム統計情報
+type StreamStats = {
+  events_processed: Int,
+  windows_emitted: Int,
+  events_dropped: Int,
+  avg_processing_time_ms: Float,
+}
+
+/// ============================================================================
+/// 2. ストリーム生成: イベントソース
+/// ============================================================================
+
+/// イベントストリームを生成（模擬センサーデータ）
+/// 効果: {io.async, io.timer}
+fn create_event_stream(
+  count: Int,
+  interval_ms: Int
+) -> Async.AsyncStream<StreamEvent>  // effect {io.async, io.timer}
+  = do {
+    Async.from_iter(
+      List.range(0, count)
+        |> List.map(|i| {
+          // interval_ms ごとにイベントを生成
+          Async.sleep_async(Duration.from_millis(i * interval_ms))
+            |> Async.Future.map(|_| StreamEvent {
+              id: i,
+              value: Num.sin(Num.to_float(i) * 0.1) * 100.0,
+              timestamp: current_timestamp() + (i * interval_ms),
+              category: if i % 2 == 0 { "even" } else { "odd" },
+            })
+        })
+    )
+  }
+
+/// ============================================================================
+/// 3. ウィンドウ集計: タイムベース
+/// ============================================================================
+
+/// タイムベースウィンドウで集計
+/// 効果: {io.async, io.timer}
+fn aggregate_time_window(
+  stream: Async.AsyncStream<StreamEvent>,
+  window_duration_ms: Int
+) -> Async.AsyncStream<WindowAggregate>  // effect {io.async, io.timer}
+  = do {
+    let window_state = {
+      events: [],
+      window_id: 0,
+      window_start: current_timestamp(),
+    };
+
+    Async.AsyncStream {
+      next: || {
+        Async.Future.async(|context| {
+          match stream.next().await {
+            | Some(event) -> {
+              // イベントをウィンドウに追加
+              window_state.events.push(event);
+
+              // ウィンドウ期間を超えたか確認
+              let elapsed = event.timestamp - window_state.window_start;
+              if elapsed >= window_duration_ms {
+                // 集計結果を生成
+                let aggregate = compute_aggregate(
+                  window_state.events,
+                  window_state.window_id,
+                  window_state.window_start,
+                  event.timestamp
+                );
+
+                // ウィンドウをリセット
+                window_state.events = [];
+                window_state.window_id += 1;
+                window_state.window_start = event.timestamp;
+
+                Some(aggregate)
+              } else {
+                // まだウィンドウ期間内なので次のイベントを待つ
+                None
+              }
+            }
+            | None -> {
+              // ストリーム終了: 残りのイベントを集計
+              if List.length(window_state.events) > 0 {
+                let aggregate = compute_aggregate(
+                  window_state.events,
+                  window_state.window_id,
+                  window_state.window_start,
+                  current_timestamp()
+                );
+                window_state.events = [];
+                Some(aggregate)
+              } else {
+                None
+              }
+            }
+          }
+        })
+      }
+    }
+  }
+
+/// ============================================================================
+/// 4. ウィンドウ集計: カウントベース
+/// ============================================================================
+
+/// カウントベースウィンドウで集計
+/// 効果: {io.async}
+fn aggregate_count_window(
+  stream: Async.AsyncStream<StreamEvent>,
+  window_size: Int
+) -> Async.AsyncStream<WindowAggregate>  // effect {io.async}
+  = do {
+    let window_state = {
+      events: [],
+      window_id: 0,
+    };
+
+    Async.AsyncStream {
+      next: || {
+        Async.Future.async(|context| {
+          match stream.next().await {
+            | Some(event) -> {
+              window_state.events.push(event);
+
+              // ウィンドウサイズに達したか確認
+              if List.length(window_state.events) >= window_size {
+                let start_time = List.first(window_state.events).timestamp;
+                let end_time = event.timestamp;
+
+                let aggregate = compute_aggregate(
+                  window_state.events,
+                  window_state.window_id,
+                  start_time,
+                  end_time
+                );
+
+                // ウィンドウをリセット
+                window_state.events = [];
+                window_state.window_id += 1;
+
+                Some(aggregate)
+              } else {
+                // まだウィンドウサイズに達していない
+                None
+              }
+            }
+            | None -> {
+              // ストリーム終了: 残りのイベントを集計
+              if List.length(window_state.events) > 0 {
+                let start_time = List.first(window_state.events).timestamp;
+                let end_time = List.last(window_state.events).timestamp;
+
+                let aggregate = compute_aggregate(
+                  window_state.events,
+                  window_state.window_id,
+                  start_time,
+                  end_time
+                );
+                window_state.events = [];
+                Some(aggregate)
+              } else {
+                None
+              }
+            }
+          }
+        })
+      }
+    }
+  }
+
+/// ============================================================================
+/// 5. 遅延評価とバックプレッシャー制御
+/// ============================================================================
+
+/// バックプレッシャー付きストリーム処理
+/// 効果: {io.async, diagnostic}
+fn process_with_backpressure(
+  stream: Async.AsyncStream<StreamEvent>,
+  buffer_size: Int,
+  high_watermark: Int,
+  low_watermark: Int
+) -> Result<Async.AsyncStream<StreamEvent>, Diag.Diagnostic>  // effect {io.async, diagnostic}
+  = do {
+    // ExecutionPlan を設定
+    let plan = Async.ExecutionPlan {
+      strategy: Async.ExecutionStrategy.Streaming,
+      backpressure: Async.BackpressurePolicy.Adaptive {
+        high_watermark: high_watermark,
+        low_watermark: low_watermark,
+        strategy: Async.AdaptiveStrategy.SlowProducer,
+      },
+      error: Async.ErrorPropagationPolicy.Isolate {
+        circuit_breaker: Some(Duration.from_millis(1000)),
+      },
+      scheduling: Async.SchedulingPolicy.Auto,
+    };
+
+    // ExecutionPlan をストリームに適用
+    let planned_stream = Async.with_plan(stream, plan)?;
+
+    // バックプレッシャー状態を監視
+    let backpressure_state = {
+      current_buffer_size: 0,
+      is_throttled: false,
+    };
+
+    Ok(Async.buffer(planned_stream, buffer_size)
+      |> Async.map_async(|event| {
+        Async.Future.async(|context| {
+          // バッファサイズを更新（仮想的な実装）
+          backpressure_state.current_buffer_size += 1;
+
+          // 高水位チェック
+          if backpressure_state.current_buffer_size >= high_watermark {
+            if !backpressure_state.is_throttled {
+              backpressure_state.is_throttled = true;
+
+              // 診断イベントを発行
+              let diagnostic = Diag.diagnostic("Stream backpressure detected")
+                |> Diag.with_severity(Diag.Severity.Warning)
+                |> Diag.with_domain(Diag.DiagnosticDomain.Async)
+                |> Diag.with_code("async.stream.backpressure")
+                |> Diag.attach_audit(Diag.AuditEnvelope {
+                  audit_id: Some(Diag.new_uuid()),
+                  change_set: None,
+                  capability: None,
+                  metadata: Map.from_list([
+                    ("buffer_size", Json.Number(backpressure_state.current_buffer_size)),
+                    ("high_watermark", Json.Number(high_watermark)),
+                  ]),
+                })
+                |> Diag.finish();
+
+              Diag.emit(diagnostic, Diag.console_audit_sink)?;
+
+              IO.println("⚠ Backpressure: Slowing down producer");
+            }
+          }
+
+          // 低水位チェック
+          if backpressure_state.current_buffer_size <= low_watermark {
+            if backpressure_state.is_throttled {
+              backpressure_state.is_throttled = false;
+              IO.println("✓ Backpressure released: Resuming normal speed");
+            }
+          }
+
+          // イベント処理完了後、バッファサイズを減少
+          backpressure_state.current_buffer_size -= 1;
+
+          Ok(event)
+        })
+      }))
+  }
+
+/// ============================================================================
+/// 6. タイムアウト付きキャンセルハンドラ
+/// ============================================================================
+
+/// タイムアウト付きストリーム処理
+/// 効果: {io.async, io.timer}
+fn process_with_timeout(
+  stream: Async.AsyncStream<StreamEvent>,
+  timeout_per_event_ms: Int,
+  on_cancel: () -> ()
+) -> Async.AsyncStream<Result<StreamEvent, Str>>  // effect {io.async, io.timer}
+  = do {
+    Async.map_async(stream, |event| {
+      let processing_future = Async.Future.ok(event);
+      let timeout_duration = Duration.from_millis(timeout_per_event_ms);
+
+      Async.timeout(processing_future, timeout_duration)
+        |> Async.Future.map(|result| {
+          match result {
+            | Ok(event) -> Ok(event)
+            | Err(Async.AsyncError.Timeout(timeout_info)) -> {
+              on_cancel();
+
+              // TimeoutInfo メタデータを含めたエラーメッセージ生成
+              let error_msg = Str.concat(
+                "Event ",
+                Str.concat(
+                  Str.from_int(event.id),
+                  Str.concat(
+                    " timed out (elapsed: ",
+                    Str.concat(
+                      Str.from_int(timeout_info.elapsed_ms),
+                      "ms)"
+                    )
+                  )
+                )
+              );
+
+              Err(error_msg)
+            }
+          }
+        })
+    })
+  }
+
+/// ============================================================================
+/// 7. リソース制限付きストリーム実行
+/// ============================================================================
+
+/// リソース制限を適用してストリームを実行
+/// 効果: {io.async, runtime}
+fn execute_stream_with_limits(
+  stream: Async.AsyncStream<WindowAggregate>,
+  memory_limit_mb: Int,
+  cpu_quota: Float
+) -> Result<List<WindowAggregate>, Str>  // effect {io.async, runtime}
+  = do {
+    // リソース制限を設定
+    let limits = Async.ResourceLimitSet.new(
+      memory: Some(Resource.MemoryLimit.from_mb(memory_limit_mb)),
+      cpu: Some(Resource.CpuQuota.from_ratio(cpu_quota))
+    );
+
+    IO.println(Str.concat("Resource limits: ", Str.concat(
+      Str.concat(Str.from_int(memory_limit_mb), "MB, "),
+      Str.concat(Str.from_float(cpu_quota * 100.0), "% CPU")
+    )));
+
+    // ストリームを収集
+    Async.collect_async(stream)
+      |> Async.block_on()
+      |> Result.map_err(|err| err.message)
+  }
+
+/// ============================================================================
+/// 8. メトリクス収集とレポート
+/// ============================================================================
+
+/// ストリームメトリクスを収集
+/// 効果: {io.async, trace}
+fn collect_stream_metrics(
+  stream: Async.AsyncStream<WindowAggregate>
+) -> Result<(List<WindowAggregate>, StreamStats), Str>  // effect {io.async, trace}
+  = do {
+    let stats = {
+      events_processed: 0,
+      windows_emitted: 0,
+      events_dropped: 0,
+      processing_times: [],
+    };
+
+    let results = Async.map_async(stream, |aggregate| {
+      Async.Future.async(|context| {
+        let start_time = current_timestamp();
+
+        // 処理をシミュレート
+        stats.events_processed += aggregate.count;
+        stats.windows_emitted += 1;
+
+        let processing_time = current_timestamp() - start_time;
+        stats.processing_times.push(processing_time);
+
+        Ok(aggregate)
+      })
+    })
+      |> Async.collect_async()
+      |> Async.block_on()?;
+
+    let avg_processing_time = if List.length(stats.processing_times) > 0 {
+      List.sum(stats.processing_times) / Num.to_float(List.length(stats.processing_times))
+    } else {
+      0.0
+    };
+
+    let final_stats = StreamStats {
+      events_processed: stats.events_processed,
+      windows_emitted: stats.windows_emitted,
+      events_dropped: stats.events_dropped,
+      avg_processing_time_ms: avg_processing_time,
+    };
+
+    Ok((results, final_stats))
+  }
+
+/// ============================================================================
+/// 9. 診断レポート生成
+/// ============================================================================
+
+/// ストリーム処理結果の診断レポートを生成
+/// 効果: {diagnostic, audit}
+fn generate_stream_diagnostic_report(
+  stats: StreamStats,
+  errors: List<Str>
+) -> Result<(), Diag.AuditError>  // effect {diagnostic, audit}
+  = do {
+    let severity = if List.length(errors) > 0 {
+      Diag.Severity.Warning
+    } else {
+      Diag.Severity.Info
+    };
+
+    let diagnostic = Diag.diagnostic("Stream processing completed")
+      |> Diag.with_severity(severity)
+      |> Diag.with_domain(Diag.DiagnosticDomain.Async)
+      |> Diag.with_code("async.stream.report")
+      |> Diag.attach_audit(Diag.AuditEnvelope {
+        audit_id: Some(Diag.new_uuid()),
+        change_set: None,
+        capability: None,
+        metadata: Map.from_list([
+          ("events_processed", Json.Number(stats.events_processed)),
+          ("windows_emitted", Json.Number(stats.windows_emitted)),
+          ("events_dropped", Json.Number(stats.events_dropped)),
+          ("avg_processing_time_ms", Json.Number(stats.avg_processing_time_ms)),
+          ("error_count", Json.Number(List.length(errors))),
+        ]),
+      })
+      |> Diag.finish();
+
+    Diag.emit(diagnostic, Diag.console_audit_sink)?;
+
+    // エラー詳細を出力
+    if List.length(errors) > 0 {
+      IO.println("⚠ Stream processing errors:");
+      List.for_each(errors, |err| {
+        IO.println(Str.concat("  - ", err));
+      });
+    }
+
+    Ok(())
+  }
+
+/// ============================================================================
+/// 10. メイン実行フロー
+/// ============================================================================
+
+/// タイムウィンドウ集計パイプラインを実行
+/// 効果: {io.async, io.timer, diagnostic, audit, runtime}
+fn run_time_window_pipeline() -> Result<(), Str>  // effect {io.async, io.timer, diagnostic, audit, runtime}
+  = do {
+    IO.println("--- タイムウィンドウ集計パイプライン ---");
+
+    // イベントストリームを生成
+    let event_stream = create_event_stream(100, 10);  // 100イベント、10ms間隔
+
+    // バックプレッシャー制御を適用
+    let controlled_stream = process_with_backpressure(event_stream, 50, 40, 10)?;
+
+    // タイムウィンドウで集計
+    let windowed_stream = aggregate_time_window(controlled_stream, 100);  // 100msウィンドウ
+
+    // リソース制限付きで実行
+    let results = execute_stream_with_limits(windowed_stream, 128, 0.5)?;
+
+    // 統計情報を収集
+    let (final_results, stats) = collect_stream_metrics(Async.from_iter(List.iter(results)))?;
+
+    // 診断レポート生成
+    generate_stream_diagnostic_report(stats, [])?;
+
+    IO.println(Str.concat("✓ 処理完了: ", Str.concat(
+      Str.from_int(stats.windows_emitted),
+      "ウィンドウ"
+    )));
+
+    Ok(())
+  }
+
+/// カウントウィンドウ集計パイプラインを実行
+/// 効果: {io.async, io.timer, diagnostic, audit, runtime}
+fn run_count_window_pipeline() -> Result<(), Str>  // effect {io.async, io.timer, diagnostic, audit, runtime}
+  = do {
+    IO.println("--- カウントウィンドウ集計パイプライン ---");
+
+    // イベントストリームを生成
+    let event_stream = create_event_stream(50, 5);  // 50イベント、5ms間隔
+
+    // カウントウィンドウで集計
+    let windowed_stream = aggregate_count_window(event_stream, 10);  // 10イベントごと
+
+    // リソース制限付きで実行
+    let results = execute_stream_with_limits(windowed_stream, 64, 0.3)?;
+
+    // 統計情報を収集
+    let (final_results, stats) = collect_stream_metrics(Async.from_iter(List.iter(results)))?;
+
+    // 診断レポート生成
+    generate_stream_diagnostic_report(stats, [])?;
+
+    IO.println(Str.concat("✓ 処理完了: ", Str.concat(
+      Str.from_int(stats.windows_emitted),
+      "ウィンドウ"
+    )));
+
+    Ok(())
+  }
+
+/// タイムアウト付きパイプラインを実行
+/// 効果: {io.async, io.timer, diagnostic, audit}
+fn run_timeout_pipeline() -> Result<(), Str>  // effect {io.async, io.timer, diagnostic, audit}
+  = do {
+    IO.println("--- タイムアウト付きパイプライン ---");
+
+    let errors = [];
+
+    // イベントストリームを生成
+    let event_stream = create_event_stream(20, 50);  // 20イベント、50ms間隔
+
+    // タイムアウト付き処理（30msタイムアウト）
+    let timeout_stream = process_with_timeout(
+      event_stream,
+      30,
+      || {
+        errors.push("Event processing timed out");
+      }
+    );
+
+    // 結果を収集
+    let results = Async.collect_async(timeout_stream)
+      |> Async.block_on()?;
+
+    let success_count = List.filter(results, |r| match r { | Ok(_) -> true | Err(_) -> false })
+      |> List.length();
+
+    let error_count = List.length(results) - success_count;
+
+    IO.println(Str.concat("✓ 成功: ", Str.from_int(success_count)));
+    IO.println(Str.concat("✗ タイムアウト: ", Str.from_int(error_count)));
+
+    // 診断レポート生成
+    let stats = StreamStats {
+      events_processed: success_count,
+      windows_emitted: 0,
+      events_dropped: error_count,
+      avg_processing_time_ms: 0.0,
+    };
+    generate_stream_diagnostic_report(stats, errors)?;
+
+    Ok(())
+  }
+
+/// 全パイプラインを実行
+/// 効果: {io.async, io.timer, diagnostic, audit, runtime}
+pub fn main() -> Result<(), Str>  // effect {io.async, io.timer, diagnostic, audit, runtime}
+  = do {
+    IO.println("=== 逐次ストリームDSL統合テスト ===");
+    IO.println("");
+
+    // 1. タイムウィンドウ集計
+    match run_time_window_pipeline() {
+      | Ok(_) -> IO.println("✓ タイムウィンドウ完了")
+      | Err(err) -> IO.println(Str.concat("✗ エラー: ", err))
+    }
+    IO.println("");
+
+    // 2. カウントウィンドウ集計
+    match run_count_window_pipeline() {
+      | Ok(_) -> IO.println("✓ カウントウィンドウ完了")
+      | Err(err) -> IO.println(Str.concat("✗ エラー: ", err))
+    }
+    IO.println("");
+
+    // 3. タイムアウト付き処理
+    match run_timeout_pipeline() {
+      | Ok(_) -> IO.println("✓ タイムアウトテスト完了")
+      | Err(err) -> IO.println(Str.concat("✗ エラー: ", err))
+    }
+    IO.println("");
+
+    IO.println("=== 全パイプライン完了 ===");
+    Ok(())
+  }
+
+/// ============================================================================
+/// ユーティリティ関数
+/// ============================================================================
+
+fn current_timestamp() -> Int  // @pure
+  = 1704067200  // 2024-01-01 00:00:00 UTC (仮想値)
+
+fn compute_aggregate(
+  events: List<StreamEvent>,
+  window_id: Int,
+  start_time: Int,
+  end_time: Int
+) -> WindowAggregate  // @pure
+  = do {
+    let values = List.map(events, |e| e.value);
+    let count = List.length(values);
+
+    if count == 0 {
+      WindowAggregate {
+        window_id: window_id,
+        start_time: start_time,
+        end_time: end_time,
+        count: 0,
+        sum: 0.0,
+        avg: 0.0,
+        min: 0.0,
+        max: 0.0,
+      }
+    } else {
+      let sum = List.sum(values);
+      WindowAggregate {
+        window_id: window_id,
+        start_time: start_time,
+        end_time: end_time,
+        count: count,
+        sum: sum,
+        avg: sum / Num.to_float(count),
+        min: List.minimum(values),
+        max: List.maximum(values),
+      }
+    }
+  }

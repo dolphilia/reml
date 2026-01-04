@@ -1,0 +1,1 @@
+{"scenario":"examples/practical/core_diagnostics/audit_envelope/stage_tag_capture.reml","metadata":{"scenario.id":"stage_tag_capture","effect.capability":"core.diagnostics","effect.stage.required":"at_least:beta","effect.stage.actual":"at_least:stable"}}

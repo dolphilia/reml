@@ -1,0 +1,49 @@
+let render =
+  htmlTemplate
+    |> with_capabilities(["parser.atomic", "parser.trace"])
+    |> trace("templating.render")
+
+let metadata = {
+  id = "Reml.Web.Templating",
+  version = SemVer(1,4,0),
+  checksum = None,
+  description = Some("HTML テンプレート DSL"),
+  homepage = Some(Url::parse("https://example.com")),
+  license = Some("Apache-2.0"),
+  required_core = SemVerRange::from("^1.4"),
+  required_cli = Some(SemVerRange::from("^1.3")),
+}
+
+let cap_atomic = {
+  name = "parser.atomic",
+  version = SemVer(1,4,0),
+  stage = StageRequirement::AtLeast(Stable),
+  effect_scope = Set::from(["parser", "audit"]),
+  traits = Set::from(["cut"]),
+  since = Some(SemVer(1,4,0)),
+  deprecated = None,
+}
+
+let cap_trace = {
+  name = "parser.trace",
+  version = SemVer(1,4,0),
+  stage = StageRequirement::AtLeast(Beta),
+  effect_scope = Set::from(["parser", "telemetry"]),
+  traits = Set::from(["semantic-tokens"]),
+  since = Some(SemVer(1,3,0)),
+  deprecated = None,
+}
+
+let plugin = {
+  metadata = metadata,
+  capabilities = [cap_atomic.clone(), cap_trace.clone()],
+  dependencies = [],
+  register = |reg| {
+    reg.register_capability(cap_atomic.clone())?;
+    reg.register_capability(cap_trace.clone())?;
+    reg.register_parser("render", |_| render)?;
+  }
+}
+
+fn register() -> Result<(), PluginError> =
+  register_plugin(plugin)?

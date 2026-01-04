@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 420">
+  <style>
+    .node {
+      fill: #f7fbff;
+      stroke: #1d3b53;
+      stroke-width: 1.4;
+      font-family: "SFMono-Regular", "Consolas", monospace;
+      font-size: 13px;
+    }
+    .title {
+      font-weight: 600;
+      fill: #0b2540;
+    }
+    .edge {
+      stroke: #1d3b53;
+      stroke-width: 1.2;
+      marker-end: url(#arrowhead);
+    }
+    .label {
+      font-size: 12px;
+      fill: #0b2540;
+    }
+    .group-label {
+      font-size: 14px;
+      font-weight: bold;
+      fill: #0b2540;
+    }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <polygon points="0 0, 6 3, 0 6" fill="#1d3b53"/>
+    </marker>
+  </defs>
+  <rect x="30" y="35" width="260" height="150" rx="10" ry="10" fill="none" stroke="#95b3d7" stroke-width="1.2"/>
+  <text x="40" y="55" class="group-label">Config</text>
+  <rect x="50" y="75" width="220" height="60" class="node"/>
+  <text x="60" y="97" class="title">RunConfig / Manifest</text>
+  <text x="60" y="117" class="label">compiler/runtime/src/run_config.rs</text>
+  <rect x="50" y="145" width="220" height="50" class="node"/>
+  <text x="60" y="170" class="title">ConfigManifest</text>
+  <text x="60" y="190" class="label">docs/spec/3-7-core-config-data.md</text>
+
+  <rect x="340" y="35" width="290" height="180" rx="10" ry="10" fill="none" stroke="#95b3d7" stroke-width="1.2"/>
+  <text x="350" y="55" class="group-label">Runtime</text>
+  <rect x="360" y="75" width="250" height="55" class="node"/>
+  <text x="370" y="97" class="title">CapabilityRegistry::verify_capability_stage</text>
+  <text x="370" y="117" class="label">compiler/runtime/src/capability/registry.rs</text>
+  <rect x="360" y="140" width="250" height="55" class="node"/>
+  <text x="370" y="162" class="title">StageAuditPayload</text>
+  <text x="370" y="182" class="label">compiler/frontend/src/diagnostic/effects.rs</text>
+  <rect x="360" y="205" width="250" height="50" class="node"/>
+  <text x="370" y="227" class="title">RuntimeBridgeRegistry / FsAdapter</text>
+  <text x="370" y="247" class="label">compiler/runtime/src/io/adapters.rs</text>
+
+  <rect x="660" y="35" width="280" height="220" rx="10" ry="10" fill="none" stroke="#95b3d7" stroke-width="1.2"/>
+  <text x="670" y="55" class="group-label">Observability</text>
+  <rect x="680" y="75" width="240" height="55" class="node"/>
+  <text x="690" y="97" class="title">Diagnostic.extensions["effect.stage.*"]</text>
+  <rect x="680" y="140" width="240" height="55" class="node"/>
+  <text x="690" y="162" class="title">AuditEnvelope.metadata["effect.stage.*"]</text>
+  <text x="690" y="182" class="label">+ bridge.stage.*</text>
+  <rect x="680" y="205" width="240" height="55" class="node"/>
+  <text x="690" y="227" class="title">collect-iterator-audit-metrics.py</text>
+  <text x="690" y="247" class="label">--section runtime</text>
+
+  <line x1="270" y1="105" x2="360" y2="105" class="edge"/>
+  <text x="280" y="95" class="label">--effect-stage / overrides</text>
+  <line x1="270" y1="170" x2="360" y2="170" class="edge"/>
+  <text x="285" y="160" class="label">ConductorCapabilityRequirement</text>
+  <line x1="485" y1="195" x2="485" y2="205" class="edge"/>
+  <text x="495" y="205" class="label">record_bridge_stage_probe</text>
+  <line x1="485" y1="255" x2="485" y2="295" class="edge"/>
+  <line x1="485" y1="295" x2="800" y2="295" class="edge"/>
+  <text x="500" y="285" class="label">Stage trace</text>
+  <line x1="610" y1="102" x2="680" y2="102" class="edge"/>
+  <line x1="610" y1="170" x2="680" y2="170" class="edge"/>
+  <line x1="800" y1="170" x2="800" y2="205" class="edge"/>
+  <text x="807" y="188" class="label">runtime.capability_validation</text>
+  <line x1="485" y1="117" x2="485" y2="140" class="edge"/>
+  <text x="495" y="133" class="label">StageId + Descriptor</text>

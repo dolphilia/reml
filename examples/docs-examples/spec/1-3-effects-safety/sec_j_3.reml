@@ -1,0 +1,8 @@
+extern "C" fn qsort(ptr: Ptr<u8>, len: usize, elem: usize, cmp: Ptr<void>) -> void;
+
+fn sortBytes(xs: Vec<u8>) -> Vec<u8> = {
+  unsafe {
+    qsort(xs.ptr(), xs.len(), 1, cmp_ptr)  // ffi + unsafe
+  }
+  xs
+}

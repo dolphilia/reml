@@ -1,0 +1,32 @@
+pub type PlatformInfo = {
+  runtime_capabilities: Set<RuntimeCapability>,
+}
+
+pub type RunConfigTarget = {
+  features: Set<Str>,
+  extra: Map<Str, Str>,
+}
+
+pub type RunConfigExtensions = {
+  target: RunConfigTarget,
+}
+
+pub type RunConfig = {
+  extensions: RunConfigExtensions,
+}
+
+pub enum RuntimeCapability = SIMD
+pub enum TargetCapability = FilesystemCaseInsensitive
+
+fn platform_info() -> PlatformInfo = todo
+fn platform_features() -> Set<Str> = todo
+fn enable_simd_pipeline() -> () = ()
+fn has_target_capability(cap: TargetCapability) -> Bool = todo
+
+fn apply_platform_defaults(cfg: RunConfig) -> RunConfig {
+  let info = platform_info()
+  let _ = if info.runtime_capabilities.contains(RuntimeCapability::SIMD) then enable_simd_pipeline() else ()
+  let _ = if platform_features().contains("packrat_default") then cfg.extensions.target.features.insert("packrat_default") else cfg.extensions.target.features
+  let _ = if has_target_capability(TargetCapability::FilesystemCaseInsensitive) then cfg.extensions.target.extra.insert("fs.case", "insensitive") else cfg.extensions.target.extra
+  cfg
+}

@@ -1,0 +1,47 @@
+pub type Path
+pub type Stage
+pub type Json
+
+pub type ConfigDiagnosticExtension = {
+  source: ConfigSource,
+  manifest_path: Option<Path>,
+  key_path: List<ConfigKeySegment>,
+  profile: Option<Str>,
+  compatibility: Option<ConfigCompatibilityDigest>,
+  feature_guard: Option<FeatureGuardDigest>,
+  schema: Option<Str>,
+  diff: Option<ConfigDiffSummary>,
+  snapshot: Option<Json>,
+}
+
+pub enum ConfigSource = Manifest | Env | Cli | Runtime | Generated | Custom(Str)
+
+pub type ConfigKeySegment = {
+  key: Str,
+  index: Option<usize>,
+}
+
+pub type ConfigCompatibilityDigest = {
+  format: Str,
+  profile: Str,
+  stage: Stage,
+}
+
+pub type FeatureGuardDigest = {
+  feature: Str,
+  expected_stage: Stage,
+  actual_stage: Stage,
+  cfg_condition: Option<Str>,
+}
+
+pub type ConfigDiffSummary = {
+  missing: List<Str>,
+  unexpected: List<Str>,
+  changed: List<ChangedValue>,
+}
+
+pub type ChangedValue = {
+  key: Str,
+  before: Option<Json>,
+  after: Option<Json>,
+}

@@ -1,0 +1,43 @@
+type UnicodeApi = {
+  // 生成・変換
+  string: fn(Bytes, Bool) -> Result<String, Utf8Error>, // validate_utf8 default true
+  to_string: fn(Iterator<Char>) -> String,
+
+  // 長さ
+  byte_len: fn(Str) -> usize,
+  char_len: fn(Str) -> usize,            // コードポイント数（必要時のみ計算）
+  grapheme_len: fn(Str) -> usize,
+
+  // 反復
+  bytes: fn(Str) -> Iterator<u8>,
+  codepoints: fn(Str) -> Iterator<Char>,
+  graphemes: fn(Str) -> Iterator<Grapheme>,
+
+  // スライス
+  slice_bytes: fn(Str, Range<usize>) -> Bytes,
+  slice_codepoints: fn(Str, Range<usize>) -> Str,
+  slice_graphemes: fn(Str, Range<usize>) -> Str,
+
+  // 検索
+  find: fn(Str, Str) -> Option<usize>,                 // バイトオフセット
+  find_grapheme: fn(Str, fn(Grapheme) -> Bool) -> Option<usize>,
+
+  // 正規化・大小
+  normalize_nfc: fn(Str) -> String,
+  normalize_nfd: fn(Str) -> String,
+  normalize_nfkc: fn(Str) -> String,
+  normalize_nfkd: fn(Str) -> String,
+  to_lower: fn(Str, Option<Locale>) -> String,
+  to_upper: fn(Str, Option<Locale>) -> String,
+  to_casefold: fn(Str) -> String,
+
+  // 比較
+  eq_bytes: fn(Str, Str) -> Bool,
+  eq_codepoint: fn(Str, Str) -> Bool,
+}
+
+type Collator
+impl Collator {
+  fn create(locale: Locale) -> Collator = todo
+  fn compare(self, a: Str, b: Str) -> Ordering = todo
+}

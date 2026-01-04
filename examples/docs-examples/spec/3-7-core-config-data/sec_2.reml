@@ -1,0 +1,13 @@
+fn schema<T>(name: Str, build: (SchemaBuilder<T>) -> ()) -> Schema<T>         // `@pure`
+
+struct SchemaBuilder<T> {
+  fields: Map<Str, Field<T>>,
+}
+
+impl<T> SchemaBuilder<T> {
+  fn field<U>(self, name: Str, ty: TypeRef<U>, default: Option<U>) -> Self = todo   // `@pure`
+  fn optional<U>(self, name: Str, ty: TypeRef<U>) -> Self = todo                    // `@pure`
+  fn compute<U>(self, name: Str, f: (T) -> U) -> Self = todo                        // `@pure`
+  fn when_if(self, pred: (T) -> Bool, patch: Patch<T>) -> Self = todo               // `@pure`
+  fn finalize(self) -> Schema<T> = todo                                             // `@pure`
+}

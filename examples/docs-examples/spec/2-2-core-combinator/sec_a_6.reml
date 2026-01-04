@@ -1,0 +1,2 @@
+fn lookahead<A>(p: Parser<A>) -> Parser<A> = todo          // 成功しても非消費
+fn notFollowedBy<A>(p: Parser<A>) -> Parser<()> = todo     // p が失敗すれば成功（非消費）

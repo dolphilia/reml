@@ -1,0 +1,48 @@
+[package]
+name = "reml_frontend"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# TODO: `repository` や `license` は Rust 実装全体のガイドライン確定後に追加する
+
+[lib]
+name = "reml_frontend"
+path = "src/lib.rs"
+
+[[bin]]
+name = "reml_frontend"
+path = "src/bin/reml_frontend.rs"
+
+[[bin]]
+name = "remlc"
+path = "src/bin/remlc.rs"
+
+[features]
+default = []
+schema = ["schemars"]
+# lexer-backend と parser-backend は候補クレートの評価完了後に定義する
+
+[dependencies]
+logos = "0.13"
+chumsky = "0.9"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+indexmap = { version = "1.9", features = ["serde"] }
+smallvec = { version = "1.11", features = ["serde"] }
+smol_str = { version = "0.2", features = ["serde"] }
+once_cell = "1.19"
+thiserror = "1.0"
+unicode-ident = "1.0"
+unicode-normalization = "0.1"
+unicode-width = "0.1"
+uuid = { version = "1.8", features = ["serde", "v4", "v5"] }
+reml_adapter = { path = "../adapter" }
+reml_runtime = { path = "../runtime" }
+schemars = { version = "0.8", optional = true }
+
+[dev-dependencies]
+insta = { version = "1.44", features = ["yaml"] }
+tempfile = "3.9"
+reml_runtime_ffi = { path = "../runtime/ffi", features = ["core_prelude"] }
+test-case = "3.3"

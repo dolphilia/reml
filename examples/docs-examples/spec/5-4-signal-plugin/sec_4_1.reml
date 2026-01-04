@@ -1,0 +1,10 @@
+fn install_shutdown_handler(audit: AuditSink) -> Result<(), SignalError> {
+  let shutdown_handler = |signal: Signal| {
+    let _ = audit.log(
+      "signal.shutdown",
+      Map::empty().insert("signal", signal),
+    );
+  };
+  SignalCapability::register_handler(SIGTERM, shutdown_handler)?;
+  Ok(())
+}

@@ -1,0 +1,8 @@
+{
+  "code": "core.path.security.invalid",
+  "extensions": {
+    "security": {
+      "reason": "relative_path_denied"
+    }
+  }
+}

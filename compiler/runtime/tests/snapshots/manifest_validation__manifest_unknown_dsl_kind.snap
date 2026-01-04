@@ -1,0 +1,24 @@
+---
+source: tests/manifest_validation.rs
+expression: snapshot_diag(diag)
+---
+audit:
+  config.key_path:
+    - dsl
+    - demo
+    - kind
+  config.path: /virtual/workspace/reml.toml
+  config.source: manifest
+code: config.dsl.unknown_kind
+domain: config
+extensions:
+  config:
+    key_path:
+      - dsl
+      - demo
+      - kind
+    path: /virtual/workspace/reml.toml
+    source: manifest
+message: "DSL `demo` の kind `custom_bridge` は未対応です"
+notes: []
+severity: error

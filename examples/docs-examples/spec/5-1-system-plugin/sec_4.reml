@@ -1,0 +1,12 @@
+pub type i64
+pub type i32
+pub type SyscallNumber = i64
+
+pub type SyscallError = {
+  kind: SyscallErrorKind,
+  message: Str,
+  number: SyscallNumber,
+  errno: Option<i32>,
+}
+
+pub enum SyscallErrorKind = AccessDenied | InvalidArgument | Interrupted | WouldBlock | NotSupported | Fault | Unknown

@@ -1,0 +1,25 @@
+pub type Ptr<T>
+pub type MutPtr<T>
+pub type SyscallError
+pub type i32
+pub type u8
+pub type usize
+pub type Option<T>
+pub type WindowsSyscalls
+pub type MacOSSyscalls
+pub type WasiSyscalls
+
+pub struct LinuxSyscalls {
+  sys_read: fn(fd: i32, buf: MutPtr<u8>, len: usize) -> Result<usize, SyscallError>,
+  sys_write: fn(fd: i32, buf: Ptr<u8>, len: usize) -> Result<usize, SyscallError>,
+  sys_openat: fn(dirfd: i32, path: Ptr<u8>, flags: i32, mode: i32) -> Result<i32, SyscallError>,
+  sys_close: fn(fd: i32) -> Result<(), SyscallError>,
+  // 追加候補: epoll, mmap, clone 等
+}
+
+pub type PlatformSyscalls = {
+  linux: Option<LinuxSyscalls>,
+  windows: Option<WindowsSyscalls>,
+  macos: Option<MacOSSyscalls>,
+  wasi: Option<WasiSyscalls>,
+}

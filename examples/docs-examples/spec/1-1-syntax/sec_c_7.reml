@@ -1,0 +1,5 @@
+fn write_buf(buf) -> () {
+  unsafe {
+    let _ = buf
+  }
+}

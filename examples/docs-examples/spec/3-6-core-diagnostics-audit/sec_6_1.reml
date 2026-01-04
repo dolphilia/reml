@@ -1,0 +1,22 @@
+pub type LatencyHistogram
+pub type CounterMetric
+pub type RatioGauge
+pub type GaugeMetric
+pub type ExecutionMetricsScope
+pub type DslId
+pub type Diagnostic
+pub type Duration
+
+pub type DslMetricsHandle = {
+  latency: LatencyHistogram,
+  throughput: CounterMetric,
+  error_rate: RatioGauge,
+  in_flight: GaugeMetric,
+}
+
+pub type DslMetricsApi = {
+  register_dsl_metrics: fn(ExecutionMetricsScope, DslId) -> Result<DslMetricsHandle, Diagnostic>, // `effect {trace}`
+  record_dsl_success: fn(DslMetricsHandle, Duration) -> (),                                       // `effect {trace}`
+  record_dsl_failure: fn(DslMetricsHandle, Diagnostic, Duration) -> (),                           // `effect {trace, audit}`
+  observe_backpressure: fn(DslMetricsHandle, usize) -> (),                                        // `effect {trace}`
+}

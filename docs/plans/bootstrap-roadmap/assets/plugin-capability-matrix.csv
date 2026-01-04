@@ -1,0 +1,4 @@
+plugin_id,name,required_capabilities,stage_requirement,notes
+plugin.dsl.template,DSLテンプレート生成,"io.fs.read;io.fs.write;security.fs.policy","AtLeast(Beta)","テンプレート生成時にプロジェクト構成を書き出すため Core.IO/Path capability と security policy が必要。`tooling/examples/run_examples.sh --suite core_io` の KPI を再利用。"
+plugin.dsl.observability,DSL 観測/サーキットブレーカ,"metrics.emit;core.collections.audit","Exact(Stable)","`collect-iterator-audit-metrics.py --section runtime --scenario capability_check` を通過した `metrics.emit` を使用し、監査ログへ DSL メトリクスを送信する。"
+plugin.native-ui,ネイティブ UI / 通知,"fs.permissions.read;fs.permissions.modify;watcher.resource_limits","AtLeast(Beta)","Runtime Bridge (`runtime_bridge-stage-records-20251206.json`) と同期し、Watcher Capability が無い OS では CLI フォールバックに切り替える。"

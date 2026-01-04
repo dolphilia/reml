@@ -1,0 +1,510 @@
+module samples.language_impl_samples.basic_interpreter
+
+use ::Core.Prelude
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.Text.String as Str
+
+/// Basic 言語の AST を直接実行する小規模インタープリタ。
+/// LET / PRINT / IF / FOR / WHILE / GOTO / GOSUB / RETURN / DIM / END をサポート。
+
+type Value =
+  | VNumber(f64)
+  | VString(Str)
+  | VArray(List<Value>)
+
+type Env = Map<Str, Value>
+
+type Statement =
+  | LetStmt({ name: Str, expr: Expr })
+  | PrintStmt(List<Expr>)
+  | IfStmt({ cond: Expr, then_block: List<Statement>, else_block: List<Statement> })
+  | ForStmt({ name: Str, start: Expr, end: Expr, step: Expr, body: List<Statement> })
+  | WhileStmt({ cond: Expr, body: List<Statement> })
+  | GotoStmt(i32)
+  | GosubStmt(i32)
+  | ReturnStmt
+  | DimStmt({ name: Str, size: Expr })
+  | EndStmt
+
+type Expr =
+  | Number(f64)
+  | String(Str)
+  | Variable(Str)
+  | ArrayAccess({ name: Str, index: Expr })
+  | BinOp({ op: BinOperator, left: Expr, right: Expr })
+  | UnaryOp({ op: UnaryOperator, operand: Expr })
+
+type BinOperator =
+  | Add | Sub | Mul | Div
+  | Eq | Ne | Lt | Le | Gt | Ge
+  | And | Or
+
+type UnaryOperator =
+  | Neg | Not
+
+type Program = List<(i32, Statement)>
+
+type RuntimeState = {
+  env: Env,
+  call_stack: List<i32>,
+  output: List<Str>,
+}
+
+type RuntimeError =
+  | UndefinedVariable({ name: Str })
+  | UndefinedLabel({ line: i32 })
+  | TypeMismatch({ expected: Str, got: Str })
+  | IndexOutOfBounds
+  | DivisionByZero
+  | StackUnderflow
+
+fn run(program: Program) -> Result<List<Str>, RuntimeError> {
+  let state = RuntimeState {
+    env: Map.empty(),
+    call_stack: List.empty(),
+    output: List.empty(),
+  }
+  let sorted = List.sort_by(program, |(line, _)| line)
+  execute_program(sorted, 0, state)
+}
+
+fn execute_program(
+  program: List<(i32, Statement)>,
+  pc: i32,
+  state: RuntimeState
+) -> Result<List<Str>, RuntimeError> {
+  if pc >= List.length(program) then {
+    Result.ok(state.output)
+  } else {
+    let (_, stmt) = List.get(program, pc).unwrap()
+
+    match stmt with
+      EndStmt -> Result.ok(state.output)
+      LetStmt(let_stmt) ->
+        match exec_let(let_stmt, state) with
+          Ok(next_state) -> execute_program(program, pc + 1, next_state)
+          Err(e) -> Result.err(e)
+      PrintStmt(exprs) ->
+        match exec_print(exprs, state) with
+          Ok(next_state) -> execute_program(program, pc + 1, next_state)
+          Err(e) -> Result.err(e)
+      IfStmt(branch) ->
+        exec_if(branch, program, pc, state)
+      ForStmt(for_stmt) ->
+        exec_for(for_stmt, program, pc, state)
+      WhileStmt({ cond, body }) ->
+        execute_while_loop(cond, body, program, pc, state)
+      GotoStmt(target) ->
+        exec_goto(target, program, state)
+      GosubStmt(target) ->
+        exec_gosub(target, program, pc, state)
+      ReturnStmt ->
+        exec_return(program, state)
+      DimStmt({ name, size }) ->
+        match exec_dim(name, size, state) with
+          Ok(next_state) -> execute_program(program, pc + 1, next_state)
+          Err(e) -> Result.err(e)
+  }
+}
+
+fn exec_let(
+  stmt: { name: Str, expr: Expr },
+  state: RuntimeState
+) -> Result<RuntimeState, RuntimeError> {
+  let value = eval_expr(stmt.expr, state.env)?
+  let new_env = Map.insert(state.env, stmt.name, value)
+  Result.ok({
+    env: new_env,
+    call_stack: state.call_stack,
+    output: state.output,
+  })
+}
+
+fn exec_print(
+  exprs: List<Expr>,
+  state: RuntimeState
+) -> Result<RuntimeState, RuntimeError> {
+  let values = exprs
+    |> List.map(|e| eval_expr(e, state.env))
+    |> collect_results()?
+  let text = values
+    |> List.map(value_to_text)
+    |> join_with_space()
+  let new_output = List.push_back(state.output, text)
+  Result.ok({
+    env: state.env,
+    call_stack: state.call_stack,
+    output: new_output,
+  })
+}
+
+fn exec_dim(
+  name: Str,
+  size_expr: Expr,
+  state: RuntimeState
+) -> Result<RuntimeState, RuntimeError> {
+  let size_val = eval_expr(size_expr, state.env)?
+  match size_val with
+    VNumber(n) -> dim_from_number(name, n, state)
+    other -> Result.err(TypeMismatch({ expected: "Number", got: value_kind(other) }))
+}
+
+fn dim_from_number(
+  name: Str,
+  n: f64,
+  state: RuntimeState
+) -> Result<RuntimeState, RuntimeError> {
+  let size = Int.from_float(n)
+  let array = List.repeat(VNumber(0.0), size)
+  let new_env = Map.insert(state.env, name, VArray(array))
+  Result.ok({
+    env: new_env,
+    call_stack: state.call_stack,
+    output: state.output,
+  })
+}
+
+fn exec_if(
+  stmt: { cond: Expr, then_block: List<Statement>, else_block: List<Statement> },
+  program: List<(i32, Statement)>,
+  pc: i32,
+  state: RuntimeState
+) -> Result<List<Str>, RuntimeError> {
+  let cond_val = eval_expr(stmt.cond, state.env)?
+  let cond_truth: Bool = is_truthy(cond_val)
+  let branch = if cond_truth == true then {
+    stmt.then_block
+  } else {
+    stmt.else_block
+  }
+  let new_state = execute_block(branch, state)?
+  execute_program(program, pc + 1, new_state)
+}
+
+fn exec_for(
+  stmt: { name: Str, start: Expr, end: Expr, step: Expr, body: List<Statement> },
+  program: List<(i32, Statement)>,
+  pc: i32,
+  state: RuntimeState
+) -> Result<List<Str>, RuntimeError> {
+  let start_val = eval_expr(stmt.start, state.env)?
+  let end_val = eval_expr(stmt.end, state.env)?
+  let step_val = eval_expr(stmt.step, state.env)?
+  execute_for_loop(stmt.name, start_val, end_val, step_val, stmt.body, program, pc, state)
+}
+
+fn exec_goto(
+  target: i32,
+  program: List<(i32, Statement)>,
+  state: RuntimeState
+) -> Result<List<Str>, RuntimeError> {
+  let new_pc = find_line(program, target)?
+  execute_program(program, new_pc, state)
+}
+
+fn exec_gosub(
+  target: i32,
+  program: List<(i32, Statement)>,
+  pc: i32,
+  state: RuntimeState
+) -> Result<List<Str>, RuntimeError> {
+  let new_pc = find_line(program, target)?
+  let new_call_stack = List.push_back(state.call_stack, pc + 1)
+  execute_program(
+    program,
+    new_pc,
+    { env: state.env, call_stack: new_call_stack, output: state.output }
+  )
+}
+
+fn exec_return(
+  program: List<(i32, Statement)>,
+  state: RuntimeState
+) -> Result<List<Str>, RuntimeError> {
+  match List.pop_back(state.call_stack) with
+    None -> Result.err(StackUnderflow)
+    Some((rest, return_pc)) ->
+      execute_program(
+        program,
+        return_pc,
+        { env: state.env, call_stack: rest, output: state.output }
+      )
+}
+
+fn execute_block(
+  block: List<Statement>,
+  state: RuntimeState
+) -> Result<RuntimeState, RuntimeError> {
+  List.fold(block, Result.ok(state), |state_res, stmt| {
+    match state_res with
+      Err(e) -> Result.err(e)
+      Ok(s) -> execute_single_statement(stmt, s)
+  })
+}
+
+fn execute_single_statement(
+  stmt: Statement,
+  state: RuntimeState
+) -> Result<RuntimeState, RuntimeError> {
+  match stmt with
+    LetStmt(let_stmt) -> exec_let(let_stmt, state)
+
+    PrintStmt(exprs) -> exec_print(exprs, state)
+
+    _ -> Result.ok(state)
+}
+
+fn execute_for_loop(
+  name: Str,
+  start: Value,
+  end: Value,
+  step: Value,
+  body: List<Statement>,
+  program: List<(i32, Statement)>,
+  pc: i32,
+  state: RuntimeState
+) -> Result<List<Str>, RuntimeError> {
+  let start_num = expect_number(start)?
+  let end_num = expect_number(end)?
+  let step_num = expect_number(step)?
+  loop_helper(name, start_num, end_num, step_num, body, program, pc, state)
+}
+
+fn loop_helper(
+  name: Str,
+  current: f64,
+  end: f64,
+  step: f64,
+  body: List<Statement>,
+  program: List<(i32, Statement)>,
+  pc: i32,
+  state: RuntimeState
+) -> Result<List<Str>, RuntimeError> {
+  let should_stop =
+    if step > 0.0 then {
+      current > end
+    } else if step < 0.0 then {
+      current < end
+    } else {
+      true
+    }
+
+  if should_stop then {
+    execute_program(program, pc + 1, state)
+  } else {
+    let new_env = Map.insert(state.env, name, VNumber(current))
+    let new_state = execute_block(
+      body,
+      { env: new_env, call_stack: state.call_stack, output: state.output }
+    )?
+    loop_helper(name, current + step, end, step, body, program, pc, new_state)
+  }
+}
+
+fn for_step_mismatch(
+  lhs: Value,
+  rhs: Value,
+  step_val: Value
+) -> Result<List<Str>, RuntimeError> {
+  let got = value_kind(step_val)
+  let expected = format("Number (start={value_kind(lhs)}, end={value_kind(rhs)})")
+  Result.err(TypeMismatch({ expected, got }))
+}
+
+fn expect_number(value: Value) -> Result<f64, RuntimeError> {
+  match value with
+    VNumber(n) -> Result.ok(n)
+    other -> Result.err(TypeMismatch({ expected: "Number", got: value_kind(other) }))
+}
+
+fn eval_array_access(
+  arr: List<Value>,
+  index_expr: Expr,
+  env: Env
+) -> Result<Value, RuntimeError> {
+  let index_val = eval_expr(index_expr, env)?
+  let idx_num = expect_number(index_val)?
+  let i = Int.from_float(idx_num)
+  List.get(arr, i).ok_or(IndexOutOfBounds)
+}
+
+fn execute_while_loop(
+  cond: Expr,
+  body: List<Statement>,
+  program: List<(i32, Statement)>,
+  pc: i32,
+  state: RuntimeState
+) -> Result<List<Str>, RuntimeError> {
+  let cond_val = eval_expr(cond, state.env)?
+  let cond_truth: Bool = is_truthy(cond_val)
+  if cond_truth == true then {
+    let new_state = execute_block(body, state)?
+    execute_while_loop(cond, body, program, pc, new_state)
+  } else {
+    execute_program(program, pc + 1, state)
+  }
+}
+
+fn eval_expr(expr: Expr, env: Env) -> Result<Value, RuntimeError> {
+  match expr with
+    Number(n) -> Result.ok(VNumber(n))
+    String(s) -> Result.ok(VString(s))
+    Variable(name) ->
+      Map.get(env, name).ok_or(UndefinedVariable({ name }))
+    ArrayAccess(access) ->
+      match Map.get(env, access.name) with
+        None -> Result.err(UndefinedVariable({ name: access.name }))
+        Some(VArray(arr)) ->
+          eval_array_access(arr, access.index, env)
+        Some(other) -> Result.err(TypeMismatch({ expected: "Array", got: value_kind(other) }))
+    BinOp(bin) -> eval_binop_expr(bin, env)
+    UnaryOp(unary) -> eval_unaryop_expr(unary, env)
+}
+
+fn eval_binop_expr(
+  bin: { op: BinOperator, left: Expr, right: Expr },
+  env: Env
+) -> Result<Value, RuntimeError> {
+  let left = eval_expr(bin.left, env)?
+  let right = eval_expr(bin.right, env)?
+  eval_binop(bin.op, left, right)
+}
+
+fn eval_unaryop_expr(
+  unary: { op: UnaryOperator, operand: Expr },
+  env: Env
+) -> Result<Value, RuntimeError> {
+  let operand = eval_expr(unary.operand, env)?
+  eval_unaryop(unary.op, operand)
+}
+
+fn eval_binop(op: BinOperator, left: Value, right: Value) -> Result<Value, RuntimeError> {
+  match op with
+    Add -> numeric_binop(left, right, |l, r| l + r)
+    Sub -> numeric_binop(left, right, |l, r| l - r)
+    Mul -> numeric_binop(left, right, |l, r| l * r)
+    Div -> eval_division(left, right)
+    Eq -> numeric_binop(left, right, |l, r| if l == r then { 1.0 } else { 0.0 })
+    Ne -> numeric_binop(left, right, |l, r| if l != r then { 1.0 } else { 0.0 })
+    Lt -> numeric_binop(left, right, |l, r| if l < r then { 1.0 } else { 0.0 })
+    Le -> numeric_binop(left, right, |l, r| if l <= r then { 1.0 } else { 0.0 })
+    Gt -> numeric_binop(left, right, |l, r| if l > r then { 1.0 } else { 0.0 })
+    Ge -> numeric_binop(left, right, |l, r| if l >= r then { 1.0 } else { 0.0 })
+    And -> eval_logic_and(left, right)
+    Or -> eval_logic_or(left, right)
+}
+
+fn numeric_binop(
+  left: Value,
+  right: Value,
+  op: (f64, f64) -> f64
+) -> Result<Value, RuntimeError> {
+  let lhs = expect_number(left)?
+  let rhs = expect_number(right)?
+  Result.ok(VNumber(op(lhs, rhs)))
+}
+
+fn eval_division(left: Value, right: Value) -> Result<Value, RuntimeError> {
+  let lhs = expect_number(left)?
+  let rhs = expect_number(right)?
+  if rhs == 0.0 then {
+    Result.err(DivisionByZero)
+  } else {
+    Result.ok(VNumber(lhs / rhs))
+  }
+}
+
+fn eval_unaryop(op: UnaryOperator, operand: Value) -> Result<Value, RuntimeError> {
+  match op with
+    Neg ->
+      match operand with
+        VNumber(n) -> Result.ok(VNumber(0.0 - n))
+        other -> Result.err(TypeMismatch({ expected: "Number", got: value_kind(other) }))
+    Not ->
+      Result.ok(VNumber(if is_truthy(operand) then { 0.0 } else { 1.0 }))
+}
+
+fn is_truthy(value: Value) -> Bool {
+  match value with
+    VNumber(n) -> n != 0.0
+    VString(s) -> Str.is_empty(s) == false
+    VArray(a) -> List.is_empty(a) == false
+}
+
+fn value_to_text(value: Value) -> Str {
+  match value with
+    VNumber(n) -> format("{n}")
+    VString(s) -> s
+    VArray(_) -> "[Array]"
+}
+
+fn value_kind(value: Value) -> Str {
+  match value with
+    VNumber(_) -> "Number"
+    VString(_) -> "String"
+    VArray(_) -> "Array"
+}
+
+fn eval_logic_and(left: Value, right: Value) -> Result<Value, RuntimeError> {
+  let left_truth: Bool = is_truthy(left)
+  if left_truth == false then {
+    Result.ok(VNumber(0.0))
+  } else {
+    let right_truth: Bool = is_truthy(right)
+    let value = if right_truth == true then { 1.0 } else { 0.0 }
+    Result.ok(VNumber(value))
+  }
+}
+
+fn eval_logic_or(left: Value, right: Value) -> Result<Value, RuntimeError> {
+  let left_truth: Bool = is_truthy(left)
+  if left_truth == true then {
+    Result.ok(VNumber(1.0))
+  } else {
+    let right_truth: Bool = is_truthy(right)
+    let value = if right_truth == true then { 1.0 } else { 0.0 }
+    Result.ok(VNumber(value))
+  }
+}
+
+fn binop_mismatch(left: Value, right: Value) -> Result<Value, RuntimeError> {
+  let expected = "Number"
+  let got = format("{value_kind(left)} vs {value_kind(right)}")
+  Result.err(TypeMismatch({ expected, got }))
+}
+
+fn find_line(program: List<(i32, Statement)>, target: i32) -> Result<i32, RuntimeError> {
+  List.find_index(program, |(line, _)| line == target)
+    .ok_or(UndefinedLabel({ line: target }))
+}
+
+fn collect_results(results: List<Result<Value, RuntimeError>>) -> Result<List<Value>, RuntimeError> {
+  List.fold(results, Result.ok(List.empty()), |acc, r| {
+    match (acc, r) with
+      (Ok(list), Ok(value)) -> Result.ok(List.push_back(list, value))
+      (Err(e), _) -> Result.err(e)
+      (_, Err(e)) -> Result.err(e)
+  })
+}
+
+fn join_with_space(values: List<Str>) -> Str {
+  List.fold(values, "", |acc, s| {
+    let is_empty: Bool = Str.is_empty(acc)
+    if is_empty == true then {
+      s
+    } else {
+      Str.concat(Str.concat(acc, " "), s)
+    }
+  })
+}
+
+// 利用例（AST を直接与える）
+// let program = [
+//   (10, LetStmt({ name: "x", expr: Number(0.0) })),
+//   (20, LetStmt({ name: "x", expr: BinOp({ op: Add, left: Variable("x"), right: Number(1.0) }) })),
+//   (30, PrintStmt([Variable("x")])),
+//   (40, IfStmt({ cond: BinOp({ op: Lt, left: Variable("x"), right: Number(3.0) }), then_block: [GotoStmt(20)], else_block: [] })),
+//   (50, EndStmt),
+// ]
+// run(program) => Ok(["1", "2", "3"])

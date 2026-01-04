@@ -1,0 +1,14 @@
+pub type Duration
+pub type IoError
+pub type RetryPolicy
+
+pub type IoOperation<T> = fn() -> Result<T, IoError>
+
+pub type IoPool = {
+  max_concurrent: u32,
+  timeout: Duration,
+  retry_policy: RetryPolicy,
+}
+
+fn with_io_pool<T>(pool: IoPool, operation: IoOperation<T>) -> Result<T, IoError>
+fn parallel_file_ops<T>(operations: List<IoOperation<T>>, pool: IoPool) -> Result<List<T>, IoError>

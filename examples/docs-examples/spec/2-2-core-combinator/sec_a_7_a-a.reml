@@ -1,0 +1,5 @@
+// 左再帰を直接書く: 退行や無限再帰の原因になる
+let expr = rule("expr",
+  expr.then(symbol(sc, "+")).then(term).map(|(a, _, b)| Add(a, b))
+    .or(term)
+)

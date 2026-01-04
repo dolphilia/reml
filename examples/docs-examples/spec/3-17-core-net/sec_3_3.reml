@@ -1,0 +1,16 @@
+pub type UrlError = {
+  kind: UrlErrorKind,
+  message: Str,
+  diagnostic_key: Str,
+}
+
+pub enum UrlErrorKind =
+  | InvalidScheme
+  | InvalidHost
+  | InvalidPort
+  | InvalidPath
+  | InvalidQuery
+  | InvalidFragment
+  | MissingAuthority
+  | UnsupportedScheme
+  | InvalidEncoding

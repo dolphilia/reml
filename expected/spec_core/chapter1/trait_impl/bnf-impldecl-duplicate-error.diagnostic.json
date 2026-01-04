@@ -1,0 +1,16 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter1/trait_impl/bnf-impldecl-duplicate-error.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "typeclass.impl.duplicate",
+      "message": "型 `Int` に対する `MiniDisplay` 実装が複数回定義されています。",
+      "notes": [
+        {
+          "message": "`impl MiniDisplay for Int` は 1 件に統合してください。"
+        }
+      ]
+    }
+  ]
+}

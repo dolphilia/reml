@@ -1,0 +1,7 @@
+fn opt<A>(p: Parser<A>) -> Parser<Option<A>> = todo              // 空成功可（非消費）
+fn many<A>(p: Parser<A>) -> Parser<[A]> = todo                   // 0回以上
+fn many1<A>(p: Parser<A>) -> Parser<[A]> = todo                  // 1回以上
+fn repeat<A>(p: Parser<A>, min: usize, max: Option<usize>) -> Parser<[A]> = todo
+fn sepBy<A,S>(p: Parser<A>, sep: Parser<S>) -> Parser<[A]> = todo
+fn sepBy1<A,S>(p: Parser<A>, sep: Parser<S>) -> Parser<[A]> = todo
+fn manyTill<A,End>(p: Parser<A>, end: Parser<End>) -> Parser<[A]> = todo

@@ -1,0 +1,5 @@
+pub type CliArgs
+pub type AuditSink
+
+// CLI コマンドラインオプション
+fn setup_cli_diagnostics(args: CliArgs) -> AuditSink // `effect {audit}`

@@ -1,0 +1,20 @@
+module Spec.Core.Chapter1.ControlFlow.LoopBreakValue
+
+use Core.Prelude
+
+// BNF: LoopExpr（docs/spec/1-5-formal-grammar-bnf.md §4）
+fn wait_for_threshold(limit: Int) -> Int {
+  var counter: Int = 0
+  loop {
+    counter := counter + 1
+    if counter >= limit then {
+      break counter
+    } else {
+      continue
+    }
+  }
+}
+
+fn main() -> Int {
+  wait_for_threshold(3)
+}

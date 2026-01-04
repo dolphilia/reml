@@ -1,0 +1,24 @@
+module Examples.Practical.CoreDiagnostics.AuditEnvelope
+
+use Core.Collections
+use Core.Diagnostics
+
+fn record() {
+  let metadata = Map.insert(
+    Map.insert(Map.empty_map(), "scenario.id", "CH3-DIAG-501"),
+    "effect.stage.required",
+    "beta",
+  );
+  let envelope = Diagnostics.AuditEnvelope.from_parts(
+    metadata,
+    None,
+    None,
+    None,
+  )
+  Diagnostics.emit(envelope)
+}
+
+fn main() -> Str {
+  record()
+  "audit-envelope"
+}

@@ -1,0 +1,22 @@
+module examples.ffi.macos.dispatch_async
+
+extern "C" {
+  @target("arm64-apple-darwin")
+  @link_name("dispatch_get_main_queue")
+  @callconv("aapcs64")
+  @ownership("borrowed")
+  fn dispatch_get_main_queue() -> Ptr<u8>;
+
+  @target("arm64-apple-darwin")
+  @link_name("dispatch_async_f")
+  @callconv("aapcs64")
+  @ownership("borrowed")
+  fn dispatch_async_f(
+    queue: Ptr<u8>,
+    context: Ptr<u8>,
+    work: Ptr<u8>
+  );
+}
+
+pub fn main() -> i64 =
+  0

@@ -1,0 +1,725 @@
+module samples.language_impl_samples.basic_interpreter_combinator
+
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.Prelude
+use ::Core.Text
+use ::Core.Parse
+use ::Core.Parse.Lex
+
+fn make_lex_pack() {
+  // LexPreset（scannerless lex helpers）を “サンプル側の共通入口” として束ねる。
+  // 目的:
+  // - `lexeme/symbol/keyword` の自前ロジックを増やさず `Core.Parse.Lex` の標準 API に寄せる
+  // - 期待語彙は `label("identifier"|"number"|"string")` を優先し、自由文 `Parse.fail` を避ける
+  let space: Parser<()> =
+    (Lex.whitespace())
+      |> Lex.skipMany
+
+  let lexeme = (|p| Lex.lexeme(space, p))
+  let symbol = (|text| Lex.symbol(space, text))
+  let keyword = (|name| Lex.keyword(space, name))
+  let identifier =
+    Parse.label("identifier", lexeme(Lex.identifier()))
+
+  let line_number =
+    Parse.label("number", lexeme(Lex.int(10)))
+
+  let number_token =
+    Parse.label("number", lexeme(Parse.attempt(Lex.float()).or(Lex.integer())))
+
+  let string_literal =
+    Parse.label("string", lexeme(Lex.stringLit()))
+
+  {
+    space,
+    lexeme,
+    symbol,
+    keyword,
+    identifier,
+    line_number,
+    number_token,
+    string_literal,
+  }
+}
+
+let lex = make_lex_pack()
+
+/// パーサーコンビネーターを使った Basic インタープリタ。
+/// LET, PRINT, IF, FOR, WHILE, GOTO, GOSUB, RETURN, DIM, END をサポート。
+
+type Value =
+  | VNumber(f64)
+  | VString(Text)
+  | VArray(List<Value>)
+
+type Env = Map<Text, Value>
+
+type Statement =
+  | Let({ name: Text, expr: Expr })
+  | Print(List<Expr>)
+  | If({ cond: Expr, then_block: List<Statement>, else_block: List<Statement> })
+  | For({ name: Text, start: Expr, end: Expr, step: Expr, body: List<Statement> })
+  | While({ cond: Expr, body: List<Statement> })
+  | Goto(i64)
+  | Gosub(i64)
+  | Return
+  | Dim({ name: Text, size: Expr })
+  | End
+
+type Expr =
+  | Number(f64)
+  | String(Text)
+  | Variable(Text)
+  | ArrayAccess({ name: Text, index: Expr })
+  | BinOp({ op: BinOperator, left: Expr, right: Expr })
+  | UnaryOp({ op: UnaryOperator, operand: Expr })
+
+type BinOperator =
+  | Add | Sub | Mul | Div
+  | Eq | Ne | Lt | Le | Gt | Ge
+  | And | Or
+
+type UnaryOperator =
+  | Neg | Not
+
+type Program = List<(i64, Statement)>
+
+type RuntimeState = {
+  env: Env,
+  call_stack: List<i64>,
+  output: List<Text>,
+}
+
+type RuntimeError =
+  | UndefinedVariable({ name: Text })
+  | UndefinedLabel({ line: i64 })
+  | TypeMismatch({ expected: Text, got: Text })
+  | IndexOutOfBounds
+  | DivisionByZero
+  | StackUnderflow
+
+// ========== パーサー定義 ==========
+
+fn line_number() -> Parser<i64> {
+  rule("basic.line_number",
+    lex.line_number
+      .andThen(|digits|
+        match Lex.parseI64(digits, 10) with
+        | Ok(value) -> Parse.ok(value)
+        | Err(_) ->
+          Parse.fail_with_expectations(
+            "行番号として解釈できません",
+            expected = ["number"],
+            found = digits,
+          )
+      )
+  )
+}
+
+fn identifier() -> Parser<Text> {
+  rule("basic.identifier", lex.identifier)
+}
+
+fn number() -> Parser<f64> {
+  rule("basic.number",
+    lex.number_token
+      .andThen(|repr|
+        match Lex.parseF64(repr) with
+        | Ok(value) -> Parse.ok(value)
+        | Err(_) ->
+          Parse.fail_with_expectations(
+            "数値として解釈できません",
+            expected = ["number"],
+            found = repr,
+          )
+      )
+  )
+}
+
+fn string_literal() -> Parser<Text> {
+  rule("basic.string", lex.string_literal)
+}
+
+// 式パーサー
+fn expr() -> Parser<Expr> {
+  or_expr()
+}
+
+fn or_expr() -> Parser<Expr> {
+  chainl1(
+    and_expr(),
+    lex.keyword("OR").map(|_| (|l, r| BinOp({ op: Or, left: l, right: r })))
+  )
+}
+
+fn and_expr() -> Parser<Expr> {
+  chainl1(
+    comparison_expr(),
+    lex.keyword("AND").map(|_| (|l, r| BinOp({ op: And, left: l, right: r })))
+  )
+}
+
+fn comparison_expr() -> Parser<Expr> {
+  let comp_op: Parser<BinOperator> = Parse.choice([
+    lex.symbol("=").map(|_| Eq),
+    lex.symbol("<>").map(|_| Ne),
+    lex.symbol("<=").map(|_| Le),
+    lex.symbol(">=").map(|_| Ge),
+    lex.symbol("<").map(|_| Lt),
+    lex.symbol(">").map(|_| Gt),
+  ])
+  chainl1(
+    additive_expr(),
+    comp_op.map(|op| (|l, r| BinOp({ op, left: l, right: r })))
+  )
+}
+
+fn additive_expr() -> Parser<Expr> {
+  let add_op: Parser<BinOperator> = Parse.choice([
+    lex.symbol("+").map(|_| Add),
+    lex.symbol("-").map(|_| Sub),
+  ])
+  chainl1(
+    multiplicative_expr(),
+    add_op.map(|op| (|l, r| BinOp({ op, left: l, right: r })))
+  )
+}
+
+fn multiplicative_expr() -> Parser<Expr> {
+  let mul_op: Parser<BinOperator> = Parse.choice([
+    lex.symbol("*").map(|_| Mul),
+    lex.symbol("/").map(|_| Div),
+  ])
+  chainl1(
+    unary_expr(),
+    mul_op.map(|op| (|l, r| BinOp({ op, left: l, right: r })))
+  )
+}
+
+fn unary_expr() -> Parser<Expr> {
+  Parse.choice([
+    lex.symbol("-")
+      .then(primary_expr())
+      .map(|(_, operand)| UnaryOp({ op: Neg, operand })),
+    lex.keyword("NOT")
+      .then(primary_expr())
+      .map(|(_, operand)| UnaryOp({ op: Not, operand })),
+    primary_expr()
+  ])
+}
+
+fn primary_expr() -> Parser<Expr> {
+  Parse.choice([
+    number().map(|n| Number(n)),
+    string_literal().map(|s| String(s)),
+    Parse.attempt(array_access()),
+    identifier().map(|name| Variable(name)),
+    lex.symbol("(")
+      .skipR(expr())
+      .skipL(lex.symbol(")"))
+  ])
+}
+
+fn array_access() -> Parser<Expr> {
+  identifier()
+    .andThen(|name|
+      lex.symbol("(")
+        .skipR(expr())
+        .skipL(lex.symbol(")"))
+        .map(|index| ArrayAccess({ name, index }))
+    )
+}
+
+// Phase 8: 優先度ビルダー版の式パーサ
+//
+// 現行 Rust フロントエンドでは、サンプルで使っていた `rec expr`（Parser 値の遅延参照）構文が
+// 構文解析で落ちるケースがあり、CH2-PARSE-501 の「成功サンプル」回帰を優先して一旦撤去する。
+//
+// TODO: `Parse.expr_builder` を使った再導入は `docs/plans/bootstrap-roadmap/4-1-core-parse-combinator-plan-v2.md`
+//       の Phase8 と、LexPack/RunConfig 共有（WS3）と整合する形で行う。
+
+// 文パーサー
+fn statement() -> Parser<Statement> {
+  Parse.choice([
+    let_stmt(),
+    print_stmt(),
+    if_stmt(),
+    for_stmt(),
+    while_stmt(),
+    goto_stmt(),
+    gosub_stmt(),
+    return_stmt(),
+    dim_stmt(),
+    end_stmt()
+  ])
+}
+
+fn let_stmt() -> Parser<Statement> {
+  lex.keyword("LET")
+    .skipR(identifier())
+    .skipL(lex.symbol("="))
+    .then(expr())
+    .map(|(name, expr)| Let({ name, expr }))
+}
+
+fn print_stmt() -> Parser<Statement> {
+  lex.keyword("PRINT")
+    .skipR(Parse.sepBy(expr(), lex.symbol(",")))
+    .map(|exprs| Print(exprs))
+}
+
+fn if_stmt() -> Parser<Statement> {
+  lex.keyword("IF")
+    .skipR(expr())
+    .skipL(lex.keyword("THEN"))
+    .then(Parse.many(statement()))
+    .then(Parse.opt(
+      lex.keyword("ELSE")
+        .skipR(Parse.many(statement()))
+    ))
+    .skipL(lex.keyword("END"))
+    .map(|((cond, then_block), else_opt)| {
+      let else_block = else_opt.unwrap_or(List.empty())
+      If({ cond, then_block, else_block })
+    })
+}
+
+fn for_stmt() -> Parser<Statement> {
+  lex.keyword("FOR")
+    .skipR(identifier())
+    .skipL(lex.symbol("="))
+    .then(expr())
+    .skipL(lex.keyword("TO"))
+    .then(expr())
+    .then(Parse.opt(
+      lex.keyword("STEP")
+        .skipR(expr())
+    ))
+    .then(Parse.many(statement()))
+    .skipL(lex.keyword("NEXT"))
+    .map(|((((name, start), end), step_opt), body)| {
+      let step = step_opt.unwrap_or(Number(1.0))
+      For({ name, start, end, step, body })
+    })
+}
+
+fn while_stmt() -> Parser<Statement> {
+  lex.keyword("WHILE")
+    .skipR(expr())
+    .then(Parse.many(statement()))
+    .skipL(lex.keyword("WEND"))
+    .map(|(cond, body)| While({ cond, body }))
+}
+
+fn goto_stmt() -> Parser<Statement> {
+  lex.keyword("GOTO")
+    .skipR(line_number())
+    .map(|line| Goto(line))
+}
+
+fn gosub_stmt() -> Parser<Statement> {
+  lex.keyword("GOSUB")
+    .skipR(line_number())
+    .map(|line| Gosub(line))
+}
+
+fn return_stmt() -> Parser<Statement> {
+  lex.keyword("RETURN")
+    .map(|_| Return)
+}
+
+fn dim_stmt() -> Parser<Statement> {
+  lex.keyword("DIM")
+    .skipR(identifier())
+    .skipL(lex.symbol("("))
+    .then(expr())
+    .skipL(lex.symbol(")"))
+    .map(|(name, size)| Dim({ name, size }))
+}
+
+fn end_stmt() -> Parser<Statement> {
+  lex.keyword("END")
+    .map(|_| End)
+}
+
+fn program_line() -> Parser<(i64, Statement)> {
+  line_number()
+    .then(statement())
+}
+
+fn program() -> Parser<Program> {
+  lex.space
+    .skipR(Parse.many(program_line()))
+    .skipL(Parse.eof())
+    .map(|lines| lines)
+}
+
+// ========== 実行エンジン ==========
+
+fn parse_and_run(source: Text) -> Result<List<Text>, Text> {
+  match Parse.run(program(), source) with
+  | Err(err) -> Result.err(format("パースエラー: {err}"))
+  | Ok(prog) ->
+    match run(prog) with
+    | Err(err) -> Result.err(format("実行エラー: {err}"))
+    | Ok(output) -> Result.ok(output)
+}
+
+fn run(program: Program) -> Result<List<Text>, RuntimeError> {
+  let state = RuntimeState {
+    env: Map.empty(),
+    call_stack: List.empty(),
+    output: List.empty(),
+  }
+  let sorted = List.sort_by(program, |(line, _)| line)
+  execute_program(sorted, 0, state)
+}
+
+fn execute_program(
+  program: List<(i64, Statement)>,
+  pc: i64,
+  state: RuntimeState
+) -> Result<List<Text>, RuntimeError> {
+  if pc >= List.length(program) then {
+    Result.ok(state.output)
+  } else {
+    let (line, stmt) = List.get(program, pc).unwrap()
+
+    match stmt with
+    | End -> Result.ok(state.output)
+    | Let(let_stmt) ->
+      match eval_expr(let_stmt.expr, state.env) with
+      | Ok(value) ->
+        execute_program(
+          program,
+          pc + 1,
+          {
+            env: Map.insert(state.env, let_stmt.name, value),
+            call_stack: state.call_stack,
+            output: state.output,
+          },
+        )
+      | Err(err) -> Result.err(err)
+
+    | Print(exprs) ->
+      match collect_expr_results(exprs, state.env) with
+      | Ok(values) ->
+        execute_program(
+          program,
+          pc + 1,
+          {
+            env: state.env,
+            call_stack: state.call_stack,
+            output: List.push_back(state.output, values |> List.map(value_to_text) |> Text.join(" ")),
+          },
+        )
+      | Err(err) -> Result.err(err)
+
+    | If(if_stmt) ->
+      match eval_expr(if_stmt.cond, state.env) with
+      | Ok(cond_val) ->
+        match execute_block(
+          if is_truthy(cond_val) then {
+            if_stmt.then_block
+          } else {
+            if_stmt.else_block
+          },
+          state,
+        ) with
+        | Ok(new_state) -> execute_program(program, pc + 1, new_state)
+        | Err(err) -> Result.err(err)
+      | Err(err) -> Result.err(err)
+
+    | For(for_stmt) ->
+      match eval_expr(for_stmt.start, state.env) with
+      | Ok(start_val) ->
+        match eval_expr(for_stmt.end, state.env) with
+        | Ok(end_val) ->
+          match eval_expr(for_stmt.step, state.env) with
+          | Ok(step_val) ->
+            execute_for_loop(for_stmt.name, start_val, end_val, step_val, for_stmt.body, program, pc, state)
+          | Err(err) -> Result.err(err)
+        | Err(err) -> Result.err(err)
+      | Err(err) -> Result.err(err)
+
+    | While(while_stmt) ->
+      execute_while_loop(while_stmt.cond, while_stmt.body, program, pc, state)
+
+    | Goto(target) ->
+      match find_line(program, target) with
+      | Ok(new_pc) -> execute_program(program, new_pc, state)
+      | Err(err) -> Result.err(err)
+
+    | Gosub(target) ->
+      match find_line(program, target) with
+      | Ok(new_pc) ->
+        execute_program(
+          program,
+          new_pc,
+          {
+            env: state.env,
+            call_stack: List.push_back(state.call_stack, pc + 1),
+            output: state.output,
+          },
+        )
+      | Err(err) -> Result.err(err)
+
+    | Return ->
+      match List.pop_back(state.call_stack) with
+      | None -> Result.err(StackUnderflow)
+      | Some((rest, return_pc)) ->
+        execute_program(
+          program,
+          return_pc,
+          {
+            env: state.env,
+            call_stack: rest,
+            output: state.output,
+          },
+        )
+
+    | Dim(dim_stmt) ->
+      match eval_expr(dim_stmt.size, state.env) with
+      | Ok(VNumber(n)) ->
+        execute_program(
+          program,
+          pc + 1,
+          {
+            env: Map.insert(state.env, dim_stmt.name, VArray(List.repeat(VNumber(0.0), Int.from_float(n)))),
+            call_stack: state.call_stack,
+            output: state.output,
+          },
+        )
+      | Ok(_) -> Result.err(TypeMismatch({ expected: "Number", got: "Other" }))
+      | Err(err) -> Result.err(err)
+  }
+}
+
+fn execute_block(
+  block: List<Statement>,
+  state: RuntimeState
+) -> Result<RuntimeState, RuntimeError> {
+  List.fold(block, Result.ok(state), |state_res, stmt| {
+    match state_res with
+    | Err(e) -> Result.err(e)
+    | Ok(s) -> execute_single_statement(stmt, s)
+  })
+}
+
+fn execute_single_statement(
+  stmt: Statement,
+  state: RuntimeState
+) -> Result<RuntimeState, RuntimeError> {
+  match stmt with
+  | Let(let_stmt) ->
+    match eval_expr(let_stmt.expr, state.env) with
+    | Ok(value) ->
+      Result.ok({
+        env: Map.insert(state.env, let_stmt.name, value),
+        call_stack: state.call_stack,
+        output: state.output,
+      })
+    | Err(err) -> Result.err(err)
+
+  | Print(exprs) ->
+    match collect_expr_results(exprs, state.env) with
+    | Ok(values) ->
+      Result.ok({
+        env: state.env,
+        call_stack: state.call_stack,
+        output: List.push_back(
+          state.output,
+          values |> List.map(value_to_text) |> Text.join(" "),
+        ),
+      })
+    | Err(err) -> Result.err(err)
+
+  | _ -> Result.ok(state)
+}
+
+fn execute_for_loop(
+  name: Text,
+  start: Value,
+  end: Value,
+  step: Value,
+  body: List<Statement>,
+  program: List<(i64, Statement)>,
+  pc: i64,
+  state: RuntimeState
+) -> Result<List<Text>, RuntimeError> {
+  match (start, end, step) with
+  | (VNumber(s), VNumber(e), VNumber(st)) ->
+    for_loop_helper(name, s, e, st, body, program, pc, state)
+  | _ -> Result.err(TypeMismatch({ expected: "Number", got: "Other" }))
+}
+
+fn for_loop_helper(
+  name: Text,
+  current: f64,
+  end: f64,
+  step: f64,
+  body: List<Statement>,
+  program: List<(i64, Statement)>,
+  pc: i64,
+  state: RuntimeState
+) -> Result<List<Text>, RuntimeError> {
+  if step == 0.0 then {
+    Result.err(TypeMismatch({ expected: "Non-zero step", got: "Zero" }))
+  } else {
+
+    let should_exit =
+      if step > 0.0 then {
+        current > end
+      } else {
+        current < end
+      }
+
+    if should_exit then {
+      execute_program(program, pc + 1, state)
+    } else {
+      let new_env = Map.insert(state.env, name, VNumber(current))
+      let new_state = execute_block(
+        body,
+        {
+          env: new_env,
+          call_stack: state.call_stack,
+          output: state.output,
+        },
+      )?
+      for_loop_helper(name, current + step, end, step, body, program, pc, new_state)
+    }
+  }
+}
+
+fn execute_while_loop(
+  cond: Expr,
+  body: List<Statement>,
+  program: List<(i64, Statement)>,
+  pc: i64,
+  state: RuntimeState
+) -> Result<List<Text>, RuntimeError> {
+  let cond_val = eval_expr(cond, state.env)?
+  let cond_truth: Bool = is_truthy(cond_val)
+  if cond_truth == true then {
+    let new_state = execute_block(body, state)?
+    execute_while_loop(cond, body, program, pc, new_state)
+  } else {
+    execute_program(program, pc + 1, state)
+  }
+}
+
+fn eval_expr(expr: Expr, env: Env) -> Result<Value, RuntimeError> {
+  match expr with
+  | Number(n) -> Result.ok(VNumber(n))
+  | String(s) -> Result.ok(VString(s))
+  | Variable(name) ->
+    Map.get(env, name).ok_or(UndefinedVariable({ name }))
+
+  | ArrayAccess(access) ->
+    match Map.get(env, access.name) with
+    | None -> Result.err(UndefinedVariable({ name: access.name }))
+    | Some(VArray(arr)) ->
+      match eval_expr(access.index, env) with
+      | Ok(VNumber(idx)) ->
+        List.get(arr, Int.from_float(idx)).ok_or(IndexOutOfBounds)
+      | Ok(_) -> Result.err(TypeMismatch({ expected: "Number", got: "Other" }))
+      | Err(err) -> Result.err(err)
+    | Some(_) -> Result.err(TypeMismatch({ expected: "Array", got: "Other" }))
+
+  | BinOp(bin) ->
+    match eval_expr(bin.left, env) with
+    | Ok(left) ->
+      match eval_expr(bin.right, env) with
+      | Ok(right) -> eval_binop(bin.op, left, right)
+      | Err(err) -> Result.err(err)
+    | Err(err) -> Result.err(err)
+
+  | UnaryOp(unary) ->
+    match eval_expr(unary.operand, env) with
+    | Ok(operand) -> eval_unaryop(unary.op, operand)
+    | Err(err) -> Result.err(err)
+}
+
+fn eval_binop(op: BinOperator, left: Value, right: Value) -> Result<Value, RuntimeError> {
+  match (op, left, right) with
+  | (Add, VNumber(l), VNumber(r)) -> Result.ok(VNumber(l + r))
+  | (Sub, VNumber(l), VNumber(r)) -> Result.ok(VNumber(l - r))
+  | (Mul, VNumber(l), VNumber(r)) -> Result.ok(VNumber(l * r))
+  | (Div, VNumber(l), VNumber(r)) ->
+    if r == 0.0 then {
+      Result.err(DivisionByZero)
+    } else {
+      Result.ok(VNumber(l / r))
+    }
+  | (Eq, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l == r then { 1.0 } else { 0.0 }))
+  | (Ne, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l != r then { 1.0 } else { 0.0 }))
+  | (Lt, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l < r then { 1.0 } else { 0.0 }))
+  | (Le, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l <= r then { 1.0 } else { 0.0 }))
+  | (Gt, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l > r then { 1.0 } else { 0.0 }))
+  | (Ge, VNumber(l), VNumber(r)) -> Result.ok(VNumber(if l >= r then { 1.0 } else { 0.0 }))
+  | (And, l, r) ->
+    if is_truthy(l) then {
+      Result.ok(VNumber(if is_truthy(r) then { 1.0 } else { 0.0 }))
+    } else {
+      Result.ok(VNumber(0.0))
+    }
+  | (Or, l, r) ->
+    if is_truthy(l) then {
+      Result.ok(VNumber(1.0))
+    } else {
+      if is_truthy(r) then {
+        Result.ok(VNumber(1.0))
+      } else {
+        Result.ok(VNumber(0.0))
+      }
+    }
+  | _ -> Result.err(TypeMismatch({ expected: "Number", got: "Other" }))
+}
+
+fn eval_unaryop(op: UnaryOperator, operand: Value) -> Result<Value, RuntimeError> {
+  match (op, operand) with
+  | (Neg, VNumber(n)) -> Result.ok(VNumber(0.0 - n))
+  | (Not, v) -> Result.ok(VNumber(if is_truthy(v) then { 0.0 } else { 1.0 }))
+  | _ -> Result.err(TypeMismatch({ expected: "Number", got: "Other" }))
+}
+
+fn is_truthy(value: Value) -> Bool {
+  match value with
+  | VNumber(n) -> n != 0.0
+  | VString(s) -> Text.is_empty(s) == false
+  | VArray(a) -> List.is_empty(a) == false
+}
+
+fn value_to_text(value: Value) -> Text {
+  match value with
+  | VNumber(n) -> format("{n}")
+  | VString(s) -> s
+  | VArray(_) -> "[Array]"
+}
+
+fn find_line(program: List<(i64, Statement)>, target: i64) -> Result<i64, RuntimeError> {
+  List.find_index(program, |(line, _)| line == target)
+    .ok_or(UndefinedLabel({ line: target }))
+}
+
+fn collect_expr_results(exprs: List<Expr>, env: Env) -> Result<List<Value>, RuntimeError> {
+  List.fold(exprs, Result.ok(List.empty()), |acc, e| {
+    match acc with
+    | Err(err) -> Result.err(err)
+    | Ok(list) ->
+      match eval_expr(e, env) with
+      | Ok(value) -> Result.ok(List.push_back(list, value))
+      | Err(err) -> Result.err(err)
+  })
+}
+
+// 利用例
+// let source = """
+// 10 LET x = 0
+// 20 LET x = x + 1
+// 30 PRINT x
+// 40 IF x < 10 THEN GOTO 20 END
+// 50 END
+// """
+// (parse_and_run source) => Ok(["1", "2", ..., "10"])

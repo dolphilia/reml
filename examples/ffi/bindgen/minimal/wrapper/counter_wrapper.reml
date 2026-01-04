@@ -1,0 +1,11 @@
+module examples.ffi.bindgen.minimal.wrapper.counter_wrapper
+
+use ::examples.ffi.bindgen.minimal.generated.counter_bindings as Bindings
+
+pub fn next_value() -> i32 {
+  Bindings.counter_next()
+}
+
+pub fn reset(value: i32) -> () {
+  Bindings.counter_reset(value)
+}

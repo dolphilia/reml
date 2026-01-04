@@ -1,0 +1,24 @@
+type DslCapabilityRequirement = {
+  id: CapabilityId,
+  stage: StageRequirement,
+  effect_scope: Set<EffectTag>,
+}
+
+type DslStageBounds = {
+  declared: StageId,
+  minimum: StageRequirement,
+  maximum: Option<StageId>,
+}
+
+type DslExportSignature<T> = {
+  name: Str,
+  category: DslCategory,
+  root_type: TypeRef<T>,
+  produces: DslCategory,
+  requires: List<DslCategory>,
+  capabilities: List<CapabilityId>,
+  requires_capabilities: List<DslCapabilityRequirement>,
+  allows_effects: Set<EffectTag>,
+  stage_bounds: DslStageBounds,
+  version: Option<SemVer>,
+}

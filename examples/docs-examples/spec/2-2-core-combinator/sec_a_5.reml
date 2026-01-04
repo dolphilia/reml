@@ -1,0 +1,4 @@
+fn between<A>(open: Parser<()>, p: Parser<A>, close: Parser<()>) -> Parser<A> = todo
+fn preceded<A,B>(pre: Parser<A>, p: Parser<B>) -> Parser<B> = todo
+fn terminated<A,B>(p: Parser<A>, post: Parser<B>) -> Parser<A> = todo
+fn delimited<A,B,C>(a: Parser<A>, b: Parser<B>, c: Parser<C>) -> Parser<B> = todo

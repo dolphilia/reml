@@ -1,0 +1,10 @@
+type RegexRunConfig = {
+  engine: RegexEngineMode = RegexEngineMode::Auto,
+  memo: RegexMemoPolicy = RegexMemoPolicy::Auto,
+  unicode_profile: Option<UnicodeClassProfile> = None,
+  max_backtrack_depth: usize = 256,
+  timeout: Option<Duration> = None,
+}
+
+type RegexEngineMode = Nfa | Dfa | Jit | Auto
+type RegexMemoPolicy = Auto | Force | Off

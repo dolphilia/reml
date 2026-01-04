@@ -1,0 +1,19 @@
+type ConfigCompatibility = {
+  trivia: ConfigTriviaProfile = ConfigTriviaProfile::strict_json,
+  trailing_comma: TrailingCommaMode = TrailingCommaMode::Forbid,
+  unquoted_key: KeyPolicy = KeyPolicy::Forbid,
+  duplicate_key: DuplicateKeyPolicy = DuplicateKeyPolicy::Error,
+  number: NumberCompatibility = NumberCompatibility::Strict,
+  feature_guard: Set<Str> = {},
+}
+
+enum TrailingCommaMode = Forbid | Arrays | Objects | ArraysAndObjects
+enum KeyPolicy = Forbid | AllowAlpha | AllowAlphaNumeric
+enum DuplicateKeyPolicy = Error | LastWriteWins | CollectAll
+enum NumberCompatibility = Strict | AllowLeadingPlus | AllowHexFloat
+
+fn ConfigCompatibility::default() -> ConfigCompatibility
+fn ConfigCompatibility::stable(format: ConfigFormat) -> ConfigCompatibility
+fn compatibility_profile(format: ConfigFormat, stage: Stage) -> ConfigCompatibility
+fn resolve_compat(cfg: RunConfig, format: ConfigFormat) -> ConfigCompatibility
+fn with_compat(cfg: RunConfig, compat: ConfigCompatibility) -> RunConfig

@@ -1,0 +1,21 @@
+pub type Path
+pub type LibraryHandle
+pub type CapabilityError
+pub type SymbolHandle
+pub type FfiSignature
+pub type FfiArgs
+pub type FfiValue
+pub type PathPattern
+
+pub type FfiCapability = {
+  load_library: fn(Path, FfiSecurity) -> Result<LibraryHandle, CapabilityError>,
+  resolve_symbol: fn(LibraryHandle, Str) -> Result<SymbolHandle, CapabilityError>,
+  verify_abi: fn(SymbolHandle, FfiSignature) -> Result<(), CapabilityError>,
+  call_function: fn(SymbolHandle, FfiArgs) -> Result<FfiValue, CapabilityError>,
+}
+
+pub type FfiSecurity = {
+  allowed_libraries: Option<List<PathPattern>>,
+  signature_verification: Bool,
+  sandbox_calls: Bool,
+}

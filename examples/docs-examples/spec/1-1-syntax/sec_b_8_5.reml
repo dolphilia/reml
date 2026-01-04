@@ -1,0 +1,10 @@
+type ConductorCapabilityRequirement = {
+  id: CapabilityId,
+  stage: StageRequirement,        // 既定は StageRequirement::AtLeast(StageId::Stable)
+  declared_effects: Set<EffectTag>,
+  source_span: SourceSpan,
+}
+
+type StageRequirement =
+  | Exact(StageId)
+  | AtLeast(StageId)

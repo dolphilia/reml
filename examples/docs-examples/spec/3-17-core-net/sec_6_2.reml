@@ -1,0 +1,10 @@
+pub type Url
+pub type UdpSocket
+pub type Datagram
+pub type NetError
+pub type SocketAddr
+
+fn bind(url: Url) -> Result<UdpSocket, NetError> // `effect {net}`
+fn send_to(socket: UdpSocket, bytes: Bytes, peer: SocketAddr) -> Result<Int, NetError> // `effect {net}`
+fn recv_from(socket: UdpSocket) -> Result<Datagram, NetError> // `effect {net}`
+fn close(socket: UdpSocket) -> Result<(), NetError> // `effect {net}`

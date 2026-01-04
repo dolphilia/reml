@@ -1,0 +1,19 @@
+{
+  "scenario": "statistics_accuracy",
+  "points": [
+    [1.0, 1.8],
+    [2.0, 4.2],
+    [3.0, 6.1],
+    [4.0, 7.9],
+    [5.0, 10.4]
+  ],
+  "expected_model": {
+    "slope": 2.08,
+    "intercept": -0.25,
+    "r_squared": 0.997
+  },
+  "notes": [
+    "Acts as input/output pair for CLI verifiers",
+    "Values mirror docs/spec/3-4-core-numeric-time.md examples"
+  ]
+}

@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.Match.OrPatternUnreachable
+
+use Core.Prelude
+
+// 診断: pattern.unreachable_arm（先行アーム `_` がすべてを捕捉）
+fn describe(value: Option<Int>) -> Str {
+  match value with
+    | _ -> "any"
+    | Some(x) -> "some=" + x.to_string()
+}
+
+fn main() -> Str = describe(Some(1))

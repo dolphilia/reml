@@ -1,0 +1,11 @@
+struct ListCollector<T>;
+struct VecCollector<T>;
+struct MapCollector<K, V>;
+struct SetCollector<T>;
+struct StringCollector;
+
+fn collect_list<T>(iter: Iter<T>) -> List<T>                           // `@pure`
+fn collect_vec<T>(iter: Iter<T>) -> Result<Vec<T>, MemoryError>         // `effect {mut, mem}`
+fn collect_map<K: Ord, V>(iter: Iter<(K, V)>) -> Result<Map<K, V>, CollectError> // `@pure`
+fn collect_set<T: Ord>(iter: Iter<T>) -> Result<Set<T>, CollectError>   // `@pure`
+fn collect_string(iter: Iter<char>) -> Result<String, StringError>      // `effect {mem}`

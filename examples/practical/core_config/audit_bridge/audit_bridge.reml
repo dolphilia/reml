@@ -1,0 +1,23 @@
+module Examples.Practical.CoreConfig.AuditBridge
+
+use Core.Config
+use Core.Diagnostics
+
+// runtime_bridge: audit_bridge / capability: core.audit + core.fs
+@dsl_export(
+  name = "CoreAuditBridge",
+  allows_effects = ["audit.emit", "io.fs"],
+  requires_capabilities = ["core.audit", "core.fs"],
+  stage_bounds = {
+    minimum = Stage::Beta,
+    current = Stage::Beta,
+    maximum = Stage::Stable,
+  }
+)
+fn register_audit_bridge(registry: CapabilityRegistry) {
+  registry.register("core.audit_bridge", |ctx| {
+    ctx.audit.log("bridge.stage", ctx.stage)
+    ctx.io.attach_path("/var/log/reml/audit.jsonl")
+    ctx
+  })
+}

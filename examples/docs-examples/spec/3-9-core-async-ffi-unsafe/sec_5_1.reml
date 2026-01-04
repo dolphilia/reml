@@ -1,0 +1,23 @@
+pub type AsyncRuntime
+pub type CapabilityError
+pub type TaskHandle<T>
+pub type TimerCallback
+pub type TimerId
+pub type AsyncMetrics
+pub type Future<T>
+pub type Duration
+
+pub type AsyncCapability<T> = {
+  create_runtime: fn(AsyncRuntimeConfig) -> Result<AsyncRuntime, CapabilityError>,
+  spawn_task: fn(Future<T>) -> Result<TaskHandle<T>, CapabilityError>,
+  schedule_timer: fn(Duration, TimerCallback) -> Result<TimerId, CapabilityError>,
+  get_metrics: fn() -> Result<AsyncMetrics, CapabilityError>,
+}
+
+pub type AsyncRuntimeConfig = {
+  worker_threads: Option<usize>,
+  max_blocking_threads: Option<usize>,
+  thread_stack_size: Option<usize>,
+  enable_io_driver: Bool,
+  enable_time_driver: Bool,
+}

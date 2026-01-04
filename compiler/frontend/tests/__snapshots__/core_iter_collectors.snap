@@ -1,0 +1,754 @@
+collect_list_baseline: {
+  "effects": {
+    "async_pending": false,
+    "audit": false,
+    "cell": false,
+    "debug": false,
+    "fs_sync": false,
+    "fs_sync_calls": 0,
+    "io": false,
+    "io_async": false,
+    "io_async_calls": 0,
+    "io_blocking": false,
+    "io_blocking_calls": 0,
+    "mem": true,
+    "mem_bytes": 12,
+    "mutating": false,
+    "predicate_calls": 0,
+    "rc": false,
+    "rc_ops": 0,
+    "security": false,
+    "security_events": 0,
+    "time": false,
+    "time_calls": 0,
+    "transfer": false,
+    "unicode": false
+  },
+  "kind": "list",
+  "markers": {
+    "cell_mutations": 0,
+    "finish": 1,
+    "io_async_ops": 0,
+    "io_blocking_ops": 0,
+    "mem_reservation": 12,
+    "reserve": 0,
+    "security_checks": 0,
+    "time_calls": 0
+  },
+  "stage": {
+    "actual": "stable",
+    "capability": "core.collector.list",
+    "kind": "list",
+    "required": {
+      "mode": "exact",
+      "stage": "stable"
+    },
+    "source": "ListCollector::finish"
+  },
+  "value": [
+    1,
+    2,
+    3
+  ]
+}
+collect_vec_mem_reservation: {
+  "effects": {
+    "async_pending": false,
+    "audit": false,
+    "cell": false,
+    "debug": false,
+    "fs_sync": false,
+    "fs_sync_calls": 0,
+    "io": false,
+    "io_async": false,
+    "io_async_calls": 0,
+    "io_blocking": false,
+    "io_blocking_calls": 0,
+    "mem": true,
+    "mem_bytes": 36,
+    "mutating": true,
+    "predicate_calls": 0,
+    "rc": false,
+    "rc_ops": 0,
+    "security": false,
+    "security_events": 0,
+    "time": false,
+    "time_calls": 0,
+    "transfer": false,
+    "unicode": false
+  },
+  "kind": "vec",
+  "markers": {
+    "cell_mutations": 0,
+    "finish": 1,
+    "io_async_ops": 0,
+    "io_blocking_ops": 0,
+    "mem_reservation": 4,
+    "reserve": 2,
+    "security_checks": 0,
+    "time_calls": 0
+  },
+  "stage": {
+    "actual": "beta",
+    "capability": "core.collector.vec",
+    "kind": "vec",
+    "required": {
+      "mode": "at_least",
+      "stage": "beta"
+    },
+    "source": "VecCollector::finish"
+  },
+  "value": [
+    10,
+    20,
+    30
+  ]
+}
+collect_map_duplicate: {
+  "audit": {
+    "collector.capability": "core.collector.map",
+    "collector.effect.async_pending": false,
+    "collector.effect.audit": false,
+    "collector.effect.cell": false,
+    "collector.effect.cell_mutations": 0,
+    "collector.effect.debug": false,
+    "collector.effect.finish": 0,
+    "collector.effect.io": false,
+    "collector.effect.io_async": false,
+    "collector.effect.io_async_calls": 0,
+    "collector.effect.io_async_ops": 0,
+    "collector.effect.io_blocking": false,
+    "collector.effect.io_blocking_calls": 0,
+    "collector.effect.io_blocking_ops": 0,
+    "collector.effect.mem": true,
+    "collector.effect.mem_bytes": 28,
+    "collector.effect.mem_reservation": 0,
+    "collector.effect.mut": true,
+    "collector.effect.predicate_calls": 0,
+    "collector.effect.rc": false,
+    "collector.effect.rc_ops": 0,
+    "collector.effect.reserve": 0,
+    "collector.effect.security": false,
+    "collector.effect.security_checks": 0,
+    "collector.effect.security_events": 0,
+    "collector.effect.time": false,
+    "collector.effect.time_calls": 0,
+    "collector.effect.transfer": false,
+    "collector.error.key": "\"dup\"",
+    "collector.kind": "map",
+    "collector.stage.actual": "beta",
+    "collector.stage.mismatch": false,
+    "collector.stage.mode": "at_least",
+    "collector.stage.required": "beta",
+    "collector.stage.source": "MapCollector::push"
+  },
+  "code": "core.prelude.collector_failed",
+  "domain": "runtime",
+  "extensions": {
+    "prelude.collector": {
+      "capability": "core.collector.map",
+      "effects": {
+        "async_pending": false,
+        "audit": false,
+        "cell": false,
+        "debug": false,
+        "io": false,
+        "io_async": false,
+        "io_async_calls": 0,
+        "io_blocking": false,
+        "io_blocking_calls": 0,
+        "mem": true,
+        "mem_bytes": 28,
+        "mut": true,
+        "predicate_calls": 0,
+        "rc": false,
+        "rc_ops": 0,
+        "security": false,
+        "security_events": 0,
+        "time": false,
+        "time_calls": 0,
+        "transfer": false,
+        "unicode": false
+      },
+      "error_key": "\"dup\"",
+      "error_kind": "duplicate_key",
+      "kind": "map",
+      "markers": {
+        "finish": 0,
+        "io_async_ops": 0,
+        "io_blocking_ops": 0,
+        "mem_reservation": 0,
+        "reserve": 0,
+        "security_checks": 0,
+        "time_calls": 0
+      },
+      "message": "duplicate key: \"dup\"",
+      "source": "MapCollector::push",
+      "stage_actual": "beta",
+      "stage_mismatch": false,
+      "stage_mode": "at_least",
+      "stage_required": "beta"
+    }
+  },
+  "message": "MapCollector failed: duplicate key: \"dup\"",
+  "notes": [],
+  "severity": "error"
+}
+collect_set_stage: {
+  "effects": {
+    "async_pending": false,
+    "audit": true,
+    "cell": false,
+    "debug": false,
+    "fs_sync": false,
+    "fs_sync_calls": 0,
+    "io": false,
+    "io_async": false,
+    "io_async_calls": 0,
+    "io_blocking": false,
+    "io_blocking_calls": 0,
+    "mem": true,
+    "mem_bytes": 15,
+    "mutating": true,
+    "predicate_calls": 0,
+    "rc": false,
+    "rc_ops": 0,
+    "security": false,
+    "security_events": 0,
+    "time": false,
+    "time_calls": 0,
+    "transfer": false,
+    "unicode": false
+  },
+  "kind": "set",
+  "markers": {
+    "cell_mutations": 0,
+    "finish": 1,
+    "io_async_ops": 0,
+    "io_blocking_ops": 0,
+    "mem_reservation": 0,
+    "reserve": 0,
+    "security_checks": 0,
+    "time_calls": 0
+  },
+  "stage": {
+    "actual": "stable",
+    "capability": "core.collector.set",
+    "kind": "set",
+    "required": {
+      "mode": "exact",
+      "stage": "stable"
+    },
+    "source": "SetCollector::finish"
+  },
+  "value": [
+    1,
+    3,
+    5
+  ]
+}
+collect_string_invalid: {
+  "audit": {
+    "collector.capability": "core.collector.string",
+    "collector.effect.async_pending": false,
+    "collector.effect.audit": false,
+    "collector.effect.cell": false,
+    "collector.effect.cell_mutations": 0,
+    "collector.effect.debug": false,
+    "collector.effect.finish": 0,
+    "collector.effect.io": false,
+    "collector.effect.io_async": false,
+    "collector.effect.io_async_calls": 0,
+    "collector.effect.io_async_ops": 0,
+    "collector.effect.io_blocking": false,
+    "collector.effect.io_blocking_calls": 0,
+    "collector.effect.io_blocking_ops": 0,
+    "collector.effect.mem": true,
+    "collector.effect.mem_bytes": 0,
+    "collector.effect.mem_reservation": 0,
+    "collector.effect.mut": true,
+    "collector.effect.predicate_calls": 0,
+    "collector.effect.rc": false,
+    "collector.effect.rc_ops": 0,
+    "collector.effect.reserve": 0,
+    "collector.effect.security": false,
+    "collector.effect.security_checks": 0,
+    "collector.effect.security_events": 0,
+    "collector.effect.time": false,
+    "collector.effect.time_calls": 0,
+    "collector.effect.transfer": false,
+    "collector.kind": "string",
+    "collector.stage.actual": "beta",
+    "collector.stage.mismatch": false,
+    "collector.stage.mode": "at_least",
+    "collector.stage.required": "beta",
+    "collector.stage.source": "StringCollector::push"
+  },
+  "code": "core.prelude.collector_failed",
+  "domain": "runtime",
+  "extensions": {
+    "prelude.collector": {
+      "capability": "core.collector.string",
+      "detail": "byte=0x28; offset=1",
+      "effects": {
+        "async_pending": false,
+        "audit": false,
+        "cell": false,
+        "debug": false,
+        "io": false,
+        "io_async": false,
+        "io_async_calls": 0,
+        "io_blocking": false,
+        "io_blocking_calls": 0,
+        "mem": true,
+        "mem_bytes": 0,
+        "mut": true,
+        "predicate_calls": 0,
+        "rc": false,
+        "rc_ops": 0,
+        "security": false,
+        "security_events": 0,
+        "time": false,
+        "time_calls": 0,
+        "transfer": false,
+        "unicode": false
+      },
+      "error_kind": "invalid_encoding",
+      "kind": "string",
+      "markers": {
+        "finish": 0,
+        "io_async_ops": 0,
+        "io_blocking_ops": 0,
+        "mem_reservation": 0,
+        "reserve": 0,
+        "security_checks": 0,
+        "time_calls": 0
+      },
+      "message": "invalid UTF-8 byte 0x28 at offset 1 (expected continuation byte in 0x80..=0xBF)",
+      "source": "StringCollector::push",
+      "stage_actual": "beta",
+      "stage_mismatch": false,
+      "stage_mode": "at_least",
+      "stage_required": "beta"
+    }
+  },
+  "message": "StringCollector failed: invalid UTF-8 byte 0x28 at offset 1 (expected continuation byte in 0x80..=0xBF)",
+  "notes": [],
+  "severity": "error"
+}
+collect_table_baseline: {
+  "effects": {
+    "async_pending": false,
+    "audit": false,
+    "cell": false,
+    "debug": false,
+    "fs_sync": false,
+    "fs_sync_calls": 0,
+    "io": false,
+    "io_async": false,
+    "io_async_calls": 0,
+    "io_blocking": false,
+    "io_blocking_calls": 0,
+    "mem": true,
+    "mem_bytes": 56,
+    "mutating": true,
+    "predicate_calls": 0,
+    "rc": false,
+    "rc_ops": 0,
+    "security": false,
+    "security_events": 0,
+    "time": false,
+    "time_calls": 0,
+    "transfer": false,
+    "unicode": false
+  },
+  "kind": "table",
+  "markers": {
+    "cell_mutations": 0,
+    "finish": 1,
+    "io_async_ops": 0,
+    "io_blocking_ops": 0,
+    "mem_reservation": 0,
+    "reserve": 0,
+    "security_checks": 0,
+    "time_calls": 0
+  },
+  "stage": {
+    "actual": "beta",
+    "capability": "core.collector.table",
+    "kind": "table",
+    "required": {
+      "mode": "at_least",
+      "stage": "beta"
+    },
+    "source": "TableCollector::finish"
+  },
+  "value": [
+    [
+      "first",
+      10
+    ],
+    [
+      "second",
+      20
+    ]
+  ]
+}
+collect_table_duplicate: {
+  "audit": {
+    "collector.capability": "core.collector.table",
+    "collector.effect.async_pending": false,
+    "collector.effect.audit": false,
+    "collector.effect.cell": false,
+    "collector.effect.cell_mutations": 0,
+    "collector.effect.debug": false,
+    "collector.effect.finish": 0,
+    "collector.effect.io": false,
+    "collector.effect.io_async": false,
+    "collector.effect.io_async_calls": 0,
+    "collector.effect.io_async_ops": 0,
+    "collector.effect.io_blocking": false,
+    "collector.effect.io_blocking_calls": 0,
+    "collector.effect.io_blocking_ops": 0,
+    "collector.effect.mem": true,
+    "collector.effect.mem_bytes": 28,
+    "collector.effect.mem_reservation": 0,
+    "collector.effect.mut": true,
+    "collector.effect.predicate_calls": 0,
+    "collector.effect.rc": false,
+    "collector.effect.rc_ops": 0,
+    "collector.effect.reserve": 0,
+    "collector.effect.security": false,
+    "collector.effect.security_checks": 0,
+    "collector.effect.security_events": 0,
+    "collector.effect.time": false,
+    "collector.effect.time_calls": 0,
+    "collector.effect.transfer": false,
+    "collector.error.key": "\"dup\"",
+    "collector.kind": "table",
+    "collector.stage.actual": "beta",
+    "collector.stage.mismatch": false,
+    "collector.stage.mode": "at_least",
+    "collector.stage.required": "beta",
+    "collector.stage.source": "TableCollector::push"
+  },
+  "code": "core.prelude.collector_failed",
+  "domain": "runtime",
+  "extensions": {
+    "prelude.collector": {
+      "capability": "core.collector.table",
+      "effects": {
+        "async_pending": false,
+        "audit": false,
+        "cell": false,
+        "debug": false,
+        "io": false,
+        "io_async": false,
+        "io_async_calls": 0,
+        "io_blocking": false,
+        "io_blocking_calls": 0,
+        "mem": true,
+        "mem_bytes": 28,
+        "mut": true,
+        "predicate_calls": 0,
+        "rc": false,
+        "rc_ops": 0,
+        "security": false,
+        "security_events": 0,
+        "time": false,
+        "time_calls": 0,
+        "transfer": false,
+        "unicode": false
+      },
+      "error_key": "\"dup\"",
+      "error_kind": "duplicate_key",
+      "kind": "table",
+      "markers": {
+        "finish": 0,
+        "io_async_ops": 0,
+        "io_blocking_ops": 0,
+        "mem_reservation": 0,
+        "reserve": 0,
+        "security_checks": 0,
+        "time_calls": 0
+      },
+      "message": "duplicate key: \"dup\"",
+      "source": "TableCollector::push",
+      "stage_actual": "beta",
+      "stage_mismatch": false,
+      "stage_mode": "at_least",
+      "stage_required": "beta"
+    }
+  },
+  "message": "TableCollector failed: duplicate key: \"dup\"",
+  "notes": [],
+  "severity": "error"
+}
+collect_cell_ref_effects: {
+  "effects": {
+    "async_pending": false,
+    "audit": false,
+    "cell": true,
+    "debug": false,
+    "fs_sync": false,
+    "fs_sync_calls": 0,
+    "io": false,
+    "io_async": false,
+    "io_async_calls": 0,
+    "io_blocking": false,
+    "io_blocking_calls": 0,
+    "mem": false,
+    "mem_bytes": 0,
+    "mutating": true,
+    "predicate_calls": 0,
+    "rc": true,
+    "rc_ops": 2,
+    "security": false,
+    "security_events": 0,
+    "time": false,
+    "time_calls": 0,
+    "transfer": false,
+    "unicode": false
+  },
+  "kind": "custom",
+  "markers": {
+    "cell_mutations": 2,
+    "finish": 1,
+    "io_async_ops": 0,
+    "io_blocking_ops": 0,
+    "mem_reservation": 0,
+    "reserve": 0,
+    "security_checks": 0,
+    "time_calls": 0
+  },
+  "stage": {
+    "actual": "unknown",
+    "capability": null,
+    "kind": "custom",
+    "required": {
+      "mode": "at_least",
+      "stage": "beta"
+    },
+    "source": "CellRefCollector::finish"
+  },
+  "value": {
+    "cells": [
+      {
+        "id": "config",
+        "value": 1
+      },
+      {
+        "id": "tunable",
+        "value": 2
+      }
+    ],
+    "refs": [
+      {
+        "id": "shared_config",
+        "state": "borrowed_mut"
+      },
+      {
+        "id": "readonly_cache",
+        "state": "borrowed"
+      }
+    ]
+  }
+}
+table_csv_import: {
+  "effects": {
+    "async_pending": false,
+    "audit": true,
+    "cell": false,
+    "debug": false,
+    "fs_sync": false,
+    "fs_sync_calls": 0,
+    "io": true,
+    "io_async": false,
+    "io_async_calls": 0,
+    "io_blocking": false,
+    "io_blocking_calls": 0,
+    "mem": true,
+    "mem_bytes": 128,
+    "mutating": true,
+    "predicate_calls": 0,
+    "rc": false,
+    "rc_ops": 0,
+    "security": false,
+    "security_events": 0,
+    "time": false,
+    "time_calls": 0,
+    "transfer": false,
+    "unicode": false
+  },
+  "kind": "table",
+  "markers": {
+    "cell_mutations": 0,
+    "finish": 1,
+    "io_async_ops": 0,
+    "io_blocking_ops": 0,
+    "mem_reservation": 0,
+    "reserve": 0,
+    "security_checks": 0,
+    "time_calls": 0
+  },
+  "metrics": {
+    "csv": {
+      "load_latency_ms": 120.0,
+      "rows": 2048
+    },
+    "table": {
+      "insert_duration_ms": 1000.0,
+      "insert_per_sec": 2048.0,
+      "insert_total": 2048
+    }
+  },
+  "stage": {
+    "actual": "beta",
+    "capability": "core.collector.table",
+    "kind": "table",
+    "required": {
+      "mode": "at_least",
+      "stage": "beta"
+    },
+    "source": "TableCollector::csv_import"
+  },
+  "value": {
+    "rows": [
+      {
+        "columns": [
+          "alpha",
+          10
+        ],
+        "id": "alpha"
+      },
+      {
+        "columns": [
+          "beta",
+          20
+        ],
+        "id": "beta"
+      },
+      {
+        "columns": [
+          "gamma",
+          30
+        ],
+        "id": "gamma"
+      }
+    ]
+  }
+}
+config_compat_event: {
+  "envelope": {
+    "audit_id": "00000000-0000-0000-0000-000000000000",
+    "capability": "core.diagnostics",
+    "metadata": {
+      "audit.channel": "cli",
+      "audit.policy.version": "rust.poc.audit.v1",
+      "cli.command": "parse",
+      "cli.command_line": "reml_frontend --config-compat json-relaxed sample.reml",
+      "cli.input": "tests/snapshots/config_compat/sample.reml",
+      "cli.phase": "cli",
+      "cli.program": "reml_frontend",
+      "cli.run_id": "00000000-0000-0000-0000-000000000000",
+      "config.compatibility": {
+        "duplicate_key": "last_write_wins",
+        "feature_guard": [],
+        "number": "allow_leading_plus",
+        "trailing_comma": "arrays_and_objects",
+        "trivia": {
+          "block": [
+            {
+              "end": "*/",
+              "nested": false,
+              "start": "/*"
+            }
+          ],
+          "doc_comment": null,
+          "hash_inline": false,
+          "line": [
+            "//"
+          ],
+          "shebang": true
+        },
+        "unquoted_key": "allow_alpha"
+      },
+      "config.format": "json",
+      "config.profile": "json-relaxed",
+      "config.source": "cli",
+      "event.kind": "config_compat_changed",
+      "pipeline.dsl_id": "sample",
+      "pipeline.id": "dsl://tests/snapshots/config_compat/sample.reml",
+      "pipeline.node": "sample.reml",
+      "scenario.id": "sample",
+      "schema.version": "3.0.0-alpha",
+      "timestamp": "2025-01-01T00:00:00Z"
+    }
+  },
+  "timestamp": "2025-01-01T00:00:00Z"
+}
+config_diff_report: {
+  "change_set": {
+    "category": "collections.diff",
+    "items": [
+      {
+        "current": "750m",
+        "key": "limits.cpu",
+        "kind": "collections.diff.updated",
+        "previous": "500m"
+      },
+      {
+        "current": "2Gi",
+        "key": "limits.memory",
+        "kind": "collections.diff.updated",
+        "previous": "1Gi"
+      },
+      {
+        "key": "service.features[1]",
+        "kind": "collections.diff.removed",
+        "previous": "telemetry"
+      },
+      {
+        "current": 3,
+        "key": "service.replicas",
+        "kind": "collections.diff.updated",
+        "previous": 2
+      },
+      {
+        "current": "stable",
+        "key": "service.stage",
+        "kind": "collections.diff.updated",
+        "previous": "beta"
+      },
+      {
+        "current": true,
+        "key": "telemetry.enabled",
+        "kind": "collections.diff.added"
+      }
+    ],
+    "kind": "collections.diff.map",
+    "metadata": {
+      "category": "collections.diff",
+      "kind": "collections.diff.map",
+      "origin": "core.collections",
+      "stage": "stable"
+    },
+    "origin": "core.collections",
+    "policy": "core.collections.audit.v1",
+    "stage": "stable",
+    "summary": {
+      "added": 1,
+      "removed": 1,
+      "total": 6,
+      "updated": 4
+    },
+    "total": 6
+  },
+  "kind": "config_diff",
+  "summary": {
+    "added": 1,
+    "removed": 1,
+    "total": 6,
+    "updated": 4
+  }
+}

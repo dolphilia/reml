@@ -1,0 +1,39 @@
+use Core;
+use Core.Text;
+use Core.Unicode;
+use Core.Parse.Lex;
+
+type Token =
+  | Identifier(name: String)
+  | Number(value: Str)
+  | Emoji(grapheme: Grapheme)
+  | DocComment(text: String)
+
+fn tokenize_identifier() -> Parser<Token> =
+  Unicode.segment_words(lexeme(spaces0(), identifier_raw()))
+    |> Iter.try_fold(String::empty(), |acc, word| {
+         let normalized = Unicode.prepare_identifier(word)?
+         Ok(acc + normalized)
+       })
+    |> Result.map(|name| Token::Identifier(name))
+
+fn tokenize_emoji() -> Parser<Token> =
+  Unicode.segment_graphemes(string("")) // 実際は絵文字範囲を判定
+    |> Iter.find(|g| g.category().is_emoji())
+    |> Option.map(|g|
+         Token::Emoji(g)
+       )
+    |> Option.to_result(|| Diagnostic::expected("emoji"))
+
+fn tokenize_doc_comment() -> Parser<Token> =
+  comment_block("/**", "*/", nested=false)
+    .map(|text|
+      text
+        |> GraphemeSeq::new
+        |> Iter.from
+        |> Iter.map(|g| Unicode.width_map(g.as_str(), WidthMode::Narrow).unwrap_or(g.as_str().to_string()))
+        |> Iter.collect_vec()
+        |> TextBuilder::builder()
+        |> TextBuilder::finish()
+        |> Token::DocComment
+    )

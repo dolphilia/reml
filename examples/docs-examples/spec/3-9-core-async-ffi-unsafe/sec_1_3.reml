@@ -1,0 +1,12 @@
+pub type Future<T>
+pub type Iter<T>
+
+pub type AsyncStream<T> = {
+  next: fn() -> Future<Option<T>>,
+}
+
+fn from_iter<T>(iter: Iter<T>) -> AsyncStream<T>                               // `effect {io.async}`
+fn buffer<T>(stream: AsyncStream<T>, size: usize) -> AsyncStream<T>             // `effect {io.async, mem}`
+fn map_async<T, U>(stream: AsyncStream<T>, f: (T) -> Future<U>) -> AsyncStream<U> // `effect {io.async}`
+fn filter_async<T>(stream: AsyncStream<T>, pred: (T) -> Future<Bool>) -> AsyncStream<T> // `effect {io.async}`
+fn collect_async<T>(stream: AsyncStream<T>) -> Future<List<T>>                  // `effect {io.async, mem}`

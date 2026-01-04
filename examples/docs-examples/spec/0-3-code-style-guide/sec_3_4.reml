@@ -1,0 +1,6 @@
+  fn pipeline_example(source) {
+    source
+      |> tokenize()
+      |> parse(rule = grammar.entry)
+      |> map_errors(normalize)
+  }

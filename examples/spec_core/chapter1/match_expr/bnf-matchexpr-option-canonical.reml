@@ -1,0 +1,14 @@
+module Spec.Core.Chapter1.Match.OptionCase
+
+use Core.Prelude
+
+// BNF: MatchExpr（docs/spec/1-5-formal-grammar-bnf.md §4）
+fn describe(value: Option<Int>) -> Str {
+  match value with
+    Some(n) -> "value=" + n.to_string()
+    None -> "empty"
+}
+
+fn main() -> Str {
+  describe(Some(42))
+}

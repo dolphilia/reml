@@ -1,0 +1,9 @@
+use Core.Dsl.Gc
+
+fn example() -> () = {
+  let heap = Gc.create(GcStrategy::Arena)
+  Gc.with_scope(heap, |scope| {
+    let value = Gc.alloc(scope, "dsl:node")
+    value
+  })
+}

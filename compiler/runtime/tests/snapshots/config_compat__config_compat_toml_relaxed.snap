@@ -1,0 +1,18 @@
+---
+source: tests/config_compat.rs
+assertion_line: 17
+expression: compat
+---
+trivia:
+  line:
+    - "#"
+    - //
+  block: []
+  shebang: false
+  hash_inline: true
+  doc_comment: ~
+trailing_comma: arrays_and_objects
+unquoted_key: allow_alpha_numeric
+duplicate_key: error
+number: strict
+feature_guard: []

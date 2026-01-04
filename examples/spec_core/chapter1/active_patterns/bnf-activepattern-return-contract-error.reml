@@ -1,0 +1,11 @@
+module Spec.Core.Chapter1.ActivePatterns.InvalidReturn
+
+use Core.Prelude
+
+pattern (|Bad|_|)(n: Int) = Ok(n) // Result を返すため仕様違反
+
+fn main() -> Int = {
+  match 1 with
+  | (|Bad|_|) v -> v
+  | _ -> 0
+}

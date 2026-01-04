@@ -1,0 +1,2 @@
+{"event":"dsl.object.dispatch","metadata":{"dsl.id":"mini_ruby","dsl.object.method":"length"}}
+{"event":"dsl.gc.root","metadata":{"dsl.id":"mini_ruby","dsl.gc.strategy":"Arena"}}

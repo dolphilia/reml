@@ -1,0 +1,249 @@
+module samples.language_impl_samples.markdown_parser_combinator
+
+use ::Core.Collection.List as List
+use ::Core.Parse
+use ::Core.Parse.Lex
+use ::Core.Text.Grapheme as Grapheme
+
+/// Markdown AST の要素型。
+type Block =
+  | Heading(level: Int, inline: List<Inline>)
+  | Paragraph(inline: List<Inline>)
+  | UnorderedList(items: List<List<Inline>>)
+  | OrderedList(items: List<List<Inline>>)
+  | CodeBlock(lang: Option<String>, code: String)
+  | HorizontalRule
+
+type Inline =
+  | Text(String)
+  | Strong(List<Inline>)
+  | Emphasis(List<Inline>)
+  | Code(String)
+  | Link(text: List<Inline>, url: String)
+  | LineBreak
+
+type Document = List<Block>
+
+/// 空白をスキップするパーサー（水平のみ）。
+let hspace: Parser<()> = Lex.hspace0()
+
+/// 改行パーサー。
+let newline: Parser<()> = Lex.lineEnding()
+
+/// 空行（改行のみ）をスキップ。
+let blank_line: Parser<()> =
+  rule("blank_line", hspace.skipR(newline))
+
+/// 行末まで読む（改行は含まない）。
+let line_content: Parser<String> =
+  rule("line_content", Lex.takeWhile(|c| c != '\n'))
+
+/// 見出しパーサー（`# Heading` 形式）。
+let heading: Parser<Block> =
+  rule("heading",
+    hspace
+      .skipR(
+        Lex.satisfy(|c| c == '#')
+        |> Parse.many1
+        |> Parse.andThen(|hashes|
+          let level = List.len(hashes)
+          if level > 6 then
+            Parse.fail("見出しレベルは1-6です")
+          else
+            hspace
+              .skipR(line_content)
+              .skipL(newline.opt())
+              .map(|text| Heading(level, [Text(String.trim(text))]))
+        )
+      )
+  )
+
+/// 水平線パーサー（`---`, `***`, `___`）。
+let horizontal_rule: Parser<Block> =
+  rule("horizontal_rule",
+    hspace.skipR(
+      Parse.choice([
+        Lex.string("---").skipR(Lex.takeWhile(|c| c == '-')),
+        Lex.string("***").skipR(Lex.takeWhile(|c| c == '*')),
+        Lex.string("___").skipR(Lex.takeWhile(|c| c == '_'))
+      ])
+      .andThen(|_|
+        hspace
+          .skipR(newline.opt())
+          .map(|_| HorizontalRule)
+      )
+    )
+  )
+
+/// コードブロックパーサー（```言語名）。
+let code_block: Parser<Block> =
+  rule("code_block",
+    Lex.string("```")
+      .skipR(
+        line_content
+        .andThen(|lang_line|
+          let lang =
+            let trimmed = String.trim(lang_line)
+            if String.is_empty(trimmed) then None else Some(trimmed)
+
+          newline
+            .skipR(
+              // コード内容を ```閉じまで読む
+              Parse.manyTill(
+                line_content.skipL(newline.opt()),
+                Lex.string("```")
+              )
+              .map(|lines|
+                let code = String.join(lines, "\n")
+                CodeBlock(lang, code)
+              )
+            )
+            .skipL(newline.opt())
+        )
+      )
+  )
+
+/// 順序なしリストパーサー（`-` または `*`）。
+let unordered_list: Parser<Block> =
+  rule("unordered_list",
+    Parse.many1(
+      hspace
+        .skipR(
+          Lex.oneOf("-*")
+          .skipR(hspace)
+          .skipR(line_content)
+          .skipL(newline.opt())
+          .map(|text| [Text(String.trim(text))])
+        )
+    )
+    .map(|items| UnorderedList(items))
+  )
+
+/// 順序付きリストパーサー（`1.` 形式）。
+let ordered_list: Parser<Block> =
+  rule("ordered_list",
+    Parse.many1(
+      hspace
+        .skipR(
+          Lex.integer()
+          .skipR(Lex.string("."))
+          .skipR(hspace)
+          .skipR(line_content)
+          .skipL(newline.opt())
+          .map(|text| [Text(String.trim(text))])
+        )
+    )
+    .map(|items| OrderedList(items))
+  )
+
+/// インライン要素の簡易パーサー（強調・リンク等）。
+/// この実装では簡易的にテキストとして扱う。
+let inline_elements: Parser<List<Inline>> =
+  rule("inline_elements",
+    line_content.map(|text| [Text(text)])
+  )
+
+/// 段落パーサー（空行まで）。
+let paragraph: Parser<Block> =
+  rule("paragraph",
+    Parse.many1(
+      Parse.notFollowedBy(blank_line)
+        .skipR(line_content)
+        .skipL(newline.opt())
+    )
+    .map(|lines|
+      let text = String.join(lines, " ")
+      Paragraph([Text(String.trim(text))])
+    )
+  )
+
+/// ブロック要素パーサー（優先順位付き選択）。
+let block: Parser<Block> =
+  rule("block",
+    Parse.many(blank_line)
+      .skipR(
+        Parse.choice([
+          Parse.attempt(code_block),
+          Parse.attempt(heading),
+          Parse.attempt(horizontal_rule),
+          Parse.attempt(ordered_list),
+          Parse.attempt(unordered_list),
+          paragraph
+        ])
+      )
+  )
+
+/// ドキュメント全体のパーサー。
+let document: Parser<Document> =
+  rule("document",
+    Parse.many(block)
+      .skipL(Parse.many(blank_line))
+      .skipL(Parse.eof())
+  )
+
+/// パブリック API：文字列からドキュメントをパース。
+pub fn parse(input: String) -> Result<Document, ParseError> =
+  let config = RunConfig.default()
+    .with_require_eof(true)
+    .with_trace(false)
+
+  Parse.run(document, input, config)
+
+/// 簡易的なレンダリング（検証用）。
+pub fn render_to_string(doc: Document) -> String =
+  let render_inline(inline: List<Inline>) -> String =
+    inline
+    |> List.map(|i| match i with
+      | Text(s) -> s
+      | Strong(inner) -> "**" ++ render_inline(inner) ++ "**"
+      | Emphasis(inner) -> "*" ++ render_inline(inner) ++ "*"
+      | Code(s) -> "`" ++ s ++ "`"
+      | Link(text, url) -> "[" ++ render_inline(text) ++ "](" ++ url ++ ")"
+      | LineBreak -> "\n"
+    )
+    |> String.concat
+
+  let render_block(block: Block) -> String =
+    match block with
+    | Heading(level, inline) ->
+      let prefix = String.repeat("#", level)
+      prefix ++ " " ++ render_inline(inline) ++ "\n\n"
+    | Paragraph(inline) ->
+      render_inline(inline) ++ "\n\n"
+    | UnorderedList(items) ->
+      items
+      |> List.map(|item| "- " ++ render_inline(item) ++ "\n")
+      |> String.concat
+      |> (|s| s ++ "\n")
+    | OrderedList(items) ->
+      items
+      |> List.map_indexed(|i, item| format("{i + 1}. {render_inline(item)}\n"))
+      |> String.concat
+      |> (|s| s ++ "\n")
+    | CodeBlock(lang, code) ->
+      let lang_str = lang |> Option.map(|l| l) |> Option.unwrap_or("")
+      "```" ++ lang_str ++ "\n" ++ code ++ "\n```\n\n"
+    | HorizontalRule ->
+      "---\n\n"
+
+  doc
+  |> List.map(render_block)
+  |> String.concat
+
+/// Unicode 3層モデルの活用例：書記素クラスター単位でのカウント。
+/// この関数は表示幅計算に使用（絵文字・結合文字対応）。
+pub fn count_display_width(text: String) -> Int =
+  text
+  |> Grapheme.graphemes
+  |> List.map(Grapheme.display_width)
+  |> List.sum
+
+/// Unicode 3層モデルの活用例：Char単位での処理。
+pub fn count_codepoints(text: String) -> Int =
+  text
+  |> String.chars
+  |> List.len
+
+/// Unicode 3層モデルの活用例：Byte単位での処理。
+pub fn byte_length(text: String) -> Int =
+  String.byte_len(text)

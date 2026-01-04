@@ -1,0 +1,4 @@
+fn till<A>(end: Parser<A>) -> Parser<Str> = todo            // end が来るまで（非貪欲）
+fn take(n_bytes: usize) -> Parser<Bytes> = todo             // バイト数で取得（テキスト前提なし）
+fn takeCodepoints(n: usize) -> Parser<Str> = todo           // コードポイント数で取得
+fn grapheme() -> Parser<Grapheme> = todo                    // 拡張書記素 1 つ

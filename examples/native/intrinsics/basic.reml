@@ -1,0 +1,12 @@
+module Examples.Native.Intrinsics.Basic
+
+use Core.Native
+
+fn main() -> Str  // effect {native}
+{
+  let value = 144.0
+  let root = Native.sqrt_f64(value)
+  let root_int = Int.from_float(root)
+  let bits = Native.ctpop_i64(91)
+  "sqrt=" + Int.to_string(root_int) + ", ctpop=" + Int.to_string(bits)
+}

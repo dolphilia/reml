@@ -1,0 +1,448 @@
+// Hindley-Milner 型推論器実装
+// Algorithm W による単一化ベース型推論
+// 1-2-types-inference.md の実装例
+
+use Core.{Result, Option, List, String, Int, Map, IO, Ref}
+use Core.Result.{Ok, Err}
+use Core.Option.{Some, None}
+
+// 型変数の生成カウンター
+type TyVarCounter = Ref<Int>
+
+fn new_counter() -> TyVarCounter {
+  Ref.new(0)
+}
+
+fn fresh_tyvar(counter: TyVarCounter) -> Int {
+  let n = Ref.get(counter)
+  Ref.set(counter, n + 1)
+  n
+}
+
+// 型の定義
+type Ty =
+  | TVar(tyvar: Ref<TyVar>)  // 型変数（参照による破壊的単一化）
+  | TInt                      // 整数型
+  | TBool                     // 真偽値型
+  | TFun(param: Ty, result: Ty)  // 関数型
+
+type TyVar =
+  | Unbound(id: Int, level: Int)  // 未束縛型変数（id, level）
+  | Link(ty: Ty)                  // 他の型へのリンク
+
+// 式の定義
+type Expr =
+  | EVar(name: String)
+  | EInt(value: Int)
+  | EBool(value: Bool)
+  | ELam(param: String, body: Expr)
+  | EApp(func: Expr, arg: Expr)
+  | ELet(name: String, value: Expr, body: Expr)
+  | EIf(cond: Expr, then_branch: Expr, else_branch: Expr)
+  | EBinOp(op: BinOp, left: Expr, right: Expr)
+
+type BinOp = Add | Sub | Mul | Eq | Lt
+
+// 型環境
+type Env = Map<String, Scheme>
+
+// 型スキーム（多相型）
+type Scheme = Forall(vars: List<Int>, ty: Ty)
+
+// エラー型
+type TypeError = String
+
+// 型の文字列化
+fn string_of_ty(ty: Ty) -> String {
+  match ty {
+    TVar(tvr) -> {
+      match Ref.get(tvr) {
+        Link(ty') -> string_of_ty(ty'),
+        Unbound(id, _) -> "'t{id}"
+      }
+    },
+    TInt -> "Int",
+    TBool -> "Bool",
+    TFun(t1, t2) -> {
+      let s1 = match t1 {
+        TFun(_, _) -> "({string_of_ty(t1)})",
+        _ -> string_of_ty(t1)
+      }
+      "{s1} -> {string_of_ty(t2)}"
+    }
+  }
+}
+
+// 型変数の出現チェック（無限型防止）
+fn occurs(tvr: Ref<TyVar>, level: Int, ty: Ty) -> Bool {
+  match ty {
+    TVar(tvr') -> {
+      if Ref.same(tvr, tvr') {
+        true
+      } else {
+        match Ref.get(tvr') {
+          Unbound(id, other_level) -> {
+            // レベル調整（let多相のため）
+            let min_level = Int.min(level, other_level)
+            Ref.set(tvr', Unbound(id, min_level))
+            false
+          },
+          Link(ty') -> occurs(tvr, level, ty')
+        }
+      }
+    },
+    TFun(t1, t2) -> occurs(tvr, level, t1) || occurs(tvr, level, t2),
+    TInt | TBool -> false
+  }
+}
+
+// 単一化
+fn unify(ty1: Ty, ty2: Ty) -> Result<Unit, TypeError> {
+  match (ty1, ty2) {
+    (TVar(tvr1), TVar(tvr2)) -> {
+      match (Ref.get(tvr1), Ref.get(tvr2)) {
+        (Link(ty1'), _) -> unify(ty1', ty2),
+        (_, Link(ty2')) -> unify(ty1, ty2'),
+        (Unbound(id1, _), Unbound(id2, _)) -> {
+          if id1 == id2 {
+            Ok(())  // 同じ型変数
+          } else {
+            Ref.set(tvr1, Link(ty2))
+            Ok(())
+          }
+        }
+      }
+    },
+
+    (TVar(tvr), ty) | (ty, TVar(tvr)) -> {
+      match Ref.get(tvr) {
+        Link(ty') -> unify(ty', ty),
+        Unbound(_, level) -> {
+          if occurs(tvr, level, ty) {
+            Err("Occurs check failed: infinite type")
+          } else {
+            Ref.set(tvr, Link(ty))
+            Ok(())
+          }
+        }
+      }
+    },
+
+    (TInt, TInt) -> Ok(()),
+    (TBool, TBool) -> Ok(()),
+
+    (TFun(t1, t2), TFun(t3, t4)) -> {
+      unify(t1, t3)?
+      unify(t2, t4)
+    },
+
+    _ -> Err("Cannot unify {string_of_ty(ty1)} and {string_of_ty(ty2)}")
+  }
+}
+
+// 型の一般化（多相化）
+fn generalize(level: Int, ty: Ty) -> Scheme {
+  fn collect_vars(ty: Ty) -> List<Int> {
+    match ty {
+      TVar(tvr) -> {
+        match Ref.get(tvr) {
+          Unbound(id, other_level) -> {
+            if other_level > level {
+              [id]
+            } else {
+              []
+            }
+          },
+          Link(ty') -> collect_vars(ty')
+        }
+      },
+      TFun(t1, t2) -> List.append(collect_vars(t1), collect_vars(t2)),
+      _ -> []
+    }
+  }
+
+  let vars = collect_vars(ty)
+  let unique_vars = List.sort(vars) |> List.dedup()
+  Forall(unique_vars, ty)
+}
+
+// 型の具体化（多相型のインスタンス化）
+fn instantiate(counter: TyVarCounter, level: Int, scheme: Scheme) -> Ty {
+  match scheme {
+    Forall(vars, ty) -> {
+      let subst = vars
+        |> List.map(fn(id) {
+          let new_id = fresh_tyvar(counter)
+          (id, TVar(Ref.new(Unbound(new_id, level))))
+        })
+        |> Map.from_list()
+
+      fn apply(ty: Ty) -> Ty {
+        match ty {
+          TVar(tvr) -> {
+            match Ref.get(tvr) {
+              Unbound(id, _) -> {
+                match Map.get(subst, id) {
+                  Some(ty') -> ty',
+                  None -> ty
+                }
+              },
+              Link(ty') -> apply(ty')
+            }
+          },
+          TFun(t1, t2) -> TFun(apply(t1), apply(t2)),
+          _ -> ty
+        }
+      }
+
+      apply(ty)
+    }
+  }
+}
+
+// 型推論（Algorithm W）
+fn infer(
+  counter: TyVarCounter,
+  env: Env,
+  level: Int,
+  expr: Expr
+) -> Result<Ty, TypeError> {
+  match expr {
+    EVar(name) -> {
+      match Map.get(env, name) {
+        Some(scheme) -> Ok(instantiate(counter, level, scheme)),
+        None -> Err("Unbound variable: {name}")
+      }
+    },
+
+    EInt(_) -> Ok(TInt),
+    EBool(_) -> Ok(TBool),
+
+    ELam(param, body) -> {
+      let param_ty = TVar(Ref.new(Unbound(fresh_tyvar(counter), level)))
+      let param_scheme = Forall([], param_ty)
+      let env' = Map.insert(env, param, param_scheme)
+      let body_ty = infer(counter, env', level, body)?
+      Ok(TFun(param_ty, body_ty))
+    },
+
+    EApp(func, arg) -> {
+      let func_ty = infer(counter, env, level, func)?
+      let arg_ty = infer(counter, env, level, arg)?
+      let result_ty = TVar(Ref.new(Unbound(fresh_tyvar(counter), level)))
+      unify(func_ty, TFun(arg_ty, result_ty))?
+      Ok(result_ty)
+    },
+
+    ELet(name, value, body) -> {
+      // let多相のためレベルを上げる
+      let value_ty = infer(counter, env, level + 1, value)?
+      let value_scheme = generalize(level, value_ty)
+      let env' = Map.insert(env, name, value_scheme)
+      infer(counter, env', level, body)
+    },
+
+    EIf(cond, then_br, else_br) -> {
+      let cond_ty = infer(counter, env, level, cond)?
+      unify(cond_ty, TBool)?
+      let then_ty = infer(counter, env, level, then_br)?
+      let else_ty = infer(counter, env, level, else_br)?
+      unify(then_ty, else_ty)?
+      Ok(then_ty)
+    },
+
+    EBinOp(op, e1, e2) -> {
+      let t1 = infer(counter, env, level, e1)?
+      let t2 = infer(counter, env, level, e2)?
+      match op {
+        Add | Sub | Mul -> {
+          unify(t1, TInt)?
+          unify(t2, TInt)?
+          Ok(TInt)
+        },
+        Eq | Lt -> {
+          unify(t1, TInt)?
+          unify(t2, TInt)?
+          Ok(TBool)
+        }
+      }
+    }
+  }
+}
+
+// トップレベル推論
+fn infer_expr(expr: Expr) -> Result<Scheme, TypeError> {
+  let counter = new_counter()
+  let ty = infer(counter, Map.empty(), 0, expr)?
+  Ok(generalize(-1, ty))
+}
+
+// 式の文字列化
+fn string_of_expr(expr: Expr) -> String {
+  match expr {
+    EVar(x) -> x,
+    EInt(n) -> Int.to_string(n),
+    EBool(b) -> if b { "true" } else { "false" },
+    ELam(x, e) -> "(λ{x}. {string_of_expr(e)})",
+    EApp(e1, e2) -> "({string_of_expr(e1)} {string_of_expr(e2)})",
+    ELet(x, e1, e2) -> "(let {x} = {string_of_expr(e1)} in {string_of_expr(e2)})",
+    EIf(e1, e2, e3) -> "(if {string_of_expr(e1)} then {string_of_expr(e2)} else {string_of_expr(e3)})",
+    EBinOp(op, e1, e2) -> {
+      let op_str = match op {
+        Add -> "+",
+        Sub -> "-",
+        Mul -> "*",
+        Eq -> "==",
+        Lt -> "<"
+      }
+      "({string_of_expr(e1)} {op_str} {string_of_expr(e2)})"
+    }
+  }
+}
+
+// テスト実行
+fn main() -> IO<Unit> {
+  IO.println("=== Hindley-Milner Type Inference Tests ===")
+
+  // 基本型
+  test("int literal", EInt(42), "Int")
+  test("bool literal", EBool(true), "Bool")
+
+  // 関数型
+  test("identity", ELam("x", EVar("x")), "'t0 -> 't0")
+  test("const", ELam("x", ELam("y", EVar("x"))), "'t0 -> 't1 -> 't0")
+
+  // 関数適用
+  test("application",
+    EApp(ELam("x", EVar("x")), EInt(42)),
+    "Int")
+
+  // let多相
+  test("let polymorphism",
+    ELet("id", ELam("x", EVar("x")),
+      EApp(EVar("id"), EInt(42))),
+    "Int")
+
+  test("let polymorphism (multiple use)",
+    ELet("id", ELam("x", EVar("x")),
+      EIf(EApp(EVar("id"), EBool(true)),
+          EApp(EVar("id"), EInt(1)),
+          EApp(EVar("id"), EInt(2)))),
+    "Int")
+
+  // 二項演算子
+  test("addition",
+    EBinOp(Add, EInt(1), EInt(2)),
+    "Int")
+
+  test("comparison",
+    EBinOp(Lt, EInt(1), EInt(2)),
+    "Bool")
+
+  // 高階関数
+  test("compose",
+    ELam("f", ELam("g", ELam("x",
+      EApp(EVar("f"), EApp(EVar("g"), EVar("x")))))),
+    "('t2 -> 't3) -> ('t1 -> 't2) -> 't1 -> 't3")
+
+  test("apply",
+    ELam("f", ELam("x", EApp(EVar("f"), EVar("x")))),
+    "('t1 -> 't2) -> 't1 -> 't2")
+
+  // 再帰的let
+  test("factorial type",
+    ELet("fac", ELam("n",
+      EIf(EBinOp(Eq, EVar("n"), EInt(0)),
+          EInt(1),
+          EBinOp(Mul, EVar("n"),
+            EApp(EVar("fac"), EBinOp(Sub, EVar("n"), EInt(1)))))),
+      EApp(EVar("fac"), EInt(5))),
+    "Int")
+
+  // エラーケース
+  IO.println("\n=== Error Cases ===")
+  test("type mismatch",
+    EIf(EInt(1), EInt(2), EInt(3)),
+    "Error")
+
+  test("occurs check",
+    ELam("x", EApp(EVar("x"), EVar("x"))),
+    "Error")
+
+  where
+
+  fn test(name: String, expr: Expr, expected: String) -> IO<Unit> {
+    match infer_expr(expr) {
+      Ok(Forall(_, ty)) -> {
+        let ty_str = string_of_ty(ty)
+        if ty_str == expected {
+          IO.println("PASS: {name} : {ty_str}")
+        } else {
+          IO.println("FAIL: {name} : {ty_str} (expected: {expected})")
+        }
+      },
+      Err(msg) -> {
+        if expected == "Error" {
+          IO.println("PASS: {name} : Error ({msg})")
+        } else {
+          IO.println("ERROR: {name} : {msg}")
+        }
+      }
+    }
+  }
+}
+
+// 設計ノート:
+//
+// このHindley-Milner型推論器は、1-2-types-inference.md で定義された
+// Reml言語の型システムの基礎となるアルゴリズムを実装しています。
+//
+// 主要な概念:
+//
+// 1. **Algorithm W**
+//    - Damas-Milner型推論アルゴリズムの標準実装
+//    - 単一化ベースで最も一般的な型を推論
+//
+// 2. **破壊的単一化**
+//    - 型変数を Ref<TyVar> で表現
+//    - Link により他の型へ参照を張る
+//    - occurs check で無限型を防止
+//
+// 3. **let多相（Let-polymorphism）**
+//    - generalize: 型変数を量化して多相型へ
+//    - instantiate: 多相型を新しい型変数で具体化
+//    - level により一般化の範囲を制御
+//
+// 4. **レベルベース一般化**
+//    - let式のネストレベルを追跡
+//    - 外側のレベルより大きい型変数のみ量化
+//    - valueレストリクション（副作用のある式は多相化しない）を実現可能
+//
+// 5. **型スキーム（Scheme）**
+//    - Forall(vars, ty) で多相型を表現
+//    - vars: 量化された型変数のリスト
+//    - ty: 型本体
+//
+// 実装上の留意点:
+//
+// 1. **参照の扱い**
+//    - 副作用は Ref 型で明示的に管理する（実際の実装では言語仕様次第）
+//
+// 2. **エラーハンドリング**
+//    - Result 型で明示的にエラーを伝播する
+//
+// 3. **パターンマッチ**
+//    - if 式による条件分岐で表現する
+//
+// 4. **環境の実装**
+//    - Map<String, Scheme> のような辞書構造で管理する
+//
+// 実用上の拡張:
+//
+// - **Row Polymorphism**: レコード型の部分型付け（PureScript, Elm等）
+// - **Higher-Kinded Types**: 型コンストラクタの抽象化（Haskell, Scala）
+// - **Subtyping**: 部分型関係の導入（Flow など）
+// - **Effect Tracking**: 効果の型レベル追跡（Koka, Eff）
+//
+// Remlの型システムは基本的なHMをベースに、効果システム（3-9, 1-3参照）と
+// 統合することで、安全性と表現力を両立させています。

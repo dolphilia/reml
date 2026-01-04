@@ -1,0 +1,8 @@
+type NumericOverflow = {
+  min: Str,
+  max: Str,
+  target: Str,
+}
+
+fn numeric_overflow_error(span: Span, digits: Str, info: NumericOverflow, radix: u8) -> ParseError = todo
+fn numeric_parse_error(span: Span, repr: Str, cause: ParseFloatError) -> ParseError = todo

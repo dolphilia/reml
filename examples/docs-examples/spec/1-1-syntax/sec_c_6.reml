@@ -1,0 +1,5 @@
+let total = {
+  let x = 1
+  let y = 2
+  x + y          // ← ブロックの値
+}

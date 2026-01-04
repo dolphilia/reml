@@ -1,0 +1,5 @@
+// 基本：operand（最下位=原子）から、演算子テーブルで階層を組む
+fn precedence<A>(
+  operand: Parser<A>,
+  config: OpConfig = {}
+) -> PrecedenceBuilder<A> = todo

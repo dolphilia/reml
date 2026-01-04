@@ -1,0 +1,5 @@
+fn sum(xs: [i64]) -> i64 = {
+  var acc = 0
+  for x in xs { acc := acc + x }   // `:=` は再代入
+  acc
+}

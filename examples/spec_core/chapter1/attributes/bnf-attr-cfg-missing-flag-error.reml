@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.Attributes.MissingFlag
+
+use Core.Prelude
+
+@cfg(target = "quantum")
+fn hidden() {
+  println("never enabled")
+}
+
+fn main() -> Str {
+  "attribute-target-error"
+}

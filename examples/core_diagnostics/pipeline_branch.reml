@@ -1,0 +1,20 @@
+// Core Diagnostics パイプラインの分岐経路と Stage mismatch 診断を確認するサンプル。
+// flag の値によって `Console` effect を実行し、`effects.contract.stage_mismatch` を発火させる。
+
+use Core;
+
+fn choose(flag: Bool) -> Int {
+  if flag == true then 1 else 2
+}
+
+fn trigger_console(value: Int) -> Unit =
+  perform Console.log(value.to_string())
+
+fn pipeline_branch(flag: Bool) -> Int {
+  let base = 10;
+  let delta = choose(flag);
+  let _ = trigger_console(delta);
+  base + delta
+}
+
+fn main() -> Int = pipeline_branch(true)

@@ -1,0 +1,18 @@
+{
+  "name": "core-config-cli",
+  "version": {
+    "major": 0,
+    "minor": 3,
+    "patch": 0
+  },
+  "description": "Config CLI lint sample schema",
+  "fields": {
+    "service": {
+      "name": "service",
+      "data_type": "String",
+      "required": true,
+      "description": "Service name to be linted"
+    }
+  },
+  "metadata": {}
+}

@@ -1,0 +1,5 @@
+let sc =
+  (whitespace()
+   .or(commentLine("//"))
+   .or(commentBlock("/*","*/", nested=true)))
+  |> skipMany

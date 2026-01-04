@@ -1,0 +1,10 @@
+pub type Ptr<T>
+pub type MutPtr<T>
+pub type NonNullPtr<T>
+pub type Void
+pub type FnPtr<Args, Ret>
+
+pub type VoidPtr = Ptr<Void>
+
+pub type Span<T> = { ptr: NonNullPtr<T>, len: usize }
+pub type TaggedPtr<T> = { raw: Ptr<T>, label: Option<Str> }

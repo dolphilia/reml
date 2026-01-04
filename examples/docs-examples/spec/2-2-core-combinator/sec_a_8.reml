@@ -1,0 +1,2 @@
+fn spanned<A>(p: Parser<A>) -> Parser<(A, Span)> = todo      // 値とスパン
+fn position() -> Parser<Span> = todo                         // ゼロ幅で現在位置

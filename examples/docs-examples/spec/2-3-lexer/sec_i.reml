@@ -1,0 +1,8 @@
+// 入力ストリームから Bidi 制御（U+2066…U+2069, RLO/LRO/RLE/LRE/PDF など）を拒否/警告
+fn forbidBidiControls() -> Parser<()> = todo      // 文字列/コメント以外の出現でエラー
+
+// NFC でない連なりを検出（識別子などで使用）
+fn requireNfc(s: Str) -> Result<Str, NfcError> = todo
+
+// 見かけ紛らわし（UAX #39）を検出して notes に追加
+fn warnConfusable(s: Str) -> () = todo

@@ -1,0 +1,17 @@
+// 後ろの空白・コメントを食う “lexeme”
+fn lexeme<A>(space: Parser<()>, p: Parser<A>) -> Parser<A> = todo
+
+// 固定記号（; , ( ) など）。成功時は () を返す
+fn symbol(space: Parser<()>, s: Str) -> Parser<()> = todo   // = lexeme(space, string(s)).skipR(space)
+
+// 先頭側だけをスキップする糖衣
+fn leading<A>(space: Parser<()>, p: Parser<A>) -> Parser<A> = todo
+
+// 前後をまとめて処理する（`leading` + `lexeme`）
+fn trim<A>(space: Parser<()>, p: Parser<A>) -> Parser<A> = todo
+
+// 前後を食う
+fn padded<A>(p: Parser<A>, space: Parser<()>) -> Parser<A> = todo
+
+// 位置付きトークン（値 + Span）
+fn token<A>(p: Parser<A>, space: Parser<()>) -> Parser<(A, Span)> = todo

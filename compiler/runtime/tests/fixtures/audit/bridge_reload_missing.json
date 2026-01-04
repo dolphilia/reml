@@ -1,0 +1,11 @@
+{
+  "audit_id": null,
+  "change_set": null,
+  "capability": null,
+  "metadata": {
+    "event.kind": "bridge.reload",
+    "timestamp": "2025-07-12T11:00:00Z",
+    "bridge.id": "core.runtime",
+    "bridge.reload": "pending"
+  }
+}

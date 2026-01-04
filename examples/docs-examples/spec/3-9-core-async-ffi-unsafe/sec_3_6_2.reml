@@ -1,0 +1,6 @@
+pub type Span<T>
+pub type Header
+pub type ParseError
+pub type u8
+
+fn parse_header(bytes: Span<u8>) -> Result<Header, ParseError>              // `unsafe`

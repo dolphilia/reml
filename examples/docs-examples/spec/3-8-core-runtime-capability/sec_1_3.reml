@@ -1,0 +1,63 @@
+pub type Set<T> = List<T>
+pub type SemVer = Str
+
+pub type PlatformInfo = {
+  os: OS,
+  arch: Architecture,
+  family: TargetFamily,
+  variant: Option<Str>,
+  features: Set<Str>,
+  runtime_capabilities: Set<RuntimeCapability>,
+  target_capabilities: Set<TargetCapability>,
+  profile_id: Option<Str>,
+  triple: Option<Str>,
+  stdlib_version: Option<SemVer>,
+  runtime_revision: Option<Str>,
+}
+
+pub enum OS = Windows | Linux | MacOS | FreeBSD | Wasm | Other(Str)
+pub enum Architecture = X64 | ARM64 | X86 | ARM | WASM32 | RISCV64 | Other(Str)
+pub enum TargetFamily = Unix | Windows | Wasm | Other(Str)
+
+pub enum RuntimeCapability =
+  | SIMD
+  | HardwareRng
+  | CryptoExtensions
+  | GPU
+  | ThreadLocal
+  | AsyncScheduler
+  | AsyncBackpressure
+  | ActorMailbox
+  | DistributedActor
+  | AsyncTracing
+  | AsyncSupervisor
+  | Vector512
+  | RegexJit
+  | RegexMetrics
+
+pub enum TargetCapability =
+  | UnicodeNfc                 // 対応: `unicode.nfc`
+  | UnicodeExtendedGrapheme    // 対応: `unicode.grapheme`
+  | FilesystemCaseSensitive    // 対応: `fs.case_sensitive`
+  | FilesystemCaseInsensitive  // 対応: `fs.case_insensitive`
+  | FilesystemCasePreserving   // 対応: `fs.case_preserving`
+  | PathUtf8Encoding           // 対応: `fs.path_utf8`
+  | ThreadLocalStorage         // 対応: `thread.local`
+  | JobControl                 // 対応: `process.job_control`
+  | MonotonicClock             // 対応: `clock.monotonic`
+  | HighResolutionClock        // 対応: `clock.highres`
+  | FfiCallConvC               // 対応: `ffi.callconv.c`
+  | FfiCallConvSysv            // 対応: `ffi.callconv.sysv`
+  | FfiCallConvWin64           // 対応: `ffi.callconv.win64`
+  | FfiCallConvWasm            // 対応: `ffi.callconv.wasm`
+
+fn platform_info() -> PlatformInfo                       // `effect {runtime}`
+fn platform_features() -> Set<Str>                        // `effect {runtime}`
+fn platform_capabilities() -> Set<RuntimeCapability>      // `effect {runtime}`
+fn runtime_capabilities() -> Set<RuntimeCapability>       // `effect {runtime}`
+fn target_capabilities() -> Set<TargetCapability>         // `effect {runtime}`
+fn platform_variant() -> Option<Str>                      // `effect {runtime}`
+fn has_capability(cap: RuntimeCapability) -> Bool         // `effect {runtime}`
+fn has_target_capability(cap: TargetCapability) -> Bool   // `effect {runtime}`
+fn capability_name(cap: TargetCapability) -> Str // `@pure`
+fn family_tag(info: PlatformInfo) -> Str                  // `@pure`

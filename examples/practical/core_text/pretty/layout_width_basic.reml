@@ -1,0 +1,15 @@
+module Examples.Practical.CoreText.Pretty.LayoutWidthBasic
+
+use Core.Text.Pretty
+
+fn main() -> Str {
+  let doc = Pretty.group(
+    Pretty.concat(
+      Pretty.text("let"),
+      Pretty.nest(2, Pretty.concat(Pretty.softline(), Pretty.text("x = 1")))
+    )
+  )
+  let wide = Pretty.render(doc, 10)
+  let narrow = Pretty.render(doc, 5)
+  "width=10:\n" + wide + "\nwidth=5:\n" + narrow
+}

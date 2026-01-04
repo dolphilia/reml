@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "format": "rfc3339",
+      "timestamp": { "seconds": 0, "nanos": 0 },
+      "expected": "1970-01-01T00:00:00Z"
+    },
+    {
+      "format": "unix",
+      "timestamp": { "seconds": -1, "nanos": 500000000 },
+      "expected": "-0.5"
+    },
+    {
+      "format": "custom",
+      "pattern": "[year]-[month]-[day] [hour repr:24 padding:zero]:[minute]:[second]",
+      "timestamp": { "seconds": 915148800, "nanos": 0 },
+      "expected": "1999-01-01 00:00:00",
+      "locale": "und"
+    },
+    {
+      "format": "custom",
+      "pattern": "[day] [month repr:long] [year]",
+      "timestamp": { "seconds": 1702512000, "nanos": 0 },
+      "expected": "14 December 2023",
+      "locale": "tr-TR"
+    }
+  ]
+}

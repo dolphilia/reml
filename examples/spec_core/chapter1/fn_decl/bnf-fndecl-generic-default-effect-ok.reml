@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.FnDecl.GenericDefault
+
+use Core.Prelude
+
+// BNF: FnDecl / FnSignature（docs/spec/1-5-formal-grammar-bnf.md §2）
+fn summarize<T>(value: T, label: Str = "cli") -> Str !{io} where T: Display {
+  format("value=%s | label=%s", [value.to_string(), label])
+}
+
+fn main() -> Str {
+  summarize(42)
+}

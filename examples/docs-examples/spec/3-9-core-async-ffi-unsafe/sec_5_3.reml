@@ -1,0 +1,23 @@
+pub type CapabilityError
+pub type MutPtr<T>
+pub type NonNullPtr<T>
+pub type Ptr<T>
+pub type AllocationId
+pub type PointerInfo
+pub type u8
+
+pub type UnsafeCapability = {
+  enable_raw_pointers: fn(UnsafePolicy) -> Result<(), CapabilityError>,
+  allocate_raw: fn(usize, usize) -> Result<MutPtr<u8>, CapabilityError>,
+  deallocate_raw: fn(MutPtr<u8>, usize, usize) -> Result<(), CapabilityError>,
+  track_allocation: fn(NonNullPtr<u8>, usize) -> Result<AllocationId, CapabilityError>,
+  verify_pointer: fn(Ptr<u8>) -> Result<PointerInfo, CapabilityError>,
+}
+
+pub type UnsafePolicy = {
+  enable_bounds_checking: Bool,
+  enable_use_after_free_detection: Bool,
+  enable_double_free_detection: Bool,
+  max_allocations: Option<usize>,
+  allocation_size_limit: Option<usize>,
+}

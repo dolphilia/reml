@@ -1,0 +1,13 @@
+module Examples.Practical.LiteTemplate.Main
+
+use Core.Parse
+
+use Examples.Practical.LiteTemplate.Parser
+
+fn main() -> Str {
+  let input = "config { port = 8080 }"
+  let result = Parser.parse_config(input)
+  match result.value with
+    | Some(ast) -> Debug.show(ast)
+    | None -> "parse:error"
+}

@@ -1,0 +1,129 @@
+module examples.ffi.windows.ownership_transfer
+
+/// FFI 所有権契約サンプル (Borrowed vs Transferred)
+///
+/// **検証対象**:
+/// - `ownership("borrowed")` - 呼び出し側が所有権を保持
+/// - `ownership("transferred")` - 所有権が移転 (inc_ref/dec_ref)
+/// - AuditEnvelope.metadata.bridge.ownership の記録
+///
+/// **所有権契約** (docs/spec/3-9-core-async-ffi-unsafe.md §2.4):
+/// - Borrowed: Remlランタイムが参照カウント管理を継続
+/// - Transferred: C側に所有権を移譲、C側が free を呼ぶ責任
+/// - Reference: 不変参照、Reml側が inc_ref を呼び出す
+
+use ::Core.Text.String as Str
+
+/// 不透明ポインタ型 (C側で管理されるリソース)
+type OpaqueHandle = *const u8
+
+/// C関数: リソース確保 (所有権を Reml へ移譲)
+///
+/// ```c
+/// void* ffi_allocate_resource(size_t size) {
+///   return malloc(size);
+/// }
+/// ```
+///
+/// 所有権: Transferred - Reml側が `dec_ref` で解放責任
+extern "C" {
+  #[target("x86_64-pc-windows-msvc")]
+  #[link_name("ffi_allocate_resource")]
+  #[calling_convention("win64")]
+  #[ownership("transferred")]  // 所有権移転
+  fn allocate_resource(size: u64) -> OpaqueHandle
+}
+
+/// C関数: リソース解放 (所有権を C へ移譲)
+///
+/// ```c
+/// void ffi_free_resource(void* handle) {
+///   free(handle);
+/// }
+/// ```
+///
+/// 所有権: Transferred - C側が free を呼ぶ責任
+extern "C" {
+  #[target("x86_64-pc-windows-msvc")]
+  #[link_name("ffi_free_resource")]
+  #[calling_convention("win64")]
+  #[ownership("transferred")]  // 所有権を C へ移譲
+  fn free_resource(handle: OpaqueHandle)
+}
+
+/// C関数: リソースの読み取り専用操作 (借用)
+///
+/// ```c
+/// int ffi_read_resource(const void* handle) {
+///   return ((int*)handle)[0];
+/// }
+/// ```
+///
+/// 所有権: Borrowed - Reml側が引き続き管理
+extern "C" {
+  #[target("x86_64-pc-windows-msvc")]
+  #[link_name("ffi_read_resource")]
+  #[calling_convention("win64")]
+  #[ownership("borrowed")]  // 借用、所有権は移転しない
+  fn read_resource(handle: OpaqueHandle) -> i32
+}
+
+/// リソース確保と解放のサンプル
+///
+/// **期待されるLLVM IR**:
+/// ```llvm
+/// ; allocate_resource: transferred - inc_ref 不要
+/// %handle = call win64cc i8* @ffi_allocate_resource(i64 1024)
+///
+/// ; read_resource: borrowed - inc_ref 自動挿入
+/// call void @inc_ref(i8* %handle)
+/// %value = call win64cc i32 @ffi_read_resource(i8* %handle)
+///
+/// ; free_resource: transferred - dec_ref + C側 free
+/// call void @dec_ref(i8* %handle)
+/// call win64cc void @ffi_free_resource(i8* %handle)
+/// ```
+pub fn test_ownership_lifecycle() -> i32 {
+  effect {unsafe} {
+    // 1. リソース確保 (transferred)
+    let handle = allocate_resource(1024)
+
+    // 2. リソース読み取り (borrowed)
+    let value = read_resource(handle)
+
+    // 3. リソース解放 (transferred)
+    free_resource(handle)
+
+    value
+  }
+}
+
+/// 借用のみのサンプル (所有権移転なし)
+///
+/// **期待される動作**:
+/// - `inc_ref` が呼び出し前に自動挿入される
+/// - 呼び出し後も Reml側が参照カウントを管理
+pub fn test_borrowed_only() -> i32 {
+  effect {unsafe} {
+    let handle = allocate_resource(512)
+
+    // 借用のみ - handle の所有権は維持
+    let v1 = read_resource(handle)
+    let v2 = read_resource(handle)
+    let v3 = read_resource(handle)
+
+    free_resource(handle)
+    v1 + v2 + v3
+  }
+}
+
+/// エントリポイント
+pub fn main() -> i32 {
+  let value1 = test_ownership_lifecycle()
+  print("Lifecycle test value: " ++ Str.from_i32(value1))
+
+  let value2 = test_borrowed_only()
+  print("Borrowed test sum: " ++ Str.from_i32(value2))
+
+  0
+}

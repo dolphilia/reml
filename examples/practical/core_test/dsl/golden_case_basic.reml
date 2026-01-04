@@ -1,0 +1,71 @@
+module Examples.Practical.CoreTest.Dsl.GoldenCaseBasic
+
+use Core.Parse
+use Core.Parse.Lex
+use Core.Test
+use Core.Test.Dsl
+
+type Config = {
+  entries: List<Entry>
+}
+
+type Entry = {
+  key: Str,
+  value: Value
+}
+
+type Value =
+  | IntValue(Int)
+  | StrValue(String)
+
+let sc: Parser<()> =
+  Lex.whitespace()
+    |> Lex.skipMany
+
+fn lexeme<A>(p: Parser<A>) -> Parser<A> {
+  Lex.lexeme(sc, p)
+}
+
+fn sym(text: Str) -> Parser<()> {
+  Lex.symbol(sc, text)
+}
+
+fn config_parser() -> Parser<Config> {
+  let key = lexeme(Lex.identifier())
+  let int_value =
+    lexeme(Lex.int10())
+      .andThen(|digits| match Lex.parseI64(digits) with
+        | Ok(value) -> ok(IntValue(value))
+        | Err(_) -> fail(format("数値として解釈できません: {digits}"))
+      )
+  let str_value = lexeme(Lex.stringLit()).map(StrValue)
+  let value = choice([int_value, str_value])
+  let entry =
+    key
+      .then(skipL(sym("="), value))
+      .map(|(k, v)| Entry { key: k, value: v })
+  rule("dsl.config",
+    many(entry)
+      .map(|entries| Config { entries: entries })
+  )
+}
+
+fn main() -> Str {
+  let cases = [
+    {
+      name: Some("golden_basic"),
+      source: "",
+      expect: Golden({
+        case_id: "basic",
+        input_path: "examples/practical/core_test/dsl/golden/basic.input",
+        expected_ast_path: "expected/practical/core_test/dsl/golden/basic.ast",
+        expected_error_path: "expected/practical/core_test/dsl/golden/basic.error",
+        policy: Test.SnapshotPolicy.verify(),
+      }),
+    },
+  ]
+  let outcome = test_parser(config_parser(), cases)
+  match outcome with
+    | Ok(_) -> "dsl:ok"
+    | Err(_) -> "dsl:error"
+}

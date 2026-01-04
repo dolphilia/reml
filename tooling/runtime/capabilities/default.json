@@ -1,0 +1,25 @@
+{
+  "stage": "stable",
+  "capabilities": [
+    "core.iter.array",
+    "core.iter.core",
+    "core.io",
+    "core.runtime"
+  ],
+  "overrides": {
+    "x86_64-pc-windows-msvc": {
+      "stage": "beta",
+      "capabilities": [
+        "ffi.bridge",
+        "process.spawn"
+      ]
+    },
+    "arm64-apple-darwin": {
+      "stage": "beta",
+      "capabilities": [
+        "ffi.bridge",
+        "process.spawn"
+      ]
+    }
+  }
+}

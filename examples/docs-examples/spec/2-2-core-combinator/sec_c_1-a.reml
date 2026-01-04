@@ -1,0 +1,19 @@
+type CstNode = {
+  kind: Str,
+  children: [CstChild],
+  trivia_leading: [Trivia],
+  trivia_trailing: [Trivia],
+  span: Span,
+}
+
+type CstChild =
+  | Node(CstNode)
+  | Token(Token)
+
+type Trivia = {
+  kind: TriviaKind,
+  text: Str,
+  span: Span,
+}
+
+type TriviaKind = Whitespace | Comment | Layout

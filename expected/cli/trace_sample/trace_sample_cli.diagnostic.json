@@ -1,0 +1,37 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/cli/trace_sample.reml",
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "code": "parser.runconfig.left_recursion_unimplemented",
+      "message": "RunConfig.left_recursion=\"auto\" を利用できません。左再帰シムは PARSER-003 で導入予定です。",
+      "location": {
+        "file": "examples/cli/trace_sample.reml",
+        "line": 1,
+        "column": 1,
+        "endLine": 1,
+        "endColumn": 1
+      },
+      "runconfig": {
+        "packrat": true,
+        "left_recursion": "auto",
+        "legacy_result": true,
+        "require_eof": false,
+        "extensions": {
+          "lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "stream": {
+            "enabled": false
+          },
+          "recover": {
+            "sync_tokens": [],
+            "notes": false
+          }
+        }
+      }
+    }
+  ]
+}

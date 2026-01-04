@@ -1,0 +1,2 @@
+fn sum<T>(xs: [T]) -> T where Add<T, T, T>, Zero<T> =
+  fold(xs, zero(), Add::add)

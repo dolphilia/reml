@@ -1,0 +1,6 @@
+module Examples.Native.Embedding.Basic
+
+fn main() -> Str
+{
+  "embedded ok"
+}

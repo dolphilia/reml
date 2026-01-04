@@ -1,0 +1,23 @@
+pub type Url = {
+  scheme: Str,
+  authority: UrlAuthority,
+  path: Str,
+  query: Option<Str>,
+  fragment: Option<Str>,
+}
+
+pub type UrlAuthority = {
+  user_info: Option<Str>,
+  host: Str,
+  port: Option<Int>,
+}
+
+pub type UrlParts = {
+  scheme: Str,
+  user_info: Option<Str>,
+  host: Str,
+  port: Option<Int>,
+  path: Str,
+  query: Option<Str>,
+  fragment: Option<Str>,
+}

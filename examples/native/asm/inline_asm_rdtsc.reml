@@ -1,0 +1,30 @@
+module Examples.Native.Asm.InlineAsmRdtsc
+
+@cfg(target_arch = "x86_64")
+@unstable("inline_asm")
+fn read_cycle_counter_lo() -> i32 !{native}
+{
+  unsafe {
+    var lo: i32 = 0
+    var hi: i32 = 0
+    inline_asm(
+      "rdtsc",
+      outputs("=a": lo, "=d": hi),
+      clobbers("rcx", "r11"),
+      options("volatile")
+    )
+    lo
+  }
+}
+
+@cfg(not(target_arch = "x86_64"))
+fn read_cycle_counter_lo() -> i32
+{
+  0
+}
+
+fn main() -> Str !{native}
+{
+  let _ = read_cycle_counter_lo()
+  "inline_asm=ok"
+}

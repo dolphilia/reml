@@ -1,0 +1,9 @@
+pub enum TemplateError =
+  | ParseError(Diagnostic)
+  | FilterMissing{name: Str, available: List<Str>}
+  | CapabilityMissing{id: CapabilityId, filter: Str}
+  | RenderPanic{reason: Str, backtrace: Option<TraceId>}
+  | SinkFailed{diagnostic: Diagnostic}
+
+fn to_diagnostic(err: TemplateError, span: Option<Span>) -> Diagnostic
+fn from_parse_error(parse: ParseError) -> TemplateError

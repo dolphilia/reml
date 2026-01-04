@@ -1,0 +1,5 @@
+pub type AuditSink
+pub type SyscallError
+pub type i32
+
+fn example_syscall(fd: i32, sink: AuditSink) -> Result<usize, SyscallError> // `effect {audit, syscall}`

@@ -1,0 +1,15 @@
+pub type Path
+
+pub type FfiError = {
+  kind: FfiErrorKind,
+  message: Str,
+  library_path: Option<Path>,
+  symbol_name: Option<Str>,
+}
+
+pub enum FfiErrorKind = LibraryNotFound
+  | SymbolNotFound
+  | InvalidSignature
+  | CallFailed
+  | SecurityViolation
+  | UnsupportedPlatform

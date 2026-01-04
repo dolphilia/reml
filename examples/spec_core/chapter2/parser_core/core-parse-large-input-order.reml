@@ -1,0 +1,22 @@
+module Spec.Core.Chapter2.Parser.LargeInputOrder
+
+use Core.Prelude
+
+// 目的: 大入力（10MB 級）で Input/Span の更新と Packrat/バックトラックが
+// オーダー異常を起こさないことを監視するためのアンカーケース（CP-WS5-001）。
+//
+// このファイル自体は最小形で保持し、実際の「大入力」は次の方針で生成する:
+// - このファイルをベースに、先頭のコメントパディング（WS5-LARGE-INPUT-PADDING）を複製して 10MB 近くへ拡張する
+// - 拡張版を一時ファイルとして `reml_frontend --output json` へ入力し、Packrat 統計や最遠オフセットの増え方を記録する
+//
+// 注意: Phase4 の `phase4-scenario-matrix.csv` では、このアンカーファイルを登録しつつ、
+// 10MB 版の生成・計測手順は `expected/.../core-parse-large-input-order.expected.md` に記録する。
+
+// WS5-LARGE-INPUT-PADDING（ここを複製して入力サイズを稼ぐ）
+// padding:0123456789abcdef
+
+fn main() -> Int {
+  // EOF まで読み切る必要がある形にして、入力末尾付近の位置更新を必ず通す。
+  (1 + 2
+}
+

@@ -1,0 +1,4 @@
+pub enum PluginWarning =
+  | DeprecatedCapability { id: CapabilityId, deprecated_since: PluginSemVer }
+  | ExpiringSignature { plugin: PluginId, valid_until: Timestamp }
+  | PolicyDowngrade { plugin: PluginId, policy: VerificationPolicy }

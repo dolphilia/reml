@@ -1,0 +1,1914 @@
+{
+  "command": "Check",
+  "phase": "Reporting",
+  "run_id": "12241da6-2216-4441-9d37-3f54d3e84404",
+  "diagnostics": [
+    {
+      "audit": {
+        "audit_id": "e427f383-a87e-5226-8a6d-1ee01922c0b1",
+        "change_set": {
+          "items": [
+            {
+              "args": [
+                "--output",
+                "json",
+                "--emit-audit-log",
+                "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
+              ],
+              "command": "target/debug/reml_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "run_id": "12241da6-2216-4441-9d37-3f54d3e84404",
+          "source": {
+            "args": [
+              "--output",
+              "json",
+              "--emit-audit-log",
+              "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
+            ],
+            "command": "target/debug/reml_frontend",
+            "workspace": "."
+          }
+        },
+        "metadata": {
+          "audit.build_id": "46571104T223544Z",
+          "audit.channel": "cli",
+          "audit.id.label": "cli/46571104T223544Z#0",
+          "audit.id.uuid": "e427f383-a87e-5226-8a6d-1ee01922c0b1",
+          "audit.policy.version": "rust.poc.audit.v1",
+          "audit.sequence": 0,
+          "audit.source.workspace": ".",
+          "audit.timestamp": "-4657-11-04T22:35:44Z",
+          "bridge.stage.actual_capabilities": [],
+          "bridge.stage.required_capabilities": [],
+          "capability.actual_stage": "at_least:stable",
+          "capability.expected_stage": "at_least:beta",
+          "capability.id": "console::log",
+          "capability.ids": [],
+          "capability.mismatch": {
+            "actual": "at_least:stable",
+            "expected": "at_least:beta"
+          },
+          "capability.providers": [],
+          "cli.audit_id": "cli/46571104T223544Z#0",
+          "cli.change_set": {
+            "items": [
+              {
+                "args": [
+                  "--output",
+                  "json",
+                  "--emit-audit-log",
+                  "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
+                ],
+                "command": "target/debug/reml_frontend",
+                "kind": "cli-command"
+              },
+              {
+                "kind": "input",
+                "path": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
+                "target": "rust-poc"
+              }
+            ],
+            "origin": "cli",
+            "policy": "rust.poc.audit.v1",
+            "run_id": "12241da6-2216-4441-9d37-3f54d3e84404",
+            "source": {
+              "args": [
+                "--output",
+                "json",
+                "--emit-audit-log",
+                "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
+              ],
+              "command": "target/debug/reml_frontend",
+              "workspace": "."
+            }
+          },
+          "cli.command": "Check",
+          "cli.phase": "Reporting",
+          "cli.program": "target/debug/reml_frontend",
+          "cli.run_id": "12241da6-2216-4441-9d37-3f54d3e84404",
+          "effect.actual_capabilities": [],
+          "effect.capability": "console::log",
+          "effect.required_capabilities": [],
+          "effect.stage.actual": "at_least:stable",
+          "effect.stage.actual_capabilities": [],
+          "effect.stage.required": "at_least:beta",
+          "effect.stage.required_capabilities": [],
+          "effect.stage.trace": [
+            {
+              "note": "not provided",
+              "source": "cli_option"
+            },
+            {
+              "note": "REMLC_EFFECT_STAGE not set",
+              "source": "env_var"
+            },
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "at_least:beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "at_least:stable"
+            }
+          ],
+          "effects.contract.stage.actual": "at_least:stable",
+          "effects.contract.stage.required": "at_least:beta",
+          "effects.contract.stage_trace": [
+            {
+              "note": "not provided",
+              "source": "cli_option"
+            },
+            {
+              "note": "REMLC_EFFECT_STAGE not set",
+              "source": "env_var"
+            },
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "at_least:beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "at_least:stable"
+            }
+          ],
+          "event.domain": "effects",
+          "event.kind": "diagnostic",
+          "fingerprint": "rust-frontend-0001",
+          "name": "compilation_unit",
+          "namespace": "rust.frontend",
+          "origin": "reml_frontend",
+          "parser.core.rule.fingerprint": "rust-frontend-0001",
+          "parser.core.rule.name": "compilation_unit",
+          "parser.core.rule.namespace": "rust.frontend",
+          "parser.core.rule.ordinal": 0,
+          "parser.core.rule.origin": "reml_frontend",
+          "parser.runconfig": {
+            "extensions": {
+              "config": {
+                "ack_experimental_diagnostics": false,
+                "compatibility": {
+                  "duplicate_key": "error",
+                  "feature_guard": [],
+                  "number": "strict",
+                  "trailing_comma": "arrays_and_objects",
+                  "trivia": {
+                    "block": [],
+                    "doc_comment": null,
+                    "hash_inline": true,
+                    "line": [
+                      "#",
+                      "//"
+                    ],
+                    "shebang": false
+                  },
+                  "unquoted_key": "allow_alpha_numeric"
+                },
+                "compatibility_profile": "toml-relaxed",
+                "compatibility_source": "default",
+                "experimental_effects": false,
+                "left_recursion": "off",
+                "legacy_result": true,
+                "merge_warnings": true,
+                "packrat": true,
+                "require_eof": false,
+                "source": "cli",
+                "trace": false
+              },
+              "effects": {
+                "type_row_mode": "ty-integrated"
+              },
+              "lex": {
+                "identifier_profile": "unicode",
+                "profile": "strict_json"
+              },
+              "recover": {
+                "notes": false,
+                "sync_tokens": []
+              },
+              "stream": {
+                "checkpoint": "unspecified",
+                "chunk_size": 0,
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "enabled": false,
+                "flow": {
+                  "await_count": 0,
+                  "backpressure": {
+                    "max_lag_bytes": 0
+                  },
+                  "backpressure_count": 0,
+                  "checkpoints_closed": 1,
+                  "policy": "auto",
+                  "resume_count": 0
+                },
+                "flow_max_lag": 0,
+                "flow_policy": "auto",
+                "packrat_enabled": true,
+                "resume_hint": "unspecified"
+              },
+              "target": {
+                "capabilities": [],
+                "detected": {
+                  "arch": "aarch64",
+                  "family": "unix",
+                  "os": "macos",
+                  "runtime_revision": null,
+                  "stdlib_version": null
+                },
+                "diagnostics": true,
+                "extra": {},
+                "features": [],
+                "profile_id": "macos-aarch64",
+                "requested": {
+                  "arch": "aarch64",
+                  "capabilities": [],
+                  "diagnostics": true,
+                  "family": "unix",
+                  "features": [],
+                  "os": "macos"
+                },
+                "runtime_revision": null,
+                "stdlib_version": null,
+                "triple": null
+              }
+            },
+            "runtime_capabilities": [],
+            "switches": {
+              "ack_experimental_diagnostics": false,
+              "experimental_effects": false,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "trace": false
+            }
+          },
+          "parser.runconfig.extensions.config": {
+            "ack_experimental_diagnostics": false,
+            "compatibility": {
+              "duplicate_key": "error",
+              "feature_guard": [],
+              "number": "strict",
+              "trailing_comma": "arrays_and_objects",
+              "trivia": {
+                "block": [],
+                "doc_comment": null,
+                "hash_inline": true,
+                "line": [
+                  "#",
+                  "//"
+                ],
+                "shebang": false
+              },
+              "unquoted_key": "allow_alpha_numeric"
+            },
+            "compatibility_profile": "toml-relaxed",
+            "compatibility_source": "default",
+            "experimental_effects": false,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "source": "cli",
+            "trace": false
+          },
+          "parser.runconfig.extensions.config.source": "cli",
+          "parser.runconfig.extensions.lex": {
+            "identifier_profile": "unicode",
+            "profile": "strict_json"
+          },
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.recover": {
+            "notes": false,
+            "sync_tokens": []
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "checkpoint": "unspecified",
+            "chunk_size": 0,
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "enabled": false,
+            "flow": {
+              "await_count": 0,
+              "backpressure": {
+                "max_lag_bytes": 0
+              },
+              "backpressure_count": 0,
+              "checkpoints_closed": 1,
+              "policy": "auto",
+              "resume_count": 0
+            },
+            "flow_max_lag": 0,
+            "flow_policy": "auto",
+            "packrat_enabled": true,
+            "resume_hint": "unspecified"
+          },
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+          "parser.runconfig.extensions.stream.flow.policy": "auto",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.switches.ack_experimental_diagnostics": false,
+          "parser.runconfig.switches.experimental_effects": false,
+          "parser.runconfig.switches.left_recursion": "off",
+          "parser.runconfig.switches.legacy_result": true,
+          "parser.runconfig.switches.merge_warnings": true,
+          "parser.runconfig.switches.packrat": true,
+          "parser.runconfig.switches.require_eof": false,
+          "parser.runconfig.switches.trace": false,
+          "parser.stream.checkpoint": "unspecified",
+          "parser.stream.demand_min_bytes": 0,
+          "parser.stream.demand_preferred_bytes": 0,
+          "parser.stream.flow.checkpoints_closed": 1,
+          "parser.stream.flow.enabled": false,
+          "parser.stream.flow_max_lag": 0,
+          "parser.stream.flow_policy": "auto",
+          "parser.stream.packrat_enabled": true,
+          "parser.stream.resume_hint": "unspecified",
+          "schema.version": "3.0.0-alpha",
+          "stage.trace": [
+            {
+              "note": "not provided",
+              "source": "cli_option"
+            },
+            {
+              "note": "REMLC_EFFECT_STAGE not set",
+              "source": "env_var"
+            },
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "at_least:beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "at_least:stable"
+            }
+          ]
+        }
+      },
+      "audit_metadata": {
+        "audit.build_id": "46571104T223544Z",
+        "audit.channel": "cli",
+        "audit.id.label": "cli/46571104T223544Z#0",
+        "audit.id.uuid": "e427f383-a87e-5226-8a6d-1ee01922c0b1",
+        "audit.policy.version": "rust.poc.audit.v1",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "audit.timestamp": "-4657-11-04T22:35:44Z",
+        "bridge.stage.actual_capabilities": [],
+        "bridge.stage.required_capabilities": [],
+        "capability.actual_stage": "at_least:stable",
+        "capability.expected_stage": "at_least:beta",
+        "capability.id": "console::log",
+        "capability.ids": [],
+        "capability.mismatch": {
+          "actual": "at_least:stable",
+          "expected": "at_least:beta"
+        },
+        "capability.providers": [],
+        "cli.audit_id": "cli/46571104T223544Z#0",
+        "cli.change_set": {
+          "items": [
+            {
+              "args": [
+                "--output",
+                "json",
+                "--emit-audit-log",
+                "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
+              ],
+              "command": "target/debug/reml_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "run_id": "12241da6-2216-4441-9d37-3f54d3e84404",
+          "source": {
+            "args": [
+              "--output",
+              "json",
+              "--emit-audit-log",
+              "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
+            ],
+            "command": "target/debug/reml_frontend",
+            "workspace": "."
+          }
+        },
+        "cli.command": "Check",
+        "cli.phase": "Reporting",
+        "cli.program": "target/debug/reml_frontend",
+        "cli.run_id": "12241da6-2216-4441-9d37-3f54d3e84404",
+        "effect.actual_capabilities": [],
+        "effect.capability": "console::log",
+        "effect.required_capabilities": [],
+        "effect.stage.actual": "at_least:stable",
+        "effect.stage.actual_capabilities": [],
+        "effect.stage.required": "at_least:beta",
+        "effect.stage.required_capabilities": [],
+        "effect.stage.trace": [
+          {
+            "note": "not provided",
+            "source": "cli_option"
+          },
+          {
+            "note": "REMLC_EFFECT_STAGE not set",
+            "source": "env_var"
+          },
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "at_least:beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "at_least:stable"
+          }
+        ],
+        "effects.contract.stage.actual": "at_least:stable",
+        "effects.contract.stage.required": "at_least:beta",
+        "effects.contract.stage_trace": [
+          {
+            "note": "not provided",
+            "source": "cli_option"
+          },
+          {
+            "note": "REMLC_EFFECT_STAGE not set",
+            "source": "env_var"
+          },
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "at_least:beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "at_least:stable"
+          }
+        ],
+        "event.domain": "effects",
+        "event.kind": "diagnostic",
+        "fingerprint": "rust-frontend-0001",
+        "name": "compilation_unit",
+        "namespace": "rust.frontend",
+        "origin": "reml_frontend",
+        "parser.core.rule.fingerprint": "rust-frontend-0001",
+        "parser.core.rule.name": "compilation_unit",
+        "parser.core.rule.namespace": "rust.frontend",
+        "parser.core.rule.ordinal": 0,
+        "parser.core.rule.origin": "reml_frontend",
+        "parser.runconfig": {
+          "extensions": {
+            "config": {
+              "ack_experimental_diagnostics": false,
+              "compatibility": {
+                "duplicate_key": "error",
+                "feature_guard": [],
+                "number": "strict",
+                "trailing_comma": "arrays_and_objects",
+                "trivia": {
+                  "block": [],
+                  "doc_comment": null,
+                  "hash_inline": true,
+                  "line": [
+                    "#",
+                    "//"
+                  ],
+                  "shebang": false
+                },
+                "unquoted_key": "allow_alpha_numeric"
+              },
+              "compatibility_profile": "toml-relaxed",
+              "compatibility_source": "default",
+              "experimental_effects": false,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "source": "cli",
+              "trace": false
+            },
+            "effects": {
+              "type_row_mode": "ty-integrated"
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "await_count": 0,
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "backpressure_count": 0,
+                "checkpoints_closed": 1,
+                "policy": "auto",
+                "resume_count": 0
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "packrat_enabled": true,
+              "resume_hint": "unspecified"
+            },
+            "target": {
+              "capabilities": [],
+              "detected": {
+                "arch": "aarch64",
+                "family": "unix",
+                "os": "macos",
+                "runtime_revision": null,
+                "stdlib_version": null
+              },
+              "diagnostics": true,
+              "extra": {},
+              "features": [],
+              "profile_id": "macos-aarch64",
+              "requested": {
+                "arch": "aarch64",
+                "capabilities": [],
+                "diagnostics": true,
+                "family": "unix",
+                "features": [],
+                "os": "macos"
+              },
+              "runtime_revision": null,
+              "stdlib_version": null,
+              "triple": null
+            }
+          },
+          "runtime_capabilities": [],
+          "switches": {
+            "ack_experimental_diagnostics": false,
+            "experimental_effects": false,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "trace": false
+          }
+        },
+        "parser.runconfig.extensions.config": {
+          "ack_experimental_diagnostics": false,
+          "compatibility": {
+            "duplicate_key": "error",
+            "feature_guard": [],
+            "number": "strict",
+            "trailing_comma": "arrays_and_objects",
+            "trivia": {
+              "block": [],
+              "doc_comment": null,
+              "hash_inline": true,
+              "line": [
+                "#",
+                "//"
+              ],
+              "shebang": false
+            },
+            "unquoted_key": "allow_alpha_numeric"
+          },
+          "compatibility_profile": "toml-relaxed",
+          "compatibility_source": "default",
+          "experimental_effects": false,
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "source": "cli",
+          "trace": false
+        },
+        "parser.runconfig.extensions.config.source": "cli",
+        "parser.runconfig.extensions.lex": {
+          "identifier_profile": "unicode",
+          "profile": "strict_json"
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.recover": {
+          "notes": false,
+          "sync_tokens": []
+        },
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.stream": {
+          "checkpoint": "unspecified",
+          "chunk_size": 0,
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "enabled": false,
+          "flow": {
+            "await_count": 0,
+            "backpressure": {
+              "max_lag_bytes": 0
+            },
+            "backpressure_count": 0,
+            "checkpoints_closed": 1,
+            "policy": "auto",
+            "resume_count": 0
+          },
+          "flow_max_lag": 0,
+          "flow_policy": "auto",
+          "packrat_enabled": true,
+          "resume_hint": "unspecified"
+        },
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+        "parser.runconfig.extensions.stream.flow.policy": "auto",
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.switches.ack_experimental_diagnostics": false,
+        "parser.runconfig.switches.experimental_effects": false,
+        "parser.runconfig.switches.left_recursion": "off",
+        "parser.runconfig.switches.legacy_result": true,
+        "parser.runconfig.switches.merge_warnings": true,
+        "parser.runconfig.switches.packrat": true,
+        "parser.runconfig.switches.require_eof": false,
+        "parser.runconfig.switches.trace": false,
+        "parser.stream.checkpoint": "unspecified",
+        "parser.stream.demand_min_bytes": 0,
+        "parser.stream.demand_preferred_bytes": 0,
+        "parser.stream.flow.checkpoints_closed": 1,
+        "parser.stream.flow.enabled": false,
+        "parser.stream.flow_max_lag": 0,
+        "parser.stream.flow_policy": "auto",
+        "parser.stream.packrat_enabled": true,
+        "parser.stream.resume_hint": "unspecified",
+        "schema.version": "3.0.0-alpha",
+        "stage.trace": [
+          {
+            "note": "not provided",
+            "source": "cli_option"
+          },
+          {
+            "note": "REMLC_EFFECT_STAGE not set",
+            "source": "env_var"
+          },
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "at_least:beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "at_least:stable"
+          }
+        ]
+      },
+      "code": "effects.contract.stage_mismatch",
+      "codes": [
+        "effects.contract.stage_mismatch"
+      ],
+      "domain": "effects",
+      "expected": {
+        "expected_tokens": [
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "effect",
+            "token": "effect"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "extern",
+            "token": "extern"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "fn",
+            "token": "fn"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "handler",
+            "token": "handler"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "impl",
+            "token": "impl"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "let",
+            "token": "let"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "pub",
+            "token": "pub"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "trait",
+            "token": "trait"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "type",
+            "token": "type"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "var",
+            "token": "var"
+          },
+          {
+            "hint": "token",
+            "kind": "token",
+            "label": "@",
+            "token": "@"
+          },
+          {
+            "hint": "eof",
+            "kind": "eof",
+            "label": "EOF",
+            "token": "EOF"
+          }
+        ],
+        "message": "ここで`effect`、`extern`、`fn`、`handler`、`impl`、`let`、`pub`、`trait`、`type`、`var`、`@` または 入力終端のいずれかが必要です"
+      },
+      "extensions": {
+        "bridge": {
+          "stage": {
+            "actual": "at_least:stable",
+            "actual_capabilities": [],
+            "required": "at_least:beta",
+            "required_capabilities": [],
+            "trace": [
+              {
+                "note": "not provided",
+                "source": "cli_option"
+              },
+              {
+                "note": "REMLC_EFFECT_STAGE not set",
+                "source": "env_var"
+              },
+              {
+                "note": "--effect-stage",
+                "source": "cli_option",
+                "stage": "at_least:beta"
+              },
+              {
+                "source": "runtime",
+                "stage": "at_least:stable"
+              }
+            ]
+          }
+        },
+        "capability": {
+          "detail": [],
+          "ids": [],
+          "required_capabilities": [],
+          "stage": {
+            "actual": "at_least:stable",
+            "required": "at_least:beta"
+          }
+        },
+        "cfg": {
+          "target_config_errors": 0,
+          "target_profile": {
+            "detected": {
+              "arch": "aarch64",
+              "family": "unix",
+              "os": "macos",
+              "runtime_revision": null,
+              "stdlib_version": null
+            },
+            "profile_id": "macos-aarch64",
+            "requested": {
+              "arch": "aarch64",
+              "capabilities": [],
+              "diagnostics": true,
+              "family": "unix",
+              "features": [],
+              "os": "macos"
+            }
+          }
+        },
+        "diagnostic.v2": {
+          "codes": [
+            "effects.contract.stage_mismatch"
+          ],
+          "timestamp": "-4657-11-04T22:35:44Z"
+        },
+        "effect.actual_capabilities": [],
+        "effect.capabilities": [],
+        "effect.capability": "console::log",
+        "effect.required_capabilities": [],
+        "effect.stage.actual": "at_least:stable",
+        "effect.stage.actual_capabilities": [],
+        "effect.stage.required": "at_least:beta",
+        "effect.stage.required_capabilities": [],
+        "effects": {
+          "capabilities": [],
+          "capability": "console::log",
+          "stage": {
+            "actual": "at_least:stable",
+            "actual_capabilities": [],
+            "capability": "console::log",
+            "mismatch": {
+              "actual": "at_least:stable",
+              "expected": "at_least:beta"
+            },
+            "required": "at_least:beta",
+            "required_capabilities": [],
+            "trace": [
+              {
+                "note": "not provided",
+                "source": "cli_option"
+              },
+              {
+                "note": "REMLC_EFFECT_STAGE not set",
+                "source": "env_var"
+              },
+              {
+                "note": "--effect-stage",
+                "source": "cli_option",
+                "stage": "at_least:beta"
+              },
+              {
+                "source": "runtime",
+                "stage": "at_least:stable"
+              }
+            ]
+          },
+          "stage_trace": [
+            {
+              "note": "not provided",
+              "source": "cli_option"
+            },
+            {
+              "note": "REMLC_EFFECT_STAGE not set",
+              "source": "env_var"
+            },
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "at_least:beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "at_least:stable"
+            }
+          ]
+        },
+        "effects.contract.stage.actual": "at_least:stable",
+        "effects.contract.stage.required": "at_least:beta",
+        "effects.contract.stage_trace": [
+          {
+            "note": "not provided",
+            "source": "cli_option"
+          },
+          {
+            "note": "REMLC_EFFECT_STAGE not set",
+            "source": "env_var"
+          },
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "at_least:beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "at_least:stable"
+          }
+        ],
+        "recover": {
+          "expected_tokens": [
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "effect",
+              "token": "effect"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "extern",
+              "token": "extern"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "fn",
+              "token": "fn"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "handler",
+              "token": "handler"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "impl",
+              "token": "impl"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "let",
+              "token": "let"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "pub",
+              "token": "pub"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "trait",
+              "token": "trait"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "type",
+              "token": "type"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "var",
+              "token": "var"
+            },
+            {
+              "hint": "token",
+              "kind": "token",
+              "label": "@",
+              "token": "@"
+            },
+            {
+              "hint": "eof",
+              "kind": "eof",
+              "label": "EOF",
+              "token": "EOF"
+            }
+          ],
+          "message": "ここで`effect`、`extern`、`fn`、`handler`、`impl`、`let`、`pub`、`trait`、`type`、`var`、`@` または 入力終端のいずれかが必要です"
+        },
+        "runconfig": {
+          "ack_experimental_diagnostics": false,
+          "experimental_effects": false,
+          "extensions": {
+            "config": {
+              "ack_experimental_diagnostics": false,
+              "compatibility": {
+                "duplicate_key": "error",
+                "feature_guard": [],
+                "number": "strict",
+                "trailing_comma": "arrays_and_objects",
+                "trivia": {
+                  "block": [],
+                  "doc_comment": null,
+                  "hash_inline": true,
+                  "line": [
+                    "#",
+                    "//"
+                  ],
+                  "shebang": false
+                },
+                "unquoted_key": "allow_alpha_numeric"
+              },
+              "compatibility_profile": "toml-relaxed",
+              "compatibility_source": "default",
+              "experimental_effects": false,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "source": "cli",
+              "trace": false
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "await_count": 0,
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "backpressure_count": 0,
+                "checkpoints_closed": 1,
+                "policy": "auto",
+                "resume_count": 0
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "packrat_enabled": true,
+              "resume_hint": "unspecified"
+            },
+            "target": {
+              "capabilities": [],
+              "detected": {
+                "arch": "aarch64",
+                "family": "unix",
+                "os": "macos",
+                "runtime_revision": null,
+                "stdlib_version": null
+              },
+              "diagnostics": true,
+              "extra": {},
+              "features": [],
+              "profile_id": "macos-aarch64",
+              "requested": {
+                "arch": "aarch64",
+                "capabilities": [],
+                "diagnostics": true,
+                "family": "unix",
+                "features": [],
+                "os": "macos"
+              },
+              "runtime_revision": null,
+              "stdlib_version": null,
+              "triple": null
+            }
+          },
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "trace": false
+        }
+      },
+      "fixits": [],
+      "hints": [],
+      "location": {
+        "column": 3,
+        "endColumn": 41,
+        "endLine": 11,
+        "file": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
+        "line": 11
+      },
+      "message": "`console::log` を呼び出すにはステージ `at_least:beta` が必要ですが、実行時ステージ `at_least:stable` では許可されていません",
+      "notes": [
+        {
+          "label": null,
+          "message": "要求: `at_least:beta` / 実行時: `at_least:stable`",
+          "span": null
+        }
+      ],
+      "primary": {
+        "end_col": 41,
+        "end_line": 11,
+        "file": "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
+        "highlight": {
+          "column_end": 41,
+          "column_start": 3,
+          "highlight_text": "perform Console.log(value.to_string())",
+          "indicator": "  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+          "line": 11,
+          "line_text": "  perform Console.log(value.to_string())"
+        },
+        "start_col": 3,
+        "start_line": 11
+      },
+      "recoverability": "fatal",
+      "schema_version": "3.0.0-alpha",
+      "secondary": [],
+      "severity": "error",
+      "severity_hint": null,
+      "timestamp": "-4657-11-04T22:35:44Z"
+    }
+  ],
+  "summary": {
+    "inputs": [
+      "/Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml"
+    ],
+    "started_at": "-4657-11-04T22:35:44Z",
+    "finished_at": "-4657-11-04T22:35:44Z",
+    "artifact": null,
+    "stats": {
+      "cli_command": "target/debug/reml_frontend --output json --emit-audit-log /Users/dolphilia/github/kestrel/examples/core_diagnostics/pipeline_branch.reml",
+      "diagnostic_count": 1,
+      "filtering": {
+        "audit_policy_anonymized": 0,
+        "audit_policy_dropped": 0,
+        "suppressed": 0
+      },
+      "parse_result": {
+        "farthest_error_offset": null,
+        "packrat_cache": [
+          {
+            "entry": {
+              "approx_bytes": 118,
+              "expectations": [],
+              "sample_tokens": [
+                {
+                  "kind": "Success",
+                  "lexeme": "function"
+                }
+              ],
+              "summary": {
+                "alternatives": [],
+                "humanized": "success"
+              }
+            },
+            "parser_id": 2,
+            "range_end": 300,
+            "range_start": 236
+          },
+          {
+            "entry": {
+              "approx_bytes": 118,
+              "expectations": [],
+              "sample_tokens": [
+                {
+                  "kind": "Success",
+                  "lexeme": "function"
+                }
+              ],
+              "summary": {
+                "alternatives": [],
+                "humanized": "success"
+              }
+            },
+            "parser_id": 2,
+            "range_end": 383,
+            "range_start": 302
+          },
+          {
+            "entry": {
+              "approx_bytes": 118,
+              "expectations": [],
+              "sample_tokens": [
+                {
+                  "kind": "Success",
+                  "lexeme": "function"
+                }
+              ],
+              "summary": {
+                "alternatives": [],
+                "humanized": "success"
+              }
+            },
+            "parser_id": 2,
+            "range_end": 520,
+            "range_start": 385
+          },
+          {
+            "entry": {
+              "approx_bytes": 118,
+              "expectations": [],
+              "sample_tokens": [
+                {
+                  "kind": "Success",
+                  "lexeme": "function"
+                }
+              ],
+              "summary": {
+                "alternatives": [],
+                "humanized": "success"
+              }
+            },
+            "parser_id": 2,
+            "range_end": 562,
+            "range_start": 522
+          }
+        ],
+        "packrat_snapshot": {
+          "approx_bytes": 472,
+          "entries": 4
+        },
+        "packrat_stats": {
+          "approx_bytes": 472,
+          "budget_drops": 0,
+          "entries": 4,
+          "evictions": 0,
+          "hits": 8,
+          "pruned": 0,
+          "queries": 12
+        },
+        "recovered": false,
+        "span_trace": [],
+        "trace_events": [
+          {
+            "event_kind": "use_decl_accepted",
+            "label": "Core",
+            "span": {
+              "end": 233,
+              "start": 225
+            },
+            "trace_id": "syntax:use"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "block",
+            "span": {
+              "end": 300,
+              "start": 265
+            },
+            "trace_id": "syntax:expr::block"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "if",
+            "span": {
+              "end": 298,
+              "start": 269
+            },
+            "trace_id": "syntax:expr::if"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "binary",
+            "span": {
+              "end": 284,
+              "start": 272
+            },
+            "trace_id": "syntax:expr::binary"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 276,
+              "start": 272
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 276,
+              "start": 272
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "literal",
+            "span": {
+              "end": 284,
+              "start": 280
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "literal",
+            "span": {
+              "end": 284,
+              "start": 280
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "binary",
+            "span": {
+              "end": 284,
+              "start": 272
+            },
+            "trace_id": "syntax:expr::binary"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "literal",
+            "span": {
+              "end": 291,
+              "start": 290
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "literal",
+            "span": {
+              "end": 291,
+              "start": 290
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "literal",
+            "span": {
+              "end": 298,
+              "start": 297
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "literal",
+            "span": {
+              "end": 298,
+              "start": 297
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "if",
+            "span": {
+              "end": 298,
+              "start": 269
+            },
+            "trace_id": "syntax:expr::if"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "block",
+            "span": {
+              "end": 300,
+              "start": 265
+            },
+            "trace_id": "syntax:expr::block"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "perform",
+            "span": {
+              "end": 383,
+              "start": 345
+            },
+            "trace_id": "syntax:expr::perform"
+          },
+          {
+            "event_kind": "effect_enter",
+            "label": "Console::log",
+            "span": {
+              "end": 383,
+              "start": 345
+            },
+            "trace_id": "syntax:effect::perform"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "call",
+            "span": {
+              "end": 382,
+              "start": 365
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "field-access",
+            "span": {
+              "end": 380,
+              "start": 365
+            },
+            "trace_id": "syntax:expr::field-access"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 370,
+              "start": 365
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 370,
+              "start": 365
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "field-access",
+            "span": {
+              "end": 380,
+              "start": 365
+            },
+            "trace_id": "syntax:expr::field-access"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "call",
+            "span": {
+              "end": 382,
+              "start": 365
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "effect_exit",
+            "label": "Console::log",
+            "span": {
+              "end": 383,
+              "start": 345
+            },
+            "trace_id": "syntax:effect::perform"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "perform",
+            "span": {
+              "end": 383,
+              "start": 345
+            },
+            "trace_id": "syntax:expr::perform"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "block",
+            "span": {
+              "end": 520,
+              "start": 423
+            },
+            "trace_id": "syntax:expr::block"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "let",
+            "span": {
+              "end": 440,
+              "start": 427
+            },
+            "trace_id": "syntax:expr::let"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "literal",
+            "span": {
+              "end": 440,
+              "start": 438
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "literal",
+            "span": {
+              "end": 440,
+              "start": 438
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "let",
+            "span": {
+              "end": 440,
+              "start": 427
+            },
+            "trace_id": "syntax:expr::let"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "let",
+            "span": {
+              "end": 468,
+              "start": 444
+            },
+            "trace_id": "syntax:expr::let"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "call",
+            "span": {
+              "end": 468,
+              "start": 456
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 462,
+              "start": 456
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 462,
+              "start": 456
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 467,
+              "start": 463
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 467,
+              "start": 463
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "call",
+            "span": {
+              "end": 468,
+              "start": 456
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "let",
+            "span": {
+              "end": 468,
+              "start": 444
+            },
+            "trace_id": "syntax:expr::let"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "let",
+            "span": {
+              "end": 502,
+              "start": 472
+            },
+            "trace_id": "syntax:expr::let"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "call",
+            "span": {
+              "end": 502,
+              "start": 480
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 495,
+              "start": 480
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 495,
+              "start": 480
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 501,
+              "start": 496
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 501,
+              "start": 496
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "call",
+            "span": {
+              "end": 502,
+              "start": 480
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "let",
+            "span": {
+              "end": 502,
+              "start": 472
+            },
+            "trace_id": "syntax:expr::let"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "binary",
+            "span": {
+              "end": 518,
+              "start": 506
+            },
+            "trace_id": "syntax:expr::binary"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 510,
+              "start": 506
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 510,
+              "start": 506
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 518,
+              "start": 513
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 518,
+              "start": 513
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "binary",
+            "span": {
+              "end": 518,
+              "start": 506
+            },
+            "trace_id": "syntax:expr::binary"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "block",
+            "span": {
+              "end": 520,
+              "start": 423
+            },
+            "trace_id": "syntax:expr::block"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "call",
+            "span": {
+              "end": 562,
+              "start": 541
+            },
+            "trace_id": "syntax:expr::call"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "identifier",
+            "span": {
+              "end": 556,
+              "start": 541
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "identifier",
+            "span": {
+              "end": 556,
+              "start": 541
+            },
+            "trace_id": "syntax:expr::identifier"
+          },
+          {
+            "event_kind": "expr_enter",
+            "label": "literal",
+            "span": {
+              "end": 561,
+              "start": 557
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "literal",
+            "span": {
+              "end": 561,
+              "start": 557
+            },
+            "trace_id": "syntax:expr::literal"
+          },
+          {
+            "event_kind": "expr_leave",
+            "label": "call",
+            "span": {
+              "end": 562,
+              "start": 541
+            },
+            "trace_id": "syntax:expr::call"
+          }
+        ]
+      },
+      "run_config": {
+        "extensions": {
+          "config": {
+            "ack_experimental_diagnostics": false,
+            "compatibility": {
+              "duplicate_key": "error",
+              "feature_guard": [],
+              "number": "strict",
+              "trailing_comma": "arrays_and_objects",
+              "trivia": {
+                "block": [],
+                "doc_comment": null,
+                "hash_inline": true,
+                "line": [
+                  "#",
+                  "//"
+                ],
+                "shebang": false
+              },
+              "unquoted_key": "allow_alpha_numeric"
+            },
+            "compatibility_profile": "toml-relaxed",
+            "compatibility_source": "default",
+            "experimental_effects": false,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "source": "cli",
+            "trace": false
+          },
+          "effects": {
+            "type_row_mode": "ty-integrated"
+          },
+          "lex": {
+            "identifier_profile": "unicode",
+            "profile": "strict_json"
+          },
+          "recover": {
+            "notes": false,
+            "sync_tokens": []
+          },
+          "stream": {
+            "checkpoint": "unspecified",
+            "chunk_size": 0,
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "enabled": false,
+            "flow": {
+              "await_count": 0,
+              "backpressure": {
+                "max_lag_bytes": 0
+              },
+              "backpressure_count": 0,
+              "checkpoints_closed": 1,
+              "policy": "auto",
+              "resume_count": 0
+            },
+            "flow_max_lag": 0,
+            "flow_policy": "auto",
+            "packrat_enabled": true,
+            "resume_hint": "unspecified"
+          },
+          "target": {
+            "capabilities": [],
+            "detected": {
+              "arch": "aarch64",
+              "family": "unix",
+              "os": "macos",
+              "runtime_revision": null,
+              "stdlib_version": null
+            },
+            "diagnostics": true,
+            "extra": {},
+            "features": [],
+            "profile_id": "macos-aarch64",
+            "requested": {
+              "arch": "aarch64",
+              "capabilities": [],
+              "diagnostics": true,
+              "family": "unix",
+              "features": [],
+              "os": "macos"
+            },
+            "runtime_revision": null,
+            "stdlib_version": null,
+            "triple": null
+          }
+        },
+        "runtime_capabilities": [],
+        "switches": {
+          "ack_experimental_diagnostics": false,
+          "experimental_effects": false,
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "trace": false
+        }
+      },
+      "stream_meta": {
+        "bridge": null,
+        "flow": {
+          "await_count": 0,
+          "backpressure_count": 0,
+          "checkpoints_closed": 1,
+          "resume_count": 0
+        },
+        "last_reason": null,
+        "packrat": {
+          "approx_bytes": 472,
+          "budget_drops": 0,
+          "entries": 4,
+          "evictions": 0,
+          "hits": 8,
+          "pruned": 0,
+          "queries": 12
+        },
+        "packrat_enabled": true,
+        "span_trace": {
+          "dropped": 0,
+          "retained": 0
+        }
+      }
+    }
+  },
+  "exit_code": {
+    "label": "failure",
+    "value": 1
+  }
+}

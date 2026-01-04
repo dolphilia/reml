@@ -1,0 +1,62 @@
+[
+  {
+    "id": "6a4a21f0-9a3a-4f79-9c0b-0c0b7b9a9bb8",
+    "message": "metrics capability 'metrics.emit' denied: required StageRequirement::Exact(Beta) but runtime is StageId::Stable",
+    "severity": 1,
+    "domain": "runtime",
+    "codes": ["effects.contract.stage_mismatch"],
+    "primary": {
+      "file": "metrics://emit",
+      "start_line": 1,
+      "start_col": 1,
+      "end_line": 1,
+      "end_col": 1
+    },
+    "extensions": {
+      "effects.contract.capability": "metrics.emit",
+      "effects.contract.stage.required": "beta",
+      "effects.contract.stage.actual": "stable",
+      "effects.contract.required_effects": ["audit"],
+      "effects.contract.detail": "required StageRequirement::Exact(Beta) but runtime is StageId::Stable"
+    },
+    "audit_metadata": {
+      "metric_point.name": "metrics.latency.mean",
+      "metric_point.kind": "float",
+      "metric_point.value": 42.0,
+      "metric_point.timestamp.seconds": 1,
+      "metric_point.timestamp.nanos": 250000000,
+      "metric_point.tag.unit": "ms",
+      "metric_point.tag.component": "cli",
+      "metric_point.tags": {
+        "unit": "ms",
+        "component": "cli"
+      },
+      "effect.capability": "metrics.emit",
+      "effect.stage.required": "beta",
+      "effect.stage.actual": "stable",
+      "effect.required_capabilities": ["metrics.emit"],
+      "effect.actual_capabilities": ["metrics.emit"],
+      "effect.required_effects": ["audit"],
+      "effects.contract.detail": "required StageRequirement::Exact(Beta) but runtime is StageId::Stable"
+    },
+    "audit": {
+      "metadata": {
+        "event.kind": "runtime.diagnostic",
+        "effect.stage.required": "beta",
+        "effect.stage.actual": "stable"
+      },
+      "audit_id": "00000000-0000-0000-0000-000000000002",
+      "change_set": null,
+      "capability": "metrics.emit"
+    },
+    "timestamp": "2025-12-11T09:30:00Z",
+    "structured_hints": [
+      {
+        "kind": "info",
+        "payload": {
+          "message": "再実行する前に metrics.emit Capability を Stage stable まで昇格させてください"
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,19 @@
+module spec_core.match_guard
+
+use Core.Prelude as Prelude
+use Core.Parse.{Lex, Op.{Infix, Prefix}}
+
+// BNF: CompilationUnit / UseDecl（docs/spec/1-5-formal-grammar-bnf.md §1）
+fn describe_imports() -> Str {
+  Prelude.format(
+    "module=%s | use=%s",
+    [
+      "spec_core.match_guard",
+      "Core.Parse.{Lex, Op.{Infix, Prefix}}"
+    ]
+  )
+}
+
+fn main() -> Str {
+  describe_imports()
+}

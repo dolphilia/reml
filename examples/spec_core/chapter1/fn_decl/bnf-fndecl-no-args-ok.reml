@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.FnDecl.NoArgs
+
+use Core.Prelude
+
+// BNF: FnDecl（docs/spec/1-5-formal-grammar-bnf.md §2）
+fn phase_label() -> Str {
+  "phase4-ready"
+}
+
+fn main() -> Str {
+  phase_label()
+}

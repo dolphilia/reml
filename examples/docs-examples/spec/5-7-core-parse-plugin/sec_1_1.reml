@@ -1,0 +1,13 @@
+pub type PluginId = Str       // 例: "Reml.Web.Templating"
+pub type PluginSemVer = SemVer
+
+pub struct PluginMetadata {
+  pub id: PluginId,
+  pub version: PluginSemVer,
+  pub checksum: Option<Digest>,
+  pub description: Option<Str>,
+  pub homepage: Option<Url>,
+  pub license: Option<Str>,
+  pub required_core: SemVerRange,         // Reml コア互換範囲
+  pub required_cli: Option<SemVerRange>,  // `reml-plugin` CLI 互換範囲
+}

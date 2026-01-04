@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.Match.RegexUnsupportedTarget
+
+use Core.Prelude
+
+// 診断: pattern.regex.unsupported_target（非文字列ターゲットへの適用）
+fn parse_value(n: Int) -> Str {
+  match n with
+    | r"^\\d+$" as digits -> "digits=" + digits
+    | _ -> "fallback"
+}
+
+fn main() -> Str = parse_value(42)

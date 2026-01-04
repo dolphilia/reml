@@ -1,0 +1,36 @@
+module Spec.Core.Chapter2.Parser.RecoverSyncTo
+
+use Core.Parse as Parse
+use Core.Prelude
+
+// 目的: `sync_to` で同期点 `;` を消費しながら回復し、複数の欠落を 1 回で収集する。
+
+fn statement_value() -> Parse.Parser<Int> {
+  Parse.expect_keyword("let")
+    .skipL(Parse.expect_ident())
+    .skipL(Parse.expect_symbol("="))
+    .then(Parse.expect_int())
+    .map(|(_, value)| value)
+}
+
+fn statement() -> Parse.Parser<Int> {
+  statement_value()
+    .skipR(Parse.expect_symbol(";"))
+}
+
+fn statement_recovering() -> Parse.Parser<Int> {
+  let sync = Parse.sync_to(Parse.expect_symbol(";"))
+  Parse.recover_until(statement(), sync, 0)
+}
+
+fn program() -> Parse.Parser<List<Int>> {
+  Parse.many(statement_recovering())
+    .skipR(Parse.expect_eof())
+}
+
+fn main() -> Str {
+  let source = "let = 1; let x = ; let y = 3;"
+  match Parse.run_with_recovery(program(), source) with
+    Err(diag) -> diag.to_json()
+    Ok(values) -> format("ok=%s", [values.to_json()])
+}

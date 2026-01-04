@@ -1,0 +1,10 @@
+module Spec.Core.Chapter1.Literals.IntBoundaryMax
+
+use Core.Prelude
+
+// BNF: Literal（docs/spec/1-5-formal-grammar-bnf.md §4）
+let i64_max = 9_223_372_036_854_775_807
+
+fn main() -> Int {
+  i64_max
+}

@@ -1,0 +1,16 @@
+use Core.Parse
+use Core.Test
+use Core.Test.Dsl
+
+fn main() -> Result<(), TestError> {
+  let my_parser: Parser<Any> = todo
+  test_parser(my_parser) {
+    case "1 + 2" => Ast(Pattern("Add(Int(1), Int(2))"))
+    case "1 + " => Error({
+      code: "parser.unexpected_eof",
+      at: Some(Offset(4)),
+      message: None,
+    })
+    case "fn main() {}" => Ast(Pattern("Func(name=\"main\", ...)"))
+  }
+}

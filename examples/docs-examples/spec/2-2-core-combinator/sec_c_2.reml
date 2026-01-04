@@ -1,0 +1,7 @@
+fn run_with_cst<T>(parser: Parser<T>, input: Str, config: RunConfig) -> ParseResult<CstOutput<T>> = todo
+fn run_with_cst_shared<T>(parser: Parser<T>, input: Arc<str>, config: RunConfig) -> ParseResult<CstOutput<T>> = todo
+
+type CstOutput<T> = {
+  ast: T,
+  cst: CstNode,
+}

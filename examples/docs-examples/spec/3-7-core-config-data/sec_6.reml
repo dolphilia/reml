@@ -1,0 +1,22 @@
+use Core;
+use Core.Config;
+use Core.Diagnostics;
+
+fn review_config(old: AppConfig, new: AppConfig, schema: Schema<AppConfig>, audit: AuditSink) -> Result<(), Diagnostic> =
+  {
+    match compare(old, new, schema) with
+    | Ok(()) -> Ok(())
+    | Err(diff) -> {
+        let envelope = from_change(Change::Config(diff.clone()));
+        let table = diff_to_table(diff.clone());
+        emit(
+          diagnostic("config changes detected")
+            .with_severity(Severity::Warning)
+            .attach_audit(envelope)
+            .finish(),
+          audit,
+        )?;
+        println(render_summary(diff, OutputFormat::Markdown));
+        Err(Diagnostic::manual_review_required(table))
+      }
+  }

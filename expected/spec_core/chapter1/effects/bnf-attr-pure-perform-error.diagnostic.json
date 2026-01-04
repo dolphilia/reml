@@ -1,0 +1,26 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/spec_core/chapter1/effects/bnf-attr-pure-perform-error.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "effects.purity.violated",
+      "message": "`@pure` 関数 `announce` で `perform Console.log` が検出されました。",
+      "notes": [
+        {
+          "message": "`@pure` を外すか `Console.log` をハンドラで捕捉してください。"
+        }
+      ]
+    },
+    {
+      "severity": "error",
+      "code": "effects.contract.stage_mismatch",
+      "message": "`console::log` を呼び出すにはステージ `at_least:beta` が必要ですが、実行時ステージ `at_least:stable` では許可されていません。",
+      "notes": [
+        {
+          "message": "要求: `at_least:beta` / 実行時: `at_least:stable`"
+        }
+      ]
+    }
+  ]
+}

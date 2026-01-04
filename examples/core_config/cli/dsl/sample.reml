@@ -1,0 +1,14 @@
+use Core.Config
+use Core.Diagnostics
+
+effect ConfigCli : state {
+  // Config CLI 側で許可する最小限の操作を宣言する
+  operation apply : Config -> Result<Unit, Diagnostic>
+  operation current : Unit -> Config
+}
+
+@dsl_export(name = "ConfigCliBridge", category = "runtime_bridge")
+fn apply_config(cfg: Config) -> Result<Unit, Diagnostic> {
+  ensure(cfg.service.name != "", | | diagnostic("config.service.empty"));
+  Ok(())
+}

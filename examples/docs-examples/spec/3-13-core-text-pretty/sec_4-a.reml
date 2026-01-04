@@ -1,0 +1,11 @@
+use Core.Text.Pretty
+
+fn main() -> Str {
+  let doc = Pretty.group(
+    Pretty.concat(
+      Pretty.text("let"),
+      Pretty.concat(Pretty.softline(), Pretty.text("x = 1"))
+    )
+  )
+  Pretty.render(doc, 10)
+}

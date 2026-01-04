@@ -1,0 +1,27 @@
+pub type SchemaDiff<T> = {
+  added: List<Field<T>>,
+  removed: List<Field<T>>,
+  modified: List<FieldChange<T>>,
+}
+
+fn diff<T>(old: Schema<T>, new: Schema<T>) -> SchemaDiff<T>                    // `@pure`
+fn apply_patch<T>(schema: Schema<T>, patch: Patch<T>) -> Schema<T>            // `@pure`
+fn plan<T>(old: Schema<T>, new: Schema<T>) -> ChangeSet                       // `@pure`
+fn validate_migration<T>(old: Schema<T>, new: Schema<T>) -> Result<MigrationPlan, MigrationError> // `@pure`
+fn estimate_migration_cost<T>(plan: MigrationPlan) -> MigrationCost           // `@pure`
+
+pub type MigrationPlan = {
+  steps: List<MigrationStep>,
+  estimated_duration: Duration,
+  requires_downtime: Bool,
+  data_loss_risk: RiskLevel,
+}
+
+pub enum MigrationStep =
+  | AddField { name: Str, field: Field<T>, default: Option<T> }
+  | RemoveField { name: Str, backup_location: Option<Path> }
+  | RenameField { old_name: Str, new_name: Str }
+  | ChangeType { name: Str, old_type: TypeRef<T>, new_type: TypeRef<U>, converter: Option<(T) -> Result<U, ConversionError>> }
+  | ReorganizeData { strategy: ReorganizationStrategy }
+
+pub enum RiskLevel = None | Low | Medium | High | Critical

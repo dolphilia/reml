@@ -1,0 +1,10 @@
+type ParserMetaKind = Rule | Keyword | Symbol | Token
+
+type ParserMeta = {
+  id: ParserId,
+  kind: ParserMetaKind,
+  name: Str,
+  doc: Option<Str>,
+  children: List<ParserId>,
+  token_kind: Option<Str>,
+}

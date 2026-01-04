@@ -1,0 +1,41 @@
+[project]
+name = "core-config-sample"
+version = "0.1.0"
+stage = "beta"
+kind = "application"
+capabilities = ["core.audit"]
+
+dependencies = {}
+
+[dsl.audit_bridge]
+entry = "dsl/audit_bridge.reml"
+kind = "runtime_bridge"
+exports = [
+  {
+    name = "CoreConfigExport",
+    signature = {
+      name = "CoreConfigExport",
+      category = "runtime_bridge",
+      allows_effects = ["audit.emit", "io.fs"],
+      requires_capabilities = ["core.audit", "core.fs"],
+      stage_bounds = { minimum = "beta", current = "beta", maximum = "stable" }
+    }
+  }
+]
+expect_effects = ["audit.emit", "io.fs"]
+expect_effects_stage = "beta"
+capabilities = ["core.audit", "core.fs"]
+summary = "Sample DSL export wired to Manifest and RuntimeBridge metadata"
+
+[dsl.telemetry_bridge]
+entry = "dsl/telemetry_bridge.reml"
+kind = "language"
+exports = ["TelemetryDsl"]
+expect_effects = ["metrics.emit"]
+allow_prerelease = true
+capabilities = ["core.metrics"]
+summary = "Telemetry DSL placeholder"
+
+[build]
+features = ["packrat"]
+optimize = "debug"

@@ -1,0 +1,12 @@
+// Unicode White_Space（UAX #44）、タブ/全角空白を含む
+fn whitespace() -> Parser<()> = todo                   // 1 つ以上
+fn spaces0() -> Parser<()> = todo                      // 0 以上
+fn hspace0() -> Parser<()> = todo                      // 水平のみ
+fn vspace0() -> Parser<()> = todo                      // 垂直のみ（改行系）
+
+// コメント
+fn commentLine(prefix: Str) -> Parser<()> = todo       // 例: "//"
+fn commentBlock(start: Str, end: Str, nested: Bool = true) -> Parser<()> = todo
+
+// スキップ合成：空白・コメントを任意数
+fn skipMany(p: Parser<()>) -> Parser<()> = todo

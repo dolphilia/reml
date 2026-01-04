@@ -1,0 +1,9 @@
+type Span = {
+  source: SourceId,
+  byte_start: usize, byte_end: usize,
+  line_start: usize, col_start: usize,
+  line_end: usize,   col_end: usize
+}
+
+// 成功断片の履歴（IDE/可視化目的）。既定は OFF。
+type SpanTrace = List<(name: String, span: Span)>

@@ -1,0 +1,13 @@
+module Spec.Core.Chapter1.Effects.PureViolation
+
+use Core.Console
+
+@pure
+fn announce() -> Str {
+  perform Console.log("hi")
+  "done"
+}
+
+fn main() -> Str {
+  announce()
+}

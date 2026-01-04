@@ -1,0 +1,55 @@
+use Core;
+
+// Core.Collections 統合サンプル: 永続リスト → Map → Vec → Table → Cell/Ref の順で効果と差分を追う。
+
+fn stage_pairs() -> List<(String, String)> {
+  let steps = List.empty();
+  let steps = List.push_front(steps, ("deploy", "complete"));
+  let steps = List.push_front(steps, ("serve", "running"));
+  List.push_front(steps, ("load", "pending"))
+}
+
+fn stage_config() -> Result<Map<String, String>, CollectError> {
+  Map.from_pairs(stage_pairs())
+}
+
+fn stage_history() -> Result<Vec<String>, CollectError> {
+  let events = List.push_front(List.empty(), "deploy");
+  let events = List.push_front(events, "serve");
+  let events = List.push_front(events, "load");
+  Vec.collect_from(List.to_iter(events))
+}
+
+fn heartbeat(counter: Cell<i64>) -> i64 {
+  let current = Cell.get(counter);
+  Cell.set(counter, current + 1);
+  Cell.get(counter)
+}
+
+fn runtime_trace() -> Map<String, String> {
+  let table = Map.empty_map();
+  let table = Map.insert(table, "load", "pending");
+  let table = Map.insert(table, "serve", "running");
+  Map.insert(table, "deploy", "complete")
+}
+
+fn snapshot_table() -> Map<String, String> = runtime_trace()
+
+fn share_config_handle() -> Ref<Map<String, String>> {
+  let config = match stage_config() with
+    Ok(map) -> map
+    Err(_) -> Map.empty_map()
+  let master = Ref.new_ref(config);
+  Ref.clone_ref(master)
+}
+
+fn main() -> i64 {
+  let _history = match stage_history() with
+    Ok(vec) -> vec
+    Err(_) -> Vec.new();
+  let counter = Cell.new_cell(0);
+  let _count = heartbeat(counter);
+  let _snapshot = snapshot_table();
+  let _shared = share_config_handle();
+  0
+}

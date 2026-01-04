@@ -1,0 +1,14 @@
+pub type SyscallId = Str
+pub type SyscallRateLimit
+pub type SecurityError
+pub type SyscallDescriptor
+pub type Set<T> = List<T>
+
+pub type SyscallPolicy = {
+  allowed: Set<SyscallId>,
+  denied: Set<SyscallId>,
+  rate_limit: Option<SyscallRateLimit>,
+  require_audit: Bool,
+}
+
+fn enforce_syscall_policy(desc: SyscallDescriptor, policy: SyscallPolicy) -> Result<(), SecurityError> // `effect {security}`

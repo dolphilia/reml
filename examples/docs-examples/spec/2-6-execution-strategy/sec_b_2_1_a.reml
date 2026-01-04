@@ -1,0 +1,10 @@
+type RunArtifactMetadata = {
+  target: RunConfigTarget,
+  llvm_triple: Str,
+  data_layout: Str,
+  runtime_revision: Str,
+  stdlib_version: SemVer,
+  emitted_capabilities: Set<Str>,
+  timestamp: DateTime,
+  hash: Str
+}

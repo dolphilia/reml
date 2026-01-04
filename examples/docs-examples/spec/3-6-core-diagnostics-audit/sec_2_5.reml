@@ -1,0 +1,11 @@
+pub type AsyncErrorKind
+pub type AsyncErrorOrigin
+pub type Json
+pub type AsyncErrorLink
+
+type AsyncDiagnosticExtension = {
+  kind: AsyncErrorKind,
+  origin: AsyncErrorOrigin,
+  metadata: Map<Str, Json>,
+  cause_chain: List<AsyncErrorLink>,
+}

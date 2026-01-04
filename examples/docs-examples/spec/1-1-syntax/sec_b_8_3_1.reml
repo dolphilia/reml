@@ -1,0 +1,9 @@
+let embedded = embedded_dsl(
+  dsl_id = "reml",
+  start = "```reml",
+  end = "```",
+  parser = Reml.Parser.main,
+  lsp = Reml.Lsp.server,
+  mode = EmbeddedMode::ParallelSafe,
+  context = ContextBridge::inherit(["scope", "type_env"])
+)

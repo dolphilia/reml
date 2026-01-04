@@ -1,0 +1,57 @@
+module Examples.Practical.CorePath.SecurityCheck
+
+use Core
+use Core.Path
+use Core.Diagnostics
+use Core.Prelude
+
+type SecurityReport = new {
+  requested: Path,
+  sandboxed: Path,
+  is_symlink: Bool,
+}
+
+fn ensure_workspace_path(raw: Str, root: Path, policy: SecurityPolicy) -> Result<SecurityReport, Diagnostic> {
+  match path(raw) with
+    | Ok(requested) -> {
+      let normalized = normalize(requested.clone())
+
+      match validate_path(normalized.clone(), policy) with
+        | Ok(_) -> {
+          println("validate_path ok")
+          match sandbox_path(normalized.clone(), root) with
+            | Ok(sandboxed) -> {
+              match is_safe_symlink(sandboxed.clone()) with
+                | Ok(flag) -> {
+                  let report = SecurityReport({
+                    requested = normalized,
+                    sandboxed = sandboxed,
+                    is_symlink = flag,
+                  })
+                  Ok(report)
+                }
+                | Err(io_err) -> Err(io_err.into_diagnostic())
+            }
+            | Err(err) -> Err(err.into_diagnostic())
+        }
+        | Err(err) -> {
+          println("validate_path error")
+          Err(err.into_diagnostic())
+        }
+    }
+    | Err(err) -> Err(err.into_diagnostic())
+}
+
+fn main() -> Result<SecurityReport, Diagnostic> {
+  match path("/srv/app") with
+    | Ok(policy_root) -> {
+      let policy =
+        SecurityPolicy::new()
+          .add_allowed_root(policy_root.clone())
+          .allow_relative(false)
+      match path("/srv/app/tmp") with
+        | Ok(sandbox_root) -> ensure_workspace_path("secret.txt", sandbox_root, policy)
+        | Err(err) -> Err(err.into_diagnostic())
+    }
+    | Err(err) -> Err(err.into_diagnostic())
+}

@@ -1,0 +1,11 @@
+pub type RuntimeBridgeId = Str
+
+pub type RuntimeBridgeRegistry = Int
+pub type RuntimeBridgeDescriptor = Int
+pub type RuntimeBridgeError = Int
+pub type RuntimeBridgeHandle = Int
+
+fn runtime_bridge_registry() -> RuntimeBridgeRegistry                     // `effect {runtime}`
+fn register_bridge(descriptor: RuntimeBridgeDescriptor) -> Result<(), RuntimeBridgeError> // `effect {runtime}`
+fn describe_bridge(id: RuntimeBridgeId) -> Option<RuntimeBridgeDescriptor>         // `effect {runtime}`
+fn acquire_bridge(id: RuntimeBridgeId) -> Result<RuntimeBridgeHandle, RuntimeBridgeError> // `effect {runtime}`

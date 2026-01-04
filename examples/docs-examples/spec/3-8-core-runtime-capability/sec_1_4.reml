@@ -1,0 +1,52 @@
+pub type SchedulerHandle = Int
+pub type Future<T> = T
+pub type Any = Int
+pub type TaskMetrics = Int
+pub type Uuid = Str
+pub type ActorId = Int
+pub type MailboxHandle<T> = T
+pub type CapabilityError = Int
+pub type TransportHandle = Int
+pub type NodeId = Int
+pub type ExitStatus = Int
+pub type AsyncTracingHooks = Int
+
+pub type AsyncCapability = {
+  scheduler: SchedulerHandle,
+  spawn_task: fn(Future<Any>) -> TaskHandle,
+  supports_mailbox: fn() -> Bool,
+  tracing: Option<AsyncTracingHooks>,
+}
+
+pub type TaskHandle = {
+  id: Uuid,
+  cancel: fn() -> Bool,
+  metrics: TaskMetrics,
+}
+
+pub type ActorRuntimeCapability<Message> = {
+  allocate_mailbox: fn(ActorId, MailboxConfig) -> Result<MailboxHandle<Message>, CapabilityError>,
+  register_transport: fn(TransportHandle) -> Result<(), CapabilityError>,
+  diagnostics: ActorDiagnosticsHooks,
+}
+
+pub type MailboxConfig = {
+  capacity: Int,
+  overflow: OverflowPolicy,
+  priority: Option<PriorityPolicy>,
+}
+
+pub type ActorDiagnosticsHooks = {
+  on_spawn: fn(ActorId, NodeId) -> (),
+  on_exit: fn(ActorId, ExitStatus) -> (),
+  on_backpressure: fn(ActorId, MailboxStats) -> (),
+}
+
+pub type MailboxStats = {
+  pending: Int,
+  dropped: Int,
+  high_watermark: Int,
+}
+
+pub enum OverflowPolicy = DropNew | DropOld
+pub enum PriorityPolicy = FIFO | Priority { levels: Int }

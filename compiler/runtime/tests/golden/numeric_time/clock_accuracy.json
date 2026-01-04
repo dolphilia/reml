@@ -1,0 +1,67 @@
+{
+  "metric": "core.numeric_time.clock_accuracy",
+  "scenario": "clock_accuracy",
+  "status": "ok",
+  "command": "cargo bench --manifest-path compiler/runtime/Cargo.toml --features core-time --bench time_clock -- --noplot",
+  "cases": [
+    {
+      "name": "now",
+      "status": "ok",
+      "source": "tests/expected/time_now.json",
+      "min_latency_ns": 73.013,
+      "median_latency_ns": 73.187,
+      "max_latency_ns": 73.363,
+      "iterations": 68000000
+    },
+    {
+      "name": "monotonic_now",
+      "status": "ok",
+      "source": "tests/expected/time_now.json",
+      "min_latency_ns": 67.336,
+      "median_latency_ns": 67.455,
+      "max_latency_ns": 67.6,
+      "iterations": 74000000
+    },
+    {
+      "name": "duration_between_1ms",
+      "status": "ok",
+      "source": "compiler/runtime/benches/time_clock.rs",
+      "min_latency_ns": 10.966,
+      "median_latency_ns": 11.013,
+      "max_latency_ns": 11.09,
+      "iterations": 454000000
+    },
+    {
+      "name": "duration_between_5ms",
+      "status": "ok",
+      "source": "compiler/runtime/benches/time_clock.rs",
+      "min_latency_ns": 10.996,
+      "median_latency_ns": 11.018,
+      "max_latency_ns": 11.04,
+      "iterations": 453000000
+    },
+    {
+      "name": "duration_between_10ms",
+      "status": "ok",
+      "source": "compiler/runtime/benches/time_clock.rs",
+      "min_latency_ns": 10.958,
+      "median_latency_ns": 10.97,
+      "max_latency_ns": 10.983,
+      "iterations": 450000000
+    },
+    {
+      "name": "sleep",
+      "status": "pending",
+      "source": "tests/expected/time_sleep.json",
+      "target_duration_ns": 1000000,
+      "notes": [
+        "Dedicated latency measurement for sleep() will be captured once the clock_accuracy scenario is wired into CI.",
+        "This placeholder keeps the golden layout stable for scripts/validate-diagnostic-json.sh --suite numeric_time."
+      ]
+    }
+  ],
+  "notes": [
+    "Derived from Criterion output stored under target/criterion/time_clock.",
+    "Use this golden to detect regressions in syscall latency aggregation for Core.Time."
+  ]
+}

@@ -1,0 +1,7 @@
+pub type SecurityCapability = {
+  enforce_security_policy: fn(SecurityPolicy) -> Result<(), SecurityError>,    // effect {security, audit}
+  current_policy: fn() -> SecurityPolicy,                                       // effect {security}
+  verify_signature: fn(CapabilityId, DigitalSignature) -> Result<(), SecurityError>, // effect {security}
+  audit_violation: fn(SecurityViolationReport) -> Result<(), CapabilityError>,  // effect {audit}
+  policy_digest: fn() -> PolicyDigest,                                          // @pure
+}

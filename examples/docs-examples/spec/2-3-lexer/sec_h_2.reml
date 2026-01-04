@@ -1,0 +1,10 @@
+type LayoutProfile = {
+  indent_token: Str = "<indent>",
+  dedent_token: Str = "<dedent>",
+  newline_token: Str = "<newline>",
+  offside: Bool = false,          // true のときオフサイド規則を有効化
+  allow_mixed_tabs: Bool = false, // タブとスペース混在を許容するか
+}
+
+fn layout(profile: LayoutProfile) -> Parser<()> = todo           // レイアウトトークンを生成
+fn layout_token(profile: LayoutProfile, s: Str) -> Parser<()> = todo // indent/dedent/newline 判定

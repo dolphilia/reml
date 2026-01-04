@@ -1,0 +1,28 @@
+type EmbeddedDslSpec<T> = {
+  dsl_id: Str,
+  start: Str,
+  end: Str,
+  parser: Parser<T>,
+  lsp: Option<LspServer>,
+  mode: EmbeddedMode,
+  context: ContextBridge,
+}
+
+type EmbeddedMode = ParallelSafe | SequentialOnly | Exclusive
+
+type ContextBridge =
+  | Inherit([Str])
+  | Custom(ContextBridgeHandler)
+
+type ContextBridgePayload = Map<Str, Json>
+type ContextBridgeHandler = fn(ContextBridgePayload) -> ContextBridgePayload
+
+type EmbeddedNode<T> = {
+  dsl_id: Str,
+  span: Span,
+  ast: T,
+  cst: Option<CstNode>,
+  diagnostics: List<Diagnostic>,
+}
+
+fn embedded_dsl<T>(spec: EmbeddedDslSpec<T>) -> Parser<EmbeddedNode<T>> = todo

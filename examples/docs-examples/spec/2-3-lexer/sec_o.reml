@@ -1,0 +1,11 @@
+// 文字レベルでの解析
+fn grapheme() -> Parser<Grapheme> = todo                    // 拡張書記素クラスタ単位
+fn char_where(pred: Char -> Bool) -> Parser<Char> = todo    // Unicode スカラ値での条件解析
+
+// Unicode プロパティベース解析
+fn unicode_category(cat: String) -> Parser<Char> = todo     // "Lu", "Nd" など
+fn unicode_script(name: String) -> Parser<Char> = todo      // "Han", "Hiragana" など
+fn unicode_property(name: String) -> Parser<Char> = todo    // "White_Space" など
+
+// UAX #31 識別子解析（安全性統合）
+fn identifier(profile: IdentifierProfile) -> Parser<Str> = todo  // NFC・Bidi・Confusable検査含む

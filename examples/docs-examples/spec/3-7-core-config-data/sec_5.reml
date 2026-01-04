@@ -1,0 +1,3 @@
+fn diff_to_table(diff: ChangeSet) -> Table<Str, Json>                      // `effect {mut}`
+fn render_summary(diff: ChangeSet, fmt: OutputFormat) -> String            // `effect {mem}`
+fn attach_exit_code(diag: Diagnostic) -> ExitCode                          // `@pure`

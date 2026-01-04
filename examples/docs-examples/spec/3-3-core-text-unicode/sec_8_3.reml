@@ -1,0 +1,10 @@
+pub type TemplateProgram
+pub type TemplateContext = Map<Str, Value>
+pub type TemplateRenderCtx
+pub type TemplateSink = fn(Chunk) -> Result<(), TemplateError>
+pub enum EscapePolicy = HtmlStrict | Text | Custom(fn(Str) -> Result<String, TemplateError>)
+
+fn compile(template: Str, registry: &TemplateFilterRegistry) -> Result<TemplateProgram, TemplateError> // `effect {unicode, mem}`
+fn render(program: &TemplateProgram, context: TemplateContext, sink: TemplateSink) -> Result<(), TemplateError> // `effect {runtime, io, security}`
+fn render_to_string(program: &TemplateProgram, context: TemplateContext) -> Result<String, TemplateError>        // `effect {runtime, mem, security}`
+fn with_escape_policy(program: &TemplateProgram, policy: EscapePolicy) -> TemplateProgram                       // `@pure`

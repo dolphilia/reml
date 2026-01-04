@@ -1,0 +1,14 @@
+pub struct ParserPlugin {
+  pub metadata: PluginMetadata,
+  pub capabilities: List<ParserPluginCapability>,
+  pub dependencies: List<PluginDependency>,
+  pub register: fn(PluginRegistrar) -> Result<(), PluginError>, // effect {parser, runtime}
+}
+
+pub struct PluginRegistrar {
+  pub register_capability: fn(ParserPluginCapability) -> Result<(), PluginError>,
+  pub register_parser: fn(Str, Parser) -> Result<(), PluginError>,
+  pub register_schema: fn(Str, Schema) -> Result<(), PluginError>,
+  pub register_diagnostic: fn(DiagnosticDescriptor) -> Result<(), PluginError>,
+  pub with_audit: fn(fn(AuditContext) -> Result<(), PluginError>) -> Result<(), PluginError>,
+}

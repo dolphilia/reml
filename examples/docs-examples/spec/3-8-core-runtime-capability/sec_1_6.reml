@@ -1,0 +1,21 @@
+pub type CapabilityId = Str
+pub type StageRequirement = Int
+pub type StageId = Int
+pub type CapabilityDescriptor = Int
+
+pub type CapabilityError = {
+  kind: CapabilityErrorKind,
+  message: Str,
+  capability_id: Option<CapabilityId>,
+  required_stage: Option<StageRequirement>,
+  actual_stage: Option<StageId>,
+  capability_metadata: Option<CapabilityDescriptor>,
+}
+
+pub enum CapabilityErrorKind =
+  | AlreadyRegistered
+  | NotFound
+  | InvalidHandle
+  | UnsafeViolation
+  | SecurityViolation
+  | StageViolation

@@ -1,0 +1,8 @@
+pub type FfiLibrary
+pub type FfiFnSig
+pub type FfiWrapSpec
+pub type FfiError
+
+fn bind_libm() -> Result<FfiLibrary, FfiError>                         // `effect {ffi}`
+fn bind_cos<Args, Ret>(lib: FfiLibrary, sig: FfiFnSig, spec: FfiWrapSpec)
+  -> Result<fn(Args) -> Result<Ret, FfiError>, FfiError>               // `effect {ffi}`

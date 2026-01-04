@@ -1,0 +1,26 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/practical/core_config/audit_bridge/audit_bridge.reml",
+  "manifest": {
+    "entry": "practical/core_config/audit_bridge/audit_bridge.reml",
+    "stage": "beta",
+    "exports": [
+      {
+        "name": "CoreConfigExport",
+        "category": "runtime_bridge",
+        "allows_effects": ["audit.emit", "io.fs"],
+        "requires_capabilities": ["core.audit", "core.fs"],
+        "stage_bounds": {
+          "minimum": "beta",
+          "current": "beta",
+          "maximum": "stable"
+        }
+      }
+    ]
+  },
+  "capability_alignment": {
+    "manifest_capabilities": ["core.audit", "core.fs"],
+    "dsl_requires": ["core.audit", "core.fs"],
+    "stage_requirement": "StageRequirement::Exact(Beta)"
+  }
+}

@@ -1,0 +1,18 @@
+pub type UnsafeContext
+pub type CodeLocation
+
+fn audited_unsafe_block<T>(operation: Str, f: () -> T) -> T                    // `effect {unsafe, audit}`
+fn log_unsafe_operation(op: UnsafeOperation, context: UnsafeContext) -> ()     // `effect {audit}`
+
+pub type UnsafeOperation = {
+  operation_type: UnsafeOperationType,
+  memory_address: Option<usize>,
+  size: Option<usize>,
+  stack_trace: List<CodeLocation>,
+}
+
+pub enum UnsafeOperationType = PointerDereference
+  | MemoryAllocation
+  | MemoryDeallocation
+  | TypeTransmutation
+  | ForeignCall

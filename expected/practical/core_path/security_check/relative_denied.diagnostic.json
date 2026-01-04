@@ -1,0 +1,16 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/practical/core_path/security_check/relative_denied.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "core.path.security.invalid",
+      "message": "SecurityPolicy により relative_path_denied で拒否されました。",
+      "extensions": {
+        "security": {
+          "reason": "relative_path_denied"
+        }
+      }
+    }
+  ]
+}

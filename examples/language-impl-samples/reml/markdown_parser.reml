@@ -1,0 +1,329 @@
+module samples.language_impl_samples.markdown_parser
+
+use ::Core.Collection.List as List
+use ::Core.Text as Text
+use ::Core.Text.String as String
+use ::Core.Text.Char as Char
+use ::Core.Text.Grapheme as Grapheme
+
+/// Markdown AST の要素型（改善版：Unicode幅計算統合）。
+///
+/// 簡易実装のため、見出し・段落・リスト・コードブロック・強調・リンクのみ対応。
+///
+/// 改善点（仕様 1-4/2-5/3-3 準拠）：
+/// - `Text.display_width` による Grapheme 単位の列幅計算（L58）
+/// - `ParseState` の列共有規約（2-5 §B-11）に準拠した位置追跡
+/// - Unicode 3層モデル（Byte/Char/Grapheme）を意識した実装
+type Block =
+  | Heading(level: Int, inline: List<Inline>)
+  | Paragraph(inline: List<Inline>)
+  | UnorderedList(items: List<List<Inline>>)
+  | OrderedList(items: List<List<Inline>>)
+  | CodeBlock(lang: Option<String>, code: String)
+  | HorizontalRule
+
+type Inline =
+  | Text(String)
+  | Strong(List<Inline>)
+  | Emphasis(List<Inline>)
+  | Code(String)
+  | Link(text: List<Inline>, url: String)
+  | LineBreak
+
+type Document = List<Block>
+
+/// パーサー状態：位置情報とエラー蓄積。
+type ParseState = {
+  input: String,
+  pos: Int,        // バイト位置
+  line: Int,
+  line_start: Int, // 現在行のバイト先頭
+  col: Int,
+  errors: List<String>
+}
+
+type ParseResult<T> = Result<(T, ParseState), String>
+
+/// 手続き的パーサー：Unicode 3層モデルを意識した実装。
+/// Byte/Char を追跡しつつ `display_width` で Grapheme 単位の表示幅を計算する。
+
+/// 現在位置の1文字（Char）を取得。
+let peek(state: ParseState) -> Option<Char> =
+  String.char_at(state.input, state.pos)
+
+/// 1文字（Char）を消費して進める（改善版：仕様 1-4/3-3 準拠）。
+///
+/// 改善点：
+/// - `Text.display_width` で Grapheme 単位の表示幅を正確に計算
+/// - 絵文字・結合文字・全角文字の幅を適切に扱う
+/// - 列番号（col）は Grapheme 単位の表示幅で更新（2-5 §B-11 準拠）
+let advance_char(state: ParseState) -> ParseState =
+  match peek(state) with
+  | None -> state
+  | Some(ch) ->
+    let byte_len = Char.utf8_len(ch)
+    let new_pos = state.pos + byte_len
+    let (new_line, new_line_start, new_col) =
+      if ch == '\n' then (state.line + 1, new_pos, 0)
+      else
+        // 改善: Text.display_width で行頭からの表示幅を計算
+        let line_slice = String.slice(state.input, state.line_start, new_pos)
+        let width = Text.display_width(line_slice)
+        (state.line, state.line_start, width)
+    { state with pos = new_pos, line = new_line, line_start = new_line_start, col = new_col }
+
+/// 固定文字列をマッチ（NFC正規化前提）。
+let match_string(target: String, state: ParseState) -> Option<ParseState> =
+  let remaining = String.slice_from(state.input, state.pos)
+  if String.starts_with(remaining, target) then
+    let byte_len = String.byte_len(target)
+    Some({ state with pos = state.pos + byte_len })
+  else
+    None
+
+/// 空白をスキップ（水平のみ）。
+let skip_hspace(state: ParseState) -> ParseState =
+  match peek(state) with
+  | Some(ch) if Char.is_horizontal_space(ch) ->
+    skip_hspace(advance_char(state))
+  | _ -> state
+
+/// 行末まで読む。
+let read_until_eol(state: ParseState) -> (String, ParseState) =
+  let start = state.pos
+  let rec loop(s: ParseState) -> ParseState =
+    match peek(s) with
+    | Some('\n') | None -> s
+    | Some(_) -> loop(advance_char(s))
+  let end_state = loop(state)
+  let text = String.slice(state.input, start, end_state.pos)
+  (text, end_state)
+
+/// 改行を消費。
+let consume_newline(state: ParseState) -> Option<ParseState> =
+  match peek(state) with
+  | Some('\n') -> Some(advance_char(state))
+  | _ -> None
+
+/// 見出し行のパース（`# Heading` 形式）。
+let parse_heading(state: ParseState) -> ParseResult<Block> =
+  let state1 = skip_hspace(state)
+  // `#` の連続をカウント
+  let rec count_hash(s: ParseState, n: Int) -> (Int, ParseState) =
+    match peek(s) with
+    | Some('#') -> count_hash(advance_char(s), n + 1)
+    | _ -> (n, s)
+
+  let (level, state2) = count_hash(state1, 0)
+  if level == 0 || level > 6 then
+    Err("見出しレベルは1-6の範囲内である必要があります")
+  else
+    let state3 = skip_hspace(state2)
+    let (text, state4) = read_until_eol(state3)
+    let inline = [Text(String.trim(text))]  // 簡易実装：インライン要素は未パース
+    let state5 = consume_newline(state4) |> Option.unwrap_or(state4)
+    Ok((Heading(level, inline), state5))
+
+/// 水平線のパース（`---`, `***`, `___`）。
+let parse_horizontal_rule(state: ParseState) -> ParseResult<Block> =
+  let state1 = skip_hspace(state)
+  let (text, state2) = read_until_eol(state1)
+  let trimmed = String.trim(text)
+  let is_rule =
+    (String.all(trimmed, |c| c == '-') && String.char_len(trimmed) >= 3) ||
+    (String.all(trimmed, |c| c == '*') && String.char_len(trimmed) >= 3) ||
+    (String.all(trimmed, |c| c == '_') && String.char_len(trimmed) >= 3)
+
+  if is_rule then
+    let state3 = consume_newline(state2) |> Option.unwrap_or(state2)
+    Ok((HorizontalRule, state3))
+  else
+    Err("水平線として認識できません")
+
+/// コードブロックのパース（```言語名）。
+let parse_code_block(state: ParseState) -> ParseResult<Block> =
+  match match_string("```", state) with
+  | None -> Err("コードブロック開始が見つかりません")
+  | Some(state1) ->
+    let (lang_line, state2) = read_until_eol(state1)
+    let lang =
+      let trimmed = String.trim(lang_line)
+      if String.is_empty(trimmed) then None else Some(trimmed)
+    let state3 = consume_newline(state2) |> Option.unwrap_or(state2)
+
+    // コードブロック内容を ```閉じまで読む
+    let rec read_code(s: ParseState, lines: List<String>) -> (List<String>, ParseState) =
+      match match_string("```", s) with
+      | Some(end_state) -> (lines, end_state)
+      | None ->
+        match peek(s) with
+        | None -> (lines, s)  // EOF
+        | Some(_) ->
+          let (line, s2) = read_until_eol(s)
+          let s3 = consume_newline(s2) |> Option.unwrap_or(s2)
+          read_code(s3, List.append(lines, [line]))
+
+    let (code_lines, state4) = read_code(state3, [])
+    let code = String.join(code_lines, "\n")
+    let state5 = consume_newline(state4) |> Option.unwrap_or(state4)
+    Ok((CodeBlock(lang, code), state5))
+
+/// リスト項目のパース（簡易版：`-` または `*` のみ）。
+let parse_unordered_list(state: ParseState) -> ParseResult<Block> =
+  let rec parse_items(s: ParseState, items: List<List<Inline>>) -> (List<List<Inline>>, ParseState) =
+    let s1 = skip_hspace(s)
+    match peek(s1) with
+    | Some('-') | Some('*') ->
+      let s2 = advance_char(s1)
+      let s3 = skip_hspace(s2)
+      let (text, s4) = read_until_eol(s3)
+      let inline = [Text(String.trim(text))]
+      let s5 = consume_newline(s4) |> Option.unwrap_or(s4)
+      parse_items(s5, List.append(items, [inline]))
+    | _ -> (items, s)
+
+  let (items, state_end) = parse_items(state, [])
+  if List.is_empty(items) then
+    Err("リスト項目が見つかりません")
+  else
+    Ok((UnorderedList(items), state_end))
+
+/// 段落のパース（簡易版：空行まで）。
+let parse_paragraph(state: ParseState) -> ParseResult<Block> =
+  let rec read_lines(s: ParseState, lines: List<String>) -> (List<String>, ParseState) =
+    match peek(s) with
+    | None -> (lines, s)
+    | Some('\n') ->
+      let s1 = advance_char(s)
+      match peek(s1) with
+      | Some('\n') -> (lines, s1)  // 空行で段落終了
+      | _ -> read_lines(s1, List.append(lines, [""]))
+    | Some(_) ->
+      let (line, s2) = read_until_eol(s)
+      let s3 = consume_newline(s2) |> Option.unwrap_or(s2)
+      read_lines(s3, List.append(lines, [line]))
+
+  let (lines, state_end) = read_lines(state, [])
+  let text = String.join(lines, " ")
+  let inline = [Text(String.trim(text))]
+  Ok((Paragraph(inline), state_end))
+
+/// ブロック要素のパース（優先順位付き試行）。
+let parse_block(state: ParseState) -> ParseResult<Block> =
+  let state1 = skip_hspace(state)
+
+  // 空行スキップ
+  match peek(state1) with
+  | Some('\n') ->
+    let state2 = advance_char(state1)
+    parse_block(state2)
+  | None -> Err("EOF")
+  | Some('#') -> parse_heading(state1)
+  | Some('`') ->
+    match match_string("```", state1) with
+    | Some(_) -> parse_code_block(state1)
+    | None -> parse_paragraph(state1)
+  | Some('-') | Some('*') | Some('_') ->
+    // 水平線かリストか判定
+    match parse_horizontal_rule(state1) with
+    | Ok(result) -> Ok(result)
+    | Err(_) -> parse_unordered_list(state1)
+  | Some(_) -> parse_paragraph(state1)
+
+/// ドキュメント全体のパース。
+pub fn parse(input: String) -> Result<Document, String> =
+  let initial_state = {
+    input: input,
+    pos: 0,
+    line: 1,
+    line_start: 0,
+    col: 0,
+    errors: []
+  }
+
+  let rec parse_all(state: ParseState, blocks: List<Block>) -> Result<Document, String> =
+    match parse_block(state) with
+    | Ok((block, new_state)) ->
+      parse_all(new_state, List.append(blocks, [block]))
+    | Err("EOF") -> Ok(blocks)
+    | Err(msg) -> Err(msg)
+
+  parse_all(initial_state, [])
+
+/// 簡易的なレンダリング（検証用）。
+pub fn render_to_string(doc: Document) -> String =
+  let render_inline(inline: List<Inline>) -> String =
+    inline
+    |> List.map(|i| match i with
+      | Text(s) -> s
+      | Strong(inner) -> "**" ++ render_inline(inner) ++ "**"
+      | Emphasis(inner) -> "*" ++ render_inline(inner) ++ "*"
+      | Code(s) -> "`" ++ s ++ "`"
+      | Link(text, url) -> "[" ++ render_inline(text) ++ "](" ++ url ++ ")"
+      | LineBreak -> "\n"
+    )
+    |> String.concat
+
+  let render_block(block: Block) -> String =
+    match block with
+    | Heading(level, inline) ->
+      let prefix = String.repeat("#", level)
+      prefix ++ " " ++ render_inline(inline) ++ "\n\n"
+    | Paragraph(inline) ->
+      render_inline(inline) ++ "\n\n"
+    | UnorderedList(items) ->
+      items
+      |> List.map(|item| "- " ++ render_inline(item) ++ "\n")
+      |> String.concat
+      |> (|s| s ++ "\n")
+    | OrderedList(items) ->
+      items
+      |> List.map_indexed(|i, item| format("{i + 1}. {render_inline(item)}\n"))
+      |> String.concat
+      |> (|s| s ++ "\n")
+    | CodeBlock(lang, code) ->
+      let lang_str = lang |> Option.map(|l| l) |> Option.unwrap_or("")
+      "```" ++ lang_str ++ "\n" ++ code ++ "\n```\n\n"
+    | HorizontalRule ->
+      "---\n\n"
+
+  doc
+  |> List.map(render_block)
+  |> String.concat
+
+/// 改善マトリクス観点6「Unicode/Grapheme 操作」の対応まとめ:
+///
+/// **改善前の課題:**
+/// - L40, L48: `ParseState`→`Diagnostic` の列共有規約が未統一
+/// - `display_width` による幅計算が整備されていたが、明示的な説明が不足
+/// - IDE/LSP実装での Grapheme 単位幅計算の活用例が未整備
+///
+/// **改善後:**
+/// - `advance_char` 関数（L60-73）で `Text.display_width` を活用し、仕様 1-4/3-3 準拠の幅計算を実装
+/// - 列番号（col）を Grapheme 単位の表示幅で更新（2-5 §B-11 準拠）
+/// - 絵文字（🎉, 👨‍👩‍👧‍👦）、結合文字（é = e + ́）、全角文字（あ、漢）の幅を正確に扱う
+/// - Unicode 3層モデル（Byte/Char/Grapheme）を意識した位置追跡をコメントで明示
+///
+/// **実装の詳細:**
+/// 1. バイト位置（pos）: UTF-8バイト単位のオフセット（ファイルI/O用）
+/// 2. 文字位置（Char）: Unicodeスカラー値（コードポイント）単位
+/// 3. 表示幅（col）: Grapheme単位の表示幅（East Asian Width準拠）
+///
+/// **今後の推奨事項（仕様 1-4/2-5/3-3 準拠）:**
+/// 1. IDE/LSP実装で `GraphemeSeq::width` を活用した抜粋表示検証を実施
+/// 2. エラー診断時のスパン情報に Grapheme 幅を含めることで、正確な列位置を報告
+/// 3. `Diagnostic.from_parse_error` で `ParseState.col` を活用し、IDE上でカーソル位置を正確に表示
+/// 4. Markdown の表（table）パース時に列幅を Grapheme 単位で計算
+///
+/// **Unicode幅計算の実例:**
+/// - ASCII文字（"a"）: 1幅
+/// - 全角文字（"あ"）: 2幅
+/// - 絵文字（"🎉"）: 2幅
+/// - 結合文字（"é" = "e" + 結合アクセント）: 1幅
+/// - 家族絵文字（"👨‍👩‍👧‍👦" = ZWJ結合）: 2幅（1つのGraphemeとして扱う）
+///
+/// **参照仕様:**
+/// - 1-4 §G.1: Unicode文字モデル（Byte/Char/Grapheme）
+/// - 2-5 §B-11: ParseState→Diagnostic の列共有規約
+/// - 3-3 §5.1: display_width による幅計算手順
+/// - guides/core-parse-streaming.md: ストリーミングパーサーでのGrapheme処理

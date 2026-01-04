@@ -1,0 +1,97 @@
+{
+  "scenario": "emit_metric",
+  "cases": [
+    {
+      "name": "latency.mean",
+      "metric": {
+        "name": "latency.mean",
+        "value": {
+          "kind": "float",
+          "value": 12.5
+        },
+        "timestamp": {
+          "seconds": 1700000000,
+          "nanos": 123000000
+        },
+        "tags": {
+          "unit": "ms",
+          "component": "ingest"
+        },
+        "audit_id": "audit-latency-mean"
+      },
+      "audit_metadata": {
+        "metric_point.name": "latency.mean",
+        "metric_point.kind": "float",
+        "metric_point.value": 12.5,
+        "metric_point.timestamp.seconds": 1700000000,
+        "metric_point.timestamp.nanos": 123000000,
+        "metric_point.audit_id": "audit-latency-mean",
+        "metric_point.tag.unit": "ms",
+        "metric_point.tag.component": "ingest",
+        "metric_point.tags": {
+          "unit": "ms",
+          "component": "ingest"
+        },
+        "effect.capability": "metrics.emit",
+        "effect.stage.required": "stable",
+        "effect.stage.actual": "stable",
+        "effect.required_capabilities": [
+          "metrics.emit"
+        ],
+        "effect.actual_capabilities": [
+          "metrics.emit"
+        ]
+      }
+    },
+    {
+      "name": "timer.sleep_ns",
+      "metric": {
+        "name": "timer.sleep_ns",
+        "value": {
+          "kind": "duration",
+          "value": {
+            "seconds": 0,
+            "nanos": 1000000
+          }
+        },
+        "timestamp": {
+          "seconds": 1700000010,
+          "nanos": 5000
+        },
+        "tags": {
+          "env": "ci",
+          "stage": "beta"
+        }
+      },
+      "audit_metadata": {
+        "metric_point.name": "timer.sleep_ns",
+        "metric_point.kind": "duration",
+        "metric_point.value": {
+          "seconds": 0,
+          "nanos": 1000000
+        },
+        "metric_point.timestamp.seconds": 1700000010,
+        "metric_point.timestamp.nanos": 5000,
+        "metric_point.tag.env": "ci",
+        "metric_point.tag.stage": "beta",
+        "metric_point.tags": {
+          "env": "ci",
+          "stage": "beta"
+        },
+        "effect.capability": "metrics.emit",
+        "effect.stage.required": "stable",
+        "effect.stage.actual": "stable",
+        "effect.required_capabilities": [
+          "metrics.emit"
+        ],
+        "effect.actual_capabilities": [
+          "metrics.emit"
+        ]
+      }
+    }
+  ],
+  "notes": [
+    "Used by tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario emit_metric.",
+    "Ensures MetricPoint JSON embeds capability metadata and audit tags for collectors."
+  ]
+}

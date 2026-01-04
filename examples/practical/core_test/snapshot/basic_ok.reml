@@ -1,0 +1,10 @@
+module Examples.Practical.CoreTest.Snapshot.BasicOk
+
+use Core.Test
+
+fn main() -> Str {
+  let outcome = Test.assert_snapshot("core_test_basic", "alpha")
+  match outcome with
+    | Ok(_) -> "snapshot:ok"
+    | Err(_) -> "snapshot:error"
+}

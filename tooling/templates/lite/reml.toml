@@ -1,0 +1,20 @@
+[project]
+name = "reml-lite-sample"
+version = "0.1.0"
+stage = "lite"
+
+[dsl.lite]
+entry = "src/main.reml"
+exports = ["LiteDsl"]
+kind = "config"
+expect_effects = []
+capabilities = []
+allow_prerelease = true
+summary = "Lite DSL template"
+
+[config.compatibility.json]
+profile = "json-relaxed"
+trailing_comma = "arrays_and_objects"
+unquoted_key = "allow_alpha_numeric"
+duplicate_key = "last_write_wins"
+feature_guard = ["json5", "bare_keys", "trailing_comma"]

@@ -1,0 +1,6 @@
+pub type EnvError
+pub type Path
+
+fn get_temp_dir() -> Result<Path, EnvError>                        // `effect {io}`
+fn cache_dir(app: Str) -> Result<Path, EnvError>                   // `effect {io}`
+fn config_dir(app: Str) -> Result<Path, EnvError>                  // `effect {io}`

@@ -1,0 +1,29 @@
+fn configure(parser: Parser<Any>, file: Path, project_id: ProjectId) -> () = {
+  let base = RunConfig{};
+  let shared =
+    base
+      .with_extension("lex", |map| {
+        map.insert("profile", Any::from(ConfigTriviaProfile::strict_json));
+        map
+      })
+      .with_extension("recover", |map| {
+        map.insert("mode", Any::from("collect"));
+        map.insert("sync_tokens", Any::from(Set::from([";", "\n"])));
+        map.insert("max_diagnostics", Any::from(64));
+        map.insert("max_resync_bytes", Any::from(4096));
+        map.insert("max_recoveries", Any::from(128));
+        map.insert("notes", Any::from(true));
+        map
+      })
+      .with_extension("stream", |map| {
+        map.insert("resume_hint", Any::from(DemandHint{
+          min_bytes: 256,
+          preferred_bytes: Some(1024),
+          frame_boundary: None
+        }));
+        map
+      });
+
+  Core.CLI.parse_file(parser, file, shared);
+  Core.LSP.Parser.attach(project_id, parser, shared);
+}

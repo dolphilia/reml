@@ -1,0 +1,4 @@
+let example =
+  attempt(sym("if").then(expr).then(block))
+    .or(attempt(sym("while").then(expr).then(block)))
+    .or(stmtSimple)

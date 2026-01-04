@@ -1,0 +1,24 @@
+use Core;
+use Core.Numeric;
+use Core.Data;
+
+pub type Duration
+pub type AuditSink
+
+fn duration_to_ms(d: Duration) -> Float // `@pure`
+
+fn summarize_latency(samples: Iter<Duration>, audit: AuditSink) -> Result<MetricPoint<Float>, Diagnostic> {
+  let ms = samples
+    |> Iter.map(duration_to_ms)
+    |> Iter.collect_vec();
+
+  let stats = quantiles(ms.iter(), List::from([0.95]))?;
+  let p95 = stats.get(0.95).unwrap_or(0.0);
+  let mean = mean(ms.iter()).unwrap_or(0.0);
+
+  let mp = metric_point("latency.mean", mean)
+    |> attach_audit(Some(AuditId::current()));
+
+  emit_metric(metric_point("latency.p95", p95), audit)?;
+  Ok(mp)
+}

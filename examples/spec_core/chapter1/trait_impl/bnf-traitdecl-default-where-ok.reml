@@ -1,0 +1,24 @@
+module Spec.Core.Chapter1.TraitImpl.DefaultWhere
+
+use Core.Prelude
+
+// BNF: TraitDecl / ImplDecl（docs/spec/1-5-formal-grammar-bnf.md §2）
+trait Show<T> where T: Copy {
+  fn show(self) -> Str
+  fn show_with_label(self, label: Str = "default") -> Str {
+    label + ":" + self.show()
+  }
+}
+
+type Pair = { left: Int, right: Int }
+
+impl Show<Pair> for Pair {
+  fn show(self) -> Str {
+    format("(%d,%d)", [self.left, self.right])
+  }
+}
+
+fn main() -> Str {
+  let point: Pair = { left = 3, right = 9 }
+  point.show_with_label("pair")
+}

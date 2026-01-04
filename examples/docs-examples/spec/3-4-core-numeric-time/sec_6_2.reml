@@ -1,0 +1,8 @@
+pub type Decimal
+pub type CurrencyCode
+pub type NumericError
+
+// 金融計算用の高精度 Decimal 型
+fn currency_add(a: Decimal, b: Decimal, currency: CurrencyCode) -> Result<Decimal, NumericError> // `@pure`
+fn compound_interest(principal: Decimal, rate: Float, periods: u32) -> Result<Decimal, NumericError> // `@pure`
+fn net_present_value(cashflows: Iter<Decimal>, rate: Float) -> Result<Decimal, NumericError>    // `@pure`

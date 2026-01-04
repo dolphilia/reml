@@ -1,0 +1,11 @@
+// 既定値で穴埋め（action="default"）
+fn recover_with_default<T>(p: Parser<T>, until: Parser<()>, value: T) -> Parser<T> = todo
+
+// 同期点まで読み飛ばして継続（action="skip"）
+fn recover_until<T>(p: Parser<T>, until: Parser<()>, value: T) -> Parser<T> = todo
+
+// 欠落トークンを補挿し、FixIt を付与して継続（action="insert"）
+fn recover_with_insert<T>(p: Parser<T>, until: Parser<()>, token: Str, value: T) -> Parser<T> = todo
+
+// 回復ヒントを診断へ添付して継続（action="context"）
+fn recover_with_context<T>(p: Parser<T>, until: Parser<()>, message: Str, value: T) -> Parser<T> = todo

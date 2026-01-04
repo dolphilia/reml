@@ -1,0 +1,15 @@
+pub type u8
+pub type NumericError
+
+trait Numeric<T> {
+}
+
+pub enum Precision =
+  | Float32
+  | Float64
+  | Decimal { scale: u8, precision: u8 }
+  | Arbitrary
+
+fn with_precision<T>(value: T, precision: Precision) -> Result<T, NumericError>    // `@pure`
+fn round_to<T: Numeric>(value: T, places: u8) -> T                                // `@pure`
+fn truncate_to<T: Numeric>(value: T, places: u8) -> T                             // `@pure`

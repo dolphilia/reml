@@ -1,0 +1,18 @@
+struct StreamDriver<T, Sink> {
+  parser: Parser<T>,
+  feeder: Feeder,
+  sink: Sink,
+  flow: FlowController,
+  on_diagnostic: StreamDiagnosticHook,
+  state: Option<Continuation<T>>,
+  meta: StreamMeta
+}
+
+type StreamDiagnosticHook = fn(StreamEvent) -> ()
+
+type StreamEvent =
+  | Progress { consumed: usize, produced: usize, lap: Duration }
+  | Pending { reason: PendingReason, meta: ContinuationMeta }
+  | StreamEventError { diagnostic: ParseError, continuation: Option<ContinuationMeta> }
+
+enum PendingReason = Backpressure | InputExhausted | FeederAwait | FeederClosed

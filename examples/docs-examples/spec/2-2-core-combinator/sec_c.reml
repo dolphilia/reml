@@ -1,0 +1,9 @@
+fn separatedPair<A,B,S>(a: Parser<A>, sep: Parser<S>, b: Parser<B>) -> Parser<(A,B)> = todo
+fn tuple2<A,B>(a: Parser<A>, b: Parser<B>) -> Parser<(A,B)> = todo        // ~ then/map
+fn list1<A,S>(elem: Parser<A>, sep: Parser<S>) -> Parser<[A]> = todo      // ~ sepBy1
+fn atomic<T>(p: Parser<T>) -> Parser<T> = todo                             // = label+cut の糖衣
+fn expect<T>(name: String, p: Parser<T>) -> Parser<T> = todo               // = label(name, cut(p))
+fn commit<T>(p: Parser<T>) -> Parser<T> = todo                             // = cut(p) の糖衣
+fn separatedListTrailing<A,S>(elem: Parser<A>, sep: Parser<S>) -> Parser<[A]> = todo // 末尾区切り許容
+fn expect_keyword(space: Parser<()>, kw: Str) -> Parser<()> = todo        // = expect(kw, keyword(space, kw))
+fn expect_symbol(space: Parser<()>, text: Str) -> Parser<()> = todo        // = expect(text, symbol(space, text))

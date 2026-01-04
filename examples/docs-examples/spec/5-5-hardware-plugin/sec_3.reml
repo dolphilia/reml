@@ -1,0 +1,6 @@
+pub type HardwareError = {
+  kind: HardwareErrorKind,
+  message: Str,
+}
+
+pub enum HardwareErrorKind = Unsupported | PermissionDenied | InvalidNode | OperationFailed

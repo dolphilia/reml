@@ -1,0 +1,196 @@
+module samples.language_impl_samples.pl0_combinator
+
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.Prelude.Result::{self, Result}
+use ::Core.Text::{self, Text}
+use ::Core.Parse
+use ::Core.Parse.Lex
+
+/// 二項演算子。
+type Op = Add | Sub | Mul | Div
+
+/// 式 AST。
+type Expr =
+  | Number(i64)
+  | Var(Text)
+  | Binary { op: Op, lhs: Box<Expr>, rhs: Box<Expr> }
+
+/// 文 AST。
+type Stmt =
+  | Assign { name: Text, expr: Expr }
+  | While { cond: Expr, body: List<Stmt> }
+  | Write { expr: Expr }
+
+/// 実行状態。
+type Runtime = { vars: Map<Text, i64>, output: List<i64> }
+
+type ParseResult<T> = Result<T, ParseError>
+
+/// --- パーサー構築 ---
+let sc: Parser<()> =
+  (Lex.whitespace()
+    .or(Lex.commentLine("//"))
+    .or(Lex.commentBlock("/*", "*/", nested = true)))
+  |> Lex.skipMany
+
+let lexeme<A>(p: Parser<A>) -> Parser<A> = Lex.lexeme(sc, p)
+let trim<A>(p: Parser<A>) -> Parser<A> = Lex.trim(sc, p)
+let sym(token: Str) -> Parser<()> = symbol(sc, token)
+let expect_kw(name: Str) -> Parser<()> = expect_keyword(sc, name)
+let expect_sym(text: Str) -> Parser<()> = expect_symbol(sc, text)
+
+let identifier: Parser<Text> =
+  rule("pl0.identifier", lexeme(Lex.identifier()))
+
+let integer: Parser<Expr> =
+  rule("pl0.number",
+    lexeme(Lex.int(10))
+      .andThen(|digits| match Lex.parseI64(digits, 10) with
+        | Ok(value) -> ok(Number(value))
+        | Err(_) -> fail(format("整数として解釈できません: {digits}"))
+      )
+  )
+
+let variable: Parser<Expr> =
+  rule("pl0.variable",
+    identifier.map(|name| Var(name))
+  )
+
+let expr: Parser<Expr> = rule("pl0.expr", chainl1(term, add_op))
+let term: Parser<Expr> = rule("pl0.term", chainl1(factor, mul_op))
+
+let add_op: Parser<(Expr, Expr) -> Expr> =
+  sym("+").map(|_| (|lhs, rhs|
+    Binary { op: Add, lhs: Box.of(lhs), rhs: Box.of(rhs) })
+  )
+  .or(sym("-").map(|_| (|lhs, rhs|
+    Binary { op: Sub, lhs: Box.of(lhs), rhs: Box.of(rhs) })
+  ))
+
+let mul_op: Parser<(Expr, Expr) -> Expr> =
+  sym("*").map(|_| (|lhs, rhs|
+    Binary { op: Mul, lhs: Box.of(lhs), rhs: Box.of(rhs) })
+  )
+  .or(sym("/").map(|_| (|lhs, rhs|
+    Binary { op: Div, lhs: Box.of(lhs), rhs: Box.of(rhs) })
+  ))
+
+let factor: Parser<Expr> =
+  rule("pl0.factor",
+    (expect_sym("(").then(cut(expr)).then(expect_sym(")"))
+      .map(|(_, inner, _)| inner))
+      .or(integer)
+      .or(variable)
+  )
+
+let assign_stmt: Parser<Stmt> =
+  rule("pl0.assign",
+    identifier
+      .then(skipL(expect_sym(":="), expr))
+      .map(|(name, value)| Assign { name, expr: value })
+  )
+
+let write_stmt: Parser<Stmt> =
+  rule("pl0.write",
+    skipL(expect_kw("write"), expr)
+      .map(|value| Write { expr: value })
+  )
+
+let while_stmt: Parser<Stmt> =
+  rule("pl0.while",
+    expect_kw("while")
+      .then(expr)
+      .then(skipL(expect_kw("do"), block))
+      .map(|((_, condition), body)| While { cond: condition, body })
+  )
+
+let stmt: Parser<Stmt> =
+  rule("pl0.stmt",
+    choice([
+      attempt(while_stmt),
+      attempt(write_stmt),
+      assign_stmt,
+    ])
+  )
+
+let block: Parser<List<Stmt>> =
+  rule("pl0.block",
+    between(expect_kw("begin"), sepBy1(stmt, expect_sym(";")), expect_kw("end"))
+  )
+
+let program: Parser<List<Stmt>> =
+  rule("pl0.program",
+    trim(block)
+      .then(opt(sym(".")))
+      .then(eof())
+      .map(|(body, _, _)| body)
+  )
+
+fn parse_program(source: Text) -> ParseResult<List<Stmt>> =
+  Core.Parse.run(program, source)
+
+/// --- 実行モデル ---
+fn exec(program: List<Stmt>) -> Result<Runtime, Text> {
+  List.fold(program, Result.ok(create_runtime()), |acc_res, stmt| {
+    match acc_res with
+    | Err(err) -> Result.err(err)
+    | Ok(state) -> exec_stmt(stmt, state)
+    end
+  })
+}
+
+fn exec_stmt(stmt: Stmt, runtime: Runtime) -> Result<Runtime, Text> {
+  match stmt with
+  | Assign { name, expr } ->
+    let value = eval_expr(expr, runtime.vars)?
+    Result.ok({ vars: Map.insert(runtime.vars, name, value), output: runtime.output })
+  | Write { expr } ->
+    let value = eval_expr(expr, runtime.vars)?
+    Result.ok({ vars: runtime.vars, output: List.push_back(runtime.output, value) })
+  | While { cond, body } -> exec_while(cond, body, runtime)
+}
+
+fn exec_while(cond: Expr, body: List<Stmt>, runtime: Runtime) -> Result<Runtime, Text> {
+  var state = runtime
+  loop {
+    let value = eval_expr(cond, state.vars)?
+    if value == 0 {
+      return Result.ok(state)
+    }
+    let next_state = List.fold(body, Result.ok(state), |acc_res, stmt| {
+      match acc_res with
+      | Err(err) -> Result.err(err)
+      | Ok(current) -> exec_stmt(stmt, current)
+      end
+    })?
+    state = next_state
+  }
+}
+
+fn eval_expr(expr: Expr, vars: Map<Text, i64>) -> Result<i64, Text> {
+  match expr with
+  | Number(n) -> Result.ok(n)
+  | Var(name) ->
+    Map.get(vars, name).ok_or(|| format("未定義変数: {name}"))
+  | Binary { op, lhs, rhs } ->
+    let left = eval_expr(*lhs, vars)?
+    let right = eval_expr(*rhs, vars)?
+    match op with
+    | Add -> Result.ok(left + right)
+    | Sub -> Result.ok(left - right)
+    | Mul -> Result.ok(left * right)
+    | Div ->
+      if right == 0 {
+        Result.err("0 で割ることはできません")
+      } else {
+        Result.ok(left / right)
+      }
+  end
+}
+
+fn create_runtime() -> Runtime = { vars: Map.empty(), output: List.empty() }
+
+// 利用例
+// parse_program("begin x := 3; write x end")
+//   |> Result.map(exec)

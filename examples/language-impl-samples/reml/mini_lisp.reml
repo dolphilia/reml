@@ -1,0 +1,168 @@
+module samples.language_impl_samples.mini_lisp
+
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.Prelude
+use ::Core.Text as Text
+
+/// ミニ Lisp 評価機。S 式構文を持つ式を解析して評価する。
+type Expr =
+  | Number(f64)
+  | Symbol(Text)
+  | List(List<Expr>)
+
+/// 評価に利用する値表現。
+type Value =
+  | VNumber(f64)
+  | VLambda({ params: List<Text>, body: Expr, env: Env })
+  | VBuiltin(NativeFn)
+
+/// ネイティブ関数は値の配列を受け取り Result を返す。
+type alias NativeFn = fn(List<Value>) -> Result<Value, Text>
+
+type Env = Map<Text, Value>
+
+type ParseError =
+  | UnexpectedToken({ token: Text })
+  | UnmatchedParen
+  | EmptyInput
+
+fn eval(source: Text) -> Result<Value, Text> {
+  let tokens = tokenize(source)
+  let (expr, rest) = parse_expr(tokens)?
+  match List.pop_front(rest) with
+  | None -> {
+    let env = default_env()
+    eval_expr(expr, env)
+  }
+  | Some(_) -> Result.err("末尾に未消費トークンがあります")
+  end
+}
+
+fn tokenize(source: Text) -> List<Text> {
+  source
+    |> Text.replace("(", " ( ")
+    |> Text.replace(")", " ) ")
+    |> Text.split_whitespace()
+    |> List.filter(|token| Text.is_empty(token) == false)
+}
+
+fn parse_expr(tokens: List<Text>) -> Result<(Expr, List<Text>), ParseError> {
+  match List.pop_front(tokens) with
+  | None -> Result.err(EmptyInput)
+  | Some((token, rest)) -> parse_token(token, rest)
+}
+
+fn parse_token(token: Text, rest: List<Text>) -> Result<(Expr, List<Text>), ParseError> {
+  if token == "(" then {
+    parse_list(rest, [])
+  } else if token == ")" then {
+    Result.err(UnmatchedParen)
+  } else {
+    match Text.parse_f64(token) with
+    | Ok(number) -> Result.ok((Number(number), rest))
+    | Err(_) -> Result.ok((Symbol(token), rest))
+    end
+  }
+}
+
+fn parse_list(tokens: List<Text>, acc: List<Expr>) -> Result<(Expr, List<Text>), ParseError> {
+  match List.pop_front(tokens) with
+  | None -> Result.err(UnmatchedParen)
+  | Some((token, rest)) ->
+    if token == ")" then {
+      Result.ok((List(List.reverse(acc)), rest))
+    } else {
+      let (expr, next) = parse_token(token, rest)?
+      parse_list(next, List.push_front(acc, expr))
+    }
+}
+
+fn eval_expr(expr: Expr, env: Env) -> Result<Value, Text> {
+  match expr with
+  | Number(n) -> Result.ok(VNumber(n))
+  | Symbol(name) ->
+    Map.get(env, name).ok_or(| | format("未定義シンボル: {name}"))
+  | List(items) -> eval_list(items, env)
+}
+
+fn eval_list(items: List<Expr>, env: Env) -> Result<Value, Text> {
+  match List.pop_front(items) with
+  | None -> Result.err("空のリストは評価できません")
+  | Some((head, rest)) -> {
+    let callee = eval_expr(head, env)?
+    let args = evaluate_args(rest, env)?
+    apply(callee, args)
+  }
+}
+
+fn evaluate_args(exprs: List<Expr>, env: Env) -> Result<List<Value>, Text> {
+  List.fold(exprs, Result.ok(List.empty()), |acc_res, expr| {
+    match acc_res with
+    | Err(err) -> Result.err(err)
+    | Ok(acc) ->
+      match eval_expr(expr, env) with
+      | Ok(value) -> Result.ok(List.push_back(acc, value))
+      | Err(err) -> Result.err(err)
+      end
+    end
+  })
+}
+
+fn apply(callee: Value, args: List<Value>) -> Result<Value, Text> {
+  match callee with
+  | VBuiltin(fun) -> fun(args)
+  | VLambda(lambda) -> apply_lambda(lambda, args)
+  | VNumber(_) -> Result.err("数値を関数としては適用できません")
+}
+
+fn apply_lambda(lambda: { params: List<Text>, body: Expr, env: Env }, args: List<Value>) -> Result<Value, Text> {
+  let params = List.to_vec(lambda.params)
+  let values = List.to_vec(args)
+  if params.len() != values.len() then {
+    Result.err("引数の数が一致しません")
+  } else {
+    let pairs = List.zip(params, values)
+    let new_env = List.fold(pairs, lambda.env, |acc, pair| {
+      match pair with
+      | (param, value) -> Map.insert(acc, param, value)
+      end
+    })
+    eval_expr(lambda.body, new_env)
+  }
+}
+
+fn default_env() -> Env {
+  match Map.from_pairs([
+    ("+", VBuiltin(builtin_numeric(|a, b| a + b))),
+    ("-", VBuiltin(builtin_numeric(|a, b| a - b))),
+    ("*", VBuiltin(builtin_numeric(|a, b| a * b))),
+    ("/", VBuiltin(builtin_numeric(|a, b| a / b))),
+  ]) with
+  | Ok(env) -> env
+  | Err(_) -> Map.empty()
+}
+
+fn builtin_numeric(op: fn(f64, f64) -> f64) -> NativeFn {
+  |args| {
+    match List.pop_front(args) with
+    | None -> Result.err("数値演算は 2 引数のみ対応します")
+    | Some((first, rest1)) ->
+      match List.pop_front(rest1) with
+      | None -> Result.err("数値演算は 2 引数のみ対応します")
+      | Some((second, tail)) ->
+        if List.is_empty(tail) then {
+          match (first, second) with
+          | (VNumber(lhs), VNumber(rhs)) -> Result.ok(VNumber(op(lhs, rhs)))
+          | _ -> Result.err("数値以外を演算できません")
+          end
+        } else {
+          Result.err("数値演算は 2 引数のみ対応します")
+        }
+      end
+    end
+  }
+}
+
+// 利用例
+// (eval "(+ 40 2)") => Ok(VNumber(42.0))

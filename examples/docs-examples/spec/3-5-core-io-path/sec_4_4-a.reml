@@ -1,0 +1,8 @@
+pub type IoError
+pub type Path
+pub type Watcher
+
+type WatchEvent = Created(Path) | Modified(Path) | Deleted(Path)
+
+fn watch(paths: List<Path>, callback: (WatchEvent) -> ()) -> Result<Watcher, IoError> // `effect {io, io.async}`
+fn close(watcher: Watcher) -> Result<(), IoError>                                      // `effect {io}`

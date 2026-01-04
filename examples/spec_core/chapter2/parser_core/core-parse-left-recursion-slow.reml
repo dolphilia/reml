@@ -1,0 +1,60 @@
+// Parse.run("1 + 2")
+module Spec.Core.Chapter2.Parser.LeftRecursionSlow
+
+use Core.Parse as Parse
+use Core.Parse.Lex
+use Core.Prelude
+
+// 目的: 左再帰ガードと profile 指標の観測を行うためのサンプル。
+// 注意: 実行時は RunConfig.left_recursion="on" と profile を有効化する。
+
+let sc: Parse.Parser<()> =
+  (Lex.spaceOrTabsOrNewlines)
+  |> Lex.skipMany
+
+fn sym(text: Str) -> Parse.Parser<()> {
+  Lex.symbol(sc, text)
+}
+
+fn integer() -> Parse.Parser<Int> {
+  Lex.lexeme(sc, Lex.int(10))
+    .andThen(|digits|
+      match Lex.parseI64(digits, 10) with
+      | Ok(v) -> Parse.ok(v)
+      | Err(_) -> Parse.fail("整数として解釈できません")
+    )
+}
+
+let expr_left_recursion_slow: Parse.Parser<Int> =
+  Parse.rule(
+    "expr_left_recursion_slow",
+    Parse.choice([
+      rec(expr_left_recursion_slow)
+        .then(sym("+"))
+        .then(integer())
+        .map(|((a, _), b)| a + b),
+      integer(),
+    ]),
+  )
+
+fn profile_config(path: Str) -> RunConfig {
+  RunConfig::builder()
+    .with_extension("parse", {
+      profile: true,
+      profile_output: path,
+    })
+    .finish()
+}
+
+fn sample_source() -> Str {
+  "1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1"
+}
+
+fn main() -> Str {
+  let cfg = profile_config(
+    "expected/spec_core/chapter2/parser_core/core-parse-left-recursion-slow.profile.json"
+  )
+  match Parse.run(expr_left_recursion_slow, sample_source(), cfg) with
+  | Ok(value) -> format("result=%d", [value])
+  | Err(diag) -> diag.message
+}

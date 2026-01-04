@@ -1,0 +1,19 @@
+struct EmailFormat;
+impl Constraint<Text> for EmailFormat {
+  fn id() -> Str = "constraint.email.format"
+  fn check(value: &Text, ctx: ConstraintContext) -> Result<(), Diagnostic> = {
+    if Regex::is_match("^[^@]+@[^@]+$", value) then
+      Ok(())
+    else
+      Err(
+        Diagnostic::error(ctx.path, "メールアドレス形式が不正です")
+          .with_code("data.email.format")
+          .finish()
+      )
+  }
+}
+
+let hardenedSchema = userSchema.with_(|s| {
+  s.constraint("email", EmailFormat)
+   .constraint("score", Range::new(-10.0, 10.0))
+})

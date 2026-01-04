@@ -1,0 +1,18 @@
+pub type Signal = Int
+pub type SignalHandler = fn(Signal) -> ()
+pub type PreviousHandler = SignalHandler
+pub type SignalMask = Int
+pub type ProcessId = Int
+pub type Duration = Int
+pub type SignalInfo = { signal: Signal, sender: ProcessId }
+pub type SignalError = Int
+pub type Set<T> = List<T>
+
+pub type SignalCapability = {
+  register_handler: fn(Signal, SignalHandler) -> Result<PreviousHandler, SignalError>, // effect {signal, unsafe}
+  mask: fn(Set<Signal>) -> Result<SignalMask, SignalError>,                             // effect {signal}
+  unmask: fn(SignalMask) -> Result<(), SignalError>,                                   // effect {signal}
+  send: fn(ProcessId, Signal) -> Result<(), SignalError>,                              // effect {signal, process}
+  wait: fn(Set<Signal>, Option<Duration>) -> Result<SignalInfo, SignalError>,          // effect {signal, blocking}
+  raise: fn(Signal) -> Result<(), SignalError>,                                        // effect {signal}
+}

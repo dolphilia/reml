@@ -1,0 +1,13 @@
+pub type Duration
+pub type TimeError
+pub type Timestamp
+
+pub type Timezone = {
+  name: Str,
+  offset: Duration,
+}
+
+fn utc() -> Timezone                                              // `@pure`
+fn local() -> Result<Timezone, TimeError>                         // `effect {time}`
+fn timezone(name: Str) -> Result<Timezone, TimeError>             // `effect {time}`
+fn convert_timezone(ts: Timestamp, from: Timezone, to: Timezone) -> Result<Timestamp, TimeError> // `@pure`

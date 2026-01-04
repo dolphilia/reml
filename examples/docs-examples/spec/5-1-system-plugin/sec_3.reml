@@ -1,0 +1,13 @@
+pub type EffectTag = Str
+pub type Json
+pub type Set<T> = List<T>
+pub type Map<K, V> = List<(K, V)>
+pub type i64
+pub type SyscallNumber = i64
+
+pub type SyscallDescriptor = {
+  name: Str,
+  number: SyscallNumber,
+  effect_set: Set<EffectTag>,   // 例: {syscall, memory}
+  audit_metadata: Map<Str, Json>,
+}

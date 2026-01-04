@@ -1,0 +1,7 @@
+type StreamError = {
+  kind: StreamErrorKind,
+  message: Str,
+  cause: Option<Json>
+}
+
+enum StreamErrorKind = IoFailed | DecoderFailed | FeederBug | UserCancelled

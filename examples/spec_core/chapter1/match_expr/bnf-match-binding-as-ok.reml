@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.Match.BindingAsOk
+
+use Core.Prelude
+
+// `pat as name` の成功例
+fn describe(value: Option<Int>) -> Str {
+  match value with
+    | Some(v) as whole -> "v=" + v.to_string()
+    | None -> "none"
+}
+
+fn main() -> Str = describe(Some(42))

@@ -1,0 +1,7 @@
+fn check_manifest(manifest: Manifest) -> Result<(), Diagnostic> = {
+  ensure(manifest.project.name.is_valid(), || diagnostic("manifest.project.invalid"))?;
+  Ok(())
+}
+
+fn report_manifest(manifest: Manifest, audit: AuditSink) -> Result<(), Diagnostic> =
+  check_manifest(manifest).tap_diag(|diag| { emit(diag, audit).ok() })

@@ -1,0 +1,10 @@
+// Core Diagnostics パイプラインの成功経路を確認するシンプルなサンプル。
+// `reml_frontend --emit-audit-log examples/core_diagnostics/pipeline_success.reml`
+// を実行すると、pipeline_started/pipeline_completed イベントが 1 セット出力される。
+
+use Core;
+
+fn pipeline_success() -> Int =
+  21 + 21
+
+fn main() -> Int = pipeline_success()

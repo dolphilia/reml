@@ -1,0 +1,11 @@
+{
+  "version": "0.1",
+  "headers": ["examples/ffi/bindgen/minimal/headers/counter.h"],
+  "generated": "examples/ffi/bindgen/minimal/generated/counter_bindings.reml",
+  "input_hash": "186b7828daced6ad",
+  "types": [
+    { "c": "int", "reml": "I32" },
+    { "c": "void", "reml": "Unit" }
+  ],
+  "diagnostics": []
+}

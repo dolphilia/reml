@@ -1,0 +1,5 @@
+fn specialise_for_arm64(cfg: RunConfig) -> RunConfig = {
+  let cfg = config_with_target_extra(cfg, "cache_policy", "conservative");
+  let cfg = config_with_merge_warnings(cfg, false); // フラッシュ遅延を即時通知
+  cfg
+}

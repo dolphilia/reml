@@ -1,0 +1,48 @@
+name: Rust Frontend CI
+
+on:
+  push:
+    paths:
+      - 'compiler/frontend/**'
+      - 'compiler/runtime/**'
+      - 'examples/core_config/**'
+      - 'tooling/scripts/verify-config-diff.sh'
+      - '.github/workflows/rust-frontend.yml'
+  pull_request:
+    paths:
+      - 'compiler/frontend/**'
+      - 'compiler/runtime/**'
+      - 'examples/core_config/**'
+      - 'tooling/scripts/verify-config-diff.sh'
+      - '.github/workflows/rust-frontend.yml'
+  workflow_dispatch:
+
+jobs:
+  config-lint:
+    name: Config/Data Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Verify config diff golden
+        run: bash tooling/scripts/verify-config-diff.sh
+
+      - name: Run remlc config lint
+        run: |
+          set -euo pipefail
+          cargo run --manifest-path compiler/frontend/Cargo.toml \
+            --bin remlc -- config lint \
+            --manifest examples/core_config/reml.toml \
+            --schema examples/core_config/cli/schema.json \
+            --format json > lint-report.json
+
+      - name: Upload lint report
+        uses: actions/upload-artifact@v4
+        with:
+          name: config-lint-report
+          path: lint-report.json

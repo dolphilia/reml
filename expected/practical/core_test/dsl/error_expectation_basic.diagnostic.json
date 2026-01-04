@@ -1,0 +1,11 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "scenario": "examples/practical/core_test/dsl/error_expectation_basic.reml",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "parser.unexpected_eof",
+      "message": "入力末尾で想定外の終了が発生しました。"
+    }
+  ]
+}

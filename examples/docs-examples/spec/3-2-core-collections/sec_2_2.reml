@@ -1,0 +1,18 @@
+pub type PersistentMap<K, V>
+pub type PersistentSet<T>
+
+pub type Map<K, V> = PersistentMap<K, V>
+pub type Set<T> = PersistentSet<T>
+
+fn empty_map<K, V>() -> Map<K, V>
+fn get<K: Ord, V>(map: Map<K, V>, key: K) -> Option<V>
+fn insert<K: Ord, V>(map: Map<K, V>, key: K, value: V) -> Map<K, V>
+fn update<K: Ord, V>(map: Map<K, V>, key: K, f: (Option<V>) -> Option<V>) -> Map<K, V>
+fn merge<K: Ord, V>(base: Map<K, V>, delta: Map<K, V>, f: (V, V) -> V) -> Map<K, V>
+fn keys<K: Ord, V>(map: Map<K, V>) -> Iter<K>
+
+fn empty_set<T>() -> Set<T>
+fn contains<T: Ord>(set: Set<T>, value: T) -> Bool
+fn insert<T: Ord>(set: Set<T>, value: T) -> Set<T>
+fn diff<T: Ord>(left: Set<T>, right: Set<T>) -> Set<T>
+fn partition<T: Ord>(set: Set<T>, pred: (T) -> Bool) -> (Set<T>, Set<T>)

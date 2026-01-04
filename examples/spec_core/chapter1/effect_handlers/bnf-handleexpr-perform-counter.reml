@@ -1,0 +1,27 @@
+module Spec.Core.Chapter1.Effects.PerformCounter
+
+use Core.Prelude
+
+// BNF: PerformExpr / HandleExpr（docs/spec/1-5-formal-grammar-bnf.md §4）
+effect Counter : io {
+  operation next : Unit -> Int
+}
+
+fn sum_pair() -> Int {
+  let first = perform Counter.next(())
+  let second = perform Counter.next(())
+  first + second
+}
+
+fn main() -> Int {
+  handle sum_pair() with
+    handler Counter {
+      operation next(_unit, resume) {
+        // resume を 1 で再開し、perform の挙動を検証
+        resume(1)
+      }
+      return value {
+        value
+      }
+    }
+}

@@ -1,0 +1,4 @@
+headers = ["headers/counter.h"]
+include_paths = ["headers"]
+output = "generated/counter_bindings.reml"
+manifest = "generated/bindings.manifest.json"

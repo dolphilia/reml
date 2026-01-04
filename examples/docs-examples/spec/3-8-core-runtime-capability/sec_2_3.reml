@@ -1,0 +1,15 @@
+pub type MmapRequest = Int
+pub type MappedMemory = Int
+pub type MemoryError = Int
+pub type MemoryProtection = Int
+pub type SharedMemoryRequest = Int
+pub type SharedMemory = Int
+pub type SyncFlags = Int
+
+pub type MemoryCapability = {
+  mmap: fn(MmapRequest) -> Result<MappedMemory, MemoryError>,          // effect {memory, unsafe}
+  munmap: fn(MappedMemory) -> Result<(), MemoryError>,                 // effect {memory}
+  mprotect: fn(&mut MappedMemory, MemoryProtection) -> Result<(), MemoryError>, // effect {memory}
+  shared_open: fn(SharedMemoryRequest) -> Result<SharedMemory, MemoryError>,    // effect {memory, process}
+  msync: fn(&MappedMemory, SyncFlags) -> Result<(), MemoryError>,      // effect {memory, io}
+}

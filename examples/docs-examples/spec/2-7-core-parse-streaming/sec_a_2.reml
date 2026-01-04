@@ -1,0 +1,7 @@
+type StreamingConfig = {
+  mode: FlowMode = FlowMode::Auto,
+  demand_cap: Option<Demand> = None,
+  on_diagnostic: StreamDiagnosticHook = default_stream_hook,
+  resume_notes: Bool = false,
+  extensions: Map<Str, Any> = {}
+}

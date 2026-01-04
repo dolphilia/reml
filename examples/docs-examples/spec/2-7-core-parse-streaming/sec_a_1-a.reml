@@ -1,0 +1,2 @@
+fn run_stream<T>(parser: Parser<T>, feeder: Feeder, cfg: StreamingConfig = {}) -> StreamOutcome<T> = todo
+fn resume<T>(continuation: Continuation<T>, more: Bytes) -> StreamOutcome<T> = todo

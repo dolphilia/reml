@@ -1,0 +1,7 @@
+use Core.Dsl.Actor
+
+fn example() -> () = {
+  let system = todo
+  let def = { name: "Echo", on_message: |_msg| { Ok(()) } }
+  let _ = Actor.spawn(system, def, None)
+}

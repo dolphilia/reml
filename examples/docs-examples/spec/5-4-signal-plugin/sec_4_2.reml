@@ -1,0 +1,3 @@
+fn wait_for_child() -> Result<SignalInfo, SignalError> {
+  SignalCapability::wait([SIGCHLD], Some(Core.Numeric.Time.Duration::from_secs(5)))
+}

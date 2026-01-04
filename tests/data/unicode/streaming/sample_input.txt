@@ -1,0 +1,4 @@
+Reml streaming decode sample
+行2: こんにちは世界
+行3: İstanbul – örnek
+行4: مرحبا بكم

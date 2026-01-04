@@ -1,0 +1,8 @@
+pub type ClientConfig
+pub type Client
+pub type Request
+pub type Response
+pub type HttpError
+
+fn client(config: ClientConfig) -> Client // `@pure`
+fn request(client: Client, request: Request) -> Result<Response, HttpError> // `effect {net}`

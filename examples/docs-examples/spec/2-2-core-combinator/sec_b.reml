@@ -1,0 +1,3 @@
+fn padded<A>(p: Parser<A>, space: Parser<()>) -> Parser<A> = todo  // 前後に space を食う
+fn lexeme<A>(space: Parser<()>, p: Parser<A>) -> Parser<A> = todo  // 後ろのみ space
+fn symbol(space: Parser<()>, s: Str) -> Parser<()> = todo          // 文字列シンボル＋lexeme

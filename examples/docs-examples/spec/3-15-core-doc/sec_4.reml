@@ -1,0 +1,8 @@
+use Core.Doc
+
+fn main() -> Str {
+  let source = "/// add\nfn add(a: Int, b: Int) -> Int { a + b }"
+  match Doc.extract(source) with
+  | Ok(page) -> Doc.render_markdown(page)
+  | Err(_) -> "doc:error"
+}

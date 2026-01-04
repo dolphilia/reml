@@ -1,0 +1,15 @@
+pub type Box<T>
+
+@must_use
+pub type List<T> =
+  | Cons(head: T, tail: Box<List<T>>)
+  | Nil
+
+fn empty<T>() -> List<T>
+fn singleton<T>(value: T) -> List<T>
+fn push_front<T>(list: List<T>, value: T) -> List<T>
+fn concat<T>(left: List<T>, right: List<T>) -> List<T>
+fn map<T, U>(list: List<T>, f: (T) -> U) -> List<U>
+fn fold<T, S>(list: List<T>, init: S, f: (S, T) -> S) -> S
+fn to_iter<T>(list: List<T>) -> Iter<T>
+fn as_vec<T>(list: &List<T>) -> Vec<T> // `effect {mem}`

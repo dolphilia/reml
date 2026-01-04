@@ -1,0 +1,19 @@
+{
+  "name": "@reml/client-compat-tests",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reml 診断 V1/V2 互換性テスト",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --reporter=default --run",
+    "validate:schema": "npm run test",
+    "ci": "node scripts/ci.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "ajv": "^8.12.0",
+    "ajv-formats": "^2.1.1",
+    "tsx": "^4.7.1",
+    "vitest": "^1.5.0"
+  }
+}

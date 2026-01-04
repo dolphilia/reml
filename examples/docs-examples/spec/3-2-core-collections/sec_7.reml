@@ -1,0 +1,16 @@
+use Core;
+
+pub type Record
+
+fn group_valid_users(rows: Iter<Record>) -> Result<Map<UserId, List<Record>>, Diagnostic> =
+  rows
+    |> Iter.filter_map(|row|
+         ensure(row.status == Status::Active, || Diagnostic::invalid_value(row.status))?
+           .then(|| Some((row.user_id, row)))
+       )
+    |> Iter.try_collect(MapCollector::new(|existing: Option<List<Record>>, next| {
+         let list = existing.unwrap_or(List::empty())
+           |> List.push_front(next)
+           |> List.reverse();
+         Ok(list)
+       }))

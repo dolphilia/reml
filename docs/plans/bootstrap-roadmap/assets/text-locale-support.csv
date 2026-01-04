@@ -1,0 +1,6 @@
+locale_id,scope,support_status,first_supported_version,fallback,notes
+ja-JP,case|width,Supported,Unicode15,"default","全角↔半角幅変換をフルサポート。AI ガイド例も更新対象"
+tr-TR,case,Supported,Unicode15,"und","İ/ı の特別大小文字変換に対応済み。Parser 側は LocaleId::parse(tr-TR) を利用"
+az-Latn,case,Planned,Unicode15,"tr-TR","トルコ語系のキャピタライゼーションを共有するが、監査が未完了のため `UnsupportedLocale` を返す"
+und,case|width,Supported,Unicode15,"none","Locale 未指定時は BCP47 `und` として扱い、Core.Text API の既定挙動"
+zh-TW,width,Planned,Unicode15,"ja-JP","幅変換マッピングを assets/text-width-table.csv へ追記予定"

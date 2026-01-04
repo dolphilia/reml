@@ -1,0 +1,12 @@
+// 通常文字列（C 風エスケープ、\u{...} は Unicode スカラ値）
+fn stringLit() -> Parser<String> = todo
+
+// 原文を保持したい場合（アンエスケープしない）
+fn stringRaw() -> Parser<Str> = todo                // r" ... "
+fn stringRawHash(level: usize) -> Parser<Str> = todo// r#" ... "#, r##" ... "## など
+
+// 複数行（トリプルクォート）。インデント除去オプション
+fn stringMultiline(dedent: Bool = true) -> Parser<String> = todo
+
+// 1 文字リテラル（Unicode スカラ値 1 個）
+fn charLit() -> Parser<Char> = todo

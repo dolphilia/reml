@@ -1,0 +1,6 @@
+fn then_<A,B>(p: Parser<A>, q: Parser<B>) -> Parser<(A,B)> = todo     // then は予約語のため then_ を使用
+fn andThen<A,B>(p: Parser<A>, f: A -> Parser<B>) -> Parser<B> = todo // = flatMap
+fn skipL<A,B>(p: Parser<A>, q: Parser<B>) -> Parser<B> = todo        // 左を捨てる
+fn skipR<A,B>(p: Parser<A>, q: Parser<B>) -> Parser<A> = todo        // 右を捨てる
+fn or<A>(p: Parser<A>, q: Parser<A>) -> Parser<A> = todo             // 左優先の選択
+fn choice<A>(xs: [Parser<A>]) -> Parser<A> = todo                    // 左から順に or

@@ -1,0 +1,62 @@
+[
+  {
+    "description": "posix unicode normalization collapses dot segments",
+    "style": "posix",
+    "input": "./データ/./../ログ/サブディレクトリ/ファイル.txt",
+    "normalized": "ログ/サブディレクトリ/ファイル.txt",
+    "absolute": false,
+    "join": {
+      "parts": [
+        "ログ",
+        "サブディレクトリ",
+        "レポート.md"
+      ],
+      "result": "ログ/サブディレクトリ/レポート.md"
+    },
+    "relative": {
+      "base": "/opt/サービス/ログ",
+      "target": "/opt/サービス/ログ/サブディレクトリ/レポート.md",
+      "result": "サブディレクトリ/レポート.md"
+    }
+  },
+  {
+    "description": "windows drive path keeps unicode and removes traversals",
+    "style": "windows",
+    "input": "C:\\\\Projects\\\\..\\\\共有\\\\資料\\\\ドキュメント.docx",
+    "normalized": "C:\\共有\\資料\\ドキュメント.docx",
+    "absolute": true,
+    "join": {
+      "parts": [
+        "C:\\\\共有",
+        "資料",
+        "アーカイブ\\\\2025"
+      ],
+      "result": "C:\\共有\\資料\\アーカイブ\\2025"
+    },
+    "relative": {
+      "base": "C:\\\\共有\\\\資料",
+      "target": "C:\\\\共有\\\\資料\\\\アーカイブ\\\\2025",
+      "result": "アーカイブ\\2025"
+    }
+  },
+  {
+    "description": "windows unc normalization preserves server share",
+    "style": "windows",
+    "input": "\\\\\\\\server\\\\share\\\\部門\\\\..\\\\ログ",
+    "normalized": "\\\\server\\share\\ログ",
+    "absolute": true,
+    "join": {
+      "parts": [
+        "\\\\\\\\server\\\\share",
+        "ログ",
+        "最新"
+      ],
+      "result": "\\\\server\\share\\ログ\\最新"
+    },
+    "relative": {
+      "base": "\\\\\\\\server\\\\share\\\\ログ",
+      "target": "\\\\server\\\\share\\\\ログ\\\\最新",
+      "result": "最新"
+    }
+  }
+]

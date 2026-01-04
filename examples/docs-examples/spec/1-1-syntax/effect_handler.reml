@@ -1,0 +1,24 @@
+effect Console : io {
+  operation log : Text -> Unit
+  operation ask : Text -> Text
+}
+
+fn greet() -> Text {
+  let name = do Console.ask("name?")
+  do Console.log("hi " + name)
+  name
+}
+
+handle greet() with
+  handler Console {
+    operation log(message, resume) {
+      println("LOG: " + message)
+      resume(())
+    }
+    operation ask(prompt, resume) {
+      resume("Reml")
+    }
+    return value {
+      value
+    }
+  }

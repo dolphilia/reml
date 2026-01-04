@@ -1,0 +1,58 @@
+{
+  "diagnostics": [
+    {
+      "schema_version": "2.0.0-draft",
+      "message": "Histogram collected 2 buckets across 4 samples",
+      "severity": "info",
+      "domain": "runtime",
+      "timestamp": "1970-01-01T00:00:00Z",
+      "code": "core.numeric.statistics.histogram_ok",
+      "codes": [
+        "core.numeric.statistics.histogram_ok"
+      ],
+      "primary": {
+        "file": "tests/data/numeric/histogram/sample.reml",
+        "start_line": 8,
+        "start_col": 0,
+        "end_line": 14,
+        "end_col": 0
+      },
+      "audit_metadata": {
+        "numeric.statistics.kind": "success",
+        "numeric.statistics.bucket_count": 2,
+        "numeric.statistics.sample_count": 4,
+        "effect.required_capabilities": [],
+        "effect.actual_capabilities": []
+      },
+      "audit": {
+        "metadata": {
+          "numeric.statistics.kind": "success",
+          "numeric.statistics.bucket_count": 2,
+          "numeric.statistics.sample_count": 4,
+          "effect.required_capabilities": [],
+          "effect.actual_capabilities": []
+        },
+        "audit_id": null,
+        "change_set": null,
+        "capability": null
+      },
+      "extensions": {
+        "numeric.statistics": {
+          "kind": "success",
+          "bucket_count": 2,
+          "sample_count": 4
+        },
+        "effects": {
+          "required_capabilities": [],
+          "actual_capabilities": []
+        },
+        "diagnostic.v2": {
+          "timestamp": "1970-01-01T00:00:00Z",
+          "codes": [
+            "core.numeric.statistics.histogram_ok"
+          ]
+        }
+      }
+    }
+  ]
+}

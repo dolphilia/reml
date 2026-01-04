@@ -1,0 +1,65 @@
+pub type Uuid
+pub type DiagnosticDomain
+pub type Span
+pub type Hint
+pub type ExpectationSummary
+pub type Recoverability
+pub type AuditEnvelope
+pub type Timestamp
+pub type Path
+pub type Json
+
+pub type Diagnostic = {
+  schema_version: Str,
+  id: Option<Uuid>,
+  message: Str,
+  severity: Severity,
+  severity_hint: Option<SeverityHint>,
+  domain: Option<DiagnosticDomain>,
+  source_dsl: Option<Str>,
+  code: Option<Str>,
+  codes: List<Str>,
+  primary: Span,
+  location: Option<Location>,
+  span_trace: List<TraceFrame>,
+  secondary: List<SpanLabel>,
+  notes: List<DiagnosticNote>,
+  hints: List<Hint>,
+  structured_hints: List<StructuredHint>,
+  fixits: List<FixIt>,
+  expected: Option<ExpectationSummary>,
+  recoverability: Recoverability,
+  audit_metadata: Map<Str, Json>,
+  audit: AuditEnvelope,
+  timestamp: Timestamp,
+}
+
+pub enum Severity = Error | Warning | Info | Hint
+
+pub enum SeverityHint = Rollback | Retry | Ignore | Escalate
+
+pub type SpanLabel = { span: Span, message: Option<Str> }
+pub type DiagnosticNote = { label: Str, message: Str, span: Option<Span> }
+pub type StructuredHint = {
+  id: Str,
+  title: Str,
+  kind: Str,
+  span: Option<Location>,
+  payload: Option<Json>,
+  actions: List<FixIt>,
+}
+
+pub enum FixIt =
+  | Insert { span: Span, text: Str }
+  | Replace { span: Span, text: Str }
+  | Delete { span: Span }
+
+pub type Location = {
+  file: Path,
+  line: Int,
+  column: Int,
+  endLine: Int,
+  endColumn: Int,
+}
+
+pub type TraceFrame = { label: Option<Str>, span: Span }

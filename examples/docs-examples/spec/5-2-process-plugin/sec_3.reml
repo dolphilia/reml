@@ -1,0 +1,7 @@
+pub type WaitOptions = {
+  timeout: Option<Duration>,
+  check_interval: Duration,
+  collect_output: Bool,
+}
+
+fn wait_with_options(proc_handle: ProcessHandle, options: WaitOptions) -> Result<ExitStatus, ProcessError> // effect {process, io.blocking}

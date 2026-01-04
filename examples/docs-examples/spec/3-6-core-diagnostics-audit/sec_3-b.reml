@@ -1,0 +1,14 @@
+pub type Diagnostic
+pub type AuditError
+pub type AuditSink
+pub type Url
+
+// 具体的な AuditSink 実装例
+fn console_audit_sink(diag: Diagnostic) -> Result<(), AuditError>     // CLI 出力
+fn json_audit_sink(diag: Diagnostic) -> Result<(), AuditError>       // JSON ログファイル
+fn lsp_audit_sink(diag: Diagnostic) -> Result<(), AuditError>        // LSP プロトコル
+fn remote_audit_sink(endpoint: Url) -> AuditSink                     // リモートログサーバ
+
+// 複数シンクの組み合わせ
+fn multi_audit_sink(sinks: List<AuditSink>) -> AuditSink             // 並列出力
+fn filtered_audit_sink(sink: AuditSink, filter: (Diagnostic) -> Bool) -> AuditSink // フィルタリング

@@ -1,0 +1,19 @@
+pub type i64
+pub type i32
+pub type TimeError
+
+pub type Timestamp = {
+  seconds: i64,
+  nanos: i32,
+}
+
+pub type Duration = {
+  seconds: i64,
+  nanos: i32,
+}
+
+fn now() -> Result<Timestamp, TimeError>                      // `effect {time}`
+fn monotonic_now() -> Result<Timestamp, TimeError>            // `effect {time}`
+fn duration_between(start: Timestamp, end: Timestamp) -> Duration // `@pure`
+fn add_duration(ts: Timestamp, delta: Duration) -> Timestamp       // `@pure`
+fn sleep(duration: Duration) -> Result<(), TimeError>         // `effect {time}`

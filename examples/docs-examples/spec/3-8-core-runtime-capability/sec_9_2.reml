@@ -1,0 +1,15 @@
+fn enable_profiling(config: ProfilingConfig) -> Result<Profiler, CapabilityError>
+fn collect_profile_data(profiler: Profiler) -> ProfileData
+
+pub type ProfilingConfig = {
+  sample_rate: Float,
+  track_allocations: Bool,
+  track_io: Bool,
+  track_capability_calls: Bool,
+}
+
+pub type ProfileData = {
+  call_graph: CallGraph,
+  allocation_profile: AllocationProfile,
+  hotspots: List<Hotspot>,
+}

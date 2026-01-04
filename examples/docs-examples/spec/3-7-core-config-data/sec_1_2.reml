@@ -1,0 +1,5 @@
+fn load_manifest(path: Path) -> Result<Manifest, Diagnostic>             // `effect {io, config}`
+fn validate_manifest(manifest: Manifest) -> Result<(), Diagnostic>      // `@pure`
+fn declared_effects(manifest: Manifest, dsl: Str) -> Result<Set<EffectTag>, Diagnostic> // `@pure`
+fn update_dsl_signature(manifest: Manifest, dsl: Str, signature: DslExportSignature<Json>) -> Manifest // `@pure`
+fn iter_dsl(manifest: Manifest) -> Iter<(Str, DslEntry)>                // `@pure`

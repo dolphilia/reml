@@ -1,0 +1,7 @@
+pub type ScopeGuard<T> = {
+  value: T,
+  on_drop: fn(T) -> (),
+}
+
+fn guard<T>(value: T, on_drop: fn(T) -> ()) -> ScopeGuard<T>       // `@pure`
+fn into_inner<T>(guard: ScopeGuard<T>) -> T                        // `@pure`

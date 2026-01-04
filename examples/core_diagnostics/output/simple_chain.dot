@@ -1,0 +1,9 @@
+digraph SimpleChain {
+  rankdir=LR;
+  n0 [label="'t0", shape=ellipse];
+  n1 [label="'t1", shape=ellipse];
+  n2 [label="Unknown", shape=ellipse];
+  n3 [label="'t4", shape=ellipse];
+  n0 -> n1;
+  n2 -> n3;
+}

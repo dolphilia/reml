@@ -1,0 +1,30 @@
+use Core
+use Core.IO
+use Core.Path
+use Core.Diagnostics
+
+type SecurityReport = new {
+  requested: Path,
+  sandboxed: Path,
+  is_symlink: Bool,
+}
+
+fn ensure_workspace_path(raw: Str, root: Path, policy: SecurityPolicy) -> Result<SecurityReport, Diagnostic> {
+  let requested = path(raw)?
+  let normalized = normalize(requested.clone())
+
+  validate_path(normalized.clone(), policy)
+    .map_err(|err| err.into_diagnostic())?
+
+  let sandboxed = sandbox_path(normalized.clone(), root)
+    .map_err(|err| err.into_diagnostic())?
+
+  let is_symlink = is_safe_symlink(sandboxed.clone())
+    .map_err(|io_err| io_err.into_diagnostic())?
+
+  Ok(SecurityReport({
+    requested = normalized,
+    sandboxed = sandboxed,
+    is_symlink = is_symlink,
+  }))
+}

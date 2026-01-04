@@ -1,0 +1,4 @@
+  fn readConfig(path: String) -> Result<Config, Error> = {
+    let s  = readFile(path)?       // Result の Err を自動伝播
+    parseConfig(s)?
+  }

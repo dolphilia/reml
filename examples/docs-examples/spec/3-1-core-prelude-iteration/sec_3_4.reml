@@ -1,0 +1,10 @@
+trait Collector<T, C> {
+  type Error: IntoDiagnostic;
+
+  fn new() -> Self;                                                     // `@pure`
+  fn with_capacity(capacity: usize) -> Self;                            // `effect {mem}`
+  fn push(self: &mut Self, value: T) -> Result<(), Self::Error>;         // `effect {mut}`
+  fn reserve(self: &mut Self, additional: usize) -> Result<(), Self::Error>; // `effect {mut, mem}`
+  fn finish(self) -> C;                                                 // `effect {mem}`
+  fn into_inner(self) -> C;                                             // `@pure`
+}

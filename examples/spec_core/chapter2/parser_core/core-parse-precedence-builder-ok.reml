@@ -1,0 +1,90 @@
+module Spec.Core.Chapter2.Parser.PrecedenceBuilder
+
+use Core.Parse as Parse
+use Core.Parse.Lex
+use Core.Prelude
+
+let sc: Parse.Parser<()> =
+  (Lex.spaceOrTabsOrNewlines)
+  |> Lex.skipMany
+
+fn sym(text: Str) -> Parse.Parser<()> {
+  Lex.symbol(sc, text)
+}
+
+fn integer() -> Parse.Parser<Int> {
+  Lex.lexeme(sc, Lex.int(10))
+    .andThen(|digits|
+      match Lex.parseI64(digits, 10) with
+      | Ok(v) -> Parse.ok(v)
+      | Err(_) -> Parse.fail("整数として解釈できません")
+    )
+}
+
+let expr_levels = [
+  { prefix: [
+      sym("+").map(|_| (|x| x)),
+      sym("-").map(|_| (|x| 0 - x)),
+    ],
+    infixl: [],
+    infixr: [],
+    infixn: [],
+    postfix: [],
+    ternary: [],
+  },
+  { prefix: [],
+    postfix: [],
+    infixl: [
+      sym("*").map(|_| (|a, b| a * b)),
+      sym("/").map(|_| (|a, b| a / b)),
+    ],
+    infixr: [],
+    infixn: [],
+    ternary: [],
+  },
+  { prefix: [],
+    postfix: [],
+    infixl: [
+      sym("+").map(|_| (|a, b| a + b)),
+      sym("-").map(|_| (|a, b| a - b)),
+    ],
+    infixr: [],
+    infixn: [],
+    ternary: [],
+  },
+  { prefix: [],
+    postfix: [],
+    infixl: [],
+    infixr: [],
+    infixn: [],
+    ternary: [
+      {
+        head: sym("?"),
+        mid: sym(":"),
+        build: (|c, t, f| if c == 0 then f else t),
+      }
+    ],
+  },
+]
+
+let expr_precedence_builder: Parse.Parser<Int> =
+  Parse.rule("expr_precedence_builder",
+    Parse.expr_builder(
+      Parse.choice([
+        sym("(").skipR(rec(expr_precedence_builder)).skipL(sym(")")),
+        integer(),
+      ]),
+      expr_levels,
+      {
+        space: Some(sc),
+        operand_label: Some("expression"),
+        commit_style: Parse.ExprCommit::Preserve,
+      },
+    )
+  )
+
+fn main() -> Str {
+  match Parse.run(expr_precedence_builder, "-1 + 2 * (3 + 4) + (0 ? 10 : 20)") with
+    Ok(value) -> format("result=%d", [value])
+    Err(diag) -> diag.message
+}

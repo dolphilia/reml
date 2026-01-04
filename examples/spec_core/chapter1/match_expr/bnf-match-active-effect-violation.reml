@@ -1,0 +1,18 @@
+module Spec.Core.Chapter1.Match.ActiveEffectViolation
+
+use Core.Prelude
+
+@pure
+// 診断: pattern.active.effect_violation（副作用を伴う Active Pattern）
+pattern (|Impure|_|)(n: Int) = {
+  perform Console.log("impure") // 想定: 純粋契約に反する副作用
+  if n > 0 then Some(n) else None
+}
+
+fn classify(n: Int) -> Str {
+  match n with
+    | (|Impure|_|) v -> "v=" + v.to_string()
+    | _ -> "other"
+}
+
+fn main() -> Str = classify(1)

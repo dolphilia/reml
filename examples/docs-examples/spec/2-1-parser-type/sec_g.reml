@@ -1,0 +1,10 @@
+fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T> = todo
+// AST と診断を常に返す。cfg.require_eof=true なら余剰入力は Diagnostic として報告。
+
+fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResultWithRest<T> = todo
+// 部分パース：残り Input を `rest` に格納し、result.diagnostics も一緒に返す。
+
+type ParseResultWithRest<T> = {
+  result: ParseResult<T>,
+  rest: Option<Input>
+}

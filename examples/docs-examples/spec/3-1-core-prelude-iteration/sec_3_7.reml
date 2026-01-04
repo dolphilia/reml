@@ -1,0 +1,15 @@
+@handles(Console)
+pub fn collect_logs(iter: Iter<Text>) -> Result<List<Text>, Diagnostic> ! {} =
+  handle iter.try_fold(List::empty(), |acc, msg| {
+    do Console.log(msg)
+    Ok(acc.push(msg))
+  }) with
+    handler Console {
+      operation log(msg, resume) {
+        audit.log("iter.log", msg)
+        resume(())
+      }
+      return result {
+        result
+      }
+    }

@@ -1,0 +1,21 @@
+module examples.ffi.macos.malloc_arm64
+
+extern "C" {
+  @target("arm64-apple-darwin")
+  @link_name("malloc")
+  @callconv("aapcs64")
+  @ownership("transferred")
+  fn malloc(size: usize) -> Ptr<u8>;
+
+  @target("arm64-apple-darwin")
+  @link_name("free")
+  @callconv("aapcs64")
+  @ownership("borrowed")
+  fn free(ptr: Ptr<u8>) -> ();
+}
+
+pub fn main() -> i64 {
+  let ptr = malloc(64);
+  free(ptr);
+  0
+}

@@ -1,0 +1,17 @@
+fn config_extension_from_ctx(ctx: ConfigLintContext, issue: ConfigIssue) -> ConfigDiagnosticExtension =
+  ConfigDiagnosticExtension {
+    source: ctx.source,
+    manifest_path: ctx.manifest_path,
+    key_path: issue.key_path,
+    profile: ctx.profile,
+    compatibility: ctx.compatibility.map(|compat|
+      ConfigCompatibilityDigest {
+        format: compat.format,
+        profile: compat.profile,
+        stage: compat.stage,
+      }),
+    feature_guard: issue.feature_guard,
+    schema: issue.schema_id,
+    diff: issue.diff_summary,
+    snapshot: ctx.snapshot,
+  }

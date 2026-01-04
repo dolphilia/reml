@@ -1,0 +1,8 @@
+pub type GcCapability = {
+  configure: fn(GcConfig) -> Result<(), CapabilityError>;
+  register_root: fn(RootSet) -> Result<(), CapabilityError>;
+  unregister_root: fn(RootSet) -> Result<(), CapabilityError>;
+  write_barrier: fn(ObjectRef, FieldRef) -> Result<(), CapabilityError>;
+  metrics: fn() -> Result<GcMetrics, CapabilityError>;
+  trigger: fn(GcReason) -> Result<(), CapabilityError>;
+}

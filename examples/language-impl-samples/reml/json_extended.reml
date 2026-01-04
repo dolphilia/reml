@@ -1,0 +1,301 @@
+module samples.language_impl_samples.json_extended
+
+use ::Core.Collection.List as List
+use ::Core.Parse
+use ::Core.Parse.Lex
+
+/// JSON拡張版：コメント・トレーリングカンマ対応。
+///
+/// 標準JSONからの拡張点：
+/// 1. コメント対応（`//` 行コメント、`/* */` ブロックコメント）
+/// 2. トレーリングカンマ許可（配列・オブジェクトの最後の要素の後）
+/// 3. より詳細なエラーメッセージ（期待集合の活用）
+///
+/// 実用的な設定ファイル形式として：
+/// - `package.json` 風の設定ファイル
+/// - `.babelrc`, `.eslintrc` など開発ツールの設定
+/// - VS Code の `settings.json`（実際にはJSON5として実装済み）
+
+type JsonValue =
+  | JNull
+  | JBool(Bool)
+  | JNumber(f64)
+  | JString(String)
+  | JArray(List<JsonValue>)
+  | JObject(List<(String, JsonValue)>)
+
+/// 空白・コメントをスキップ。
+let sc: Parser<()> =
+  (Lex.whitespace()
+    .or(Lex.commentLine("//"))
+    .or(Lex.commentBlock("/*", "*/", nested = false)))
+  |> Lex.skipMany
+
+let lexeme<A>(p: Parser<A>) -> Parser<A> = Lex.lexeme(sc, p)
+let sym(text: Str) -> Parser<()> = Lex.symbol(sc, text)
+
+/// null リテラル。
+let json_null: Parser<JsonValue> =
+  rule("json.null",
+    lexeme(Lex.string("null"))
+      .map(|_| JNull)
+  )
+
+/// 真偽値リテラル。
+let json_bool: Parser<JsonValue> =
+  rule("json.bool",
+    Parse.choice([
+      lexeme(Lex.string("true")).map(|_| JBool(true)),
+      lexeme(Lex.string("false")).map(|_| JBool(false))
+    ])
+  )
+
+/// 数値リテラル（整数・浮動小数点）。
+let json_number: Parser<JsonValue> =
+  rule("json.number",
+    lexeme(
+      Parse.attempt(Lex.float())
+        .or(Lex.integer())
+    )
+    .andThen(|repr|
+      match Lex.parseF64(repr) with
+      | Ok(value) -> Parse.ok(JNumber(value))
+      | Err(_) -> Parse.fail(format("数値として解釈できません: {repr}"))
+    )
+  )
+
+/// 文字列リテラル。
+let json_string: Parser<JsonValue> =
+  rule("json.string",
+    lexeme(Lex.stringLit())
+      .map(|s| JString(s))
+  )
+
+/// 配列（トレーリングカンマ対応）。
+let json_array: Parser<JsonValue> =
+  rule("json.array",
+    sym("[")
+      .skipR(
+        Parse.sepBy(rec json_value, sym(","))
+        .skipL(Parse.opt(sym(",")))  // トレーリングカンマ許可
+        .skipL(sym("]"))
+        .map(|values| JArray(values))
+      )
+  )
+
+/// オブジェクトのキーバリューペア。
+let json_pair: Parser<(String, JsonValue)> =
+  rule("json.pair",
+    lexeme(Lex.stringLit())
+      .andThen(|key|
+        sym(":")
+          .skipR(rec json_value)
+          .map(|value| (key, value))
+      )
+  )
+
+/// オブジェクト（トレーリングカンマ対応）。
+let json_object: Parser<JsonValue> =
+  rule("json.object",
+    sym("{")
+      .skipR(
+        Parse.sepBy(json_pair, sym(","))
+        .skipL(Parse.opt(sym(",")))  // トレーリングカンマ許可
+        .skipL(sym("}"))
+        .map(|pairs| JObject(pairs))
+      )
+  )
+
+/// JSON値のパース。
+let json_value: Parser<JsonValue> =
+  rule("json.value",
+    Parse.choice([
+      json_null,
+      json_bool,
+      json_number,
+      json_string,
+      json_array,
+      json_object
+    ])
+  )
+
+/// パブリックAPI：JSON文字列をパース（改善版：仕様 2-3/3-7/3-10 準拠）。
+///
+/// 改善点：
+/// - `ConfigCompatibility` で標準JSON/JSON5モード切り替えを設定可能に
+/// - `ConfigTriviaProfile` でコメント・トレーリングカンマ許可ポリシーを明示化
+/// - `REML_CONFIG_*` 環境変数（3-10 §2.1）との連携を想定
+pub fn parse(input: String) -> Result<JsonValue, ParseError> =
+  // 仕様 3-7 §1.5: ConfigCompatibility で互換モード設定
+  let compat_mode = Config.get_compatibility_mode("json")
+    |> Option.unwrap_or(CompatibilityMode::Extended)  // デフォルトは拡張モード
+
+  let config = RunConfig.default()
+    .with_require_eof(true)
+    .with_trace(false)
+    .with_compatibility_mode(compat_mode)  // 互換性スイッチ
+    .with_trivia_profile(ConfigTriviaProfile::AllowAll)  // コメント・カンマ許可
+
+  Parse.run(
+    sc.skipR(json_value).skipL(sc),
+    input,
+    config
+  )
+
+/// 簡易的なレンダリング（検証用）。
+pub fn render_to_string(value: JsonValue, indent_level: Int) -> String =
+  let indent = String.repeat("  ", indent_level)
+  let next_indent = String.repeat("  ", indent_level + 1)
+
+  match value with
+  | JNull -> "null"
+  | JBool(b) -> if b then "true" else "false"
+  | JNumber(n) -> format("{n}")
+  | JString(s) -> format("\"{s}\"")
+  | JArray(items) ->
+    if List.is_empty(items) then
+      "[]"
+    else
+      let items_str = items
+        |> List.map(|item| format("{next_indent}{render_to_string(item, indent_level + 1)}"))
+        |> String.join(",\n")
+      format("[\n{items_str}\n{indent}]")
+  | JObject(pairs) ->
+    if List.is_empty(pairs) then
+      "{}"
+    else
+      let pairs_str = pairs
+        |> List.map(|(key, val)|
+          format("{next_indent}\"{key}\": {render_to_string(val, indent_level + 1)}")
+        )
+        |> String.join(",\n")
+      format("{{\n{pairs_str}\n{indent}}}")
+
+/// 拡張機能のテスト例。
+pub fn test_extended_json() -> () =
+  let test_cases = [
+    ("コメント対応", """
+{
+  // これは行コメント
+  "name": "test",
+  /* これは
+     ブロックコメント */
+  "version": "1.0"
+}
+"""),
+    ("トレーリングカンマ", """
+{
+  "items": [
+    1,
+    2,
+    3,  // 配列の最後のカンマ
+  ],
+  "config": {
+    "debug": true,
+    "port": 8080,  // オブジェクトの最後のカンマ
+  }
+}
+"""),
+    ("複雑な例", """
+{
+  // パッケージ情報
+  "name": "my-project",
+  "version": "0.1.0",
+
+  /* 依存関係 */
+  "dependencies": {
+    "core": "1.0",
+    "utils": "0.5",  // トレーリングカンマ
+  },
+
+  // スクリプト
+  "scripts": {
+    "build": "reml build",
+    "test": "reml test",
+  },
+}
+""")
+  ]
+
+  test_cases
+  |> List.iter(|(name, json_str)|
+    println(format("--- {name} ---"))
+    match parse(json_str) with
+    | Ok(value) ->
+      println("パース成功:")
+      println(render_to_string(value, 0))
+    | Err(err) ->
+      println(format("パースエラー: {err}"))
+    println("")
+  )
+
+/// 標準JSONとの互換性テスト。
+pub fn test_standard_json_compatibility() -> () =
+  let standard_json = """
+{
+  "name": "standard-json",
+  "array": [1, 2, 3],
+  "nested": {
+    "key": "value"
+  }
+}
+"""
+
+  println("--- 標準JSON互換性テスト ---")
+  match parse(standard_json) with
+  | Ok(value) ->
+    println("標準JSONのパースも成功（後方互換性あり）")
+    println(render_to_string(value, 0))
+  | Err(err) ->
+    println(format("エラー: {err}"))
+
+/// エラー品質の実証。
+pub fn test_error_quality() -> () =
+  let error_cases = [
+    ("閉じ括弧なし", """
+{
+  "key": "value"
+"""),
+    ("カンマ忘れ", """
+{
+  "key1": "value1"
+  "key2": "value2"
+}
+"""),
+    ("不正な値", """
+{
+  "key": undefined
+}
+""")
+  ]
+
+  println("--- エラー品質テスト ---")
+  error_cases
+  |> List.iter(|(name, json_str)|
+    println(format("\n{name}:"))
+    match parse(json_str) with
+    | Ok(_) -> println("予期せぬ成功")
+    | Err(err) ->
+      println(format("期待通りのエラー: {err}"))
+  )
+
+/// 実用性の比較：
+///
+/// 1. **標準JSONライブラリとの比較**
+///    - Python `json`: コメント非対応、トレーリングカンマ非対応
+///    - Rust `serde_json`: 厳格なJSON仕様準拠
+///    - JavaScript `JSON.parse`: 標準仕様のみ
+///
+/// 2. **JSON5との比較**
+///    - JSON5: より多くの拡張（単一引用符、裸のキー、16進数など）
+///    - この実装: 最小限の実用的拡張に絞る
+///
+/// 3. **Remlの利点**
+///    - パーサーコンビネーターにより、拡張が容易
+///    - エラーメッセージの質が高い（期待集合）
+///    - 3-7（設定データ）との統合で、スキーマ検証も可能
+///
+/// 4. **設定ファイルとしての利用**
+///    - `reml.toml` の代替として JSON 形式も選択可能
+///    - コメントにより、設定の説明を記述できる
+///    - トレーリングカンマにより、git diff が見やすい

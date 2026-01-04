@@ -1,0 +1,2 @@
+let f = |x, y| x + y         // 収集: Add<a,b,r>; 型: a -> b -> r
+let g = |n| n + 1            // 収集: Add<a,i64,r>; 不足 → 呼出で決定

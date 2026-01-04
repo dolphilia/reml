@@ -1,0 +1,9 @@
+  impl Show<i64> for i64 {
+    fn show(self) -> String = self.to_string()
+  }
+
+  impl Vec<T> {
+    pub fn push(self, value: T) {
+      let _ = value
+    }
+  }

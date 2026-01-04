@@ -1,0 +1,13 @@
+module Spec.Core.Chapter1.Let.PatternTuple
+
+use Core.Prelude
+
+// BNF: ValDecl + TuplePattern（docs/spec/1-5-formal-grammar-bnf.md §2/§5）
+fn sum_pair(pair: (Int, Int)) -> Int {
+  let (x, y) = pair
+  x + y
+}
+
+fn main() -> Int {
+  sum_pair((1, 2))
+}

@@ -1,0 +1,41 @@
+pub type GcCapability = Int
+pub type IoCapability = Int
+pub type AsyncCapability = Int
+pub type ActorRuntimeCapability = Int
+pub type AuditCapability = Int
+pub type MetricsCapability = Int
+pub type PluginCapability = Int
+pub type SyscallCapability = Int
+pub type ProcessCapability = Int
+pub type MemoryCapability = Int
+pub type SignalCapability = Int
+pub type HardwareCapability = Int
+pub type RealTimeCapability = Int
+pub type SecurityCapability = Int
+pub type CapabilityHandle = Int
+pub type CapabilityError = Int
+pub type CapabilityDescriptor = Int
+
+pub type CapabilityId = Str
+
+pub type CapabilityRegistry = {
+  gc: Option<GcCapability>,
+  io: IoCapability,
+  async_runtime: Option<AsyncCapability>,
+  actor: Option<ActorRuntimeCapability>,
+  audit: AuditCapability,
+  metrics: MetricsCapability,
+  plugins: PluginCapability,
+  system: Option<SyscallCapability>,
+  process: Option<ProcessCapability>,
+  memory: Option<MemoryCapability>,
+  signal: Option<SignalCapability>,
+  hardware: Option<HardwareCapability>,
+  realtime: Option<RealTimeCapability>,
+  security: SecurityCapability,
+}
+
+fn registry() -> CapabilityRegistry                  // `effect {runtime}`
+fn register(cap: CapabilityId, value: CapabilityHandle) -> Result<(), CapabilityError> // `effect {runtime}`
+fn get(cap: CapabilityId) -> Option<CapabilityHandle>          // `effect {runtime}`
+fn describe(cap: CapabilityId) -> Option<CapabilityDescriptor> // `effect {runtime}`

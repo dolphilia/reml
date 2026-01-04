@@ -1,0 +1,11 @@
+module Examples.Practical.CoreLsp.AutoDeriveBasic
+
+use Core.Parse as Parse
+use Core.Lsp.Derive
+
+// parse-driver 用入力
+// Parse.run("1 + 2")
+
+fn main() -> Str {
+  "auto-derive-basic"
+}

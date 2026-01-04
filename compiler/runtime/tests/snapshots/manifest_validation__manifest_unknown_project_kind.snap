@@ -1,0 +1,22 @@
+---
+source: tests/manifest_validation.rs
+expression: snapshot_diag(diag)
+---
+audit:
+  config.key_path:
+    - project
+    - kind
+  config.path: /virtual/workspace/reml.toml
+  config.source: manifest
+code: config.project.kind_unknown
+domain: config
+extensions:
+  config:
+    key_path:
+      - project
+      - kind
+    path: /virtual/workspace/reml.toml
+    source: manifest
+message: "`project.kind` に未対応の値 `service` が指定されました"
+notes: []
+severity: error

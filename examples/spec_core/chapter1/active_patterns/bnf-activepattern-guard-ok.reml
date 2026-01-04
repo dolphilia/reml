@@ -1,0 +1,14 @@
+module Spec.Core.Chapter1.ActivePatterns.Guard
+
+use Core.Prelude
+
+pattern (|Positive|_|)(n: Int) = if n > 0 then Some(n) else None
+
+fn classify(n: Int) -> String = {
+  match n with
+  | (|Positive|_|) v when v > 10 -> "big"
+  | (|Positive|_|) _ -> "small"
+  | _ -> "non-positive"
+}
+
+fn main() -> String = classify(12)

@@ -1,0 +1,24 @@
+pub type Path
+pub type Timestamp
+pub type Json
+pub type ExitCode
+
+type CliDiagnosticEnvelope = {
+  command: CliCommand,
+  phase: CliPhase,
+  diagnostics: List<Diagnostic>,
+  summary: CliSummary,
+  exit_code: ExitCode,
+}
+
+type CliSummary = {
+  inputs: List<Path>,
+  started_at: Timestamp,
+  finished_at: Timestamp,
+  artifact: Option<Path>,
+  stats: Map<Str, Json>,
+}
+
+enum CliCommand = Build | Test | Fmt | Check | Publish | New
+
+enum CliPhase = Parsing | TypeCheck | EffectCheck | Codegen | Execution | Formatting | Reporting

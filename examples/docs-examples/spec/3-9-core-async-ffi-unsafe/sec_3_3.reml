@@ -1,0 +1,11 @@
+pub type Ptr<T>
+pub type MutPtr<T>
+pub type UnsafeError
+
+fn read<T>(ptr: Ptr<T>) -> Result<T, UnsafeError>                           // `unsafe`
+fn read_unaligned<T>(ptr: Ptr<T>) -> Result<T, UnsafeError>                 // `unsafe`
+fn write<T>(ptr: MutPtr<T>, value: T) -> Result<(), UnsafeError>            // `unsafe`
+fn write_unaligned<T>(ptr: MutPtr<T>, value: T) -> Result<(), UnsafeError>  // `unsafe`
+fn copy_to<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) -> Result<(), UnsafeError> // `unsafe`
+fn copy_nonoverlapping<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) -> Result<(), UnsafeError> // `unsafe`
+fn fill<T>(dst: MutPtr<T>, value: T, count: usize) -> Result<(), UnsafeError> // `unsafe`

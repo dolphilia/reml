@@ -1,0 +1,10 @@
+{
+  "input": "../../../tests/data/unicode/streaming/sample_input.txt",
+  "bytes": 108,
+  "chars": 76,
+  "graphemes": 76,
+  "avg_width": 1.131578947368421,
+  "bom_policy": "auto",
+  "invalid_policy": "error",
+  "preview": "Reml streaming decode sample\n行2:…"
+}

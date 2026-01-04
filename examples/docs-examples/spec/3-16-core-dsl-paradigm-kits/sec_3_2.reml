@@ -1,0 +1,52 @@
+pub type MethodId = Str
+pub type DispatchTableId = Int
+
+pub enum DispatchKind =
+  | ClassBased
+  | PrototypeBased
+
+pub type DispatchTable<Value> = {
+  id: DispatchTableId,
+  kind: DispatchKind,
+  name: Str,
+  parent: Option<DispatchTableId>,
+  methods: Map<MethodId, MethodEntry<Value>>,
+}
+
+pub type MethodEntry<Value> =
+  fn(ObjectHandle<Value>, List<Value>) -> Result<Value, DispatchError> // `effect {runtime}`
+
+pub type ObjectHandle<Value> = {
+  payload: Value,
+  shape_id: Int,
+}
+
+pub type MethodCacheKey = { shape_id: Int, name: MethodId }
+
+pub type MethodCache<Value> = {}
+
+pub type DispatchError = { kind: DispatchErrorKind, message: Str }
+
+pub enum DispatchErrorKind =
+  | MethodNotFound
+  | ArityMismatch
+  | RuntimeFailure
+
+pub type ClassBuilder<Value> = {}
+pub type PrototypeBuilder<Value> = {}
+
+fn Object.call<Value>(
+  table: DispatchTable<Value>,
+  obj: ObjectHandle<Value>,
+  name: MethodId,
+  args: List<Value>,
+  cache: Option<&mut MethodCache<Value>>
+) -> Result<Value, DispatchError> // `effect {runtime}`
+
+fn Object.lookup<Value>(
+  table: DispatchTable<Value>,
+  name: MethodId
+) -> Option<MethodEntry<Value>>
+
+fn Object.class_builder<Value>(name: Str) -> ClassBuilder<Value>
+fn Object.prototype_builder<Value>(name: Str) -> PrototypeBuilder<Value>

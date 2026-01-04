@@ -1,0 +1,2 @@
+trait Add<A, B, R> { fn add(a: A, b: B) -> R }
+impl Add<i64, i64, i64> for i64 { fn add(a,b) = a + b }

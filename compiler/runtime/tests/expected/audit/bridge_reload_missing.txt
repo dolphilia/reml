@@ -1,0 +1,1 @@
+audit metadata validation failed: missing keys [bridge.stage.actual, bridge.stage.required]

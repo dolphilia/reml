@@ -1,0 +1,29 @@
+```mermaid
+flowchart LR
+    subgraph Config
+        RC[RunConfig / Manifest\ncompiler/runtime/src/run_config.rs]
+        CFG[ConfigManifest\n3-7-core-config-data]
+    end
+
+    subgraph Runtime
+        REG[CapabilityRegistry::verify_capability_stage\ncompiler/runtime/src/registry.rs]
+        GUARD[StageAuditPayload\ncompiler/frontend/src/diagnostic/effects.rs]
+        BRIDGE[RuntimeBridgeRegistry / FsAdapter]
+    end
+
+    subgraph Observability
+        DIAG[Diagnostic.extensions["effect.stage.*"]]
+        AUDIT[AuditEnvelope.metadata["effect.stage.*"\|"bridge.stage.*"]]
+        METRICS[collect-iterator-audit-metrics.py --section runtime]
+    end
+
+    RC -->|load_manifest + apply_manifest_overrides| CFG
+    CFG -->|ConductorCapabilityRequirement| REG
+    RC -->|--effect-stage / RunConfig.extensions| REG
+    REG -->|StageId + CapabilityDescriptor (予定)| GUARD
+    GUARD -->|StageAuditPayload JSON| DIAG
+    GUARD -->|Audit metadata seed| AUDIT
+    BRIDGE -->|record_bridge_stage_probe| AUDIT
+    AUDIT -->|runtime.capability_validation KPI| METRICS
+    DIAG -->|effects.contract.stage_mismatch| METRICS
+```

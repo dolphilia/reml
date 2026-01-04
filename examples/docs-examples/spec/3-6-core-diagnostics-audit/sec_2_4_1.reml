@@ -1,0 +1,11 @@
+pub type Diag
+pub type ParseError
+pub type Diagnostic
+
+fn graphql_parse_diagnostic(source: Str, error: ParseError) -> Diagnostic = {
+  Diag.from_parse_error(
+    source,
+    error,
+    Diag.parse_error_defaults("GraphQL schema"),
+  )
+}

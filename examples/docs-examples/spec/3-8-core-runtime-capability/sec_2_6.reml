@@ -1,0 +1,7 @@
+pub type RealTimeCapability = {
+  set_scheduler: fn(SchedulingPolicy, Priority) -> Result<PreviousScheduler, RealTimeError>, // effect {realtime}
+  lock_memory: fn(VoidPtr, usize) -> Result<(), MemoryError>,                                 // effect {realtime, memory}
+  unlock_memory: fn(VoidPtr, usize) -> Result<(), MemoryError>,                               // effect {realtime, memory}
+  sleep_precise: fn(Duration) -> Result<Duration, RealTimeError>,                             // effect {realtime, blocking}
+  create_timer: fn(Duration, TimerHandler) -> Result<TimerHandle, RealTimeError>,             // effect {realtime, io.timer}
+}

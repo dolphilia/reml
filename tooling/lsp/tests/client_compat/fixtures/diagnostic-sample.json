@@ -1,0 +1,135 @@
+[
+  {
+    "schema_version": "2.0.0-draft",
+    "id": "bfed1e4a-44a1-4b4d-8e3d-3d8fddbdc0c1",
+    "message": "文の末尾にセミコロンが必要です",
+    "severity": 1,
+    "domain": "parser",
+    "codes": ["parser.expected_token", "parser.recovery.entered"],
+    "primary": {
+      "file": "file:///workspace/examples/config.reml",
+      "start_line": 9,
+      "start_col": 13,
+      "end_line": 9,
+      "end_col": 13
+    },
+    "secondary": [
+      {
+        "span": {
+          "file": "file:///workspace/examples/config.reml",
+          "start_line": 8,
+          "start_col": 2,
+          "end_line": 8,
+          "end_col": 18
+        },
+        "message": "このブロックの終端が推測できません"
+      },
+      {
+        "message": "`;` を追加すると解消します"
+      }
+    ],
+    "expected": {
+      "message_key": null,
+      "humanized": "ここにセミコロンが必要です",
+      "context_note": null,
+      "alternatives": [
+        { "kind": "token", "value": ";" },
+        { "kind": "token", "value": "}" }
+      ],
+      "locale_args": []
+    },
+    "hints": [
+      {
+        "message": "末尾に `;` を挿入",
+        "actions": [
+          {
+            "kind": "insert",
+            "range": {
+              "file": "file:///workspace/examples/config.reml",
+              "start_line": 9,
+              "start_col": 13,
+              "end_line": 9,
+              "end_col": 13
+            },
+            "text": ";"
+          }
+        ]
+      }
+    ],
+    "structured_hints": [
+      {
+        "id": "apply-semicolon",
+        "title": "セミコロンを追加",
+        "kind": "quick_fix",
+        "span": {
+          "file": "file:///workspace/examples/config.reml",
+          "start_line": 9,
+          "start_col": 13,
+          "end_line": 9,
+          "end_col": 13
+        },
+        "payload": {
+          "command": "reml.applyFix",
+          "arguments": {
+            "code": "parser.expected_token"
+          }
+        },
+        "actions": [
+          {
+            "kind": "insert",
+            "range": {
+              "file": "file:///workspace/examples/config.reml",
+              "start_line": 9,
+              "start_col": 13,
+              "end_line": 9,
+              "end_col": 13
+            },
+            "text": ";"
+          }
+        ]
+      }
+    ],
+    "extensions": {
+      "diagnostic.v2": {
+        "codes": ["parser.expected_token", "parser.recovery.entered"],
+        "structured_hints": [
+          {
+            "id": "apply-semicolon",
+            "title": "セミコロンを追加",
+            "kind": "quick_fix",
+            "span": {
+              "file": "file:///workspace/examples/config.reml",
+              "start_line": 9,
+              "start_col": 13,
+              "end_line": 9,
+              "end_col": 13
+            },
+            "payload": {
+              "command": "reml.applyFix",
+              "arguments": {
+                "code": "parser.expected_token"
+              }
+            }
+          }
+        ]
+      },
+      "effect.stage.required": "stable"
+    },
+    "audit_metadata": {
+      "effect.stage.required": "stable",
+      "effect.stage.actual": "preview"
+    },
+    "audit": {
+      "audit_id": "audit-9c41f9b8",
+      "metadata": {
+        "effect.stage.required": "stable",
+        "effect.stage.actual": "preview",
+        "stage_trace": [
+          { "phase": "typer", "stage": "preview" },
+          { "phase": "runtime", "stage": "preview" }
+        ]
+      }
+    },
+    "timestamp": "2025-10-27T12:34:56Z"
+  }
+]

@@ -1,0 +1,12 @@
+fn load_plugin_sandboxed(metadata: PluginMetadata, sandbox: SandboxConfig) -> Result<PluginHandle, CapabilityError>
+
+pub type SandboxConfig = {
+  allowed_capabilities: Set<CapabilityId>,
+  memory_limit: Option<MemoryLimit>,
+  cpu_limit: Option<CpuQuota>,
+  network_access: NetworkAccess,
+  file_access: FileAccess,
+}
+
+pub enum NetworkAccess = None | Restricted(List<NetworkPattern>) | Full
+pub enum FileAccess = None | ReadOnly(List<PathPattern>) | Restricted(List<PathPattern>) | Full

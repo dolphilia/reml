@@ -1,0 +1,69 @@
+---
+source: tests/core_iter_adapters.rs
+assertion_line: 92
+expression: cases
+---
+- case: map_pipeline
+  effects:
+    async_pending: false
+    audit: false
+    debug: false
+    mem: false
+    mem_bytes: 0
+    mutating: false
+    predicate_calls: 0
+  stage:
+    actual: stable
+    capability: core.iter.core
+    kind: core_iter
+    required:
+      mode: exact
+      stage: stable
+    source: iter.map_pipeline
+  value:
+    - 10
+    - 20
+    - 30
+    - 40
+- case: filter_effect
+  effects:
+    async_pending: false
+    audit: false
+    debug: false
+    mem: false
+    mem_bytes: 0
+    mutating: true
+    predicate_calls: 4
+  stage:
+    actual: stable
+    capability: core.iter.core
+    kind: core_iter
+    required:
+      mode: exact
+      stage: stable
+    source: iter.filter_effect
+  value:
+    - 2
+    - 4
+- case: map_filter_chain_panic_guard
+  effects:
+    async_pending: false
+    audit: false
+    debug: false
+    mem: false
+    mem_bytes: 0
+    mutating: true
+    predicate_calls: 0
+  stage:
+    actual: stable
+    capability: core.iter.core
+    kind: core_iter
+    required:
+      mode: exact
+      stage: stable
+    source: iter.map_filter_chain_panic_guard
+  value:
+    - -2
+    - -1
+    - 0
+    - 1

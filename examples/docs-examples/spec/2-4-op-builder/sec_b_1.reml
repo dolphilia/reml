@@ -1,0 +1,12 @@
+use Core.Parse.OpBuilder
+
+fn build_expr_parser(atom: Parser<Int>) -> Parser<Int> {
+  let builder = OpBuilder.new()
+  builder.level(90, :prefix, ["-"])
+  builder.level(80, :infix_right, ["^"])
+  builder.level(70, :infix_left, ["*", "/"])
+  builder.level(60, :infix_left, ["+", "-"])
+  builder.level(50, :infix_nonassoc, ["<", "<=", ">", ">="])
+  builder.level(40, :ternary, ["?", ":"])
+  builder.build(atom)
+}

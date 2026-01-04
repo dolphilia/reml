@@ -1,0 +1,46 @@
+pub type ForeignFunction
+pub type FfiError
+pub type Ownership
+
+pub enum FfiType = Void | Bool
+  | I8 | U8 | I16 | U16 | I32 | U32 | I64 | U64
+  | F32 | F64
+  | Ptr(FfiType)
+  | ConstPtr(FfiType)
+  | Struct(FfiStruct)
+  | Enum(FfiEnum)
+  | Fn(FfiFnSig)
+
+fn int() -> FfiType
+fn double() -> FfiType
+fn ptr(inner: FfiType) -> FfiType
+fn const_ptr(inner: FfiType) -> FfiType
+
+pub type FfiFnSig = {
+  params: List<FfiType>,
+  returns: FfiType,
+  variadic: Bool,
+}
+
+pub type FfiStruct = { name: Str, fields: List<FfiField>, repr: FfiRepr }
+pub type FfiField = { name: Str, ty: FfiType }
+pub enum FfiRepr = C | Transparent | Packed
+
+pub type FfiEnum = { name: Str, repr: FfiIntRepr, variants: List<FfiVariant> }
+pub type FfiVariant = { name: Str, value: Option<Int> }
+pub enum FfiIntRepr = I8 | U8 | I16 | U16 | I32 | U32 | I64 | U64
+
+pub type FfiLibrary = { name: Str }
+pub type FfiRawFn = { symbol: ForeignFunction, signature: FfiFnSig }
+
+pub type FfiWrapSpec = {
+  name: Str,
+  null_check: Bool,
+  ownership: Option<Ownership>,
+  error_map: Option<Str>,
+}
+
+fn fn_sig(params: List<FfiType>, returns: FfiType, variadic: Bool) -> FfiFnSig
+fn bind_library(name: Str) -> Result<FfiLibrary, FfiError>              // `effect {ffi}`
+fn FfiLibrary.bind_fn(name: Str, sig: FfiFnSig) -> Result<FfiRawFn, FfiError> // `effect {ffi, unsafe}`
+fn wrap<Args, Ret>(raw: FfiRawFn, spec: FfiWrapSpec) -> Result<fn(Args) -> Result<Ret, FfiError>, FfiError> // `effect {ffi}`

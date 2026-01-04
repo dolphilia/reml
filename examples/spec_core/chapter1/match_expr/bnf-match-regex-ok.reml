@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.Match.RegexOk
+
+use Core.Prelude
+
+// 正規表現パターンの成功例（全体一致のみ）
+fn parse_digits(input: Str) -> Str {
+  match input with
+    | r"^\\d+$" as digits -> "digits=" + digits
+    | _ -> "no-match"
+}
+
+fn main() -> Str = parse_digits("12345")

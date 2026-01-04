@@ -1,0 +1,78 @@
+module Spec.Core.Chapter2.Parser.LeftRecursionAvoid
+
+use Core.Parse as Parse
+use Core.Parse.Lex
+use Core.Prelude
+
+// 目的: 左再帰を避け、expr_builder + label/cut で式文法を安定化する。
+
+let sc: Parse.Parser<()> =
+  (Lex.spaceOrTabsOrNewlines)
+  |> Lex.skipMany
+
+fn sym(text: Str) -> Parse.Parser<()> {
+  Lex.symbol(sc, text)
+}
+
+fn integer() -> Parse.Parser<Int> {
+  Lex.lexeme(sc, Lex.int(10))
+    .andThen(|digits|
+      match Lex.parseI64(digits, 10) with
+      | Ok(v) -> Parse.ok(v)
+      | Err(_) -> Parse.fail("整数として解釈できません")
+    )
+}
+
+let expr_left_recursion_avoid: Parse.Parser<Int> =
+  Parse.rule(
+    "expression",
+    Parse.expr_builder(
+      Parse.choice([
+        sym("(").then(Parse.cut_here()).then(rec(expr_left_recursion_avoid)).skipL(sym(")")),
+        integer(),
+      ]).label("atom"),
+      [
+        {
+          prefix: [sym("-").map(|_| (|x| 0 - x))],
+          postfix: [],
+          infixl: [],
+          infixr: [],
+          infixn: [],
+          ternary: [],
+        },
+        {
+          prefix: [],
+          postfix: [],
+          infixl: [
+            sym("*").map(|_| (|a, b| a * b)),
+            sym("/").map(|_| (|a, b| a / b)),
+          ],
+          infixr: [],
+          infixn: [],
+          ternary: [],
+        },
+        {
+          prefix: [],
+          postfix: [],
+          infixl: [
+            sym("+").map(|_| (|a, b| a + b)),
+            sym("-").map(|_| (|a, b| a - b)),
+          ],
+          infixr: [],
+          infixn: [],
+          ternary: [],
+        },
+      ],
+      {
+        space: Some(sc),
+        operand_label: Some("expression"),
+        commit_style: Parse.ExprCommit::CommitOperators,
+      },
+    )
+  )
+
+fn main() -> Str {
+  match Parse.run(expr_left_recursion_avoid, "1 + (2 * )") with
+    Ok(value) -> format("result=%d", [value])
+    Err(diag) -> diag.message
+}

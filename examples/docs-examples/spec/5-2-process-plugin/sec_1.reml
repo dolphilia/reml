@@ -1,0 +1,8 @@
+pub type ProcessCapability = {
+  spawn_process: fn(Command, Environment) -> Result<ProcessHandle, ProcessError>,      // effect {process}
+  kill_process: fn(ProcessHandle, Core.System.Signal.Signal) -> Result<(), ProcessError>, // effect {process, signal}
+  wait_process: fn(ProcessHandle, Option<Duration>) -> Result<ExitStatus, ProcessError>, // effect {process, io.blocking}
+  create_thread: fn(ThreadStart, ThreadOptions) -> Result<ThreadHandle, ThreadError>,  // effect {thread}
+  join_thread: fn(ThreadHandle, Option<Duration>) -> Result<ThreadResult, ThreadError>,// effect {thread, io.blocking}
+  set_thread_affinity: fn(ThreadHandle, Set<CpuId>) -> Result<(), ThreadError>,        // effect {thread, hardware}
+}

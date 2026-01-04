@@ -1,0 +1,28 @@
+use Core;
+use Core.IO;
+use Core.Path;
+use Core.Config;
+use Core.Numeric;
+
+pub type AppConfig
+pub type AuditSink
+pub type Diagnostic
+
+fn load_config(path: Str, audit: AuditSink) -> Result<AppConfig, Diagnostic> {
+  let file_path = path(path)?;
+  let start = Core.Numeric.now()?;
+
+  let config = with_reader(file_path.clone(), |reader| {
+    reader
+      |> buffered(capacity=64 * 1024)
+      |> read_line
+      |> Iter.from
+      |> Iter.take_while(|line| line.is_some())
+      |> Iter.map(|line| line.expect("line"))
+      |> Config.parse_yaml()
+  })?;
+
+  let elapsed = duration_between(start?, Core.Numeric.now()?);
+  log_io("config.load", Some(file_path.clone()), elapsed, audit)?;
+  Ok(config)
+}

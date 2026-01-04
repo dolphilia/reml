@@ -1,0 +1,12 @@
+module Spec.Core.Chapter1.Match.SliceMultipleRest
+
+use Core.Prelude
+
+// 診断: pattern.slice.multiple_rest（`..` は 1 回のみ許容）
+fn summarize(xs: Array<Int>) -> Str {
+  match xs with
+    | [..a, 0, ..b] -> "invalid"
+    | _ -> "other"
+}
+
+fn main() -> Str = summarize([1, 0, 2])

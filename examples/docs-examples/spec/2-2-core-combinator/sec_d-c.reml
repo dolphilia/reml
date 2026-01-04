@@ -1,0 +1,4 @@
+let json_array = sym("[").then(cut_here()).then(elements).then(sym("]"))           // JSON: `[`
+let json_object = sym("{").then(cut_here()).then(members).then(sym("}"))            // JSON: `{`
+let yaml_map = key.then(Lex.string(":").then(cut_here())).then(value_or_nested)  // YAML: `:`
+let yaml_list = Lex.string("-").then(cut_here()).then(value)                      // YAML: `-`

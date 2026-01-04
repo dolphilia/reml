@@ -1,0 +1,64 @@
+type Severity = Error | Warning | Note
+
+type SeverityHint = Rollback | Retry | Ignore | Escalate
+
+type ErrorDomain =
+  | Parser
+  | Config
+  | Runtime
+  | Network
+  | Data
+  | Audit
+  | Security
+  | CLI
+
+type Expectation =
+  | Token(Str)          // 具体トークン（")", "if", "+", …）
+  | Keyword(Str)        // 識別子と衝突しない予約語
+  | Rule(Str)           // "expression" など人間語ラベル
+  | Eof                 // 入力終端
+  | Not(Str)            // "直後に英数字が続かないこと" 等の否定
+  | Class(Str)          // 文字クラス／種別（"digit", "identifier" など）
+  | Custom(Str)         // 任意メッセージ（ライブラリ拡張用）
+
+type FixIt =            // IDE 用 “その場で直せる” 提案
+  | Insert(Span, Str)
+  | Replace(Span, Str)
+  | Delete(Span)
+
+type Diagnostic = {
+  severity: Severity,
+  severity_hint: Option<SeverityHint>,
+  domain: Option<ErrorDomain>,
+  code: Option<Str>,        // "E0001" など（安定ID）
+  message: Str,             // 1 行要約
+  at: Span,                 // 主位置（1.4: 列=グラフェム）
+  expected_summary: Option<ExpectationSummary>,
+  notes: List<(Span, Str)>, // 追加メモ（複数可）
+  span_trace: Option<SpanTrace>, // RunConfig.trace=true のときに付与される成功履歴
+  fixits: List<FixIt>,
+  audit_id: Option<Uuid>,   // Config/Audit 系機能と共有する識別子
+  change_set: Option<Json>, // 設定差分などを JSON で保持
+  stream_meta: Option<Json>,// ストリーミング実行時の補助情報
+  quality_report_id: Option<Uuid>, // データ品質レポートとの関連
+  extensions: Map<Str, Any> // プラグインが追加情報を格納するための自由領域
+}
+
+// 期待集合を人間語へ整形するためのサマリ
+type ExpectationSummary = {
+  message_key: Option<Str>,          // LSP/翻訳用キー（例: "expected.token")
+  locale_args: List<Str>,            // メッセージテンプレートに渡す引数
+  humanized: Option<Str>,            // テンプレート未設定時の自然言語
+  context_note: Option<Str>,         // 文脈説明（例: "+ の後に式"）
+  alternatives: List<Expectation>    // 優先順に並べ替えた候補一覧
+}
+
+type ParseError = {
+  at: Span,                        // 失敗の最狭位置（最遠エラーの位置）
+  expected: Set<Expectation>,      // 期待集合（重複・包含を縮約）
+  context: List<Str>,              // 直近の label / rule 名（外側→内側）
+  committed: Bool,                 // cut 後の失敗なら true
+  far_consumed: Bool,              // ここまでに一度でも消費したか
+  hints: List<Str>,                // "カッコを閉じ忘れ？" 等の簡易ヒント
+  secondaries: List<Diagnostic>    // 付随診断（lex/overflow 等）
+}

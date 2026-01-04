@@ -1,0 +1,20 @@
+type FlowController = {
+  mode: FlowMode,
+  high_watermark: usize,
+  low_watermark: usize,
+  policy: FlowPolicy
+}
+
+enum FlowMode = Auto | Push | Pull | Hybrid
+
+type FlowPolicy =
+  | Manual { on_demand: fn() -> Demand }
+  | Auto { backpressure: BackpressureSpec }
+
+type Demand = { bytes: usize, frames: usize }
+
+struct BackpressureSpec {
+  max_lag: Option<Duration>,
+  debounce: Option<Duration>,
+  throttle: Option<Duration>
+}

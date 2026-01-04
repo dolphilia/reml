@@ -1,0 +1,5 @@
+pub type Console
+pub type Text
+pub type AsyncError
+
+fn with_console_mock() -> Result<Text, AsyncError>                          // `effect {io.async, audit}`

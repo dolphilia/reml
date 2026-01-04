@@ -1,0 +1,258 @@
+[
+  {
+    "schema_version": "2.0.0-draft",
+    "id": "bfed1e4a-44a1-4b4d-8e3d-3d8fddbdc0c1",
+    "message": "文の末尾にセミコロンが必要です",
+    "severity": 1,
+    "domain": "parser",
+    "codes": ["parser.expected_token", "parser.recovery.entered"],
+    "primary": {
+      "file": "file:///workspace/examples/config.reml",
+      "start_line": 9,
+      "start_col": 13,
+      "end_line": 9,
+      "end_col": 13
+    },
+    "secondary": [
+      {
+        "span": {
+          "file": "file:///workspace/examples/config.reml",
+          "start_line": 8,
+          "start_col": 2,
+          "end_line": 8,
+          "end_col": 18
+        },
+        "message": "このブロックの終端が推測できません"
+      },
+      {
+        "message": "`;` を追加すると解消します"
+      }
+    ],
+    "expected": {
+      "message_key": "parse.expected",
+      "humanized": "ここで`;` または `}`のいずれかが必要です",
+      "alternatives": [
+        { "kind": "token", "value": ";" },
+        { "kind": "token", "value": "}" }
+      ],
+      "locale_args": [";", "}"]
+    },
+    "hints": [
+      {
+        "message": "末尾に `;` を挿入",
+        "actions": [
+          {
+            "kind": "insert",
+            "range": {
+              "file": "file:///workspace/examples/config.reml",
+              "start_line": 9,
+              "start_col": 13,
+              "end_line": 9,
+              "end_col": 13
+            },
+            "text": ";"
+          }
+        ]
+      }
+    ],
+    "structured_hints": [
+      {
+        "id": "apply-semicolon",
+        "title": "セミコロンを追加",
+        "kind": "quick_fix",
+        "span": {
+          "file": "file:///workspace/examples/config.reml",
+          "start_line": 9,
+          "start_col": 13,
+          "end_line": 9,
+          "end_col": 13
+        },
+        "payload": {
+          "command": "reml.applyFix",
+          "arguments": {
+            "code": "parser.expected_token"
+          }
+        },
+        "actions": [
+          {
+            "kind": "insert",
+            "range": {
+              "file": "file:///workspace/examples/config.reml",
+              "start_line": 9,
+              "start_col": 13,
+              "end_line": 9,
+              "end_col": 13
+            },
+            "text": ";"
+          }
+        ]
+      }
+    ],
+    "extensions": {
+      "diagnostic.v2": {
+        "codes": ["parser.expected_token", "parser.recovery.entered"],
+        "structured_hints": [
+          {
+            "id": "apply-semicolon",
+            "title": "セミコロンを追加",
+            "kind": "quick_fix",
+            "span": {
+              "file": "file:///workspace/examples/config.reml",
+              "start_line": 9,
+              "start_col": 13,
+              "end_line": 9,
+              "end_col": 13
+            },
+            "payload": {
+              "command": "reml.applyFix",
+              "arguments": {
+                "code": "parser.expected_token"
+              }
+            }
+          }
+        ]
+      },
+      "effect.stage.required": "stable"
+    },
+    "audit_metadata": {
+      "effect.stage.required": "stable",
+      "effect.stage.actual": "preview"
+    },
+    "audit": {
+      "audit_id": "audit-9c41f9b8",
+      "metadata": {
+        "effect.stage.required": "stable",
+        "effect.stage.actual": "preview",
+        "stage_trace": [
+          { "phase": "typer", "stage": "preview" },
+          { "phase": "runtime", "stage": "preview" }
+        ]
+      }
+    },
+    "timestamp": "2025-10-27T12:34:56Z"
+  },
+  {
+    "schema_version": "2.0.0-draft",
+    "id": "a6df7041-62bb-4f19-b4f8-62ff2bd7c28a",
+    "message": "Windows ターゲットで外部関数の ABI が一致しません",
+    "severity": 1,
+    "domain": "runtime",
+    "codes": ["ffi.contract.unsupported_abi"],
+    "primary": {
+      "file": "file:///workspace/examples/ffi/windows_bridge.reml",
+      "start_line": 4,
+      "start_col": 7,
+      "end_line": 4,
+      "end_col": 29
+    },
+    "secondary": [
+      {
+        "span": {
+          "file": "file:///workspace/examples/ffi/windows_bridge.reml",
+          "start_line": 1,
+          "start_col": 0,
+          "end_line": 2,
+          "end_col": 18
+        },
+        "message": "ターゲット ABI: `win64`"
+      },
+      {
+        "message": "指定された値: `system_v`"
+      }
+    ],
+    "expected": null,
+    "hints": [
+      {
+        "message": "`abi = win64` を指定してください",
+        "actions": [
+          {
+            "kind": "replace",
+            "range": {
+              "file": "file:///workspace/examples/ffi/windows_bridge.reml",
+              "start_line": 4,
+              "start_col": 20,
+              "end_line": 4,
+              "end_col": 27
+            },
+            "text": "win64"
+          }
+        ]
+      }
+    ],
+    "structured_hints": [
+      {
+        "id": "rewrite-abi",
+        "title": "ABI を win64 に更新",
+        "kind": "quick_fix",
+        "span": {
+          "file": "file:///workspace/examples/ffi/windows_bridge.reml",
+          "start_line": 4,
+          "start_col": 7,
+          "end_line": 4,
+          "end_col": 29
+        },
+        "payload": {
+          "command": "reml.applyFix",
+          "arguments": {
+            "code": "ffi.contract.unsupported_abi"
+          }
+        }
+      }
+    ],
+    "extensions": {
+      "diagnostic.v2": {
+        "codes": ["ffi.contract.unsupported_abi"]
+      },
+      "bridge.status": "error",
+      "bridge.platform": "windows-msvc-x64",
+      "bridge.abi": "system_v",
+      "bridge.expected_abi": "win64"
+    },
+    "audit_metadata": {
+      "bridge.status": "error",
+      "bridge.platform": "windows-msvc-x64",
+      "bridge.abi": "system_v",
+      "bridge.expected_abi": "win64"
+    },
+    "audit": {
+      "audit_id": "audit-ffe21c41",
+      "metadata": {
+        "bridge": {
+          "status": "error",
+          "platform": "windows-msvc-x64",
+          "abi": "system_v",
+          "expected_abi": "win64",
+          "extern_symbol": "ffi_demo_c"
+        }
+      }
+    },
+    "timestamp": "2025-10-27T12:40:01Z"
+  },
+  {
+    "schema_version": "2.0.0-draft",
+    "id": "sample-pattern-regex",
+    "message": "正規表現パターンは文字列またはバイト列にのみ適用できます。",
+    "severity": 1,
+    "domain": "type",
+    "codes": ["pattern.regex.unsupported_target"],
+    "primary": {
+      "file": "file:///workspace/examples/spec_core/chapter1/match_expr/bnf-match-regex-unsupported-target.reml",
+      "start_line": 8,
+      "start_col": 7,
+      "end_line": 8,
+      "end_col": 16
+    },
+    "notes": [
+      { "message": "対象の型: Int" }
+    ],
+    "extensions": {
+      "diagnostic.message": {
+        "code": "pattern.regex.unsupported_target",
+        "title": "正規表現パターンの適用対象が不正です",
+        "message": "正規表現パターンは文字列/バイト列にのみ適用できます。",
+        "severity": "error"
+      }
+    },
+    "timestamp": "2026-02-01T00:00:00Z"
+  }
+]

@@ -1,0 +1,2 @@
+run_id,date,profile,diagnostic_total_count,audit_event_total,diagnostic_sources,audit_sources,notes
+20290710-diagnostics-ci-bootstrap,2029-07-10,linux-bootstrap,8,8,"reports/spec-audit/ch1/core_iter_collectors.json","reports/spec-audit/ch1/core_iter_collectors.audit.jsonl","python3 tooling/ci/collect-iterator-audit-metrics.py --section diag --metrics-case effects-contract --source reports/spec-audit/ch1/core_iter_collectors.json --audit-source reports/spec-audit/ch1/core_iter_collectors.audit.jsonl"

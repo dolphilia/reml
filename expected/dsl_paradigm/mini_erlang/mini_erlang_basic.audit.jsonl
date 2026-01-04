@@ -1,0 +1,2 @@
+{"event":"dsl.actor.mailbox","metadata":{"dsl.id":"mini_erlang","dsl.actor.name":"Echo"}}
+{"event":"dsl.gc.root","metadata":{"dsl.id":"mini_erlang","dsl.gc.strategy":"Arena"}}

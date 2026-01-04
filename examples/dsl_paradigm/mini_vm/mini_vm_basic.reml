@@ -1,0 +1,41 @@
+module Examples.DslParadigm.MiniVm.Basic
+
+// Core.Dsl.Vm / Core.Dsl.Object を利用する最小例。
+use Core.Prelude
+use Core.Dsl.Object
+use Core.Dsl.Vm
+
+type Op =
+  | Push(Int)
+  | Add
+  | Halt
+
+type VmValue =
+  | BytecodeValue(Bytecode<Op>)
+  | StateValue(VmState<Int>)
+
+fn exec_op(state: VmState<Int>, _op: Op) -> Result<VmState<Int>, VmError> {
+  Ok(state)
+}
+
+let program_class = Object.class_builder("Program")
+  .method("run", |this, _| {
+    match this.payload with
+      | BytecodeValue(code) -> {
+        let state = { stack: [], frames: [{ ip: 0 }] }
+        let _ = Vm.run(code, state, |s, op| { exec_op(s, op) })
+        Ok(this.payload)
+      }
+      | _ -> Ok(this.payload)
+  })
+  .build()
+
+let code = Vm.bytecode_builder()
+  .emit(Op.Push(1))
+  .emit(Op.Push(2))
+  .emit(Op.Add)
+  .emit(Op.Halt)
+  .build()
+
+let program = { table: program_class, payload: BytecodeValue(code), shape_id: 1 }
+let _ = Object.call(program, "run", [], None)

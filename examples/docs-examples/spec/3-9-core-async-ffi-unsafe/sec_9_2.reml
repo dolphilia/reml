@@ -1,0 +1,9 @@
+pub type FfiSignature
+pub type MockBehavior
+pub type MockForeignFunction
+pub type ForeignFunction
+pub type FfiContract
+pub type FfiError
+
+fn mock_foreign_function(signature: FfiSignature, behavior: MockBehavior) -> MockForeignFunction
+fn verify_ffi_contract(foreign_fn: ForeignFunction, contract: FfiContract) -> Result<(), FfiError>

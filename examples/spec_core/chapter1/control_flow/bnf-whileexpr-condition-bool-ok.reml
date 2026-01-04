@@ -1,0 +1,16 @@
+module Spec.Core.Chapter1.ControlFlow.WhileCondition
+
+use Core.Prelude
+
+// BNF: WhileExpr（docs/spec/1-5-formal-grammar-bnf.md §4）
+fn countdown(start: Int) -> Int {
+  var current: Int = start
+  while current > 0 {
+    current := current - 1
+  }
+  current
+}
+
+fn main() -> Int {
+  countdown(2)
+}

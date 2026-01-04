@@ -1,0 +1,27 @@
+use Core.Parse.{Lex, Op}
+
+// 値と関数
+let sep = ", "
+fn join3(a: String, b: String, c: String) -> String =
+  a + sep + b + sep + c
+
+// ラムダとパイプ
+let r = "1 2 3"
+  |> split(" ")
+  |> map(|s| parse_int(s))
+  |> fold(0, |acc| acc + 1)
+  //           ↑ パイプ値の占位
+
+// ADT と match
+type Expr = | Int(i64) | Add(Expr, Expr) | Neg(Expr)
+fn negate(x: i64) -> i64 = x
+fn eval(e: Expr) -> i64 =
+  match e with
+  | Int(n)     -> n
+  | Neg(x)     -> negate(eval(x))
+  | Add(a, b)  -> eval(a) + eval(b)
+
+// ブロックは最後の式が値
+fn abs(x: i64) -> i64 {
+  if x < 0 then negate(x) else x
+}

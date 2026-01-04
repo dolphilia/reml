@@ -1,0 +1,16 @@
+pub type AuditError
+pub type LspClient
+
+// LSP プロトコル対応
+fn diagnostic_to_lsp(diag: Diagnostic) -> LspDiagnostic {
+  LspDiagnostic {
+    range: span_to_lsp_range(diag.primary),
+    severity: severity_to_lsp(diag.severity),
+    code: diag.code,
+    message: diag.message,
+    related_information: diag.secondary.map(|span| span_to_related_info(span)),
+    data: diag.audit.metadata.to_json(),
+  }
+}
+
+fn batch_publish_diagnostics(diagnostics: List<Diagnostic>, client: LspClient) -> Result<(), AuditError>

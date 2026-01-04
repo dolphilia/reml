@@ -1,0 +1,18 @@
+{
+  "requireEof": false,
+  "packrat": false,
+  "experimentalEffects": false,
+  "leftRecursion": "auto",
+  "trace": false,
+  "mergeWarnings": true,
+  "legacyResult": false,
+  "extensions": {
+    "lex": {
+      "profile": "strict_json"
+    },
+    "recover": {
+      "syncTokens": [";"] ,
+      "notes": true
+    }
+  }
+}

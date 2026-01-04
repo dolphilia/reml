@@ -1,0 +1,15 @@
+module Spec.Core.Chapter2.Parser.CutUnclosedParenNoCut
+
+use Core.Prelude
+
+// 目的: `core-parse-cut-unclosed-paren.reml` の比較対象（Cut 無し相当）を用意する。
+//
+// 注意: このファイルは「Cut が効いていない（期待集合が崩れる）」実装を想定したベースラインであり、
+// 現行実装では Cut 境界が導入済みのため、同一出力を再現できるとは限らない。
+//
+// 期待: 括弧閉じ忘れ（`(1 + 2`）が、`parser.syntax.expected_tokens` の期待集合を
+// 「式開始」などの広い期待へ巻き戻してしまい、`)` へ自然に収束しない可能性を保持する。
+
+fn main() -> Int {
+  (1 + 2
+}

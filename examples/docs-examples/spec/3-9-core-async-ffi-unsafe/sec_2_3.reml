@@ -1,0 +1,8 @@
+pub type Text
+pub type Bytes
+pub type FfiError
+pub type Request
+pub type Response
+
+fn foreign_call(name: Text, payload: Bytes) -> Result<Bytes, FfiError>        // `effect {ffi}`
+fn with_foreign_stub(request: Request) -> Result<Response, FfiError>          // `effect {ffi, audit}`

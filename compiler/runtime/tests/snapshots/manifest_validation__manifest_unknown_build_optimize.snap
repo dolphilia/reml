@@ -1,0 +1,22 @@
+---
+source: tests/manifest_validation.rs
+expression: snapshot_diag(diag)
+---
+audit:
+  config.key_path:
+    - build
+    - optimize
+  config.path: /virtual/workspace/reml.toml
+  config.source: manifest
+code: config.build.optimize_unknown
+domain: config
+extensions:
+  config:
+    key_path:
+      - build
+      - optimize
+    path: /virtual/workspace/reml.toml
+    source: manifest
+message: "`build.optimize` に未対応の optimize 値 `turbo` が指定されました"
+notes: []
+severity: error

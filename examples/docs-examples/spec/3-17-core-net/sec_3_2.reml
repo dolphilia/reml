@@ -1,0 +1,8 @@
+module Core.Net.Url
+
+pub type Url
+pub type UrlParts
+pub type UrlError
+
+fn parse(text: Str) -> Result<Url, UrlError> // `@pure`
+fn build(parts: UrlParts) -> Result<Url, UrlError> // `@pure`

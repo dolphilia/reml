@@ -1,0 +1,10 @@
+type Input = {
+  source: SourceId,        // ファイル/文字列単位の識別子
+  bytes: Bytes,            // UTF-8 本体（共有参照/COW）
+  byte_off: usize,         // 現在の先頭（バイト）
+  line: usize,             // 現在の行番号（1-origin）
+  column: usize,           // 現在の列（拡張書記素基準、1-origin）
+  // 境界キャッシュ（必要時だけ構築、ビュー間で共有）
+  cp_index: Option<CpIndex>,    // コードポイント境界表
+  g_index: Option<GraphemeIndex>// グラフェム境界表
+}

@@ -1,0 +1,19 @@
+pub type Context
+pub type SchedulerHandle
+pub type Duration
+pub type AsyncError
+
+pub type Future<T> = {
+  poll: fn(&mut Context) -> Poll<T>,
+}
+
+pub enum Poll<T> = Ready(T) | Pending
+
+pub type Task<T> = {
+  future: Future<T>,
+  scheduler: SchedulerHandle,
+}
+
+fn spawn<T>(future: Future<T>, scheduler: SchedulerHandle) -> Task<T>        // `effect {io.async}`
+fn block_on<T>(future: Future<T>) -> Result<T, AsyncError>                    // `effect {io.blocking}`
+fn sleep_async(duration: Duration) -> Future<()>                             // `effect {io.async, io.timer}`

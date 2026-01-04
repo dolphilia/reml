@@ -1,0 +1,4 @@
+// 複雑なパターンは段階的に分割して扱う
+match input with
+| Some(value) -> handle_ab(value)
+| None -> "other"

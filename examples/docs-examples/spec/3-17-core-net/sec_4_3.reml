@@ -1,0 +1,19 @@
+pub type NetError
+
+pub type HttpError = {
+  kind: HttpErrorKind,
+  message: Str,
+  diagnostic_key: Str,
+  status: Option<Int>,
+  cause: Option<NetError>,
+}
+
+pub enum HttpErrorKind =
+  | Timeout
+  | ConnectionFailed
+  | InvalidResponse
+  | RedirectLoop
+  | BodyTooLarge
+  | TlsUnavailable
+  | ProtocolViolation
+  | InvalidUrl

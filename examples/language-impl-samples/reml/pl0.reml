@@ -1,0 +1,402 @@
+module samples.language_impl_samples.pl0
+
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.Prelude
+use ::Core.Prelude.Box as Box
+use ::Core.Prelude.Int as Int
+use ::Core.Text as Text
+use ::Core.Text.Char as Char
+
+/// PL/0 風サブセットの抽象構文木。
+type Stmt =
+  | Assign({ name: Text, expr: Expr })
+  | While({ cond: Expr, body: List<Stmt> })
+  | Write({ expr: Expr })
+
+/// 式は 4 則演算のみ対応する。
+type Expr =
+  | Number(i64)
+  | Var(Text)
+  | Binary(Op, Box<Expr>, Box<Expr>)
+
+type Op =
+  | Add
+  | Sub
+  | Mul
+  | Div
+
+type Runtime = { vars: Map<Text, i64>, output: List<i64> }
+
+type ParseError = { message: Text, position: i64 }
+
+type ExecError = { reason: Text }
+
+type Token =
+  | TokBegin
+  | TokEnd
+  | TokWhile
+  | TokDo
+  | TokWrite
+  | TokAssign     // :=
+  | TokSemicolon  // ;
+  | TokDot        // .
+  | TokLParen
+  | TokRParen
+  | TokPlus
+  | TokMinus
+  | TokStar
+  | TokSlash
+  | TokNumber(i64)
+  | TokIdent(Text)
+  | TokEof
+
+type Lexeme = { token: Token, position: i64 }
+
+type ParseState = { tokens: List<Lexeme>, pos: i64 }
+
+fn parse_program(source: Text) -> Result<List<Stmt>, ParseError> {
+  let tokens = lex(source)?
+  let state = { tokens, pos: 0 }
+  let (stmts, after_block) = parse_block(state)?
+  let after_dot = consume_optional_dot(after_block)
+  ensure_eof(after_dot)?
+  Result.ok(stmts)
+}
+
+fn lex(source: Text) -> Result<List<Lexeme>, ParseError> =
+  lex_at(source, 0, List.empty())
+
+fn lex_at(source: Text, index: i64, acc: List<Lexeme>) -> Result<List<Lexeme>, ParseError> {
+  if index >= Text.len(source) then {
+    Result.ok(List.push_back(acc, { token: TokEof, position: index }))
+  } else {
+    let ch = Text.char_at(source, index)
+    if is_whitespace(ch) then {
+      lex_at(source, index + 1, acc)
+    } else if starts_with(source, index, "//") then {
+      lex_at(source, skip_line_comment(source, index + 2), acc)
+    } else if starts_with(source, index, "/*") then {
+      let next_index = skip_block_comment(source, index + 2)?
+      lex_at(source, next_index, acc)
+    } else if is_digit(ch) then {
+      let (value, next_index) = read_number(source, index)
+      lex_at(source, next_index, List.push_back(acc, { token: TokNumber(value), position: index }))
+    } else if is_alpha(ch) then {
+      let (text, next_index) = read_identifier(source, index)
+      let token = match text with
+        | "begin" -> TokBegin
+        | "end" -> TokEnd
+        | "while" -> TokWhile
+        | "do" -> TokDo
+        | "write" -> TokWrite
+        | name -> TokIdent(name)
+      end
+      lex_at(source, next_index, List.push_back(acc, { token, position: index }))
+    } else {
+      let result = match ch with
+        | ';' -> lex_at(source, index + 1, List.push_back(acc, { token: TokSemicolon, position: index }))
+        | '.' -> lex_at(source, index + 1, List.push_back(acc, { token: TokDot, position: index }))
+        | '(' -> lex_at(source, index + 1, List.push_back(acc, { token: TokLParen, position: index }))
+        | ')' -> lex_at(source, index + 1, List.push_back(acc, { token: TokRParen, position: index }))
+        | '+' -> lex_at(source, index + 1, List.push_back(acc, { token: TokPlus, position: index }))
+        | '-' -> lex_at(source, index + 1, List.push_back(acc, { token: TokMinus, position: index }))
+        | '*' -> lex_at(source, index + 1, List.push_back(acc, { token: TokStar, position: index }))
+        | '/' -> lex_at(source, index + 1, List.push_back(acc, { token: TokSlash, position: index }))
+        | ':' ->
+          if peek_char(source, index + 1) == '=' then {
+            lex_at(source, index + 2, List.push_back(acc, { token: TokAssign, position: index }))
+          } else {
+            Result.err({ message: format("':' の後に '=' が必要です"), position: index })
+          }
+        | _ -> Result.err({ message: format("認識できない文字です: '{ch}'"), position: index })
+      end
+      result
+    }
+  }
+}
+
+fn parse_block(state: ParseState) -> Result<(List<Stmt>, ParseState), ParseError> {
+  let after_begin = expect_token(state, TokBegin, "begin")?
+  var stmts = List.empty()
+  var current = after_begin
+
+  let (first_stmt, after_first) = parse_stmt(current)?
+  stmts = List.push_back(stmts, first_stmt)
+  current = after_first
+
+  loop {
+    match peek_token(current) with
+    | TokSemicolon -> {
+      let next_state = advance(current)
+      let (next_stmt, after_next) = parse_stmt(next_state)?
+      stmts = List.push_back(stmts, next_stmt)
+      current = after_next
+    }
+    | _ -> break
+  }
+
+  let after_end = expect_token(current, TokEnd, "end")?
+  Result.ok((stmts, after_end))
+}
+
+fn parse_stmt(state: ParseState) -> Result<(Stmt, ParseState), ParseError> =
+  match peek_token(state) with
+  | TokWhile -> parse_while(state)
+  | TokWrite -> parse_write(state)
+  | TokIdent(name) -> parse_assign(state, name)
+  | _ -> Result.err({ message: "文が期待されます", position: current_position(state) })
+
+fn parse_assign(state: ParseState, name: Text) -> Result<(Stmt, ParseState), ParseError> {
+  let after_name = advance(state)
+  let after_assign = expect_token(after_name, TokAssign, ":=")?
+  let (value, after_expr) = parse_expr(after_assign)?
+  Result.ok((Assign({ name, expr: value }), after_expr))
+}
+
+fn parse_write(state: ParseState) -> Result<(Stmt, ParseState), ParseError> {
+  let after_kw = advance(state)
+  let (value, after_expr) = parse_expr(after_kw)?
+  Result.ok((Write({ expr: value }), after_expr))
+}
+
+fn parse_while(state: ParseState) -> Result<(Stmt, ParseState), ParseError> {
+  let after_kw = advance(state)
+  let (cond, after_cond) = parse_expr(after_kw)?
+  let after_do = expect_token(after_cond, TokDo, "do")?
+  let (body, after_body) = parse_block(after_do)?
+  Result.ok((While({ cond, body }), after_body))
+}
+
+fn parse_expr(state: ParseState) -> Result<(Expr, ParseState), ParseError> {
+  let (lhs, after_lhs) = parse_term(state)?
+  parse_expr_tail(lhs, after_lhs)
+}
+
+fn parse_expr_tail(lhs: Expr, state: ParseState) -> Result<(Expr, ParseState), ParseError> =
+  match peek_token(state) with
+  | TokPlus -> {
+    let (rhs, after_rhs) = parse_term(advance(state))?
+    parse_expr_tail(Binary(Add, Box.of(lhs), Box.of(rhs)), after_rhs)
+  }
+  | TokMinus -> {
+    let (rhs, after_rhs) = parse_term(advance(state))?
+    parse_expr_tail(Binary(Sub, Box.of(lhs), Box.of(rhs)), after_rhs)
+  }
+  | _ -> Result.ok((lhs, state))
+
+fn parse_term(state: ParseState) -> Result<(Expr, ParseState), ParseError> {
+  let (lhs, after_lhs) = parse_factor(state)?
+  parse_term_tail(lhs, after_lhs)
+}
+
+fn parse_term_tail(lhs: Expr, state: ParseState) -> Result<(Expr, ParseState), ParseError> =
+  match peek_token(state) with
+  | TokStar -> {
+    let (rhs, after_rhs) = parse_factor(advance(state))?
+    parse_term_tail(Binary(Mul, Box.of(lhs), Box.of(rhs)), after_rhs)
+  }
+  | TokSlash -> {
+    let (rhs, after_rhs) = parse_factor(advance(state))?
+    parse_term_tail(Binary(Div, Box.of(lhs), Box.of(rhs)), after_rhs)
+  }
+  | _ -> Result.ok((lhs, state))
+
+fn parse_factor(state: ParseState) -> Result<(Expr, ParseState), ParseError> =
+  match peek_token(state) with
+  | TokNumber(value) -> Result.ok((Number(value), advance(state)))
+  | TokIdent(name) -> Result.ok((Var(name), advance(state)))
+  | TokLParen -> {
+    let after_l = advance(state)
+    let (inner, after_expr) = parse_expr(after_l)?
+    let after_r = expect_token(after_expr, TokRParen, ")")?
+    Result.ok((inner, after_r))
+  }
+  | _ -> Result.err({ message: "式が期待されます", position: current_position(state) })
+
+fn exec(program: List<Stmt>) -> Result<Runtime, ExecError> {
+  List.fold(program, Result.ok(initial_runtime()), |acc_res, stmt| {
+    match acc_res with
+    | Err(err) -> Result.err(err)
+    | Ok(state) -> exec_stmt(stmt, state)
+    end
+  })
+}
+
+fn exec_stmt(stmt: Stmt, runtime: Runtime) -> Result<Runtime, ExecError> {
+  match stmt with
+  | Assign({ name, expr }) -> {
+    let value = eval_expr(expr, runtime.vars)?
+    Result.ok({ vars: Map.insert(runtime.vars, name, value), output: runtime.output })
+  }
+  | While({ cond, body }) -> exec_while(cond, body, runtime)
+  | Write({ expr }) -> {
+    let value = eval_expr(expr, runtime.vars)?
+    Result.ok({ vars: runtime.vars, output: List.push_back(runtime.output, value) })
+  }
+  end
+}
+
+fn exec_while(cond: Expr, body: List<Stmt>, runtime: Runtime) -> Result<Runtime, ExecError> {
+  var state = runtime
+  loop {
+    let value = eval_expr(cond, state.vars)?
+    if value == 0 then {
+      return Result.ok(state)
+    }
+    state = List.fold(body, Result.ok(state), |acc_res, stmt| {
+      match acc_res with
+      | Err(err) -> Result.err(err)
+      | Ok(current) -> exec_stmt(stmt, current)
+      end
+    })?
+  }
+}
+
+fn eval_expr(expr: Expr, vars: Map<Text, i64>) -> Result<i64, ExecError> {
+  match expr with
+  | Number(n) -> Result.ok(n)
+  | Var(name) ->
+    match Map.get(vars, name) with
+    | Some(value) -> Result.ok(value)
+    | None -> Result.err({ reason: format("未定義変数: {name}") })
+    end
+  | Binary(op, lhs, rhs) -> {
+    let l = eval_expr(*lhs, vars)?
+    let r = eval_expr(*rhs, vars)?
+    let result = match op with
+      | Add -> l + r
+      | Sub -> l - r
+      | Mul -> l * r
+      | Div -> {
+        if r == 0 then { return Result.err({ reason: "0 で割ることはできません" }) }
+        l / r
+      }
+    end
+    Result.ok(result)
+  }
+  end
+}
+
+fn initial_runtime() -> Runtime = { vars: Map.empty(), output: List.empty() }
+
+// --- 字句解析ヘルパー ---
+
+fn read_number(source: Text, start: i64) -> (i64, i64) {
+  var index = start
+  while index < Text.len(source) && is_digit(Text.char_at(source, index)) {
+    index = index + 1
+  }
+  let literal = Text.slice(source, start, index)
+  let value = match Int.parse(literal) with
+    | Some(n) -> n
+    | None -> 0
+  (value, index)
+}
+
+fn read_identifier(source: Text, start: i64) -> (Text, i64) {
+  var index = start
+  while index < Text.len(source) && is_alnum(Text.char_at(source, index)) {
+    index = index + 1
+  }
+  (Text.slice(source, start, index), index)
+}
+
+fn skip_line_comment(source: Text, start: i64) -> i64 {
+  var index = start
+  while index < Text.len(source) && Text.char_at(source, index) != '\n' {
+    index = index + 1
+  }
+  index
+}
+
+fn skip_block_comment(source: Text, start: i64) -> Result<i64, ParseError> {
+  var index = start
+  loop {
+    if index + 1 >= Text.len(source) then {
+      return Result.err({ message: "コメントが閉じられていません", position: start - 2 })
+    }
+    if Text.char_at(source, index) == '*' && Text.char_at(source, index + 1) == '/' then {
+      return Result.ok(index + 2)
+    }
+    index = index + 1
+  }
+}
+
+fn is_whitespace(ch: Char) -> Bool =
+  ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r'
+
+fn is_alpha(ch: Char) -> Bool =
+  ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || ch == '_'
+
+fn is_digit(ch: Char) -> Bool =
+  '0' <= ch && ch <= '9'
+
+fn is_alnum(ch: Char) -> Bool =
+  is_alpha(ch) || is_digit(ch)
+
+fn starts_with(source: Text, index: i64, prefix: Text) -> Bool =
+  Text.starts_with(Text.slice_from(source, index), prefix)
+
+fn peek_char(source: Text, index: i64) -> Char =
+  if index >= Text.len(source) then { '\0' } else { Text.char_at(source, index) }
+
+// --- パーサーヘルパー ---
+
+fn peek_lexeme(state: ParseState) -> Lexeme =
+  match List.get(state.tokens, state.pos) with
+  | Some(lexeme) -> lexeme
+  | None ->
+    match List.pop_back(state.tokens) with
+    | Some((_, last)) -> { token: TokEof, position: last.position }
+    | None -> { token: TokEof, position: 0 }
+
+fn peek_token(state: ParseState) -> Token =
+  peek_lexeme(state).token
+
+fn current_position(state: ParseState) -> i64 =
+  peek_lexeme(state).position
+
+fn advance(state: ParseState) -> ParseState =
+  { tokens: state.tokens, pos: state.pos + 1 }
+
+fn expect_token(state: ParseState, expected: Token, label: Text) -> Result<ParseState, ParseError> {
+  let lexeme = peek_lexeme(state)
+  match lexeme.token with
+  | token if tokens_match(token, expected) -> Result.ok(advance(state))
+  | _ -> Result.err({ message: format("{label} が必要です"), position: lexeme.position })
+}
+
+fn tokens_match(actual: Token, expected: Token) -> Bool =
+  match (actual, expected) with
+  | (TokBegin, TokBegin) -> true
+  | (TokEnd, TokEnd) -> true
+  | (TokWhile, TokWhile) -> true
+  | (TokDo, TokDo) -> true
+  | (TokWrite, TokWrite) -> true
+  | (TokAssign, TokAssign) -> true
+  | (TokSemicolon, TokSemicolon) -> true
+  | (TokDot, TokDot) -> true
+  | (TokLParen, TokLParen) -> true
+  | (TokRParen, TokRParen) -> true
+  | (TokPlus, TokPlus) -> true
+  | (TokMinus, TokMinus) -> true
+  | (TokStar, TokStar) -> true
+  | (TokSlash, TokSlash) -> true
+  | (TokEof, TokEof) -> true
+  | _ -> false
+
+fn consume_optional_dot(state: ParseState) -> ParseState =
+  match peek_token(state) with
+  | TokDot -> advance(state)
+  | _ -> state
+
+fn ensure_eof(state: ParseState) -> Result<(), ParseError> =
+  match peek_token(state) with
+  | TokEof -> Result.ok(())
+  | _ -> Result.err({ message: "入力の末尾に不要なトークンがあります", position: current_position(state) })
+
+// 利用例
+// parse_program("begin x := 1; while x do write x; x := x - 1 end")
+//   |> exec
+//   => Ok({ output: [1, 0], .. })

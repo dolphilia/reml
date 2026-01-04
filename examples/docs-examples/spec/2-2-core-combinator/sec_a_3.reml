@@ -1,0 +1,8 @@
+fn map<A,B>(p: Parser<A>, f: A -> B) -> Parser<B> = todo
+fn cut<T>(p: Parser<T>) -> Parser<T> = todo                 // p 内の失敗を committed=true に
+fn cut_here() -> Parser<()> = todo                           // ゼロ幅コミット
+fn attempt<T>(p: Parser<T>) -> Parser<T> = todo              // 失敗時に消費を巻き戻す（空失敗化）
+fn recover<T>(p: Parser<T>, until: Parser<()>, value: T) -> Parser<T> = todo
+// p 失敗時（committed を含む）、extensions["recover"].mode="collect" の場合のみ入力を until まで読み捨て with で継続（診断を残す）。
+// mode="off"（既定）の場合は p と同様に失敗を返す（Build/CI の fail-fast 維持）。
+fn trace<T>(p: Parser<T>) -> Parser<T> = todo                // 追跡ON時のみスパンを収集

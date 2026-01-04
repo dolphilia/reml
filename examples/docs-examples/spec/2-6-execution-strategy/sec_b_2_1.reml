@@ -1,0 +1,18 @@
+type RunConfigTarget = {
+  os: Str,
+  family: Str,
+  arch: Str,
+  abi: Option<Str>,            // gnu / msvc / musl 等
+  vendor: Option<Str>,
+  env: Option<Str>,            // 追加ツールチェーン識別子
+  profile_id: Option<Str>,
+  triple: Option<Str>,
+  features: Set<Str>,
+  capabilities: Set<Str>,
+  stdlib_version: Option<SemVer>,
+  runtime_revision: Option<Str>,
+  diagnostics: Bool,
+  extra: Map<Str, Str>
+}
+
+// RunConfig.extensions["target"] = RunConfigTarget

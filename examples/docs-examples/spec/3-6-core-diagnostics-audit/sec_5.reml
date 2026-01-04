@@ -1,0 +1,8 @@
+pub type Change
+pub type AuditEnvelope
+pub type ChangeSet
+pub type Diagnostic
+
+fn from_change(change: Change) -> AuditEnvelope         // `@pure`
+fn merge_envelope(base: AuditEnvelope, extra: AuditEnvelope) -> AuditEnvelope // `@pure`
+fn record_change_set<T>(value: T, diff: ChangeSet) -> Result<T, Diagnostic>   // `effect {audit}`

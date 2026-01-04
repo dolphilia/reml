@@ -1,0 +1,19 @@
+module Spec.Core.Chapter1.Attributes.CfgGate
+
+use Core.Prelude
+
+// BNF: Attrs + AttrArgs（docs/spec/1-5-formal-grammar-bnf.md §0）
+fn select_message() -> Str {
+  var message: Str = "disabled"
+
+  @cfg(target = "cli")
+  {
+    message := "cli-enabled"
+  }
+
+  message
+}
+
+fn main() -> Str {
+  select_message()
+}

@@ -1,0 +1,32 @@
+pub type DslCapabilityProfile = {
+  category: DslCategory,
+  produces: DslCategory,
+  requires: List<DslCategory>,
+  allows_effects: Set<EffectTag>,
+  capabilities: Set<CapabilityId>,
+  requires_capabilities: List<DslCapabilityRequirement>,
+  stage_bounds: DslStageBounds,
+  manifest: Option<DslEntry>,
+  performance: Option<DslPerformanceHints>,
+}
+
+pub type DslPerformanceHints = {
+  baseline_latency: Duration,
+  throughput: Option<Float>,
+  memory_ceiling: Option<usize>,
+  notes: Option<Str>,
+}
+
+pub type DslCompatibilityReport = {
+  compatible: Bool,
+  missing_capabilities: Set<CapabilityId>,
+  effect_delta: Set<EffectTag>,
+  category_mismatch: Option<(DslCategory, DslCategory)>,
+  stage_delta: Option<(StageId, StageRequirement)>,
+  notes: List<Str>,
+}
+
+fn register_dsl_profile(profile: DslCapabilityProfile) -> Result<(), CapabilityError>       // `effect {runtime}`
+fn resolve_dsl_profile(name: Str) -> Option<DslCapabilityProfile>                          // `effect {runtime}`
+fn analyze_dsl_compatibility(lhs: DslCapabilityProfile, rhs: DslCapabilityProfile) -> DslCompatibilityReport // `@pure`
+fn benchmark_dsl(entry: DslExportSignature<Json>, harness: BenchmarkHarness) -> Result<DslPerformanceHints, CapabilityError> // `effect {runtime, audit}`

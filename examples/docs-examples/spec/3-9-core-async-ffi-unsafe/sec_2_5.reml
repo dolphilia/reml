@@ -1,0 +1,12 @@
+pub type PlatformInfo
+pub type LibraryMetadata
+pub type FfiError
+pub type Path
+pub type LibraryHandle
+pub type ForeignFunction
+
+pub enum CallingConvention = C | StdCall | FastCall | SysV | WasmSystemV | Custom(Str)
+
+fn resolve_calling_convention(target: PlatformInfo, foreign: LibraryMetadata) -> Result<CallingConvention, FfiError> // `effect {runtime}`
+fn link_foreign_library(path: Path, target: PlatformInfo) -> Result<LibraryHandle, FfiError> // `effect {ffi}`
+fn with_abi_adaptation(fn_ptr: ForeignFunction, conv: CallingConvention) -> Result<ForeignFunction, FfiError> // `effect {ffi, unsafe}`

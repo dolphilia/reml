@@ -1,0 +1,14 @@
+{
+  "schema_version": "3.0.0-alpha",
+  "message": "parser.unexpected_eof",
+  "severity": "Error",
+  "code": "parser.unexpected_eof",
+  "source_dsl": "reml",
+  "primary": { "start": 0, "end": 0 },
+  "audit_metadata": {
+    "dsl.id": "reml",
+    "dsl.parent_id": "markdown",
+    "dsl.embedding.span": { "start": 0, "end": 0 },
+    "dsl.embedding.mode": "ParallelSafe"
+  }
+}

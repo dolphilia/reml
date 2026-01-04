@@ -1,0 +1,3 @@
+fn generate_from_sample<T>(samples: Iter<Json>, confidence: Float) -> Result<Schema<T>, InferenceError>
+fn merge_schemas<T>(schemas: List<Schema<T>>) -> Result<Schema<T>, MergeError>
+fn optimize_schema<T>(schema: Schema<T>) -> Schema<T>  // 冗長フィールドの統合、型の簡略化

@@ -1,0 +1,19 @@
+type DemandHint = {
+  min_bytes: usize,
+  preferred_bytes: Option<usize>,
+  frame_boundary: Option<TokenClass>
+}
+
+trait Feeder {
+  fn pull(&mut self, demand: DemandHint) -> FeederYield
+}
+
+type FeederYield = Chunk | Await | Closed | FeederError
+
+type Chunk = { bytes: Bytes }
+
+type Await = {}
+
+type Closed = {}
+
+type FeederError = { error: StreamError }

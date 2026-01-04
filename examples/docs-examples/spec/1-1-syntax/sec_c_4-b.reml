@@ -1,0 +1,14 @@
+let value =
+  match opt with
+  | Some(x) -> x
+  | None    -> 0
+
+// リテラルパターンの使用例
+let message =
+  match status_code with
+  | 0   -> "success"
+  | 404 -> "not found"
+  | 500 -> "server error"
+  | _   -> "unknown"
+
+message

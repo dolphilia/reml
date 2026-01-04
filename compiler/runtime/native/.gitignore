@@ -1,0 +1,70 @@
+# Reml ランタイム (compiler/runtime/native) 固有の .gitignore
+
+# ビルド成果物
+build/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.lib
+
+# テスト実行バイナリ
+tests/test_*
+!tests/*.c
+!tests/*.cpp
+!tests/*.h
+
+# デバッグシンボル
+*.dSYM/
+*.dwarf
+
+# コアダンプ
+core
+core.*
+vgcore.*
+
+# 静的解析・カバレッジ
+*.gcda
+*.gcno
+*.gcov
+*.profdata
+*.profraw
+
+# Valgrind 出力
+*.valgrind
+valgrind-*.log
+
+# AddressSanitizer / MemorySanitizer
+*.asan
+*.msan
+*.tsan
+*.ubsan
+asan-*.log
+msan-*.log
+tsan-*.log
+ubsan-*.log
+
+# CMake（将来的に使用する可能性）
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile.bak
+
+# 一時ファイル
+*.tmp
+*.temp
+*.log
+*.bak
+*.backup
+
+# エディタ一時ファイル
+*~
+*.swp
+*.swo
+.*.sw?
+
+# IDE 固有ファイル
+.vscode/
+.idea/
+*.code-workspace

@@ -1,0 +1,27 @@
+[
+  {
+    "pattern": "compiler/runtime/tests/fixtures/path_glob/src/**/*.reml",
+    "expected": [
+      "compiler/runtime/tests/fixtures/path_glob/src/lib.reml",
+      "compiler/runtime/tests/fixtures/path_glob/src/nested/module.reml"
+    ]
+  },
+  {
+    "pattern": "compiler/runtime/tests/fixtures/path_glob/config/**/*.json",
+    "expected": [
+      "compiler/runtime/tests/fixtures/path_glob/config/app.json"
+    ]
+  },
+  {
+    "pattern": "compiler/runtime/tests/fixtures/path_glob/**/*.yaml",
+    "expected": [
+      "compiler/runtime/tests/fixtures/path_glob/config/nested/local.yaml"
+    ]
+  },
+  {
+    "pattern": "compiler/runtime/tests/fixtures/path_glob/*.env*",
+    "expected": [
+      "compiler/runtime/tests/fixtures/path_glob/.env.local"
+    ]
+  }
+]

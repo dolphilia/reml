@@ -1,0 +1,10 @@
+use Core.Lsp
+
+fn main() -> Str {
+  let diag = Lsp.diagnostic(
+    range = Lsp.range(0, 0, 0, 1),
+    severity = Lsp.DiagnosticSeverity::Warning,
+    message = "demo"
+  )
+  Lsp.encode_publish("file:///demo.reml", [diag])
+}

@@ -1,0 +1,17 @@
+type RunConfig = {
+  require_eof: Bool = false,            // 全消費を要求（parse_all 相当）
+  packrat: Bool = false,                // Packrat メモ化を明示的に有効化
+  left_recursion: "off" | "on" | "auto" = "auto",
+  trace: Bool = false,
+  merge_warnings: Bool = true,
+  legacy_result: Bool = false,         // 旧 API (`Result<(T, Span), ParseError>`) 互換
+  locale: Option<Locale> = None,      // 診断・Pretty 表示のロケール
+  extensions: RunConfigExtensions = {} // モジュール毎の拡張設定
+}
+
+type RunConfigExtensions = Map<Str, Any>
+
+type ParserId = u32  // ルール毎に安定ID（rule()/label() が付与）
+type MemoKey  = (ParserId, usize /*byte_off*/)
+type MemoVal<T> = Reply<T>  // Ok/Err ごと丸ごとキャッシュ
+type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）

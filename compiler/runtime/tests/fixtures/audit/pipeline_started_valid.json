@@ -1,0 +1,13 @@
+{
+  "audit_id": "00000000-0000-0000-0000-000000000001",
+  "change_set": null,
+  "capability": "core.diagnostics",
+  "metadata": {
+    "schema.version": "3.0.0-alpha",
+    "event.kind": "pipeline_started",
+    "pipeline.id": "dsl://sample.pipeline",
+    "pipeline.dsl_id": "sample.pipeline",
+    "pipeline.node": "root",
+    "timestamp": "2025-07-12T10:00:00Z"
+  }
+}

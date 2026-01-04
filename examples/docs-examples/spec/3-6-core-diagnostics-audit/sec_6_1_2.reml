@@ -1,0 +1,80 @@
+pub type DslId
+pub type CapabilityId
+pub type ExecutionStrategy
+pub type SchedulingPolicy
+pub type ErrorPropagationPolicy
+pub type MemoryLimitSnapshot
+pub type CpuQuotaSnapshot
+pub type NonZeroU64
+pub type NonZeroU16
+pub type CpuQuota
+pub type MemoryLimit
+pub type Duration
+pub type Json
+pub type Uuid
+
+pub type ConductorDiagnosticExtension = {
+  conductor_id: Str,
+  node_id: Str,
+  dsl_id: Option<DslId>,
+  depends_on: List<Str>,
+  capabilities: List<CapabilityId>,
+  execution_plan: Option<ExecutionPlanDigest>,
+  resource_limits: List<ResourceLimitDigest>,
+  monitoring_digest: MonitoringDigest,
+  channel_links: List<ChannelLinkDigest>,
+  issue: ConductorIssueKind,
+  audit_reference: Option<AuditReference>,
+  snapshot: Option<Json>,
+}
+
+pub type ExecutionPlanDigest = {
+  strategy: ExecutionStrategy,
+  backpressure: Option<BackpressureWindow>,
+  scheduling: Option<SchedulingPolicy>,
+  error: ErrorPropagationPolicy,
+}
+
+pub type BackpressureWindow = {
+  high_watermark: Option<usize>,
+  low_watermark: Option<usize>,
+}
+
+pub type ResourceLimitDigest = {
+  memory: Option<MemoryLimitSnapshot>,
+  cpu: Option<CpuQuotaSnapshot>,
+  custom: Map<Str, Json>,
+}
+
+pub type MonitoringDigest = {
+  metrics: List<Str>,
+  health_check: Option<HealthCheckDigest>,
+  tracing: Option<TracingDigest>,
+}
+
+pub type HealthCheckDigest = {
+  interval: Duration,
+  probe: Option<Str>,
+}
+
+pub type TracingDigest = {
+  mode: TracingMode,
+  trigger: Option<Str>,
+}
+
+pub enum TracingMode = Disabled | Conditional | Always
+
+pub type ChannelLinkDigest = {
+  from: Str,
+  to: Str,
+  channel: Str,
+  buffer: Option<usize>,
+  codec: Option<Str>,
+}
+
+pub type AuditReference = {
+  audit_id: Option<Uuid>,
+  events: List<Str>,
+}
+
+pub enum ConductorIssueKind = CapabilityMismatch | ResourceLimit | ExecutionPlan | Channel | Monitoring | Custom(Str)

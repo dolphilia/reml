@@ -1,0 +1,12 @@
+type AutoWhitespaceConfig = {
+  profile: Option<Lex.TriviaProfile> = None,   // Lex 側のトリビア定義
+  layout: Option<Lex.LayoutProfile> = None,    // オフサイド規則の適用設定
+  strategy: AutoWhitespaceStrategy = AutoWhitespaceStrategy::PreferRunConfig,
+}
+
+type AutoWhitespaceStrategy
+  = PreferRunConfig   // RunConfig.extensions["lex"] 優先（無ければ profile を使用）
+  | ForceProfile      // RunConfig を無視して profile を強制
+  | NoLexBridge       // 現行 space を維持し、ParserId 共有のみ
+
+fn autoWhitespace<A>(p: Parser<A>, cfg: AutoWhitespaceConfig = {}) -> Parser<A> = todo

@@ -1,0 +1,15 @@
+// emit_suite.reml — CLI オプション検証用サンプル
+
+use Core.Prelude
+
+fn square(n: i64) -> i64 = n * n
+
+fn choose(flag: Bool, lhs: i64, rhs: i64) -> i64 {
+  if flag == true then lhs else rhs
+}
+
+fn main() -> i64 {
+  let primary = square(3)
+  let fallback = square(2)
+  choose(true, primary, fallback)
+}

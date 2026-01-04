@@ -1,0 +1,15 @@
+module Core.System.Daemon
+
+pub type Path
+pub type ProcessId
+pub type ProcessError
+
+pub type DaemonConfig = {
+  name: Str,
+  pid_file: Option<Path>,
+  user: Option<Str>,
+  group: Option<Str>,
+}
+
+fn daemonize(config: DaemonConfig) -> Result<(), ProcessError> // effect {process, security}
+fn write_pid_file(path: Path, pid: ProcessId) -> Result<(), ProcessError> // effect {io}

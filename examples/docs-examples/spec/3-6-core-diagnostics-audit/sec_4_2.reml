@@ -1,0 +1,16 @@
+pub type AuditSink
+pub type AuditError
+pub type Timestamp
+
+fn security_audit(event: SecurityEvent, sink: AuditSink) -> Result<(), AuditError> // `effect {audit, security}`
+
+pub type SecurityEvent = {
+  event_type: SecurityEventType,
+  user_id: Option<Str>,
+  resource: Option<Str>,
+  outcome: SecurityOutcome,
+  timestamp: Timestamp,
+}
+
+pub enum SecurityEventType = Login | Logout | DataAccess | PermissionChange | ConfigModification
+pub enum SecurityOutcome = Success | Failure(Str) | Suspicious(Str)

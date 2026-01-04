@@ -1,0 +1,15 @@
+pub type Doc
+
+fn text(value: Str) -> Doc
+fn line() -> Doc
+fn softline() -> Doc
+fn group(doc: Doc) -> Doc
+fn nest(indent: Int, doc: Doc) -> Doc
+fn concat(left: Doc, right: Doc) -> Doc
+
+fn render(doc: Doc, width: Int) -> Str
+
+type CstPrinter
+type CstNode
+fn cst_printer() -> CstPrinter
+fn cst_doc(printer: CstPrinter, node: CstNode) -> Doc

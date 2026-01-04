@@ -1,0 +1,19 @@
+pub type EffectTag
+pub type CapabilityId
+pub type RuntimeStageRequirement
+pub type RuntimeCapabilityDescriptor
+
+type EffectsExtension = {
+  stage: Stage,                    // Experimental | Beta | Stable
+  before: Set<EffectTag>,          // ハンドラ適用前の潜在効果集合
+  handled: Set<EffectTag>,         // 捕捉に成功した効果集合
+  residual: Set<EffectTag>,        // ハンドラ適用後に残った効果集合
+  handler_name: Option<Str>,       // ハンドラ名（存在する場合）
+  unhandled_operations: List<Str>, // 未実装 operation の一覧
+  capability: Option<CapabilityId>,                    // 必要とされる Capability（任意）
+  required_stage: Option<RuntimeStageRequirement>,     // Stage 要件（3-8 §1.2）
+  actual_stage: Option<Stage>,                         // Capability Registry に登録された Stage
+  capability_metadata: Option<RuntimeCapabilityDescriptor>,  // `describe` から得たメタデータ
+}
+
+enum Stage = Experimental | Beta | Stable

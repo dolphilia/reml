@@ -1,0 +1,18 @@
+module samples.language_impl_samples.pipeline_operator_demo
+
+use ::Core.IO as IO
+use ::Core.Text.String as Str
+
+/// パイプ演算子 `|>` の動作確認サンプル。
+/// 期待: 左項を右項呼び出しの先頭引数として渡すパイプラインが構文・型検査を通過すること。
+fn pipeline_text() -> Str {
+  "Hello"
+    |> Str.concat(", pipeline")
+    |> Str.concat(" operator")
+    |> Str.to_upper()
+}
+
+pub fn main() -> Int {
+  IO.println(pipeline_text());
+  0
+}

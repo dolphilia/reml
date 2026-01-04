@@ -1,0 +1,9 @@
+pub type TemplateFilter = fn(Value, List<Value>, &TemplateRenderCtx) -> Result<Value, TemplateError>
+
+pub struct TemplateFilterRegistry;
+
+pub type TemplateFilterId = u32
+
+fn register_secure(registry: &mut TemplateFilterRegistry, name: Str, filter: TemplateFilter, requires: CapabilityId) -> Result<(), TemplateFilterError> // `effect {security}`
+fn register_pure(registry: &mut TemplateFilterRegistry, name: Str, filter: TemplateFilter) -> Result<(), TemplateFilterError>                        // `@pure`
+fn lookup(registry: &TemplateFilterRegistry, id: TemplateFilterId) -> Option<(TemplateFilter, CapabilityId)>

@@ -1,0 +1,9 @@
+// Phase 1-5 ランタイム連携テスト: 文字列リテラル
+// mem_alloc を呼び出してヒープ割り当てを行う
+
+fn greet(name: String) -> String = name
+
+fn main() -> i64 {
+  let msg = greet("Hello, Reml!");
+  42
+}

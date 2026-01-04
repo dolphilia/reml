@@ -1,0 +1,15 @@
+module Spec.Core.Chapter2.Parser.CutBranchMisleadNoCut
+
+use Core.Prelude
+
+// 目的: `core-parse-cut-branch-mislead.reml` の比較対象（Cut 無し相当）を用意する。
+//
+// 注意: このファイルは「Cut が効いていない（誤誘導する）」実装を想定したベースラインであり、
+// 現行実装では Cut 境界が導入済みのため、同一出力を再現できるとは限らない。
+//
+// 期待: `+` 右項欠落（`(1 +)`）が、`parser.syntax.expected_tokens` の期待集合を
+// 「`)` が必要」といった不自然な方向へ誤誘導しうることを、ゴールデンとして保持する。
+
+fn main() -> Int {
+  (1 +)
+}

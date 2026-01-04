@@ -1,0 +1,104 @@
+module samples.language_impl_samples.json_parser_combinator
+
+use ::Core.Collection.List as List
+use ::Core.Parse
+use ::Core.Parse.Lex
+
+/// JSON 値のバリエーション。
+type JsonValue =
+  | JNull
+  | JBool(bool)
+  | JNumber(f64)
+  | JString(String)
+  | JArray(List<JsonValue>)
+  | JObject(List<(String, JsonValue)>)
+
+/// 空白・コメントをまとめて読み飛ばす補助パーサ。
+let sc: Parser<()> =
+  (Lex.whitespace()
+    .or(Lex.commentLine("//"))
+    .or(Lex.commentBlock("/*", "*/", nested = true)))
+  |> Lex.skipMany
+
+let lexeme<A>(p: Parser<A>) -> Parser<A> = Lex.lexeme(sc, p)
+let sym(text: Str) -> Parser<()> = symbol(sc, text)
+let trim<A>(p: Parser<A>) -> Parser<A> = Lex.trim(sc, p)
+
+/// 数値リテラルを f64 へ変換する。
+let json_number: Parser<JsonValue> =
+  rule("json.number",
+    lexeme(Lex.float())
+      .andThen(|repr| match Lex.parseF64(repr) with
+        | Ok(value) -> ok(JNumber(value))
+        | Err(_) -> fail(format("数値として解釈できません: {repr}"))
+      )
+  )
+
+/// 文字列リテラルを取得する。
+let json_string: Parser<JsonValue> =
+  rule("json.string",
+    lexeme(Lex.stringLit())
+      .map(|value| JString(value))
+  )
+
+/// 真偽値リテラル。
+let json_true: Parser<JsonValue> =
+  rule("json.true",
+    sym("true").map(|_| JBool(true))
+  )
+
+let json_false: Parser<JsonValue> =
+  rule("json.false",
+    sym("false").map(|_| JBool(false))
+  )
+
+/// null リテラル。
+let json_null: Parser<JsonValue> =
+  rule("json.null",
+    sym("null").map(|_| JNull)
+  )
+
+/// JSON 配列。
+let json_array: Parser<JsonValue> =
+  rule("json.array",
+    between(sym("["), sepBy(attempt(json_value), sym(",")), sym("]"))
+      .map(|items| JArray(items))
+  )
+
+/// キーと値のペアを解析する。
+let member: Parser<(String, JsonValue)> =
+  rule("json.member",
+    lexeme(Lex.stringLit())
+      .then(skipL(sym(":"), json_value))
+      .map(|(name, value)| (name, value))
+  )
+
+/// JSON オブジェクト。
+let json_object: Parser<JsonValue> =
+  rule("json.object",
+    between(sym("{"), sepBy(member, sym(",")), sym("}"))
+      .map(|entries| JObject(entries))
+  )
+
+/// JSON 値全体。`attempt` でバックトラック可能にする。
+let json_value: Parser<JsonValue> =
+  rule("json.value",
+    choice([
+      json_null,
+      json_true,
+      json_false,
+      attempt(json_number),
+      attempt(json_string),
+      attempt(json_array),
+      json_object,
+    ])
+  )
+
+/// 先頭・末尾の空白を許容しつつ EOF まで読む。
+let json_document: Parser<JsonValue> =
+  rule("json.document",
+    skipR(trim(json_value), eof())
+  )
+
+// 使用例
+// Core.Parse.run(json_document, "{\"ok\": true}") => Ok(JObject(...))

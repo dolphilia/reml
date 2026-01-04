@@ -1,0 +1,14 @@
+pub type Severity
+pub type DiagnosticDomain
+
+type DiagnosticCatalog = Map<Str, DiagnosticTemplate>
+
+type DiagnosticTemplate = {
+  default_message: Str,
+  default_severity: Severity,
+  default_domain: DiagnosticDomain,
+  docs_url: Option<Str>,
+}
+
+fn register_catalog(namespace: Str, catalog: DiagnosticCatalog)
+fn resolve_catalog(namespace: Str) -> Option<DiagnosticCatalog>

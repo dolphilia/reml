@@ -1,0 +1,11 @@
+// 同期点まで読み飛ばし、同期点自身を消費する
+fn sync_to(sync: Parser<()>) -> Parser<()> = todo
+
+// recover_until の糖衣（action="skip", context="panic"）
+fn panic_until<T>(p: Parser<T>, sync: Parser<()>, value: T) -> Parser<T> = todo
+
+// ブロック境界を意識したパニック回復（ネストを考慮）
+fn panic_block<T>(p: Parser<T>, open: Parser<()>, close: Parser<()>, value: T) -> Parser<T> = todo
+
+// recover_with_insert の別名（欠落トークン補挿）
+fn recover_missing<T>(p: Parser<T>, sync: Parser<()>, token: Str, value: T) -> Parser<T> = todo

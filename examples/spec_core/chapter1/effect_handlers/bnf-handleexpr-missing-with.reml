@@ -1,0 +1,24 @@
+module Spec.Core.Chapter1.Effects.MissingWith
+
+use Core.Prelude
+
+// BNF: HandleExpr（docs/spec/1-5-formal-grammar-bnf.md §4）。`with` を欠落させたエラーケース。
+effect Console : io {
+  operation log : Str -> Unit
+}
+
+fn emit() {
+  do Console.log("ping")
+}
+
+fn main() {
+  handle emit()
+    handler Console {
+      operation log(message, resume) {
+        resume(())
+      }
+      return value {
+        value
+      }
+    }
+}

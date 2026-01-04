@@ -1,0 +1,1 @@
+{"scenario":"examples/native/asm/inline_asm_rdtsc.reml","metadata":{"native.inline_asm.used":true,"asm.template_hash":"d2b4ad2cc20e7bcb","asm.constraints":["=a","=d","~{rcx}","~{r11}"]}}

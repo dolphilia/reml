@@ -1,0 +1,6 @@
+pub type AuditSink
+pub type Diagnostic
+pub type Duration
+pub type Path
+
+fn log_io(event: Str, path: Option<Path>, duration: Duration, audit: AuditSink) -> Result<(), Diagnostic> // `effect {audit}`

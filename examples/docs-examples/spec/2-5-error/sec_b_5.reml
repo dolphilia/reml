@@ -1,0 +1,10 @@
+// NG: `[` を読んだ後でも、value の別枝へ戻れてしまう
+let value =
+  choice([attempt(array), attempt(object), attempt(number), attempt(string)])
+
+// OK: `[` を読んだら配列として確定し、以降の期待は配列内で再構築される
+let array =
+  sym("[")
+    .then(cut_here())
+    .then(sepBy(value, sym(",")))
+    .then(expect("']'", sym("]")))

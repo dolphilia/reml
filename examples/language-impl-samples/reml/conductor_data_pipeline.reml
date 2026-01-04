@@ -1,0 +1,317 @@
+module samples.language_impl_samples.conductor_data_pipeline
+
+use ::Core.Parse as Parse
+use ::Core.Async as Async
+use ::Core.Diagnostics as Diag
+use ::Core.Runtime as Runtime
+use ::Core.Resource as Resource
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.IO as IO
+use ::Core.Text.String as Str
+
+/// Conductor DSL で三段パイプラインを構成し、
+/// チャネル・ExecutionPlan・monitoring を宣言的に組み合わせる。
+///
+/// **検証対象**:
+/// - 1-1-syntax.md:317 の Conductor 構文仕様
+/// - guides/conductor-pattern.md のワークフロー具現化
+/// - with_capabilities / with_resource_limits が
+///   3-9-core-async-ffi-unsafe.md:96 の契約を満たすか確認
+/// - 診断メタやデフォルト監視項目の仕様ギャップを洗い出し
+///
+/// **想定ユースケース**:
+/// データソース（ファイル/API）→ 変換処理 → シンク（DB/ファイル）の
+/// 典型的なETLパイプライン。
+
+/// ============================================================================
+/// 1. データ型定義
+/// ============================================================================
+
+/// 生データアイテム（ソースから取得）
+type RawItem = {
+  id: Int,
+  payload: Str,
+  timestamp: Int,
+}
+
+/// 変換後アイテム（処理済み）
+type TransformedItem = {
+  id: Int,
+  normalized: Str,
+  category: Str,
+  timestamp: Int,
+}
+
+/// 最終出力アイテム（シンクへ書き込み）
+type OutputItem = {
+  id: Int,
+  summary: Str,
+  category: Str,
+  processed_at: Int,
+}
+
+/// パイプライン統計情報
+type PipelineStats = {
+  items_loaded: Int,
+  items_transformed: Int,
+  items_written: Int,
+  errors: Int,
+}
+
+/// ============================================================================
+/// 2. DSL定義: データソース
+/// ============================================================================
+
+/// ソースDSL: ファイルまたはAPIからデータを読み取る
+/// 効果: {io, io.async}
+fn load_source() -> Result<DslSpec<RawItem>, Str>  // effect {io, io.async}
+  = Ok({
+    name: "SourceDsl",
+    items: Async.create_stream(|| {
+      // 仮想的なデータ生成（実際にはファイルIO/HTTP APIを利用）
+      let mock_data = List.range(0, 100)
+        |> List.map(|i| RawItem {
+          id: i,
+          payload: Str.concat("raw_data_", Str.from_int(i)),
+          timestamp: current_timestamp(),
+        });
+      Async.from_iter(List.iter(mock_data))
+    }),
+  })
+
+/// ============================================================================
+/// 3. DSL定義: 変換処理
+/// ============================================================================
+
+/// 変換DSL: 生データを正規化・分類する
+/// 効果: {io.async}
+fn transform_dsl(input: Async.AsyncStream<RawItem>) -> DslSpec<TransformedItem>  // effect {io.async}
+  = {
+    name: "TransformDsl",
+    input: input,
+    events: Async.map_async(input, |raw| {
+      Async.Future.ok(TransformedItem {
+        id: raw.id,
+        normalized: Str.to_lower(raw.payload),
+        category: if raw.id % 2 == 0 { "even" } else { "odd" },
+        timestamp: raw.timestamp,
+      })
+    }),
+  }
+
+/// ============================================================================
+/// 4. DSL定義: シンク（出力）
+/// ============================================================================
+
+/// シンクDSL: 最終データをファイル/DBへ書き込む
+/// 効果: {io, io.async}
+fn render_output(input: Async.AsyncStream<TransformedItem>) -> DslSpec<OutputItem>  // effect {io, io.async}
+  = {
+    name: "SinkDsl",
+    consume: Async.map_async(input, |transformed| {
+      let output = OutputItem {
+        id: transformed.id,
+        summary: Str.concat(transformed.category, ": ", transformed.normalized),
+        category: transformed.category,
+        processed_at: current_timestamp(),
+      };
+      // 仮想的な書き込み（実際にはIO.write_file / DB.insert）
+      Async.Future.ok(output)
+    }),
+  }
+
+/// ============================================================================
+/// 5. Conductor 宣言: 三段パイプライン
+/// ============================================================================
+
+/// Conductor構文を用いて三段パイプラインを構成する。
+///
+/// **検証ポイント**:
+/// 1. `with_capabilities` / `with_resource_limits` の宣言
+/// 2. `depends_on` による依存関係の明示
+/// 3. `channels` セクションでの型安全なチャネル接続
+/// 4. `execution` セクションでのバックプレッシャー・エラー伝播設定
+/// 5. `monitoring` セクションでの診断・メトリクス収集
+
+conductor data_pipeline {
+  // ソース定義: ファイルシステム読み取り権限を要求
+  source: SourceDsl = load_source()
+    |> with_capabilities(["fs.read", "io.async"], stage: Stage.Stable)
+    |> with_resource_limits(
+      memory: Resource.MemoryLimit.from_mb(128),
+      cpu: Resource.CpuQuota.from_ratio(0.5)
+    )
+
+  // 変換定義: ソースに依存し、並列実行を許可
+  transform: TransformDsl = transform_dsl(source.items)
+    |> depends_on([source])
+    |> with_execution_plan(strategy: Strategy.parallel(max_concurrency: Some(4)))
+    |> with_capabilities(["io.async"], stage: Stage.Stable)
+
+  // シンク定義: 変換に依存し、順次実行（書き込み順序保証）
+  sink: SinkDsl = render_output(transform.events)
+    |> depends_on([transform])
+    |> with_execution_plan(strategy: Strategy.sequential())
+    |> with_capabilities(["fs.write", "io.async"], stage: Stage.Stable)
+    |> with_resource_limits(
+      memory: Resource.MemoryLimit.from_mb(64),
+      cpu: Resource.CpuQuota.from_ratio(0.3)
+    )
+
+  // チャネル定義: DSL間のデータフロー
+  channels {
+    source.items ~> transform.input : Channel<RawItem, RawItem>
+    transform.events ~> sink.consume : Channel<TransformedItem, TransformedItem>
+  }
+
+  // 実行ポリシー: バックプレッシャー・エラー処理・スケジューリング
+  execution {
+    strategy: "adaptive_parallel"
+    // 注: high_watermark (1000) > low_watermark (100) の整合性は
+    // コンパイル時に静的検証される (3-9 §1.4.3-1.4.4)
+    backpressure: BackpressurePolicy.adaptive(
+      high_watermark: 1000,
+      low_watermark: 100,
+      strategy: AdaptiveStrategy.drop_oldest
+    )
+    error_propagation: ErrorPolicy.isolate_with_circuit_breaker(timeout: Some(Duration.seconds(5)))
+    scheduling: SchedulePolicy.fair_share_with_priority
+  }
+
+  // 監視: ヘルスチェック・メトリクス・トレース
+  // デフォルトメトリクス (latency/throughput/error_rate/in_flight) は
+  // 明示しなくとも自動収集される (3-6 §6.1.1, 3-9 §1.4.5)
+  monitoring with Core.Diagnostics {
+    health_check: every("5s") using dsl_health_probe
+
+    // 必須メトリクスを明示的に収集
+    metrics: collect([
+      "dsl.latency" -> LatencyHistogram,
+      "dsl.throughput" -> CounterMetric,
+      "dsl.error_rate" -> RatioGauge,
+      "dsl.in_flight" -> GaugeMetric,
+    ])
+
+    tracing: when(RunConfig.trace_enabled) collect_spans
+
+    // 監査イベント: パイプライン開始/終了を標準バリアントで記録
+    // (3-6 §1.1.1 新設, AuditEvent タクソノミー拡充)
+    audit: record([
+      AuditEvent.ConductorStarted { conductor: "data_pipeline", timestamp: current_timestamp() },
+      AuditEvent.ConductorCompleted { conductor: "data_pipeline", stats: get_pipeline_stats() },
+    ])
+  }
+}
+
+/// ============================================================================
+/// 6. ヘルパー関数
+/// ============================================================================
+
+/// 現在タイムスタンプを取得（Unix エポック秒）
+fn current_timestamp() -> Int  // effect {io}
+  = 1704067200  // 仮値（実際には Core.Time.now() を利用）
+
+/// パイプライン統計を取得
+fn get_pipeline_stats() -> PipelineStats  // effect {io.async}
+  = PipelineStats {
+    items_loaded: 100,
+    items_transformed: 98,
+    items_written: 95,
+    errors: 2,
+  }
+
+/// DSL ヘルスチェック用プローブ
+fn dsl_health_probe() -> Result<(), Str>  // effect {io}
+  = Ok(())
+
+/// ============================================================================
+/// 7. エントリーポイント
+/// ============================================================================
+
+/// パイプライン実行のメイン関数
+fn main() -> Result<(), Str>  // effect {io, io.async}
+  = do {
+    // Capability Registry から必要な権限を取得し、Stage 検証も実施
+    // (1-1 §B.8.5 / 3-8 §1.2 / 3-9 §1.9.4 改訂)
+    let registry = Runtime.get_capability_registry();
+    Runtime.verify_capability_stage(registry, "fs.read", Stage.Stable)?;
+    Runtime.verify_capability_stage(registry, "fs.write", Stage.Stable)?;
+    Runtime.verify_capability_stage(registry, "io.async", Stage.Stable)?;
+
+    // Conductor パイプラインを実行
+    let result = execute_conductor(data_pipeline);
+
+    match result {
+      | Ok(stats) -> {
+        IO.println(Str.concat("Pipeline completed: ", Str.from_int(stats.items_written), " items written"));
+        Ok(())
+      }
+      | Err(e) -> {
+        // ConductorDiagnosticExtension を使用した構造化診断
+        // (3-6 §6.1.2-6.1.3 追記済)
+        Diag.emit_diagnostic(Diagnostic {
+          id: Some(Diag.new_uuid()),
+          message: Str.concat("Pipeline failed: ", e),
+          severity: Severity.Error,
+          domain: Some(DiagnosticDomain.Async),
+          code: Some("conductor.execution.failed"),
+          primary: Span.empty(),
+          secondary: [],
+          hints: [Hint.text("Check channel configuration and resource limits")],
+          expected: None,
+          audit: AuditEnvelope {
+            audit_id: Some(Diag.new_uuid()),
+            change_set: None,
+            capability: Some("io.async"),
+            metadata: Map.from_list([
+              ("conductor", Json.String("data_pipeline")),
+              ("dependency_graph", Json.Array([
+                Json.String("source -> transform -> sink")
+              ])),
+              ("execution_strategy", Json.String("adaptive_parallel")),
+            ]),
+          },
+          timestamp: current_timestamp(),
+        });
+        Err(e)
+      }
+    }
+  }
+
+/// Conductor を実行する（仮想実装）
+fn execute_conductor(conductor: Conductor) -> Result<PipelineStats, Str>  // effect {io.async}
+  = Ok(get_pipeline_stats())
+
+/// ============================================================================
+/// 8. 改善完了後の検証コメント
+/// ============================================================================
+
+// **改善マトリクス対応状況**:
+//
+// ✅ 項目1: **Conductor と Capability 検証の統合**
+//    - `with_capabilities(..., stage: Stage.Stable)` で Stage を明示
+//    - `Runtime.verify_capability_stage` で実行時検証を実施
+//    - 1-1 §B.8.5 / 3-8 §1.2 / 3-9 §1.9.4 に準拠
+//
+// ✅ 項目2: **リソース制限パラメータの型安全化**
+//    - 文字列リテラル ("128MB") を `Resource.MemoryLimit.from_mb(128)` へ変更
+//    - CPU 割り当ても `Resource.CpuQuota.from_ratio(0.5)` で型安全に
+//    - 3-5 §9 / 3-8 §6.1 / 3-9 §1.4.3 に準拠
+//
+// ✅ 項目3: **監視・メトリクスのベースライン**
+//    - 必須メトリクス (latency/throughput/error_rate/in_flight) を明示
+//    - 3-6 §6.1.1 / 3-9 §1.4.5 のデフォルト収集規定に対応
+//
+// ✅ 項目4: **ドメイン別 Diagnostic 拡張の標準化**
+//    - `AuditEnvelope.metadata` に conductor/dependency_graph/execution_strategy を記録
+//    - 3-6 §6.1.2-6.1.3 の ConductorDiagnosticExtension 形式に準拠
+//
+// ✅ 項目5: **実行計画・スケジューラの静的検証**
+//    - BackpressurePolicy の high_watermark > low_watermark をコメントで明示
+//    - 3-9 §1.4.3-1.4.4 の静的検証要件に対応
+//
+// ✅ 項目6: **AuditEvent タクソノミーの拡充**
+//    - `AuditEvent.ConductorStarted` / `ConductorCompleted` を標準バリアントとして使用
+//    - 3-6 §1.1.1 新設のタクソノミーに準拠
+//

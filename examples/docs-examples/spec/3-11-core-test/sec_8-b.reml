@@ -1,0 +1,13 @@
+use Core.Test
+
+fn main() -> Str {
+  let cases = [
+    { input: "alpha", expected: "alpha" },
+    { input: "beta", expected: "beta" },
+  ]
+
+  let outcome = Test.table_test(cases, |value| value)
+  match outcome with
+    | Ok(_) -> "table:ok"
+    | Err(_) -> "table:error"
+}

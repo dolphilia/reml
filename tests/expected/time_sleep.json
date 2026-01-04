@@ -1,0 +1,11 @@
+{
+  "scenario": "clock_accuracy",
+  "api": "sleep",
+  "durations_ns": [0, 1000000, 10000000],
+  "tolerance_ns": 250000,
+  "notes": [
+    "Used by tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario clock_accuracy",
+    "Verifies that Core.Time.sleep() honors Duration inputs and reports effect {time} with syscall latency.",
+    "Non-zero durations are small enough to keep CI fast while exercising latency aggregation."
+  ]
+}

@@ -1,0 +1,11 @@
+pub type Stage
+
+type PreludeGuardExtension = {
+  kind: PreludeGuardKind,        // ensure | ensure_not_null
+  trigger: Str,                  // 失敗した条件式や識別子
+  pointer_class: Option<Str>,    // ffi | plugin | core など
+  stage: Option<Stage>,          // Stage Requirement が紐付く場合
+  module_path: Option<Str>,      // `Core.Prelude.ensure` の呼び出し元モジュール
+}
+
+enum PreludeGuardKind = Ensure | EnsureNotNull

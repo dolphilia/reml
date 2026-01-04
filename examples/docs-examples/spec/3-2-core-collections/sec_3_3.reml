@@ -1,0 +1,10 @@
+pub type Path
+
+pub type Table<K, V>
+
+fn new_table<K, V>() -> Table<K, V>                                // `effect {mut}`
+fn insert<K, V>(table: &mut Table<K, V>, key: K, value: V) -> ()    // `effect {mut}`
+fn remove<K, V>(table: &mut Table<K, V>, key: &K) -> Option<V>      // `effect {mut}`
+fn iter<K, V>(table: &Table<K, V>) -> Iter<(K, V)>                  // `@pure`
+fn to_map<K: Ord, V>(table: Table<K, V>) -> Map<K, V>               // `effect {mem}`
+fn load_csv<K, V>(path: Path) -> Result<Table<K, V>, Diagnostic>    // `effect {io, mut}`

@@ -1,0 +1,7 @@
+use Core;
+
+fn sum_positive(xs: List<Int>) -> Result<Int, Diagnostic> =
+  xs
+    |> Iter.from_list
+    |> Iter.map(|x| ensure(x >= 0, || Diagnostic::invalid_value(x))?)
+    |> Iter.try_fold(0, |acc, x| Ok(acc + x))

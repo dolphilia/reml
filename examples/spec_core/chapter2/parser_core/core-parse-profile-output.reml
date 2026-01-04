@@ -1,0 +1,24 @@
+module Spec.Core.Chapter2.Parser.ProfileOutput
+
+use Core.Parse as Parse
+use Core.Prelude
+
+fn profile_config(path: Str) -> RunConfig {
+  RunConfig::builder()
+    .with_extension("parse", {
+      profile: true,
+      profile_output: path,
+    })
+    .finish()
+}
+
+fn profiled_int() -> Parse.Parser<Int> {
+  Parse.expect_int()
+}
+
+fn main() -> Str {
+  let cfg = profile_config("expected/spec_core/chapter2/parser_core/core-parse-or-commit.profile.json")
+  match Parse.run(profiled_int(), "7", cfg) with
+  | Ok(value) -> format("profiled=%d", [value])
+  | Err(diag) -> diag.message
+}

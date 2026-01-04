@@ -1,0 +1,7 @@
+struct StreamMeta {
+  consumed_bytes: usize,
+  resume_count: usize,
+  lag_nanos: Option<u64>,
+  buffer_fill_ratio: Option<f32>,
+  memo_bytes: Option<usize>
+}

@@ -1,0 +1,13 @@
+type ParserProfile = {
+  packrat_hits: Int,
+  packrat_misses: Int,
+  backtracks: Int,
+  recoveries: Int,
+  left_recursion_guard_hits: Int,
+  memo_entries: Int,
+}
+
+let run_config_profile: Bool = false
+let run_config_profile_enabled: Bool = todo // RunConfig.extensions["parse"].profile
+let run_config_profile_output: Str = todo // RunConfig.extensions["parse"].profile_output
+let parse_result_profile: Option<ParserProfile> = todo // ParseResult.profile

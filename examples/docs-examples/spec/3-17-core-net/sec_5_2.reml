@@ -1,0 +1,10 @@
+pub type Url
+pub type TcpStream
+pub type TcpListener
+pub type SocketAddr
+pub type NetError
+
+fn connect(url: Url) -> Result<TcpStream, NetError> // `effect {net}`
+fn listen(url: Url) -> Result<TcpListener, NetError> // `effect {net}`
+fn accept(listener: TcpListener) -> Result<(TcpStream, SocketAddr), NetError> // `effect {net}`
+fn close(stream: TcpStream) -> Result<(), NetError> // `effect {net}`

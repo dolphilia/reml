@@ -1,0 +1,8 @@
+pub type ForeignFunction
+pub type FfiArgs
+pub type FfiValue
+pub type FfiError
+
+fn foreign_fn(lib: Str, name: Str, signature: Str) -> ForeignFunction
+fn call_foreign(fn_ptr: ForeignFunction, args: FfiArgs) -> Result<FfiValue, FfiError>
+fn decode_result<T>(raw: FfiValue) -> Result<T, FfiError>

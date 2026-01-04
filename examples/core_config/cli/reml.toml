@@ -1,0 +1,22 @@
+[project]
+name = "core-config-cli"
+version = "0.3.0"
+stage = "beta"
+kind = "application"
+capabilities = ["core.audit"]
+description = "Config CLI lint/diff sample"
+
+[dependencies]
+
+[dsl.config_cli]
+entry = "dsl/sample.reml"
+kind = "runtime_bridge"
+exports = ["ConfigCliBridge"]
+expect_effects = ["config.parse"]
+capabilities = ["core.audit"]
+allow_prerelease = false
+summary = "Bridge metadata used by remlc config lint"
+
+[build]
+features = ["packrat"]
+optimize = "debug"

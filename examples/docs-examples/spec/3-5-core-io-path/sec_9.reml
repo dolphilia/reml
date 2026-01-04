@@ -1,0 +1,49 @@
+module Core.Resource
+
+pub type Float
+pub type NonZeroU16
+pub type NonZeroU32
+pub type NonZeroU64
+pub type u16
+pub type u64
+
+pub enum MemoryLimit =
+  | Unlimited
+  | Absolute { bytes: NonZeroU64 }
+  | Relative { percent_of_physical: Float }
+  | Soft { soft_bytes: NonZeroU64, hard_bytes: Option<NonZeroU64> }
+
+pub enum CpuQuota =
+  | Unlimited
+  | Fraction { share: Float }
+  | MilliCores(NonZeroU32)
+  | FixedCores(NonZeroU16)
+
+pub type MemoryLimitResolved = {
+  declaration: MemoryLimit,
+  hard_bytes: NonZeroU64,
+  soft_bytes: Option<NonZeroU64>,
+}
+
+pub type CpuQuotaNormalized = {
+  declaration: CpuQuota,
+  scheduler_slots: NonZeroU16,
+  share: Float,
+}
+
+pub enum ResourceLimitError =
+  | ZeroOrNegative
+  | PercentageOutOfRange { min: Float, max: Float }
+  | MissingBaseline
+  | ExceedsPhysicalMemory { requested: u64, available: u64 }
+  | SchedulingOverflow { requested: u16, available: u16 }
+
+fn MemoryLimit::hard(bytes: NonZeroU64) -> MemoryLimit
+fn MemoryLimit::mebibytes(mib: NonZeroU64) -> MemoryLimit
+fn MemoryLimit::relative(percent: Float) -> Result<MemoryLimit, ResourceLimitError>
+fn MemoryLimit::resolve(total_physical: Option<NonZeroU64>) -> Result<MemoryLimitResolved, ResourceLimitError>
+
+fn CpuQuota::fraction(share: Float) -> Result<CpuQuota, ResourceLimitError>
+fn CpuQuota::milli_cores(mcores: NonZeroU32) -> CpuQuota
+fn CpuQuota::cores(cores: NonZeroU16) -> CpuQuota
+fn CpuQuota::normalize(logical_cores: NonZeroU16, scheduler_parallelism: NonZeroU16) -> Result<CpuQuotaNormalized, ResourceLimitError>

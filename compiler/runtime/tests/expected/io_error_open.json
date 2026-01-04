@@ -1,0 +1,25 @@
+{
+  "code": "core.io.read_error",
+  "domain": "runtime",
+  "severity": "error",
+  "extensions": {
+    "message": "failed to open file",
+    "io": {
+      "operation": "with_reader",
+      "path": "/tmp/config.toml",
+      "capability": "io.fs.read",
+      "bytes_processed": 128
+    },
+    "effects": {
+      "io": true,
+      "io_blocking": true
+    }
+  },
+  "audit": {
+    "io.error.kind": "not_found",
+    "io.operation": "with_reader",
+    "io.path": "/tmp/config.toml",
+    "io.capability": "io.fs.read",
+    "io.bytes_processed": 128
+  }
+}

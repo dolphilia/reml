@@ -1,0 +1,16 @@
+module Spec.Core.Chapter1.Match.ResultGuard
+
+use Core.Prelude
+
+// BNF: MatchExpr + MatchGuard（docs/spec/1-5-formal-grammar-bnf.md §4）
+// Result を偶奇のガードとエラー分岐で処理する例
+fn classify(input: Result<Int, Str>) -> Str {
+  match input with
+    Ok(n) when n % 2 == 0 -> "even"
+    Ok(n) -> "odd"
+    Err(message) -> "error:" + message
+}
+
+fn main() -> Str {
+  classify(Ok(12))
+}

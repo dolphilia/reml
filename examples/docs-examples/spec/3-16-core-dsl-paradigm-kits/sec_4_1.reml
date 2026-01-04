@@ -1,0 +1,16 @@
+pub enum GcStrategy =
+  | Arena
+  | RefCount
+  | MarkAndSweep
+
+pub type GcHeap = { strategy: GcStrategy }
+
+pub type GcRef<T> = { heap: GcHeap, ptr: Int }
+
+pub type RootScope = { heap: GcHeap, roots: List<Int> }
+
+pub type GcError = { kind: GcErrorKind, message: Str }
+
+pub enum GcErrorKind =
+  | AllocationFailed
+  | CollectFailed

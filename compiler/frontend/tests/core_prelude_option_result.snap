@@ -1,0 +1,16 @@
+option_is_some: Some(true) | None(false)
+option_map: Some(20) | None
+option_and_then: Some(9) | None
+option_ok_or: Ok(7) | Err("missing user")
+option_unwrap_or: 5 | 0
+option_expect: 42
+option_try_branch: Continue(3) | Break(None)
+option_result_bridge: Some(8) | None
+result_map: Ok(10) | Err("boom")
+result_map_err: Err("boom:converted")
+result_and_then: Ok(15) | Err("boom")
+result_or_else: Ok(8) | Ok(64)
+result_unwrap_or: 88 | 0
+result_expect: 13
+result_to_option: Some(21) | None
+result_from_option: Ok(9) | Err("missing id")

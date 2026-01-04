@@ -1,0 +1,26 @@
+pub enum GcStrategy =
+  | Arena
+  | RefCount
+  | MarkAndSweep
+
+pub type GcHeap = { strategy: GcStrategy }
+
+pub type GcRef<T> = { heap: GcHeap, ptr: Int }
+
+pub type RootScope = { heap: GcHeap, roots: List<Int> }
+
+pub type GcError = { kind: GcErrorKind, message: Str }
+
+pub enum GcErrorKind =
+  | AllocationFailed
+  | CollectFailed
+
+fn create(strategy: GcStrategy) -> GcHeap
+
+fn with_scope<T>(heap: GcHeap, f: fn(RootScope) -> T) -> T
+
+fn alloc<T>(scope: RootScope, value: T) -> Result<GcRef<T>, GcError> // `effect {memory}`
+fn pin<T>(scope: RootScope, value: GcRef<T>) -> RootScope            // `effect {memory}`
+
+fn collect(heap: GcHeap) -> Result<(), GcError>                       // `effect {memory}`
+fn collect_if_needed(heap: GcHeap) -> Result<(), GcError>             // `effect {memory}`

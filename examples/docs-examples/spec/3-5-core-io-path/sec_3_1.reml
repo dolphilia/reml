@@ -1,0 +1,7 @@
+pub type IoError
+
+trait Reader {}
+
+type BufferedReader<R: Reader>
+fn buffered<R: Reader>(reader: R, capacity: usize) -> BufferedReader<R> // `effect {mem}`
+fn read_line<R: Reader>(reader: &mut BufferedReader<R>) -> Result<Option<Str>, IoError> // `effect {io, io.blocking}`

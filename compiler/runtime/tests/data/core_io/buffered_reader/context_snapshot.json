@@ -1,0 +1,10 @@
+{
+  "case": "buffered reader context snapshot",
+  "expected": {
+    "operation": "buffered_reader",
+    "capability": "memory.buffered_io",
+    "buffer": {
+      "capacity": 4096
+    }
+  }
+}

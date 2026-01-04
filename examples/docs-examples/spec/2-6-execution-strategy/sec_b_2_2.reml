@@ -1,0 +1,20 @@
+fn specialise_config(profile: BuildProfile) -> RunConfig = {
+  let info = platform_info();
+  let packrat = has_capability(RuntimeCapability::SIMD);
+  let merge_warnings =
+    if platform_features().contains("io.blocking.strict") then false else true;
+  let left_recursion =
+    if info.family == TargetFamily::Wasm then "off" else "auto";
+  let base_target = default_target(profile);
+  let target =
+    if platform_features().contains("io.blocking.strict") then
+      target_with_extra(base_target, "io.blocking", "strict")
+    else
+      base_target;
+  RunConfig {
+    packrat = packrat,
+    merge_warnings = merge_warnings,
+    left_recursion = left_recursion,
+    extensions = Map::empty().insert("target", target)
+  }
+}
