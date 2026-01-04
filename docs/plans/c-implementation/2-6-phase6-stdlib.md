@@ -37,15 +37,18 @@
   - `Core.Collections`（`List`, `Map`, `Set` は最小 API のみ）
   - `Core.Math`, `Core.Int`, `Core.Float`, `Core.BigInt`
   - `Core.IO`, `Core.Env`, `Core.Time`
-- **タスク**:
-  - `compiler/rust` から API と仕様を抽出し、互換インタフェースを定義する。
-  - `@intrinsic` 対象を一覧化し、C 実装に移譲する範囲を明確化する。
-  - Unicode 関連 API（分割・正規化・幅計算）を `utf8proc` / `libgrapheme` に接続する。
-  - エラーメッセージと診断 ID を `docs/spec/3-6` 系に合わせる。
+### 6.2.1 作業ステップ
+- [x] `compiler/c/lib/core/` を作成し、`Core.*` の最小構成ファイルを配置する。
+- [x] `compiler/rust` から API と仕様を抽出し、互換インタフェース（最小セット）を定義する。
+- [x] `@intrinsic` 対象を一覧化し、C 実装に移譲する範囲を明確化する。
+- [x] `Core.IO` / `Core.Env` / `Core.Time` の `@intrinsic` バインディングと `Result` 変換を実装する。
+- [x] Unicode 関連 API（分割・正規化・幅計算）を `utf8proc` / `libgrapheme` に接続する。
+- [x] エラーメッセージと診断 ID を `docs/spec/3-6` と `docs/spec/3-10` の記載に合わせて確定する。
 
-### 6.2.1 進捗メモ
-- `compiler/c/lib/core/` を作成し、`Core.*` の最小構成ファイルを配置した。
-- `compiler/c/lib/core/README.md` に `@intrinsic` 対象と C 実装の対応表、Unicode 連携方針、診断 ID の暫定コードを整理した。
+### 6.2.2 進捗メモ
+- `Core.IO` / `Core.Env` / `Core.Time` の `@intrinsic` バインディングと `Result` 変換を実装した。
+- `Core.Unicode` を追加し、正規化・書記素 API を C 実装に接続した。
+- `compiler/c/lib/core/README.md` に `@intrinsic` 対象、Unicode 連携方針、診断 ID の暫定コードを整理した。
 
 ## 6.3 セルフホスティングテスト (Spec Core)
 - **目標**: `examples/spec_core/` のテストスイートをパスする。

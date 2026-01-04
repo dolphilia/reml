@@ -62,11 +62,11 @@ C ランタイムの診断 ID は 3-6 章の診断分類に合わせて文字列
 
 | C 診断 ID | 暫定コード | 対応カテゴリ |
 | --- | --- | --- |
-| `REML_DIAG_RUNTIME_OOM` | `core.runtime.oom` | Runtime / Memory |
-| `REML_DIAG_RUNTIME_IO` | `core.runtime.io` | Runtime / IO |
-| `REML_DIAG_RUNTIME_ENV` | `core.runtime.env` | Runtime / Env |
-| `REML_DIAG_RUNTIME_ARGS` | `core.runtime.args` | Runtime / Args |
-| `REML_DIAG_RUNTIME_CWD` | `core.runtime.cwd` | Runtime / IO |
-| `REML_DIAG_RUNTIME_TIME` | `core.runtime.time` | Runtime / Time |
+| `REML_DIAG_RUNTIME_OOM` | `core.io.out_of_memory` / `env.access.failed` | IO / Env |
+| `REML_DIAG_RUNTIME_IO` | `core.io.read_error` / `core.io.write_error` | IO |
+| `REML_DIAG_RUNTIME_ENV` | `env.access.failed` | Config |
+| `REML_DIAG_RUNTIME_ARGS` | `env.access.failed` | Config |
+| `REML_DIAG_RUNTIME_CWD` | `env.access.failed` | Config |
+| `REML_DIAG_RUNTIME_TIME` | `core.time.system_clock_unavailable` | Time |
 
-正式なコード名は `docs/spec/3-6-core-diagnostics-audit.md` の診断カタログに合わせて更新する。
+正式なコード名は `docs/spec/3-6-core-diagnostics-audit.md` および `docs/spec/3-10-core-env.md` の記載に合わせて固定する。

@@ -22,21 +22,24 @@ type RuntimeResult = {
 }
 
 fn io_error_code_from_id(diagnostic_id: i32) -> Str =
-  if diagnostic_id == 1000 then "core.runtime.oom" else "core.runtime.io"
+  if diagnostic_id == 1000 then "core.io.out_of_memory" else "core.io.read_error"
+
+fn io_error_code_for_write(diagnostic_id: i32) -> Str =
+  if diagnostic_id == 1000 then "core.io.out_of_memory" else "core.io.write_error"
 
 fn io_error_kind_from_id(diagnostic_id: i32) -> IoErrorKind =
   if diagnostic_id == 1000 then Oom else IoFailure
 
-fn io_error_from_runtime(result: RuntimeResult) -> IoError =
+fn io_error_from_runtime(result: RuntimeResult, code: Str) -> IoError =
   IoError {
     kind: io_error_kind_from_id(result.diagnostic_id),
-    code: io_error_code_from_id(result.diagnostic_id),
+    code: code,
     diagnostic_id: result.diagnostic_id,
     message: result.message,
   }
 
-fn io_result_from_runtime(result: RuntimeResult) -> Result<(), IoError> =
-  if result.ok then Ok(()) else Err(io_error_from_runtime(result))
+fn io_result_from_runtime(result: RuntimeResult, code: Str) -> Result<(), IoError> =
+  if result.ok then Ok(()) else Err(io_error_from_runtime(result, code))
 
 @intrinsic("reml_print")
 fn runtime_print(message: Str) -> RuntimeResult =
@@ -55,13 +58,16 @@ fn runtime_write_file(path: Str, data: Bytes) -> RuntimeResult =
   RuntimeResult { ok: true, diagnostic_id: 0, message: String.empty_str() }
 
 pub fn print(message: Str) -> Result<(), IoError> =
-  io_result_from_runtime(runtime_print(message))
+  let result = runtime_print(message)
+  io_result_from_runtime(result, io_error_code_for_write(result.diagnostic_id))
 
 pub fn eprint(message: Str) -> Result<(), IoError> =
-  io_result_from_runtime(runtime_eprint(message))
+  let result = runtime_eprint(message)
+  io_result_from_runtime(result, io_error_code_for_write(result.diagnostic_id))
 
 pub fn read_file_into(path: Str, out_bytes: &mut Bytes) -> Result<(), IoError> =
-  io_result_from_runtime(runtime_read_file(path, out_bytes))
+  let result = runtime_read_file(path, out_bytes)
+  io_result_from_runtime(result, io_error_code_from_id(result.diagnostic_id))
 
 pub fn read_file(path: Str) -> Result<Bytes, IoError> =
   let mut bytes = Bytes.empty()
@@ -71,4 +77,5 @@ pub fn read_file(path: Str) -> Result<Bytes, IoError> =
   | Err(err) -> Err(err)
 
 pub fn write_file(path: Str, data: Bytes) -> Result<(), IoError> =
-  io_result_from_runtime(runtime_write_file(path, data))
+  let result = runtime_write_file(path, data)
+  io_result_from_runtime(result, io_error_code_for_write(result.diagnostic_id))

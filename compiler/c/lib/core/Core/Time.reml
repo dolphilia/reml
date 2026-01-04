@@ -20,8 +20,8 @@ type RuntimeResult = {
   message: Str,
 }
 
-fn time_error_code_from_id(diagnostic_id: i32) -> Str =
-  if diagnostic_id == 1005 then "core.runtime.time" else "core.runtime.time"
+fn time_error_code_from_id(_diagnostic_id: i32) -> Str =
+  "core.time.system_clock_unavailable"
 
 fn time_error_kind_from_id(diagnostic_id: i32) -> TimeErrorKind =
   if diagnostic_id == 1005 then SystemClockUnavailable else RuntimeFailure
