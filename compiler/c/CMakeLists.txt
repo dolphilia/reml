@@ -176,5 +176,15 @@ if(REML_ENABLE_LLVM)
               ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/hello_world.reml
               ${CMAKE_CURRENT_BINARY_DIR}
     )
+
+    add_test(
+      NAME reml_spec_core
+      COMMAND ${Python3_EXECUTABLE}
+              ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/spec_core_runner.py
+              $<TARGET_FILE:reml>
+              ${CMAKE_CURRENT_SOURCE_DIR}/../../examples/spec_core
+              ${CMAKE_CURRENT_SOURCE_DIR}/../../expected/spec_core
+              ${CMAKE_CURRENT_BINARY_DIR}/spec_core
+    )
   endif()
 endif()
