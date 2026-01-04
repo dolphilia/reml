@@ -1,5 +1,49 @@
 module Core.Time
 
-pub type TimeError
+use ::Core.Result
+use ::Core.String
 
-// TODO: Core.Time の @intrinsic バインディングを追加する。
+pub enum TimeErrorKind =
+  | SystemClockUnavailable
+  | RuntimeFailure
+
+pub type TimeError = {
+  kind: TimeErrorKind,
+  code: Str,
+  diagnostic_id: i32,
+  message: Str,
+}
+
+type RuntimeResult = {
+  ok: Bool,
+  diagnostic_id: i32,
+  message: Str,
+}
+
+fn time_error_code_from_id(diagnostic_id: i32) -> Str =
+  if diagnostic_id == 1005 then "core.runtime.time" else "core.runtime.time"
+
+fn time_error_kind_from_id(diagnostic_id: i32) -> TimeErrorKind =
+  if diagnostic_id == 1005 then SystemClockUnavailable else RuntimeFailure
+
+fn time_error_from_runtime(result: RuntimeResult) -> TimeError =
+  TimeError {
+    kind: time_error_kind_from_id(result.diagnostic_id),
+    code: time_error_code_from_id(result.diagnostic_id),
+    diagnostic_id: result.diagnostic_id,
+    message: result.message,
+  }
+
+fn time_result_from_runtime(result: RuntimeResult) -> Result<(), TimeError> =
+  if result.ok then Ok(()) else Err(time_error_from_runtime(result))
+
+@intrinsic("reml_time_now")
+fn runtime_time_now(out_unix_ms: &mut i64) -> RuntimeResult =
+  RuntimeResult { ok: true, diagnostic_id: 0, message: String.empty_str() }
+
+pub fn now_unix_ms() -> Result<i64, TimeError> =
+  let mut unix_ms = 0
+  let result = time_result_from_runtime(runtime_time_now(&mut unix_ms))
+  match result with
+  | Ok(_) -> Ok(unix_ms)
+  | Err(err) -> Err(err)

@@ -3,6 +3,7 @@ module Core.Prelude
 pub use ::Core.Option
 pub use ::Core.Result
 pub use ::Core.String
+pub use ::Core.Unicode
 pub use ::Core.Bytes
 pub use ::Core.Collections
 pub use ::Core.Math

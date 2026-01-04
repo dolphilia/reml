@@ -1,0 +1,98 @@
+module Core.Unicode
+
+use ::Core.Option
+use ::Core.Result
+use ::Core.String
+
+pub enum UnicodeErrorKind =
+  | InvalidUtf8
+  | InvalidScalar
+  | NormalizeRequired
+
+pub type UnicodeError = {
+  kind: UnicodeErrorKind,
+  offset: usize,
+  length: usize,
+}
+
+type UnicodeErrorRaw = {
+  kind: i32,
+  offset: usize,
+  length: usize,
+}
+
+type StringView = {
+  data: usize,
+  length: usize,
+}
+
+fn unicode_error_from_raw(raw: UnicodeErrorRaw) -> UnicodeError =
+  let kind =
+    if raw.kind == 1 then InvalidUtf8
+    else if raw.kind == 2 then InvalidScalar
+    else if raw.kind == 3 then NormalizeRequired
+    else InvalidUtf8
+  UnicodeError { kind: kind, offset: raw.offset, length: raw.length }
+
+fn view_from_str(value: Str) -> StringView =
+  StringView { data: value.ptr, length: value.len }
+
+@intrinsic("reml_unicode_validate_utf8")
+fn validate_utf8_raw(ptr: usize, len: usize, out_error: &mut UnicodeErrorRaw) -> Bool = false
+
+@intrinsic("reml_unicode_is_nfc")
+fn is_nfc_raw(ptr: usize, len: usize, out_error: &mut UnicodeErrorRaw) -> Bool = false
+
+@intrinsic("reml_unicode_normalize_nfc")
+fn normalize_nfc_raw(ptr: usize, len: usize, out_ptr: &mut usize, out_len: &mut usize,
+                     out_error: &mut UnicodeErrorRaw) -> Bool = false
+
+@intrinsic("reml_grapheme_advance")
+fn grapheme_advance_raw(ptr: usize, len: usize, offset: usize, out_error: &mut UnicodeErrorRaw) -> usize = 0
+
+@intrinsic("reml_grapheme_len")
+fn grapheme_len_raw(view: StringView) -> usize = 0
+
+@intrinsic("reml_grapheme_display_width")
+fn grapheme_display_width_raw(view: StringView) -> usize = 0
+
+@intrinsic("reml_grapheme_slice")
+fn grapheme_slice_raw(view: StringView, start: usize, end: usize, out_view: &mut StringView) -> Bool = false
+
+pub fn validate_utf8(value: Str) -> Result<(), UnicodeError> =
+  let mut raw = UnicodeErrorRaw { kind: 0, offset: 0, length: 0 }
+  let ok = validate_utf8_raw(value.ptr, value.len, &mut raw)
+  if ok then Ok(()) else Err(unicode_error_from_raw(raw))
+
+pub fn is_nfc(value: Str) -> Result<Bool, UnicodeError> =
+  let mut raw = UnicodeErrorRaw { kind: 0, offset: 0, length: 0 }
+  let ok = is_nfc_raw(value.ptr, value.len, &mut raw)
+  if ok then Ok(true)
+  else if raw.kind == 3 then Ok(false)
+  else Err(unicode_error_from_raw(raw))
+
+pub fn normalize_nfc(value: Str) -> Result<String, UnicodeError> =
+  let mut raw = UnicodeErrorRaw { kind: 0, offset: 0, length: 0 }
+  let mut out_ptr = 0
+  let mut out_len = 0
+  let ok = normalize_nfc_raw(value.ptr, value.len, &mut out_ptr, &mut out_len, &mut raw)
+  if ok then Ok(String { ptr: out_ptr, len: out_len })
+  else Err(unicode_error_from_raw(raw))
+
+pub fn grapheme_len(value: Str) -> usize =
+  grapheme_len_raw(view_from_str(value))
+
+pub fn grapheme_display_width(value: Str) -> usize =
+  grapheme_display_width_raw(view_from_str(value))
+
+pub fn grapheme_slice(value: Str, start: usize, end: usize) -> Option<Str> =
+  let mut out_view = StringView { data: 0, length: 0 }
+  if grapheme_slice_raw(view_from_str(value), start, end, &mut out_view) then
+    Some(Str { ptr: out_view.data, len: out_view.length })
+  else
+    None
+
+pub fn grapheme_advance(value: Str, offset: usize) -> Result<usize, UnicodeError> =
+  let mut raw = UnicodeErrorRaw { kind: 0, offset: 0, length: 0 }
+  let advance = grapheme_advance_raw(value.ptr, value.len, offset, &mut raw)
+  if raw.kind == 0 then Ok(advance) else Err(unicode_error_from_raw(raw))

@@ -1,5 +1,74 @@
 module Core.IO
 
-pub type IoError
+use ::Core.Bytes
+use ::Core.Result
+use ::Core.String
 
-// TODO: Core.IO の @intrinsic バインディングを追加する。
+pub enum IoErrorKind =
+  | IoFailure
+  | Oom
+
+pub type IoError = {
+  kind: IoErrorKind,
+  code: Str,
+  diagnostic_id: i32,
+  message: Str,
+}
+
+type RuntimeResult = {
+  ok: Bool,
+  diagnostic_id: i32,
+  message: Str,
+}
+
+fn io_error_code_from_id(diagnostic_id: i32) -> Str =
+  if diagnostic_id == 1000 then "core.runtime.oom" else "core.runtime.io"
+
+fn io_error_kind_from_id(diagnostic_id: i32) -> IoErrorKind =
+  if diagnostic_id == 1000 then Oom else IoFailure
+
+fn io_error_from_runtime(result: RuntimeResult) -> IoError =
+  IoError {
+    kind: io_error_kind_from_id(result.diagnostic_id),
+    code: io_error_code_from_id(result.diagnostic_id),
+    diagnostic_id: result.diagnostic_id,
+    message: result.message,
+  }
+
+fn io_result_from_runtime(result: RuntimeResult) -> Result<(), IoError> =
+  if result.ok then Ok(()) else Err(io_error_from_runtime(result))
+
+@intrinsic("reml_print")
+fn runtime_print(message: Str) -> RuntimeResult =
+  RuntimeResult { ok: true, diagnostic_id: 0, message: String.empty_str() }
+
+@intrinsic("reml_eprint")
+fn runtime_eprint(message: Str) -> RuntimeResult =
+  RuntimeResult { ok: true, diagnostic_id: 0, message: String.empty_str() }
+
+@intrinsic("reml_read_file")
+fn runtime_read_file(path: Str, out_bytes: &mut Bytes) -> RuntimeResult =
+  RuntimeResult { ok: true, diagnostic_id: 0, message: String.empty_str() }
+
+@intrinsic("reml_write_file")
+fn runtime_write_file(path: Str, data: Bytes) -> RuntimeResult =
+  RuntimeResult { ok: true, diagnostic_id: 0, message: String.empty_str() }
+
+pub fn print(message: Str) -> Result<(), IoError> =
+  io_result_from_runtime(runtime_print(message))
+
+pub fn eprint(message: Str) -> Result<(), IoError> =
+  io_result_from_runtime(runtime_eprint(message))
+
+pub fn read_file_into(path: Str, out_bytes: &mut Bytes) -> Result<(), IoError> =
+  io_result_from_runtime(runtime_read_file(path, out_bytes))
+
+pub fn read_file(path: Str) -> Result<Bytes, IoError> =
+  let mut bytes = Bytes.empty()
+  let result = read_file_into(path, &mut bytes)
+  match result with
+  | Ok(_) -> Ok(bytes)
+  | Err(err) -> Err(err)
+
+pub fn write_file(path: Str, data: Bytes) -> Result<(), IoError> =
+  io_result_from_runtime(runtime_write_file(path, data))
