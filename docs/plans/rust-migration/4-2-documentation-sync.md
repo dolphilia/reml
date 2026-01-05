@@ -1,6 +1,6 @@
 # 4-2 ドキュメント同期計画（Rust 移植 P4）
 
-P4 フェーズでは Rust 実装の最終差分が仕様・ガイド・ノートへ確実に反映されているかを確認する必要がある。本書は [`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`](../bootstrap-roadmap/0-3-audit-and-metrics.md) と `docs-migrations.log` を基点とし、Phase 3 Self-Host へ引き継げる情報状態を維持する手順をまとめる。
+P4 フェーズでは Rust 実装の最終差分が仕様・ガイド・ノートへ確実に反映されているかを確認する必要がある。本書は [`docs/guides/tooling/audit-metrics.md`](../guides/tooling/audit-metrics.md) と `docs-migrations.log` を基点とし、Phase 3 Self-Host へ引き継げる情報状態を維持する手順をまとめる。
 
 ## 4-2.1 目的と適用範囲
 - Rust 実装の最適化で生じる仕様差分（構文・型・効果・診断・Capability）を `docs/spec/` へ速やかに反映する。
@@ -20,7 +20,7 @@ P4 フェーズでは Rust 実装の最終差分が仕様・ガイド・ノー�
 1. **差分検出**: Rust 実装の PR で仕様に影響し得る変更が含まれる場合、PR テンプレートに「Documentation Impact」を記載し、対象ドキュメントを列挙する。
 2. **更新作業**: 対象ドキュメントを更新し、変更点に脚注（例: `[^rust-p4-YYYYMMDD]`）を追加する。脚注では実装差分と関連 PR/メトリクスを紐付ける。
 3. **レビュー & リンク整備**: `Docs Alignment Check`（[`4-1-communication-plan.md`](4-1-communication-plan.md) §4）でリンク切れ・用語揺れを確認し、必要に応じて `README.md` や `docs/spec/0-3-code-style-guide.md` へ導線を追加する。
-4. **記録更新**: `docs-migrations.log` に更新対象・理由・関連リスクを追記し、`0-3-audit-and-metrics.md` の該当指標（例: `diagnostic.audit_presence_rate`）へ計測結果を転記する。
+4. **記録更新**: `docs-migrations.log` に更新対象・理由・関連リスクを追記し、`docs/guides/tooling/audit-metrics.md` の該当指標（例: `diagnostic.audit_presence_rate`）へ計測結果を転記する。
 5. **フォローアップ**: 仕様差分が Phase 3 タスクへ波及する場合は `docs/notes/phase3-handover/` に TODO を残し、`4-0-risk-register.md` の該当リスクを更新する。
 
 ## 4-2.4 チェックリスト

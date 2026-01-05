@@ -25,7 +25,7 @@
 ## 3. 関連ドキュメント
 
 - docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md
-- docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md
+- docs/guides/tooling/audit-metrics.md
 - docs/spec/3-9-core-async-ffi-unsafe.md
 - reports/ffi-bridge-summary.md
 

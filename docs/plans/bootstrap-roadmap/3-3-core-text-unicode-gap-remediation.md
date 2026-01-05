@@ -21,12 +21,12 @@
 2. `compiler/runtime/src/text/{bytes.rs,text_string.rs,builder.rs}`  
    - `Bytes::from_vec`、`String::into_bytes`、`TextBuilder::finish_with_effects` で `mark_transfer` を呼び出し、`EffectsCollector` へゼロコピー経路の累積を送る。`finish_with_effects` の戻り値に `transfer` ビットを含め、`collect_text` ハーネスで参照可能にする。
 3. KPI/ドキュメント更新  
-   - `docs/plans/bootstrap-roadmap/assets/text-unicode-api-diff.csv` に `effect.transfer` 列を追加。`tooling/ci/collect-iterator-audit-metrics.py --section text --scenario bytes_clone` で `text.mem.zero_copy_ratio` を算出し、`reports/text-mem-metrics.json` にサンプル値を登録。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 解説を補強。
+   - `docs/plans/bootstrap-roadmap/assets/text-unicode-api-diff.csv` に `effect.transfer` 列を追加。`tooling/ci/collect-iterator-audit-metrics.py --section text --scenario bytes_clone` で `text.mem.zero_copy_ratio` を算出し、`reports/text-mem-metrics.json` にサンプル値を登録。`docs/guides/tooling/audit-metrics.md` の KPI 解説を補強。
 
 > 実施ログ（2027-03-31）  
 > - `compiler/runtime/src/prelude/iter/mod.rs` に `EffectSet::mark_transfer` / `contains_transfer` を追加し、`EffectLabels` へ `transfer` フィールドを拡張。`CollectorAuditTrail`（`prelude/collectors/mod.rs`）の JSON/Audit 出力にも `collector.effect.transfer` を含めた。  
 > - `Bytes::from_vec`・`String::into_bytes`・`TextBuilder::finish_with_effects` でゼロコピー時に `transfer` を計測し、`text/effects.rs` に `record_transfer` を実装。`text/builder.rs` / `text/text_string.rs` / `text/bytes.rs` のテストへ `transfer` 断言を追加し、`cargo test --manifest-path compiler/runtime/Cargo.toml` で検証した。  
-> - `docs/plans/bootstrap-roadmap/assets/text-unicode-api-diff.csv` に `effect.transfer` 列を追加し、`Bytes::from_vec`・`String::into_bytes`・`TextBuilder::finish` のゼロコピー経路を明示。`text.mem.zero_copy_ratio` の収集根拠として `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の記述を参照できる状態を確認した。
+> - `docs/plans/bootstrap-roadmap/assets/text-unicode-api-diff.csv` に `effect.transfer` 列を追加し、`Bytes::from_vec`・`String::into_bytes`・`TextBuilder::finish` のゼロコピー経路を明示。`text.mem.zero_copy_ratio` の収集根拠として `docs/guides/tooling/audit-metrics.md` の記述を参照できる状態を確認した。
 
 ### B. ストリーミング decode/encode 再設計
 1. ランタイム実装  

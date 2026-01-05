@@ -30,7 +30,7 @@
   1. `Result.ensure` 相当の Guard 実装 (`compiler/runtime/src/prelude/ensure.rs`) をインベントリへ反映し、`rust_status` を `implemented` に更新。
   2. すべての `collect_*` ノートで実際のソースパス (`iter/mod.rs` / `collectors/*.rs`) とテスト (`core_iter_collectors.rs`, `core_iter_pipeline.rs`) を引用。
   3. インベントリ更新後に `scripts/validate-diagnostic-json.sh` と `cargo xtask prelude-audit --strict` を実行し、`core_prelude.missing_api = 0` を `reports/spec-audit/ch0/links.md` に追記。
-- **出口条件**: `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `last_updated` をリフレッシュし、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI が最新ステータスを参照。
+- **出口条件**: `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `last_updated` をリフレッシュし、`docs/guides/tooling/audit-metrics.md` の KPI が最新ステータスを参照。
 
 **対応状況（2027-03-19）**: `prelude_api_inventory.toml` を更新し、`Result.ensure` を `rust_status=implemented`、`collect_*` 系のソース/テスト参照を `iter/mod.rs`・`collectors/string.rs`・`core_iter_pipeline.rs`・`core_iter_collectors.rs` へ刷新。`cargo run --manifest-path compiler/xtask/Cargo.toml -- prelude-audit --section Result --strict` のログを `reports/spec-audit/ch0/links.md` に記録済み。
 

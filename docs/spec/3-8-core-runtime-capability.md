@@ -174,7 +174,7 @@ fn verify_capability_security(cap_handle: CapabilityHandle, security: Capability
 
 この検査結果は §4 で定義する `AuditCapability` のシンクへ送信され、`Core.Diagnostics`（3.6 節）の `audit` 効果経由で共有される。IDE/LSP から参照する場合は、[notes/dsl-plugin-roadmap.md §5](../notes/dsl/dsl-plugin-roadmap.md#effect-handling-matrix) の比較表を利用してガイダンスを提示する。
 
-- 型クラス辞書（とくに `Iterator`）は `CapabilityId::IteratorRuntime` を `StageRequirement` と共に格納し、`effect.stage.iterator.required`／`effect.stage.iterator.actual`／`effect.stage.iterator.capability`／`effect.stage.iterator.source` を `AuditEnvelope.metadata` に出力する。[`tooling/ci/collect-iterator-audit-metrics.py`](../../tooling/ci/collect-iterator-audit-metrics.py) と [`tooling/ci/sync-iterator-audit.sh`](../../tooling/ci/sync-iterator-audit.sh) がこれらメタデータを検証し、`iterator.stage.audit_pass_rate` を `0-3-audit-and-metrics.md` の記録フォーマットに整形する。【F:1-2-types-Inference.md†L90-L140】【F:3-1-core-prelude-iteration.md†L160-L220】
+- 型クラス辞書（とくに `Iterator`）は `CapabilityId::IteratorRuntime` を `StageRequirement` と共に格納し、`effect.stage.iterator.required`／`effect.stage.iterator.actual`／`effect.stage.iterator.capability`／`effect.stage.iterator.source` を `AuditEnvelope.metadata` に出力する。[`tooling/ci/collect-iterator-audit-metrics.py`](../../tooling/ci/collect-iterator-audit-metrics.py) と [`tooling/ci/sync-iterator-audit.sh`](../../tooling/ci/sync-iterator-audit.sh) がこれらメタデータを検証し、`iterator.stage.audit_pass_rate` を `docs/guides/tooling/audit-metrics.md` の記録フォーマットに整形する。【F:1-2-types-Inference.md†L90-L140】【F:3-1-core-prelude-iteration.md†L160-L220】
 - CLI/LSP 診断と AuditEnvelope は `required_capabilities` / `actual_capabilities` を配列で保持し、複数 Capability の Stage 判定を欠落なく照合する。[^effect003-phase25-capability-array]
 
 ```reml

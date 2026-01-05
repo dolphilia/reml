@@ -44,7 +44,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo test -p reml_e2e --test scenario -- --scenario spec-core
+          cargo test --manifest-path tests/reml_e2e/Cargo.toml --test scenario -- --scenario spec-core
 
       - name: Publish KPI summary
         if: always()

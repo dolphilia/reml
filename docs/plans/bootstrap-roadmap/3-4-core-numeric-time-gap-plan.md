@@ -26,7 +26,7 @@
 | N-3 | `StatisticsError` の Diagnostics 連携強化 | `StatisticsError::with_tags` と `StatisticsTags` を実装し、`data.stats.*` メタデータを一括付与。`scripts/validate-diagnostic-json.sh --suite numeric` に `tests/data/numeric/decimal_cases.json` を追加してタグ付き診断を検証 | `compiler/runtime/src/numeric/error.rs`, `tests/data/numeric/decimal_cases.json` |
 | N-4 | `Precision`/`NumericError`/丸め API | `compiler/runtime/src/numeric/precision.rs` を新設し、`Precision` 列挙と `with_precision`/`round_to`/`truncate_to` を実装。`NumericError` の `IntoDiagnostic`/`AuditMetadata` を定義し、`scripts/validate-diagnostic-json.sh --suite numeric` に `tests/data/numeric/precision/*.json` を追加する | `compiler/runtime/src/numeric/precision.rs`, `tests/data/numeric/precision/*.json`, `reports/spec-audit/ch3/numeric_precision-*.json` |
 | N-5 | 多倍長型の Iter 連携 | `IterNumericExt` が `Decimal`/`BigRational` で `mean`/`variance` を計算できるよう、`Floating` 依存を見直して代替演算経路を実装。`numeric/effects.rs` で Decimal/Ratio の `effect {mem}` を記録し、`iter_numeric_props.rs` に Decimal ケースを追加 | `compiler/runtime/src/numeric/{mod.rs,effects.rs}`, `compiler/runtime/tests/iter_numeric_props.rs`, `docs/plans/bootstrap-roadmap/assets/core-numeric-time-effects-matrix.md` 更新 |
-| N-6 | 金融 API (`currency_add` 等) | `compiler/runtime/src/numeric/finance.rs` を追加し、`currency_add`/`compound_interest`/`net_present_value` を `Decimal` ベースで実装。`CurrencyCode` 検証と `NumericErrorKind::UnsupportedCurrency` 診断を用意し、`reports/spec-audit/ch3/numeric_finance-*.json` を作成 | `compiler/runtime/src/numeric/finance.rs`, `tests/data/numeric/finance/*.json`, `reports/spec-audit/ch3/numeric_finance-*.json`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` KPI 行 |
+| N-6 | 金融 API (`currency_add` 等) | `compiler/runtime/src/numeric/finance.rs` を追加し、`currency_add`/`compound_interest`/`net_present_value` を `Decimal` ベースで実装。`CurrencyCode` 検証と `NumericErrorKind::UnsupportedCurrency` 診断を用意し、`reports/spec-audit/ch3/numeric_finance-*.json` を作成 | `compiler/runtime/src/numeric/finance.rs`, `tests/data/numeric/finance/*.json`, `reports/spec-audit/ch3/numeric_finance-*.json`, `docs/guides/tooling/audit-metrics.md` KPI 行 |
 
 ### チェックリスト
 - [x] `IterNumericExt` に `median`/`mode`/`range` を追加し、`core-numeric` feature でビルド。
@@ -52,7 +52,7 @@
 - [x] `TimeFormat::Custom` が ICU パターン（yyyy/MM/dd など）をトランスレートし、`tests/data/time/format/icu_cases.json` でフォーマット/パースの双方を検証。
 - [x] `collect-iterator-audit-metrics.py --section numeric_time --scenario timezone_lookup` に IANA 用 JSON（`tests/data/time/timezone_iana.json`）を追加で指定し、CI でケース数・プラットフォームリストを記録。
 - [x] Core.IO の `time_env_snapshot()` を追加し、`TimeError` で `time.env.{timezone,locale}` を監査メタデータとして出力。
-- [ ] `now()`/`sleep()` の KPI (`time.syscall.latency_ns`) を `0-3-audit-and-metrics.md` に追記。
+- [ ] `now()`/`sleep()` の KPI (`time.syscall.latency_ns`) を `docs/guides/tooling/audit-metrics.md` に追記。
 
 ---
 

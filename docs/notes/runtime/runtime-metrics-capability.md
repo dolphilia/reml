@@ -5,7 +5,7 @@
 ## 背景
 - Phase3 §5.1〜5.2 で `MetricPoint` → `AuditSink` 連携と監査メタデータは整備済みだが、`CapabilityStage` の検証フックと `effects.contract.stage_mismatch` 診断が未実装だった。
 - CLI (`remlc metrics emit`) と Runtime Bridge の双方で `metrics.emit` Capability を参照する想定のため、Stage 逸脱時に共通の診断/監査キーを残す必要がある。
-- 監査 KPI (`numeric.metrics.emit_success_rate`) を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` でトラッキングする際、Stage mismatch の再現ログ（`reports/dual-write/metrics-stage-mismatch.json`）が必要になった。
+- 監査 KPI (`numeric.metrics.emit_success_rate`) を `docs/guides/tooling/audit-metrics.md` でトラッキングする際、Stage mismatch の再現ログ（`reports/dual-write/metrics-stage-mismatch.json`）が必要になった。
 
 ## 実装概要
 - `compiler/runtime/src/diagnostics/metric_point.rs`
@@ -37,7 +37,7 @@
   - `pnpm --dir tooling/lsp/tests/client_compat test -- metrics-stage`（既存 test suite に新ケースが含まれる）
 - 監査/KPI
   - `python3 tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario emit_metric --metric-source tests/data/metrics/metric_point_cases.json`
-  - Stage mismatch の検証は `reports/dual-write/metrics-stage-mismatch.json` を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` にリンクする形で進捗管理。
+  - Stage mismatch の検証は `reports/dual-write/metrics-stage-mismatch.json` を `docs/guides/tooling/audit-metrics.md` にリンクする形で進捗管理。
 
 ## 参考リンク
 - `docs/plans/bootstrap-roadmap/3-4-core-numeric-time-plan.md` §5.3

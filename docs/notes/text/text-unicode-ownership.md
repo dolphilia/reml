@@ -53,7 +53,7 @@ Bytes/Str/String/GraphemeSeq/TextBuilder がどのように `Vec<u8>` / キャ�
 ## 決定事項
 1. `Bytes`/`String` 間のゼロコピー経路では `unsafe` を使わず `Vec::into_raw_parts` 系の標準 API で所有権を移譲する。メモリ削減より安全性を優先。
 2. `TextBuilder` が `GraphemeSeq` を生成する際は `IndexCache` を共有し、`cache_generation` カウンタを `log_grapheme_stats` に出力する。
-3. `effect {mem}` の算出は `GrowthBudget`（別メモ）を流用し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI と一致させる。
+3. `effect {mem}` の算出は `GrowthBudget`（別メモ）を流用し、`docs/guides/tooling/audit-metrics.md` の KPI と一致させる。
 
 ## オープン課題
 - [ ] `String::try_reserve_exact` を公開するか検討（OutOfMemory エラー伝搬）。

@@ -1,12 +1,12 @@
 # tooling/ci 概要（下書き）
 
-Phase 1 `docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md` および `1-5-runtime-integration.md` を起点に、CI ワークフローとローカル再現スクリプトを配置する領域です。
+Phase 1 `docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md` および `1-5-runtime-integration.md` を起点に、CI ワークフローとローカル再現スクリプトを配置する領域です。現在は Rust 実装に合わせて整理中です。
 
 ## CI 自動化ツール（Phase 1-7 完了）
 
 ### メトリクス記録スクリプト
 
-`tooling/ci/record-metrics.sh` により、CI 実行結果を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記録します：
+`tooling/ci/record-metrics.sh` により、CI 実行結果を `docs/guides/tooling/audit-metrics.md` に記録します（現在は非推奨で、ファイルが存在しない場合はスキップします）：
 
 ```bash
 ./tooling/ci/record-metrics.sh \

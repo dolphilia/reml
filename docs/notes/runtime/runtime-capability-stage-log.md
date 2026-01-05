@@ -28,7 +28,7 @@ Core.Runtime の Capability で Stage 要件や監査メタデータの扱いに
   - `extensions["time"].timezone` / `audit.metadata["time.timezone"]` に解決対象の TZ 名 (`UTC±HH:MM`) を記録  
   - Capability 検証に失敗した場合は `TimeError::system_clock_unavailable(...).with_capability_context(...)` で `time.capability` / `time.required_stage` / `time.actual_stage` を書き込む
 - 観測方法: `python3 tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario timezone_lookup --tz-source tests/data/time/timezone_cases.json`。`time.timezone.lookup_consistency` KPI が 1.0 を下回った場合、本ログにプラットフォーム差分と再現手順を追記する。
-- 関連ドキュメント: `docs/plans/bootstrap-roadmap/3-4-core-numeric-time-plan.md` §4.2, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` `time.timezone.lookup_consistency` 行。
+- 関連ドキュメント: `docs/plans/bootstrap-roadmap/3-4-core-numeric-time-plan.md` §4.2, `docs/guides/tooling/audit-metrics.md` `time.timezone.lookup_consistency` 行。
 
 ## 2025-12-11 Core.Diagnostics / Metrics.Emit
 - 対象 Capability: `metrics.emit`
@@ -71,7 +71,7 @@ Core.Runtime の Capability で Stage 要件や監査メタデータの扱いに
   - `reports/spec-audit/ch3/io_bridge-capability-sync-20251206.md` を追加し、`RuntimeBridgeRegistry` と Capability Registry の同期状況（Watcher Stage trace と Capability Hook の対応）を記録。
   - `tests/capabilities/core_io_registry.json` / `compiler/runtime/tests/core_io_capabilities.rs` を更新し、`cargo test -p reml_runtime core_io_capability_matrix` が `fs.symlink.modify` / `fs.watcher.*` / `watcher.resource_limits` を網羅するようにした。
 - Rust ランタイムの `RuntimeBridgeRegistry` を `runtime::bridge` モジュールとして実装し、`FsAdapter::ensure_*` などの Stage 検証で `record_stage_probe` が呼ばれるように更新。`BRIDGE_STAGE_RECORDS_PATH=reports/spec-audit/ch3/runtime_bridge-stage-records-20251206.json cargo test -p reml_runtime stage_records_are_accessible_after_fs_operations -- --nocapture` を実行すると JSON スナップショットを取得でき、io_bridge-capability-sync レポートから Rust 側 Stage 記録を引用可能になった。
-- 関連ドキュメント: `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#5.5`（Runbook 追加）、`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md`（Capability 整合セクション）、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（`core_io.capability_matrix_pass_rate` KPI 追加）、`docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md`
+- 関連ドキュメント: `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md#5.5`（Runbook 追加）、`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md`（Capability 整合セクション）、`docs/guides/tooling/audit-metrics.md`（`core_io.capability_matrix_pass_rate` KPI 追加）、`docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md`
 
 ## 2025-12-21 Core.IO Watcher クロスプラットフォーム Capability
 - 対象 Capability: `watcher.fschange`, `watcher.recursive`, `watcher.resource_limits`（`fs.watcher.*` に対する OS サポート層）

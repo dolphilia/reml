@@ -34,7 +34,7 @@
 | `effects.contract.stage_mismatch` | Type/Eff | LSP `data.localization`, CLI JSON | ``["stage.beta", "stage.experimental"]`` | 効果診断 (`StageAuditPayload`) から渡され、AI ガイドは `effect.stage.*` と合わせて提示する。 |
 | `cli.locale.default` | CLI ツール | CLI JSON, `window/logMessage` | ``["en-US"]`` | CLI がフォールバックロケールで実行された場合に一度だけ挿入される警告。 |
 
-- 上表は `do../../spec/3-6-core-diagnostics-audit.md` §10–11 のキー一覧から派生しており、`reports/diagnostic-format-regression.md#cli-output-note` に保存されたサンプルログでも確認できる。追加キーを定義した場合は本ガイドと README の導線を更新し、`tooling/lsp/tests/client_compat/fixtures/*.json` に `data.localization` を含む期待値を用意する。
+- 上表は `../../spec/3-6-core-diagnostics-audit.md` §10–11 のキー一覧から派生しており、`reports/diagnostic-format-regression.md#cli-output-note` に保存されたサンプルログでも確認できる。追加キーを定義した場合は本ガイドと README の導線を更新し、`tooling/lsp/tests/client_compat/fixtures/*.json` に `data.localization` を含む期待値を用意する。
 
 ### 5.2 Config/Data レポートの活用
 
@@ -72,7 +72,7 @@
 ## 6. Unicode 正規化ポリシー
 - AI への入力は **常に** `Unicode.normalize(str, NormalizationForm::NFC)` を通過させ、識別子候補は `Unicode.prepare_identifier` を併用する。`examples/core-text/text_unicode.reml` では Bytes→Str→String 正規化、`TextBuilder`、`log_grapheme_stats` をまとめており、`expected/text_unicode.tokens.golden` を差分比較に利用できる。  
 - 文字幅や Grapheme 統計を AI 提案に付与する際は `examples/core-text/expected/text_unicode.grapheme_stats.golden` 相当の JSON を埋め込み、`text.grapheme_stats.cache_hits` が 0 の場合は AI に渡す前段でキャッシュを温める。  
-- ストリーミング decode の AI 前処理は `cargo run --manifest-path compiler/runtime/Cargo.toml --bin text_stream_decode -- --input <file>` を利用し、BOM/Invalid ポリシーをログ化した JSON（`text_unicode.stream_decode.golden`）を LLM へ共有する。`do../../plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md` §5 との整合を保ち、正規化ポリシー逸脱時は `do../../plans/bootstrap-roadmap/0-4-risk-handling.md` の `R-041 Unicode Data Drift` を参照する。
+- ストリーミング decode の AI 前処理は `cargo run --manifest-path compiler/runtime/Cargo.toml --bin text_stream_decode -- --input <file>` を利用し、BOM/Invalid ポリシーをログ化した JSON（`text_unicode.stream_decode.golden`）を LLM へ共有する。`../../plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md` §5 との整合を保ち、正規化ポリシー逸脱時は `../../plans/bootstrap-roadmap/0-4-risk-handling.md` の `R-041 Unicode Data Drift` を参照する。
 
 ## 7. 今後のタスク
 - セーフティ評価・ログ収集テンプレートの整備。

@@ -37,7 +37,7 @@
 ## バージョンとハッシュの管理
 - `versions.toml` に記載された値は、Homebrew 依存のリビジョンや sysroot アーカイブのハッシュを追跡する基準です。更新を行った場合は、差分を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に登録し、四半期レビューで確認します。
 - sysroot アーカイブのハッシュは `tooling/toolchains/checksums.txt` と同期させ、`shasum -a 256 --check` で検証できる状態を維持してください。
-- QEMU 実行によるメトリクス更新は `scripts/cross/run-linux-qemu.sh --metrics tooling/toolchains/metrics.jsonl` を使用し、`0-3-audit-and-metrics.md` へ転記します。
+- QEMU 実行によるメトリクス更新は `scripts/cross/run-linux-qemu.sh --metrics tooling/toolchains/metrics.jsonl` を使用し、`docs/guides/tooling/audit-metrics.md` へ転記します。
 
 ## トラブルシューティング
 - **ツールが見つからない場合**: `env.sh` を `source` しているか確認し、Homebrew の prefix が `versions.toml` の記載と一致しているかを照合します。

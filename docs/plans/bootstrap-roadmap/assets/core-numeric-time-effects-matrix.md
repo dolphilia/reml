@@ -14,7 +14,7 @@
 
 ## 監査・CI 設計
 - `python3 tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario effects_matrix --matrix docs/plans/bootstrap-roadmap/assets/core-numeric-time-effects-matrix.md --output reports/spec-audit/ch3/core_numeric_time_effects.json --require-success` を追加し、各行の `capability`, `stage_required`, `stage_actual`, `effect.*` を突き合わせる。
-- 収集結果は `numeric_time.effect_matrix_pass_rate`（`0-3-audit-and-metrics.md` へ追記）として扱い、1.0 未満の場合は CI を失敗させる。
+- 収集結果は `numeric_time.effect_matrix_pass_rate`（`docs/guides/tooling/audit-metrics.md` へ追記）として扱い、1.0 未満の場合は CI を失敗させる。
 - `reports/spec-audit/ch3/core_numeric_time_effects.jsonl` を監査ログとして保存し、`AuditEnvelope.metadata["numeric_time.api"]` を `代表 API` 列と同期させる。
 
 ## 既知のギャップ

@@ -1585,7 +1585,7 @@ CLI は `CliDiagnosticEnvelope` を生成した後、`emit(envelope.diagnostics[
 - `--audit-store=ci` 時は CI 成功で最新 20 件を `reports/audit/history/<target>.jsonl.gz` として圧縮保存し、失敗時は `reports/audit/failed/<commit>/` へ退避する。削除したビルド ID は `reports/audit/index.json` の `pruned` 配列へ追記する。
 - 永続ストアは `reports/audit/index.json` および `reports/audit/usage.csv` を更新し、総容量が 500 MB を超えた場合は `0-4-risk-handling.md` に記録する。`tooling/ci/collect-iterator-audit-metrics.py` はこれらのメタデータを前提に `ffi_bridge.audit_pass_rate` と `iterator.stage.audit_pass_rate` を集計する。
 
-本節の CLI フラグ仕様は `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記載された運用手順と同期させ、計画書と仕様の齟齬を防止する。
+本節の CLI フラグ仕様は `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` と `docs/guides/tooling/audit-metrics.md` に記載された運用手順と同期させ、計画書と仕様の齟齬を防止する。
 
 ## 12. Streaming Recover メトリクス
 

@@ -1,4 +1,4 @@
 scenario,items,input_bytes,peak_effect_mem_bytes,peak_mem_ratio,avg_reuse_ratio,shared_nodes,allocations,notes
 ListPersistentPatch,100000,26138098,44846556,1.7158,1.0000,314289,314289,
 MapPersistentMerge,50000,3350396,4657956,1.3903,1.0000,53205,53205,
-RefInternalMutation,0,0,0,0,0,0,0,"Run pending: `python3 tooling/ci/collect-iterator-audit-metrics.py --suite collectors --thresholds docs/plans/bootstrap-roadmap/assets/metrics/core_collections_thresholds.json --scenario ref_internal_mutation --require-success --require-cell` の出力を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` / `reports/iterator-collector-summary.md` へ転記。現状は `threshold metric missing` を記録してブロッカー扱い。"
+RefInternalMutation,0,0,0,0,0,0,0,"Run pending: `python3 tooling/ci/collect-iterator-audit-metrics.py --suite collectors --thresholds docs/plans/bootstrap-roadmap/assets/metrics/core_collections_thresholds.json --scenario ref_internal_mutation --require-success --require-cell` の出力を `docs/guides/tooling/audit-metrics.md` / `reports/iterator-collector-summary.md` へ転記。現状は `threshold metric missing` を記録してブロッカー扱い。"

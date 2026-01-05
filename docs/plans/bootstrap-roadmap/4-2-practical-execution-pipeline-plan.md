@@ -10,7 +10,7 @@
 ## スコープ
 - **含む**: `tooling/examples/run_examples.sh` のスイート拡張、`compiler/tests/practical/` の e2e テスト整備、`.github/workflows/phase4-practical.yml`（仮）の作成、`reports/spec-audit/ch5/` への実行ログ出力、Golden ファイル更新フローの策定。
 - **含まない**: ランタイムや CLI の内部最適化（必要な修正は別チームへエスカレーション）、セルフホスト Stage 切り替え、Phase 3 の仕様追加。
-- **前提条件**: `4-1-scenario-matrix-plan.md` で `.reml` ケースの分類と参照先が確定している、Rust 実装が Chapter 3 API まで揃っている、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI に Phase 4 指標を追加できる状態。
+- **前提条件**: `4-1-scenario-matrix-plan.md` で `.reml` ケースの分類と参照先が確定している、Rust 実装が Chapter 3 API まで揃っている、`docs/guides/tooling/audit-metrics.md` の KPI に Phase 4 指標を追加できる状態。
 
 ## 成果物と出口条件
 - `tooling/examples/run_examples.sh` に `--suite spec-core|practical|integration|selfhost-smoke` を追加し、`./tooling/examples/run_examples.sh --suite practical --update-golden` が成功する。
@@ -40,7 +40,7 @@
 ### 4. レビューと運用移管（75週目）
 - `docs/plans/bootstrap-roadmap/4-4-field-regression-and-readiness-plan.md` のレビュー会と連携し、`.reml` 実行結果を週次で確認、`impl_fix` / `spec_fix` の切り分けプロセスを確定。
 - `docs/plans/bootstrap-roadmap/README.md` / `SUMMARY.md` へ Phase 4 スイートの説明を追記し、利用者がナビゲーションできるようにする。
-- 成果を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記録し、`practical_suite.pass_rate`, `spec_core_suite.pass_rate` を KPI として登録。
+- 成果を `docs/guides/tooling/audit-metrics.md` に記録し、`practical_suite.pass_rate`, `spec_core_suite.pass_rate` を KPI として登録。
 - `.reml` 実行ログには `resolution_hint`（`impl_fix`/`spec_fix`/`ok`）を強制出力し、`phase4-scenario-matrix.csv` と同期できるようにする。
 
 ## リスクとフォローアップ

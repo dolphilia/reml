@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# CI メトリクス記録スクリプト
+# CI メトリクス記録スクリプト（非推奨）
 #
-# GitHub Actions の CI 実行結果を docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md に記録します。
+# GitHub Actions の CI 実行結果を docs/guides/tooling/audit-metrics.md に記録します。
+# ただし当該ドキュメントは現状のリポジトリに存在しないため、見つからない場合は警告して終了します。
 #
 # 使い方:
 #   ./tooling/ci/record-metrics.sh [オプション]
@@ -23,7 +24,7 @@
 #   GITHUB_REF               ブランチ/タグ参照（自動設定）
 #
 # 参考:
-#   - docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md
+#   - docs/guides/tooling/audit-metrics.md
 #   - docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md
 
 set -euo pipefail
@@ -32,7 +33,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-METRICS_FILE="$REPO_ROOT/docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md"
+METRICS_FILE="$REPO_ROOT/docs/guides/tooling/audit-metrics.md"
 
 # デフォルト値
 TARGET="linux"
@@ -186,8 +187,9 @@ fi
 # ========== ファイルへの書き込み ==========
 
 if [[ ! -f "$METRICS_FILE" ]]; then
-  log_error "メトリクスファイルが見つかりません: $METRICS_FILE"
-  exit 1
+  log_info "メトリクスファイルが見つかりません: $METRICS_FILE"
+  log_info "このスクリプトは非推奨のため、書き込みをスキップします。"
+  exit 0
 fi
 
 log_info "メトリクスを記録中..."

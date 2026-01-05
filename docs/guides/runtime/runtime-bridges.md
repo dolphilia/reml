@@ -42,15 +42,14 @@
 ```
 
 - `bridge.return` には返り値の取り扱いを明示します。Borrowed → `wrap_foreign_ptr`、Transferred → `wrap_foreign_ptr` + `dec_ref` といった処理を `status`・`wrap`・`release_handler`・`rc_adjustment` で追跡し、監査ゲートが参照できるようにします。
-- `bridge.return` には返り値の取り扱いを明示します。Borrowed → `wrap_foreign_ptr`、Transferred → `wrap_foreign_ptr` + `dec_ref` といった処理を `status`・`wrap`・`release_handler`・`rc_adjustment` で追跡し、監査ゲートが参照できるようにします。
 - CI では `tooling/ci/collect-iterator-audit-metrics.py` → `tooling/ci/sync-iterator-audit.sh` の流れで `ffi_bridge.audit_pass_rate` を収集します。macOS（`macos-arm64`）の pass_rate が 1.0 未満、もしくはログが欠落している場合はジョブを失敗させ、再取得を促してください。
-- Core Diagnostics 章向けのパイプライン監査は `examples/core_diagnostics/pipeline_success.expected.audit.jsonl` / `pipeline_branch.expected.audit.jsonl` をゴールデンとして共有している。`tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` で Rust Frontend の CLI/Audit 経路を検証し、`pipeline.id`・`pipeline.node`・`pipeline.outcome` の必須キーが `do../../spec/3-6-core-diagnostics-audit.md` §9 の例と一致するかをレビューする。
-- Runtime Bridge で参照する Stage/Capability プロファイルは `Core.Config.Manifest` の DSL セクションから派生させる。`examples/core_config/reml.toml`（`do../../spec/3-7-core-config-data.md` §1.4 に対応）を `cargo run --manifest-path compiler/frontend/Cargo.toml --bin remlc -- manifest dump --manifest examples/core_config/reml.toml` でダンプすると、`dsl.audit_bridge.exports[*].signature.stage_bounds` や `capabilities` が [examples/practical/core_config/audit_bridge/audit_bridge.reml](../../../examples/practical/core_config/audit_bridge/audit_bridge.reml) の `@dsl_export` と一致していることを確認できる。この JSON がそのまま `RuntimeBridgeAuditSpec` の `bridge.stage.required`・`bridge.stage.actual`・`bridge.stage.mode`・`bridge.stage.capability` に写り、監査ログと Manifest の差分検知を容易にする。
-- Stage メタデータの形は `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` で `collector.stage.*` として先行運用しており、`cargo test --manifest-path compiler/frontend/Cargo.toml core_iter_collectors -- --nocapture` を実行すると最新の監査ログを得られる。`bridge.stage.*` の正式名称は `do../../spec/3-8-core-runtime-capability.md` §10 の RuntimeBridge 契約に準拠しているため、Rust 実装でもこのテストを基準に Stage/Capability キーの欠落を検知し、`update_dsl_signature`（`compiler/runtime/src/config/manifest.rs`）経由でマニフェスト側と整合させる。
+- Core Diagnostics 章向けのパイプライン監査は `examples/core_diagnostics/pipeline_success.expected.audit.jsonl` / `pipeline_branch.expected.audit.jsonl` をゴールデンとして共有している。`tooling/examples/run_examples.sh --suite core_diagnostics --update-golden` で Rust Frontend の CLI/Audit 経路を検証し、`pipeline.id`・`pipeline.node`・`pipeline.outcome` の必須キーが `../../spec/3-6-core-diagnostics-audit.md` §9 の例と一致するかをレビューする。
+- Runtime Bridge で参照する Stage/Capability プロファイルは `Core.Config.Manifest` の DSL セクションから派生させる。`examples/core_config/reml.toml`（`../../spec/3-7-core-config-data.md` §1.4 に対応）を `cargo run --manifest-path compiler/frontend/Cargo.toml --bin remlc -- manifest dump --manifest examples/core_config/reml.toml` でダンプすると、`dsl.audit_bridge.exports[*].signature.stage_bounds` や `capabilities` が [examples/practical/core_config/audit_bridge/audit_bridge.reml](../../../examples/practical/core_config/audit_bridge/audit_bridge.reml) の `@dsl_export` と一致していることを確認できる。この JSON がそのまま `RuntimeBridgeAuditSpec` の `bridge.stage.required`・`bridge.stage.actual`・`bridge.stage.mode`・`bridge.stage.capability` に写り、監査ログと Manifest の差分検知を容易にする。
+- Stage メタデータの形は `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` で `collector.stage.*` として先行運用しており、`cargo test --manifest-path compiler/frontend/Cargo.toml core_iter_collectors -- --nocapture` を実行すると最新の監査ログを得られる。`bridge.stage.*` の正式名称は `../../spec/3-8-core-runtime-capability.md` §10 の RuntimeBridge 契約に準拠しているため、Rust 実装でもこのテストを基準に Stage/Capability キーの欠落を検知し、`update_dsl_signature`（`compiler/runtime/src/config/manifest.rs`）経由でマニフェスト側と整合させる。
 
 ### 1.3 型付き `CapabilityHandle` の取り扱い
 
-- `CapabilityRegistry::verify_capability_stage` は型付きバリアント (`Gc`/`Io`/`Async` など) を返す設計になったため、FFI 境界では `match handle { CapabilityHandle::Gc(cap) => ... }` あるいは `handle.as_gc()` のようなヘルパを使って目的の API にアクセスしてください。型ごとに `descriptor()` で `stage`/`effect_scope` も利用でき、`do../../spec/3-8-core-runtime-capability.md` の契約と整合する監査ログを出しやすくなります。
+- `CapabilityRegistry::verify_capability_stage` は型付きバリアント (`Gc`/`Io`/`Async` など) を返す設計になったため、FFI 境界では `match handle { CapabilityHandle::Gc(cap) => ... }` あるいは `handle.as_gc()` のようなヘルパを使って目的の API にアクセスしてください。型ごとに `descriptor()` で `stage`/`effect_scope` も利用でき、`../../spec/3-8-core-runtime-capability.md` の契約と整合する監査ログを出しやすくなります。
 - `SecurityCapability` には `SecurityPolicy` を適用する `enforce` メソッドがあり、`AuditEnvelope` に `stage_requirement`/`effect_scope` 情報を追加したい場合は `SecurityCapability` を経由して `audit.log` へ送ってください。具体的な `CapabilityHandle` の分解例とライフサイクルは `docs/guides/ffi/reml-ffi-handbook.md#11-3-capability-handle` を参照し、DSL や Bridge 側での型安全な分岐を検証してください。
 
 ### 1.4 Core.IO コンテキストと監査
@@ -69,26 +68,26 @@ fn load_release_note(path: Path, audit: AuditSink) -> Result<Bytes, IoError> =
 ```
 
 - 上記の `bytes_writer` は `IoContext.helper = "bridge.release_note"` をセットし、`log_io` の `audit_metadata["io.helper"]` と `metadata.io.helper` を一致させる。glob/Watcher Bridge でも同様に `helper` 名と `metadata.io.glob.*` / `metadata.io.watch.*` をそろえることで、Runtime Bridge の診断ログと CI 指標（`core_io.path_glob_pass_rate`, `core_io.buffered_reader_buffer_stats_pass_rate` など）を一元的に追跡できる。
-- Bridge 実装のベースラインとして [examples/practical/core_io/file_copy/canonical.reml](../../../examples/practical/core_io/file_copy/canonical.reml)・[examples/practical/core_path/security_check/relative_denied.reml](../../../examples/practical/core_path/security_check/relative_denied.reml)（旧 `examples/core_io` / `examples/core_path`）を `tooling/examples/run_examples.sh --suite core_io|core_path` から自動実行できる。`do../../notes/runtime/runtime-bridges-roadmap.md` にサンプルの Run ID と `core_io.example_suite_pass_rate` の計測手順を記録しているため、Bridge 連携を追加する際は同ノートを更新すること。
+- Bridge 実装のベースラインとして [examples/practical/core_io/file_copy/canonical.reml](../../../examples/practical/core_io/file_copy/canonical.reml)・[examples/practical/core_path/security_check/relative_denied.reml](../../../examples/practical/core_path/security_check/relative_denied.reml)（旧 `examples/core_io` / `examples/core_path`）を `tooling/examples/run_examples.sh --suite core_io|core_path` から自動実行できる。`../../notes/runtime/runtime-bridges-roadmap.md` にサンプルの Run ID と `core_io.example_suite_pass_rate` の計測手順を記録しているため、Bridge 連携を追加する際は同ノートを更新すること。
 
 ### 1.5 `core.collections.audit` と監査シナリオ
 - `core.collections.audit` は `CapabilityRegistry` に Stage=Stable/EffectScope=`["audit","mem"]` で登録し、`CollectorAuditTrail` が `collector.capability`/`collector.effect.audit` を `AuditEnvelope.metadata`/`Diagnostic.extensions` へ転送する。`CapabilityRegistry::verify_capability_stage("core.collections.audit", StageRequirement::Exact(StageId::Stable), ["audit","mem"])` を `Collector` 終端（`ListCollector::finish` など）で呼び出し、失敗したら `CollectError::CapabilityDenied` を返す経路を `scripts/poc_dualwrite_compare.sh --target audit_bridge` でも検証する。
-- `REML_COLLECTIONS_CHANGE_SET_PATH` から読み込んだ `ChangeSet` JSON (`collections.diff.*`) を `FormatterContext::change_set` が `AuditEnvelope.change_set` に注入するルートを確保し、`collect-iterator-audit-metrics.py --section collectors --scenario audit_cap` で `collector.capability`, `collector.effect.audit`, `collections.change_set.total` を必須チェックとすることで `collectors` の `effect {audit}` パスを CI gate へ昇格させる。`reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の `case=audit_cap` entry、`reports/iterator-collector-summary.md` の `audit_cap` KPI、`do../../plans/bootstrap-roadmap/0-3-audit-and-metrics.md` Phase3 Capability 行を相互に参照して結果を追跡してください。
+- `REML_COLLECTIONS_CHANGE_SET_PATH` から読み込んだ `ChangeSet` JSON (`collections.diff.*`) を `FormatterContext::change_set` が `AuditEnvelope.change_set` に注入するルートを確保し、`collect-iterator-audit-metrics.py --section collectors --scenario audit_cap` で `collector.capability`, `collector.effect.audit`, `collections.change_set.total` を必須チェックとすることで `collectors` の `effect {audit}` パスを CI gate へ昇格させる。`reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の `case=audit_cap` entry、`reports/iterator-collector-summary.md` の `audit_cap` KPI、`../../guides/tooling/audit-metrics.md` Phase3 Capability 行を相互に参照して結果を追跡してください。
 
 ### 1.6 `Ref` ハンドルと CapabilityRegistry の橋渡し
-- `Ref` システムは `core.collections.ref` capability（Stage=Stable、effect_scope=`["mem","mut","rc"]`）として `CapabilityRegistry` に登録され、`EffectfulRef::try_new` / `RefHandle::try_new` が `verify_capability_stage` を通過できない場合は `BorrowError::CapabilityDenied` を返します。`RefHandle::new` は互換目的で `try_new` をラップしつつ、Clone/Drop では `EffectSet::mark_rc()`/`release_rc()` を呼び出して `collector.effect.rc` 情報と `effect {rc}` タグが `AuditEnvelope` に添付されます（`do../../spec/3-9-core-async-ffi-unsafe.md` §4 の参照制約にも整合）。
-- FFI から `RefHandle` を渡すときは `core.collections.ref` capability を明示的に要求し、`register_ref_capability()` の後に `RefHandle::try_new` で Stage/Effect の検証を済ませておくと `RuntimeBridge` の `collector.effect.rc`/`collector.effect.mut` ログと `poc_dualwrite_compare.sh --section ref_count` の監査出力が一致します（計画の詳細は `do../../plans/bootstrap-roadmap/3-2-core-collections-plan.md` の 3.2 セクションおよび `do../../plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` のステージ連携節を参照）。
+- `Ref` システムは `core.collections.ref` capability（Stage=Stable、effect_scope=`["mem","mut","rc"]`）として `CapabilityRegistry` に登録され、`EffectfulRef::try_new` / `RefHandle::try_new` が `verify_capability_stage` を通過できない場合は `BorrowError::CapabilityDenied` を返します。`RefHandle::new` は互換目的で `try_new` をラップしつつ、Clone/Drop では `EffectSet::mark_rc()`/`release_rc()` を呼び出して `collector.effect.rc` 情報と `effect {rc}` タグが `AuditEnvelope` に添付されます（`../../spec/3-9-core-async-ffi-unsafe.md` §4 の参照制約にも整合）。
+- FFI から `RefHandle` を渡すときは `core.collections.ref` capability を明示的に要求し、`register_ref_capability()` の後に `RefHandle::try_new` で Stage/Effect の検証を済ませておくと `RuntimeBridge` の `collector.effect.rc`/`collector.effect.mut` ログと `poc_dualwrite_compare.sh --section ref_count` の監査出力が一致します（計画の詳細は `../../plans/bootstrap-roadmap/3-2-core-collections-plan.md` の 3.2 セクションおよび `../../plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` のステージ連携節を参照）。
 
 ### 1.7 TypeChecker テレメトリと Graphviz 連携
-- `TraitResolutionTelemetry` のグラフ構造を共有する際は `--emit-telemetry constraint_graph=<path>` で JSON を取得し、`tooling/telemetry/export_graphviz.rs` を `cargo run --manifest-path tooling/telemetry/Cargo.toml -- --dot-out <dot> --svg-out <svg> --graph-name <name> <json>` の形式で実行する。`tooling/telemetry/export_graphviz` は `serde_json` のルートに `graph` フィールドが存在しない場合でも自動で解釈するため、`do../../spec/3-6-core-diagnostics-audit.md` §1.4 の図版更新にそのまま利用できる。
-- 代表例として `examples/core_diagnostics/constraint_graph/simple_chain.reml` と `examples/core_diagnostics/output/simple_chain-{constraint_graph.json,dot,svg}` を保管している。Runtime Bridge/TypeChecker 雙方で再利用する場合は `README.md` に記載した手順で JSON → DOT/SVG を再生成し、`do../../plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Telemetry KPI に紐付ける。
-- Graphviz で生成した SVG は `do../../spec/3-6-core-diagnostics-audit.md` や `../runtimeruntime-bridges.md` の図版差し替えに使用し、Stage/Audit の条件が変わった場合は Run ID と `examples/core_diagnostics/output/` のファイルを揃えてから `do../../notes/` に追記する。`dot` 実行時には `graph_name`（例: `SimpleChain`）を指定し、CI でも同じ名前空間が使われるよう統一する。
+- `TraitResolutionTelemetry` のグラフ構造を共有する際は `--emit-telemetry constraint_graph=<path>` で JSON を取得し、`tooling/telemetry/export_graphviz.rs` を `cargo run --manifest-path tooling/telemetry/Cargo.toml -- --dot-out <dot> --svg-out <svg> --graph-name <name> <json>` の形式で実行する。`tooling/telemetry/export_graphviz` は `serde_json` のルートに `graph` フィールドが存在しない場合でも自動で解釈するため、`../../spec/3-6-core-diagnostics-audit.md` §1.4 の図版更新にそのまま利用できる。
+- 代表例として `examples/core_diagnostics/constraint_graph/simple_chain.reml` と `examples/core_diagnostics/output/simple_chain-{constraint_graph.json,dot,svg}` を保管している。Runtime Bridge/TypeChecker 雙方で再利用する場合は `README.md` に記載した手順で JSON → DOT/SVG を再生成し、`../../guides/tooling/audit-metrics.md` の KPI 参照を更新する。
+- Graphviz で生成した SVG は `../../spec/3-6-core-diagnostics-audit.md` の図版差し替えに使用し、Stage/Audit の条件が変わった場合は Run ID と `examples/core_diagnostics/output/` のファイルを揃えてから `../../notes/` に追記する。`dot` 実行時には `graph_name`（例: `SimpleChain`）を指定し、CI でも同じ名前空間が使われるよう統一する。
 
 ### 1.8 埋め込み API (Phase 4)
 
 - `compiler/runtime/native/include/reml_embed.h` の C ABI を利用し、`reml_create_context` → `reml_load_module` → `reml_run` → `reml_dispose_context` の最小フローを採用する。
 - `native.embed.entrypoint` と `embed.abi.version` は **成功時も必ず** 監査ログに出力し、ABI 不一致 (`native.embed.abi_mismatch`) と未対応ターゲット (`native.embed.unsupported_target`) は Error として記録する。
-- ABI 互換性は `do../../spec/3-8-core-runtime-capability.md` の `native.embed` Stage に従い、実験段階では `REML_EMBED_STATUS_ABI_MISMATCH` / `REML_EMBED_STATUS_UNSUPPORTED_TARGET` を利用して早期失敗させる。
+- ABI 互換性は `../../spec/3-8-core-runtime-capability.md` の `native.embed` Stage に従い、実験段階では `REML_EMBED_STATUS_ABI_MISMATCH` / `REML_EMBED_STATUS_UNSUPPORTED_TARGET` を利用して早期失敗させる。
 
 ```c
 #include "reml_embed.h"
@@ -124,7 +123,7 @@ int main(void) {
 }
 ```
 
-> 参照: `do../../spec/3-8-core-runtime-capability.md` の `native.embed` と `do../../spec/3-6-core-diagnostics-audit.md` の監査キー表。
+> 参照: `../../spec/3-8-core-runtime-capability.md` の `native.embed` と `../../spec/3-6-core-diagnostics-audit.md` の監査キー表。
 
 ## 2. ホットリロード
 
@@ -362,10 +361,10 @@ task.join().await?;
 - `RunConfig.extensions["stream"]` から `enabled` / `demand_min_bytes` / `demand_preferred_bytes` / `chunk_size` を Runtime Bridge 初期化時に受け取り、ストリーミング経路と CLI/LSP の設定差分を監視する。`parser.stream.outcome_consistency`・`parser.stream.demandhint_coverage` の集計結果を `audit.log("parser.stream.metrics", ...)` に転送してダッシュボードへ反映する。[^exec001-bridge]
 - `DemandHint` と `StreamMeta` を Runtime Bridge のバックプレッシャ制御へ伝播し、`FlowController.policy=Auto` を利用する場合は `BackpressureSpec` をランタイム側へ同期する。`PendingReason::Backpressure` を検出したら `audit.log("parser.stream.pending", { reason, resume_hint })` を出力し、Phase 2-7 で予定している Pending/Error 監査フローと互換にする。
 - `StreamEvent::Error` を受信した際は `bridge.stage` 監査と同じフォーマットで `effect.stage.*`／`bridge.reload` を記録し、`Stream.resume` エラーパスが Runtime Bridge 側で検出可能になるよう `AuditEnvelope.metadata["stream.last_reason"]` を必須化する。
-- Core.Async 経由で `Await` をハンドリングする構成では、`RuntimeBridgeDescriptor.capabilities` に `{"async.stream"}` を追加し、`effects.contract.stage_mismatch` の監査キーと照合する。`do../../plans/bootstrap-roadmap/2-7-deferred-remediation.md` で要求される Stage 一致率のレポートにこの Capability を含める。
+- Core.Async 経由で `Await` をハンドリングする構成では、`RuntimeBridgeDescriptor.capabilities` に `{"async.stream"}` を追加し、`effects.contract.stage_mismatch` の監査キーと照合する。`../../plans/bootstrap-roadmap/2-7-deferred-remediation.md` で要求される Stage 一致率のレポートにこの Capability を含める。
 
 [^exec001-bridge]:
-    `do../../plans/bootstrap-roadmap/2-5-proposals/EXEC-001-proposal.md` Step5 実施記録および `do../../plans/bootstrap-roadmap/2-7-deferred-remediation.md`「ストリーミング PoC フォローアップ」参照。PoC で導入したストリーミング指標と Runtime Bridge 連携の TODO を列挙。
+    `../../plans/bootstrap-roadmap/2-5-proposals/EXEC-001-proposal.md` Step5 実施記録および `../../plans/bootstrap-roadmap/2-7-deferred-remediation.md`「ストリーミング PoC フォローアップ」参照。PoC で導入したストリーミング指標と Runtime Bridge 連携の TODO を列挙。
 
 ---
 
@@ -434,7 +433,7 @@ task.join().await?;
 
 3. **Windows/MSVC での検証**  
    - `python3 tooling/ci/collect-iterator-audit-metrics.py --section streaming --platform windows-msvc --require-success` を週次で実行し、`parser.stream.bridge_backpressure_diagnostics` と `parser.stream.bridge_stage_propagation` が 1.0 であることを確認する。  
-   - `reports/ffi-bridge-summary.md` の Windows 節に結果を追記し、`do../../plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI ログを更新する。  
+   - `reports/ffi-bridge-summary.md` の Windows 節に結果を追記し、`../../guides/tooling/audit-metrics.md` の KPI ログを更新する。  
    - 失敗時は Stage/Capability の昇格を停止し、`bridge.stage.backpressure` の欠落要因（例えば CLI が `RuntimeBridgeDescriptor.stage` を更新していない等）を `0-4-risk-handling.md` に記録する。
 
 4. **CLI / LSP 連携**  
@@ -508,4 +507,4 @@ fn with_foreign_stub(req: Request) -> Result<Response, FfiError> ! {} =
 
 > 参考: Reml Actor DSL の追加コード生成フローは `3-9-core-async-ffi-unsafe.md §1.9` を参照。Transport 設定の CLI ワークフローは今後 `../runtimeruntime-bridges.md` に拡充予定。
 
-[^diag003-phase25-runtime-guide]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`do../../plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で本ガイドと関連仕様を更新し、`Target` / `Plugin` / `Lsp` ドメインの監査メタデータを `Diagnostic.extensions["target"]`, `["plugin"]`, `["lsp"]` に統一した。CI 監査ダッシュボード改修 TODO は `do../../plans/bootstrap-roadmap/2-7-deferred-remediation.md` で追跡中。
+[^diag003-phase25-runtime-guide]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`../../plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で本ガイドと関連仕様を更新し、`Target` / `Plugin` / `Lsp` ドメインの監査メタデータを `Diagnostic.extensions["target"]`, `["plugin"]`, `["lsp"]` に統一した。CI 監査ダッシュボード改修 TODO は `../../plans/bootstrap-roadmap/2-7-deferred-remediation.md` で追跡中。

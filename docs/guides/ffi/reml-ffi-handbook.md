@@ -14,7 +14,7 @@
 - `remlc --emit-header`（将来実装予定）で生成した C ヘッダと [guides/llvm-integration-notes.md](../compiler/llvm-integration-notes.md#ターゲット-abi--データレイアウト) の定義を突き合わせ、構造体・列挙体が `repr(C)` の制約を満たしているか `llvm-readobj --sd` で検証する。
 - 文字列／スライスは 3-9 §2.1 の `{ ptr, len }` レイアウトを前提にする。ゼロコピーを要求する場合は、RC カウンタの増減を呼び出しコードで確認し、`audit.log("ffi.call", ...)` に `status = "success"` を出力できることを CI でチェックする。
 - 例外は境界を越えて伝播しない。C++ 例外を扱う場合はガードレイヤで捕捉・エラーマッピングし、`FfiErrorKind::CallFailed` に変換する実装メモをここへ残す。
-- ARM64 / WASM など未正式対応ターゲットに関する調査結果は `do../../notes/` に記録し、仕様が更新されたら本ガイドからリンクのみを残す。
+- ARM64 / WASM など未正式対応ターゲットに関する調査結果は `../../notes/` に記録し、仕様が更新されたら本ガイドからリンクのみを残す。
 
 ## 3. 効果タグと `unsafe` 境界
 
@@ -55,7 +55,7 @@
 
 > 公式仕様: [3-9 §2.6–2.7](../../spec/3-9-core-async-ffi-unsafe.md#26-メモリ管理と所有権境界) の CI 要件を参照。ここでは追加で行っている検証のメモを残す。
 
-- **ABI チェック**: `ctest/ffi-smoke.c` と `ctest/struct-layout.c` を継続利用。結果が仕様の表と一致したかを `tests/ffi/README.md` に記録し、差分が発生した場合は `do../../notes/` に原因調査メモを残す。
+- **ABI チェック**: `ctest/ffi-smoke.c` と `ctest/struct-layout.c` を継続利用。結果が仕様の表と一致したかを `tests/ffi/README.md` に記録し、差分が発生した場合は `../../notes/` に原因調査メモを残す。
 - **サニタイザ運用**: `asan`/`ubsan` を有効化したビルド手順を `scripts/ffi-sanitized-build.sh` にまとめる。False Positive が発生した場合の抑制パターンを併記する。
 - **多言語バインディング検証**: Rust ラッパや Python C-API の PoC は `examples/ffi/` 配下で管理し、仕様更新時に再実行する。期待する監査ログ（`status = "success"` など）が出力されるか `jq` ベースのスモークテストで確認する。
 

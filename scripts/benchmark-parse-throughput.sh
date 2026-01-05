@@ -70,7 +70,7 @@ THROUGHPUT=$(echo "scale=2; ($INPUT_SIZE / 1024 / 1024) / $AVG" | bc)
 echo "Parse throughput: ${THROUGHPUT} MB/s"
 
 echo ""
-echo "=== 0-3-audit-and-metrics.md への記録用 ==="
+echo "=== docs/guides/tooling/audit-metrics.md への記録用 ==="
 echo "| parse_throughput | ${AVG}s (10MB入力) | フェーズごとに最低3回計測 |"
 echo ""
 echo "JSON メトリクスファイル: $METRICS_FILE"

@@ -32,7 +32,7 @@
 | 成果物 | 内容 | 依存資料 |
 | --- | --- | --- |
 | `compiler/adapter/` | プラットフォーム差異吸収モジュール（FS/Network/Time/Random/Process/Env）。エラーモデルは `Result<T, AdapterError>`。 | `docs/guides/runtime/portability.md`, `docs/spec/3-10-core-env.md`, `compiler/runtime/native/include/reml_os.h` |
-| ターゲット能力マップ | プロファイル別（`desktop-x86_64`, `windows-gnu`, `windows-msvc`, `darwin-aarch64` 等）の Capability ↔ Adapter API 対応表。 | `docs/plans/rust-migration/0-2-windows-toolchain-audit.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` |
+| ターゲット能力マップ | プロファイル別（`desktop-x86_64`, `windows-gnu`, `windows-msvc`, `darwin-aarch64` 等）の Capability ↔ Adapter API 対応表。 | `docs/plans/rust-migration/0-2-windows-toolchain-audit.md`, `docs/guides/tooling/audit-metrics.md` |
 | テストハーネス | クロスプラットフォーム Adapter テスト（ファイル操作、ソケット、時間計測、乱数品質、プロセス起動）。CI 連携（GitHub Actions matrix）。 | `tooling/ci/`, `compiler/runtime/native/tests/test_os.c`, `docs/guides/runtime/runtime-bridges.md` |
 | ポリシーガイド | Stage/Feature フラグ、`@cfg` ルール、監査ログテンプレート（`adapter.*`）。 | `docs/guides/runtime/portability.md`, `docs/spec/3-8`, `docs/spec/3-9` |
 
@@ -59,7 +59,7 @@
 ### Time
 - `Instant`/`Duration` を `RunConfig.extensions["target"].time` と同期し、`monotonic` と `system` を区別。  
 - `sleep` は `effect {io.blocking}` を要求し、`Core.Async` と統合する `sleep_async` は `2-1-runtime-integration.md` の範囲で実装。  
-- 監査ログには `adapter.time.skew_ns` を出力し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の SLA に従う。
+- 監査ログには `adapter.time.skew_ns` を出力し、`docs/guides/tooling/audit-metrics.md` の SLA に従う。
 
 ### Random
 - `getrandom` crate と Windows `BCryptGenRandom` をラップし、`SecurityCapability` から `audit.log("adapter.random", ...)` を出力。  

@@ -28,7 +28,7 @@ docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md の進捗を踏まえて�
 
 ### 1.3 テスト/検証
 - `compiler/runtime/tests/io_diagnostics.rs` に `Reader/Writer` 経由の `IoContext.bytes_processed` 検証ケースを追加。
-- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `core_io.reader_write_effects_pass_rate` 指標を追記し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario reader_writer` を CI 手順に組み込む。
+- `docs/guides/tooling/audit-metrics.md` に `core_io.reader_write_effects_pass_rate` 指標を追記し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario reader_writer` を CI 手順に組み込む。
 
 ## 2. BufferedReader とヘルパ API の強化（Phase3 W50）
 
@@ -50,7 +50,7 @@ docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md の進捗を踏まえて�
 > 実施結果（2025-11-30, §2 完了）  
 > - `compiler/runtime/src/io/buffer.rs` に `IoCopyBuffer` を実装し、`io/mod.rs::copy` と `buffered.rs` の両方で 64KiB Thread-Local バッファを再利用できるようにした。`record_buffer_allocation`/`record_buffer_usage` で `effect {mem}` を共有し、`IoContext.buffer` へ capacity/fill を転写。  
 > - `FsAdapter::ensure_buffered_io_capability()`（`memory.buffered_io`）を追加し、`BufferedReader::new` で Stage 検証と `IoContext.capability` 記録を行うよう更新。`core-io-path-api-diff.csv` と `core-io-effects-matrix.md` の該当行を「Implemented」に更新し、Capability マップへ `memory.buffered_io` を追記した。  
-> - `compiler/runtime/tests/buffered_reader.rs` を新設して `tests/data/core_io/buffered_reader/context_snapshot.json` と突合するゴールデンテストを追加。`0-3-audit-and-metrics.md` に `core_io.buffered_reader_buffer_stats_pass_rate` 指標を登録し、CI で `collect-iterator-audit-metrics.py --section core_io --scenario buffered_reader` を実行する運用を明記した。
+> - `compiler/runtime/tests/buffered_reader.rs` を新設して `tests/data/core_io/buffered_reader/context_snapshot.json` と突合するゴールデンテストを追加。`docs/guides/tooling/audit-metrics.md` に `core_io.buffered_reader_buffer_stats_pass_rate` 指標を登録し、CI で `collect-iterator-audit-metrics.py --section core_io --scenario buffered_reader` を実行する運用を明記した。
 
 ## 3. Core.Path glob 実装（Phase3 W51）
 
@@ -60,7 +60,7 @@ docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md の進捗を踏まえて�
 
 ### 3.2 テスト
 - `compiler/runtime/tests/path_glob.rs` に POSIX/Windows 別のゴールデンテストを追加（`tests/data/core_path/glob_{posix,windows}.json`）。
-- `docs/plans/bootstrap-roadmap/assets/core-io-effects-matrix.md` の `Core.Path.glob` 行を更新し、`collect-iterator-audit-metrics.py --section core_io --scenario path_glob` の計測手順を `0-3-audit-and-metrics.md` に追記。
+- `docs/plans/bootstrap-roadmap/assets/core-io-effects-matrix.md` の `Core.Path.glob` 行を更新し、`collect-iterator-audit-metrics.py --section core_io --scenario path_glob` の計測手順を `docs/guides/tooling/audit-metrics.md` に追記。
 
 ### 3.3 セキュリティ連携
 - glob 経由でディレクトリ traversal が起きないよう `PathSecurityError` と `SecurityPolicy` を組み合わせた検証を行い、`docs/notes/runtime/runtime-capability-stage-log.md` に結果を記録。
@@ -68,8 +68,8 @@ docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md の進捗を踏まえて�
 > 実施結果（Phase3 W51, §3 完了）  
 > - `compiler/runtime/src/path/glob.rs` を追加し、`glob` crate での列挙結果を `PathBuf` へ正規化してソート、`FsAdapter::ensure_read_capability()` を経由した `io.fs.read` Capability 検証、`PathErrorKind::{InvalidPattern,Io}` でのエラー報告を実装。`PathError` へ新種別を追加し、`glob` API が `effect {io, io.blocking}` を担う経路を整理した。  
 > - フィクスチャ `tests/fixtures/path_glob/*` とゴールデン `tests/data/core_path/glob_{posix,windows}.json`、統合テスト `compiler/runtime/tests/path_glob.rs` を作成し、`cargo test --manifest-path compiler/runtime/Cargo.toml path_glob` を通して POSIX/Windows 両ケースでの一致を確認。  
-> - `core.path.glob.*` 診断コードと `metadata.io.glob.*` を `PathError`/`IoError` に接続し、`IoContext` へ glob メタデータを保持できるようにした。`compiler/runtime/tests/path_glob.rs` と `tests/path_glob.rs` に診断テストを追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 説明を更新。  
-> - `docs/plans/bootstrap-roadmap/assets/core-io-path-api-diff.csv`・`core-io-effects-matrix.md`・`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `path_glob` シナリオと CI 実行手順を追記し、`docs/notes/stdlib/core-io-path-gap-log.md` へギャップ解消ログを登録。`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` / Remediation 章双方で W51 タスク完了を明記した。
+> - `core.path.glob.*` 診断コードと `metadata.io.glob.*` を `PathError`/`IoError` に接続し、`IoContext` へ glob メタデータを保持できるようにした。`compiler/runtime/tests/path_glob.rs` と `tests/path_glob.rs` に診断テストを追加し、`docs/guides/tooling/audit-metrics.md` の KPI 説明を更新。  
+> - `docs/plans/bootstrap-roadmap/assets/core-io-path-api-diff.csv`・`core-io-effects-matrix.md`・`docs/guides/tooling/audit-metrics.md` に `path_glob` シナリオと CI 実行手順を追記し、`docs/notes/stdlib/core-io-path-gap-log.md` へギャップ解消ログを登録。`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` / Remediation 章双方で W51 タスク完了を明記した。
 
 ## 4. ドキュメント/資産同期（Phase3 W51）
 

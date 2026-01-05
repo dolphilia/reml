@@ -14,7 +14,7 @@ Phase 2-5 TYPE-001 計画で共有する調査結果とチェックリストを�
 
 - **監査・RunConfig 連携の前提**  
   - CLI/RunConfig から値制限モード（`strict` / `legacy`）を切り替える計画を `Type_inference.make_config` へ橋渡しする必要がある。`docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md` Step2 で API モデルを決定し、このノートに要件を記録する。  
-  - メトリクス `type_inference.value_restriction_violation` と診断コード（仮称 `effects.contract.value_restriction`）は収集対象とし、`0-3-audit-and-metrics.md` への登録内容と同期する。
+  - メトリクス `type_inference.value_restriction_violation` と診断コード（仮称 `effects.contract.value_restriction`）は収集対象とし、`docs/guides/tooling/audit-metrics.md` への登録内容と同期する。
 
 - **再現ログと差分管理**  
   - `dune exec remlc -- tmp/value_restriction_var.reml --emit-tast` で `var poly = |x| x;` を多相的に利用できる現行挙動を確認済み。詳細は `docs/plans/bootstrap-roadmap/2-5-review-log.md` の「TYPE-001 Day1 値制限棚卸し」および `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` 脚注 `[^type001-step0-review]` を参照。  

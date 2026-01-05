@@ -22,6 +22,6 @@
 
 5. **監査ログと KPI**  
    - `RuntimeBridgeRegistry`・`FsAdapter` など Stage を観測する箇所では `record_bridge_stage_probe` を呼び `AuditEnvelope.metadata["bridge.stage.*"]` を埋める。  
-   - `python3 tooling/ci/collect-iterator-audit-metrics.py --section runtime --dry-run` の出力を `docs/plans/bootstrap-roadmap/assets/metrics/runtime-capability-stage.csv` に追記し、`runtime.capability_validation` KPI を `0-3-audit-and-metrics.md` へ記録する。
+   - `python3 tooling/ci/collect-iterator-audit-metrics.py --section runtime --dry-run` の出力を `docs/plans/bootstrap-roadmap/assets/metrics/runtime-capability-stage.csv` に追記し、`runtime.capability_validation` KPI を `docs/guides/tooling/audit-metrics.md` へ記録する。
 
 参考図: `docs/plans/bootstrap-roadmap/assets/capability-stage-flow.mmd`

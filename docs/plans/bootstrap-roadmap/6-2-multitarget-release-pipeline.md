@@ -237,7 +237,7 @@
 
 8.4. **ドキュメント化と監査記録**
 - リリースプロセスの記録（実行ログ、タイムライン）
-- `0-3-audit-and-metrics.md` への記録（署名情報、チェックサム、配布URL）
+- `docs/guides/tooling/audit-metrics.md` への記録（署名情報、チェックサム、配布URL）
 - 問題点と改善事項の記録（`0-4-risk-handling.md`）
 - 次回リリースへの改善提案
 
@@ -247,7 +247,7 @@
 - 3 ターゲット全てのアーティファクトが自動生成され、署名検証が通る。
 - 配布ページが更新され、ユーザーがダウンロード・検証できる。
 - CI/CD ログが保存され、再現手順がドキュメント化される。
-- リリースプロセスが `0-3-audit-and-metrics.md` に記録される。
+- リリースプロセスが `docs/guides/tooling/audit-metrics.md` に記録される。
 
 ## リスクとフォローアップ
 - 署名用証明書の更新・管理がリスクとなるため、キーローテーション手順をドキュメント化。
@@ -263,5 +263,5 @@
 - [4-3-developer-toolchain.md](../../spec/4-3-developer-toolchain.md)
 - [4-2-registry-distribution.md](../../spec/4-2-registry-distribution.md)
 - [4-5-roadmap-metrics.md](../../spec/4-5-roadmap-metrics.md)
-- [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
+- [docs/guides/tooling/audit-metrics.md](../guides/tooling/audit-metrics.md)
 - [0-4-risk-handling.md](0-4-risk-handling.md)

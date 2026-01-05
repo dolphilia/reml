@@ -11,7 +11,7 @@ Phase 4 は Rust 実装コンパイラを "実務レベル" で検証するこ�
 ## 4.0.2 スコープ境界
 - **含む**: `.reml` シナリオの再整理、入力/出力/診断のゴールデン化、Rust 実装 CLI を使った自動テスト実行、CI と `collect-iterator-audit-metrics.py` の統合、`examples/`・`tests/` の再分類、`docs/spec/1-x`〜`3-x` のサンプルを `.reml` テストへ変換する作業。
 - **含まない**: セルフホスト（Phase 5）に必要な自己コンパイルや Stage 昇格判定、正式リリース手続（Phase 6）。ただし、それらの前提となるシナリオ・メトリクス・レポートは Phase 4 で準備する。
-- **前提条件**: Phase 3 の Chapter 3 実装完了、`docs/plans/rust-migration/overview.md` の P1〜P3 成果、`0-3-audit-and-metrics.md` で定義された KPI。
+- **前提条件**: Phase 3 の Chapter 3 実装完了、`docs/plans/rust-migration/overview.md` の P1〜P3 成果、`docs/guides/tooling/audit-metrics.md` で定義された KPI。
 
 ## 4.0.3 作業ディレクトリ / 主な対象
 - `examples/`（`core_*` / `dsl_*` / `pipeline_*` 系、および `docs/spec/1-x`〜`3-x` のサンプルを反映した `spec_core_*` スイート）
@@ -25,7 +25,7 @@ Phase 4 は Rust 実装コンパイラを "実務レベル" で検証するこ�
 |----------------|------|----------|----------|
 | M1: シナリオマトリクス確定 | `.reml` 入力の分類（Prelude/IO/Capability/Runtime/Plugin/CLI）と評価観点 | `phase4-scenario-matrix.csv`、レビューサインオフ | Phase 4 開始後 3 週 |
 | M2: 実行パイプライン稼働 | `run_examples.sh --suite practical` と `cargo test --package reml_e2e` で compile→run→inspect を自動化 | GitHub Actions サンドボックス実行、`reports/spec-audit/ch5/practical-suite-*.md` | 開始後 6 週 |
-| M3: 観測メトリクス接続 | `collect-iterator-audit-metrics.py` の実用シナリオ対応、`0-3-audit-and-metrics.md` KPI 更新 | メトリクス JSON / Markdown レポート、`--require-success` 完走 | 開始後 8 週 |
+| M3: 観測メトリクス接続 | `collect-iterator-audit-metrics.py` の実用シナリオ対応、`docs/guides/tooling/audit-metrics.md` KPI 更新 | メトリクス JSON / Markdown レポート、`--require-success` 完走 | 開始後 8 週 |
 | M4: Phase 5 ハンドオーバー判定 | シナリオ網羅率 ≥ 85%、回帰テスト自動化、未解決リスク整理 | `phase4-readiness.md`、レビュー記録 | 開始後 10 週 |
 
 ## 4.0.5 ワークストリーム
@@ -41,7 +41,7 @@ Phase 4 は Rust 実装コンパイラを "実務レベル" で検証するこ�
    - `compiler/tests/practical/` に新しい統合テスト（ファイルごと compile run）を追加し、`Result`/`Option`/`Capability` の挙動を JSON で保存。Chapter 1 の仕様を網羅するため、`tests/spec_core/` へ `.reml` テスト資産をまとめ、`language-core` サブコマンドで個別に再実行できるようにする。
 
 3. **観測・診断メトリクス統合**
-   - `collect-iterator-audit-metrics.py` に Phase 4 シナリオ用のセクション（`--section practical`）を追加し、`tooling/ci` レポートと `0-3-audit-and-metrics.md` KPI を同期。
+   - `collect-iterator-audit-metrics.py` に Phase 4 シナリオ用のセクション（`--section practical`）を追加し、`tooling/ci` レポートと `docs/guides/tooling/audit-metrics.md` KPI を同期。
    - `reports/spec-audit/ch5/` を新設し、`.reml` ごとの compile→run ログ、診断 JSON、監査 JSONL、性能カウンタをまとめる。
    - `.reml` 実行時の AuditEnvelope に `scenario.id`, `input.hash`, `runtime.bridge`, `spec.chapter`（例: `chapter1.syntax`）などのタグを追加し、Phase 5 以降の自己ホスト計測へ引き継ぐ。
 
@@ -66,10 +66,10 @@ Phase 4 は Rust 実装コンパイラを "実務レベル" で検証するこ�
 
 ## 4.0.6 測定と検証
 - **シナリオ網羅率**: `phase4-scenario-matrix.csv` に登録したカテゴリのうち、最低 85% を週次で実行（`core`, `io`, `diagnostics`, `capability`, `plugin`）。特に `spec.chapter1.*` 行は 100% 実行を必須とし、Chapter 2/3 も 90% 以上を維持する。
-- **仕様準拠スコア**: `collect-iterator-audit-metrics.py --section practical` に `spec_compliance` を追加し、`docs/spec/1-x`〜`3-x` の節ごとに Pass/Fail 件数を記録。`reports/spec-audit/ch5/spec-core-dashboard.md` に集計表を掲載し、`0-3-audit-and-metrics.md` に `spec.chapter1.pass_rate`, `spec.chapter2.pass_rate`, `spec.chapter3.pass_rate` を KPI として追記する。
+- **仕様準拠スコア**: `collect-iterator-audit-metrics.py --section practical` に `spec_compliance` を追加し、`docs/spec/1-x`〜`3-x` の節ごとに Pass/Fail 件数を記録。`reports/spec-audit/ch5/spec-core-dashboard.md` に集計表を掲載し、`docs/guides/tooling/audit-metrics.md` に `spec.chapter1.pass_rate`, `spec.chapter2.pass_rate`, `spec.chapter3.pass_rate` を KPI として追記する。
 - **性能指標**: `.reml` 単位で `parse_throughput` / `memory_peak_ratio` を測定し、`reports/spec-audit/ch5/perf-*.md` に保存。
 - **診断ギャップ**: 実行パイプラインで得た診断 JSON を `scripts/validate-diagnostic-json.sh` で検証し、差異ゼロを Phase 4 の進捗条件とする。
-- **監査メトリクス**: `collect-iterator-audit-metrics.py --section practical --require-success` を CI で必須化し、観測指標（`practical.pass_rate`, `practical.stage_mismatch`）を `0-3-audit-and-metrics.md` に追記。
+- **監査メトリクス**: `collect-iterator-audit-metrics.py --section practical --require-success` を CI で必須化し、観測指標（`practical.pass_rate`, `practical.stage_mismatch`）を `docs/guides/tooling/audit-metrics.md` に追記。
 
 ## 4.0.7 リスクとフォローアップ
 - **シナリオ不足**: Phase 3 の章別作業で生まれたケースが不足している場合、`docs/notes/stdlib/core-library-outline.md` を再確認し、欠落分は Phase 4 で追加する。特に Chapter 1 の構文/型/効果サンプルが足りない場合は優先度を上げ、必要に応じて `docs/notes/phase4-practical-test-backlog.md`（新設）へ TODO 記録。
