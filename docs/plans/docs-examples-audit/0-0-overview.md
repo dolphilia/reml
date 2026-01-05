@@ -15,7 +15,7 @@
 ## 成功条件
 - Reml コードブロックが `.reml` と 1:1 で対応し、参照パスが明示されている。
 - 検証コマンドとログ保存先が定義され、監査ログと結び付けられている。
-- `docs-migrations.log` に移設履歴が記録されている。
+- `docs/notes/docs-migrations.log` に移設履歴が記録されている。
 
 ## 依存関係・前提
 - `docs/spec/0-3-code-style-guide.md` のコードスタイルに準拠する。

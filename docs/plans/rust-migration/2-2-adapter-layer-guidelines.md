@@ -79,7 +79,7 @@
 | W2 | FS/Time 実装 | パス操作・時間 API の実装、`RunConfig` と連携、Basic テスト | クロスプラットフォーム単体テスト、監査ログ確認 |
 | W3 | Network/Random 実装 | TCP/UDP/乱数 API 実装、`SecurityCapability` 連携、監査ログ整備 | GitHub Actions matrix、`adapter.net.*` ログ収集 |
 | W4 | Process/Env と統合テスト | プロセス生成、環境変数同期、`target.config.*` 診断検証 | CI `adapter-smoke` ジョブ、`docs/notes/` へ検証結果記録 |
-| W4.5 | レビュー & P3 連携 | API の安定化、CI 連携仕様書作成、`docs/plans/rust-migration/README.md` 更新 | ドキュメントレビュー、`docs-migrations.log` |
+| W4.5 | レビュー & P3 連携 | API の安定化、CI 連携仕様書作成、`docs/plans/rust-migration/README.md` 更新 | ドキュメントレビュー、`docs/notes/docs-migrations.log` |
 
 ## 2.2.7 検証・メトリクス
 - **単体テスト**: `cargo test adapter_fs`, `adapter_time`, `adapter_net`, `adapter_random`, `adapter_process` を用意し、主要プラットフォームで動作確認。  
@@ -113,7 +113,7 @@
 ## 2.2.10 関連ドキュメント更新
 - 本章の API 追加時には `docs/plans/rust-migration/README.md`・`docs/plans/README.md` に P2 セクションを追記する。  
 - `RunConfig` や `Diagnostic` の拡張フィールドを変更した場合は `docs/spec/2-6-execution-strategy.md`・`docs/spec/3-6-core-diagnostics-audit.md` の参照箇所を確認し、必要なら更新提案を行う。  
-- Windows ツールチェーン関連の変更は `0-2-windows-toolchain-audit.md` と `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` にフィードバックし、`docs-migrations.log` を更新する。
+- Windows ツールチェーン関連の変更は `0-2-windows-toolchain-audit.md` と `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` にフィードバックし、`docs/notes/docs-migrations.log` を更新する。
 
 ## 2.2.11 次フェーズ連携
 - P3 CI 統合計画（`3-0-ci-and-dual-write-strategy.md`）でアダプタ API を活用し、dual-write テストや監査メトリクス収集の基盤を提供する。  

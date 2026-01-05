@@ -27,7 +27,7 @@
 ## 配置ポリシー（概要）
 - `.reml` は `examples/docs-examples/<kind>/<doc-path>/` に配置する。
 - `<kind>` は `spec` / `guides` / `notes` / `plans` を使用する。
-- 既存サンプルの移設やリンク修正は `docs-migrations.log` に記録する。
+- 既存サンプルの移設やリンク修正は `docs/notes/docs-migrations.log` に記録する。
 
 ## 関連資料
 - `docs/spec/0-3-code-style-guide.md`

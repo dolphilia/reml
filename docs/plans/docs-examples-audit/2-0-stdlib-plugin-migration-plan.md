@@ -80,12 +80,12 @@
 ### フェーズE: サンプル/監査ログ更新（docs-examples-audit）
 1. `docs/spec` 内の `Core.Process`/`Signal` を参照する Reml コード例を棚卸しする。
 2. `examples/docs-examples/spec/` の `.reml` を更新し、在庫表と対応付けを調整する。
-3. `reports/spec-audit/` へ再検証ログを追加し、`docs-migrations.log` に変更履歴を記録する。
+3. `reports/spec-audit/` へ再検証ログを追加し、`docs/notes/docs-migrations.log` に変更履歴を記録する。
 
 ## 成果物
 - 追加: `docs/spec/3-18-core-system.md`（仮）
 - 改訂: Chapter 3/4/5 と README、ガイドの参照更新
-- 監査: `docs-migrations.log` と `reports/spec-audit/summary.md` の更新
+- 監査: `docs/notes/docs-migrations.log` と `reports/spec-audit/summary.md` の更新
 
 ## チェックリスト（進捗）
 - [x] `Core.System` 章番号を `3-18-core-system.md` に確定

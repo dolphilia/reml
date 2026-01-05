@@ -105,4 +105,4 @@
 | W49 | M-2, M-3, T-4 | Capability/Env 更新 |
 | W50 | Q-1, Q-2, Q-3 | 数値/時間 API 完備 |
 
-完了後は `docs/plans/bootstrap-roadmap/3-4-core-numeric-time-plan.md` と README の進捗表を更新し、`docs-migrations.log` にフォローアップ計画の適用を記録する。
+完了後は `docs/plans/bootstrap-roadmap/3-4-core-numeric-time-plan.md` と README の進捗表を更新し、`docs/notes/docs-migrations.log` にフォローアップ計画の適用を記録する。

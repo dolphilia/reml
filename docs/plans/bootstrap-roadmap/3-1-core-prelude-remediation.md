@@ -54,4 +54,4 @@
 
 ## リスクとフォローアップ
 - **監査ログ差分**: `Iter::drain_into_collector` の修正で `collector.effect.*` が変動する可能性があるため、`reports/iterator-collector-summary.md` に結果を追記し Phase 3-2 に共有する。
-- **ドキュメント更新漏れ**: インベントリ更新に併せて `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` の完了チェックリストも見直す。必要に応じて `docs-migrations.log` へ作業ログを追加。
+- **ドキュメント更新漏れ**: インベントリ更新に併せて `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` の完了チェックリストも見直す。必要に応じて `docs/notes/docs-migrations.log` へ作業ログを追加。

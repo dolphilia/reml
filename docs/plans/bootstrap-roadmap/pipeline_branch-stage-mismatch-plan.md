@@ -35,7 +35,7 @@
 ## 5. リスクとフォローアップ
 - Stage mismatch の再現には `Console` Capability の Stage 設定（beta 要求）が前提であり、ランタイム環境によっては `at_least:stable` が発行されず診断が再現しない恐れがある。`CapabilityRegistry` の初期化や CLI オプションを変更するスクリプトが存在する場合は Run 前に確認する。
 - `tooling/examples/run_examples.sh` は `pipeline_success` の更新も再実行するため、他メンテナが並列で触れている場合はゴールデン競合が起こり得る。必要に応じて `examples/core_diagnostics/README.md` に注意書きを追加する。
-- 監査レポートの JSON は今後の計画に再利用するため、`docs-migrations.log` へ記録を残すか、`reports/spec-audit/ch3/README.md` を更新して保管方法を共有する。
+- 監査レポートの JSON は今後の計画に再利用するため、`docs/notes/docs-migrations.log` へ記録を残すか、`reports/spec-audit/ch3/README.md` を更新して保管方法を共有する。
 
 ## 6. 実施ログ
 

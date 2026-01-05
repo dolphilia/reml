@@ -41,7 +41,7 @@
 ### 4. レビューと承認プロセス（76週目後半〜77週目）
 - 週次レビューで `phase4-readiness.md` を更新し、`impl_fix` / `spec_fix` の進捗を確認。`docs/plans/bootstrap-roadmap/README.md` と `SUMMARY.md` の Phase 4 セクションを新たな 4-x 計画へリンク。
 - M4 exit 判定では、`phase4-readiness.md` に署名（PM/Tech Lead）が行われ、`docs/plans/bootstrap-roadmap/6-0-phase6-migration.md` に Phase 4 成果のリンクを追加する（別タスク）。
-- 承認後、`phase4-readiness.md` を Phase 5 キックオフの必須資料として `reports/spec-audit/ch5/` に保存し、`docs-migrations.log` に記録。
+- 承認後、`phase4-readiness.md` を Phase 5 キックオフの必須資料として `reports/spec-audit/ch5/` に保存し、`docs/notes/docs-migrations.log` に記録。
 
 ### 5. OpBuilder DSL フォローアップ（Self-host 連携）
 - `docs/plans/bootstrap-roadmap/5-1-opbuilder-dsl-plan.md` フェーズ B〜D の成果（Rust フロントエンド実装・診断ゴールデン・`phase4-scenario-matrix.csv` `CH2-OP-401` 緑化）を前提に、Self-host パイプラインで DSL シナリオを単独実行するジョブを追加する。`examples/spec_core/chapter2/op_builder/*.reml` を最小ケースとして組み込み、`reports/spec-audit/ch5/practical-bundle-*.md` に Run ID と CLI コマンドを残す。

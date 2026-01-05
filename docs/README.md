@@ -51,4 +51,4 @@
 
 - サンプル実装は `examples/` に集約し、概要は [examples/README.md](../examples/README.md) を参照してください。
 - 実装用ディレクトリ（`compiler/`、`tooling/`）には各フェーズで作業を始める際の README と TODO を配置しています。
-- 大規模ドキュメント移行の履歴は [docs-migrations.log](../docs-migrations.log) に記録しています。
+- 大規模ドキュメント移行の履歴は [docs/notes/docs-migrations.log](notes/docs-migrations.log) に記録しています。

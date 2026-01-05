@@ -27,7 +27,7 @@
 
 ## 4. 監査ログ更新
 - 実行ログの保存先は `reports/spec-audit/` を基本とする。
-- 変更履歴は `docs-migrations.log` に記録する。
+- 変更履歴は `docs/notes/docs-migrations.log` に記録する。
 
 ## TODO
 - 例外命名（旧来サンプル・退避サンプル）を定義する。参考: `docs/spec/0-3-code-style-guide.md`

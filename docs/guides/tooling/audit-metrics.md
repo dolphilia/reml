@@ -27,7 +27,7 @@
 
 - 監査ログのスキーマは `tooling/runtime/audit-schema.json` を正とし、更新時は `docs/spec/3-6-core-diagnostics-audit.md` と整合させる。
 - 診断 JSON のスキーマ変更は `docs/schemas/` に反映し、`scripts/validate-diagnostic-json.sh` の検証観点に追記する。
-- KPI の更新は `reports/` の成果物を根拠とし、更新理由と Run ID を `docs-migrations.log` に記録する。
+- KPI の更新は `reports/` の成果物を根拠とし、更新理由と Run ID を `docs/notes/docs-migrations.log` に記録する。
 - 仕様変更により KPI が変わる場合は、該当する計画・ガイド・ノートにリンクを追加し相互参照を維持する。
 
 ## KPI の所在
