@@ -2,7 +2,7 @@
 # 診断 JSON のスキーマ検証ユーティリティ
 #
 # 使い方:
-#   scripts/validate-diagnostic-json.sh [--schema <schema>] [--pattern <text>] [--suite <name>] [--root <dir>] [paths...]
+#   tooling/json-schema/validate-diagnostic-json.sh [--schema <schema>] [--pattern <text>] [--suite <name>] [--root <dir>] [paths...]
 #
 # オプション:
 #   --schema   使用する JSON Schema（既定: tooling/json-schema/diagnostic-v2.schema.json）
@@ -17,7 +17,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 SCHEMA_PATH="${REPO_ROOT}/tooling/json-schema/diagnostic-v2.schema.json"
 NODE_VALIDATOR="${REPO_ROOT}/tooling/lsp/tests/client_compat/validate-diagnostic-json.mjs"

@@ -5,7 +5,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 INPUT_FILE="${1:-$REPO_ROOT/examples/benchmark/large_input.reml}"
 METRICS_FILE="${2:-/tmp/remlc-metrics.json}"
 ITERATIONS="${3:-3}"
@@ -18,7 +18,7 @@ echo ""
 # 入力ファイルが存在しない場合は生成
 if [ ! -f "$INPUT_FILE" ]; then
   echo "Input file not found. Generating..."
-  "$SCRIPT_DIR/generate-large-input.sh" "$INPUT_FILE"
+  "$REPO_ROOT/tooling/examples/generate-large-input.sh" "$INPUT_FILE"
   echo ""
 fi
 

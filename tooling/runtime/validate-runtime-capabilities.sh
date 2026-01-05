@@ -10,7 +10,7 @@ JSON_FILES=()
 print_usage() {
     cat <<'EOF'
 Usage:
-  scripts/validate-runtime-capabilities.sh [options] <capabilities.json> [...]
+  tooling/runtime/validate-runtime-capabilities.sh [options] <capabilities.json> [...]
 
 Options:
   --cli-stage <STAGE>     Stage を CLI フラグが指定した場合の想定値として記録する

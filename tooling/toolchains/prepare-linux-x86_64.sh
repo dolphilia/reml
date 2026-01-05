@@ -6,7 +6,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-使用方法: scripts/toolchain/prepare-linux-x86_64.sh [オプション]
+使用方法: tooling/toolchains/prepare-linux-x86_64.sh [オプション]
 
 主要オプション:
       --brew                Homebrew から LLVM/LLD などを準備（デフォルト有効）

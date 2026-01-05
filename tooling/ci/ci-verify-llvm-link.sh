@@ -23,7 +23,7 @@ declare -a WARNING_LINES=()
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/ci-verify-llvm-link.sh [options]
+Usage: tooling/ci/ci-verify-llvm-link.sh [options]
 
 Options:
   --binary <path>            解析対象のバイナリパス（繰り返し指定可）

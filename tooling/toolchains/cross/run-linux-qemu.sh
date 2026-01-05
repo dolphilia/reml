@@ -6,7 +6,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-使用方法: scripts/cross/run-linux-qemu.sh [オプション] [-- <バイナリ引数>...]
+使用方法: tooling/toolchains/cross/run-linux-qemu.sh [オプション] [-- <バイナリ引数>...]
 
 主要オプション:
       --toolchain-home <PATH>  クロスツールチェーンディレクトリ（既定: tooling/toolchains/x86_64-unknown-linux-gnu）
@@ -39,7 +39,7 @@ fail() {
 repo_root() {
   local script_dir
   script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-  cd "${script_dir}/../.." && pwd
+  cd "${script_dir}/../../.." && pwd
 }
 
 ensure_command() {
