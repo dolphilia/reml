@@ -50,6 +50,7 @@ RUSTFLAGS="-C link-arg=-fuse-ld=lld" cargo test --manifest-path compiler/fronten
 - [docs/README.md](`docs/README.md`): ドキュメントルート
 - [docs/spec/README.md)](docs/spec/README.md): 仕様詳細
 - [docs/guides/README.md](docs/guides/README.md): 実務ガイド
+- [docs/guides/tooling/benchmarks.md](docs/guides/tooling/benchmarks.md): ベンチマーク運用ガイド
 - [docs/notes/README.md](docs/notes/README.md): 調査ノート
 - [docs/plans/README.md](docs/plans/README.md): 計画書
 - [docs/schemas/](docs/schemas/): JSON Schema

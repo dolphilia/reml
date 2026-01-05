@@ -5,6 +5,7 @@ Reml の実装・運用に関するガイドをカテゴリ別に整理してい
 ## 開発ワークフロー & ツールチェーン
 - [tooling/cli-authoring.md](tooling/cli-authoring.md) — `Core.Cli` で宣言的に CLI を構築する最小ガイド。
 - [tooling/testing.md](tooling/testing.md) — `Core.Test` によるスナップショット/ゴールデンテスト運用。
+- [tooling/benchmarks.md](tooling/benchmarks.md) — ベンチマークの実行手順と運用上の注意点。
 - [tooling/diagnostic-format.md](tooling/diagnostic-format.md) — 診断出力のテキスト/JSON 形式仕様。
 - [tooling/config-cli.md](tooling/config-cli.md) — `Core.Config` を CLI から検証・差分・レンダリングする手順。
 - [tooling/ci-strategy.md](tooling/ci-strategy.md) — マルチターゲット CI/テスト戦略と診断ポリシーの整合。

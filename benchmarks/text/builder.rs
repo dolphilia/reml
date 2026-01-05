@@ -7,9 +7,12 @@ fn split_words() -> Vec<&'static str> {
     SAMPLE_TEXT.split_whitespace().collect()
 }
 
-fn split_graphemes() -> Vec<&'static str> {
+fn split_graphemes() -> Vec<String> {
     let reference = Str::from(SAMPLE_TEXT);
-    reference.iter_graphemes().collect()
+    reference
+        .iter_graphemes()
+        .map(|grapheme| grapheme.to_string())
+        .collect()
 }
 
 fn prebuilt_bytes(words: &[&'static str]) -> Vec<Bytes> {

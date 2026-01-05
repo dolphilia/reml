@@ -20,6 +20,7 @@
 ガイドは用途別に以下のカテゴリへ分類しています。詳細は [`docs/guides/README.md`](guides/README.md) を参照してください。
 
 - **開発ワークフロー & ツールチェーン**: [tooling/cli-workflow.md](guides/tooling/cli-workflow.md), [tooling/ci-strategy.md](guides/tooling/ci-strategy.md), [tooling/diagnostic-format.md](guides/tooling/diagnostic-format.md), ほか
+- **ベンチマーク運用**: [tooling/benchmarks.md](guides/tooling/benchmarks.md)
 - **LSP 連携**: [lsp/lsp-integration.md](guides/lsp/lsp-integration.md), [lsp/lsp-authoring.md](guides/lsp/lsp-authoring.md), ほか
 - **コンパイラ / 解析**: [compiler/core-parse-streaming.md](guides/compiler/core-parse-streaming.md), [compiler/llvm-integration-notes.md](guides/compiler/llvm-integration-notes.md), ほか
 - **DSL / プラグイン運用**: [dsl/DSL-plugin.md](guides/dsl/DSL-plugin.md), [dsl/plugin-authoring.md](guides/dsl/plugin-authoring.md), [dsl/dsl-first-guide.md](guides/dsl/dsl-first-guide.md), ほか
