@@ -150,8 +150,8 @@ fn infer_module_from_ast(...) {
 
 興味深い点として、Trait メソッドの解決（どの `impl` を使うか）の一部は、MIR 生成後に行われます。
 
-1.  `infer_expr` の段階で、メソッド呼び出しの形状（`FieldAccess` や `ModulePath`）から `QualifiedCall` を生成し、「これは Trait メソッドの可能性がある」とマークします。
-2.  MIR 生成後に `populate_qualified_call_candidates` が走ります。ここで、モジュール内の全 `impl` (`MirImplSpec`) をスキャンし、利用可能な候補 (`impl_candidates`) をリストアップします。
+1. `infer_expr` の段階で、メソッド呼び出しの形状（`FieldAccess` や `ModulePath`）から `QualifiedCall` を生成し、「これは Trait メソッドの可能性がある」とマークします。
+2. MIR 生成後に `populate_qualified_call_candidates` が走ります。ここで、モジュール内の全 `impl` (`MirImplSpec`) をスキャンし、利用可能な候補 (`impl_candidates`) をリストアップします。
 
 [`compiler/frontend/src/typeck/driver.rs`](compiler/frontend/src/typeck/driver.rs)
 
