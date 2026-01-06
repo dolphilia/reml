@@ -1,0 +1,103 @@
+\documentclass$if(classoption)$[$for(classoption)$$classoption$$sep$,$endfor$]$endif${$documentclass$}
+
+\usepackage{geometry}
+\geometry{
+  papersize={182mm,257mm},
+  inner=25mm,
+  outer=15mm,
+  top=20mm,
+  bottom=20mm
+}
+
+\usepackage{fontspec}
+\setmainfont{Hiragino Mincho ProN}[
+  AutoFakeBold=2.0
+]
+\setsansfont{Hiragino Sans}[
+  AutoFakeBold=2.0
+]
+\setmonofont{Migu 1M}[Ligatures=NoCommon]
+\usepackage{luatexja-fontspec}
+\setmainjfont{Hiragino Mincho ProN}[
+  AutoFakeBold=2.0
+]
+\setsansjfont{Hiragino Sans}[
+  AutoFakeBold=2.0
+]
+\setmonojfont{Migu 1M}[Ligatures=NoCommon]
+
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{calc}
+\usepackage{hyperref}
+\usepackage{float}
+
+$if(highlighting-macros)$
+$highlighting-macros$
+$endif$
+
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\providecommand{\pandocbounded}[1]{#1}
+\newcounter{none}
+
+\setlength{\parindent}{1em}
+\setlength{\parskip}{0.3em}
+\setcounter{secnumdepth}{-1}
+\setlength{\headheight}{14pt}
+\setlength{\headsep}{12pt}
+
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>0.9\textheight0.9\textheight\else\Gin@nat@height\fi}
+\makeatother
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+
+\begin{document}
+
+$if(title)$
+\title{$title$}
+$endif$
+$if(author)$
+\author{$author$}
+$endif$
+$if(date)$
+\date{$date$}
+$else$
+\date{}
+$endif$
+$if(title)$
+\maketitle
+$endif$
+
+$if(toc)$
+\tableofcontents
+\clearpage
+$endif$
+
+$body$
+
+\clearpage
+\thispagestyle{empty}
+\begin{center}
+{\Large Reml ソースコード完全解説}\par
+\vspace{1.5em}
+{\large dolphilia}\par
+\vspace{1.5em}
+\begin{tabular}{@{}ll@{}}
+発行日 & 未定 \\
+連絡先 & https://dolphilia.com \\
+印刷会社名 & pixivFactory \\
+\end{tabular}
+\end{center}
+
+\ifodd\value{page}
+\newpage
+\thispagestyle{empty}
+\null
+\newpage
+\fi
+
+\end{document}

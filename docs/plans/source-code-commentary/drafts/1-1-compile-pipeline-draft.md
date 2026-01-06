@@ -60,7 +60,7 @@ run_frontend(&args)?; // メイン処理へ
 以下の図は、この一連の流れを視覚化したものです。
 
 ```mermaid
-flowchart LR
+flowchart TD
     Source["Source Code (.reml)"] -->|Load| Context["Pipeline Context<br>(Descriptor/Audit)"]
     Context --> Lexer["Lexer"]
     Lexer -->|Tokens| Parser["Parser<br>(ParserDriver/Stream)"]

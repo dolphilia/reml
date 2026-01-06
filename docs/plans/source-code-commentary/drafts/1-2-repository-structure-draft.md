@@ -37,7 +37,7 @@ flowchart TD
 `compiler/` ディレクトリは、Remlプロジェクトの心臓部です。ここでは、一般的に「コンパイラ」と呼ばれる機能が、いくつかのサブディレクトリに分割して格納されています（図2-2）。
 
 ```mermaid
-flowchart LR
+flowchart TD
     Frontend("frontend/<br>(解析)") --> Backend("backend/<br>(合成)")
     Frontend --> Runtime("runtime/<br>(実行)")
     Runtime --> Adapter("adapter/<br>(OS抽象化)")

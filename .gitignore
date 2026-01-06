@@ -37,6 +37,8 @@ tmp/
 *.wip
 .draft/
 #drafts/
+docs/plans/source-code-commentary/dist/
+docs/plans/source-code-commentary/output/
 
 # ノード環境（将来的にドキュメント生成ツールを使用する場合）
 node_modules/

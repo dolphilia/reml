@@ -24,10 +24,10 @@
   - `TypecheckViolation` (`compiler/frontend/src/typeck/driver.rs`): 検出された型エラーや意味論的エラーのリスト。
 
 ```mermaid
-flowchart LR
+flowchart TD
     Input[Parser AST] --> Driver[TypecheckDriver]
-    Driver --> Typed[TypedModule<br/>(Semantics)]
-    Driver --> MIR[MirModule<br/>(Execution Plan)]
+    Driver --> Typed[TypedModule - Semantics]
+    Driver --> MIR[MirModule - Execution Plan]
     Driver --> Report[TypecheckReport]
     
     subgraph Output

@@ -113,7 +113,7 @@ flowchart TD
     JSON -->|contains| CK[capability.id / stage / effect_scope]
     JSON -->|contains| AK[adapter.*.operation / status]
     
-    Sub[Subsystems<br/>(FS, Network, Time...)] -->|uses| AC
+    Sub[Subsystems - FS, Network, Time...] -->|uses| AC
     Sub -->|generates| JSON
 ```
 

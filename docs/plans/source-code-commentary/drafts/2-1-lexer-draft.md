@@ -11,7 +11,7 @@ Reml の字句解析は `compiler/frontend/src/lexer` モジュールで実装�
 最終的に生成される `LexOutput` は、「トークン列」と「エラー列」のペアです。これは、字句解析段階で発生したエラー（例えば不正な文字の混入など）があっても処理を中断せず、可能な限り解析を継続してパーサに情報を渡すための設計です。
 
 ```mermaid
-flowchart LR
+flowchart TD
     Source["Source Text"] -->|consume_skippable| Lexer["logos Lexer (RawToken)"]
     Lexer -->|Token + Span| Tokens["Vec&lt;Token&gt;"]
     Lexer -->|Error| Errors["Vec&lt;FrontendError&gt;"]

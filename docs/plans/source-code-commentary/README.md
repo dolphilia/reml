@@ -9,6 +9,7 @@ Reml 実装のソースコード解説書を作成するための計画書・作
 - `1-0-structure.md`: 解説書の章構成案。
 - `1-1-writing-guidelines.md`: 執筆ガイドライン。
 - `1-2-module-spec-mapping.md`: モジュールと仕様の対応表。
+- `2-0-pdf-production-plan.md`: drafts原稿からPDFを生成するための計画書。
 
 ## 作業用ディレクトリ
 

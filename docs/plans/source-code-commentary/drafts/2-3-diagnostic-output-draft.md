@@ -16,7 +16,7 @@ Reml の診断システムは、`compiler/frontend/src/diagnostic` モジュー�
 この章を通じて、エラーが発生してから、それがユーザーの端末に表示されるまでのデータの流れを追跡します。
 
 ```mermaid
-flowchart LR
+flowchart TD
     Source["解析フェーズ (Parser/Typeck)"] --> Model["FrontendDiagnostic"]
     Model --> Builder["DiagnosticBuilder"]
     Builder --> Json["JSON変換 (build_frontend_diagnostic)"]

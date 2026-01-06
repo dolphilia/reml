@@ -104,7 +104,7 @@ pub struct TargetDiagnosticContext {
 
 ```mermaid
 flowchart TD
-    IR[LLVM IR File] -->|compile_ir_with_llc| Obj[Object File (.o)]
+    IR[LLVM IR File] -->|compile_ir_with_llc| Obj[Object File - .o]
     Obj -->|link_object_with_runtime| Exec[Executable File]
     Runtime[libreml_runtime.a] -.->|Generate Link Args| LinkCmd[LinkCommand]
     LinkCmd -->|execute_command| Exec

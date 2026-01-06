@@ -272,7 +272,7 @@ flowchart TD
     TypedAST -->|Lowering| MIR["MIR (.json)"]
     MIR -->|Backend Gen| LLVM_IR["LLVM IR (.ll)"]
     LLVM_IR -->|llc| Obj["Object (.o)"]
-    Obj -->|Link (clang)| Binary["Executable"]
+    Obj -->|Link - clang| Binary["Executable"]
     
     subgraph Frontend
     AST

@@ -18,7 +18,7 @@ Reml のコンパイラドライバである `reml_frontend` は、現代的な�
 ### 全体的なデータフロー
 
 ```mermaid
-flowchart LR
+flowchart TD
     User[Developer / IDE]
     
     subgraph Tooling
