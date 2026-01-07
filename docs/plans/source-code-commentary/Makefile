@@ -9,14 +9,15 @@ TEMPLATE := $(ROOT)/templates/eisvogel.latex
 SCRIPT_DIR := $(ROOT)/scripts
 MERMAID_SCRIPT := $(SCRIPT_DIR)/mermaid.py
 PUPPETEER_CONFIG ?= $(SCRIPT_DIR)/puppeteer.json
+MERMAID_CONFIG ?= $(SCRIPT_DIR)/mermaid.config.json
 
 PANDOC ?= pandoc
 LATEX ?= lualatex
 MMDC ?= mmdc
 PYTHON ?= python3
 
-TITLE ?= Remlソースコード完全解説
-AUTHOR ?= Reml Project
+TITLE ?= 詳説 Reml コンパイラ
+AUTHOR ?= dolphilia
 LANG ?= ja
 DATE ?=
 
@@ -37,6 +38,7 @@ images: setup
 	@$(PYTHON) $(MERMAID_SCRIPT) images \
 		--mmdc $(MMDC) \
 		--out-dir $(IMAGE_DIR) \
+		--config-file $(MERMAID_CONFIG) \
 		--puppeteer-config $(PUPPETEER_CONFIG) \
 		--drafts $(DRAFTS)
 

@@ -88,6 +88,8 @@ def run_images(args):
             with open(mmd_path, "w", encoding="utf-8") as f:
                 f.write(code)
             cmd = [args.mmdc, "-i", mmd_path, "-o", pdf_path]
+            if args.config_file:
+                cmd.extend(["--configFile", args.config_file])
             if args.puppeteer_config:
                 cmd.extend(["-p", args.puppeteer_config])
             subprocess.run(cmd, check=True)
@@ -126,6 +128,7 @@ def build_parser():
     images = sub.add_parser("images")
     images.add_argument("--mmdc", default="mmdc")
     images.add_argument("--out-dir", required=True)
+    images.add_argument("--config-file", default="")
     images.add_argument("--puppeteer-config", default="")
     images.add_argument("--drafts", nargs="+", required=True)
     images.set_defaults(func=run_images)
